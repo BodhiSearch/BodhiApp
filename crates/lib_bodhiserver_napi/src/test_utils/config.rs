@@ -3,8 +3,8 @@ use crate::{
   BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH,
   BODHI_HOME, BODHI_HOST, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_VERSION,
 };
-use objs::test_utils::temp_dir;
 use rstest::fixture;
+use services::test_utils::temp_dir;
 use std::{collections::HashMap, path::PathBuf};
 use tempfile::TempDir;
 

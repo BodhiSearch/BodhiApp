@@ -1,8 +1,8 @@
 use llama_server_proc::ServerError;
-use objs::{
-  impl_error_from, AppError, BuilderError, ErrorType, ObjValidationError, SerdeJsonError,
+use services::{
+  impl_error_from, AppError, BuilderError, DataServiceError, ErrorType, HubServiceError,
+  ObjValidationError, SerdeJsonError,
 };
-use services::{DataServiceError, HubServiceError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -30,19 +30,19 @@ pub enum ContextError {
 impl_error_from!(
   ::serde_json::Error,
   ContextError::SerdeJson,
-  ::objs::SerdeJsonError
+  ::services::SerdeJsonError
 );
 impl_error_from!(
   ::validator::ValidationErrors,
   ContextError::ObjValidationError,
-  objs::ObjValidationError
+  services::ObjValidationError
 );
 
 #[cfg(test)]
 mod tests {
   use crate::ContextError;
-  use objs::AppError;
   use rstest::rstest;
+  use services::AppError;
 
   #[rstest]
   #[case(&ContextError::Unreachable("unreachable".to_string()), "Internal error: unreachable.")]

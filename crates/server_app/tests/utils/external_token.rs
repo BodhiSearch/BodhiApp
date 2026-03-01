@@ -1,3 +1,4 @@
+#![allow(unused)]
 use auth_middleware::CachedExchangeResult;
 use chrono::{Duration, Utc};
 use services::{test_utils::build_token, AppService, CacheService};

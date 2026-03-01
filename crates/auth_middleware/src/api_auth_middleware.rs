@@ -4,11 +4,9 @@ use axum::{
   middleware::Next,
   response::Response,
 };
-use objs::{
-  ApiError, AppError, ErrorType, ResourceRole, RoleError, TokenScope, TokenScopeError, UserScope,
-  UserScopeError,
-};
 use server_core::RouterState;
+use services::{ApiError, AppError, ErrorType};
+use services::{ResourceRole, RoleError, TokenScope, TokenScopeError, UserScope, UserScopeError};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -115,13 +113,13 @@ mod tests {
     routing::get,
     Router,
   };
-  use objs::{ResourceRole, TokenScope, UserScope};
   use rstest::rstest;
   use serde_json::Value;
   use server_core::{
     test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
   };
   use services::test_utils::AppServiceStubBuilder;
+  use services::{ResourceRole, TokenScope, UserScope};
   use std::sync::Arc;
   use tower::ServiceExt;
 

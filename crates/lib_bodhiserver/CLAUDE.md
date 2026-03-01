@@ -37,8 +37,7 @@ Sophisticated application initialization with comprehensive configuration manage
 ## Architecture Position
 
 **Upstream dependencies** (crates this depends on):
-- [`objs`](../objs/CLAUDE.md) -- domain types, `AppOptions`, `AppType`, `EnvType`
-- [`services`](../services/CLAUDE.md) -- all 16 service traits and implementations
+- [`services`](../services/CLAUDE.md) -- domain types (`AppOptions`, `AppType`, `EnvType`), all 16 service traits and implementations
 - [`server_core`](../server_core/CLAUDE.md) -- `RouterState`, `SharedContext`
 - [`auth_middleware`](../auth_middleware/CLAUDE.md) -- authentication middleware
 - [`routes_app`](../routes_app/CLAUDE.md) -- route handlers

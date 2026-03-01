@@ -8,14 +8,16 @@
 
 ## Reference Implementation
 
-`crates/services/src/session_service/` demonstrates the canonical multi-file module layout:
+`crates/services/src/auth/` demonstrates the canonical multi-file module layout:
 
 ```
-session_service/
-  mod.rs           — module declarations + pub use re-exports only
-  error.rs         — SessionServiceError enum, SessionResult type alias
-  session_store.rs — SessionStoreBackend, InnerStoreShared, is_postgres_url
-  session_service.rs — SessionService trait, AppSessionStoreExt trait, DefaultSessionService
-  postgres.rs      — create_postgres_store (pub(crate))
-  sqlite.rs        — create_sqlite_store (pub(crate))
+auth/
+  mod.rs              — module declarations + pub use re-exports only
+  auth_objs.rs        — ResourceRole, TokenScope, UserScope, AppRole, UserInfo
+  auth_service.rs     — AuthService trait, DefaultAuthService
+  session_error.rs    — SessionServiceError enum, SessionResult type alias
+  session_store.rs    — SessionStoreBackend, InnerStoreShared, is_postgres_url
+  session_service.rs  — SessionService trait, AppSessionStoreExt trait, DefaultSessionService
+  postgres.rs         — create_postgres_store (pub(crate))
+  sqlite.rs           — create_sqlite_store (pub(crate))
 ```

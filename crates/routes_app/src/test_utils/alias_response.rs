@@ -1,6 +1,6 @@
 use crate::{UserAliasResponse, UserAliasResponseBuilder};
 use chrono::{DateTime, Utc};
-use objs::{OAIRequestParamsBuilder, Repo};
+use services::{OAIRequestParamsBuilder, Repo};
 use std::collections::HashMap;
 
 impl UserAliasResponse {

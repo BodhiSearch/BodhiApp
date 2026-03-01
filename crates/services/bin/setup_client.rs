@@ -1,5 +1,5 @@
 use clap::Parser;
-use objs::ApiError;
+use services::ApiError;
 use services::{AuthService, KeycloakAuthService};
 
 #[derive(Parser)]

@@ -1,8 +1,9 @@
 use crate::{
   ApiFormatsResponse, ApiModelResponse, CreateApiModelRequest, FetchModelsRequest,
   FetchModelsResponse, PaginatedApiModelResponse, PaginationSortParams, TestCreds,
-  TestPromptRequest, TestPromptResponse, UpdateApiModelRequest, ENDPOINT_API_MODELS,
-  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
+  TestPromptRequest, TestPromptResponse, UpdateApiModelRequest, API_TAG_API_MODELS,
+  ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS,
+  ENDPOINT_API_MODELS_TEST,
 };
 use axum::{
   extract::{Path, Query, State},
@@ -10,8 +11,9 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiAlias, ApiError, ApiFormat, ObjValidationError, OpenAIApiError, API_TAG_API_MODELS};
 use server_core::RouterState;
+use services::{ApiAlias, ApiFormat};
+use services::{ApiError, JsonRejectionError, ObjValidationError, OpenAIApiError};
 use std::sync::Arc;
 use ulid::Ulid;
 use validator::Validate;
@@ -96,7 +98,7 @@ pub async fn list_api_models_handler(
              "api_key": "sk-****",
              "model": "gpt-4"
          })),
-        (status = 404, description = "API model with specified ID not found", body = objs::OpenAIApiError,
+        (status = 404, description = "API model with specified ID not found", body = services::OpenAIApiError,
          example = json!({
              "error": {
                  "message": "API model 'invalid-model' not found",
@@ -118,7 +120,7 @@ pub async fn get_api_model_handler(
   let db_service = state.app_service().db_service();
 
   let api_alias = db_service.get_api_model_alias(&id).await?.ok_or_else(|| {
-    ApiError::from(objs::EntityError::NotFound(format!(
+    ApiError::from(services::EntityError::NotFound(format!(
       "API model '{}' not found",
       id
     )))
@@ -139,7 +141,7 @@ pub async fn get_api_model_handler(
     request_body = CreateApiModelRequest,
     responses(
         (status = 201, description = "API model created", body = ApiModelResponse),
-        (status = 409, description = "Alias already exists", body = objs::OpenAIApiError),
+        (status = 409, description = "Alias already exists", body = services::OpenAIApiError),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -149,7 +151,7 @@ pub async fn get_api_model_handler(
 )]
 pub async fn create_api_model_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(payload), _): WithRejection<Json<CreateApiModelRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<CreateApiModelRequest>, JsonRejectionError>,
 ) -> Result<(StatusCode, Json<ApiModelResponse>), ApiError> {
   // Validate the request
   payload
@@ -235,7 +237,7 @@ pub async fn create_api_model_handler(
 pub async fn update_api_model_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-  WithRejection(Json(payload), _): WithRejection<Json<UpdateApiModelRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<UpdateApiModelRequest>, JsonRejectionError>,
 ) -> Result<Json<ApiModelResponse>, ApiError> {
   // Validate the request
   payload
@@ -261,7 +263,7 @@ pub async fn update_api_model_handler(
 
   // Get existing API model
   let mut api_alias = db_service.get_api_model_alias(&id).await?.ok_or_else(|| {
-    ApiError::from(objs::EntityError::NotFound(format!(
+    ApiError::from(services::EntityError::NotFound(format!(
       "API model '{}' not found",
       id
     )))
@@ -320,7 +322,7 @@ pub async fn delete_api_model_handler(
 
   // Check if API model exists
   if db_service.get_api_model_alias(&id).await?.is_none() {
-    return Err(ApiError::from(objs::EntityError::NotFound(format!(
+    return Err(ApiError::from(services::EntityError::NotFound(format!(
       "API model '{}' not found",
       id
     ))));
@@ -351,7 +353,7 @@ pub async fn delete_api_model_handler(
 )]
 pub async fn test_api_model_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(payload), _): WithRejection<Json<TestPromptRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<TestPromptRequest>, JsonRejectionError>,
 ) -> Result<Json<TestPromptResponse>, ApiError> {
   // Validate the request
   payload
@@ -377,7 +379,7 @@ pub async fn test_api_model_handler(
     TestCreds::Id(id) => {
       // Look up stored model configuration by ID
       let api_model = db_service.get_api_model_alias(id).await?.ok_or_else(|| {
-        ApiError::from(objs::EntityError::NotFound(format!(
+        ApiError::from(services::EntityError::NotFound(format!(
           "API model '{}' not found",
           id
         )))
@@ -423,7 +425,7 @@ pub async fn test_api_model_handler(
 )]
 pub async fn fetch_models_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(payload), _): WithRejection<Json<FetchModelsRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<FetchModelsRequest>, JsonRejectionError>,
 ) -> Result<Json<FetchModelsResponse>, ApiError> {
   // Validate the request
   payload
@@ -447,7 +449,7 @@ pub async fn fetch_models_handler(
     TestCreds::Id(id) => {
       // Look up stored model configuration by ID
       let api_model = db_service.get_api_model_alias(id).await?.ok_or_else(|| {
-        ApiError::from(objs::EntityError::NotFound(format!(
+        ApiError::from(services::EntityError::NotFound(format!(
           "API model '{}' not found",
           id
         )))
@@ -537,7 +539,7 @@ pub async fn sync_models_handler(
 
   // Get the API alias - if not found, return error
   let Some(api_alias) = db_service.get_api_model_alias(&id).await? else {
-    return Err(ApiError::from(objs::EntityError::NotFound(format!(
+    return Err(ApiError::from(services::EntityError::NotFound(format!(
       "API model {} not found",
       id
     ))));
@@ -559,7 +561,7 @@ pub async fn sync_models_handler(
 
   // Get refreshed alias
   let Some(updated_alias) = db_service.get_api_model_alias(&id).await? else {
-    return Err(ApiError::from(objs::EntityError::NotFound(format!(
+    return Err(ApiError::from(services::EntityError::NotFound(format!(
       "API model {} not found",
       id
     ))));

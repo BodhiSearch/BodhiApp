@@ -1,7 +1,7 @@
 use futures::FutureExt;
 use llama_server_proc::MockServer;
-use objs::test_utils::temp_dir;
 use rstest::fixture;
+use services::test_utils::temp_dir;
 use tempfile::TempDir;
 
 #[fixture]

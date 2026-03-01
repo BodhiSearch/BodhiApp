@@ -1,5 +1,5 @@
 use oauth2::url::ParseError;
-use objs::{AppError, ErrorType};
+use services::{AppError, ErrorType};
 use services::{AppInstanceError, AppStatus, AuthServiceError, TokenError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]

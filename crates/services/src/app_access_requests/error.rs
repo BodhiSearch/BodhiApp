@@ -1,6 +1,6 @@
 use crate::db::DbError;
 use crate::{AppInstanceError, AuthServiceError, ToolsetError};
-use objs::{AppError, ErrorType};
+use errmeta::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -25,10 +25,6 @@ pub enum AccessRequestError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   MissingRedirectUri,
 
-  #[error("Keycloak registration returned 409 Conflict (UUID collision). Please retry.")]
-  #[error_meta(error_type = ErrorType::Conflict)]
-  KcUuidCollision,
-
   #[error("Keycloak registration failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   KcRegistrationFailed(String),
@@ -46,4 +42,4 @@ pub enum AccessRequestError {
   AppInstance(#[from] AppInstanceError),
 }
 
-pub type Result<T> = std::result::Result<T, AccessRequestError>;
+pub(crate) type Result<T> = std::result::Result<T, AccessRequestError>;

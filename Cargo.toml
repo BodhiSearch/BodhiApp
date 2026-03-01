@@ -5,7 +5,7 @@ members = [
   "async-openai/async-openai-macros",
   "crates/llama_server_proc",
   "crates/errmeta_derive",
-  "crates/objs",
+  "crates/errmeta",
   "crates/mcp_client",
   "crates/services",
   "crates/server_core",
@@ -30,7 +30,7 @@ async-openai = { path = "async-openai/async-openai", features = [
   "model-types",
 ] }
 errmeta_derive = { path = "crates/errmeta_derive" }
-objs = { path = "crates/objs" }
+errmeta = { path = "crates/errmeta" }
 llama_server_proc = { path = "crates/llama_server_proc" }
 services = { path = "crates/services" }
 server_core = { path = "crates/server_core" }

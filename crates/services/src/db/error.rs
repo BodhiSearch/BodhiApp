@@ -1,4 +1,4 @@
-use objs::{impl_error_from, AppError, ErrorType};
+use errmeta::{impl_error_from, AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("Database error: {source}.")]
@@ -74,7 +74,7 @@ impl_error_from!(
 
 #[cfg(test)]
 mod tests {
-  use objs::AppError;
+  use errmeta::AppError;
 
   #[test]
   fn test_item_not_found_error() {
@@ -82,7 +82,7 @@ mod tests {
       id: "1".to_string(),
       item_type: "user".to_string(),
     };
-    assert_eq!(error.error_type(), objs::ErrorType::NotFound.to_string());
+    assert_eq!(error.error_type(), errmeta::ErrorType::NotFound.to_string());
     assert_eq!(error.code(), "db_error-item_not_found");
   }
 }

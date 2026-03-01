@@ -1,11 +1,12 @@
+use crate::shared_objs::log;
+use crate::ReqwestError;
+use crate::{AppRole, ResourceRole, UserInfo};
 use async_trait::async_trait;
+use errmeta::{impl_error_from, AppError, ErrorType};
 use oauth2::{
   basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
   TokenResponse,
-};
-use objs::{
-  impl_error_from, log, AppError, AppRole, ErrorType, ReqwestError, ResourceRole, UserInfo,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -40,7 +41,7 @@ pub enum AuthServiceError {
 impl_error_from!(
   reqwest::Error,
   AuthServiceError::Reqwest,
-  ::objs::ReqwestError
+  crate::ReqwestError
 );
 
 type Result<T> = std::result::Result<T, AuthServiceError>;
@@ -86,7 +87,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     user_id: &str,
   ) -> Result<()>;
 
-  async fn assign_user_role(&self, reveiwer_token: &str, user_id: &str, role: &str) -> Result<()>;
+  async fn assign_user_role(&self, reviewer_token: &str, user_id: &str, role: &str) -> Result<()>;
 
   async fn remove_user(&self, reviewer_token: &str, user_id: &str) -> Result<()>;
 

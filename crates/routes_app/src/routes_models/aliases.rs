@@ -1,7 +1,7 @@
 use crate::{
   AliasResponse, CopyAliasRequest, CreateAliasError, CreateAliasRequest, LocalModelResponse,
   ModelError, PaginatedAliasResponse, PaginatedLocalModelResponse, PaginationSortParams,
-  UpdateAliasRequest, UserAliasResponse, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  UpdateAliasRequest, UserAliasResponse, API_TAG_MODELS, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Path, Query, State},
@@ -9,11 +9,9 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{
-  Alias, ApiError, HubFile, OAIRequestParams, OpenAIApiError, Repo, UserAlias, UserAliasBuilder,
-  API_TAG_MODELS,
-};
 use server_core::RouterState;
+use services::{Alias, HubFile, OAIRequestParams, Repo, UserAlias, UserAliasBuilder};
+use services::{ApiError, JsonRejectionError, OpenAIApiError};
 use services::{AppService, DataServiceError, HubServiceError, SNAPSHOT_MAIN};
 use std::sync::Arc;
 use tracing::debug;
@@ -124,7 +122,7 @@ pub async fn list_aliases_handler(
       };
       if let Some(k) = key {
         if let Some(metadata_row) = metadata_map.get(&k) {
-          let metadata: objs::ModelMetadata = metadata_row.clone().into();
+          let metadata: services::ModelMetadata = metadata_row.clone().into();
           return response.with_metadata(Some(metadata));
         }
       }
@@ -380,7 +378,7 @@ pub async fn get_user_alias_handler(
 )]
 pub async fn create_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, JsonRejectionError>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
   let alias = execute_create_alias(
     state.app_service().as_ref(),
@@ -418,7 +416,7 @@ pub async fn create_alias_handler(
 pub async fn update_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-  WithRejection(Json(payload), _): WithRejection<Json<UpdateAliasRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<UpdateAliasRequest>, JsonRejectionError>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
   // Get existing alias by UUID to verify it exists
   let existing = state
@@ -523,7 +521,7 @@ pub async fn delete_alias_handler(
 pub async fn copy_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-  WithRejection(Json(payload), _): WithRejection<Json<CopyAliasRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<CopyAliasRequest>, JsonRejectionError>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
   let new_alias = state
     .app_service()

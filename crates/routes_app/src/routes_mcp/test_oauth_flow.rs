@@ -9,16 +9,17 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::post;
 use axum::Router;
-use objs::{McpOAuthConfig, McpOAuthToken, McpServer, RegistrationType, ResourceRole};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
+use services::ResourceRole;
 use services::{
   test_utils::AppServiceStubBuilder, AppService, DefaultSessionService, McpError, MockMcpService,
   SessionService,
 };
+use services::{McpOAuthConfig, McpOAuthToken, McpServer, RegistrationType};
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};

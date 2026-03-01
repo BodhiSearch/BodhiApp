@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use crate::db::{ApiToken, DbError, DbService};
+use super::ApiToken;
+use crate::db::{DbError, DbService};
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]

@@ -1,19 +1,30 @@
-use crate::db::{
-  AccessRepository, AccessRequestRepository, AppInstanceRepository, DbCore, McpRepository,
-  ModelRepository, SettingsRepository, TokenRepository, ToolsetRepository, UserAliasRepository,
+use crate::app_access_requests::AccessRequestRepository;
+use crate::apps::AppInstanceRepository;
+use crate::db::DbCore;
+use crate::mcps::{McpAuthRepository, McpInstanceRepository, McpServerRepository};
+use crate::models::{
+  ApiAliasRepository, DownloadRepository, ModelMetadataRepository, UserAliasRepository,
 };
+use crate::settings::SettingsRepository;
+use crate::tokens::TokenRepository;
+use crate::toolsets::ToolsetRepository;
+use crate::users::AccessRepository;
 
 /// Super-trait that combines all repository sub-traits.
 /// Any type implementing all sub-traits automatically implements DbService
 /// via the blanket impl below.
 pub trait DbService:
-  ModelRepository
+  DownloadRepository
+  + ApiAliasRepository
+  + ModelMetadataRepository
   + AccessRepository
   + AccessRequestRepository
   + AppInstanceRepository
   + TokenRepository
   + ToolsetRepository
-  + McpRepository
+  + McpServerRepository
+  + McpInstanceRepository
+  + McpAuthRepository
   + UserAliasRepository
   + SettingsRepository
   + DbCore
@@ -24,13 +35,17 @@ pub trait DbService:
 }
 
 impl<T> DbService for T where
-  T: ModelRepository
+  T: DownloadRepository
+    + ApiAliasRepository
+    + ModelMetadataRepository
     + AccessRepository
     + AccessRequestRepository
     + AppInstanceRepository
     + TokenRepository
     + ToolsetRepository
-    + McpRepository
+    + McpServerRepository
+    + McpInstanceRepository
+    + McpAuthRepository
     + UserAliasRepository
     + SettingsRepository
     + DbCore

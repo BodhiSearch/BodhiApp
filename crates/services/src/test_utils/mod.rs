@@ -1,23 +1,42 @@
 mod app;
 mod auth;
+mod bodhi;
 mod data;
 mod db;
 mod envs;
+mod fixtures;
 mod hf;
-mod objs;
+mod http;
+mod io;
+mod logs;
+mod model_fixtures;
+mod network;
 mod queue;
 mod sea;
 mod session;
 mod settings;
+mod test_data;
 
 pub use app::*;
 pub use auth::*;
+pub use bodhi::*;
 pub use data::*;
 pub use db::*;
 pub use envs::*;
+pub use fixtures::*;
 pub use hf::*;
-pub use objs::*;
+pub use http::*;
+pub use io::*;
+pub use logs::*;
+pub use network::*;
 pub use queue::*;
 pub use sea::*;
 pub use session::*;
 pub use settings::*;
+pub use test_data::*;
+
+pub use crate::app_access_requests::MockAccessRequestService;
+pub use crate::settings::settings_repository::MockSettingsRepository;
+pub type ModelMetadataRowBuilder = crate::models::model_metadata_entity::ModelBuilder;
+
+pub static SNAPSHOT: &str = "5007652f7a641fe7170e0bad4f63839419bd9213";

@@ -3,7 +3,7 @@ use aes_gcm::{
   Aes256Gcm, Key, Nonce,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use objs::{AppError, ErrorType};
+use errmeta::{AppError, ErrorType};
 use pbkdf2::pbkdf2_hmac;
 use rand::{rng, RngCore};
 use sha2::Sha256;

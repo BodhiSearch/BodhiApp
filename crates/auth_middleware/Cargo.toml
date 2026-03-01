@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 errmeta_derive = { workspace = true }
-objs = { workspace = true }
 include_dir = { workspace = true }
 services = { workspace = true }
 server_core = { workspace = true }
@@ -29,7 +28,6 @@ tower-sessions = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
-objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
 auth_middleware = { workspace = true, features = ["test-utils"] }

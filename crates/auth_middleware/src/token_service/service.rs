@@ -1,11 +1,11 @@
 use crate::{AuthContext, AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
-use objs::{ResourceRole, TokenScope, UserScope};
 use serde::{Deserialize, Serialize};
 use services::{
-  db::{DbService, TimeService, TokenStatus},
+  db::{DbService, TimeService},
   extract_claims, AppInstanceError, AppInstanceService, AuthService, CacheService, Claims,
-  ConcurrencyService, ExpClaims, ScopeClaims, SettingService, TokenError,
+  ConcurrencyService, ExpClaims, ScopeClaims, SettingService, TokenError, TokenStatus,
 };
+use services::{ResourceRole, TokenScope, UserScope};
 use sha2::{Digest, Sha256};
 use std::{str::FromStr, sync::Arc};
 use tower_sessions::Session;
@@ -206,7 +206,7 @@ impl DefaultTokenService {
           )
         })?;
 
-      if record.status != services::db::AppAccessRequestStatus::Approved {
+      if record.status != services::AppAccessRequestStatus::Approved {
         return Err(
           TokenError::AccessRequestValidation(
             services::AccessRequestValidationError::NotApproved {

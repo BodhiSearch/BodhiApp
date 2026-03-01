@@ -1,5 +1,5 @@
-use crate::db::entities::app_toolset_config;
 use crate::db::{DbCore, DbError, TimeService};
+use crate::toolsets::app_toolset_config_entity as app_toolset_config;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, ConnectionTrait, DatabaseConnection, EntityTrait, Set};
 use sea_orm_migration::MigratorTrait;

@@ -1,10 +1,10 @@
 use crate::{
-  db::AppInstanceRepository,
+  apps::AppInstanceRepository,
   test_utils::{test_db_service, TestDbService, TEST_CLIENT_ID, TEST_CLIENT_SECRET},
   AppInstanceService, AppStatus, DefaultAppInstanceService,
 };
 use anyhow_trace::anyhow_trace;
-use objs::AppError;
+use errmeta::AppError;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use std::sync::Arc;

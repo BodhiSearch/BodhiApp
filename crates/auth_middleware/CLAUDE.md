@@ -82,7 +82,7 @@ The `role` field on `AuthContext::ExternalApp` is derived from the database's `a
 **`access_request_auth_middleware`** -- Generic middleware for validating entity access against approved resources in access requests (see `access_request_auth_middleware/middleware.rs`):
 - `AccessRequestValidator` trait with two methods: `extract_entity_id(path)` and `validate_approved(approved_json, entity_id)`
 - Two implementations: `ToolsetAccessRequestValidator` (validates toolset instance in `approved.toolsets`), `McpAccessRequestValidator` (validates MCP instance in `approved.mcps`)
-- Deserializes `approved` JSON from access request into `objs::ApprovedResources` struct
+- Deserializes `approved` JSON from access request into `services::ApprovedResources` struct
 - `AccessRequestAuthError` enum with variants like `EntityNotApproved`, `AccessRequestNotFound`, `AppClientMismatch` etc.
 - **Session flow**: passes through (session users have direct access)
 - **OAuth flow** (`ExternalApp` with `access_request_id`): validates access request status, app client ID match, user match, then delegates to validator for entity-level approval check
@@ -90,8 +90,7 @@ The `role` field on `AuthContext::ExternalApp` is derived from the database's `a
 ## Architecture Position
 
 **Upstream dependencies** (crates this depends on):
-- [`objs`](../objs/CLAUDE.md) -- domain types (`ResourceRole`, `TokenScope`, `UserScope`, `AppRole`, `ErrorType`)
-- [`services`](../services/CLAUDE.md) -- `AuthService`, `DbService`, `CacheService`, `SessionService`, `AppInstanceService`, `ConcurrencyService`, `SettingService`
+- [`services`](../services/CLAUDE.md) -- domain types (`ResourceRole`, `TokenScope`, `UserScope`, `AppRole`, `ErrorType`), `AuthService`, `DbService`, `CacheService`, `SessionService`, `AppInstanceService`, `ConcurrencyService`, `SettingService`
 - [`server_core`](../server_core/CLAUDE.md) -- `RouterState` for middleware integration
 
 **Downstream consumers** (crates that depend on this):

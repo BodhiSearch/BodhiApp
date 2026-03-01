@@ -10,7 +10,6 @@ use axum::{
   routing::{delete, get, post, put},
   Router,
 };
-use objs::ApiFormat::OpenAI;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
@@ -19,6 +18,7 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::test_utils::{test_db_service, AppServiceStubBuilder, TestDbService};
+use services::ApiFormat::OpenAI;
 use std::sync::Arc;
 use tower::ServiceExt;
 

@@ -2,14 +2,15 @@ use crate::routes_mcp::{
   CreateMcpServerRequest, ListMcpServersResponse, McpServerQuery, McpServerResponse,
   UpdateMcpServerRequest,
 };
+use crate::API_TAG_MCPS;
 use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
   Extension, Json,
 };
-use objs::{ApiError, API_TAG_MCPS};
 use server_core::RouterState;
+use services::ApiError;
 use std::sync::Arc;
 
 use super::ENDPOINT_MCP_SERVERS;
@@ -161,7 +162,7 @@ pub async fn get_mcp_server_handler(
   let server = mcp_service
     .get_mcp_server(&id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("MCP server".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("MCP server".to_string()))?;
 
   let (enabled_count, disabled_count) = mcp_service.count_mcps_for_server(&server.id).await?;
 

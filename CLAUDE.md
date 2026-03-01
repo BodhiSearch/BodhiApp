@@ -63,13 +63,30 @@ BodhiApp uses strict upstream-to-downstream layered development. When implementi
 ### Crate Dependency Chain
 
 ```
-objs -> services -> (server_core, auth_middleware) -> routes_app -> server_app -> (lib_bodhiserver, bodhi/src-tauri)
+errmeta_derive (proc-macro)
+       |
+    errmeta (AppError, ErrorType, IoError, EntityError, impl_error_from!)
+    /      \
+llama_server_proc    mcp_client
+       \                 /
+        \               /
+         services (ALL domain types + business logic + ApiError)
+        /          \
+server_core    auth_middleware
+        \          /
+         routes_app
+             |
+         server_app
+             |
+      lib_bodhiserver
+      /             \
+lib_bodhiserver_napi  bodhi/src-tauri
 ```
 
 ### Development Flow
 
-1. **Upstream Rust crate first**: Make changes to the most upstream crate affected (e.g., `objs`). Run and fix tests for that crate (`cargo test -p objs`). Then run tests for all upstream + current crates to verify no regressions. Mark the crate milestone done.
-2. **Repeat downstream**: Move to the next downstream crate (e.g., `services`). Make changes, run its tests, run cumulative tests for all crates changed so far.
+1. **Upstream Rust crate first**: Make changes to the most upstream crate affected (e.g., `errmeta`). Run and fix tests for that crate (`cargo test -p errmeta`). Then run tests for all upstream + current crates to verify no regressions. Mark the crate milestone done.
+2. **Repeat downstream**: Move to the next downstream crate (e.g., `services` after `errmeta`). Make changes, run its tests, run cumulative tests for all crates changed so far.
 3. **Continue through the chain**: `routes_app` -> `server_app` -> any other affected crates. At each step, run cumulative tests.
 4. **Full backend validation**: Once all Rust crate changes are done, run `make test.backend` to verify the complete backend.
 5. **Regenerate TypeScript types**: Run `make build.ts-client` to regenerate the TypeScript types used by the frontend in `crates/bodhi/src/`. The frontend imports request/response types from `@bodhiapp/ts-client`.
@@ -94,8 +111,8 @@ BodhiApp is a Rust-based application providing local Large Language Model (LLM) 
 The project uses a Cargo workspace with these main crates:
 
 **Foundation Crates:**
-- `objs` - Domain objects, types, errors, validation
-- `services` - Business logic, external integrations
+- `errmeta` - Minimal error infrastructure (AppError trait, ErrorType, IoError, EntityError, impl_error_from! macro) with zero framework deps
+- `services` - Domain types, business logic, external integrations (absorbs all former `objs` types)
 - `server_core` - HTTP server infrastructure
 - `auth_middleware` - Authentication and authorization
 
@@ -105,7 +122,6 @@ The project uses a Cargo workspace with these main crates:
 **Application Crates:**
 - `server_app` - Standalone HTTP server
 - `crates/bodhi/src-tauri` - Tauri desktop application
-- `commands` - CLI interface
 
 **Utility Crates:**
 - `llama_server_proc` - LLM process management
@@ -118,9 +134,9 @@ The project uses a Cargo workspace with these main crates:
 
 | Crate | CLAUDE.md | PACKAGE.md | Keywords |
 |---|---|---|---|
-| `objs` | `crates/objs/CLAUDE.md` | `crates/objs/PACKAGE.md` | Universal foundation layer. ErrorType, AppError, ApiError envelope, error propagation. Validation constants: slug length limits (MAX_MCP_SLUG_LEN, MAX_TOOLSET_SLUG_LEN), field limits. Serde conventions (default, skip_serializing_if). ResourceRole hierarchy (Admin>Manager>PowerUser>User). UserScope/TokenScope two-tier (User, PowerUser only). AppRole union type. GGUF model format. OAI request params. Repo/HubFile/Alias domain types. Test utilities: builders, fixtures, temp_bodhi_home |
+| `errmeta` | `crates/errmeta/CLAUDE.md` | `crates/errmeta/PACKAGE.md` | Minimal error foundation (zero framework deps). AppError trait, ErrorType enum (10 HTTP categories), IoError (6 filesystem variants with path context), EntityError (NotFound), RwLockReadError, impl_error_from! macro (orphan rule bridge). Re-exports errmeta_derive::ErrorMeta. Only deps: errmeta_derive, strum, thiserror |
 | `errmeta_derive` | `crates/errmeta_derive/CLAUDE.md` | `crates/errmeta_derive/PACKAGE.md` | ErrorMeta proc macro generating error_type(), code(), args(). Error code naming: `{enum_name_snake_case}-{variant_name_snake_case}`. Integrates with thiserror. Supports transparent delegation, per-variant ErrorType override. trybuild compile-time tests |
-| `services` | `crates/services/CLAUDE.md` | `crates/services/PACKAGE.md` | Business logic service traits. DB operations (DefaultDbService, SeaORM), TimeService (never Utc::now()), impl_error_from! macro. HubService, DataService, McpService, ToolService, AuthService, AccessRequestService (draft-first with requested_role/approved_role), AppInstanceService (no scope field). Error chain: service error→AppError→ApiError. Test infra: TestDbService (wraps DefaultDbService), SeaTestContext (dual SQLite/PG), AppServiceStub builder, FrozenTimeService, OfflineHubService, SecretServiceStub |
+| `services` | `crates/services/CLAUDE.md` | `crates/services/PACKAGE.md` | Domain types + business logic (absorbed all former `objs` types). Domain types organized by module: auth/auth_objs.rs (ResourceRole, TokenScope, UserScope, AppRole, UserInfo), tokens/token_objs.rs (TokenStatus, ApiTokenRow), models/model_objs.rs (Repo, HubFile, Alias, AliasSource, OAIRequestParams, GGUF, JsonVec, DownloadStatus), settings/setting_objs.rs (Setting, EnvType, AppType, LogLevel), apps/app_objs.rs (AppStatus), users/user_objs.rs (UserAccessRequestStatus), toolsets/toolset_objs.rs, mcps/mcp_objs.rs (MAX_MCP_INSTANCE_NAME_LEN, validate_mcp_instance_name), app_access_requests/access_request_objs.rs (AppAccessRequestRow). shared_objs/ has ApiError, OpenAIApiError, SerdeJsonError, SerdeYamlError, ReqwestError, JsonRejectionError, ObjValidationError, token.rs. Re-exports all errmeta types. DB: DefaultDbService (SeaORM), TimeService (never Utc::now()). Services: HubService, DataService, McpService, ToolService, AuthService, AccessRequestService (draft-first, requested_role/approved_role), AppInstanceService. Error types in domain modules: apps/error.rs (AppInstanceError), ai_apis/error.rs (AiApiServiceError), settings/error.rs (SettingsMetadataError, SettingServiceError), toolsets/error.rs (ToolsetError, ExaError). Error chain: service error->AppError->ApiError. Test infra: TestDbService, SeaTestContext (dual SQLite/PG), AppServiceStub builder, FrozenTimeService, OfflineHubService, SecretServiceStub |
 | `auth_middleware` | `crates/auth_middleware/CLAUDE.md` | `crates/auth_middleware/PACKAGE.md` | AuthContext enum (Anonymous, Session, ApiToken, ExternalApp). auth_middleware, optional_auth_middleware. api_auth_middleware role checks. ExternalApp.role from DB approved_role (not JWT scopes). AccessRequestValidator trait, AccessRequestAuthError enum (EntityNotApproved, etc.). JWT DefaultTokenService. CachedExchangeResult with role/access_request_id. Token digest. Same-origin CSRF. Test factories: test_session, test_external_app, test_external_app_no_role, RequestAuthContextExt |
 | `server_core` | `crates/server_core/CLAUDE.md` | `crates/server_core/PACKAGE.md` | RouterState trait, SharedContext for LLM. SSE: DirectSSE, ForwardedSSE. Test utilities: ResponseTestExt (json/text/sse parsing), RequestTestExt, router_state_stub fixture, ServerFactoryStub |
 | `routes_app` | `crates/routes_app/CLAUDE.md` | `crates/routes_app/PACKAGE.md` | API orchestration layer. Domain-specific error enums per module (LoginError, AccessRequestError, McpValidationError, etc.) with errmeta_derive. OpenAPI utoipa registration checklist (7 steps). AuthContext handler patterns. List response shapes: non-paginated use resource-plural field names ({mcps:[...]}, {toolsets:[...]}), paginated use {data:[], total, page, page_size}. Toolset/MCP CRUD, app access request workflow (draft-first, requested_role/approved_role) |
@@ -165,9 +181,15 @@ Located in `crates/bodhi/`, this is a Next.js 14 application using:
 ### Cross-Crate Dependencies and Data Flow
 Understanding BodhiApp's layered architecture is crucial for effective development:
 
-**Foundation Layer** (`objs` → `services`):
-- Domain objects, error types, and validation rules flow from `objs` into service implementations
-- Services coordinate business logic using domain objects while maintaining clear boundaries
+**Error Infrastructure Layer** (`errmeta_derive` → `errmeta`):
+- `errmeta_derive` provides the `#[derive(ErrorMeta)]` proc macro for generating `AppError` trait implementations
+- `errmeta` defines the core error contract (`AppError` trait), HTTP error categories (`ErrorType`), and universal error types (`IoError`, `EntityError`, `RwLockReadError`)
+- Zero framework dependencies enable lightweight crates (`llama_server_proc`, `mcp_client`) to participate in structured error handling
+
+**Domain and Service Layer** (`errmeta` → `services`):
+- `services` owns all domain types (auth roles, model types, settings, etc.) co-located with their business logic
+- Framework-dependent error wrappers (`ApiError`, `SerdeJsonError`, etc.) live in `services::shared_objs`
+- `services` re-exports all `errmeta` types so downstream crates use a single import path
 - Centralized error handling ensures consistent API responses across all deployment modes
 
 **Service Layer** (`services` → `routes_*`):
@@ -228,7 +250,7 @@ Local AI model management integrates multiple services and external systems:
 - Desktop app development requires Tauri CLI and platform-specific dependencies
 
 ### Architectural Patterns
-- For time handling, use `TimeService` from `crates/services/src/db/service.rs` instead of `Utc::now()` directly - pass timestamps via constructors to maintain testability
+- For time handling, use `TimeService` from `crates/services/src/db/time_service.rs` instead of `Utc::now()` directly - pass timestamps via constructors to maintain testability
 - Avoid `use super::*` in Rust `#[cfg(test)]` modules as it creates refactoring issues - use explicit imports
 - For error handling, follow the centralized error pattern: service errors → `ApiError` → OpenAI-compatible responses
 - When implementing user access control, coordinate between `AuthService`, `SessionService`, and role-based authorization middleware

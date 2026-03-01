@@ -1,9 +1,9 @@
-use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use objs::{
+use crate::models::{
   gguf::{extract_metadata, get_chat_template},
   Alias, AliasSource,
 };
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use std::{
   collections::VecDeque,
   sync::{
@@ -13,10 +13,7 @@ use std::{
 };
 use tokio::sync::{Mutex, Notify};
 
-use crate::{
-  db::{DbService, ModelMetadataRow},
-  DataService, HubService,
-};
+use crate::{db::DbService, models::ModelMetadataRow, DataService, HubService};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -40,8 +37,8 @@ pub enum MetadataExtractionError {
 /// This function:
 /// 1. Extracts repo/filename/snapshot from Alias (returns error for API aliases)
 /// 2. Locates GGUF file via hub_service.find_local_file()
-/// 3. Parses GGUF metadata via objs::gguf::GGUFMetadata::new()
-/// 4. Extracts capabilities via objs::gguf::extract_metadata()
+/// 3. Parses GGUF metadata via crate::models::gguf::GGUFMetadata::new()
+/// 4. Extracts capabilities via crate::models::gguf::extract_metadata()
 /// 5. Builds and upserts ModelMetadataRow
 /// 6. Returns the row for caller
 pub async fn extract_and_store_metadata(
@@ -49,7 +46,7 @@ pub async fn extract_and_store_metadata(
   hub_service: &dyn HubService,
   db_service: &dyn DbService,
 ) -> std::result::Result<ModelMetadataRow, MetadataExtractionError> {
-  use objs::Repo;
+  use crate::models::Repo;
   use std::str::FromStr;
 
   // Extract alias information
@@ -83,7 +80,7 @@ pub async fn extract_and_store_metadata(
   let file_path = hub_file.path();
 
   // Parse GGUF metadata
-  let gguf_metadata = objs::gguf::GGUFMetadata::new(&file_path)
+  let gguf_metadata = crate::models::gguf::GGUFMetadata::new(&file_path)
     .map_err(|e| MetadataExtractionError::ParseError(format!("Failed to parse GGUF: {}", e)))?;
 
   // Extract capabilities and metadata
@@ -97,7 +94,7 @@ pub async fn extract_and_store_metadata(
   let now = db_service.now();
   let metadata_row = ModelMetadataRow {
     id: String::new(),
-    source: AliasSource::Model.to_string(),
+    source: AliasSource::Model,
     repo: Some(repo_str.clone()),
     filename: Some(filename.clone()),
     snapshot: Some(snapshot.clone()),

@@ -4,10 +4,11 @@
 //! - Refreshing metadata for models (bulk async or single sync)
 //! - Getting queue status
 
-use crate::{MetadataError, RefreshRequest, RefreshResponse, RefreshResponseType};
+use crate::{MetadataError, RefreshRequest, RefreshResponse, RefreshResponseType, API_TAG_MODELS};
 use axum::{extract::State, Json};
-use objs::{Alias, ApiError, API_TAG_MODELS};
 use server_core::RouterState;
+use services::Alias;
+use services::ApiError;
 use services::{extract_and_store_metadata, RefreshTask};
 use std::{str::FromStr, sync::Arc};
 
@@ -56,8 +57,8 @@ pub async fn refresh_metadata_handler(
       snapshot,
     } => {
       // Parse and validate repo
-      let repo_parsed =
-        objs::Repo::from_str(&repo).map_err(|e| MetadataError::InvalidRepoFormat(e.to_string()))?;
+      let repo_parsed = services::Repo::from_str(&repo)
+        .map_err(|e| MetadataError::InvalidRepoFormat(e.to_string()))?;
 
       // Find the ModelAlias for this GGUF file
       let all_aliases = state
@@ -112,7 +113,7 @@ pub async fn refresh_metadata_handler(
       })?;
 
       // Convert to response with metadata
-      let metadata: objs::ModelMetadata = metadata_row.into();
+      let metadata: services::ModelMetadata = metadata_row.into();
       let response = crate::ModelAliasResponse::from(alias).with_metadata(Some(metadata));
 
       Ok(RefreshResponseType::Sync(response))

@@ -8,7 +8,7 @@ name = "setup_client"
 path = "bin/setup_client.rs"
 
 [dependencies]
-objs = { workspace = true }
+errmeta = { workspace = true }
 errmeta_derive = { workspace = true }
 llama_server_proc = { workspace = true }
 mcp_client = { workspace = true }
@@ -16,6 +16,8 @@ mcp_client = { workspace = true }
 aes-gcm = { workspace = true }
 async-openai = { workspace = true }
 axum = { workspace = true }
+byteorder = { workspace = true }
+memmap2 = { workspace = true }
 anyhow = { workspace = true, optional = true }
 base64 = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
@@ -31,10 +33,14 @@ hf-hub = { workspace = true, features = ["tokio"] }
 include_dir = { workspace = true }
 keyring = { workspace = true, default-features = false }
 mini-moka = { workspace = true }
+fs_extra = { workspace = true, optional = true }
+http-body-util = { workspace = true, optional = true }
 mockall = { workspace = true, optional = true }
 oauth2 = { workspace = true }
-once_cell = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing", "env-filter"], optional = true }
+once_cell = { workspace = true }
 pbkdf2 = { workspace = true, features = ["password-hash", "sha2"] }
+regex = { workspace = true }
 reqwest = { workspace = true, features = ["form"] }
 rand = { workspace = true }
 rsa = { workspace = true, optional = true }
@@ -68,16 +74,17 @@ walkdir = { workspace = true }
 tokio = { workspace = true, features = ["full"], optional = true }
 utoipa = { workspace = true }
 url = { workspace = true }
+validator = { workspace = true, features = ["derive"] }
 urlencoding = "2.1.3"
 ulid.workspace = true
 
 [dev-dependencies]
-objs = { workspace = true, features = ["test-utils"] }
 mcp_client = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 base64 = { workspace = true }
+fs_extra = { workspace = true }
 maplit = { workspace = true }
 mockall = { workspace = true }
 mockito = { workspace = true }
@@ -88,11 +95,15 @@ reqwest = { workspace = true }
 rstest = { workspace = true }
 rsa = { workspace = true }
 
+axum-extra = { workspace = true }
+http-body-util = { workspace = true }
 serial_test = { workspace = true }
 strfmt = { workspace = true }
 tap = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
+tower = { workspace = true, features = ["util"] }
+tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing", "env-filter"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring = { workspace = true, features = ["apple-native"] }
@@ -108,12 +119,13 @@ default = ["tokio"]
 test-utils = [
   "rstest",
   "mockall",
-  "once_cell",
   "rsa",
   "tap",
   "tempfile",
   "anyhow",
-  "objs/test-utils",
+  "fs_extra",
+  "http-body-util",
+  "tracing-subscriber",
   "mcp_client/test-utils",
   "tokio",
 ]

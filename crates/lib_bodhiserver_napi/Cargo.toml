@@ -8,7 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 lib_bodhiserver = { workspace = true }
-objs = { workspace = true, optional = true }
+services = { workspace = true, optional = true }
 
 chrono = { workspace = true }
 dirs = { workspace = true }
@@ -30,7 +30,6 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 napi-build = { workspace = true }
 
 [dev-dependencies]
-objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 lib_bodhiserver = { workspace = true, features = ["test-utils"] }
 
@@ -40,4 +39,4 @@ tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
-test-utils = ["objs/test-utils", "rstest"]
+test-utils = ["services/test-utils", "rstest"]

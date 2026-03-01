@@ -2,9 +2,9 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
 
-use objs::SettingSource;
 use serde_yaml::Value;
 use server_core::{ServerState, ServerStateListener, SharedContext};
+use services::SettingSource;
 use services::DEFAULT_KEEP_ALIVE_SECS;
 use services::{SettingsChangeListener, BODHI_KEEP_ALIVE_SECS};
 use tokio::task::JoinHandle;
@@ -144,10 +144,10 @@ impl ServerStateListener for ServerKeepAlive {
 #[cfg(test)]
 mod tests {
   use crate::ServerKeepAlive;
-  use objs::SettingSource;
   use rstest::rstest;
   use serde_yaml::Value;
   use server_core::{MockSharedContext, ServerState, ServerStateListener};
+  use services::SettingSource;
   use services::{SettingsChangeListener, BODHI_KEEP_ALIVE_SECS};
   use std::{sync::Arc, time::Duration};
 

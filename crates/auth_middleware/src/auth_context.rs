@@ -1,5 +1,5 @@
-use objs::{AppRole, ResourceRole, TokenScope, UserScope};
 use serde::Serialize;
+use services::{AppRole, ResourceRole, TokenScope, UserScope};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]

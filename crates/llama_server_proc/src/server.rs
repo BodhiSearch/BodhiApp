@@ -1,6 +1,5 @@
 use crate::error::{Result, ServerError};
 use derive_builder::Builder;
-use objs::BuilderError;
 use reqwest::Response;
 use serde_json::Value;
 use std::{
@@ -16,7 +15,7 @@ use std::{
 use tracing::{debug, warn};
 
 #[derive(Debug, Clone, Builder)]
-#[builder(pattern = "owned", setter(into, strip_option), build_fn(error = BuilderError))]
+#[builder(pattern = "owned", setter(into, strip_option))]
 pub struct LlamaServerArgs {
   pub model: PathBuf,
   pub alias: String,
@@ -282,7 +281,7 @@ impl From<&LlamaServerArgs> for LlamaServerArgs {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use objs::AppError;
+  use errmeta::AppError;
   use std::path::PathBuf;
 
   #[test]

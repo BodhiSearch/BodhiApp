@@ -1,10 +1,11 @@
-use crate::db::{DbService, McpServerRow, TimeService};
-use crate::mcps::{DefaultMcpService, McpService};
+use crate::db::{DbService, TimeService};
+use crate::mcps::{DefaultMcpService, McpServerRow, McpService};
+use crate::mcps::{McpAuthType, McpExecutionRequest, RegistrationType};
 use crate::test_utils::{test_db_service, FrozenTimeService, TestDbService};
 use anyhow_trace::anyhow_trace;
-use mcp_client::MockMcpClient;
+use errmeta::AppError;
+use mcp_client::{McpTool, MockMcpClient};
 use mockall::predicate::eq;
-use objs::{AppError, McpAuthType, McpExecutionRequest, McpTool, RegistrationType};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
@@ -946,7 +947,6 @@ async fn test_mcp_service_discover_oauth_metadata_not_found() -> anyhow::Result<
 
   let result = service.discover_oauth_metadata(&server.url()).await;
 
-  assert!(result.is_err());
   let err = result.unwrap_err();
   assert_eq!("mcp_error-o_auth_discovery_failed", err.code());
 
@@ -1035,7 +1035,6 @@ async fn test_mcp_service_discover_mcp_oauth_metadata_prs_404() -> anyhow::Resul
 
   let result = service.discover_mcp_oauth_metadata(&mcp_server.url()).await;
 
-  assert!(result.is_err());
   let err = result.unwrap_err();
   assert_eq!("mcp_error-o_auth_discovery_failed", err.code());
 
@@ -1112,7 +1111,6 @@ async fn test_mcp_service_dynamic_register_client_failure() -> anyhow::Result<()
     )
     .await;
 
-  assert!(result.is_err());
   let err = result.unwrap_err();
   assert_eq!("mcp_error-o_auth_discovery_failed", err.code());
 
@@ -1301,7 +1299,6 @@ async fn test_resolve_oauth_token_expired_no_refresh_returns_error(
     .await?;
 
   let result = service.fetch_tools("user-1", &mcp.id).await;
-  assert!(result.is_err());
   let err = result.unwrap_err();
   assert_eq!("mcp_error-o_auth_token_expired", err.code());
 
@@ -1386,7 +1383,6 @@ async fn test_resolve_oauth_token_expired_refresh_http_failure(
   let service2 = DefaultMcpService::new(db.clone(), Arc::new(mock_client2), default_time_service());
 
   let result = service2.fetch_tools("user-1", &mcp.id).await;
-  assert!(result.is_err());
   let err = result.unwrap_err();
   assert_eq!("mcp_error-o_auth_refresh_failed", err.code());
 

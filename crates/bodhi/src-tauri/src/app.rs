@@ -7,7 +7,7 @@ pub use crate::server_init::initialize_and_execute;
 
 use clap::{Parser, Subcommand};
 
-pub use objs::AppCommand;
+pub use lib_bodhiserver::AppCommand;
 
 #[derive(Parser, Debug)]
 #[command(name = "bodhi")]

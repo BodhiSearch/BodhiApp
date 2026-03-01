@@ -1,8 +1,8 @@
 use crate::{ApproveUserAccessRequest, PaginatedUserAccessResponse, UserAccessStatusResponse};
-use objs::ResourceRole;
 use pretty_assertions::assert_eq;
 use serde_json::json;
-use services::db::{UserAccessRequest, UserAccessRequestStatus};
+use services::ResourceRole;
+use services::{UserAccessRequest, UserAccessRequestStatus};
 
 #[test]
 fn test_user_access_status_response_from_user_access_request() {

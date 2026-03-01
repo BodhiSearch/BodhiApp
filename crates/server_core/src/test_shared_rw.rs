@@ -13,15 +13,16 @@ use llama_server_proc::{
   DEFAULT_VARIANT, EXEC_NAME,
 };
 use mockall::predicate::eq;
-use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder, UserAlias};
 use rstest::rstest;
 use serde_json::{json, Value};
 use serial_test::serial;
+use services::test_utils::temp_hf_home;
 use services::{
   test_utils::{app_service_stub_builder, AppServiceStubBuilder},
   AppService, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME, BODHI_EXEC_TARGET, BODHI_EXEC_VARIANT,
   BODHI_EXEC_VARIANTS, BODHI_LLAMACPP_ARGS,
 };
+use services::{Alias, HubFileBuilder, UserAlias};
 use tempfile::TempDir;
 
 #[rstest]

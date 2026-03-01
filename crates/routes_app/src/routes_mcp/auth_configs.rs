@@ -2,6 +2,7 @@ use crate::routes_mcp::{
   AuthConfigsQuery, CreateAuthConfigBody, McpValidationError, OAuthLoginRequest,
   OAuthLoginResponse, OAuthTokenExchangeRequest, OAuthTokenResponse, ENDPOINT_MCPS_AUTH_CONFIGS,
 };
+use crate::API_TAG_MCPS;
 use auth_middleware::{generate_random_string, AuthContext};
 use axum::{
   extract::{Path, Query, State},
@@ -9,8 +10,9 @@ use axum::{
   Extension, Json,
 };
 use base64::{engine::general_purpose, Engine};
-use objs::{ApiError, McpAuthConfigResponse, McpAuthConfigsListResponse, API_TAG_MCPS};
 use server_core::RouterState;
+use services::ApiError;
+use services::{McpAuthConfigResponse, McpAuthConfigsListResponse};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -89,7 +91,7 @@ pub async fn get_auth_config_handler(
   let config = mcp_service
     .get_auth_config(&config_id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("Auth config".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("Auth config".to_string()))?;
   Ok(Json(config))
 }
 
@@ -120,13 +122,13 @@ pub async fn delete_auth_config_handler(
   let config = mcp_service
     .get_auth_config(&config_id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("Auth config".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("Auth config".to_string()))?;
 
   let is_owner = config.created_by() == user_id;
   let is_privileged = matches!(
     auth_context,
     AuthContext::Session {
-      role: Some(objs::ResourceRole::Admin | objs::ResourceRole::Manager),
+      role: Some(services::ResourceRole::Admin | services::ResourceRole::Manager),
       ..
     }
   );
@@ -178,7 +180,7 @@ pub async fn oauth_login_handler(
   let config = mcp_service
     .get_oauth_config(&config_id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("OAuth config".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("OAuth config".to_string()))?;
 
   let code_verifier = generate_random_string(43);
   let code_challenge =
@@ -218,7 +220,7 @@ pub async fn oauth_login_handler(
     .get_mcp_server(&config.mcp_server_id)
     .await
     .map_err(|e| McpValidationError::Validation(e.to_string()))?
-    .ok_or_else(|| objs::EntityError::NotFound("MCP server".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("MCP server".to_string()))?;
   auth_url
     .query_pairs_mut()
     .append_pair("resource", &mcp_server.url);

@@ -1,6 +1,7 @@
 use crate::db::{encryption::EncryptionError, DbError};
+use crate::mcps::mcp_objs::McpInstanceNameError;
+use errmeta::{AppError, ErrorType};
 use mcp_client::McpClientError;
-use objs::{AppError, ErrorType};
 
 // ============================================================================
 // McpServerError - Admin MCP server management operations
@@ -88,13 +89,12 @@ pub enum McpError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   NameRequired,
 
-  #[error("Failed to connect to MCP server: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  ConnectionFailed(String),
+  #[error("MCP instance name '{name}' exceeds the maximum length of {max_len} characters.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  NameTooLong { name: String, max_len: usize },
 
-  #[error("MCP tool execution failed: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  ExecutionFailed(String),
+  #[error(transparent)]
+  Client(#[from] McpClientError),
 
   #[error("Encryption error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
@@ -130,19 +130,11 @@ impl From<EncryptionError> for McpError {
   }
 }
 
-impl From<McpClientError> for McpError {
-  fn from(err: McpClientError) -> Self {
-    match err {
-      McpClientError::ConnectionFailed { url, reason } => {
-        McpError::ConnectionFailed(format!("{}: {}", url, reason))
-      }
-      McpClientError::ExecutionFailed { tool, reason } => {
-        McpError::ExecutionFailed(format!("{}: {}", tool, reason))
-      }
-      McpClientError::ProtocolError { operation, reason } => {
-        McpError::ExecutionFailed(format!("{}: {}", operation, reason))
-      }
-      McpClientError::SerializationError { reason } => McpError::ExecutionFailed(reason),
+impl From<McpInstanceNameError> for McpError {
+  fn from(e: McpInstanceNameError) -> Self {
+    match e {
+      McpInstanceNameError::Empty => McpError::NameRequired,
+      McpInstanceNameError::TooLong { name, max_len } => McpError::NameTooLong { name, max_len },
     }
   }
 }

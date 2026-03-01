@@ -1,6 +1,6 @@
 use crate::AppOptionsBuilder;
-use objs::{AppType, EnvType};
 use services::BODHI_HOME;
+use services::{AppType, EnvType};
 
 impl AppOptionsBuilder {
   /// Creates a development configuration builder for testing

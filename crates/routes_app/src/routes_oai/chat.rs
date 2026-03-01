@@ -1,5 +1,6 @@
 use super::error::OAIRouteError;
 use super::{ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS};
+use crate::API_TAG_OPENAI;
 use async_openai::types::{
   chat::{
     CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
@@ -8,8 +9,8 @@ use async_openai::types::{
 };
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, API_TAG_OPENAI};
 use server_core::{LlmEndpoint, RouterState};
+use services::{ApiError, JsonRejectionError};
 use std::sync::Arc;
 
 /// Validates basic structure of chat completion request
@@ -123,7 +124,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), O
 )]
 pub async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, ApiError>,
+  WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, JsonRejectionError>,
 ) -> Result<Response, ApiError> {
   // Validate basic request structure
   validate_chat_completion_request(&request)?;
@@ -184,7 +185,7 @@ pub async fn chat_completions_handler(
 )]
 pub async fn embeddings_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(request), _): WithRejection<Json<CreateEmbeddingRequest>, ApiError>,
+  WithRejection(Json(request), _): WithRejection<Json<CreateEmbeddingRequest>, JsonRejectionError>,
 ) -> Result<Response, ApiError> {
   let request_value = serde_json::to_value(request).map_err(OAIRouteError::Serialization)?;
   let response = state

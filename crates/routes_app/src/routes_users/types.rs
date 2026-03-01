@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
-use objs::{ResourceRole, TokenScope, UserInfo};
 use serde::{Deserialize, Serialize};
-use services::db::{UserAccessRequest, UserAccessRequestStatus};
+use services::{ResourceRole, TokenScope, UserInfo};
+use services::{UserAccessRequest, UserAccessRequestStatus};
 use utoipa::ToSchema;
 
 /// Token Type

@@ -1,5 +1,5 @@
 use crate::{
-  NewDownloadRequest, PaginatedDownloadResponse, PaginationSortParams, PullError,
+  NewDownloadRequest, PaginatedDownloadResponse, PaginationSortParams, PullError, API_TAG_MODELS,
   ENDPOINT_MODEL_PULL,
 };
 use axum::http::StatusCode;
@@ -8,13 +8,11 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, OpenAIApiError, Repo, API_TAG_MODELS};
 use server_core::RouterState;
 use services::db::DbError;
-use services::{
-  db::{DownloadRequest, DownloadStatus},
-  AppService, DatabaseProgress, Progress,
-};
+use services::Repo;
+use services::{ApiError, JsonRejectionError, OpenAIApiError};
+use services::{AppService, DatabaseProgress, DownloadRequest, DownloadStatus, Progress};
 use std::sync::Arc;
 use tokio::spawn;
 use tracing::debug;
@@ -119,7 +117,7 @@ pub async fn list_downloads_handler(
 )]
 pub async fn create_pull_request_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(payload), _): WithRejection<Json<NewDownloadRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<NewDownloadRequest>, JsonRejectionError>,
 ) -> Result<(StatusCode, Json<DownloadRequest>), ApiError> {
   let repo = Repo::try_from(payload.repo.clone())?;
 

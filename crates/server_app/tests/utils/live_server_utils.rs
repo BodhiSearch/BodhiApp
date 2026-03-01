@@ -2,7 +2,6 @@
 
 use auth_middleware::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use cookie::Cookie;
-use objs::{EnvType, Setting, SettingMetadata, SettingSource};
 use rstest::fixture;
 use serde_json::Value;
 use serde_yaml::Value as YamlValue;
@@ -11,15 +10,18 @@ use services::test_utils::TEST_CLIENT_ID;
 use services::{
   db::{DbCore, DefaultDbService, DefaultTimeService},
   hash_key,
-  test_utils::{access_token_claims, build_token, test_auth_service, OfflineHubService, StubQueue},
+  test_utils::{
+    access_token_claims, build_token, test_auth_service, OfflineHubService, StubNetworkService,
+    StubQueue,
+  },
   AppInstanceService, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
   DefaultAppInstanceService, DefaultAppService, DefaultEnvWrapper, DefaultExaService,
   DefaultMcpService, DefaultSessionService, DefaultSettingService, DefaultToolService, EnvWrapper,
   HfHubService, LocalConcurrencyService, LocalDataService, MokaCacheService, SettingService,
-  StubNetworkService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
-  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT, BODHI_VERSION, HF_HOME,
-  SETTINGS_YAML,
+  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH,
+  BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
 };
+use services::{EnvType, Setting, SettingMetadata, SettingSource};
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use tempfile::TempDir;
 use time::{Duration, OffsetDateTime};
@@ -152,7 +154,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
       system_settings,
       file_defaults: HashMap::new(),
       app_settings: HashMap::new(),
-      app_command: objs::AppCommand::Default,
+      app_command: services::AppCommand::Default,
       bodhi_home: bodhi_home.clone(),
     },
     db_service.clone(),
@@ -508,7 +510,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
       system_settings,
       file_defaults: HashMap::new(),
       app_settings: HashMap::new(),
-      app_command: objs::AppCommand::Default,
+      app_command: services::AppCommand::Default,
       bodhi_home: bodhi_home.clone(),
     },
     db_service.clone(),

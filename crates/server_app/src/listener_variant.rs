@@ -1,5 +1,5 @@
-use objs::SettingSource;
 use server_core::SharedContext;
+use services::SettingSource;
 use services::{SettingsChangeListener, BODHI_EXEC_VARIANT};
 use std::sync::Arc;
 use tokio::task;
@@ -45,9 +45,9 @@ impl SettingsChangeListener for VariantChangeListener {
 mod tests {
   use super::VariantChangeListener;
   use mockall::predicate::eq;
-  use objs::SettingSource;
   use rstest::rstest;
   use server_core::{ContextError, MockSharedContext};
+  use services::SettingSource;
   use services::{SettingsChangeListener, BODHI_EXEC_VARIANT};
   use std::sync::Arc;
 

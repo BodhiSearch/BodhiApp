@@ -1,3 +1,4 @@
+use crate::test_utils::temp_dir;
 use crate::{
   test_utils::{bodhi_home_setting, EnvWrapperStub},
   BootstrapParts, DefaultSettingService, MockSettingsChangeListener, SettingService,
@@ -6,11 +7,9 @@ use crate::{
   BODHI_SCHEME, DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME,
   HF_HOME, RUNPOD_POD_ID,
 };
+use crate::{AppCommand, Setting, SettingInfo, SettingMetadata, SettingSource};
 use anyhow_trace::anyhow_trace;
 use mockall::predicate::eq;
-use objs::{
-  test_utils::temp_dir, AppCommand, Setting, SettingInfo, SettingMetadata, SettingSource,
-};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_yaml::Value;
@@ -27,7 +26,7 @@ fn make_service_from_parts(
   system_settings: Vec<Setting>,
   file_defaults: HashMap<String, Value>,
   settings_file: PathBuf,
-  db_service: Arc<dyn crate::db::SettingsRepository>,
+  db_service: Arc<dyn crate::SettingsRepository>,
 ) -> DefaultSettingService {
   let bodhi_home = PathBuf::from(bodhi_home_setting.value.as_str().unwrap());
   let mut all_system_settings = system_settings;
@@ -50,7 +49,7 @@ fn make_simple_service(
   env_wrapper: Arc<dyn crate::EnvWrapper>,
   settings_file: PathBuf,
   system_settings: Vec<Setting>,
-  db_service: Arc<dyn crate::db::SettingsRepository>,
+  db_service: Arc<dyn crate::SettingsRepository>,
 ) -> DefaultSettingService {
   let bodhi_home = env_wrapper
     .home_dir()
@@ -486,24 +485,9 @@ async fn test_file_defaults_integration(
   Ok(())
 }
 
-#[derive(Debug, Clone, PartialEq)]
-enum CrudOperation {
-  DeleteNonExistent,
-}
-
 #[rstest]
-#[case::delete_non_existent(
-  CrudOperation::DeleteNonExistent,
-  vec![], // No initial values
-  vec![("NON_EXISTENT_KEY", None)] // Should succeed silently
-)]
 #[tokio::test]
-async fn test_setting_service_crud_operations(
-  temp_dir: TempDir,
-  #[case] operation: CrudOperation,
-  #[case] setup_operations: Vec<(&str, &str)>,
-  #[case] verification_operations: Vec<(&str, Option<&str>)>,
-) -> anyhow::Result<()> {
+async fn test_setting_service_delete_non_existent(temp_dir: TempDir) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let env_stub = EnvWrapperStub::new(HashMap::new());
   let service = make_simple_service(
@@ -513,22 +497,8 @@ async fn test_setting_service_crud_operations(
     noop_settings_repo(),
   );
 
-  for (key, value) in setup_operations {
-    service.set_setting(key, value).await?;
-  }
-
-  if matches!(operation, CrudOperation::DeleteNonExistent) {
-    for (key, _) in &verification_operations {
-      service.delete_setting(key).await?;
-    }
-  }
-
-  for (key, expected_value) in verification_operations {
-    match expected_value {
-      Some(expected) => helpers::assert_setting_value(&service, key, expected).await,
-      None => assert_eq!(None, service.get_setting(key).await),
-    }
-  }
+  service.delete_setting("NON_EXISTENT_KEY").await?;
+  assert_eq!(None, service.get_setting("NON_EXISTENT_KEY").await);
 
   Ok(())
 }
@@ -1068,17 +1038,6 @@ async fn test_runpod_feature_individual_methods(temp_dir: TempDir) -> anyhow::Re
     noop_settings_repo(),
   );
 
-  println!(
-    "BODHI_ON_RUNPOD setting: {:?}",
-    service.get_setting(BODHI_ON_RUNPOD).await
-  );
-  println!(
-    "RUNPOD_POD_ID setting: {:?}",
-    service.get_setting(RUNPOD_POD_ID).await
-  );
-  println!("on_runpod_enabled(): {}", service.on_runpod_enabled().await);
-  println!("public_host(): {}", service.public_host().await);
-
   assert_eq!(service.on_runpod_enabled().await, true);
   assert_eq!(
     service.public_host().await,
@@ -1096,8 +1055,7 @@ async fn test_runpod_feature_individual_methods(temp_dir: TempDir) -> anyhow::Re
 }
 
 mod helpers {
-  use crate::SettingService;
-  use objs::SettingSource;
+  use crate::{SettingService, SettingSource};
   use pretty_assertions::assert_eq;
   use serde_yaml::Value;
 
@@ -1132,10 +1090,6 @@ mod helpers {
       ),
       None => panic!("Expected default value for key '{}' but got None", key),
     }
-  }
-
-  pub async fn assert_setting_value(service: &dyn SettingService, key: &str, expected: &str) {
-    assert_eq!(Some(expected.to_string()), service.get_setting(key).await);
   }
 
   pub async fn assert_setting_value_with_source(

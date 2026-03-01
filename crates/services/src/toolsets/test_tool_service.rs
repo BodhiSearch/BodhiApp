@@ -1,8 +1,11 @@
-use crate::db::{ApiKeyUpdate, AppToolsetConfigRow, MockTimeService, ToolsetRow};
+use crate::db::{ApiKeyUpdate, MockTimeService};
 use crate::test_utils::MockDbService;
-use crate::toolsets::{DefaultToolService, MockExaService, ToolService, ToolsetError};
+use crate::toolsets::{
+  AppToolsetConfigRow, DefaultToolService, MockExaService, ToolService, ToolsetRow,
+};
 use anyhow_trace::anyhow_trace;
 use chrono::{TimeZone, Utc};
+use errmeta::AppError;
 use mockall::predicate::eq;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
@@ -91,11 +94,10 @@ fn test_validate_type_fails_for_unknown() {
   let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
   let result = service.validate_type("unknown");
 
-  assert!(result.is_err());
-  assert!(matches!(
-    result.unwrap_err(),
-    ToolsetError::InvalidToolsetType(_)
-  ));
+  assert_eq!(
+    "toolset_error-invalid_toolset_type",
+    result.unwrap_err().code()
+  );
 }
 
 // ============================================================================
@@ -395,8 +397,7 @@ async fn test_create_fails_when_name_already_exists() -> anyhow::Result<()> {
     )
     .await;
 
-  assert!(result.is_err());
-  assert!(matches!(result.unwrap_err(), ToolsetError::SlugExists(_)));
+  assert_eq!("toolset_error-slug_exists", result.unwrap_err().code());
   Ok(())
 }
 
@@ -424,8 +425,7 @@ async fn test_create_fails_with_invalid_name(
     )
     .await;
 
-  assert!(result.is_err());
-  assert!(matches!(result.unwrap_err(), ToolsetError::InvalidSlug(_)));
+  assert_eq!("toolset_error-invalid_slug", result.unwrap_err().code());
   Ok(())
 }
 
@@ -450,8 +450,7 @@ async fn test_create_fails_with_too_long_name() -> anyhow::Result<()> {
     )
     .await;
 
-  assert!(result.is_err());
-  assert!(matches!(result.unwrap_err(), ToolsetError::InvalidSlug(_)));
+  assert_eq!("toolset_error-invalid_slug", result.unwrap_err().code());
   Ok(())
 }
 
@@ -475,11 +474,10 @@ async fn test_create_fails_with_invalid_toolset_type() -> anyhow::Result<()> {
     )
     .await;
 
-  assert!(result.is_err());
-  assert!(matches!(
-    result.unwrap_err(),
-    ToolsetError::InvalidToolsetType(_)
-  ));
+  assert_eq!(
+    "toolset_error-invalid_toolset_type",
+    result.unwrap_err().code()
+  );
   Ok(())
 }
 
@@ -604,11 +602,10 @@ async fn test_update_fails_when_not_found() -> anyhow::Result<()> {
     .update("user123", "id999", "my-exa", None, true, ApiKeyUpdate::Keep)
     .await;
 
-  assert!(result.is_err());
-  assert!(matches!(
-    result.unwrap_err(),
-    ToolsetError::ToolsetNotFound(_)
-  ));
+  assert_eq!(
+    "toolset_error-toolset_not_found",
+    result.unwrap_err().code()
+  );
   Ok(())
 }
 
@@ -629,11 +626,10 @@ async fn test_update_fails_when_not_owned() -> anyhow::Result<()> {
     .update("user123", "id1", "my-exa", None, true, ApiKeyUpdate::Keep)
     .await;
 
-  assert!(result.is_err());
-  assert!(matches!(
-    result.unwrap_err(),
-    ToolsetError::ToolsetNotFound(_)
-  ));
+  assert_eq!(
+    "toolset_error-toolset_not_found",
+    result.unwrap_err().code()
+  );
   Ok(())
 }
 
@@ -657,8 +653,7 @@ async fn test_update_fails_when_name_conflicts() -> anyhow::Result<()> {
     .update("user123", "id1", "my-exa-2", None, true, ApiKeyUpdate::Keep)
     .await;
 
-  assert!(result.is_err());
-  assert!(matches!(result.unwrap_err(), ToolsetError::SlugExists(_)));
+  assert_eq!("toolset_error-slug_exists", result.unwrap_err().code());
   Ok(())
 }
 
@@ -836,11 +831,10 @@ async fn test_delete_fails_when_not_found() -> anyhow::Result<()> {
   let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
   let result = service.delete("user123", "id999").await;
 
-  assert!(result.is_err());
-  assert!(matches!(
-    result.unwrap_err(),
-    ToolsetError::ToolsetNotFound(_)
-  ));
+  assert_eq!(
+    "toolset_error-toolset_not_found",
+    result.unwrap_err().code()
+  );
   Ok(())
 }
 
@@ -859,11 +853,10 @@ async fn test_delete_fails_when_not_owned() -> anyhow::Result<()> {
   let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
   let result = service.delete("user123", "id1").await;
 
-  assert!(result.is_err());
-  assert!(matches!(
-    result.unwrap_err(),
-    ToolsetError::ToolsetNotFound(_)
-  ));
+  assert_eq!(
+    "toolset_error-toolset_not_found",
+    result.unwrap_err().code()
+  );
   Ok(())
 }
 

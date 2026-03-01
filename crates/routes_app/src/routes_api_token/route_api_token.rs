@@ -1,4 +1,4 @@
-use crate::{PaginatedApiTokenResponse, PaginationSortParams, ENDPOINT_TOKENS};
+use crate::{PaginatedApiTokenResponse, PaginationSortParams, API_TAG_API_KEYS, ENDPOINT_TOKENS};
 use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query, State},
@@ -7,17 +7,12 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use base64::{engine::general_purpose, Engine};
-use objs::{
-  ApiError, AppError, EntityError, ErrorType, OpenAIApiError, ResourceRole, TokenScope,
-  API_TAG_API_KEYS,
-};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
-use services::{
-  db::{ApiToken, TokenStatus},
-  extract_claims, AuthServiceError, IdClaims, TokenError,
-};
+use services::{extract_claims, ApiToken, AuthServiceError, IdClaims, TokenError, TokenStatus};
+use services::{ApiError, AppError, EntityError, ErrorType, JsonRejectionError, OpenAIApiError};
+use services::{ResourceRole, TokenScope};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use ulid::Ulid;
@@ -125,7 +120,7 @@ pub enum ApiTokenError {
 pub async fn create_token_handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(payload), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<CreateApiTokenRequest>, JsonRejectionError>,
 ) -> Result<(StatusCode, Json<ApiTokenResponse>), ApiError> {
   let app_service = state.app_service();
   let db_service = app_service.db_service();
@@ -244,7 +239,7 @@ pub async fn update_token_handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-  WithRejection(Json(payload), _): WithRejection<Json<UpdateApiTokenRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<UpdateApiTokenRequest>, JsonRejectionError>,
 ) -> Result<Json<ApiToken>, ApiError> {
   let app_service = state.app_service();
   let db_service = app_service.db_service();

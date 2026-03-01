@@ -1,14 +1,32 @@
-use objs::McpTool;
 use rmcp::model::{CallToolRequestParams, ClientCapabilities, ClientInfo, Implementation};
 use rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig;
 use rmcp::transport::StreamableHttpClientTransport;
 use rmcp::ServiceExt;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::borrow::Cow;
 use std::fmt::Debug;
+use utoipa::ToSchema;
 
 mod error;
 pub use error::McpClientError;
+
+// ============================================================================
+// McpTool - Cached tool schema from MCP server
+// ============================================================================
+
+/// Tool schema cached from an MCP server's tools/list response.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpTool {
+  /// Tool name as declared by the MCP server
+  pub name: String,
+  /// Human-readable description of the tool
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub description: Option<String>,
+  /// JSON Schema for tool input parameters
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub input_schema: Option<serde_json::Value>,
+}
 
 /// Running MCP client type alias for rmcp
 type RunningMcpClient = rmcp::service::RunningService<rmcp::RoleClient, ClientInfo>;
@@ -41,6 +59,12 @@ pub trait McpClient: Debug + Send + Sync {
 /// Creates a fresh connection per request (no connection pooling).
 #[derive(Debug, Clone)]
 pub struct DefaultMcpClient;
+
+impl Default for DefaultMcpClient {
+  fn default() -> Self {
+    Self::new()
+  }
+}
 
 impl DefaultMcpClient {
   pub fn new() -> Self {

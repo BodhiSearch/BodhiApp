@@ -1,8 +1,8 @@
-use objs::{
+use serde::{Deserialize, Serialize};
+use services::{
   CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpAuthType, McpOAuthToken, McpServerInfo,
   McpTool,
 };
-use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 // ============================================================================
@@ -164,8 +164,8 @@ pub struct McpExecuteResponse {
   pub error: Option<String>,
 }
 
-impl From<objs::Mcp> for McpResponse {
-  fn from(mcp: objs::Mcp) -> Self {
+impl From<services::Mcp> for McpResponse {
+  fn from(mcp: services::Mcp) -> Self {
     McpResponse {
       id: mcp.id,
       mcp_server: mcp.mcp_server,

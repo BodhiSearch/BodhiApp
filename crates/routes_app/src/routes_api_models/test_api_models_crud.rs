@@ -12,7 +12,6 @@ use axum::{
   Router,
 };
 use chrono::{DateTime, Utc};
-use objs::ApiFormat::OpenAI;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use server_core::{
@@ -22,6 +21,7 @@ use server_core::{
 use services::test_utils::{
   seed_test_api_models, test_db_service, AppServiceStubBuilder, TestDbService,
 };
+use services::ApiFormat::OpenAI;
 use std::sync::Arc;
 use tower::ServiceExt;
 use ulid::Ulid;
@@ -40,7 +40,7 @@ fn create_expected_response(
   use std::str::FromStr;
   ApiModelResponse {
     id: id.to_string(),
-    api_format: objs::ApiFormat::from_str(api_format).unwrap(),
+    api_format: services::ApiFormat::from_str(api_format).unwrap(),
     base_url: base_url.to_string(),
     api_key_masked: api_key_masked.map(|s| s.to_string()),
     models,
@@ -245,7 +245,7 @@ async fn test_create_api_model_handler_success(
   let api_response = response.json::<ApiModelResponse>().await?;
 
   // Verify the response structure (note: ID is now auto-generated ULID)
-  assert_eq!(api_response.api_format, objs::ApiFormat::OpenAI);
+  assert_eq!(api_response.api_format, services::ApiFormat::OpenAI);
   assert_eq!(api_response.base_url, expected_url);
   assert_eq!(api_response.api_key_masked, Some("***".to_string()));
   assert_eq!(

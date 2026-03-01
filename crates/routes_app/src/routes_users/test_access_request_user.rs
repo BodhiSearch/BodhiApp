@@ -10,17 +10,17 @@ use axum::{
   routing::{get, post},
   Router,
 };
-use objs::test_utils::temp_bodhi_home;
-use objs::ResourceRole;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
 use server_core::{
   test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
 };
+use services::test_utils::temp_bodhi_home;
+use services::ResourceRole;
 use services::{
-  db::AccessRepository,
   test_utils::{test_db_service_with_temp_dir, AppServiceStubBuilder},
+  AccessRepository,
 };
 use std::sync::Arc;
 use tempfile::TempDir;

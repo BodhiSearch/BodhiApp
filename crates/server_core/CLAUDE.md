@@ -9,8 +9,7 @@ The `server_core` crate implements BodhiApp's **HTTP infrastructure orchestratio
 ## Architecture Position
 
 **Upstream dependencies** (crates this depends on):
-- [`objs`](../objs/CLAUDE.md) -- domain types, `ApiError`, `AppError` trait, `ErrorType`
-- [`services`](../services/CLAUDE.md) -- `AppService` trait, business service traits
+- [`services`](../services/CLAUDE.md) -- domain types, `ApiError`, `AppError` trait, `ErrorType`, `AppService` trait, business service traits
 - [`llama_server_proc`](../llama_server_proc/CLAUDE.md) -- LLM server process management
 
 **Downstream consumers** (crates that depend on this):
@@ -224,7 +223,7 @@ Service errors are translated to HTTP responses through a single `ApiError` resp
 **Translation Layers**:
 1. Service returns domain error (e.g., `HubServiceError`, `DataServiceError`)
 2. `ContextError` aggregates service-level errors with transparent delegation via `#[error(transparent)]`
-3. `ApiError` (from the `objs` crate) converts domain errors directly to OpenAI-compatible HTTP responses
+3. `ApiError` (from the `services` crate) converts domain errors directly to OpenAI-compatible HTTP responses
 4. Error type determines HTTP status code via the `AppError` trait's `error_type()` method
 5. User-friendly message extracted via `error.to_string()` for response body
 

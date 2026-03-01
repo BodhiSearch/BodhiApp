@@ -57,8 +57,9 @@ impl EnvWrapper for DefaultEnvWrapper {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use super::{DefaultEnvWrapper, EnvWrapper};
   use pretty_assertions::assert_eq;
+  use std::env::VarError;
   use std::io::Write;
   use tempfile::NamedTempFile;
 

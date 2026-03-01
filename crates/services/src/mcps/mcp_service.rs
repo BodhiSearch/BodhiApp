@@ -1,14 +1,14 @@
-use super::{McpError, McpServerError};
-use crate::db::{
-  encryption::encrypt_api_key, DbService, McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow,
-  McpRow, McpServerRow, McpWithServerRow, TimeService,
-};
-use mcp_client::McpClient;
-use objs::{
+use super::{
   CreateMcpAuthConfigRequest, Mcp, McpAuthConfigResponse, McpAuthHeader, McpAuthType,
   McpExecutionRequest, McpExecutionResponse, McpOAuthConfig, McpOAuthToken, McpServer,
-  McpServerInfo, McpTool, RegistrationType,
+  McpServerInfo, RegistrationType,
 };
+use super::{
+  McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow, McpRow, McpServerRow, McpWithServerRow,
+};
+use super::{McpError, McpServerError};
+use crate::db::{encryption::encrypt_api_key, DbService, TimeService};
+use mcp_client::{McpClient, McpTool};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -583,7 +583,7 @@ impl McpService for DefaultMcpService {
   ) -> Result<McpServer, McpServerError> {
     let trimmed_url = url.trim();
 
-    objs::validate_mcp_server_name(name).map_err(|_| {
+    super::validate_mcp_server_name(name).map_err(|_| {
       if name.is_empty() {
         McpServerError::NameRequired
       } else {
@@ -591,10 +591,10 @@ impl McpService for DefaultMcpService {
       }
     })?;
 
-    objs::validate_mcp_server_url(trimmed_url).map_err(|e| {
+    super::validate_mcp_server_url(trimmed_url).map_err(|e| {
       if trimmed_url.is_empty() {
         McpServerError::UrlRequired
-      } else if trimmed_url.len() > objs::MAX_MCP_SERVER_URL_LEN {
+      } else if trimmed_url.len() > super::MAX_MCP_SERVER_URL_LEN {
         McpServerError::UrlTooLong
       } else {
         McpServerError::UrlInvalid(e)
@@ -602,7 +602,7 @@ impl McpService for DefaultMcpService {
     })?;
 
     if let Some(ref desc) = description {
-      objs::validate_mcp_server_description(desc)
+      super::validate_mcp_server_description(desc)
         .map_err(|_| McpServerError::DescriptionTooLong)?;
     }
 
@@ -638,7 +638,7 @@ impl McpService for DefaultMcpService {
   ) -> Result<McpServer, McpServerError> {
     let trimmed_url = url.trim();
 
-    objs::validate_mcp_server_name(name).map_err(|_| {
+    super::validate_mcp_server_name(name).map_err(|_| {
       if name.is_empty() {
         McpServerError::NameRequired
       } else {
@@ -646,10 +646,10 @@ impl McpService for DefaultMcpService {
       }
     })?;
 
-    objs::validate_mcp_server_url(trimmed_url).map_err(|e| {
+    super::validate_mcp_server_url(trimmed_url).map_err(|e| {
       if trimmed_url.is_empty() {
         McpServerError::UrlRequired
-      } else if trimmed_url.len() > objs::MAX_MCP_SERVER_URL_LEN {
+      } else if trimmed_url.len() > super::MAX_MCP_SERVER_URL_LEN {
         McpServerError::UrlTooLong
       } else {
         McpServerError::UrlInvalid(e)
@@ -657,7 +657,7 @@ impl McpService for DefaultMcpService {
     })?;
 
     if let Some(ref desc) = description {
-      objs::validate_mcp_server_description(desc)
+      super::validate_mcp_server_description(desc)
         .map_err(|_| McpServerError::DescriptionTooLong)?;
     }
 
@@ -749,14 +749,12 @@ impl McpService for DefaultMcpService {
     auth_type: McpAuthType,
     auth_uuid: Option<String>,
   ) -> Result<Mcp, McpError> {
-    if name.is_empty() {
-      return Err(McpError::NameRequired);
-    }
+    super::validate_mcp_instance_name(name).map_err(McpError::from)?;
 
-    objs::validate_mcp_slug(slug).map_err(McpError::InvalidSlug)?;
+    super::validate_mcp_slug(slug).map_err(McpError::InvalidSlug)?;
 
     if let Some(ref desc) = description {
-      objs::validate_mcp_description(desc).map_err(McpError::InvalidDescription)?;
+      super::validate_mcp_description(desc).map_err(McpError::InvalidDescription)?;
     }
 
     let mcp_server = self
@@ -819,14 +817,12 @@ impl McpService for DefaultMcpService {
     auth_type: Option<McpAuthType>,
     auth_uuid: Option<String>,
   ) -> Result<Mcp, McpError> {
-    if name.is_empty() {
-      return Err(McpError::NameRequired);
-    }
+    super::validate_mcp_instance_name(name).map_err(McpError::from)?;
 
-    objs::validate_mcp_slug(slug).map_err(McpError::InvalidSlug)?;
+    super::validate_mcp_slug(slug).map_err(McpError::InvalidSlug)?;
 
     if let Some(ref desc) = description {
-      objs::validate_mcp_description(desc).map_err(McpError::InvalidDescription)?;
+      super::validate_mcp_description(desc).map_err(McpError::InvalidDescription)?;
     }
 
     let (existing, server) = self

@@ -2,8 +2,8 @@ use crate::{
   mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequestBuilder, FetchModelsRequest,
   TestCreds, TestPromptRequest, TestPromptResponse, UpdateApiModelRequestBuilder,
 };
-use objs::ApiFormat::OpenAI;
 use services::db::ApiKeyUpdate;
+use services::ApiFormat::OpenAI;
 use validator::Validate;
 
 #[test]

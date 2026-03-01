@@ -4,8 +4,8 @@ version = "0.0.46-dev"
 edition = "2021"
 
 [dependencies]
+errmeta = { workspace = true }
 errmeta_derive = { workspace = true }
-objs = { workspace = true }
 
 async-trait = { workspace = true }
 derive_builder = { workspace = true }
@@ -23,8 +23,6 @@ tracing = { workspace = true, features = ["attributes"] }
 url = { workspace = true, optional = true }
 
 [dev-dependencies]
-objs = { workspace = true, features = ["test-utils"] }
-
 anyhow = { workspace = true }
 axum = { workspace = true }
 dirs = { workspace = true }

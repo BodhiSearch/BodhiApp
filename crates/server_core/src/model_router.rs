@@ -1,6 +1,5 @@
 use async_trait::async_trait;
-use objs::{Alias, ApiAlias, AppError, ErrorType};
-use services::{DataService, DataServiceError};
+use services::{Alias, ApiAlias, AppError, DataService, DataServiceError, ErrorType};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -72,16 +71,15 @@ impl ModelRouter for DefaultModelRouter {
 mod tests {
   use crate::model_router::{DefaultModelRouter, ModelRouter, ModelRouterError, RouteDestination};
   use mockall::predicate::eq;
-  use objs::{Alias, ApiFormat};
   use rstest::rstest;
-  use services::MockDataService;
+  use services::{Alias, ApiFormat, MockDataService};
   use std::sync::Arc;
 
   #[rstest]
   #[tokio::test]
   async fn test_route_to_user_alias() -> anyhow::Result<()> {
     let mut mock_data = MockDataService::new();
-    let user_alias = Alias::User(objs::UserAlias {
+    let user_alias = Alias::User(services::UserAlias {
       alias: "test-model".to_string(),
       ..Default::default()
     });
@@ -108,7 +106,7 @@ mod tests {
   #[tokio::test]
   async fn test_route_to_model_alias() -> anyhow::Result<()> {
     let mut mock_data = MockDataService::new();
-    let model_alias = Alias::Model(objs::ModelAlias {
+    let model_alias = Alias::Model(services::ModelAlias {
       alias: "test-model".to_string(),
       ..Default::default()
     });
@@ -136,7 +134,7 @@ mod tests {
   async fn test_route_to_api_model() -> anyhow::Result<()> {
     let mut mock_data = MockDataService::new();
     let api_alias = Alias::Api(
-      objs::ApiAliasBuilder::test_default()
+      services::ApiAliasBuilder::test_default()
         .id("test-api")
         .base_url("https://api.openai.com/v1")
         .models(vec!["gpt-3.5-turbo".to_string()])
@@ -163,7 +161,7 @@ mod tests {
   #[tokio::test]
   async fn test_user_alias_overrides_model_alias() -> anyhow::Result<()> {
     let mut mock_data = MockDataService::new();
-    let user_alias = Alias::User(objs::UserAlias {
+    let user_alias = Alias::User(services::UserAlias {
       alias: "test-model".to_string(),
       repo: "user/repo".parse().unwrap(),
       ..Default::default()

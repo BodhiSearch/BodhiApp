@@ -1,5 +1,5 @@
+use crate::ResourceRole;
 use async_trait::async_trait;
-use objs::ResourceRole;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::future::Future;
@@ -124,9 +124,11 @@ impl ConcurrencyService for LocalConcurrencyService {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use super::{ConcurrencyService, LocalConcurrencyService, StdError};
+  use crate::ResourceRole;
   use pretty_assertions::assert_eq;
   use std::sync::atomic::{AtomicU32, Ordering};
+  use std::sync::Arc;
   use std::time::Duration;
   use tokio::time::sleep;
 

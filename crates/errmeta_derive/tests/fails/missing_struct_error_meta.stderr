@@ -1,0 +1,7 @@
+error: proc-macro derive panicked
+ --> tests/fails/missing_struct_error_meta.rs:1:17
+  |
+1 | #[derive(Debug, errmeta_derive::ErrorMeta)]
+  |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: message: error_meta attribute missing for struct TestStruct

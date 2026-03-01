@@ -1,8 +1,8 @@
 use crate::app_options::AppOptions;
 use crate::BootstrapError;
 use crate::BootstrapService;
-use objs::{AppCommand, EnvType, Setting, SettingMetadata, SettingSource};
 use serde_yaml::Value;
+use services::{AppCommand, EnvType, Setting, SettingMetadata, SettingSource};
 use services::{
   EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_COMMIT_SHA, BODHI_ENV_TYPE,
   BODHI_HOME, BODHI_VERSION, SETTINGS_YAML,

@@ -1,6 +1,5 @@
-use crate::{ENDPOINT_HEALTH, ENDPOINT_PING};
+use crate::{API_TAG_SYSTEM, ENDPOINT_HEALTH, ENDPOINT_PING};
 use axum::Json;
-use objs::API_TAG_SYSTEM;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 

@@ -11,7 +11,6 @@ use axum::{
   Router,
 };
 use hyper::StatusCode;
-use objs::{ResourceRole, TokenScope};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use server_core::{
@@ -19,13 +18,13 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::{
-  db::{ApiToken, TokenRepository, TokenStatus},
   test_utils::{
     access_token_claims, build_token, test_db_service, AppServiceStub, AppServiceStubBuilder,
     TestDbService,
   },
-  AppService,
+  AppService, {ApiToken, TokenRepository, TokenStatus},
 };
+use services::{ResourceRole, TokenScope};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower::ServiceExt;

@@ -1,13 +1,13 @@
-use crate::{ChangeRoleRequest, ListUsersParams, UserRouteError};
+use crate::{ChangeRoleRequest, ListUsersParams, UserRouteError, API_TAG_AUTH};
 use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
   Extension, Json,
 };
-use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use server_core::RouterState;
 use services::{extract_claims, Claims, UserListResponse};
+use services::{ApiError, OpenAIApiError};
 use std::sync::Arc;
 use tracing::{error, info, warn};
 

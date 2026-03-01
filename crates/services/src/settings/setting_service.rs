@@ -1,3 +1,4 @@
+use super::{AppType, EnvType, LogLevel, SettingInfo, SettingMetadata, SettingSource};
 use super::{
   SettingServiceError, BODHI_APP_DB_URL, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL,
   BODHI_CANONICAL_REDIRECT, BODHI_COMMIT_SHA, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY,
@@ -7,7 +8,6 @@ use super::{
   BODHI_PUBLIC_SCHEME, BODHI_SCHEME, BODHI_SESSION_DB_URL, BODHI_VERSION,
   DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT, HF_HOME, LOGIN_CALLBACK_PATH, PROD_DB, RUNPOD_POD_ID,
 };
-use objs::{AppType, EnvType, LogLevel, SettingInfo, SettingMetadata, SettingSource};
 use serde_yaml::Value;
 use std::{path::Path, path::PathBuf, sync::Arc};
 use tracing::warn;

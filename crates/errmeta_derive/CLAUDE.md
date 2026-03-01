@@ -41,9 +41,9 @@ This framework is crucial for BodhiApp's multi-layered architecture, where error
 
 ## Cross-Crate Integration Patterns
 
-### Foundation for Object Layer Error Handling
+### Foundation for Domain Error Handling
 
-The `objs` crate relies on `errmeta_derive` to implement the `AppError` trait across all domain error types. This integration provides:
+The `services` crate and downstream crates rely on `errmeta_derive` to implement the `AppError` trait across all domain error types. This integration provides:
 
 - **Consistent HTTP Response Generation**: Error metadata drives status code selection and response body formatting
 - **Error Code Integration**: Error codes serve as stable identifiers for API responses and programmatic error handling

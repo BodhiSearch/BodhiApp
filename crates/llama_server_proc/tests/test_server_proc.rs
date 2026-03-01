@@ -2,7 +2,6 @@ use axum::http::StatusCode;
 use llama_server_proc::{
   LlamaServer, LlamaServerArgsBuilder, Result, Server, BUILD_TARGET, DEFAULT_VARIANT, EXEC_NAME,
 };
-use objs::{HubFile, Repo};
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use serde_json::Value;
@@ -29,14 +28,11 @@ async fn server() -> LlamaServer {
       .join("huggingface")
       .join("hub")
   };
-  let model_file = HubFile::new(
-    hf_cache,
-    Repo::qwen3_1_7b_instruct(),
-    Repo::QWEN3_1_7B_Q8_0.to_string(),
-    "daeb8e2d528a760970442092f6bf1e55c3b659eb".to_string(),
-    Some(1000),
-  )
-  .path();
+  let model_file = hf_cache
+    .join("models--ggml-org--Qwen3-1.7B-GGUF")
+    .join("snapshots")
+    .join("daeb8e2d528a760970442092f6bf1e55c3b659eb")
+    .join("qwen3-1.7b-q8_0.gguf");
   assert!(
     model_file.exists(),
     "model file does not exist: {}",

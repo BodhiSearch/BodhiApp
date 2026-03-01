@@ -1,5 +1,5 @@
 use crate::db::SqlxError;
-use objs::{impl_error_from, AppError, ErrorType};
+use errmeta::{impl_error_from, AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]

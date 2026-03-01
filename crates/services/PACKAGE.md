@@ -4,82 +4,129 @@
 
 ## Module Structure
 
-### Core Service Registry
-- `src/lib.rs` - Crate root with module exports and feature flags
+### Crate Root and Re-exports
+- `src/lib.rs` - Crate root: module declarations organized by domain, re-exports all public types, re-exports `errmeta` types (`AppError`, `ErrorType`, `IoError`, `EntityError`, `RwLockReadError`, `impl_error_from!`) for downstream convenience
 - `src/app_service.rs` - Central `AppService` trait and `DefaultAppService` implementation (16 service accessors)
-- `src/service_ext.rs` - Service extension utilities
 - `src/macros.rs` - `asref_impl!` macro for service trait AsRef implementations
+- `src/env_wrapper.rs` - Environment variable abstraction (`EnvWrapper` trait)
 
-### Authentication and Security Services
-- `src/auth_service/service.rs` - `AuthService` trait and `DefaultAuthService`: OAuth2 PKCE flows, token exchange, dynamic client registration (`ClientRegistrationResponse`), access request consent (`RegisterAccessRequestConsentResponse`)
-- `src/app_instance_service.rs` - `AppInstanceService` trait and `DefaultAppInstanceService`: OAuth client credential management (`AppInstance` with `client_id`, `client_secret`, `status`)
-- `src/secret_service.rs` - AES-GCM encryption with PBKDF2 key derivation for secret storage
-- `src/keyring_service.rs` - Platform-specific credential storage (Keychain, Secret Service, Windows Credential Manager)
-- `src/session_service/` - Multi-backend HTTP session management (`DefaultSessionService` with `SessionStoreBackend` supporting SQLite and PostgreSQL)
-- `src/token.rs` - JWT token parsing, validation, and claims extraction
-- `src/concurrency_service.rs` - Distributed lock abstraction with `LocalConcurrencyService` for auth token refresh
+### Cross-Cutting Types (`shared_objs/`)
+- `src/shared_objs/mod.rs` - Module declarations and re-exports
+- `src/shared_objs/error_api.rs` - `ApiError` struct: captures `AppError` metadata, `From<T: AppError>`, converts to `OpenAIApiError`, implements `axum::IntoResponse`
+- `src/shared_objs/error_oai.rs` - `OpenAIApiError`, `ErrorBody`: OpenAI-compatible error envelope with utoipa `ToSchema`
+- `src/shared_objs/error_wrappers.rs` - `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `JsonRejectionError`, `ObjValidationError`: framework-dependent error wrappers with `AppError` implementations
+- `src/shared_objs/utils.rs` - `is_default()` helper, `ILLEGAL_CHARS` regex, `to_safe_filename()`
+- `src/shared_objs/log.rs` - `mask_sensitive_value()`, `mask_form_params()`, `log_http_request()`, `log_http_response()`, `log_http_error()`
 
-### Model Management Services
-- `src/hub_service.rs` - HuggingFace Hub API integration, local model discovery, GGUF file resolution
-- `src/data_service.rs` - Local model storage, alias management (User/Model/Api), remote model listing
-- `src/cache_service.rs` - Mini-moka based caching layer
+### Authentication and Security (`auth/`, `apps/`, `tokens/`)
+- `src/auth/mod.rs` - Module declarations for auth domain
+- `src/auth/auth_objs.rs` - **Domain types**: `ResourceRole` (User/PowerUser/Manager/Admin hierarchy), `TokenScope` (User/PowerUser), `UserScope` (User/PowerUser), `AppRole` (union type), `UserInfo`, `RoleError`, `TokenScopeError`, `UserScopeError`
+- `src/auth/auth_service.rs` - `AuthService` trait and `DefaultAuthService`: OAuth2 PKCE flows, token exchange, dynamic client registration, access request consent
+- `src/auth/session_service.rs` - `SessionService` trait and `DefaultSessionService` with `SessionStoreBackend`
+- `src/auth/session_store.rs` - `SessionStoreBackend`, `InnerStoreShared`, `is_postgres_url()`
+- `src/auth/session_error.rs` - `SessionServiceError` enum
+- `src/auth/postgres.rs`, `src/auth/sqlite.rs` - Backend-specific session store creation
+- `src/apps/mod.rs` - Module declarations for app instance domain
+- `src/apps/app_objs.rs` - **Domain types**: `AppStatus` enum (`Setup`, `Ready`, `PreRegistered`, `ResourceAdmin`)
+- `src/apps/app_instance_service.rs` - `AppInstanceService` trait and `DefaultAppInstanceService`
+- `src/apps/error.rs` - `AppInstanceError` domain error enum
+- `src/shared_objs/token.rs` - JWT token parsing, validation, and claims extraction (moved from `src/token.rs`)
+- `src/tokens/mod.rs` - Module declarations for token domain
+- `src/tokens/token_objs.rs` - **Domain types**: `TokenStatus` (Active/Inactive), `ApiTokenRow` (moved from `db/` shims)
+- `src/tokens/token_service.rs` - Token management service
+- `src/tokens/token_repository.rs` - Token repository trait
 
-### AI and Tool Services
-- `src/ai_api_service.rs` - External AI API integration with test prompt, model listing, and request forwarding
-- `src/tool_service/mod.rs` - Module root for toolset management
-- `src/tool_service/service.rs` - `ToolService` trait and `DefaultToolService` implementation for LLM function calling
-- `src/tool_service/error.rs` - `ToolsetError` domain error enum
-- `src/tool_service/tests.rs` - Toolset service unit tests
-- `src/exa_service.rs` - Exa AI semantic search API integration (search, find similar, contents, answer)
+### Model and Data Management (`models/`)
+- `src/models/mod.rs` - Module declarations for model domain
+- `src/models/model_objs.rs` - **Domain types**: `Repo`, `HubFile`, `Alias` (User/Model/Api variants), `UserAlias`, `ModelAlias`, `ApiAlias`, `OAIRequestParams`, `ModelMetadata`, `JsonVec`, `DownloadStatus`, `BuilderError`, `ModelValidationError`, GGUF constants (`TOKENIZER_CONFIG_JSON`, `GGUF`, `GGUF_EXTENSION`)
+- `src/models/gguf/` - GGUF format parsing module (header parsing, metadata extraction)
+- `src/models/data_service.rs` - `DataService` trait: local model storage, alias management (User/Model/Api), three-tier resolution
+- `src/models/hub_service.rs` - `HubService` trait: HuggingFace Hub API integration, local model discovery, GGUF file resolution
+- `src/models/progress_tracking.rs` - Download progress monitoring with event broadcasting
 
-### MCP Services
-- `src/mcp_service/mod.rs` - Module root for MCP server management
-- `src/mcp_service/service.rs` - `McpService` trait and `DefaultMcpService` implementation for CRUD, tool discovery, execution
-- `src/mcp_service/error.rs` - `McpError` domain error enum
+### User Management (`users/`)
+- `src/users/mod.rs` - Module declarations for user domain
+- `src/users/user_objs.rs` - **Domain types**: `UserAccessRequestStatus` (Pending/Approved/Rejected) (moved from `db/` shims)
+- `src/users/access_repository.rs` - User access request repository trait
+- `src/users/access_request_entity.rs` - SeaORM entity for user access requests
 
-### Access Control Services
-- `src/access_request_service/mod.rs` - Module root for access request management
-- `src/access_request_service/service.rs` - `AccessRequestService` trait and `DefaultAccessRequestService` implementation (role-based: `requested_role`/`approved_role`)
-- `src/access_request_service/error.rs` - `AccessRequestError` domain error enum
+### AI and Tool Services (`ai_apis/`, `toolsets/`)
+- `src/ai_apis/ai_api_service.rs` - `AiApiService` trait: external AI API integration with test prompt, model listing, and request forwarding
+- `src/ai_apis/error.rs` - `AiApiServiceError` domain error enum
+- `src/toolsets/mod.rs` - Module declarations for toolset domain
+- `src/toolsets/toolset_objs.rs` - **Domain types**: `Toolset`, `ToolsetScope`, `ToolsetType`, validation constants (`MAX_TOOLSET_SLUG_LEN`, etc.)
+- `src/toolsets/tool_service.rs` - `ToolService` trait and `DefaultToolService` for LLM function calling
+- `src/toolsets/exa_service.rs` - `ExaService`: Exa AI semantic search API integration
+- `src/toolsets/error.rs` - `ToolsetError` and `ExaError` domain error enums
+- `src/toolsets/execution.rs` - Toolset execution logic
 
-### Infrastructure Services (SeaORM)
+### MCP Services (`mcps/`)
+- `src/mcps/mod.rs` - Module declarations, re-exports `mcp_client::McpTool`
+- `src/mcps/mcp_objs.rs` - **Domain types**: `McpServer`, `Mcp`, MCP auth config types, validation constants (`MAX_MCP_SLUG_LEN`, etc.)
+- `src/mcps/mcp_service.rs` - `McpService` trait and `DefaultMcpService`: CRUD, tool discovery, execution
+- `src/mcps/error.rs` - `McpError` domain error enum
+
+### Access Control (`app_access_requests/`)
+- `src/app_access_requests/mod.rs` - Module declarations for access request domain
+- `src/app_access_requests/access_request_objs.rs` - **Domain types**: `AppAccessRequest`, `AppAccessResponse`, `AppAccessRequestDetail`, status enums
+- `src/app_access_requests/access_request_service.rs` - `AccessRequestService` trait and `DefaultAccessRequestService` (role-based: `requested_role`/`approved_role`)
+- `src/app_access_requests/error.rs` - `AccessRequestError` domain error enum
+
+### Configuration (`settings/`)
+- `src/settings/mod.rs` - Module declarations for settings domain
+- `src/settings/setting_objs.rs` - **Domain types**: `Setting`, `EnvType`, `AppType`, `LogLevel`, `AppCommand`
+- `src/settings/setting_service.rs` - `SettingService` trait
+- `src/settings/default_service.rs` - `DefaultSettingService` implementation
+- `src/settings/bootstrap_parts.rs` - `BootstrapParts` data carrier
+- `src/settings/constants.rs` - Setting key constants
+- `src/settings/error.rs` - `SettingsMetadataError` and `SettingServiceError` enums
+
+### Utility Services (`utils/`)
+- `src/utils/cache_service.rs` - Mini-moka based caching layer
+- `src/utils/concurrency_service.rs` - Distributed lock abstraction with `LocalConcurrencyService`
+- `src/utils/keyring_service.rs` - Platform-specific credential storage
+- `src/utils/network_service.rs` - Network connectivity checks
+- `src/utils/queue_service.rs` - Background metadata extraction queue with async processing
+
+### Persistence (`db/`)
 - `src/db/mod.rs` - Database module exports
-- `src/db/service.rs` - `TimeService` trait, `DbService` trait, repository trait definitions
+- `src/db/service.rs` - `DbService` trait, repository trait definitions
+- `src/db/time_service.rs` - `TimeService` trait and `DefaultTimeService` (all timestamp operations must use this, never `Utc::now()` directly)
 - `src/db/default_service.rs` - `DefaultDbService` (SeaORM-based, the sole DbService implementation)
+- `src/db/db_core.rs` - Database core utilities
 - `src/db/encryption.rs` - Database-level API key encryption utilities
-- `src/db/error.rs` - Database error types (`DbError` with `ItemNotFound`, `StrumParse`, `TokenValidation`, etc.)
-- `src/db/objs.rs` - Database domain objects (`DownloadRequest`, `ApiToken`, `AppAccessRequestRow`, `ModelMetadataRow`, `McpRow`, `McpServerRow`, `ToolsetRow`, `AppToolsetConfigRow`, etc.)
+- `src/db/error.rs` - `DbError` with `ItemNotFound`, `StrumParse`, `TokenValidation`, `EncryptionError`, `PrefixExists`, `MultipleAppInstance`, `Conversion`
+- `src/db/objs.rs` - Database row objects: `ApiKeyUpdate` (remaining after shim elimination; `TokenStatus`, `AppAccessRequestRow`, `UserAccessRequestStatus`, `ApiTokenRow` moved to domain modules)
 - `src/db/entities/` - SeaORM entity definitions with populated `Relation` enums for FK relationships
-- `src/db/sea_migrations/` - SeaORM migrations (14 migration files, supporting both SQLite and PostgreSQL)
+- `src/db/sea_migrations/` - SeaORM migrations (14+ migration files, supporting both SQLite and PostgreSQL)
 - `src/db/service_*.rs` - Repository implementations using SeaORM (model, token, access, mcp, toolset, user_alias, settings, app_instance, access_request)
+- `src/db/model_repository.rs` - Model metadata repository trait
 - `src/db/mcp_repository.rs` - MCP server and instance repository trait
 - `src/db/toolset_repository.rs` - Toolset and app toolset config repository trait
 - `src/db/access_repository.rs` - Access control repository trait
-- `src/db/access_request_repository.rs` - App access request repository trait (`AccessRequestRepository` with role-based approval: `requested_role`/`approved_role`)
+- `src/db/access_request_repository.rs` - App access request repository trait
 - `src/db/user_alias_repository.rs` - User alias repository trait
 
-### Configuration and Environment
-- `src/setting_service/` - Application configuration management module
-  - `bootstrap_parts.rs` - `BootstrapParts` data carrier (env_wrapper, settings_file, system_settings, file_defaults, app_settings, app_command, bodhi_home); `BootstrapService` lives in `lib_bodhiserver`
-  - `default_service.rs` - `DefaultSettingService`, `DefaultSettingService::from_parts(BootstrapParts, ...)` implementation
-  - `error.rs` - `SettingServiceError` enum, `Result<T>` alias
-- `src/env_wrapper.rs` - Environment variable abstraction
-- `src/progress_tracking.rs` - Download progress monitoring
-- `src/objs.rs` - Service-specific domain objects (`AppInstance`, `AppStatus`, `AppAccessRequest`, `AppAccessResponse`, `AppAccessRequestDetail`)
-- `src/queue_service.rs` - Background metadata extraction queue with async processing
-
 ### Test Utilities (`test-utils` feature)
-- `src/test_utils/mod.rs` - Test fixture exports
+- `src/test_utils/mod.rs` - Test fixture exports (17 sub-modules)
 - `src/test_utils/app.rs` - `AppServiceStub` builder for full service composition testing
 - `src/test_utils/auth.rs` - Authentication service mocks with embedded RSA keys
+- `src/test_utils/bodhi.rs` - `temp_bodhi_home` fixture for isolated home directory testing
 - `src/test_utils/data.rs` - Data service test helpers with temp directory fixtures
-- `src/test_utils/db.rs` - Database test fixtures with event broadcasting
-- `src/test_utils/envs.rs` - Environment test utilities
-- `src/test_utils/hf.rs` - HuggingFace service mocks and `OfflineHubService`
-- `src/test_utils/objs.rs` - Domain object test builders
-- `src/test_utils/secret.rs` - Secret service stubs with in-memory storage
+- `src/test_utils/db.rs` - `TestDbService`, `FrozenTimeService`, `MockDbService`, `test_db_service` fixture
+- `src/test_utils/envs.rs` - `EnvWrapperStub` in-memory environment variable stub
+- `src/test_utils/hf.rs` - `TestHfService`, `OfflineHubService` for HuggingFace mock
+- `src/test_utils/http.rs` - HTTP test utilities
+- `src/test_utils/io.rs` - IO test helpers
+- `src/test_utils/logs.rs` - Log capture for test assertions
+- `src/test_utils/fixtures.rs` - Domain object test builders (renamed from `objs.rs`)
+- `src/test_utils/model_fixtures.rs` - Model-specific test fixture builders
+- `src/test_utils/network.rs` - Network service test utilities
+- `src/test_utils/queue.rs` - Queue service test helpers
+- `src/test_utils/sea.rs` - `SeaTestContext`, `sea_context()` dual-database fixture
 - `src/test_utils/session.rs` - Session service mocks
-- `src/test_utils/settings.rs` - Settings test configuration
+- `src/test_utils/settings.rs` - `bodhi_home_setting` and settings test configuration
+- `src/test_utils/test_data.rs` - Static test data constants
 
 ## Key Implementation Patterns
 
@@ -109,7 +156,7 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
 ### Consolidated IO Error Usage
 ```rust
-// src/data_service.rs - Single IoError variant per service error enum
+// Single IoError variant per service error enum
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DataServiceError {
@@ -119,53 +166,34 @@ pub enum DataServiceError {
 }
 
 // Bridge std::io::Error -> IoError -> DataServiceError::Io
-impl_error_from!(::std::io::Error, DataServiceError::Io, ::objs::IoError);
+impl_error_from!(::std::io::Error, DataServiceError::Io, ::errmeta::IoError);
 
 // Usage with convenience constructors
 fs::write(filename.clone(), contents)
   .map_err(|err| IoError::file_write(err, alias.config_filename().clone()))?;
 fs::read(&path)
   .map_err(|err| IoError::file_read(err, path.display().to_string()))?;
-fs::remove_file(&filename)
-  .map_err(|err| IoError::file_delete(err, filename))?;
-fs::create_dir_all(parent)
-  .map_err(|err| IoError::dir_create(err, parent.display().to_string()))?;
 ```
 
 ### Database Upsert Return Value Pattern
-`SettingsRepository::upsert_setting` constructs a `DbSetting` return value from the input and the computed `now` timestamp. On update (ON CONFLICT path), the returned struct's `created_at` field is set to `now` even though the database preserves the original `created_at` (it is excluded from the UPDATE SET clause). This is analogous to setting `id: 0` on a struct before insert — the database assigns the real value but the returned struct carries a placeholder. Callers needing the actual `created_at` should query the database. See `src/db/service_settings.rs`.
+`SettingsRepository::upsert_setting` constructs a `DbSetting` return value from the input and the computed `now` timestamp. On update (ON CONFLICT path), the returned struct's `created_at` field is set to `now` even though the database preserves the original `created_at` (it is excluded from the UPDATE SET clause). This is analogous to setting `id: 0` on a struct before insert -- the database assigns the real value but the returned struct carries a placeholder. Callers needing the actual `created_at` should query the database. See `src/db/service_settings.rs`.
 
 ### Alias Resolution Priority
 ```rust
-// src/data_service.rs - Three-tier alias resolution
+// src/models/data_service.rs - Three-tier alias resolution
 async fn find_alias(&self, alias: &str) -> Option<Alias> {
   // Priority 1: User aliases (YAML files)
-  if let Some(user_alias) = self.find_user_alias(alias) {
-    return Some(Alias::User(user_alias));
-  }
   // Priority 2: Model aliases (auto-discovered GGUF files)
   // Priority 3: API aliases (database, prefix-aware routing)
 }
 ```
 
-### Concurrency Control Pattern
-```rust
-// src/concurrency_service.rs
-pub trait ConcurrencyService: Send + Sync + std::fmt::Debug {
-  async fn with_lock_auth(
-    &self,
-    key: &str,
-    f: Box<dyn FnOnce() -> BoxFuture<'static, AuthTokenResult> + Send + 'static>,
-  ) -> AuthTokenResult;
-}
-```
-
 ### Error Enum Pattern with impl_error_from!
 ```rust
-// Common pattern across services - bridge external errors via intermediate types
-impl_error_from!(reqwest::Error, AuthServiceError::Reqwest, ::objs::ReqwestError);
-impl_error_from!(serde_yaml::Error, DataServiceError::SerdeYamlError, ::objs::SerdeYamlError);
-impl_error_from!(std::io::Error, HubServiceError::IoError, ::objs::IoError);
+// Common pattern: bridge external errors via intermediate wrapper types
+impl_error_from!(reqwest::Error, AuthServiceError::Reqwest, ::services::ReqwestError);
+impl_error_from!(serde_yaml::Error, DataServiceError::SerdeYamlError, ::services::SerdeYamlError);
+impl_error_from!(std::io::Error, HubServiceError::IoError, ::errmeta::IoError);
 ```
 
 ## Error Types by Service
@@ -178,7 +206,7 @@ impl_error_from!(std::io::Error, HubServiceError::IoError, ::objs::IoError);
 | SettingService | `SettingServiceError` | `Io(IoError)` | `SerdeYaml`, `LockError`, `InvalidSource` |
 | AuthService | `AuthServiceError` | (none) | `Reqwest`, `AuthServiceApiError`, `TokenExchangeError` |
 | DbService | `DbError` | (none) | `SeaOrmError`, `StrumParse`, `TokenValidation`, `EncryptionError`, `PrefixExists`, `ItemNotFound`, `MultipleAppInstance`, `Conversion` |
-| SessionService | `SessionServiceError` | (none) | `SqlxError`, `SessionStoreError` |
+| SessionService | `SessionServiceError` | (none) | `SqlxError`, `SessionStoreError`, `DbSetup` |
 | AiApiService | `AiApiServiceError` | (none) | `Reqwest`, `ApiError`, `Unauthorized`, `NotFound`, `RateLimit`, `PromptTooLong` |
 | ToolService | `ToolsetError` | (none) | `ToolsetNotFound`, `MethodNotFound`, `ToolsetNotConfigured`, `ToolsetDisabled`, `ToolsetAppDisabled`, `SlugExists`, `InvalidSlug`, `InvalidDescription`, `InvalidToolsetType`, `DbError`, `ExaError` |
 | McpService | `McpError` | (none) | `McpNotFound`, `McpUrlNotAllowed`, `McpDisabled`, `ToolNotAllowed`, `ToolNotFound`, `SlugExists`, `InvalidSlug`, `InvalidDescription`, `NameRequired`, `ConnectionFailed`, `ExecutionFailed`, `DbError` |
@@ -217,21 +245,14 @@ use services::db::DefaultDbService;
 let time_service = Arc::new(DefaultTimeService);
 let db = Database::connect(&db_url).await?;
 Migrator::fresh(&db).await?;
-let db_service = Arc::new(DefaultDbService::new(db, time_service.clone(), encryption_key));
-
-let app_service = DefaultAppService::new(
-  env_service, hub_service, data_service,
-  auth_service, db_service, session_service,
-  secret_service, cache_service, time_service,
-  ai_api_service, concurrency_service,
-  queue_producer, tool_service, network_service,
-  access_request_service, mcp_service,
-);
+let db_service = Arc::new(DefaultDbService::new(
+  db, time_service.clone(), encryption_key
+));
 ```
 
 ### IO Error Handling in Services
 ```rust
-use objs::IoError;
+use services::IoError;  // re-exported from errmeta
 
 // File read with path context
 let content = fs::read_to_string(&path)
@@ -245,59 +266,34 @@ fs::create_dir_all(parent)
 let entries = fs::read_dir(&aliases_dir)?;
 ```
 
-### Model Management
+### Domain Type Usage
 ```rust
-use services::{HubService, DataService};
+use services::{Repo, HubFile, Alias, ResourceRole, UserScope};
 
-// Download model
-let hub_file = hub_service
-  .download(&repo, "model.gguf", None, Some(progress))
-  .await?;
+// Repo parsing with validation
+let repo: Repo = "username/model-name".parse()?;
 
-// Save user alias
-let alias = UserAlias::new("my-model", repo, filename);
-data_service.save_alias(&alias)?;
-
-// Find alias with priority resolution
-let alias = data_service.find_alias("gpt-4").await;
-// Returns User > Model > Api alias priority
+// Role hierarchy checks
+assert!(ResourceRole::Admin.has_access_to(&ResourceRole::User));
+assert!(UserScope::PowerUser.has_access_to(&UserScope::User));
 ```
 
 ## Test Infrastructure
 
 ### Test Organization
 
-All service modules contain inline `#[cfg(test)] mod tests` blocks. Four modules use separate test files:
+Domain modules use the sibling test file pattern (`test_*.rs`). Service modules vary between separate test files and inline tests:
 
 | Module | Test Location |
 |--------|--------------|
+| `auth/auth_objs.rs` | `test_auth_objs_role.rs`, `test_auth_objs_token_scope.rs`, `test_auth_objs_user_scope.rs` |
+| `models/model_objs.rs` | Inline and sibling test files |
+| `shared_objs/` | Inline `mod tests` in `error_api.rs`, `error_wrappers.rs`, `utils.rs`, `log.rs` |
 | `db` | `src/db/tests.rs` (separate file) |
-| `setting_service` | `src/setting_service/tests.rs` (separate file) |
-| `tool_service` | `src/tool_service/tests.rs` (separate file) |
-| `auth_service` | `src/auth_service/tests.rs` (separate file) |
-| `mcp_service` | Inline in `src/mcp_service/service.rs` |
-| `access_request_service` | Inline in `src/access_request_service/service.rs` |
+| `settings` | Sibling test files |
+| `toolsets` | Sibling test files |
+| `auth` | Sibling test files |
 | All other services | Inline `mod tests` at bottom of source file |
-
-Additionally, `src/db/encryption.rs`, `src/db/error.rs`, and `src/db/sqlite_pool.rs` have inline test modules for their focused concerns.
-
-### Modules with Inline Tests
-
-- `src/auth_service/tests.rs` -- OAuth2 flow tests with mockito
-- `src/ai_api_service.rs` -- AI API tests with mockito
-- `src/exa_service.rs` -- Exa search API tests with mockito
-- `src/secret_service.rs` -- Encryption/decryption tests
-- `src/hub_service.rs` -- HuggingFace integration tests
-- `src/data_service.rs` -- Local model/alias management tests
-- `src/session_service.rs` -- Session management tests
-- `src/concurrency_service.rs` -- Per-key locking tests
-- `src/progress_tracking.rs` -- Download progress tests with event broadcasting
-- `src/queue_service.rs` -- Background queue tests
-- `src/cache_service.rs` -- Cache layer tests
-- `src/keyring_service.rs` -- Credential storage tests
-- `src/token.rs` -- JWT parsing/validation tests
-- `src/env_wrapper.rs` -- Environment variable tests
-- `src/service_ext.rs` -- Service extension tests
 
 ### Test Utilities (`test-utils` feature)
 
@@ -309,17 +305,24 @@ The `src/test_utils/` module provides reusable test infrastructure:
 | `sea.rs` | `SeaTestContext`, `sea_context()` | Dual-database test fixture (SQLite or PostgreSQL) with `DefaultDbService` and fresh migrations |
 | `app.rs` | `AppServiceStub`, `AppServiceStubBuilder` | Full service composition for integration-style tests |
 | `auth.rs` | `test_auth_service`, embedded RSA keys | AuthService with configurable base URL for mockito |
+| `bodhi.rs` | `temp_bodhi_home` | Isolated bodhi home directory fixture |
 | `data.rs` | Data service helpers | Temp directory fixtures for alias/model tests |
 | `hf.rs` | `TestHfService`, `OfflineHubService` | HuggingFace mock with configurable real/mock modes |
-| `secret.rs` | `SecretServiceStub`, `KeyringStoreStub` | In-memory secret/keyring storage |
-| `session.rs` | Session mocks | Session service test helpers |
+| `fixtures.rs` | Domain object builders | Test data construction helpers (renamed from `objs.rs`) |
+| `model_fixtures.rs` | Model fixture builders | Model-specific test fixture construction |
+| `network.rs` | Network service test utils | Network service stubs and test helpers |
 | `envs.rs` | `EnvWrapperStub` | In-memory environment variable stub |
-| `objs.rs` | Domain object builders | Test data construction helpers |
 | `settings.rs` | `bodhi_home_setting` | Setting service test configuration |
+| `session.rs` | Session mocks | Session service test helpers |
+| `http.rs` | HTTP test utilities | Request/response test helpers |
+| `io.rs` | IO helpers | File system test utilities |
+| `logs.rs` | Log capture | Tracing subscriber for test log assertions |
+| `queue.rs` | Queue helpers | Queue service test infrastructure |
+| `test_data.rs` | Static constants | SNAPSHOT hash and other test data |
 
 ### Canonical Test Pattern
 
-All tests follow the standardized pattern established in the services test revamp:
+All tests follow the standardized pattern:
 
 - **Annotations**: `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]` (async) or `#[rstest]` only (sync)
 - **Return type**: `-> anyhow::Result<()>` with `Ok(())` at end
@@ -331,19 +334,23 @@ For detailed patterns and migration checklists, see `.claude/skills/test-service
 
 ## Feature Flags
 
-- `test-utils`: Enables comprehensive test utilities, mock services, and rstest fixtures
+- `test-utils`: Enables comprehensive test utilities, mock services, rstest fixtures, and `mcp_client/test-utils`
 - `default = ["tokio"]`: Tokio runtime enabled by default
 
 ## Dependencies
 
 ### Core Dependencies
-- `objs` - Domain objects, error types, `IoError` enum, `impl_error_from!` macro, typed DB enums (`DeriveValueType`)
+- `errmeta` - `AppError` trait, `ErrorType` enum, `IoError`, `EntityError`, `RwLockReadError`, `impl_error_from!` macro
+- `errmeta_derive` - `#[derive(ErrorMeta)]` proc macro for error type generation
 - `llama_server_proc` - LLM process management
 - `mcp_client` - MCP protocol client for tool discovery and execution
 - `sea-orm` - Database ORM (SQLite and PostgreSQL backends)
 - `sea-orm-migration` - Schema migrations with dual-database support
-- `async-trait` - Async trait support
-- `axum` - HTTP framework integration
+- `axum` - HTTP framework integration (for `ApiError`, `JsonRejectionError`)
+- `serde` / `serde_json` / `serde_yaml` - Serialization framework
+- `utoipa` - OpenAPI schema generation (`ToSchema` derives on domain types)
+- `validator` - Input validation (`Validate` derive on domain types)
+- `strum` - Enum string conversion for domain enums
 - `oauth2` - OAuth2 client
 - `jsonwebtoken` - JWT handling
 - `aes-gcm` / `pbkdf2` - Encryption and key derivation
@@ -353,27 +360,32 @@ For detailed patterns and migration checklists, see `.claude/skills/test-service
 - `reqwest` - HTTP client
 - `walkdir` - Directory traversal for model discovery
 - `ulid` - ULID-based ID generation (replaced UUID)
+- `clap` - CLI argument parsing (for `AppCommand`)
+- `derive_builder` - Builder pattern generation for domain types
 
 ### Optional Dependencies (test-utils)
 - `mockall` - Mock generation for service traits
 - `rstest` - Fixture-based testing
 - `tempfile` - Temporary directories for test isolation
 - `rsa` - RSA key pair generation for JWT testing
-- `once_cell` - One-time initialization in test fixtures
+- `fs_extra` - File copy utilities for test data setup
 
 ## File References
 
 See individual module files for complete implementation details:
 - Service registry: `src/app_service.rs`
-- Authentication: `src/auth_service/*.rs`, `src/app_instance_service.rs`, `src/session_service/*.rs`, `src/concurrency_service.rs`
-- Security: `src/secret_service.rs`, `src/keyring_service.rs`
-- Model management: `src/hub_service.rs`, `src/data_service.rs`
-- AI integration: `src/ai_api_service.rs`, `src/tool_service/*.rs`, `src/exa_service.rs`
-- MCP: `src/mcp_service/*.rs`
-- Access control: `src/access_request_service/*.rs`
-- Database: `src/db/*.rs` (includes `default_service.rs`, `entities/`, `sea_migrations/`, `service_*.rs` repository impls, `mcp_repository.rs`, `toolset_repository.rs`, `access_repository.rs`, `access_request_repository.rs`)
-- Configuration: `src/setting_service/*.rs`, `src/env_wrapper.rs`
-- Background processing: `src/queue_service.rs`, `src/progress_tracking.rs`
-- Domain objects: `src/objs.rs`
-- Token handling: `src/token.rs`
+- Cross-cutting types: `src/shared_objs/*.rs` (ApiError, OpenAIApiError, error wrappers, utils, logging)
+- Auth domain types + services: `src/auth/*.rs` (auth_objs, auth_service, session_*)
+- Token domain types + services: `src/tokens/*.rs` (token_objs, token_service, token_repository)
+- User domain types: `src/users/*.rs` (user_objs, access_repository, access_request_entity)
+- App instance: `src/apps/*.rs` (app_objs, app_instance_service, error)
+- Model domain types + services: `src/models/*.rs` (model_objs, data_service, hub_service, gguf/, progress_tracking)
+- Settings domain types + services: `src/settings/*.rs` (setting_objs, setting_service, default_service, bootstrap_parts)
+- Toolset domain types + services: `src/toolsets/*.rs` (toolset_objs, tool_service, exa_service, error, execution)
+- MCP domain types + services: `src/mcps/*.rs` (mcp_objs, mcp_service, error)
+- Access control: `src/app_access_requests/*.rs` (access_request_objs, access_request_service, error)
+- Utility services: `src/utils/*.rs` (cache, concurrency, keyring, network, queue)
+- Token handling: `src/shared_objs/token.rs` (JWT parsing), `src/tokens/*.rs` (token domain types + service)
+- AI API: `src/ai_apis/*.rs` (ai_api_service, error)
+- Database: `src/db/*.rs` (default_service, time_service, db_core, entities/, sea_migrations/, service_*.rs repository impls, *_repository.rs traits)
 - Test utilities: `src/test_utils/*.rs`

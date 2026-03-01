@@ -4,8 +4,8 @@ use crate::{
   ContextError,
 };
 use futures::StreamExt;
-use objs::ObjValidationError;
 use serde_json::Value;
+use services::ObjValidationError;
 use services::{
   AiApiService, AiApiServiceError, AppService, DataServiceError, DefaultAiApiService,
   HubServiceError,
@@ -65,7 +65,7 @@ impl DefaultRouterState {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = objs::AppError)]
+#[error_meta(trait_to_impl = services::AppError)]
 pub enum RouterStateError {
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
@@ -161,10 +161,11 @@ mod test {
   use async_openai::types::chat::CreateChatCompletionRequest;
   use llama_server_proc::{test_utils::mock_response, ServerError};
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_dir, Alias, UserAlias};
   use rstest::rstest;
   use serde_json::json;
+  use services::test_utils::temp_dir;
   use services::test_utils::AppServiceStubBuilder;
+  use services::{Alias, UserAlias};
   use std::sync::Arc;
   use tempfile::TempDir;
 

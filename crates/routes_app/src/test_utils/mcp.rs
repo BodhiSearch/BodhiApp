@@ -48,7 +48,7 @@ pub async fn build_mcp_test_state_with_app_service(
 
 /// Fixed deterministic timestamp matching `FrozenTimeService` default (2025-01-01T00:00:00Z).
 #[cfg(test)]
-pub use objs::test_utils::fixed_dt;
+pub use services::test_utils::fixed_dt;
 
 /// Creates an MCP server in the database via the API and returns its ID.
 #[cfg(test)]

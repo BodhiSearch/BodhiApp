@@ -6,7 +6,6 @@ build = "build.rs"
 
 [dependencies]
 errmeta_derive = { workspace = true }
-objs = { workspace = true }
 services = { workspace = true }
 llama_server_proc = { workspace = true }
 server_core = { workspace = true }
@@ -32,7 +31,6 @@ mcp_client = { version = "0.1.0", path = "../mcp_client" }
 anyhow = { workspace = true }
 
 [dev-dependencies]
-objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
@@ -45,4 +43,4 @@ tokio = { workspace = true, features = ["test-util"] }
 
 
 [features]
-test-utils = ["services/test-utils", "objs/test-utils"]
+test-utils = ["services/test-utils"]

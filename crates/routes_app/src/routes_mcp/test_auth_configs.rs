@@ -5,11 +5,11 @@ use crate::test_utils::{
 use anyhow_trace::anyhow_trace;
 use axum::body::Body;
 use axum::http::StatusCode;
-use objs::{McpAuthConfigResponse, RegistrationType};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
+use services::{McpAuthConfigResponse, RegistrationType};
 use tower::ServiceExt;
 
 // ============================================================================

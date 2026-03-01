@@ -1,9 +1,11 @@
 use crate::{
-  db::DbSetting,
+  settings::DbSetting,
   test_utils::{bodhi_home_setting, EnvWrapperStub},
   BootstrapParts, DefaultSettingService, SettingService, BODHI_KEEP_ALIVE_SECS,
 };
-use objs::{AppCommand, SettingSource};
+use crate::{AppCommand, SettingSource};
+use anyhow_trace::anyhow_trace;
+use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_yaml::Value;
 use std::{collections::HashMap, sync::Arc};
@@ -21,7 +23,7 @@ async fn make_service(
     std::fs::write(&settings_file, content).unwrap();
   }
 
-  let mut mock_repo = crate::db::MockSettingsRepository::new();
+  let mut mock_repo = crate::test_utils::MockSettingsRepository::new();
   let store: Arc<std::sync::RwLock<HashMap<String, DbSetting>>> =
     Arc::new(std::sync::RwLock::new(HashMap::new()));
   for (key, value) in &db_settings {
@@ -77,8 +79,9 @@ async fn make_service(
 
 #[rstest]
 #[tokio::test]
-async fn test_database_over_default() {
-  let temp_dir = TempDir::new().unwrap();
+#[anyhow_trace]
+async fn test_database_over_default() -> anyhow::Result<()> {
+  let temp_dir = TempDir::new()?;
   let service = make_service(
     &temp_dir,
     HashMap::new(),
@@ -92,12 +95,14 @@ async fn test_database_over_default() {
     .await;
   assert_eq!(SettingSource::Database, source);
   assert_eq!(Some(Value::Number(600.into())), value);
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_env_over_database() {
-  let temp_dir = TempDir::new().unwrap();
+#[anyhow_trace]
+async fn test_env_over_database() -> anyhow::Result<()> {
+  let temp_dir = TempDir::new()?;
   let service = make_service(
     &temp_dir,
     HashMap::from([(BODHI_KEEP_ALIVE_SECS.to_string(), "900".to_string())]),
@@ -111,12 +116,14 @@ async fn test_env_over_database() {
     .await;
   assert_eq!(SettingSource::Environment, source);
   assert_eq!(Some(Value::Number(900.into())), value);
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_database_over_file() {
-  let temp_dir = TempDir::new().unwrap();
+#[anyhow_trace]
+async fn test_database_over_file() -> anyhow::Result<()> {
+  let temp_dir = TempDir::new()?;
   let yaml_content = format!("{}: 1200", BODHI_KEEP_ALIVE_SECS);
   let service = make_service(
     &temp_dir,
@@ -131,12 +138,14 @@ async fn test_database_over_file() {
     .await;
   assert_eq!(SettingSource::Database, source);
   assert_eq!(Some(Value::Number(600.into())), value);
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_file_over_default() {
-  let temp_dir = TempDir::new().unwrap();
+#[anyhow_trace]
+async fn test_file_over_default() -> anyhow::Result<()> {
+  let temp_dir = TempDir::new()?;
   let yaml_content = format!("{}: 1200", BODHI_KEEP_ALIVE_SECS);
   let service = make_service(&temp_dir, HashMap::new(), Some(&yaml_content), vec![]).await;
 
@@ -145,12 +154,14 @@ async fn test_file_over_default() {
     .await;
   assert_eq!(SettingSource::SettingsFile, source);
   assert_eq!(Some(Value::Number(1200.into())), value);
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_set_then_get_via_database() {
-  let temp_dir = TempDir::new().unwrap();
+#[anyhow_trace]
+async fn test_set_then_get_via_database() -> anyhow::Result<()> {
+  let temp_dir = TempDir::new()?;
   let service = make_service(&temp_dir, HashMap::new(), None, vec![]).await;
 
   service
@@ -159,12 +170,12 @@ async fn test_set_then_get_via_database() {
       &Value::Number(900.into()),
       SettingSource::Database,
     )
-    .await
-    .unwrap();
+    .await?;
 
   let (value, source) = service
     .get_setting_value_with_source(BODHI_KEEP_ALIVE_SECS)
     .await;
   assert_eq!(SettingSource::Database, source);
   assert_eq!(Some(Value::Number(900.into())), value);
+  Ok(())
 }

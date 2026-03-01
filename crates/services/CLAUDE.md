@@ -4,24 +4,78 @@ See [crates/services/PACKAGE.md](crates/services/PACKAGE.md) for implementation 
 
 ## Purpose
 
-The `services` crate implements BodhiApp's **business logic orchestration layer**, providing 16 interconnected services that coordinate OAuth2 authentication, AI API integrations, model management, toolset execution, MCP server management, user access control, data persistence, concurrency control, and multi-layer security. This crate bridges domain objects from `objs` with external systems while maintaining deployment flexibility across standalone servers, desktop applications, and embedded contexts.
+The `services` crate implements BodhiApp's **business logic and domain type layer**, providing 16 interconnected services that coordinate OAuth2 authentication, AI API integrations, model management, toolset execution, MCP server management, user access control, data persistence, concurrency control, and multi-layer security. Following the elimination of the `objs` crate, `services` now also owns all domain types, validation rules, and framework-dependent error wrappers -- making it the single source of truth for both business logic and domain modeling.
 
-**Database Layer**: Fully migrated to **SeaORM** with dual-database support (SQLite for development, PostgreSQL for production). `DefaultDbService` is the sole `DbService` implementation. All entity fields use typed enums from `objs` (e.g., `DownloadStatus`, `TokenStatus`, `AppStatus`) instead of raw Strings. SeaORM migrations live in `src/db/sea_migrations/`. ID generation uses ULID (`ulid::Ulid::new()`) instead of UUID.
+**Domain Types**: All domain objects previously in `objs` now live here, organized by domain:
+- **Auth types** (`src/auth/auth_objs.rs`): `ResourceRole`, `TokenScope`, `UserScope`, `AppRole`, `UserInfo`
+- **Token types** (`src/tokens/token_objs.rs`): `TokenStatus`, `ApiTokenRow`
+- **User types** (`src/users/user_objs.rs`): `UserAccessRequestStatus`
+- **Model types** (`src/models/model_objs.rs`): `Repo`, `HubFile`, `Alias`, `UserAlias`, `ModelAlias`, `ApiAlias`, `OAIRequestParams`, `ModelMetadata`, `JsonVec`, `DownloadStatus`, `BuilderError`
+- **Settings types** (`src/settings/setting_objs.rs`): `Setting`, `EnvType`, `AppType`, `LogLevel`, `AppCommand`
+- **App types** (`src/apps/app_objs.rs`): `AppStatus`
+- **Access request types** (`src/app_access_requests/access_request_objs.rs`): all `AppAccessRequest*` types
+- **Toolset types** (`src/toolsets/toolset_objs.rs`): all `Toolset*` types
+- **MCP types** (`src/mcps/mcp_objs.rs`): `McpServer`, `Mcp`, etc.
+- **Cross-cutting types** (`src/shared_objs/`): `ApiError`, `OpenAIApiError`, `ErrorBody`, `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `JsonRejectionError`, `ObjValidationError`, `token.rs` (JWT parsing/validation/claims), logging utilities
+
+**Database Layer**: Fully migrated to **SeaORM** with dual-database support (SQLite for development, PostgreSQL for production). `DefaultDbService` is the sole `DbService` implementation. All entity fields use typed enums (e.g., `DownloadStatus`, `TokenStatus`, `AppStatus`) instead of raw Strings. SeaORM migrations live in `src/db/sea_migrations/`. ID generation uses ULID (`ulid::Ulid::new()`) instead of UUID.
 
 ## Architecture Position
 
 **Upstream dependencies** (crates this depends on):
-- [`objs`](../objs/CLAUDE.md) -- domain objects, error types, `IoError`, `impl_error_from!` macro
-- [`server_core`](../server_core/CLAUDE.md) -- `SharedContext`, `RouterState` HTTP infrastructure
+- [`errmeta`](../errmeta/CLAUDE.md) -- `AppError` trait, `ErrorType` enum, `IoError`, `EntityError`, `RwLockReadError`, `impl_error_from!` macro
+- [`errmeta_derive`](../errmeta_derive/CLAUDE.md) -- `#[derive(ErrorMeta)]` proc macro
 - [`llama_server_proc`](../llama_server_proc/CLAUDE.md) -- LLM process management
 - [`mcp_client`](../mcp_client/) -- MCP protocol client for tool discovery and execution
-- [`errmeta_derive`](../errmeta_derive/CLAUDE.md) -- `#[derive(ErrorMeta)]` proc macro
 
 **Downstream consumers** (crates that depend on this):
+- [`server_core`](../server_core/CLAUDE.md) -- `SharedContext`, `RouterState` HTTP infrastructure
+- [`auth_middleware`](../auth_middleware/CLAUDE.md) -- authentication middleware
 - [`routes_app`](../routes_app/CLAUDE.md) -- HTTP route handlers consume service traits
 - [`server_app`](../server_app/CLAUDE.md) -- standalone server bootstraps `DefaultAppService`
 - [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- embeddable library bootstraps `DefaultAppService`
 - [`bodhi/src-tauri`](../bodhi/src-tauri/CLAUDE.md) -- Tauri desktop app bootstraps services
+
+**Re-exports for downstream convenience**: `services` re-exports all `errmeta` types (`AppError`, `ErrorType`, `IoError`, `EntityError`, `RwLockReadError`, `impl_error_from!`) so downstream crates can use `services::` instead of adding `errmeta` as a direct dependency.
+
+## Domain Type Organization
+
+### Why Domain Types Live in services (Not a Separate Crate)
+
+After eliminating the `objs` crate, domain types were co-located with the services that primarily use them rather than being split into another foundation crate. This decision was driven by:
+
+1. **Colocation Reduces Navigation**: Auth types (`ResourceRole`, `TokenScope`, etc.) live next to `AuthService`; model types (`Repo`, `HubFile`, `Alias`) live next to `DataService` and `HubService`. Developers working on a feature find both types and logic in the same module.
+2. **Dependency Simplification**: Domain types often need framework dependencies (`serde`, `sea-orm::DeriveValueType`, `utoipa::ToSchema`, `validator::Validate`). Putting them in `services` avoids creating yet another intermediate crate.
+3. **Error Wrapper Locality**: Framework-dependent error wrappers (`ApiError`, `SerdeJsonError`, etc.) need `axum`, `serde`, and `validator`. These live in `shared_objs/` within services.
+
+### Module Layout Convention
+
+Each domain module follows a consistent `*_objs.rs` pattern:
+- `auth/auth_objs.rs` -- role hierarchies, scopes, user info
+- `tokens/token_objs.rs` -- `TokenStatus`, `ApiTokenRow` (moved from `db/` shims)
+- `users/user_objs.rs` -- `UserAccessRequestStatus` (moved from `db/` shims)
+- `models/model_objs.rs` -- repo, hub file, alias, `AliasSource` enum, OAI request params, GGUF constants, validation
+- `settings/setting_objs.rs` -- environment type, app type, log level, app command, setting struct
+- `apps/app_objs.rs` -- app status enum
+- `app_access_requests/access_request_objs.rs` -- `AppAccessRequestRow` (moved from `db/` shims), access request types, status tracking
+- `toolsets/toolset_objs.rs` -- toolset definitions, scope, slug validation
+- `mcps/mcp_objs.rs` -- MCP server definitions, auth config types, `MAX_MCP_INSTANCE_NAME_LEN`, `validate_mcp_instance_name()`
+- `shared_objs/` -- cross-cutting error wrappers, utilities (not domain-specific), and `token.rs` (JWT parsing/validation)
+
+Domain modules also contain dedicated `error.rs` files for service-specific error enums:
+- `apps/error.rs` -- `AppInstanceError`
+- `ai_apis/error.rs` -- `AiApiServiceError`
+- `settings/error.rs` -- `SettingsMetadataError`, `SettingServiceError`
+- `toolsets/error.rs` -- `ToolsetError`, `ExaError`
+
+### shared_objs Module
+
+The `shared_objs/` module contains types that are cross-cutting (not specific to any one domain) and require framework dependencies:
+- `error_api.rs` -- `ApiError` struct: captures `AppError` metadata, converts to `OpenAIApiError`, implements `axum::IntoResponse`
+- `error_oai.rs` -- `OpenAIApiError`, `ErrorBody`: OpenAI-compatible error envelope with utoipa schemas
+- `error_wrappers.rs` -- `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `JsonRejectionError`, `ObjValidationError`: framework-dependent error wrappers with manual or derived `AppError` implementations
+- `utils.rs` -- `is_default()` helper, `ILLEGAL_CHARS` regex, `to_safe_filename()`
+- `log.rs` -- sensitive value masking for HTTP request logging
 
 ## Architectural Design Rationale
 
@@ -59,7 +113,7 @@ Model management is split between HubService and DataService rather than a singl
 
 ### Consolidated IO Error Pattern
 
-The services crate uses the unified `IoError` enum from `objs` for all IO-related error handling. This represents a deliberate consolidation from the previous approach of 6 separate IO error structs (`IoError` struct, `IoWithPathError`, `IoDirCreateError`, `IoFileReadError`, `IoFileWriteError`, `IoFileDeleteError`) into a single enum with 6 variants:
+The services crate uses the unified `IoError` enum from `errmeta` for all IO-related error handling. This represents a deliberate consolidation from the previous approach of 6 separate IO error structs (`IoError` struct, `IoWithPathError`, `IoDirCreateError`, `IoFileReadError`, `IoFileWriteError`, `IoFileDeleteError`) into a single enum with 6 variants:
 
 **Why a Single IoError Enum**:
 - **Simplified Error Propagation**: Service error enums (e.g., `DataServiceError`, `HubServiceError`, `SettingServiceError`) previously needed multiple IO-related variants for each struct. Now each has a single `Io(#[from] IoError)` or `IoError(#[from] IoError)` variant
@@ -69,7 +123,7 @@ The services crate uses the unified `IoError` enum from `objs` for all IO-relate
 
 **Error Flow Through Services**:
 - Raw `std::io::Error` values are converted to `IoError` variants with path context using convenience constructors
-- The `impl_error_from!` macro generates `From<std::io::Error>` implementations that wrap into the service's error enum via the `IoError` intermediate type (e.g., `impl_error_from!(::std::io::Error, DataServiceError::Io, ::objs::IoError)`)
+- The `impl_error_from!` macro generates `From<std::io::Error>` implementations that wrap into the service's error enum via the `IoError` intermediate type (e.g., `impl_error_from!(::std::io::Error, DataServiceError::Io, ::errmeta::IoError)`)
 - Service error enums propagate transparently through `#[from]` derives on the `IoError` variant
 
 **Service Error Enums Using IoError**:
@@ -87,7 +141,7 @@ The services crate uses the unified `IoError` enum from `objs` for all IO-relate
 
 ### impl_error_from! Macro Pattern
 
-The `impl_error_from!` macro from `objs` generates two-step `From` conversions for external library errors. This avoids Rust's orphan rule by going through an intermediate wrapper type:
+The `impl_error_from!` macro from `errmeta` generates two-step `From` conversions for external library errors. This avoids Rust's orphan rule by going through an intermediate wrapper type:
 
 ```
 std::io::Error -> IoError (via IoError::from) -> DataServiceError::Io (via #[from])
@@ -133,15 +187,14 @@ Authentication flows span services and middleware with precise coordination:
 - Per-key locking (e.g., by session ID) allows concurrent refreshes for different users
 - LocalConcurrencyService uses `RwLock<HashMap<String, Arc<Mutex<()>>>>` for in-process coordination
 
-### Service to CLI Integration Patterns
+### Service to Application Integration Patterns
 
-Services adapt to CLI context through specialized error handling:
+Services adapt to different application contexts (server, desktop, embedded):
 
-- Service errors bubble up to commands crate
-- CLI-specific formatting applied (no JSON envelopes)
-- Progress bars integrate with HubService download tracking
-- Interactive prompts use DataService for model selection
+- Service errors flow through the `ApiError` chain for HTTP contexts
+- Progress tracking integrates with HubService download coordination
 - Configuration updates through SettingService persist across sessions
+- Application bootstrap orchestrates service initialization order
 
 ## Domain-Specific Architecture Patterns
 
@@ -204,7 +257,7 @@ The `McpService` (module: `mcp_service/`) manages Model Context Protocol server 
 **SeaORM Entity Model**:
 - All entities live in `src/db/entities/` with populated `Relation` enums for FK relationships
 - MCP tables have CASCADE foreign key constraints (deleting an MCP server cascades to auth headers, OAuth configs, and tokens)
-- Entity fields use typed enums from `objs` (e.g., `DownloadStatus`, `TokenStatus`, `AppStatus`) instead of raw Strings via `DeriveValueType`
+- Entity fields use typed enums from domain modules (e.g., `DownloadStatus` from `models/`, `TokenStatus` from `tokens/`, `AppStatus` from `apps/`, `UserAccessRequestStatus` from `users/`) instead of raw Strings via `DeriveValueType`
 - Migrations in `src/db/sea_migrations/` support both SQLite and PostgreSQL
 - Migration 0014 (`snake_case_enums`) converts existing kebab-case enum values (e.g., `"pre-registered"`) to snake_case (`"pre_registered"`) in `RegistrationType` and `AppStatus` columns
 
@@ -315,12 +368,11 @@ HTTP sessions use specific security settings:
 - `AppSessionStoreExt` provides custom operations: `migrate_custom`, `clear_sessions_for_user`, `clear_all_sessions`, `count_sessions_for_user`, `get_session_ids_for_user`, `dump_all_sessions`
 - Session clearing by user_id enables targeted session invalidation
 
-#### Session Service Module Structure (`session_service/`)
+#### Session Service Module Structure (`auth/`)
 
-The module is split across multiple files following the shared convention in `crates/CLAUDE.md`:
+Session-related files live within the `auth/` module:
 
-- `mod.rs` — declarations + `pub use` re-exports only
-- `error.rs` — `SessionServiceError` enum (variants: `SqlxError`, `SessionStoreError`, `DbSetup`), `SessionResult<T>` alias
+- `session_error.rs` — `SessionServiceError` enum (variants: `SqlxError`, `SessionStoreError`, `DbSetup`), `SessionResult<T>` alias
 - `session_store.rs` — `SessionStoreBackend`, `InnerStoreShared`, `is_postgres_url()`
 - `session_service.rs` — `SessionService` trait, `AppSessionStoreExt` trait, `DefaultSessionService` impl
 - `postgres.rs` — `create_postgres_store()` returning `SessionResult<PostgresStore>`
@@ -387,10 +439,11 @@ When creating new services for the ecosystem:
 1. **Define Service Trait**: Create trait with async methods and `#[mockall::automock]` annotation
 2. **Implement Service**: Provide concrete implementation with proper error handling
 3. **Add to Registry**: Extend `AppService` trait and `DefaultAppService` with new accessor
-4. **Create Error Types**: Define domain-specific error enum with `AppError` implementation via `errmeta_derive`
-5. **Use IoError for IO**: Wrap IO operations with `IoError` convenience constructors for path context
-6. **Create Test Utils**: Add mock builders in test_utils module
-7. **Document Dependencies**: Update service interdependency documentation
+4. **Create Error Types**: Define domain-specific error enum with `AppError` implementation via `errmeta_derive`. Use `errmeta::ErrorType` for variant annotations (accessed via `use crate::ErrorType` since services re-exports it).
+5. **Place Domain Types**: If the service introduces new domain objects, place them in a `<module>_objs.rs` file alongside the service (e.g., `toolsets/toolset_objs.rs`, `auth/auth_objs.rs`)
+6. **Use IoError for IO**: Wrap IO operations with `IoError` convenience constructors for path context
+7. **Create Test Utils**: Add mock builders in test_utils module
+8. **Document Dependencies**: Update service interdependency documentation
 
 ### Error Handling for New Services
 

@@ -11,12 +11,12 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{delete, get, post, put};
 use axum::Router;
-use objs::{Mcp, McpAuthType, McpServerInfo};
-use objs::{McpExecutionResponse, McpTool, ResourceRole};
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use server_core::test_utils::ResponseTestExt;
 use services::MockMcpService;
+use services::ResourceRole;
+use services::{Mcp, McpAuthType, McpExecutionResponse, McpServerInfo, McpTool};
 use tower::ServiceExt;
 
 fn test_server_info() -> McpServerInfo {

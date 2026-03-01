@@ -1,7 +1,7 @@
-use objs::{ToolDefinition, ToolsetDefinition, ToolsetExecutionRequest};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use services::{AppToolsetConfig, ToolDefinition, ToolsetDefinition, ToolsetExecutionRequest};
 use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
 
@@ -111,7 +111,7 @@ pub struct ToolsetResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsetsResponse {
   pub toolsets: Vec<ToolsetResponse>,
-  pub toolset_types: Vec<objs::AppToolsetConfig>,
+  pub toolset_types: Vec<AppToolsetConfig>,
 }
 
 // ============================================================================

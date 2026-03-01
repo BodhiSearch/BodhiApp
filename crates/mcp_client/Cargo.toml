@@ -6,8 +6,9 @@ rust-version.workspace = true
 
 [dependencies]
 async-trait = { workspace = true }
+errmeta = { path = "../errmeta" }
+errmeta_derive = { path = "../errmeta_derive" }
 mockall = { workspace = true, optional = true }
-objs = { workspace = true }
 reqwest = { workspace = true }
 rmcp = { workspace = true, features = [
   "client",
@@ -15,9 +16,11 @@ rmcp = { workspace = true, features = [
   "transport-streamable-http-client-reqwest",
   "reqwest",
 ] }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+utoipa = { workspace = true }
 
 [dev-dependencies]
 mockall = { workspace = true }

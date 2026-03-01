@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 errmeta_derive = { workspace = true }
-objs = { workspace = true }
 llama_server_proc = { workspace = true }
 services = { workspace = true }
 
@@ -37,8 +36,6 @@ validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 llama_server_proc = { workspace = true, features = ["test-utils"] }
-objs = { workspace = true, features = ["test-utils"] }
-
 services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
@@ -59,8 +56,6 @@ tower = { workspace = true, features = ["util"] }
 [features]
 test-utils = [
   "llama_server_proc/test-utils",
-  "objs/test-utils",
-
   "services/test-utils",
   "anyhow",
   "mockall",

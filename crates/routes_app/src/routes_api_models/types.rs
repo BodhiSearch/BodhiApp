@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use objs::{ApiAlias, ApiFormat};
 use serde::{Deserialize, Deserializer, Serialize};
+use services::{ApiAlias, ApiFormat};
 use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
 
@@ -113,7 +113,7 @@ impl From<ApiKeyUpdateAction> for services::db::ApiKeyUpdate {
     "models": ["gpt-4", "gpt-3.5-turbo"],
     "prefix": "openai"
 }))]
-#[builder(setter(into, strip_option), build_fn(error = objs::BuilderError))]
+#[builder(setter(into, strip_option), build_fn(error = services::BuilderError))]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct CreateApiModelRequest {
   /// API format/protocol (e.g., "openai")
@@ -182,7 +182,7 @@ fn default_api_key_keep() -> ApiKeyUpdateAction {
     "models": ["gpt-4-turbo", "gpt-3.5-turbo"],
     "prefix": "openai"
 }))]
-#[builder(setter(into, strip_option), build_fn(error = objs::BuilderError))]
+#[builder(setter(into, strip_option), build_fn(error = services::BuilderError))]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct UpdateApiModelRequest {
   /// API format/protocol (required)

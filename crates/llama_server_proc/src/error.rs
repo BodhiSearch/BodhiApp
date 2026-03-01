@@ -1,4 +1,20 @@
-use objs::{impl_error_from, AppError, ErrorType, IoError, ReqwestError};
+use errmeta::{impl_error_from, AppError, ErrorType, IoError};
+
+/// Wrapper for reqwest errors
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error("Network error: {error}.")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
+pub struct ReqwestError {
+  error: String,
+}
+
+impl From<reqwest::Error> for ReqwestError {
+  fn from(source: reqwest::Error) -> Self {
+    Self {
+      error: source.to_string(),
+    }
+  }
+}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -30,19 +46,15 @@ pub enum ServerError {
   ModelNotFound(String),
 }
 
-impl_error_from!(::std::io::Error, ServerError::IoError, ::objs::IoError);
-impl_error_from!(
-  reqwest::Error,
-  ServerError::ClientError,
-  ::objs::ReqwestError
-);
+impl_error_from!(::std::io::Error, ServerError::IoError, errmeta::IoError);
+impl_error_from!(reqwest::Error, ServerError::ClientError, ReqwestError);
 pub type Result<T> = std::result::Result<T, ServerError>;
 
 #[cfg(test)]
 mod tests {
   use super::*;
   use axum::http::StatusCode;
-  use objs::AppError;
+  use errmeta::AppError;
   use std::io::{Error as StdIoError, ErrorKind};
 
   #[test]

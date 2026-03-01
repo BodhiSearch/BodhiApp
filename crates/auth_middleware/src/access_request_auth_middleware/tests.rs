@@ -7,13 +7,13 @@ use axum::{
   routing::post,
   Router,
 };
-use objs::{ResourceRole, UserScope};
 use rstest::{fixture, rstest};
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{
-  db::{AccessRequestRepository, AppAccessRequestStatus, FlowType},
   test_utils::{AppServiceStubBuilder, MockDbService, TestDbService},
+  {AccessRequestRepository, AppAccessRequestStatus, FlowType},
 };
+use services::{ResourceRole, UserScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -175,14 +175,14 @@ async fn test_oauth_access_request_validation(
   #[case] approved: Option<String>,
   #[case] expected_status: StatusCode,
 ) {
-  use objs::test_utils::temp_dir;
+  use services::test_utils::temp_dir;
   use services::test_utils::test_db_service_with_temp_dir;
 
   let temp_dir = Arc::new(temp_dir());
   let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
   let now = test_db.now();
 
-  let access_request_row = services::db::AppAccessRequestRow {
+  let access_request_row = services::AppAccessRequestRow {
     id: "ar-uuid".to_string(),
     app_client_id: "app1".to_string(),
     app_name: None,
@@ -224,14 +224,14 @@ async fn test_oauth_access_request_validation(
 #[rstest]
 #[tokio::test]
 async fn test_oauth_app_client_mismatch(toolset_validator: Arc<dyn AccessRequestValidator>) {
-  use objs::test_utils::temp_dir;
+  use services::test_utils::temp_dir;
   use services::test_utils::test_db_service_with_temp_dir;
 
   let temp_dir = Arc::new(temp_dir());
   let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
   let now = test_db.now();
 
-  let access_request_row = services::db::AppAccessRequestRow {
+  let access_request_row = services::AppAccessRequestRow {
     id: "ar-uuid".to_string(),
     app_client_id: "app1".to_string(),
     app_name: None,
@@ -276,14 +276,14 @@ async fn test_oauth_app_client_mismatch(toolset_validator: Arc<dyn AccessRequest
 #[rstest]
 #[tokio::test]
 async fn test_oauth_user_mismatch(toolset_validator: Arc<dyn AccessRequestValidator>) {
-  use objs::test_utils::temp_dir;
+  use services::test_utils::temp_dir;
   use services::test_utils::test_db_service_with_temp_dir;
 
   let temp_dir = Arc::new(temp_dir());
   let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
   let now = test_db.now();
 
-  let access_request_row = services::db::AppAccessRequestRow {
+  let access_request_row = services::AppAccessRequestRow {
     id: "ar-uuid".to_string(),
     app_client_id: "app1".to_string(),
     app_name: None,
@@ -328,14 +328,14 @@ async fn test_oauth_user_mismatch(toolset_validator: Arc<dyn AccessRequestValida
 #[rstest]
 #[tokio::test]
 async fn test_oauth_auto_approved_no_toolsets(toolset_validator: Arc<dyn AccessRequestValidator>) {
-  use objs::test_utils::temp_dir;
+  use services::test_utils::temp_dir;
   use services::test_utils::test_db_service_with_temp_dir;
 
   let temp_dir = Arc::new(temp_dir());
   let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
   let now = test_db.now();
 
-  let access_request_row = services::db::AppAccessRequestRow {
+  let access_request_row = services::AppAccessRequestRow {
     id: "ar-uuid".to_string(),
     app_client_id: "app1".to_string(),
     app_name: None,
@@ -377,7 +377,7 @@ async fn test_oauth_auto_approved_no_toolsets(toolset_validator: Arc<dyn AccessR
 #[rstest]
 #[tokio::test]
 async fn test_oauth_access_request_not_found(toolset_validator: Arc<dyn AccessRequestValidator>) {
-  use objs::test_utils::temp_dir;
+  use services::test_utils::temp_dir;
   use services::test_utils::test_db_service_with_temp_dir;
 
   let temp_dir = Arc::new(temp_dir());
@@ -528,14 +528,14 @@ async fn test_mcp_oauth_access_request_validation(
   #[case] approved: Option<String>,
   #[case] expected_status: StatusCode,
 ) {
-  use objs::test_utils::temp_dir;
+  use services::test_utils::temp_dir;
   use services::test_utils::test_db_service_with_temp_dir;
 
   let temp_dir = Arc::new(temp_dir());
   let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
   let now = test_db.now();
 
-  let access_request_row = services::db::AppAccessRequestRow {
+  let access_request_row = services::AppAccessRequestRow {
     id: "ar-uuid".to_string(),
     app_client_id: "app1".to_string(),
     app_name: None,

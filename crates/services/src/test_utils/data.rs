@@ -1,3 +1,4 @@
+use crate::models::{Alias, UserAlias};
 use crate::{
   test_utils::{
     db::test_db_service, seed_test_user_aliases, test_hf_service, TestDbService, TestHfService,
@@ -5,7 +6,6 @@ use crate::{
   DataService, DataServiceError, LocalDataService,
 };
 use async_trait::async_trait;
-use objs::{Alias, UserAlias};
 use rstest::fixture;
 use std::sync::Arc;
 

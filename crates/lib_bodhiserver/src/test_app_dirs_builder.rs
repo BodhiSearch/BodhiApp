@@ -1,10 +1,10 @@
 use super::{load_defaults_yaml, setup_app_dirs, setup_bootstrap_service, BootstrapError};
 use crate::{AppOptions, AppOptionsBuilder};
 use mockall::predicate::eq;
-use objs::test_utils::{empty_bodhi_home, temp_dir};
-use objs::{AppCommand, AppType, EnvType, SettingSource};
 use rstest::rstest;
 use serde_yaml::Value;
+use services::test_utils::{empty_bodhi_home, temp_dir};
+use services::{AppCommand, AppType, EnvType, SettingSource};
 use services::{EnvWrapper, MockEnvWrapper, BODHI_HOME};
 use std::collections::HashMap;
 use std::env::VarError;
@@ -25,7 +25,7 @@ fn test_create_bodhi_home_from_env(empty_bodhi_home: TempDir) -> anyhow::Result<
     &file_defaults,
   )?;
   assert_eq!(result_path, bodhi_home);
-  assert_eq!(source, objs::SettingSource::Environment);
+  assert_eq!(source, services::SettingSource::Environment);
   assert!(bodhi_home.exists());
   Ok(())
 }
@@ -42,7 +42,7 @@ fn test_create_bodhi_home_from_home_dir(temp_dir: TempDir) -> anyhow::Result<()>
     &file_defaults,
   )?;
   let expected_path = temp_dir.path().join(".cache").join("bodhi-dev");
-  assert_eq!(source, objs::SettingSource::Default);
+  assert_eq!(source, services::SettingSource::Default);
   assert_eq!(result_path, expected_path);
   assert!(expected_path.exists());
   Ok(())

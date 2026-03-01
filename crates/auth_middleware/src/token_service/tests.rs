@@ -2,18 +2,18 @@ use crate::{AuthContext, AuthError, DefaultTokenService};
 use anyhow_trace::anyhow_trace;
 use chrono::{Duration, Utc};
 use mockall::predicate::*;
-use objs::{TokenScope, UserScope};
 use rstest::rstest;
 use serde_json::json;
 use services::{
-  db::{ApiToken, AppAccessRequestStatus, TokenRepository, TokenStatus},
   test_utils::{
     build_token, test_db_service, AppServiceStubBuilder, SettingServiceStub, TestDbService, ISSUER,
     TEST_CLIENT_ID, TEST_CLIENT_SECRET,
   },
   AppInstance, AppService, AuthServiceError, CacheService, LocalConcurrencyService,
   MockAuthService, MockSettingService, MokaCacheService, TokenError, TOKEN_TYPE_OFFLINE,
+  {ApiToken, AppAccessRequestStatus, TokenRepository, TokenStatus},
 };
+use services::{TokenScope, UserScope};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
@@ -621,9 +621,7 @@ async fn test_validate_bearer_token_scope_not_found(
 async fn test_validate_bearer_token_scope_not_approved(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
-  };
+  use services::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -702,9 +700,7 @@ async fn test_validate_bearer_token_scope_not_approved(
 async fn test_validate_bearer_token_app_client_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
-  };
+  use services::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -782,9 +778,7 @@ async fn test_validate_bearer_token_app_client_mismatch(
 async fn test_validate_bearer_token_user_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
-  };
+  use services::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -869,7 +863,7 @@ async fn test_validate_bearer_token_invalid_status(
   #[case] status_label: &str,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow, FlowType};
+  use services::{AccessRequestRepository, AppAccessRequestRow, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -949,9 +943,7 @@ async fn test_validate_bearer_token_invalid_status(
 async fn test_validate_bearer_token_access_request_id_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
-  };
+  use services::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1047,9 +1039,7 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
 async fn test_validate_bearer_token_missing_access_request_id_claim(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
-  };
+  use services::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1143,9 +1133,7 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
 async fn test_validate_bearer_token_with_access_request_scope_success(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
-  };
+  use services::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1256,9 +1244,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
 async fn test_validate_bearer_token_cache_hit_returns_role(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
-  };
+  use services::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1459,9 +1445,7 @@ async fn test_validate_bearer_token_without_access_request_scope(
 async fn test_validate_bearer_token_privilege_escalation_rejected(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
-  };
+  use services::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);

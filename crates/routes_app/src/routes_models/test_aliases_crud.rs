@@ -10,7 +10,6 @@ use axum::{
   routing::{get, post, put},
   Router,
 };
-use objs::OAIRequestParamsBuilder;
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use serde_json::Value;
@@ -19,6 +18,7 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::test_utils::{app_service_stub, AppServiceStub};
+use services::OAIRequestParamsBuilder;
 use std::sync::Arc;
 use tower::ServiceExt;
 

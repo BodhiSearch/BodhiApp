@@ -1,7 +1,7 @@
 use crate::AuthContext;
 use axum::body::Body;
 use axum::http::Request;
-use objs::{ResourceRole, TokenScope, UserScope};
+use services::{ResourceRole, TokenScope, UserScope};
 
 impl AuthContext {
   pub fn test_session(user_id: &str, username: &str, role: ResourceRole) -> Self {

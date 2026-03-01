@@ -9,13 +9,12 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{get, post, put};
 use axum::Router;
-use objs::{
-  CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpServer, RegistrationType, ResourceRole,
-};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
 use server_core::test_utils::ResponseTestExt;
+use services::ResourceRole;
+use services::{CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpServer, RegistrationType};
 use services::{McpServerError, MockMcpService};
 use tower::ServiceExt;
 

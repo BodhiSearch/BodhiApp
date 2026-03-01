@@ -11,7 +11,6 @@ use axum::{
 };
 use base64::{engine::general_purpose, Engine};
 use mockall::predicate::eq;
-use objs::{test_utils::temp_bodhi_home, ReqwestError, TokenScope};
 use pretty_assertions::assert_eq;
 use rand::RngCore;
 use rstest::rstest;
@@ -21,14 +20,16 @@ use server_core::{
   test_utils::{RequestTestExt, ResponseTestExt},
   DefaultRouterState, MockSharedContext, RouterState,
 };
+use services::test_utils::temp_bodhi_home;
+use services::ReqwestError;
+use services::TokenScope;
 use services::{
-  db::{ApiToken, TokenStatus},
   test_utils::{
     access_token_claims, build_token, expired_token, AppServiceStubBuilder, TEST_CLIENT_ID,
     TEST_CLIENT_SECRET,
   },
   AppInstance, AppService, AppStatus, AuthServiceError, DefaultSessionService, MockAuthService,
-  SessionService, BODHI_HOST, BODHI_PORT, BODHI_SCHEME,
+  SessionService, BODHI_HOST, BODHI_PORT, BODHI_SCHEME, {ApiToken, TokenStatus},
 };
 use sha2::{Digest, Sha256};
 use std::sync::Arc;

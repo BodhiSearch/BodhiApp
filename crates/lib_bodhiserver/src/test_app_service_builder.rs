@@ -1,8 +1,8 @@
 use super::AppServiceBuilder;
 use crate::{setup_app_dirs, setup_bootstrap_service, AppOptionsBuilder, BootstrapError};
-use objs::test_utils::empty_bodhi_home;
-use objs::AppCommand;
 use rstest::rstest;
+use services::test_utils::empty_bodhi_home;
+use services::AppCommand;
 use services::{test_utils::FrozenTimeService, AppService, MockCacheService};
 use std::sync::Arc;
 use tempfile::TempDir;

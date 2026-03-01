@@ -57,9 +57,9 @@ use axum::{
   routing::{delete, get, post, put},
   Router,
 };
-use objs::{ResourceRole, TokenScope, UserScope};
 use server_core::{DefaultRouterState, RouterState, SharedContext};
 use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
+use services::{ResourceRole, TokenScope, UserScope};
 use std::sync::Arc;
 use tower_http::{
   cors::{Any, CorsLayer},

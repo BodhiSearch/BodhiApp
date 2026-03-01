@@ -20,7 +20,6 @@ use axum::{extract::Request, routing::post, Router};
 use futures_util::StreamExt;
 use llama_server_proc::test_utils::mock_response;
 use mockall::predicate::{eq, function};
-use objs::Alias;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use rstest::rstest;
@@ -30,6 +29,7 @@ use server_core::{
   ContextError, DefaultRouterState, LlmEndpoint, MockSharedContext,
 };
 use services::test_utils::AppServiceStubBuilder;
+use services::Alias;
 use std::sync::Arc;
 use tower::ServiceExt;
 

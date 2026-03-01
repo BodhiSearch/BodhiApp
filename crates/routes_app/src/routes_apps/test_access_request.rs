@@ -7,19 +7,19 @@ use anyhow_trace::anyhow_trace;
 use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{body::Body, http::StatusCode, routing::put};
 use axum::{routing::post, Router};
-use objs::AppAccessRequestStatus;
-use objs::ResourceRole;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::{
   test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
 };
+use services::AppAccessRequestStatus;
+use services::ResourceRole;
 use services::{
-  db::{AppAccessRequestRow, DbService, FlowType, ToolsetRow},
+  db::DbService,
   test_utils::{AppServiceStubBuilder, FrozenTimeService},
   DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService,
-  RegisterAccessRequestConsentResponse,
+  RegisterAccessRequestConsentResponse, {AppAccessRequestRow, FlowType, ToolsetRow},
 };
 use std::sync::Arc;
 use tower::ServiceExt;

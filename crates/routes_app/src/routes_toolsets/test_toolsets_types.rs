@@ -4,10 +4,11 @@ use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
-use objs::{AppToolsetConfig, ResourceRole, ToolDefinition, ToolsetDefinition, UserScope};
 use rstest::rstest;
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{test_utils::AppServiceStubBuilder, MockToolService};
+use services::{AppToolsetConfig, ToolDefinition, ToolsetDefinition};
+use services::{ResourceRole, UserScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -46,7 +47,7 @@ async fn test_list_toolset_types(
     description: "Web search using Exa API".to_string(),
     tools: vec![ToolDefinition {
       tool_type: "function".to_string(),
-      function: objs::FunctionDefinition {
+      function: services::FunctionDefinition {
         name: "search".to_string(),
         description: "Search the web".to_string(),
         parameters: serde_json::json!({}),

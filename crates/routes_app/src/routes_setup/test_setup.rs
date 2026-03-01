@@ -9,7 +9,6 @@ use axum::{
   Router,
 };
 
-use objs::ReqwestError;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
@@ -17,6 +16,7 @@ use server_core::{
   test_utils::{RequestTestExt, ResponseTestExt},
   DefaultRouterState, MockSharedContext,
 };
+use services::ReqwestError;
 use services::{
   test_utils::{AppServiceStubBuilder, SettingServiceStub},
   AppInstance, AppService, AppStatus, AuthServiceError, ClientRegistrationResponse,

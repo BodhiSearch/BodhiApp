@@ -1,6 +1,25 @@
-use super::exa_service::ExaError;
 use crate::db::DbError;
-use objs::{AppError, ErrorType};
+use errmeta::{AppError, ErrorType};
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum ExaError {
+  #[error("Search request failed: {0}.")]
+  #[error_meta(error_type = ErrorType::ServiceUnavailable)]
+  RequestFailed(String),
+
+  #[error("Search rate limit exceeded. Please wait and try again.")]
+  #[error_meta(error_type = ErrorType::ServiceUnavailable)]
+  RateLimited,
+
+  #[error("Search API key is invalid or missing.")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  InvalidApiKey,
+
+  #[error("Search request timed out.")]
+  #[error_meta(error_type = ErrorType::ServiceUnavailable)]
+  Timeout,
+}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]

@@ -1,15 +1,23 @@
+use super::temp_dir;
+use crate::app_access_requests::{AccessRequestRepository, AppAccessRequestRow};
+use crate::apps::{AppInstanceRepository, AppInstanceRow};
 use crate::db::{
-  sea_migrations::Migrator, AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken,
-  AppAccessRequestRow, AppInstanceRepository, AppInstanceRow, AppToolsetConfigRow, DbCore, DbError,
-  DbSetting, DefaultDbService, DownloadRequest, McpAuthHeaderRow, McpOAuthConfigRow,
-  McpOAuthTokenRow, McpRepository, McpRow, McpServerRow, McpWithServerRow, ModelMetadataRow,
-  ModelRepository, SettingsRepository, TimeService, TokenRepository, ToolsetRepository, ToolsetRow,
-  UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
+  sea_migrations::Migrator, ApiKeyUpdate, DbCore, DbError, DefaultDbService, TimeService,
 };
+use crate::mcps::{
+  McpAuthHeaderRow, McpAuthRepository, McpInstanceRepository, McpOAuthConfigRow, McpOAuthTokenRow,
+  McpRow, McpServerRepository, McpServerRow, McpWithServerRow,
+};
+use crate::models::{
+  ApiAlias, ApiAliasRepository, DownloadRepository, DownloadRequest, ModelMetadataRepository,
+  ModelMetadataRow, UserAlias, UserAliasRepository,
+};
+use crate::settings::{DbSetting, SettingsRepository};
+use crate::tokens::{ApiToken, TokenRepository};
+use crate::toolsets::{AppToolsetConfigRow, ToolsetRepository, ToolsetRow};
+use crate::users::{AccessRepository, UserAccessRequest};
+use crate::UserAccessRequestStatus;
 use chrono::{DateTime, Utc};
-use objs::test_utils::temp_dir;
-use objs::ApiAlias;
-use objs::UserAlias;
 use rstest::fixture;
 use sea_orm::Database;
 use sea_orm_migration::MigratorTrait;
@@ -118,7 +126,7 @@ impl DbCore for TestDbService {
 }
 
 #[async_trait::async_trait]
-impl ModelRepository for TestDbService {
+impl DownloadRepository for TestDbService {
   async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError> {
     self
       .inner
@@ -166,7 +174,10 @@ impl ModelRepository for TestDbService {
       .await
       .tap(|_| self.notify("find_download_request_by_repo_filename"))
   }
+}
 
+#[async_trait::async_trait]
+impl ApiAliasRepository for TestDbService {
   async fn create_api_model_alias(
     &self,
     alias: &ApiAlias,
@@ -248,7 +259,10 @@ impl ModelRepository for TestDbService {
       .await
       .tap(|_| self.notify("check_prefix_exists"))
   }
+}
 
+#[async_trait::async_trait]
+impl ModelMetadataRepository for TestDbService {
   async fn upsert_model_metadata(&self, metadata: &ModelMetadataRow) -> Result<(), DbError> {
     self
       .inner
@@ -525,7 +539,7 @@ impl ToolsetRepository for TestDbService {
 }
 
 #[async_trait::async_trait]
-impl McpRepository for TestDbService {
+impl McpServerRepository for TestDbService {
   async fn create_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError> {
     self
       .inner
@@ -581,7 +595,10 @@ impl McpRepository for TestDbService {
       .await
       .tap(|_| self.notify("clear_mcp_tools_by_server_id"))
   }
+}
 
+#[async_trait::async_trait]
+impl McpInstanceRepository for TestDbService {
   async fn create_mcp(&self, row: &McpRow) -> Result<McpRow, DbError> {
     self
       .inner
@@ -629,8 +646,14 @@ impl McpRepository for TestDbService {
       .await
       .tap(|_| self.notify("delete_mcp"))
   }
+}
 
-  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<objs::McpAuthHeader>, DbError> {
+#[async_trait::async_trait]
+impl McpAuthRepository for TestDbService {
+  async fn get_mcp_auth_header(
+    &self,
+    id: &str,
+  ) -> Result<Option<crate::mcps::McpAuthHeader>, DbError> {
     self
       .inner
       .get_mcp_auth_header(id)
@@ -671,7 +694,7 @@ impl McpRepository for TestDbService {
   async fn list_mcp_auth_headers_by_server(
     &self,
     mcp_server_id: &str,
-  ) -> Result<Vec<objs::McpAuthHeader>, DbError> {
+  ) -> Result<Vec<crate::mcps::McpAuthHeader>, DbError> {
     self
       .inner
       .list_mcp_auth_headers_by_server(mcp_server_id)
@@ -698,7 +721,10 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("create_mcp_oauth_config"))
   }
 
-  async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<objs::McpOAuthConfig>, DbError> {
+  async fn get_mcp_oauth_config(
+    &self,
+    id: &str,
+  ) -> Result<Option<crate::mcps::McpOAuthConfig>, DbError> {
     self
       .inner
       .get_mcp_oauth_config(id)
@@ -709,7 +735,7 @@ impl McpRepository for TestDbService {
   async fn list_mcp_oauth_configs_by_server(
     &self,
     mcp_server_id: &str,
-  ) -> Result<Vec<objs::McpOAuthConfig>, DbError> {
+  ) -> Result<Vec<crate::mcps::McpOAuthConfig>, DbError> {
     self
       .inner
       .list_mcp_oauth_configs_by_server(mcp_server_id)
@@ -759,7 +785,7 @@ impl McpRepository for TestDbService {
     &self,
     user_id: &str,
     id: &str,
-  ) -> Result<Option<objs::McpOAuthToken>, DbError> {
+  ) -> Result<Option<crate::mcps::McpOAuthToken>, DbError> {
     self
       .inner
       .get_mcp_oauth_token(user_id, id)
@@ -770,7 +796,7 @@ impl McpRepository for TestDbService {
   async fn get_latest_oauth_token_by_config(
     &self,
     config_id: &str,
-  ) -> Result<Option<objs::McpOAuthToken>, DbError> {
+  ) -> Result<Option<crate::mcps::McpOAuthToken>, DbError> {
     self
       .inner
       .get_latest_oauth_token_by_config(config_id)
@@ -902,7 +928,7 @@ impl AppInstanceRepository for TestDbService {
     &self,
     client_id: &str,
     client_secret: &str,
-    status: &objs::AppStatus,
+    status: &crate::AppStatus,
   ) -> Result<(), DbError> {
     self
       .inner
@@ -914,7 +940,7 @@ impl AppInstanceRepository for TestDbService {
   async fn update_app_instance_status(
     &self,
     client_id: &str,
-    status: &objs::AppStatus,
+    status: &crate::AppStatus,
   ) -> Result<(), DbError> {
     self
       .inner
@@ -1049,12 +1075,16 @@ mockall::mock! {
   }
 
   #[async_trait::async_trait]
-  impl ModelRepository for DbService {
+  impl DownloadRepository for DbService {
     async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
     async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError>;
     async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
     async fn list_download_requests(&self, page: usize, page_size: usize) -> Result<(Vec<DownloadRequest>, usize), DbError>;
     async fn find_download_request_by_repo_filename(&self, repo: &str, filename: &str) -> Result<Vec<DownloadRequest>, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl ApiAliasRepository for DbService {
     async fn create_api_model_alias(&self, alias: &ApiAlias, api_key: Option<String>) -> Result<(), DbError>;
     async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError>;
     async fn update_api_model_alias(&self, id: &str, model: &ApiAlias, api_key: ApiKeyUpdate) -> Result<(), DbError>;
@@ -1063,6 +1093,10 @@ mockall::mock! {
     async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError>;
     async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError>;
     async fn check_prefix_exists(&self, prefix: &str, exclude_id: Option<String>) -> Result<bool, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl ModelMetadataRepository for DbService {
     async fn upsert_model_metadata(&self, metadata: &ModelMetadataRow) -> Result<(), DbError>;
     async fn get_model_metadata_by_file(&self, repo: &str, filename: &str, snapshot: &str) -> Result<Option<ModelMetadataRow>, DbError>;
     async fn batch_get_metadata_by_files(&self, files: &[(String, String, String)]) -> Result<std::collections::HashMap<(String, String, String), ModelMetadataRow>, DbError>;
@@ -1086,12 +1120,12 @@ mockall::mock! {
       &self,
       client_id: &str,
       client_secret: &str,
-      status: &objs::AppStatus,
+      status: &crate::AppStatus,
     ) -> Result<(), DbError>;
     async fn update_app_instance_status(
       &self,
       client_id: &str,
-      status: &objs::AppStatus,
+      status: &crate::AppStatus,
     ) -> Result<(), DbError>;
     async fn delete_app_instance(&self, client_id: &str) -> Result<(), DbError>;
   }
@@ -1131,7 +1165,7 @@ mockall::mock! {
   }
 
   #[async_trait::async_trait]
-  impl McpRepository for DbService {
+  impl McpServerRepository for DbService {
     async fn create_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError>;
     async fn update_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError>;
     async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServerRow>, DbError>;
@@ -1139,27 +1173,35 @@ mockall::mock! {
     async fn list_mcp_servers(&self, enabled: Option<bool>) -> Result<Vec<McpServerRow>, DbError>;
     async fn count_mcps_by_server_id(&self, server_id: &str) -> Result<(i64, i64), DbError>;
     async fn clear_mcp_tools_by_server_id(&self, server_id: &str) -> Result<u64, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl McpInstanceRepository for DbService {
     async fn create_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
     async fn get_mcp(&self, user_id: &str, id: &str) -> Result<Option<McpRow>, DbError>;
     async fn get_mcp_by_slug(&self, user_id: &str, slug: &str) -> Result<Option<McpRow>, DbError>;
     async fn list_mcps_with_server(&self, user_id: &str) -> Result<Vec<McpWithServerRow>, DbError>;
     async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
     async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl McpAuthRepository for DbService {
     async fn create_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
-    async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<objs::McpAuthHeader>, DbError>;
+    async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<crate::mcps::McpAuthHeader>, DbError>;
     async fn update_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
     async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError>;
-    async fn list_mcp_auth_headers_by_server(&self, mcp_server_id: &str) -> Result<Vec<objs::McpAuthHeader>, DbError>;
+    async fn list_mcp_auth_headers_by_server(&self, mcp_server_id: &str) -> Result<Vec<crate::mcps::McpAuthHeader>, DbError>;
     async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
     async fn create_mcp_oauth_config(&self, row: &McpOAuthConfigRow) -> Result<McpOAuthConfigRow, DbError>;
-    async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<objs::McpOAuthConfig>, DbError>;
-    async fn list_mcp_oauth_configs_by_server(&self, mcp_server_id: &str) -> Result<Vec<objs::McpOAuthConfig>, DbError>;
+    async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<crate::mcps::McpOAuthConfig>, DbError>;
+    async fn list_mcp_oauth_configs_by_server(&self, mcp_server_id: &str) -> Result<Vec<crate::mcps::McpOAuthConfig>, DbError>;
     async fn delete_mcp_oauth_config(&self, id: &str) -> Result<(), DbError>;
     async fn delete_oauth_config_cascade(&self, config_id: &str) -> Result<(), DbError>;
     async fn get_decrypted_client_secret(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
     async fn create_mcp_oauth_token(&self, row: &McpOAuthTokenRow) -> Result<McpOAuthTokenRow, DbError>;
-    async fn get_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<Option<objs::McpOAuthToken>, DbError>;
-    async fn get_latest_oauth_token_by_config(&self, config_id: &str) -> Result<Option<objs::McpOAuthToken>, DbError>;
+    async fn get_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<Option<crate::mcps::McpOAuthToken>, DbError>;
+    async fn get_latest_oauth_token_by_config(&self, config_id: &str) -> Result<Option<crate::mcps::McpOAuthToken>, DbError>;
     async fn update_mcp_oauth_token(&self, row: &McpOAuthTokenRow) -> Result<McpOAuthTokenRow, DbError>;
     async fn delete_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<(), DbError>;
     async fn delete_oauth_tokens_by_config(&self, config_id: &str) -> Result<(), DbError>;

@@ -2,11 +2,11 @@ use crate::{logout_handler, RedirectResponse};
 use anyhow_trace::anyhow_trace;
 use axum::{http::StatusCode, response::IntoResponse, routing::post, Json, Router};
 use axum_test::TestServer;
-use objs::test_utils::temp_bodhi_home;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
 use server_core::{DefaultRouterState, MockSharedContext};
+use services::test_utils::temp_bodhi_home;
 use services::{
   test_utils::{AppServiceStubBuilder, SessionTestExt},
   AppService, DefaultSessionService,

@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
-use objs::{
-  Alias, ApiAlias, ApiFormat, HubFile, ModelAlias, ModelMetadata, OAIRequestParams, UserAlias,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::db::{ApiToken, DownloadRequest};
+use services::{
+  Alias, ApiAlias, ApiFormat, HubFile, ModelAlias, ModelMetadata, OAIRequestParams, UserAlias,
+};
+use services::{ApiToken, DownloadRequest};
 use std::collections::HashMap;
 use utoipa::ToSchema;
 
@@ -88,7 +88,7 @@ impl LocalModelResponse {
   any(test, feature = "test-utils"),
   builder(
     setter(into),
-    build_fn(error = objs::BuilderError)))]
+    build_fn(error = services::BuilderError)))]
 pub struct UserAliasResponse {
   pub id: String,
   pub alias: String,

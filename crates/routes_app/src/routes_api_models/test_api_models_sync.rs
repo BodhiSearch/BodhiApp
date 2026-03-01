@@ -11,8 +11,6 @@ use axum::{
   Router,
 };
 use mockall::predicate;
-use objs::ApiAliasBuilder;
-use objs::ApiFormat::OpenAI;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use server_core::{
@@ -20,9 +18,10 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::{
-  db::ModelRepository,
   test_utils::{test_db_service, AppServiceStubBuilder, TestDbService},
+  ApiAliasRepository,
 };
+use services::{ApiAliasBuilder, ApiFormat::OpenAI};
 use std::sync::Arc;
 use tower::ServiceExt;
 use uuid::Uuid;

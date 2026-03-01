@@ -5,13 +5,12 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
 use chrono::Utc;
-use objs::{
-  AppToolsetConfig, ResourceRole, ToolDefinition, Toolset, ToolsetExecutionResponse, UserScope,
-};
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{test_utils::AppServiceStubBuilder, MockToolService};
+use services::{AppToolsetConfig, ToolDefinition, Toolset, ToolsetExecutionResponse};
+use services::{ResourceRole, UserScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -30,14 +29,14 @@ fn test_instance() -> Toolset {
   }
 }
 
-fn test_toolset_definition() -> objs::ToolsetDefinition {
-  objs::ToolsetDefinition {
+fn test_toolset_definition() -> services::ToolsetDefinition {
+  services::ToolsetDefinition {
     toolset_type: "builtin-exa-search".to_string(),
     name: "Exa Web Search".to_string(),
     description: "Web search using Exa API".to_string(),
     tools: vec![ToolDefinition {
       tool_type: "function".to_string(),
-      function: objs::FunctionDefinition {
+      function: services::FunctionDefinition {
         name: "search".to_string(),
         description: "Search the web".to_string(),
         parameters: serde_json::json!({}),

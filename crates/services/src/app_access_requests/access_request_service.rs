@@ -4,9 +4,10 @@ use std::sync::Arc;
 use ulid::Ulid;
 
 use super::error::{AccessRequestError, Result};
-use crate::db::{AppAccessRequestRow, AppAccessRequestStatus, DbService, FlowType, TimeService};
+use super::{AppAccessRequestRow, AppAccessRequestStatus, ApprovalStatus, FlowType};
+use crate::db::{DbService, TimeService};
 use crate::AuthService;
-use objs::{ApprovalStatus, UserScope};
+use crate::UserScope;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
@@ -17,8 +18,8 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     app_client_id: String,
     flow_type: FlowType,
     redirect_uri: Option<String>,
-    tools_requested: Vec<objs::ToolsetTypeRequest>,
-    mcp_servers_requested: Vec<objs::McpServerRequest>,
+    tools_requested: Vec<super::ToolsetTypeRequest>,
+    mcp_servers_requested: Vec<super::McpServerRequest>,
     requested_role: UserScope,
   ) -> Result<AppAccessRequestRow>;
 
@@ -31,8 +32,8 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     id: &str,
     user_id: &str,
     user_token: &str,
-    tool_approvals: Vec<objs::ToolsetApproval>,
-    mcp_approvals: Vec<objs::McpApproval>,
+    tool_approvals: Vec<super::ToolsetApproval>,
+    mcp_approvals: Vec<super::McpApproval>,
     approved_role: UserScope,
   ) -> Result<AppAccessRequestRow>;
 
@@ -68,8 +69,8 @@ impl DefaultAccessRequestService {
 
   fn generate_description(
     &self,
-    tool_approvals: &[objs::ToolsetApproval],
-    mcp_approvals: &[objs::McpApproval],
+    tool_approvals: &[super::ToolsetApproval],
+    mcp_approvals: &[super::McpApproval],
   ) -> String {
     let mut lines = Vec::new();
     for approval in tool_approvals {
@@ -97,8 +98,8 @@ impl AccessRequestService for DefaultAccessRequestService {
     app_client_id: String,
     flow_type: FlowType,
     redirect_uri: Option<String>,
-    toolsets_requested: Vec<objs::ToolsetTypeRequest>,
-    mcp_servers_requested: Vec<objs::McpServerRequest>,
+    toolsets_requested: Vec<super::ToolsetTypeRequest>,
+    mcp_servers_requested: Vec<super::McpServerRequest>,
     requested_role: UserScope,
   ) -> Result<AppAccessRequestRow> {
     if flow_type == FlowType::Redirect && redirect_uri.is_none() {
@@ -158,8 +159,8 @@ impl AccessRequestService for DefaultAccessRequestService {
     id: &str,
     user_id: &str,
     user_token: &str,
-    tool_approvals: Vec<objs::ToolsetApproval>,
-    mcp_approvals: Vec<objs::McpApproval>,
+    tool_approvals: Vec<super::ToolsetApproval>,
+    mcp_approvals: Vec<super::McpApproval>,
     approved_role: UserScope,
   ) -> Result<AppAccessRequestRow> {
     let row = self

@@ -1,3 +1,4 @@
+use super::temp_dir;
 use crate::{
   EnvWrapper, SettingService, SettingServiceError, SettingsChangeListener, BODHI_APP_TYPE,
   BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_CANONICAL_REDIRECT, BODHI_COMMIT_SHA, BODHI_DEPLOYMENT,
@@ -6,8 +7,8 @@ use crate::{
   BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME, BODHI_SESSION_DB_URL,
   BODHI_VERSION, HF_HOME,
 };
+use crate::{Setting, SettingInfo, SettingMetadata, SettingSource};
 use llama_server_proc::{BUILD_TARGET, BUILD_VARIANTS, DEFAULT_VARIANT, EXEC_NAME};
-use objs::{test_utils::temp_dir, Setting, SettingInfo, SettingMetadata, SettingSource};
 use rstest::fixture;
 use std::{
   collections::HashMap,

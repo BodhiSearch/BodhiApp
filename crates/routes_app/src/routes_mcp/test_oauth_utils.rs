@@ -11,12 +11,13 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{delete, get, post};
 use axum::Router;
-use objs::{McpOAuthToken, RegistrationType, ResourceRole};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
 use services::MockMcpService;
+use services::ResourceRole;
+use services::{McpOAuthToken, RegistrationType};
 use tower::ServiceExt;
 
 async fn test_router_for_oauth_discovery(
@@ -323,7 +324,7 @@ async fn test_get_oauth_token_handler_wrong_user_returns_404() -> anyhow::Result
 #[tokio::test]
 #[anyhow_trace]
 async fn test_delete_oauth_token_handler_success() -> anyhow::Result<()> {
-  use services::db::{McpOAuthConfigRow, McpOAuthTokenRow, McpServerRow};
+  use services::{McpOAuthConfigRow, McpOAuthTokenRow, McpServerRow};
 
   let mock = MockMcpService::new();
   let (state, app_service) = build_mcp_test_state_with_app_service(mock).await?;

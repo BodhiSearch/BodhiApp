@@ -1,5 +1,5 @@
 use axum::Router;
-use objs::{impl_error_from, AppError, IoError};
+use services::{impl_error_from, AppError, IoError};
 use tokio::{
   net::TcpListener,
   sync::oneshot::{self, Receiver, Sender},
@@ -25,7 +25,7 @@ pub enum ServerError {
   Io(#[from] IoError),
 }
 
-impl_error_from!(::std::io::Error, ServerError::Io, ::objs::IoError);
+impl_error_from!(::std::io::Error, ServerError::Io, ::services::IoError);
 
 type Result<T> = std::result::Result<T, ServerError>;
 

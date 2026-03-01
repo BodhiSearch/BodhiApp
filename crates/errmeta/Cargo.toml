@@ -1,0 +1,12 @@
+[package]
+name = "errmeta"
+version = "0.0.46-dev"
+edition = "2021"
+
+[dependencies]
+errmeta_derive = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+rstest = { workspace = true }

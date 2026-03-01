@@ -6,9 +6,9 @@ use axum::{
   Router,
 };
 use mockall::predicate::*;
-use objs::EnvType;
 use rstest::{fixture, rstest};
 use server_core::test_utils::ResponseTestExt;
+use services::EnvType;
 use services::{
   test_utils::SettingServiceStub, SettingService, BODHI_DEV_PROXY_UI, BODHI_ENV_TYPE,
 };

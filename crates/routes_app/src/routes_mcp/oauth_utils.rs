@@ -4,14 +4,15 @@ use crate::routes_mcp::{
   ENDPOINT_MCPS_OAUTH_DISCOVER_AS, ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
   ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE,
 };
+use crate::API_TAG_MCPS;
 use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, State},
   http::StatusCode,
   Extension, Json,
 };
-use objs::{ApiError, API_TAG_MCPS};
 use server_core::RouterState;
+use services::ApiError;
 use std::sync::Arc;
 
 // ============================================================================
@@ -188,7 +189,7 @@ pub async fn get_oauth_token_handler(
   let token = mcp_service
     .get_oauth_token(user_id, &token_id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("OAuth token".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("OAuth token".to_string()))?;
   Ok(Json(OAuthTokenResponse::from(token)))
 }
 

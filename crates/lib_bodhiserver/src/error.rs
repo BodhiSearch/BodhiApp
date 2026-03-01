@@ -1,5 +1,6 @@
-use objs::{AppError, ErrorType, IoError};
-use services::{db::DbError, AppInstanceError, KeyringError, SessionServiceError};
+use services::{
+  db::DbError, AppError, AppInstanceError, ErrorType, IoError, KeyringError, SessionServiceError,
+};
 use std::io;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]

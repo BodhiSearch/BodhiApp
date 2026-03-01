@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use errmeta::{AppError, ErrorType};
 use keyring::Entry;
-use objs::{AppError, ErrorType};
 use rand::{rng, RngCore};
 use sha2::{Digest, Sha256};
 
@@ -89,14 +89,14 @@ pub fn generate_random_key() -> Vec<u8> {
 #[cfg(test)]
 mod tests {
   use crate::KeyringError;
-  use objs::AppError;
+  use errmeta::AppError;
 
   #[test]
   fn test_keyring_error_types() {
     let error = KeyringError::KeyringError(keyring::Error::NoEntry);
     assert_eq!(
       error.error_type(),
-      objs::ErrorType::InternalServer.to_string()
+      errmeta::ErrorType::InternalServer.to_string()
     );
     assert_eq!(error.code(), "keyring_error-keyring_error");
   }

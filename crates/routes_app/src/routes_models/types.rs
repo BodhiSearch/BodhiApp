@@ -10,7 +10,7 @@ pub struct CreateAliasRequest {
   pub filename: String,
   pub snapshot: Option<String>,
 
-  pub request_params: Option<objs::OAIRequestParams>,
+  pub request_params: Option<services::OAIRequestParams>,
   pub context_params: Option<Vec<String>>,
 }
 
@@ -20,7 +20,7 @@ pub struct UpdateAliasRequest {
   pub filename: String,
   pub snapshot: Option<String>,
 
-  pub request_params: Option<objs::OAIRequestParams>,
+  pub request_params: Option<services::OAIRequestParams>,
   pub context_params: Option<Vec<String>>,
 }
 

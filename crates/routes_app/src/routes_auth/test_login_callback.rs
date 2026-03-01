@@ -10,7 +10,6 @@ use axum::{
 use axum_test::TestServer;
 use chrono::Utc;
 use oauth2::{AccessToken, RefreshToken};
-use objs::test_utils::temp_bodhi_home;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
@@ -18,6 +17,7 @@ use server_core::{
   test_utils::{RequestTestExt, ResponseTestExt},
   DefaultRouterState, MockSharedContext, RouterState,
 };
+use services::test_utils::temp_bodhi_home;
 use services::{
   test_utils::{
     build_token, AppServiceStub, AppServiceStubBuilder, SessionTestExt, SettingServiceStub,

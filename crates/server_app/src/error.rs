@@ -1,4 +1,4 @@
-use objs::{AppError, ErrorType};
+use services::{AppError, ErrorType};
 use tokio::task::JoinError;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
@@ -12,9 +12,9 @@ pub struct TaskJoinError {
 #[cfg(test)]
 mod tests {
   use crate::TaskJoinError;
-  use objs::AppError;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use services::AppError;
 
   async fn build_join_error() -> tokio::task::JoinError {
     let handle = tokio::spawn(async move {

@@ -157,14 +157,14 @@ async fn test_cross_client_token_exchange_success(
   let access_request_id = uuid::Uuid::new_v4().to_string();
   let now = chrono::Utc::now();
   let expires_at = now + chrono::Duration::seconds(600);
-  let row = services::db::AppAccessRequestRow {
+  let row = services::AppAccessRequestRow {
     id: access_request_id.clone(),
     app_client_id: auth_server_config.app_client_id.clone(),
     app_name: None,
     app_description: None,
-    flow_type: services::db::FlowType::Popup,
+    flow_type: services::FlowType::Popup,
     redirect_uri: None,
-    status: services::db::AppAccessRequestStatus::Draft,
+    status: services::AppAccessRequestStatus::Draft,
     requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
     approved: None,
     user_id: None,

@@ -1,14 +1,13 @@
+use crate::models::{HubFile, Repo};
 use crate::{
   test_utils::{
-    build_hf_service, hf_test_token_allowed, hf_test_token_public, test_hf_service, TestHfService,
+    build_hf_service, generate_test_data_gguf_files, hf_test_token_allowed, hf_test_token_public,
+    temp_hf_home, test_hf_service, TestHfService, SNAPSHOT,
   },
   HubService, HubServiceError, SNAPSHOT_MAIN,
 };
 use anyhow_trace::anyhow_trace;
-use objs::{
-  test_utils::{generate_test_data_gguf_files, temp_hf_home, SNAPSHOT},
-  AppError, HubFile, Repo,
-};
+use errmeta::AppError;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use std::{collections::HashSet, fs};

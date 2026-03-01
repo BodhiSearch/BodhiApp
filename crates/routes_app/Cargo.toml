@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 errmeta_derive = { workspace = true }
-objs = { workspace = true }
 services = { workspace = true }
 auth_middleware = { workspace = true }
 server_core = { workspace = true }
@@ -56,7 +55,6 @@ routes_app = { path = ".", features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
 auth_middleware = { workspace = true, features = ["test-utils"] }
-objs = { workspace = true, features = ["test-utils"] }
 llama_server_proc = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }

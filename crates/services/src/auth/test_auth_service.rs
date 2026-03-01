@@ -1,8 +1,8 @@
 use crate::{test_utils::test_auth_service, AuthService, ClientRegistrationResponse};
 use anyhow_trace::anyhow_trace;
+use errmeta::AppError;
 use mockito::{Matcher, Server};
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
-use objs::AppError;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
@@ -658,8 +658,8 @@ async fn test_list_users_success() -> anyhow::Result<()> {
   assert_eq!(10, response.page_size);
   assert_eq!(1, response.total_pages);
   assert_eq!(2, response.total_users);
-  assert_eq!(false, response.has_next);
-  assert_eq!(false, response.has_previous);
+  assert!(!response.has_next);
+  assert!(!response.has_previous);
   mock.assert();
   Ok(())
 }

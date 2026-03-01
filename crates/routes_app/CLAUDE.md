@@ -33,7 +33,7 @@ The crate has deliberately moved away from generic HTTP error wrappers (such as 
 - `SettingsError` -- Settings management (NotFound, BodhiHome, Unsupported)
 - `CreateAliasError` -- Model alias creation
 
-All enums use the `#[error_meta(trait_to_impl = AppError)]` pattern from `errmeta_derive`, mapping each variant to an `ErrorType` that determines the HTTP status code via the `ApiError` conversion in `objs`.
+All enums use the `#[error_meta(trait_to_impl = AppError)]` pattern from `errmeta_derive`, mapping each variant to an `ErrorType` that determines the HTTP status code via the `ApiError` conversion in `services`.
 
 ### AuthContext Extension Pattern
 Route handlers receive user identity through `Extension<AuthContext>` from Axum, where `AuthContext` is an enum defined in `auth_middleware`. The auth middleware populates this extension before handlers run. This replaces the previous approach of individual typed extractors (`ExtractUserId`, `ExtractToken`, `ExtractRole`, etc.) and manual `HeaderMap` parsing.
@@ -80,8 +80,7 @@ Factory methods: `AuthContext::test_session()`, `AuthContext::test_session_with_
 The `routes_app` crate sits in the **API layer** of BodhiApp's architecture:
 
 **Upstream dependencies** (crates this depends on):
-- [`objs`](../objs/CLAUDE.md) -- domain types, errors, API tag constants
-- [`services`](../services/CLAUDE.md) -- business logic (AppService, ToolService, McpService, etc.)
+- [`services`](../services/CLAUDE.md) -- domain types, errors, API tag constants, business logic (AppService, ToolService, McpService, etc.)
 - [`auth_middleware`](../auth_middleware/CLAUDE.md) -- `AuthContext` extension, session helpers
 - [`server_core`](../server_core/CLAUDE.md) -- `RouterState`, `SharedContext`
 
@@ -108,11 +107,11 @@ All route handlers access business logic through `RouterState`, which provides `
 - `time_service()` -- Testable time source (never use `Utc::now()` directly)
 - `queue_producer()` -- Async task enqueueing for metadata refresh
 
-### Command Layer Integration
-Model creation and pull operations delegate to the `commands` crate (`CreateCommand`, `PullCommand`) rather than calling services directly. This ensures CLI and HTTP operations share identical business logic and validation.
+### Service Layer Integration
+Model creation and pull operations delegate to service-level business logic rather than implementing logic directly in route handlers. This ensures consistent validation and behavior across all application contexts.
 
 ### Error Translation Chain
-Service errors flow through a well-defined chain: service-specific error -> domain error enum (defined in this crate) -> `ApiError` (from `objs`) -> OpenAI-compatible JSON response. Each domain error enum wraps relevant service errors via `#[error(transparent)]` with `#[from]` conversion, while also defining handler-specific error variants.
+Service errors flow through a well-defined chain: service-specific error -> domain error enum (defined in this crate) -> `ApiError` (from `services`) -> OpenAI-compatible JSON response. Each domain error enum wraps relevant service errors via `#[error(transparent)]` with `#[from]` conversion, while also defining handler-specific error variants.
 
 ## API Orchestration Workflows
 
@@ -312,7 +311,7 @@ Return `session_service` alongside the router so tests can inspect or pre-popula
 2. Accept `Extension(auth_context): Extension<AuthContext>` for user identity -- pattern match the variant or use convenience methods (`user_id()`, `token()`) as appropriate
 3. Add `#[utoipa::path(...)]` annotations with comprehensive request/response examples and security requirements
 4. Coordinate through `RouterState` for service access
-5. For complex multi-service operations, consider delegating to the `commands` crate
+5. For complex multi-service operations, coordinate through the `services` crate's business logic layer
 6. **Register in OpenAPI and generate TypeScript types** -- see the checklist below
 
 ### OpenAPI Registration and TypeScript Client Checklist
@@ -335,16 +334,16 @@ Annotate each handler function following the pattern in existing modules (e.g., 
 The `#[utoipa::path]` macro generates `__path_<handler_name>` symbols used by the OpenAPI derive macro.
 
 **Step 2 -- Add an API tag constant (if new domain)**
-Add `pub const API_TAG_<DOMAIN>: &str = "<domain>";` to `crates/objs/src/api_tags.rs`. This is re-exported via `objs::*`.
+Add `pub const API_TAG_<DOMAIN>: &str = "<domain>";` to `crates/routes_app/src/shared/constants.rs`.
 
 **Step 3 -- Register in `openapi.rs`**
 In `crates/routes_app/src/shared/openapi.rs`, update the `#[derive(OpenApi)]` on `BodhiOpenAPIDoc`:
-- **Imports**: Add `use crate::{ <DTOs>, __path_<handler>... };` and `use objs::{ <domain types>, API_TAG_<DOMAIN> };`
+- **Imports**: Add `use crate::{ <DTOs>, __path_<handler>... };` and `use services::{ <domain types> };` plus `use crate::shared::constants::API_TAG_<DOMAIN>;`
 - **Tags**: Add `(name = API_TAG_<DOMAIN>, description = "...")` to the `tags(...)` block
 - **Schemas**: Add all request/response DTOs and domain types to the `schemas(...)` block inside `components(...)`
 - **Paths**: Add all `<handler_name>` entries to the `paths(...)` block
 
-All request/response types must derive `utoipa::ToSchema`. Domain types from `objs` (e.g., `McpServer`, `McpTool`) must also derive `ToSchema`.
+All request/response types must derive `utoipa::ToSchema`. Domain types from `services` (e.g., `McpServer`, `McpTool`) must also derive `ToSchema`.
 
 **Step 4 -- Regenerate OpenAPI spec**
 ```bash

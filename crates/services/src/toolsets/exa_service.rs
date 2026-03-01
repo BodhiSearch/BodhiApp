@@ -1,32 +1,8 @@
-use objs::{AppError, ErrorType};
+use super::error::ExaError;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 const EXA_TIMEOUT_SECS: u64 = 30;
-
-// ============================================================================
-// ExaError - Errors from Exa API integration
-// ============================================================================
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum ExaError {
-  #[error("Search request failed: {0}.")]
-  #[error_meta(error_type = ErrorType::ServiceUnavailable)]
-  RequestFailed(String),
-
-  #[error("Search rate limit exceeded. Please wait and try again.")]
-  #[error_meta(error_type = ErrorType::ServiceUnavailable)]
-  RateLimited,
-
-  #[error("Search API key is invalid or missing.")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  InvalidApiKey,
-
-  #[error("Search request timed out.")]
-  #[error_meta(error_type = ErrorType::ServiceUnavailable)]
-  Timeout,
-}
 
 // ============================================================================
 // ExaService - Service for calling Exa AI search API

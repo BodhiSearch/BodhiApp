@@ -1,19 +1,7 @@
-use crate::db::{AppInstanceRow, DbError, DbService};
-use crate::{AppInstance, AppStatus};
-use objs::{AppError, ErrorType};
+use super::error::{AppInstanceError, Result};
+use super::{AppInstance, AppInstanceRow, AppStatus};
+use crate::db::DbService;
 use std::sync::Arc;
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum AppInstanceError {
-  #[error("Application instance not found.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  NotFound,
-  #[error(transparent)]
-  Db(#[from] DbError),
-}
-
-type Result<T> = std::result::Result<T, AppInstanceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]

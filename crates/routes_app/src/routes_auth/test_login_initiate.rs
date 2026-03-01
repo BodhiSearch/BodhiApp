@@ -8,11 +8,11 @@ use axum::{
   routing::post,
   Router,
 };
-use objs::test_utils::temp_bodhi_home;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedContext, RouterState};
+use services::test_utils::temp_bodhi_home;
 use services::{
   test_utils::{expired_token, token, AppServiceStubBuilder, SettingServiceStub},
   AppService, DefaultSessionService, SessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,

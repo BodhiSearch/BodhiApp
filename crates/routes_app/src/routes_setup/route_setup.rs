@@ -1,5 +1,5 @@
 use crate::shared::utils::extract_request_host;
-use crate::{ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
+use crate::{API_TAG_SETUP, API_TAG_SYSTEM, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
 use auth_middleware::app_status_or_default;
 use axum::{
   extract::State,
@@ -8,9 +8,9 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, ErrorType, API_TAG_SETUP, API_TAG_SYSTEM};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
+use services::{ApiError, AppError, ErrorType, JsonRejectionError};
 use services::{AppInstanceError, AppStatus, AuthServiceError, LOGIN_CALLBACK_PATH};
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -137,7 +137,7 @@ impl IntoResponse for SetupResponse {
 pub async fn setup_handler(
   headers: axum::http::HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, ApiError>,
+  WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, JsonRejectionError>,
 ) -> Result<SetupResponse, ApiError> {
   let app_instance_service = state.app_service().app_instance_service();
   let auth_service = &state.app_service().auth_service();

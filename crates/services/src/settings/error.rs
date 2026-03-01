@@ -1,5 +1,20 @@
 use crate::db::DbError;
-use objs::{impl_error_from, AppError, ErrorType, IoError, SerdeYamlError};
+use crate::SerdeYamlError;
+use errmeta::{impl_error_from, AppError, ErrorType, IoError};
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum SettingsMetadataError {
+  #[error("cannot parse {1} as {0}")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidValueType(super::setting_objs::SettingMetadata, serde_json::Value),
+  #[error("passed value is not a valid value: {0}")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidValue(serde_json::Value),
+  #[error("value is null")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  NullValue,
+}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -21,11 +36,15 @@ pub enum SettingServiceError {
   InvalidKey(String),
 }
 
-impl_error_from!(::std::io::Error, SettingServiceError::Io, ::objs::IoError);
+impl_error_from!(
+  ::std::io::Error,
+  SettingServiceError::Io,
+  ::errmeta::IoError
+);
 impl_error_from!(
   ::serde_yaml::Error,
   SettingServiceError::SerdeYaml,
-  ::objs::SerdeYamlError
+  crate::SerdeYamlError
 );
 
-pub type Result<T> = std::result::Result<T, SettingServiceError>;
+pub(crate) type Result<T> = std::result::Result<T, SettingServiceError>;

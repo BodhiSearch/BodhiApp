@@ -6,10 +6,10 @@ use axum::{
   response::{IntoResponse, Response},
   Extension, Json,
 };
-use objs::{ApiError, AppError, SerdeJsonError};
 use serde_json::json;
 use server_core::RouterState;
 use services::{db::DbError, AppInstanceError, SessionServiceError};
+use services::{ApiError, AppError, SerdeJsonError};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -79,16 +79,16 @@ mod tests {
   use super::*;
   use anyhow_trace::anyhow_trace;
   use axum::{body::Body, extract::State, http::StatusCode};
-  use objs::{AliasSource, ApiFormat, UserAlias};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::Value;
   use server_core::{DefaultRouterState, MockSharedContext, RouterState};
+  use services::AliasSource;
   use services::{
-    db::{ApiToken, DownloadRequest, DownloadStatus, ModelMetadataRow, TokenStatus, ToolsetRow},
-    test_utils::app_service_stub,
-    AppService,
+    test_utils::app_service_stub, ApiToken, AppService, DownloadRequest, DownloadStatus,
+    ModelMetadataRow, TokenStatus, ToolsetRow,
   };
+  use services::{ApiFormat, UserAlias};
   use std::sync::Arc;
   use tower_sessions::SessionStore;
 
@@ -191,7 +191,7 @@ mod tests {
     db_service.create_toolset(&toolset).await?;
 
     // Create API model alias
-    let api_alias = objs::ApiAlias {
+    let api_alias = services::ApiAlias {
       id: "test-api-alias".to_string(),
       api_format: ApiFormat::OpenAI,
       base_url: "http://localhost".to_string(),
@@ -208,7 +208,7 @@ mod tests {
     // Create metadata
     let metadata = ModelMetadataRow {
       id: String::new(),
-      source: AliasSource::Model.to_string(),
+      source: AliasSource::Model,
       repo: Some("test/repo".to_string()),
       filename: Some("test.gguf".to_string()),
       snapshot: Some("main".to_string()),

@@ -1,7 +1,7 @@
 use crate::{
   ApiKeyUpdateDto, CreateToolsetRequest, ExecuteToolsetRequest, ListToolsetTypesResponse,
   ListToolsetsResponse, ToolsetResponse, ToolsetValidationError, UpdateToolsetRequest,
-  ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
+  API_TAG_TOOLSETS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
 };
 use auth_middleware::AuthContext;
 use axum::{
@@ -10,10 +10,10 @@ use axum::{
   routing::{delete, get, post, put},
   Extension, Json, Router,
 };
-use objs::API_TAG_TOOLSETS;
-use objs::{ApiError, Toolset, ToolsetExecutionResponse};
 use server_core::RouterState;
 use services::db::ApiKeyUpdate;
+use services::ApiError;
+use services::{AppToolsetConfig, Toolset, ToolsetExecutionResponse};
 use std::sync::Arc;
 use validator::Validate;
 
@@ -153,7 +153,7 @@ pub async fn get_toolset_handler(
   let toolset = tool_service
     .get(user_id, &id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("Toolset".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("Toolset".to_string()))?;
 
   let response = toolset_to_response(toolset, &tool_service).await?;
   Ok(Json(response))
@@ -308,7 +308,7 @@ pub async fn list_toolset_types_handler(
     ("toolset_type" = String, Path, description = "Toolset type identifier (e.g., 'builtin-exa-search')")
   ),
   responses(
-    (status = 200, description = "Toolset type enabled", body = objs::AppToolsetConfig),
+    (status = 200, description = "Toolset type enabled", body = AppToolsetConfig),
     (status = 404, description = "Toolset type not found"),
   ),
   security(("bearer" = []))
@@ -317,7 +317,7 @@ pub async fn enable_type_handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(toolset_type): Path<String>,
-) -> Result<Json<objs::AppToolsetConfig>, ApiError> {
+) -> Result<Json<AppToolsetConfig>, ApiError> {
   let updated_by = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 
@@ -338,7 +338,7 @@ pub async fn enable_type_handler(
     ("toolset_type" = String, Path, description = "Toolset type identifier (e.g., 'builtin-exa-search')")
   ),
   responses(
-    (status = 200, description = "Toolset type disabled", body = objs::AppToolsetConfig),
+    (status = 200, description = "Toolset type disabled", body = AppToolsetConfig),
     (status = 404, description = "Toolset type not found"),
   ),
   security(("bearer" = []))
@@ -347,7 +347,7 @@ pub async fn disable_type_handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(toolset_type): Path<String>,
-) -> Result<Json<objs::AppToolsetConfig>, ApiError> {
+) -> Result<Json<AppToolsetConfig>, ApiError> {
   let updated_by = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 

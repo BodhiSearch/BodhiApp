@@ -1,7 +1,8 @@
-use crate::{TokenInfo, UserResponse, ENDPOINT_USER_INFO};
+use crate::{TokenInfo, UserResponse, API_TAG_AUTH, ENDPOINT_USER_INFO};
 use auth_middleware::AuthContext;
 use axum::{Extension, Json};
-use objs::{ApiError, AppRole, API_TAG_AUTH};
+use services::ApiError;
+use services::AppRole;
 use services::{extract_claims, Claims};
 use tracing::debug;
 
@@ -49,7 +50,7 @@ pub async fn user_info_handler(
     } => {
       debug!("session auth");
       let claims: Claims = extract_claims::<Claims>(token)?;
-      Ok(Json(UserResponse::LoggedIn(objs::UserInfo {
+      Ok(Json(UserResponse::LoggedIn(services::UserInfo {
         user_id: claims.sub,
         username: claims.preferred_username,
         first_name: claims.given_name,
@@ -68,7 +69,7 @@ pub async fn user_info_handler(
     } => {
       debug!("external app auth");
       let claims: Claims = extract_claims::<Claims>(token)?;
-      Ok(Json(UserResponse::LoggedIn(objs::UserInfo {
+      Ok(Json(UserResponse::LoggedIn(services::UserInfo {
         user_id: claims.sub,
         username: claims.preferred_username,
         first_name: claims.given_name,

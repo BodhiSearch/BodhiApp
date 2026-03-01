@@ -9,7 +9,6 @@ use axum::{
   Router,
 };
 use hyper::StatusCode;
-use objs::{ResourceRole, TokenScope};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedContext};
@@ -17,6 +16,7 @@ use services::test_utils::{
   access_token_claims, build_token, test_db_service, AppServiceStub, AppServiceStubBuilder,
   TestDbService,
 };
+use services::{ResourceRole, TokenScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 

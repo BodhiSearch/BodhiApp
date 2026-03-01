@@ -1,8 +1,8 @@
 use super::{DefaultTokenService, TokenService};
-use crate::db::ApiToken;
 use crate::test_utils::{test_db_service, TestDbService};
+use crate::tokens::ApiToken;
+use crate::TokenStatus;
 use anyhow_trace::anyhow_trace;
-use objs::TokenStatus;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use std::sync::Arc;

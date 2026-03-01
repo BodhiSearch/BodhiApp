@@ -5,9 +5,11 @@ use axum::{
   middleware::Next,
   response::Response,
 };
-use objs::{ApiError, AppError, ApprovedResources, ErrorType};
 use server_core::RouterState;
-use services::db::{AppAccessRequestStatus, DbService};
+use services::db::DbService;
+use services::AppAccessRequestStatus;
+use services::{ApiError, AppError, ErrorType};
+use services::{ApprovalStatus, ApprovedResources};
 use std::sync::Arc;
 
 pub trait AccessRequestValidator: Send + Sync + 'static {
@@ -207,8 +209,7 @@ impl AccessRequestValidator for ToolsetAccessRequestValidator {
     })?;
 
     let instance_approved = approvals.toolsets.iter().any(|a| {
-      a.status == objs::ApprovalStatus::Approved
-        && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
+      a.status == ApprovalStatus::Approved && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
     });
 
     if !instance_approved {
@@ -246,8 +247,7 @@ impl AccessRequestValidator for McpAccessRequestValidator {
     })?;
 
     let instance_approved = approvals.mcps.iter().any(|a| {
-      a.status == objs::ApprovalStatus::Approved
-        && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
+      a.status == ApprovalStatus::Approved && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
     });
 
     if !instance_approved {

@@ -265,13 +265,13 @@ impl BodhiServer {
 }
 
 fn setup_logs(
-  setting_service: &BootstrapService,
+  bootstrap_service: &BootstrapService,
 ) -> std::result::Result<WorkerGuard, std::io::Error> {
-  let logs_dir = setting_service.logs_dir();
+  let logs_dir = bootstrap_service.logs_dir();
   fs::create_dir_all(&logs_dir)?;
   let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
   let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-  let log_level: LevelFilter = setting_service.log_level().into();
+  let log_level: LevelFilter = bootstrap_service.log_level().into();
   let log_level = log_level.to_string();
   let filter = EnvFilter::new(&log_level);
   let filter = filter.add_directive("hf_hub=error".parse().expect("is a valid directive"));
@@ -282,8 +282,8 @@ fn setup_logs(
       .parse()
       .expect("is a valid directive"),
   );
-
-  let enable_stdout = cfg!(debug_assertions) || setting_service.log_stdout();
+  let filter = filter.add_directive("sqlx::query=warn".parse().expect("is a valid directive"));
+  let enable_stdout = cfg!(debug_assertions) || bootstrap_service.log_stdout();
 
   let subscriber = tracing_subscriber::registry().with(filter);
 

@@ -1,7 +1,7 @@
-use objs::{
-  AppAccessRequestStatus, ApprovedResources, FlowType, RequestedResources, Toolset, UserScope,
-};
 use serde::{Deserialize, Serialize};
+use services::Toolset;
+use services::UserScope;
+use services::{AppAccessRequestStatus, ApprovedResources, FlowType, RequestedResources};
 use utoipa::ToSchema;
 
 // Request body for POST /apps/request-access
@@ -113,7 +113,7 @@ pub struct McpServerReviewInfo {
   /// Requested MCP server URL
   pub url: String,
   /// User's MCP instances connected to this server URL
-  pub instances: Vec<objs::Mcp>,
+  pub instances: Vec<services::Mcp>,
 }
 
 // Response for PUT /access-requests/:id/approve and POST /access-requests/:id/deny

@@ -1,12 +1,11 @@
 use super::exa_service::ExaService;
+use super::toolset_objs::{
+  validate_toolset_description, validate_toolset_slug, AppToolsetConfig, FunctionDefinition,
+  ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionRequest, ToolsetExecutionResponse,
+};
 use super::ToolsetError;
-use crate::db::{
-  encryption::encrypt_api_key, ApiKeyUpdate, DbError, DbService, TimeService, ToolsetRow,
-};
-use objs::{
-  FunctionDefinition, ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionRequest,
-  ToolsetExecutionResponse,
-};
+use super::ToolsetRow;
+use crate::db::{encryption::encrypt_api_key, ApiKeyUpdate, DbError, DbService, TimeService};
 use serde_json::json;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -91,16 +90,16 @@ pub trait ToolService: Debug + Send + Sync {
     toolset_type: &str,
     enabled: bool,
     updated_by: &str,
-  ) -> Result<objs::AppToolsetConfig, ToolsetError>;
+  ) -> Result<AppToolsetConfig, ToolsetError>;
 
   /// List all app-level toolset configurations
-  async fn list_app_toolset_configs(&self) -> Result<Vec<objs::AppToolsetConfig>, ToolsetError>;
+  async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfig>, ToolsetError>;
 
   /// Get app-level config for specific toolset type
   async fn get_app_toolset_config(
     &self,
     toolset_type: &str,
-  ) -> Result<Option<objs::AppToolsetConfig>, ToolsetError>;
+  ) -> Result<Option<AppToolsetConfig>, ToolsetError>;
 }
 
 // ============================================================================
@@ -307,11 +306,11 @@ impl ToolService for DefaultToolService {
     api_key: String,
   ) -> Result<Toolset, ToolsetError> {
     // Validate slug format
-    objs::validate_toolset_slug(slug).map_err(ToolsetError::InvalidSlug)?;
+    validate_toolset_slug(slug).map_err(ToolsetError::InvalidSlug)?;
 
     // Validate description if provided
     if let Some(ref desc) = description {
-      objs::validate_toolset_description(desc).map_err(ToolsetError::InvalidDescription)?;
+      validate_toolset_description(desc).map_err(ToolsetError::InvalidDescription)?;
     }
 
     // Validate toolset_type exists
@@ -378,11 +377,11 @@ impl ToolService for DefaultToolService {
     }
 
     // Validate slug format
-    objs::validate_toolset_slug(slug).map_err(ToolsetError::InvalidSlug)?;
+    validate_toolset_slug(slug).map_err(ToolsetError::InvalidSlug)?;
 
     // Validate description if provided
     if let Some(ref desc) = description {
-      objs::validate_toolset_description(desc).map_err(ToolsetError::InvalidDescription)?;
+      validate_toolset_description(desc).map_err(ToolsetError::InvalidDescription)?;
     }
 
     // Check slug uniqueness if changed (case-insensitive)
@@ -557,7 +556,7 @@ impl ToolService for DefaultToolService {
     toolset_type: &str,
     enabled: bool,
     updated_by: &str,
-  ) -> Result<objs::AppToolsetConfig, ToolsetError> {
+  ) -> Result<AppToolsetConfig, ToolsetError> {
     // Validate toolset_type exists in ToolsetDefinition registry
     self.validate_type(toolset_type)?;
 
@@ -572,7 +571,7 @@ impl ToolService for DefaultToolService {
       .get_type(toolset_type)
       .ok_or_else(|| ToolsetError::InvalidToolsetType(toolset_type.to_string()))?;
 
-    Ok(objs::AppToolsetConfig {
+    Ok(AppToolsetConfig {
       toolset_type: db_row.toolset_type,
       name: type_def.name,
       description: type_def.description,
@@ -583,7 +582,7 @@ impl ToolService for DefaultToolService {
     })
   }
 
-  async fn list_app_toolset_configs(&self) -> Result<Vec<objs::AppToolsetConfig>, ToolsetError> {
+  async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfig>, ToolsetError> {
     let db_rows = self.db_service.list_app_toolset_configs().await?;
 
     // Enrich each row with name/description from ToolsetDefinition
@@ -593,7 +592,7 @@ impl ToolService for DefaultToolService {
         // Only include configs for toolset types that still exist in the registry
         self
           .get_type(&row.toolset_type)
-          .map(|type_def| objs::AppToolsetConfig {
+          .map(|type_def| AppToolsetConfig {
             toolset_type: row.toolset_type,
             name: type_def.name,
             description: type_def.description,
@@ -611,13 +610,13 @@ impl ToolService for DefaultToolService {
   async fn get_app_toolset_config(
     &self,
     toolset_type: &str,
-  ) -> Result<Option<objs::AppToolsetConfig>, ToolsetError> {
+  ) -> Result<Option<AppToolsetConfig>, ToolsetError> {
     let db_row = self.db_service.get_app_toolset_config(toolset_type).await?;
 
     Ok(db_row.and_then(|row| {
       self
         .get_type(&row.toolset_type)
-        .map(|type_def| objs::AppToolsetConfig {
+        .map(|type_def| AppToolsetConfig {
           toolset_type: row.toolset_type,
           name: type_def.name,
           description: type_def.description,

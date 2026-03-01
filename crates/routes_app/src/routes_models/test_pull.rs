@@ -10,7 +10,6 @@ use axum::{
   Router,
 };
 use mockall::predicate::{always, eq};
-use objs::{HubFile, Repo};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
@@ -19,13 +18,13 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::{
-  db::{DownloadRequest, DownloadStatus, ModelRepository},
   test_utils::{
     app_service_stub_builder, test_db_service, test_hf_service, AppServiceStubBuilder,
     TestDbService, TestHfService,
   },
-  AppService,
+  AppService, DownloadRepository, {DownloadRequest, DownloadStatus},
 };
+use services::{HubFile, Repo};
 use std::{sync::Arc, time::Duration};
 use tower::ServiceExt;
 

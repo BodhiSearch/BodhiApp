@@ -7,7 +7,6 @@ use axum::{
   routing::get,
   Router,
 };
-use objs::{AppRole, ResourceRole, TokenScope, UserInfo, UserScope};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
@@ -15,6 +14,7 @@ use services::{
   test_utils::{token, AppServiceStubBuilder},
   AppService,
 };
+use services::{AppRole, ResourceRole, TokenScope, UserInfo, UserScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 

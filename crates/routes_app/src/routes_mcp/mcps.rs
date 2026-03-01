@@ -3,14 +3,16 @@ use crate::routes_mcp::{
   McpExecuteResponse, McpResponse, McpToolsResponse, McpValidationError, UpdateMcpRequest,
   ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS,
 };
+use crate::API_TAG_MCPS;
 use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, State},
   http::StatusCode,
   Extension, Json,
 };
-use objs::{ApiError, ApprovedResources, API_TAG_MCPS};
 use server_core::RouterState;
+use services::ApiError;
+use services::{ApprovalStatus, ApprovedResources};
 use std::sync::Arc;
 
 // ============================================================================
@@ -76,7 +78,7 @@ async fn extract_approved_mcp_ids(
   approvals
     .mcps
     .iter()
-    .filter(|a| a.status == objs::ApprovalStatus::Approved)
+    .filter(|a| a.status == ApprovalStatus::Approved)
     .filter_map(|a| a.instance.as_ref().map(|i| i.id.clone()))
     .collect()
 }
@@ -157,7 +159,7 @@ pub async fn get_mcp_handler(
   let mcp = mcp_service
     .get(user_id, &id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("MCP".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("MCP".to_string()))?;
 
   Ok(Json(McpResponse::from(mcp)))
 }
@@ -320,7 +322,7 @@ pub async fn list_mcp_tools_handler(
   let mcp = mcp_service
     .get(user_id, &id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("MCP".to_string()))?;
+    .ok_or_else(|| services::EntityError::NotFound("MCP".to_string()))?;
 
   let tools = mcp.tools_cache.unwrap_or_default();
   Ok(Json(McpToolsResponse { tools }))
@@ -380,7 +382,7 @@ pub async fn execute_mcp_tool_handler(
   let user_id = auth_context.user_id().expect("requires auth middleware");
   let mcp_service = state.app_service().mcp_service();
 
-  let exec_request = objs::McpExecutionRequest {
+  let exec_request = services::McpExecutionRequest {
     params: request.params,
   };
 

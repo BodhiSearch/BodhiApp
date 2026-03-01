@@ -1,5 +1,7 @@
-use objs::{AppError, BuilderError, ErrorType, ObjValidationError};
-use services::{DataServiceError, HubServiceError};
+use services::{
+  AppError, BuilderError, DataServiceError, ErrorType, HubServiceError, ModelValidationError,
+  ObjValidationError,
+};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -18,6 +20,8 @@ pub enum CreateAliasError {
   HubService(#[from] HubServiceError),
   #[error(transparent)]
   ObjValidation(#[from] ObjValidationError),
+  #[error(transparent)]
+  ModelValidation(#[from] ModelValidationError),
   #[error(transparent)]
   Builder(#[from] BuilderError),
   #[error("Model alias in path '{path}' does not match alias in request '{request}'.")]

@@ -1,8 +1,7 @@
 use crate::{merge_server_args, ContextError, LlmEndpoint};
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
-use objs::Alias;
 use serde_json::Value;
-use services::{HubService, SettingService};
+use services::{Alias, HubService, JsonVec, SettingService};
 use std::fmt::Debug;
 use std::{path::Path, sync::Arc};
 use tokio::sync::RwLock;
@@ -186,7 +185,7 @@ impl SharedContext for DefaultSharedContext {
     alias: Alias,
   ) -> Result<reqwest::Response> {
     // Pattern match to extract local alias information and reject API aliases
-    let empty_params = objs::JsonVec::default();
+    let empty_params = JsonVec::default();
     let (alias_name, repo, filename, snapshot, context_params) = match &alias {
       Alias::User(user_alias) => (
         &user_alias.alias,
@@ -245,7 +244,8 @@ impl SharedContext for DefaultSharedContext {
           .alias(alias_name.clone())
           .model(model_file.to_string_lossy().to_string())
           .server_args(merged_args)
-          .build()?;
+          .build()
+          .map_err(|e| ContextError::Unreachable(e.to_string()))?;
         self.reload(Some(server_args)).await?;
         let lock = self.server.read().await;
         let server = lock
@@ -265,7 +265,8 @@ impl SharedContext for DefaultSharedContext {
           .alias(alias_name.clone())
           .model(model_file.to_string_lossy().to_string())
           .server_args(merged_args)
-          .build()?;
+          .build()
+          .map_err(|e| ContextError::Unreachable(e.to_string()))?;
         drop(lock);
         self.reload(Some(server_args)).await?;
         let lock = self.server.read().await;

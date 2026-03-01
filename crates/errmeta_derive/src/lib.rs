@@ -70,7 +70,8 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
 mod tests {
   use crate::generate::{generate_args_method, generate_attribute_method};
   use crate::parse::{
-    parse_enum_meta_attrs, parse_struct_meta_attrs, EnumMetaAttrs, StructMetaAttrs,
+    parse_enum_meta_attrs, parse_enum_meta_header, parse_struct_meta_attrs, EnumMetaAttrs,
+    EnumMetaHeader, StructMetaAttrs,
   };
   use crate::{impl_error_metadata, parse};
   use pretty_assertions::assert_eq;
@@ -99,6 +100,24 @@ mod tests {
   )]
   fn test_is_transparent(#[case] variant: Variant, #[case] expected: bool) {
     assert_eq!(expected, parse::is_transparent(&variant));
+  }
+
+  #[rstest]
+  #[case::with_trait(
+    parse_quote!(#[error_meta(trait_to_impl = AppError)]),
+    EnumMetaHeader { trait_to_impl: Some(parse_quote!(AppError)) }
+  )]
+  #[case::no_error_meta_attr(
+    parse_quote!(#[other_attr]),
+    EnumMetaHeader { trait_to_impl: None }
+  )]
+  #[case::derive_attr(
+    parse_quote!(#[derive(Debug)]),
+    EnumMetaHeader { trait_to_impl: None }
+  )]
+  fn test_parse_enum_meta_header(#[case] attr: Attribute, #[case] expected: EnumMetaHeader) {
+    let result = parse_enum_meta_header(&[attr]);
+    assert_eq!(expected, result);
   }
 
   #[rstest]

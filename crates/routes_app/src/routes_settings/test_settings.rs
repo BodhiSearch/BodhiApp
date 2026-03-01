@@ -8,7 +8,6 @@ use axum::{
   routing::{delete, get, put},
   Router,
 };
-use objs::{test_utils::temp_dir, SettingInfo, SettingMetadata, SettingSource};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
@@ -16,12 +15,13 @@ use server_core::{
   test_utils::{RequestTestExt, ResponseTestExt},
   DefaultRouterState, MockSharedContext,
 };
+use services::test_utils::temp_dir;
 use services::{
-  db::{DbSetting, MockSettingsRepository},
-  test_utils::{bodhi_home_setting, AppServiceStubBuilder, EnvWrapperStub},
-  BootstrapParts, DefaultSettingService, SettingService, BODHI_EXEC_VARIANT, BODHI_HOST,
+  test_utils::{bodhi_home_setting, AppServiceStubBuilder, EnvWrapperStub, MockSettingsRepository},
+  BootstrapParts, DbSetting, DefaultSettingService, SettingService, BODHI_EXEC_VARIANT, BODHI_HOST,
   BODHI_LOG_LEVEL, BODHI_PORT,
 };
+use services::{SettingInfo, SettingMetadata, SettingSource};
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use tempfile::TempDir;
 use tower::ServiceExt;
@@ -78,7 +78,7 @@ async fn test_setting_service(
       system_settings: vec![bodhi_home_s],
       file_defaults: HashMap::new(),
       app_settings: HashMap::new(),
-      app_command: objs::AppCommand::Default,
+      app_command: services::AppCommand::Default,
       bodhi_home,
     },
     noop_settings_repo(),

@@ -1,10 +1,14 @@
+use crate::UserScope;
 use crate::{
-  db::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType},
+  app_access_requests::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, ApprovalStatus, FlowType,
+    ToolsetApproval, ToolsetTypeRequest,
+  },
   test_utils::{test_db_service, TestDbService},
   AccessRequestService, DefaultAccessRequestService, MockAuthService,
 };
 use anyhow_trace::anyhow_trace;
-use objs::{AppError, ApprovalStatus, UserScope};
+use errmeta::AppError;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use std::sync::Arc;
@@ -34,7 +38,7 @@ async fn test_create_draft_popup_valid(
       "app-client-1".to_string(),
       FlowType::Popup,
       None,
-      vec![objs::ToolsetTypeRequest {
+      vec![ToolsetTypeRequest {
         toolset_type: "builtin-exa-search".to_string(),
       }],
       vec![],
@@ -255,7 +259,7 @@ async fn test_approve_request_threads_approved_role(
       "ar-draft-approve",
       "user-1",
       "fake-token",
-      vec![objs::ToolsetApproval {
+      vec![ToolsetApproval {
         toolset_type: "builtin-exa-search".to_string(),
         status: ApprovalStatus::Approved,
         instance: None,
@@ -333,22 +337,19 @@ async fn test_get_request_expired_draft_returns_expired_record(
 }
 
 #[rstest]
-#[case::approve("ar-expired-approve")]
-#[case::deny("ar-expired-deny")]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_update_request_rejects_expired_draft(
+async fn test_approve_request_rejects_expired_draft(
   #[future]
   #[from(test_db_service)]
   db: TestDbService,
-  #[case] request_id: &str,
 ) -> anyhow::Result<()> {
   let now = db.now();
   let expires_at = now - chrono::Duration::minutes(5);
 
   let row = AppAccessRequestRow {
-    id: request_id.to_string(),
+    id: "ar-expired-approve".to_string(),
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,
@@ -379,20 +380,69 @@ async fn test_update_request_rejects_expired_draft(
     "http://localhost:1135".to_string(),
   );
 
-  let result = if request_id.contains("approve") {
-    service
-      .approve_request(
-        request_id,
-        "user-1",
-        "fake-token",
-        vec![],
-        vec![],
-        UserScope::User,
-      )
-      .await
-  } else {
-    service.deny_request(request_id, "user-1").await
+  let result = service
+    .approve_request(
+      "ar-expired-approve",
+      "user-1",
+      "fake-token",
+      vec![],
+      vec![],
+      UserScope::User,
+    )
+    .await;
+
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!("access_request_error-expired", err.code());
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_deny_request_rejects_expired_draft(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let now = db.now();
+  let expires_at = now - chrono::Duration::minutes(5);
+
+  let row = AppAccessRequestRow {
+    id: "ar-expired-deny".to_string(),
+    app_client_id: "app-client-1".to_string(),
+    app_name: None,
+    app_description: None,
+    flow_type: FlowType::Popup,
+    redirect_uri: None,
+    status: AppAccessRequestStatus::Draft,
+    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    approved: None,
+    user_id: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
+    access_request_scope: None,
+    error_message: None,
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
+  db.create(&row).await?;
+
+  let db = Arc::new(db);
+  let mock_auth = Arc::new(MockAuthService::new());
+  let time_service = Arc::new(crate::test_utils::FrozenTimeService::default());
+
+  let service = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn crate::db::DbService>,
+    mock_auth,
+    time_service.clone(),
+    "http://localhost:1135".to_string(),
+  );
+
+  let result = service.deny_request("ar-expired-deny", "user-1").await;
 
   assert!(result.is_err());
   let err = result.unwrap_err();

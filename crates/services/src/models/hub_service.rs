@@ -1,8 +1,6 @@
+use crate::models::{HubFile, ModelAlias, ModelAliasBuilder, Repo};
+use errmeta::{impl_error_from, AppError, ErrorType, IoError};
 use hf_hub::Cache;
-use objs::{
-  impl_error_from, AppError, ErrorType, HubFile, IoError, ModelAlias, ModelAliasBuilder,
-  ObjValidationError, Repo,
-};
 use std::{
   collections::HashSet,
   fmt::{Debug, Formatter},
@@ -54,12 +52,12 @@ pub enum HubServiceError {
   },
 
   #[error(transparent)]
-  ObjValidationError(#[from] ObjValidationError),
+  ModelValidationError(#[from] crate::models::ModelValidationError),
   #[error(transparent)]
   IoError(#[from] IoError),
 }
 
-impl_error_from!(std::io::Error, HubServiceError::IoError, ::objs::IoError);
+impl_error_from!(std::io::Error, HubServiceError::IoError, ::errmeta::IoError);
 
 type Result<T> = std::result::Result<T, HubServiceError>;
 

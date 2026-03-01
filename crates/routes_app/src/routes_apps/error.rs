@@ -1,5 +1,5 @@
-use objs::{AppError, ErrorType};
 use services::{AccessRequestError, AuthServiceError, ToolsetError};
+use services::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]

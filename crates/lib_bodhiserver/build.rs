@@ -62,7 +62,6 @@ fn is_ci() -> bool {
   env::var("CI").map(|v| v == "true").unwrap_or(false)
 }
 
-#[allow(unused)]
 fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
   println!("cargo:warning=Building frontend in {:?}", bodhi_dir);
 

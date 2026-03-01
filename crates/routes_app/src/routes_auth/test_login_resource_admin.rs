@@ -10,11 +10,11 @@ use axum::{
 };
 use mockito::{Matcher, Server};
 use oauth2::PkceCodeVerifier;
-use objs::test_utils::temp_bodhi_home;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedContext};
+use services::test_utils::temp_bodhi_home;
 use services::{
   test_utils::{
     test_auth_service, token, AppServiceStub, AppServiceStubBuilder, SettingServiceStub,

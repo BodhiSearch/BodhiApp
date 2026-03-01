@@ -9,15 +9,16 @@ use axum::{
 };
 use chrono::{Duration, Utc};
 use mockall::predicate::{always, eq};
-use objs::{test_utils::temp_bodhi_home, AppRole, ResourceRole, UserInfo};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
 use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
+use services::test_utils::temp_bodhi_home;
 use services::{
   test_utils::{build_token_with_exp, AppServiceStubBuilder},
   MockAuthService, MockSessionService, UserListResponse,
 };
+use services::{AppRole, ResourceRole, UserInfo};
 use std::sync::Arc;
 use tempfile::TempDir;
 use tower::ServiceExt;

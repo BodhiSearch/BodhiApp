@@ -3,6 +3,7 @@ use crate::routes_apps::{
   AppAccessRequestError, ApproveAccessRequestBody, CreateAccessRequestBody,
   CreateAccessRequestResponse, ToolTypeReviewInfo,
 };
+use crate::API_TAG_AUTH;
 use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query, State},
@@ -10,12 +11,14 @@ use axum::{
   response::Json,
   Extension,
 };
-use objs::{
-  ApiError, AppAccessRequestStatus, ApprovalStatus, FlowType, OpenAIApiError, RequestedResources,
-  ResourceRole, ToolsetTypeRequest, UserScope, API_TAG_AUTH,
-};
 use serde::Deserialize;
 use server_core::RouterState;
+use services::{ApiError, OpenAIApiError};
+use services::{
+  AppAccessRequestStatus, ApprovalStatus, FlowType, McpServerRequest, RequestedResources,
+  ToolsetTypeRequest,
+};
+use services::{ResourceRole, UserScope};
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -79,7 +82,7 @@ pub async fn create_access_request_handler(
     .map(|r| r.toolset_types.clone())
     .unwrap_or_default();
 
-  let mcp_servers: Vec<objs::McpServerRequest> = body
+  let mcp_servers: Vec<McpServerRequest> = body
     .requested
     .as_ref()
     .map(|r| r.mcp_servers.clone())

@@ -1,3 +1,4 @@
+use super::{AppCommand, Setting, SettingInfo, SettingMetadata, SettingSource};
 use super::{
   BootstrapParts, Result, SettingService, SettingServiceError, SettingsChangeListener,
   BODHI_APP_DB_URL, BODHI_CANONICAL_REDIRECT, BODHI_DEPLOYMENT, BODHI_EXEC_NAME, BODHI_EXEC_TARGET,
@@ -8,9 +9,8 @@ use super::{
   DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME, HF_HOME, LOGS_DIR, PROD_DB, SESSION_DB,
   SETTING_VARS,
 };
-use crate::db::{DbSetting, SettingsRepository};
+use super::{DbSetting, SettingsRepository};
 use crate::{asref_impl, EnvWrapper};
-use objs::{AppCommand, Setting, SettingInfo, SettingMetadata, SettingSource};
 use serde_yaml::Value;
 use std::{
   collections::HashMap,

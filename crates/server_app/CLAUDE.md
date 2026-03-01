@@ -35,8 +35,7 @@ Comprehensive service initialization with sophisticated dependency management:
 ## Architecture Position
 
 **Upstream dependencies** (crates this depends on):
-- [`objs`](../objs/CLAUDE.md) -- domain types, configuration (`AppOptions`)
-- [`services`](../services/CLAUDE.md) -- `AppService`, `SettingService`, `DefaultAppService`
+- [`services`](../services/CLAUDE.md) -- domain types, configuration (`AppOptions`), `AppService`, `SettingService`, `DefaultAppService`
 - [`server_core`](../server_core/CLAUDE.md) -- `RouterState`, `SharedContext`, `DefaultSharedContext`
 - [`auth_middleware`](../auth_middleware/CLAUDE.md) -- authentication middleware composition
 - [`routes_app`](../routes_app/CLAUDE.md) -- route handlers including `/dev/db-reset` endpoint
