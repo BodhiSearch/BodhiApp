@@ -8,6 +8,7 @@ include Makefile.website.mk
 
 .PHONY: help test test.backend test.ui test.napi test.coverage \
 	test.deps.up test.deps.down \
+	dev.deps.up dev.deps.down dev.deps.clear \
 	build build.native build.ui build.ui-clean build.ui-rebuild build.ts-client \
 	format format.all \
 	run run.native app.clear app.run app.run.pg \
@@ -26,7 +27,7 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^format[a-zA-Z0-9._-]*:.*?## / {printf "  \033[36m%-30s\033[0m %s \033[90m(%s)\033[0m\n", $$1, $$2, FILENAME}' $(MAKEFILE_LIST)
 	@echo ''
 	@echo '=== App Runtime ==='
-	@awk 'BEGIN {FS = ":.*?## "} /^(run|app)[a-zA-Z0-9._-]*:.*?## / {printf "  \033[36m%-30s\033[0m %s \033[90m(%s)\033[0m\n", $$1, $$2, FILENAME}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^(run|app|dev)[a-zA-Z0-9._-]*:.*?## / {printf "  \033[36m%-30s\033[0m %s \033[90m(%s)\033[0m\n", $$1, $$2, FILENAME}' $(MAKEFILE_LIST)
 	@echo ''
 	@echo '=== Release ==='
 	@awk 'BEGIN {FS = ":.*?## "} /^release[a-zA-Z0-9._-]*:.*?## / {printf "  \033[36m%-30s\033[0m %s \033[90m(%s)\033[0m\n", $$1, $$2, FILENAME}' $(MAKEFILE_LIST)
@@ -46,10 +47,19 @@ help: ## Show this help message
 	@echo 'Run "make [target]" to execute a specific target'
 
 test.deps.up: ## Start test dependencies (PostgreSQL via docker-compose)
-	docker compose -f docker-compose-test-deps.yml up -d --wait
+	docker compose -f docker/docker-compose.test.yml up -d --wait
 
 test.deps.down: ## Stop test dependencies and remove volumes
-	docker compose -f docker-compose-test-deps.yml down -v
+	docker compose -f docker/docker-compose.test.yml down -v
+
+dev.deps.up: ## Start dev PostgreSQL databases (ports 34320/34321)
+	docker compose -f docker/docker-compose.dev.yml up -d --wait
+
+dev.deps.down: ## Stop dev PostgreSQL databases (keep volumes)
+	docker compose -f docker/docker-compose.dev.yml down
+
+dev.deps.clear: ## Stop dev PostgreSQL databases and remove volumes
+	docker compose -f docker/docker-compose.dev.yml down -v
 
 test.backend: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
 	cargo test
@@ -122,13 +132,13 @@ app.run: ## Run the BodhiApp
 		BODHI_HOME=~/.cache/bodhi-dev-makefile \
 		cargo run --bin bodhi -- serve --port 1135
 
-app.run.pg: ## Run the BodhiApp with PostgreSQL test databases
+app.run.pg: dev.deps.up ## Run the BodhiApp with PostgreSQL dev databases
 	BODHI_ENCRYPTION_KEY=dummy-key \
 		BODHI_LOG_LEVEL=info \
 		BODHI_LOG_STDOUT=true \
 		BODHI_HOME=~/.cache/bodhi-dev-makefile \
-		BODHI_APP_DB_URL=postgres://bodhi_test:bodhi_test@localhost:64320/bodhi_app \
-		BODHI_SESSION_DB_URL=postgres://bodhi_test:bodhi_test@localhost:54320/bodhi_sessions \
+		BODHI_APP_DB_URL=postgres://bodhi_dev:bodhi_dev@localhost:34320/bodhi_app \
+		BODHI_SESSION_DB_URL=postgres://bodhi_dev:bodhi_dev@localhost:34321/bodhi_sessions \
 		cargo run --bin bodhi -- serve --port 1135
 
 test.extension-download: ## Download Bodhi browser extension for testing (use FORCE=1 to check for updates)

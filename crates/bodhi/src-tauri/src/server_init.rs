@@ -97,6 +97,11 @@ fn setup_logs(bootstrap_service: &BootstrapService) -> Result<WorkerGuard, std::
       .parse()
       .expect("is a valid directive"),
   );
+  let filter = filter.add_directive(
+    "sqlx::query=warn"
+      .parse()
+      .expect("is a valid directive"),
+  );
 
   let enable_stdout = cfg!(debug_assertions) || bootstrap_service.log_stdout();
 

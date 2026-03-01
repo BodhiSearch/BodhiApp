@@ -3,7 +3,7 @@
  *
  * Maps Playwright project names to server ports and database URLs.
  * SQLite is the default (no DB URLs needed), PostgreSQL requires
- * the test dependency containers from docker-compose-test-deps.yml.
+ * the test dependency containers from docker/docker-compose.test.yml.
  */
 
 const DB_CONFIGS = {

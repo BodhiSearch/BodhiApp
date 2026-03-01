@@ -1,3 +1,6 @@
+# Two separate PostgreSQL containers are required because the official postgres
+# Docker image only supports creating a single database via POSTGRES_DB.
+# Session DB on port 54320, App DB on port 64320.
 services:
   bodhi_session_db:
     image: postgres:17

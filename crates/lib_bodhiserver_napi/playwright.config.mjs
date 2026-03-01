@@ -16,7 +16,7 @@ const actionTimeout = 30000;
 const isScheduledRun = process.argv.includes('--grep') && process.argv.some(arg => arg.includes('@scheduled'));
 
 // Dual-DB support: SQLite (port 51135) and PostgreSQL (port 51136)
-// PostgreSQL requires docker-compose-test-deps.yml containers running
+// PostgreSQL requires docker/docker-compose.test.yml containers running
 
 /**
  * @see https://playwright.dev/docs/test-configuration
