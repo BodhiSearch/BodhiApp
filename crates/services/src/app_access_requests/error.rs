@@ -30,13 +30,13 @@ pub enum AccessRequestError {
   KcRegistrationFailed(String),
 
   #[error(transparent)]
-  DbError(#[from] DbError),
+  Db(#[from] DbError),
 
   #[error(transparent)]
-  AuthError(#[from] AuthServiceError),
+  Auth(#[from] AuthServiceError),
 
   #[error(transparent)]
-  ToolError(#[from] ToolsetError),
+  Tool(#[from] ToolsetError),
 
   #[error(transparent)]
   AppInstance(#[from] AppInstanceError),

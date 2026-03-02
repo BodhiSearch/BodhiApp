@@ -28,8 +28,8 @@ pub enum BootstrapError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   ValidationError(String),
 
-  #[error(transparent)]
-  #[error_meta(code = "bootstrap_error-parse", error_type = ErrorType::BadRequest, args_delegate = false)]
+  #[error("{0}")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   Parse(#[from] strum::ParseError),
 
   #[error("unknown_system_setting: {0}")]

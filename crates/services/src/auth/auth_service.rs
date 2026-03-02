@@ -26,6 +26,8 @@ pub const HEADER_BODHI_APP_VERSION: &str = "x-bodhi-app-version";
 #[error_meta(trait_to_impl = AppError)]
 pub enum AuthServiceError {
   #[error(transparent)]
+  Auth(#[from] crate::auth::AuthContextError),
+  #[error(transparent)]
   Reqwest(#[from] ReqwestError),
   #[error("Authentication service API error (status {status}): {body}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]

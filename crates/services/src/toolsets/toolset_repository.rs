@@ -1,5 +1,6 @@
-use crate::db::{encryption::decrypt_api_key, ApiKeyUpdate, DbError, DefaultDbService};
+use crate::db::{encryption::decrypt_api_key, DbError, DefaultDbService};
 use crate::toolsets::{AppToolsetConfigRow, ToolsetRow};
+use crate::ApiKeyUpdate;
 use sea_orm::prelude::*;
 use sea_orm::sea_query::Alias;
 use sea_orm::{Condition, Set};

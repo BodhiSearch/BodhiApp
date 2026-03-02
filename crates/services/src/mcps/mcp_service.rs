@@ -18,6 +18,7 @@ use ulid::Ulid;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
+#[allow(clippy::too_many_arguments)]
 pub trait McpService: Debug + Send + Sync {
   // ---- MCP Server admin operations ----
 

@@ -161,7 +161,7 @@ export type ApiKeyUpdateAction = {
 };
 
 /**
- * API key update enum (mirrors services::db::ApiKeyUpdate)
+ * API key update enum (mirrors services::ApiKeyUpdate)
  */
 export type ApiKeyUpdateDto = {
     action: 'Keep';
@@ -1640,6 +1640,9 @@ export type ListUsersParams = {
     page_size?: number | null;
 };
 
+/**
+ * Local model file response
+ */
 export type LocalModelResponse = {
     repo: string;
     filename: string;
@@ -2109,6 +2112,9 @@ export type Options = {
     num_thread?: number | null;
 };
 
+/**
+ * Paginated list of all model aliases (user, model, and API)
+ */
 export type PaginatedAliasResponse = {
     data: Array<AliasResponse>;
     total: number;
@@ -2126,6 +2132,9 @@ export type PaginatedApiModelResponse = {
     page_size: number;
 };
 
+/**
+ * Paginated list of API tokens
+ */
 export type PaginatedApiTokenResponse = {
     data: Array<ApiToken>;
     total: number;
@@ -2133,6 +2142,9 @@ export type PaginatedApiTokenResponse = {
     page_size: number;
 };
 
+/**
+ * Paginated list of download requests
+ */
 export type PaginatedDownloadResponse = {
     data: Array<DownloadRequest>;
     total: number;
@@ -2140,6 +2152,9 @@ export type PaginatedDownloadResponse = {
     page_size: number;
 };
 
+/**
+ * Paginated list of local model files
+ */
 export type PaginatedLocalModelResponse = {
     data: Array<LocalModelResponse>;
     total: number;
@@ -2169,6 +2184,9 @@ export type PaginatedUserAccessResponse = {
     page_size: number;
 };
 
+/**
+ * Paginated list of user-defined model aliases
+ */
 export type PaginatedUserAliasResponse = {
     data: Array<UserAliasResponse>;
     total: number;
@@ -2836,6 +2854,9 @@ export type UserAlias = {
     updated_at: string;
 };
 
+/**
+ * User-defined model alias response
+ */
 export type UserAliasResponse = {
     id: string;
     alias: string;

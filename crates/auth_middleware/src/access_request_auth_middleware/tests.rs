@@ -137,7 +137,7 @@ async fn test_session_auth_passes_through(toolset_validator: Arc<dyn AccessReque
 #[rstest]
 #[tokio::test]
 async fn test_missing_auth(toolset_validator: Arc<dyn AccessRequestValidator>) {
-  let ctx = AuthContext::Anonymous;
+  let ctx = AuthContext::Anonymous { client_id: None };
   let app = test_router(toolset_validator, ctx).await;
 
   let response = app

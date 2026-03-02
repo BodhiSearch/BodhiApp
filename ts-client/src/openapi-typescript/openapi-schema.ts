@@ -1433,7 +1433,7 @@ export interface components {
             /** @enum {string} */
             action: "set";
         };
-        /** @description API key update enum (mirrors services::db::ApiKeyUpdate) */
+        /** @description API key update enum (mirrors services::ApiKeyUpdate) */
         ApiKeyUpdateDto: {
             /** @enum {string} */
             action: "Keep";
@@ -2718,6 +2718,7 @@ export interface components {
              */
             page_size?: number | null;
         };
+        /** @description Local model file response */
         LocalModelResponse: {
             repo: string;
             filename: string;
@@ -3144,6 +3145,7 @@ export interface components {
             /** Format: int32 */
             num_thread?: number | null;
         };
+        /** @description Paginated list of all model aliases (user, model, and API) */
         PaginatedAliasResponse: {
             data: components["schemas"]["AliasResponse"][];
             total: number;
@@ -3157,18 +3159,21 @@ export interface components {
             page: number;
             page_size: number;
         };
+        /** @description Paginated list of API tokens */
         PaginatedApiTokenResponse: {
             data: components["schemas"]["ApiToken"][];
             total: number;
             page: number;
             page_size: number;
         };
+        /** @description Paginated list of download requests */
         PaginatedDownloadResponse: {
             data: components["schemas"]["DownloadRequest"][];
             total: number;
             page: number;
             page_size: number;
         };
+        /** @description Paginated list of local model files */
         PaginatedLocalModelResponse: {
             data: components["schemas"]["LocalModelResponse"][];
             total: number;
@@ -3203,6 +3208,7 @@ export interface components {
             /** @description Number of items per page */
             page_size: number;
         };
+        /** @description Paginated list of user-defined model aliases */
         PaginatedUserAliasResponse: {
             data: components["schemas"]["UserAliasResponse"][];
             total: number;
@@ -3774,6 +3780,7 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        /** @description User-defined model alias response */
         UserAliasResponse: {
             id: string;
             alias: string;
@@ -8282,7 +8289,7 @@ export interface operations {
                 content: {
                     /** @example {
                      *       "error": {
-                     *         "code": "settings_error-invalid_setting",
+                     *         "code": "settings_route_error-not_found",
                      *         "message": "Setting not found: INVALID_KEY",
                      *         "type": "not_found_error"
                      *       }
@@ -8376,7 +8383,7 @@ export interface operations {
                 content: {
                     /** @example {
                      *       "error": {
-                     *         "code": "settings_error-not_found",
+                     *         "code": "settings_route_error-not_found",
                      *         "message": "Setting not found: INVALID_KEY",
                      *         "type": "not_found_error"
                      *       }

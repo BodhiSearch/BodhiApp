@@ -8,15 +8,16 @@ The `services` crate implements BodhiApp's **business logic and domain type laye
 
 **Domain Types**: All domain objects previously in `objs` now live here, organized by domain:
 - **Auth types** (`src/auth/auth_objs.rs`): `ResourceRole`, `TokenScope`, `UserScope`, `AppRole`, `UserInfo`
+- **Auth context** (`src/auth/auth_context.rs`): `AuthContext` enum (moved here from `auth_middleware`). `AuthContext::require_user_id()` returns `Ok(&str)` for authenticated variants and `Err(AuthContextError)` with 403 for `Anonymous`. `auth_middleware` re-exports `AuthContext` from this location. `AuthContextError` enum defined here with `AnonymousNotAllowed`, `MissingClientId`, `MissingToken` variants.
 - **Token types** (`src/tokens/token_objs.rs`): `TokenStatus`, `ApiTokenRow`
 - **User types** (`src/users/user_objs.rs`): `UserAccessRequestStatus`
-- **Model types** (`src/models/model_objs.rs`): `Repo`, `HubFile`, `Alias`, `UserAlias`, `ModelAlias`, `ApiAlias`, `OAIRequestParams`, `ModelMetadata`, `JsonVec`, `DownloadStatus`, `BuilderError`
+- **Model types** (`src/models/model_objs.rs`): `Repo`, `HubFile`, `Alias`, `UserAlias`, `ModelAlias`, `ApiAlias`, `OAIRequestParams`, `ModelMetadata`, `JsonVec`, `DownloadStatus`, `BuilderError`, `ApiKeyUpdate` (moved from `db/objs.rs`)
 - **Settings types** (`src/settings/setting_objs.rs`): `Setting`, `EnvType`, `AppType`, `LogLevel`, `AppCommand`
 - **App types** (`src/apps/app_objs.rs`): `AppStatus`
 - **Access request types** (`src/app_access_requests/access_request_objs.rs`): all `AppAccessRequest*` types
 - **Toolset types** (`src/toolsets/toolset_objs.rs`): all `Toolset*` types
 - **MCP types** (`src/mcps/mcp_objs.rs`): `McpServer`, `Mcp`, etc.
-- **Cross-cutting types** (`src/shared_objs/`): `ApiError`, `OpenAIApiError`, `ErrorBody`, `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `JsonRejectionError`, `ObjValidationError`, `token.rs` (JWT parsing/validation/claims), logging utilities
+- **Cross-cutting types** (`src/shared_objs/`): `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `ObjValidationError`, `token.rs` (JWT parsing/validation/claims), logging utilities. Note: `ApiError`, `OpenAIApiError`, `ErrorBody` have moved to `routes_app::shared`.
 
 **Database Layer**: Fully migrated to **SeaORM** with dual-database support (SQLite for development, PostgreSQL for production). `DefaultDbService` is the sole `DbService` implementation. All entity fields use typed enums (e.g., `DownloadStatus`, `TokenStatus`, `AppStatus`) instead of raw Strings. SeaORM migrations live in `src/db/sea_migrations/`. ID generation uses ULID (`ulid::Ulid::new()`) instead of UUID.
 
@@ -36,7 +37,46 @@ The `services` crate implements BodhiApp's **business logic and domain type laye
 - [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- embeddable library bootstraps `DefaultAppService`
 - [`bodhi/src-tauri`](../bodhi/src-tauri/CLAUDE.md) -- Tauri desktop app bootstraps services
 
-**Re-exports for downstream convenience**: `services` re-exports all `errmeta` types (`AppError`, `ErrorType`, `IoError`, `EntityError`, `RwLockReadError`, `impl_error_from!`) so downstream crates can use `services::` instead of adding `errmeta` as a direct dependency.
+**Re-exports for downstream convenience**: `services` re-exports all `errmeta` types (`AppError`, `ErrorType`, `IoError`, `EntityError`, `RwLockReadError`, `impl_error_from!`) so downstream crates can use `services::` instead of adding `errmeta` as a direct dependency. Also re-exports `db::*` via `pub use db::*` in `lib.rs`, so `DbService`, `DbError`, `DefaultTimeService`, etc. are accessible as `services::DbService` (not `services::db::DbService`).
+
+### AuthScopedAppService
+`AuthScopedAppService` in `src/app_service/auth_scoped.rs` wraps `Arc<dyn AppService>` and an `AuthContext` to provide user-scoped service access. `AuthScopedAppService::new(app_service, auth_context)` constructs it directly; the Axum extractor in `routes_app` builds it automatically from request extensions.
+
+**Identity and client methods:**
+- `require_user_id() -> Result<&str, AuthContextError>` -- returns 403 for `Anonymous`
+- `client_id() -> Option<&str>` -- returns the client ID from `AuthContext` if present
+- `require_client_id() -> Result<&str, AuthContextError>` -- returns error if client ID is absent
+- `auth_context() -> &AuthContext` -- access the raw auth context
+- `app_service() -> &Arc<dyn AppService>` -- access the underlying app service
+
+**Domain sub-service accessors** (auth-aware services with user context):
+- `tokens() -> AuthScopedTokenService` -- token lifecycle with user-scoped filtering
+- `mcps() -> AuthScopedMcpService` -- MCP server management with ownership checks
+- `tools() -> AuthScopedToolService` -- toolset access with auth context
+- `users() -> AuthScopedUserService` -- user administration with role checks
+
+**Passthrough accessors** (direct delegation to underlying AppService):
+- `data_service()`, `hub_service()`, `setting_service()`, `time_service()`, `db_service()`
+- `session_service()`, `network_service()`, `ai_api_service()`, `queue_producer()`
+- `app_instance_service()`, `access_request_service()`, `cache_service()`
+- `mcp_service()`, `tool_service()`, `token_service()`, `auth_service()`, `concurrency_service()`
+
+**Usage pattern in route handlers:**
+```rust
+// In handler signatures -- AuthScope extractor (from routes_app) builds this automatically
+async fn my_handler(auth_scope: AuthScope) -> Result<..., ApiError> {
+    let user_id = auth_scope.require_user_id()?; // 403 if Anonymous
+    let tokens_svc = auth_scope.tokens();        // AuthScopedTokenService
+    let data = auth_scope.data_service();        // passthrough
+}
+```
+
+**Architecture rule**: All API request flows in `routes_app` use `AuthScopedAppService`. Infrastructure (bootstrap, middleware, route composition) uses `AppService` directly.
+
+`AuthScopedTokenService` is in `src/app_service/auth_scoped_tokens.rs`.
+`AuthScopedMcpService` is in `src/app_service/auth_scoped_mcps.rs`.
+`AuthScopedToolService` is in `src/app_service/auth_scoped_tools.rs`.
+`AuthScopedUserService` is in `src/app_service/auth_scoped_users.rs`.
 
 ## Domain Type Organization
 
@@ -46,7 +86,7 @@ After eliminating the `objs` crate, domain types were co-located with the servic
 
 1. **Colocation Reduces Navigation**: Auth types (`ResourceRole`, `TokenScope`, etc.) live next to `AuthService`; model types (`Repo`, `HubFile`, `Alias`) live next to `DataService` and `HubService`. Developers working on a feature find both types and logic in the same module.
 2. **Dependency Simplification**: Domain types often need framework dependencies (`serde`, `sea-orm::DeriveValueType`, `utoipa::ToSchema`, `validator::Validate`). Putting them in `services` avoids creating yet another intermediate crate.
-3. **Error Wrapper Locality**: Framework-dependent error wrappers (`ApiError`, `SerdeJsonError`, etc.) need `axum`, `serde`, and `validator`. These live in `shared_objs/` within services.
+3. **Error Wrapper Locality**: Framework-dependent error wrappers (`SerdeJsonError`, `JsonRejectionError`, etc.) need `axum`, `serde`, and `validator`. These live in `shared_objs/` within services. Note: `ApiError`, `OpenAIApiError`, `ErrorBody` are HTTP/API-layer concerns that live in `routes_app::shared`.
 
 ### Module Layout Convention
 
@@ -67,15 +107,16 @@ Domain modules also contain dedicated `error.rs` files for service-specific erro
 - `ai_apis/error.rs` -- `AiApiServiceError`
 - `settings/error.rs` -- `SettingsMetadataError`, `SettingServiceError`
 - `toolsets/error.rs` -- `ToolsetError`, `ExaError`
+- `tokens/error.rs` -- `TokenServiceError`
 
 ### shared_objs Module
 
 The `shared_objs/` module contains types that are cross-cutting (not specific to any one domain) and require framework dependencies:
-- `error_api.rs` -- `ApiError` struct: captures `AppError` metadata, converts to `OpenAIApiError`, implements `axum::IntoResponse`
-- `error_oai.rs` -- `OpenAIApiError`, `ErrorBody`: OpenAI-compatible error envelope with utoipa schemas
-- `error_wrappers.rs` -- `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `JsonRejectionError`, `ObjValidationError`: framework-dependent error wrappers with manual or derived `AppError` implementations
+- `error_wrappers.rs` -- `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `ObjValidationError`: framework-dependent error wrappers with manual or derived `AppError` implementations
 - `utils.rs` -- `is_default()` helper, `ILLEGAL_CHARS` regex, `to_safe_filename()`
 - `log.rs` -- sensitive value masking for HTTP request logging
+
+Note: `ApiError`, `OpenAIApiError`, `ErrorBody` have been moved to `routes_app::shared` (files `api_error.rs` and `error_oai.rs`). These are HTTP/API-layer concerns not service-layer concerns.
 
 ## Architectural Design Rationale
 

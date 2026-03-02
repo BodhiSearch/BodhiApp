@@ -330,7 +330,7 @@ export function mockModelPull(
  */
 export function mockModelPullError(
   {
-    code = 'pull_error-file_already_exists',
+    code = 'model_route_error-file_already_exists',
     message = 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
     type = 'invalid_request_error',
     status = 400,
@@ -365,7 +365,7 @@ export function mockModelPullError(
 export function mockModelPullFileExistsError(config: { repo?: string; filename?: string } = {}) {
   const { repo = 'test/repo', filename = 'model.gguf' } = config;
   return mockModelPullError({
-    code: 'pull_error-file_already_exists',
+    code: 'model_route_error-file_already_exists',
     message: `file "${filename}" already exists in repo "${repo}" with snapshot "main"`,
     type: 'invalid_request_error',
     status: 400,

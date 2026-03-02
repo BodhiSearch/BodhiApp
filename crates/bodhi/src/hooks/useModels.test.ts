@@ -603,7 +603,7 @@ describe('Model Hooks', () => {
         }
       });
 
-      expect(onError).toHaveBeenCalledWith(expect.stringContaining('already exists'), 'pull_error-file_already_exists');
+      expect(onError).toHaveBeenCalledWith(expect.stringContaining('already exists'), 'model_route_error-file_already_exists');
     });
 
     it('calls onError with default message when none provided', async () => {
@@ -642,7 +642,7 @@ describe('Model Hooks', () => {
     it('handles error without code', async () => {
       const onError = vi.fn();
       server.use(
-        ...mockModelPullError({ message: 'Pull failed', status: 400, code: 'pull_error-file_already_exists' })
+        ...mockModelPullError({ message: 'Pull failed', status: 400, code: 'model_route_error-file_already_exists' })
       );
 
       const { result } = renderHook(() => usePullModel({ onError }), {
@@ -657,7 +657,7 @@ describe('Model Hooks', () => {
         }
       });
 
-      expect(onError).toHaveBeenCalledWith('Pull failed', 'pull_error-file_already_exists');
+      expect(onError).toHaveBeenCalledWith('Pull failed', 'model_route_error-file_already_exists');
     });
   });
 });

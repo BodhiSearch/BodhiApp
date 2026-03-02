@@ -1,4 +1,4 @@
-use crate::{UserAliasResponse, UserAliasResponseBuilder};
+use crate::models::models_api_schemas::{UserAliasResponse, UserAliasResponseBuilder};
 use chrono::{DateTime, Utc};
 use services::{OAIRequestParamsBuilder, Repo};
 use std::collections::HashMap;

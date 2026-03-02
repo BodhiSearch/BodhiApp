@@ -33,38 +33,102 @@ The crate has deliberately moved away from generic HTTP error wrappers (such as 
 - `SettingsError` -- Settings management (NotFound, BodhiHome, Unsupported)
 - `CreateAliasError` -- Model alias creation
 
-All enums use the `#[error_meta(trait_to_impl = AppError)]` pattern from `errmeta_derive`, mapping each variant to an `ErrorType` that determines the HTTP status code via the `ApiError` conversion in `services`.
+All enums use the `#[error_meta(trait_to_impl = AppError)]` pattern from `errmeta_derive`, mapping each variant to an `ErrorType` that determines the HTTP status code via the `ApiError` conversion defined in this crate (`routes_app::shared::api_error`).
 
-### AuthContext Extension Pattern
-Route handlers receive user identity through `Extension<AuthContext>` from Axum, where `AuthContext` is an enum defined in `auth_middleware`. The auth middleware populates this extension before handlers run. This replaces the previous approach of individual typed extractors (`ExtractUserId`, `ExtractToken`, `ExtractRole`, etc.) and manual `HeaderMap` parsing.
+### Module Structure
+Domain modules use flat naming (no `routes_` prefix):
+- `tokens/` -- API token lifecycle (create, update, list)
+- `settings/` -- Application settings management
+- `setup/` -- Application setup and initialization
+- `toolsets/` -- Toolset CRUD and execution
+- `mcps/` -- MCP server management and tool execution
+- `models/` -- Model aliases, local model files, pull/download requests
+- `users/` -- User management, access request workflow
+- `apps/` -- External app access request workflow
+- `auth/` -- OAuth2 initiation, callback, logout
+- `api_models/` -- Remote API model configuration
+- `oai/` -- OpenAI-compatible endpoints
+- `ollama/` -- Ollama-compatible endpoints
+- `shared/` -- Shared infrastructure (pagination, validation, OpenAPI, constants)
 
-**AuthContext variants:**
+Standalone files (too small for a folder): `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`
+
+### Handler Naming Convention
+Rails-style, no `_handler` suffix:
+- `<domain>_index` -- list (GET collection)
+- `<domain>_show` -- get one (GET item)
+- `<domain>_create` -- create (POST)
+- `<domain>_update` -- update (PUT/PATCH)
+- `<domain>_destroy` -- delete (DELETE)
+- Non-CRUD: descriptive names (`toolsets_execute`, `auth_initiate`, `auth_callback`, `auth_logout`)
+
+### Schema and Error Files Per Domain
+Each domain module has:
+- `error.rs` -- single `<Domain>RouteError` enum with `#[error_meta(trait_to_impl = AppError)]`
+- `<domain>_api_schemas.rs` -- request/response types (all `pub`, `ToSchema`, `Validate` where applicable)
+- `routes_<domain>.rs` -- handler functions (< 500 lines, split by feature if needed)
+- `mod.rs` -- declarations and `pub use` re-exports only
+- `test_<domain>_<concern>.rs` -- test files (Pattern A: declared from handler file; Pattern B: auth tests from mod.rs)
+
+### AuthScope Extractor Pattern
+All route handlers use the `AuthScope` extractor (defined in `crates/routes_app/src/shared/auth_scope_extractor.rs`) as the primary extractor, replacing the older `Extension<AuthContext>` + `State(state)` dual-extractor pattern. `AuthScope` is a newtype wrapper around `AuthScopedAppService` from the `services` crate.
+
+**Standard handler signature:**
+```rust
+async fn handler(
+  auth_scope: AuthScope,
+  // other extractors: Path, Query, Json, Session, etc.
+) -> Result<..., ApiError> {
+  // Service access via passthrough methods:
+  let data = auth_scope.data_service();
+  let setting = auth_scope.setting_service();
+  // Identity checks:
+  let user_id = auth_scope.require_user_id()?; // 403 if Anonymous
+  // Domain sub-services (auth-aware):
+  let tokens_svc = auth_scope.tokens();
+  let mcps_svc = auth_scope.mcps();
+  let tools_svc = auth_scope.tools();
+  let users_svc = auth_scope.users();
+  // Raw auth context when needed:
+  let auth_context = auth_scope.auth_context();
+}
+```
+
+**When to use sub-services vs passthrough accessors:**
+- Use `auth_scope.tokens()`, `auth_scope.mcps()`, `auth_scope.tools()`, `auth_scope.users()` when the operation is auth-aware (e.g., filtering by user_id, ownership checks).
+- Use passthrough accessors (`auth_scope.data_service()`, `auth_scope.setting_service()`, etc.) for operations that don't need the caller's identity.
+
+**AuthContext variants** (accessed via `auth_scope.auth_context()`):
 - `AuthContext::Anonymous` -- Unauthenticated user (used behind `optional_auth_middleware` middleware)
 - `AuthContext::Session { user_id, username, role: Option<ResourceRole>, token }` -- Browser session auth
 - `AuthContext::ApiToken { user_id, scope: TokenScope, token }` -- API token auth
 - `AuthContext::ExternalApp { user_id, scope: UserScope, token, azp, access_request_id: Option<String> }` -- External app OAuth
 
-**Handler pattern -- required auth endpoints:**
+**Extractor behavior:**
+- Falls back to `AuthContext::Anonymous` if no auth middleware has populated the extension (e.g., public endpoints or test requests without injected auth).
+- Handlers behind `api_auth_middleware` can rely on non-Anonymous context; use `require_user_id()` for defense-in-depth.
+- The extractor location: `crates/routes_app/src/shared/auth_scope_extractor.rs`
+
+**Legacy pattern (to be avoided in new code):**
 ```rust
+// OLD -- do not write new handlers this way:
 async fn handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<..., ApiError> {
-  // Pattern match when you need multiple fields:
-  let AuthContext::Session { ref user_id, ref token, .. } = auth_context else {
-    return Err(/* appropriate error */);
-  };
-  // Or use convenience methods when you need just one field:
-  let user_id = auth_context.user_id().expect("requires auth middleware");
-  let token = auth_context.token().expect("requires auth middleware");
+  let user_id = auth_context.require_user_id()?;
+  let data = state.app_service().data_service();
+}
 ```
-The `.expect()` calls are safe on required-auth endpoints because the auth middleware guarantees `AuthContext` is set (non-Anonymous) before the handler runs.
 
-**Optional auth endpoints:**
-Handlers behind `optional_auth_middleware` receive `AuthContext::Anonymous` for unauthenticated users. These handlers must handle `None` from `user_id()`/`token()` gracefully and must not use `.expect()`.
+**Known exceptions (handlers that keep `State<Arc<dyn RouterState>>`):**
+Handlers that call `state.forward_request()` (a method on `RouterState`, not on `AppService`) must keep `State(state)`. This applies to:
+- `chat_completions_handler` and `embeddings_handler` in `oai/routes_oai_chat.rs`
+- `ollama_model_chat_handler` in `ollama/routes_ollama.rs`
+Handlers that pass `Arc<dyn RouterState>` to helper functions that need it also retain State.
 
 **Testing pattern:**
-Tests use `RequestAuthContextExt::with_auth_context()` from `auth_middleware` test-utils to inject auth context into test requests:
+Tests use `RequestAuthContextExt::with_auth_context()` from `auth_middleware` test-utils to inject auth context into test requests. The `AuthScope` extractor reads from the same extensions:
 ```rust
 use auth_middleware::RequestAuthContextExt;
 let request = Request::builder()
@@ -107,11 +171,22 @@ All route handlers access business logic through `RouterState`, which provides `
 - `time_service()` -- Testable time source (never use `Utc::now()` directly)
 - `queue_producer()` -- Async task enqueueing for metadata refresh
 
+### ValidatedJson Extractor
+`ValidatedJson<T>` in `crates/routes_app/src/shared/validated_json.rs` is a custom Axum extractor that combines JSON deserialization with `validator::Validate`. Use it instead of `WithRejection<Json<T>, JsonRejectionError>` + manual `validate()` call:
+```rust
+async fn handler(
+  ValidatedJson(payload): ValidatedJson<CreateSomethingRequest>,
+) -> Result<...> { ... }
+```
+Both JSON parse errors and validation errors are mapped to `ApiError` with the standard OpenAI error envelope.
+
 ### Service Layer Integration
 Model creation and pull operations delegate to service-level business logic rather than implementing logic directly in route handlers. This ensures consistent validation and behavior across all application contexts.
 
 ### Error Translation Chain
-Service errors flow through a well-defined chain: service-specific error -> domain error enum (defined in this crate) -> `ApiError` (from `services`) -> OpenAI-compatible JSON response. Each domain error enum wraps relevant service errors via `#[error(transparent)]` with `#[from]` conversion, while also defining handler-specific error variants.
+Service errors flow through a well-defined chain: service-specific error -> domain error enum (defined in this crate) -> `ApiError` (defined in `routes_app::shared::api_error`) -> OpenAI-compatible JSON response. Each domain error enum wraps relevant service errors via `#[error(transparent)]` with `#[from]` conversion, while also defining handler-specific error variants.
+
+**ApiError location**: `ApiError`, `OpenAIApiError`, `ErrorBody` are defined in `routes_app::shared` (`shared/api_error.rs` and `shared/error_oai.rs`) and re-exported from the crate root. They are HTTP/API-layer concerns that were moved from `services` to `routes_app` to decouple the service layer from web framework types. Import with `use crate::ApiError;` (not `use services::ApiError;`).
 
 ## API Orchestration Workflows
 

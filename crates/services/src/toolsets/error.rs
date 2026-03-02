@@ -1,3 +1,4 @@
+use crate::auth::AuthContextError;
 use crate::db::DbError;
 use errmeta::{AppError, ErrorType};
 
@@ -65,8 +66,11 @@ pub enum ToolsetError {
   InvalidToolsetType(String),
 
   #[error(transparent)]
-  DbError(#[from] DbError),
+  Db(#[from] DbError),
 
   #[error(transparent)]
-  ExaError(#[from] ExaError),
+  Exa(#[from] ExaError),
+
+  #[error(transparent)]
+  Auth(#[from] AuthContextError),
 }

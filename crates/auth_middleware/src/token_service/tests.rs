@@ -55,7 +55,7 @@ async fn test_validate_bodhiapp_token_scope_variations(
   test_db_service.create_api_token(&mut api_token).await?;
 
   let app_instance_svc = AppServiceStubBuilder::default()
-    .with_app_instance_service()
+    .with_app_instance(AppInstance::test_default())
     .await
     .build()
     .await?
@@ -67,7 +67,7 @@ async fn test_validate_bodhiapp_token_scope_variations(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   let result = token_service
@@ -79,6 +79,7 @@ async fn test_validate_bodhiapp_token_scope_variations(
       user_id,
       role,
       token,
+      ..
     } => {
       assert_eq!("test-user", user_id);
       assert_eq!(expected_scope, role);
@@ -121,7 +122,7 @@ async fn test_validate_bodhiapp_token_success(
 
   // Create token service
   let app_instance_svc = AppServiceStubBuilder::default()
-    .with_app_instance_service()
+    .with_app_instance(AppInstance::test_default())
     .await
     .build()
     .await?
@@ -133,7 +134,7 @@ async fn test_validate_bodhiapp_token_success(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   let result = token_service
@@ -146,6 +147,7 @@ async fn test_validate_bodhiapp_token_success(
       user_id,
       role,
       token,
+      ..
     } => {
       assert_eq!("test-user", user_id);
       assert_eq!(TokenScope::User, role);
@@ -188,7 +190,7 @@ async fn test_validate_bodhiapp_token_inactive(
 
   // Create token service
   let app_instance_svc = AppServiceStubBuilder::default()
-    .with_app_instance_service()
+    .with_app_instance(AppInstance::test_default())
     .await
     .build()
     .await?
@@ -200,7 +202,7 @@ async fn test_validate_bodhiapp_token_inactive(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   // Validate token - should fail due to inactive status
@@ -246,7 +248,7 @@ async fn test_validate_bodhiapp_token_invalid_hash(
 
   // Create token service
   let app_instance_svc = AppServiceStubBuilder::default()
-    .with_app_instance_service()
+    .with_app_instance(AppInstance::test_default())
     .await
     .build()
     .await?
@@ -258,7 +260,7 @@ async fn test_validate_bodhiapp_token_invalid_hash(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   // Try to validate with different token string (wrong hash)
@@ -283,7 +285,7 @@ async fn test_validate_bearer_token_header_errors(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let app_instance_svc = AppServiceStubBuilder::default()
-    .with_app_instance_service()
+    .with_app_instance(AppInstance::test_default())
     .await
     .build()
     .await?
@@ -295,7 +297,7 @@ async fn test_validate_bearer_token_header_errors(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   ));
   let result = token_service.validate_bearer_token(header).await;
   assert!(result.is_err());
@@ -368,7 +370,7 @@ async fn test_validate_external_client_token_success(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   ));
 
   let result = token_service
@@ -500,7 +502,7 @@ async fn test_external_client_token_cache_security_prevents_jti_forgery(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   ));
 
   let legitimate_result = token_service
@@ -599,7 +601,7 @@ async fn test_validate_bearer_token_scope_not_found(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   // DB lookup returns None, expect 403 ScopeNotFound
@@ -681,7 +683,7 @@ async fn test_validate_bearer_token_scope_not_approved(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   let result = token_service
@@ -760,7 +762,7 @@ async fn test_validate_bearer_token_app_client_mismatch(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
   let result = token_service
     .validate_bearer_token(&format!("Bearer {}", external_token))
@@ -838,7 +840,7 @@ async fn test_validate_bearer_token_user_mismatch(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   // Expect 403 UserMismatch
@@ -923,7 +925,7 @@ async fn test_validate_bearer_token_invalid_status(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   // Expect 403 NotApproved
@@ -1019,7 +1021,7 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   // Expect 403 AccessRequestIdMismatch
@@ -1113,7 +1115,7 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   // Expect 403 AccessRequestIdMismatch (claim="missing")
@@ -1209,7 +1211,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   let result = token_service
@@ -1322,7 +1324,7 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   let bearer_header = format!("Bearer {}", external_token);
@@ -1412,7 +1414,7 @@ async fn test_validate_bearer_token_without_access_request_scope(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   let result = token_service
@@ -1528,7 +1530,7 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
-    Arc::new(services::db::DefaultTimeService),
+    Arc::new(services::DefaultTimeService),
   );
 
   let result = token_service

@@ -16,12 +16,21 @@ use uuid::Uuid;
 /// 4. The cache key is just SHA-256(bearer_token)[0..12]
 pub struct ExternalTokenSimulator {
   cache_service: Arc<dyn CacheService>,
+  client_id: String,
 }
 
 impl ExternalTokenSimulator {
   pub fn new(app_service: &Arc<dyn AppService>) -> Self {
     Self {
       cache_service: app_service.cache_service(),
+      client_id: "test-client-id".to_string(),
+    }
+  }
+
+  pub fn new_with_client_id(app_service: &Arc<dyn AppService>, client_id: String) -> Self {
+    Self {
+      cache_service: app_service.cache_service(),
+      client_id,
     }
   }
 
@@ -61,6 +70,7 @@ impl ExternalTokenSimulator {
 
     let cached = CachedExchangeResult {
       token: exchange_jwt,
+      client_id: self.client_id.clone(),
       app_client_id: azp.to_string(),
       role: role.map(|r| r.to_string()),
       access_request_id,

@@ -57,7 +57,7 @@ pub enum ModelValidationError {
   FilePatternMismatch(String),
 
   #[error("Prefix is required when forwarding all requests.")]
-  #[error_meta(error_type = ErrorType::BadRequest, code = "model_validation_error-forward_all_requires_prefix")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   ForwardAllRequiresPrefix,
 }
 
@@ -920,6 +920,15 @@ pub struct ModelArchitecture {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub quantization: Option<String>,
   pub format: String,
+}
+
+/// Represents an API key update operation for API model aliases and toolsets
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ApiKeyUpdate {
+  /// Keep the existing API key unchanged
+  Keep,
+  /// Set a new API key (or add one if none exists) - Option<String> supports both setting and clearing
+  Set(Option<String>),
 }
 
 #[cfg(test)]

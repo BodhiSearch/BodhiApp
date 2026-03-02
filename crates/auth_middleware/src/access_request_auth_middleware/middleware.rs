@@ -1,4 +1,4 @@
-use crate::AuthContext;
+use crate::{AuthContext, MiddlewareError};
 use axum::{
   body::Body,
   extract::{Request, State},
@@ -6,9 +6,9 @@ use axum::{
   response::Response,
 };
 use server_core::RouterState;
-use services::db::DbService;
 use services::AppAccessRequestStatus;
-use services::{ApiError, AppError, ErrorType};
+use services::DbService;
+use services::{AppError, ErrorType};
 use services::{ApprovalStatus, ApprovedResources};
 use std::sync::Arc;
 
@@ -67,7 +67,7 @@ pub enum AccessRequestAuthError {
   InvalidApprovedJson { error: String },
 
   #[error(transparent)]
-  DbError(#[from] services::db::DbError),
+  DbError(#[from] services::DbError),
 }
 
 enum AccessRequestAuthFlow {
@@ -146,7 +146,7 @@ pub async fn access_request_auth_middleware(
   State(state): State<Arc<dyn RouterState>>,
   req: Request<Body>,
   next: Next,
-) -> Result<Response, ApiError> {
+) -> Result<Response, MiddlewareError> {
   let auth_context = req
     .extensions()
     .get::<AuthContext>()

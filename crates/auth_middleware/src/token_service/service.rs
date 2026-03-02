@@ -16,6 +16,7 @@ const BODHIAPP_TOKEN_PREFIX: &str = "bodhiapp_";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CachedExchangeResult {
   pub token: String,
+  pub client_id: String,
   pub app_client_id: String,
   pub role: Option<String>,
   pub access_request_id: Option<String>,
@@ -99,7 +100,14 @@ impl DefaultTokenService {
         .map_err(|e| TokenError::InvalidToken(format!("Invalid scope: {}", e)))?;
 
       let user_id = api_token.user_id.clone();
+      let client_id = self
+        .app_instance_service
+        .get_instance()
+        .await?
+        .ok_or(AppInstanceError::NotFound)?
+        .client_id;
       return Ok(AuthContext::ApiToken {
+        client_id,
         user_id,
         role: token_scope,
         token: bearer_token.to_string(),
@@ -129,6 +137,7 @@ impl DefaultTokenService {
             .as_ref()
             .and_then(|r| r.parse::<UserScope>().ok());
           Some(AuthContext::ExternalApp {
+            client_id: cached_result.client_id.clone(),
             user_id: scope_claims.sub,
             role,
             token: cached_result.token,
@@ -349,12 +358,14 @@ impl DefaultTokenService {
 
     let cached_result = CachedExchangeResult {
       token: access_token.clone(),
+      client_id: instance.client_id.clone(),
       app_client_id: original_azp.clone(),
       role: role_str,
       access_request_id: scope_claims.access_request_id.clone(),
     };
 
     let auth_context = AuthContext::ExternalApp {
+      client_id: instance.client_id,
       user_id: scope_claims.sub,
       role,
       token: access_token,

@@ -37,8 +37,8 @@ impl Eq for SeaOrmDbError {}
 pub enum DbError {
   #[error(transparent)]
   SeaOrmError(#[from] SeaOrmDbError),
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::BadRequest, code="db_error-strum_parse", args_delegate = false)]
+  #[error("{0}")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   StrumParse(#[from] strum::ParseError),
   #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
@@ -47,7 +47,7 @@ pub enum DbError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   EncryptionError(String),
   #[error("Prefix '{0}' is already used by another API model.")]
-  #[error_meta(error_type = ErrorType::BadRequest, code = "db_error-prefix_exists")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   PrefixExists(String),
   #[error("Item '{id}' of type '{item_type}' not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]

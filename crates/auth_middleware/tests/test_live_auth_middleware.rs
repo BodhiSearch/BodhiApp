@@ -86,7 +86,7 @@ async fn create_test_state(config: &AuthServerConfig) -> anyhow::Result<Arc<Defa
 
   let mut app_service_builder = AppServiceStubBuilder::default();
   let test_db = test_db_service_with_temp_dir(shared_temp_dir).await;
-  let db_svc: Arc<dyn services::db::DbService> = Arc::new(test_db);
+  let db_svc: Arc<dyn services::DbService> = Arc::new(test_db);
   let app_instance_svc = DefaultAppInstanceService::new(db_svc.clone());
   app_instance_svc
     .create_instance(

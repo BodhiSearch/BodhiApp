@@ -1,7 +1,8 @@
 use crate::{
-  db::{encryption::encrypt_api_key, ApiKeyUpdate},
+  db::encryption::encrypt_api_key,
   test_utils::{sea_context, setup_env},
   toolsets::{ToolsetRepository, ToolsetRow},
+  ApiKeyUpdate,
 };
 use anyhow_trace::anyhow_trace;
 use chrono::{DateTime, Utc};

@@ -1,9 +1,10 @@
 use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
-  ApiKeyUpdate, DbError, DefaultDbService,
+  DbError, DefaultDbService,
 };
 use crate::models::api_model_alias_entity::{self as api_model_alias, ApiAliasView};
 use crate::models::ApiAlias;
+use crate::ApiKeyUpdate;
 use chrono::{DateTime, Utc};
 use sea_orm::prelude::*;
 use sea_orm::{QueryOrder, Set};

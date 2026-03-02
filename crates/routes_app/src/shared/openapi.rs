@@ -1,3 +1,10 @@
+use crate::oai::{
+  __path_chat_completions_handler, __path_embeddings_handler, __path_oai_model_handler,
+  __path_oai_models_handler,
+};
+use crate::ollama::{
+  __path_ollama_model_chat_handler, __path_ollama_model_show_handler, __path_ollama_models_handler,
+};
 use crate::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
   ApiFormatsResponse, ApiKey, ApiKeyUpdateAction, ApiModelResponse, ApproveAccessRequestBody,
@@ -12,40 +19,30 @@ use crate::{
   PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
   PaginatedLocalModelResponse, PaginatedUserAccessResponse, PaginatedUserAliasResponse,
   QueueStatusResponse, RedirectResponse, RefreshRequest, RefreshResponse, RefreshSource,
-  SetupRequest, SetupResponse, UpdateAliasRequest, UpdateSettingRequest, UserAccessStatusResponse,
-  UserAliasResponse, UserResponse, __path_app_info_handler, __path_approve_access_request_handler,
-  __path_approve_request_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
-  __path_change_user_role_handler, __path_copy_alias_handler, __path_create_access_request_handler,
-  __path_create_alias_handler, __path_create_api_model_handler, __path_create_pull_request_handler,
-  __path_create_token_handler, __path_delete_alias_handler, __path_delete_api_model_handler,
-  __path_delete_setting_handler, __path_deny_access_request_handler, __path_fetch_models_handler,
-  __path_get_access_request_review_handler, __path_get_access_request_status_handler,
-  __path_get_api_formats_handler, __path_get_api_model_handler, __path_get_download_status_handler,
-  __path_get_user_alias_handler, __path_health_handler, __path_list_aliases_handler,
-  __path_list_all_requests_handler, __path_list_api_models_handler, __path_list_downloads_handler,
-  __path_list_local_modelfiles_handler, __path_list_pending_requests_handler,
-  __path_list_settings_handler, __path_list_tokens_handler, __path_list_users_handler,
-  __path_logout_handler, __path_ping_handler, __path_queue_status_handler,
-  __path_refresh_metadata_handler, __path_reject_request_handler, __path_remove_user_handler,
-  __path_request_status_handler, __path_setup_handler, __path_sync_models_handler,
-  __path_test_api_model_handler, __path_update_alias_handler, __path_update_api_model_handler,
-  __path_update_setting_handler, __path_update_token_handler, __path_user_info_handler,
-  __path_user_request_access_handler,
+  UpdateAliasRequest, UpdateSettingRequest, UserAccessStatusResponse, UserAliasResponse,
+  UserResponse, __path_api_models_create, __path_api_models_destroy,
+  __path_api_models_fetch_models, __path_api_models_formats, __path_api_models_index,
+  __path_api_models_show, __path_api_models_sync, __path_api_models_test, __path_api_models_update,
+  __path_apps_approve_access_request, __path_apps_create_access_request,
+  __path_apps_deny_access_request, __path_apps_get_access_request_review,
+  __path_apps_get_access_request_status, __path_auth_callback, __path_auth_initiate,
+  __path_auth_logout, __path_health_handler, __path_modelfiles_index, __path_models_copy,
+  __path_models_create, __path_models_destroy, __path_models_index, __path_models_pull_create,
+  __path_models_pull_index, __path_models_pull_show, __path_models_show, __path_models_update,
+  __path_ping_handler, __path_queue_status_handler, __path_refresh_metadata_handler,
+  __path_tokens_create, __path_tokens_index, __path_tokens_update,
+  __path_users_access_request_approve, __path_users_access_request_reject,
+  __path_users_access_requests_index, __path_users_access_requests_pending,
+  __path_users_change_role, __path_users_destroy, __path_users_index, __path_users_info,
+  __path_users_request_access, __path_users_request_status,
 };
 // Toolsets DTOs and handlers
-use crate::routes_oai::{
-  __path_chat_completions_handler, __path_embeddings_handler, __path_oai_model_handler,
-  __path_oai_models_handler,
-};
-use crate::routes_ollama::{
-  __path_ollama_model_chat_handler, __path_ollama_model_show_handler, __path_ollama_models_handler,
-};
 use crate::{
   ApiKeyUpdateDto, CreateToolsetRequest, ExecuteToolsetRequest, ListToolsetTypesResponse,
-  ListToolsetsResponse, ToolsetResponse, UpdateToolsetRequest, __path_create_toolset_handler,
-  __path_delete_toolset_handler, __path_disable_type_handler, __path_enable_type_handler,
-  __path_execute_toolset_handler, __path_get_toolset_handler, __path_list_toolset_types_handler,
-  __path_list_toolsets_handler, __path_update_toolset_handler,
+  ListToolsetsResponse, ToolsetResponse, UpdateToolsetRequest, __path_toolset_types_disable,
+  __path_toolset_types_enable, __path_toolset_types_index, __path_toolsets_create,
+  __path_toolsets_destroy, __path_toolsets_execute, __path_toolsets_index, __path_toolsets_show,
+  __path_toolsets_update,
 };
 // MCP DTOs and handlers
 use crate::{
@@ -54,16 +51,19 @@ use crate::{
   McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse,
   OAuthDiscoverAsRequest, OAuthDiscoverAsResponse, OAuthDiscoverMcpRequest,
   OAuthDiscoverMcpResponse, OAuthLoginRequest, OAuthLoginResponse, OAuthTokenExchangeRequest,
-  OAuthTokenResponse, UpdateMcpRequest, UpdateMcpServerRequest, __path_create_auth_config_handler,
-  __path_create_mcp_handler, __path_create_mcp_server_handler, __path_delete_auth_config_handler,
-  __path_delete_mcp_handler, __path_delete_oauth_token_handler, __path_execute_mcp_tool_handler,
-  __path_fetch_mcp_tools_handler, __path_get_auth_config_handler, __path_get_mcp_handler,
-  __path_get_mcp_server_handler, __path_get_oauth_token_handler, __path_list_auth_configs_handler,
-  __path_list_mcp_servers_handler, __path_list_mcps_handler, __path_oauth_discover_as_handler,
-  __path_oauth_discover_mcp_handler, __path_oauth_login_handler,
-  __path_oauth_token_exchange_handler, __path_refresh_mcp_tools_handler,
-  __path_standalone_dynamic_register_handler, __path_update_mcp_handler,
-  __path_update_mcp_server_handler,
+  OAuthTokenResponse, UpdateMcpRequest, UpdateMcpServerRequest, __path_mcp_auth_configs_create,
+  __path_mcp_auth_configs_destroy, __path_mcp_auth_configs_index, __path_mcp_auth_configs_show,
+  __path_mcp_oauth_discover_as, __path_mcp_oauth_discover_mcp, __path_mcp_oauth_dynamic_register,
+  __path_mcp_oauth_login, __path_mcp_oauth_token_exchange, __path_mcp_oauth_tokens_destroy,
+  __path_mcp_oauth_tokens_show, __path_mcp_servers_create, __path_mcp_servers_index,
+  __path_mcp_servers_show, __path_mcp_servers_update, __path_mcps_create, __path_mcps_destroy,
+  __path_mcps_execute_tool, __path_mcps_fetch_tools, __path_mcps_index, __path_mcps_refresh_tools,
+  __path_mcps_show, __path_mcps_update,
+};
+// Settings and setup DTOs and handlers
+use crate::{
+  SetupRequest, SetupResponse, __path_settings_destroy, __path_settings_index,
+  __path_settings_update, __path_setup_create, __path_setup_show,
 };
 use crate::{
   API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA,
@@ -80,11 +80,12 @@ use async_openai::types::{
   },
   models::{ListModelResponse, Model},
 };
+use crate::OpenAIApiError;
 use services::{
   Alias, ApiFormat, ApiToken, AppAccessRequestStatus, AppRole, AppStatus, ApprovalStatus,
   CreateMcpAuthConfigRequest, DownloadRequest, DownloadStatus, FlowType, McpAuthConfigResponse,
   McpAuthConfigsListResponse, McpAuthType, McpServer, McpServerInfo, McpTool, OAIRequestParams,
-  OpenAIApiError, ResourceRole, SettingInfo, SettingMetadata, SettingService, SettingSource,
+  ResourceRole, SettingInfo, SettingMetadata, SettingService, SettingSource,
   TokenScope, TokenStatus, ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionResponse,
   UserInfo, UserListResponse, UserScope,
 };
@@ -131,7 +132,7 @@ make_ui_endpoint!(ENDPOINT_API_MODELS_API_FORMATS, "api-models/api-formats");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
 make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
-// MCP endpoint constants are defined in routes_mcp/mod.rs
+// MCP endpoint constants are defined in mcps/mod.rs
 
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
@@ -421,51 +422,51 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         // System endpoints
         ping_handler,
         health_handler,
-        app_info_handler,
 
         // Setup endpoints
-        setup_handler,
+        setup_show,
+        setup_create,
 
         // Authentication endpoints
-        auth_initiate_handler,
-        auth_callback_handler,
-        logout_handler,
-        user_info_handler,
+        auth_initiate,
+        auth_callback,
+        auth_logout,
+        users_info,
 
         // API Keys endpoints
-        create_token_handler,
-        update_token_handler,
-        list_tokens_handler,
+        tokens_create,
+        tokens_update,
+        tokens_index,
 
         // API Models endpoints
-        list_api_models_handler,
-        get_api_model_handler,
-        create_api_model_handler,
-        update_api_model_handler,
-        delete_api_model_handler,
-        sync_models_handler,
-        test_api_model_handler,
-        fetch_models_handler,
-        get_api_formats_handler,
+        api_models_index,
+        api_models_show,
+        api_models_create,
+        api_models_update,
+        api_models_destroy,
+        api_models_sync,
+        api_models_test,
+        api_models_fetch_models,
+        api_models_formats,
 
         // Models endpoints
-        create_alias_handler,
-        update_alias_handler,
-        delete_alias_handler,
-        copy_alias_handler,
-        list_aliases_handler,
-        list_local_modelfiles_handler,
-        get_user_alias_handler,
-        list_downloads_handler,
-        create_pull_request_handler,
-        get_download_status_handler,
+        models_create,
+        models_update,
+        models_destroy,
+        models_copy,
+        models_index,
+        modelfiles_index,
+        models_show,
+        models_pull_index,
+        models_pull_create,
+        models_pull_show,
         refresh_metadata_handler,
         queue_status_handler,
 
         // Settings endpoints
-        list_settings_handler,
-        update_setting_handler,
-        delete_setting_handler,
+        settings_index,
+        settings_update,
+        settings_destroy,
 
         // OpenAI endpoints
         oai_models_handler,
@@ -479,65 +480,65 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         ollama_model_chat_handler,
 
         // User request endpoints
-        user_request_access_handler,
-        request_status_handler,
-        list_pending_requests_handler,
-        list_all_requests_handler,
-        approve_request_handler,
-        reject_request_handler,
+        users_request_access,
+        users_request_status,
+        users_access_requests_pending,
+        users_access_requests_index,
+        users_access_request_approve,
+        users_access_request_reject,
 
         // App access request endpoints
-        create_access_request_handler,
-        get_access_request_status_handler,
-        get_access_request_review_handler,
-        approve_access_request_handler,
-        deny_access_request_handler,
+        apps_create_access_request,
+        apps_get_access_request_status,
+        apps_get_access_request_review,
+        apps_approve_access_request,
+        apps_deny_access_request,
 
         // User management endpoints
-        list_users_handler,
-        change_user_role_handler,
-        remove_user_handler,
+        users_index,
+        users_change_role,
+        users_destroy,
 
         // Toolsets endpoints
-        list_toolsets_handler,
-        create_toolset_handler,
-        get_toolset_handler,
-        update_toolset_handler,
-        delete_toolset_handler,
-        execute_toolset_handler,
-        list_toolset_types_handler,
-        enable_type_handler,
-        disable_type_handler,
+        toolsets_index,
+        toolsets_create,
+        toolsets_show,
+        toolsets_update,
+        toolsets_destroy,
+        toolsets_execute,
+        toolset_types_index,
+        toolset_types_enable,
+        toolset_types_disable,
 
         // MCP endpoints
-        list_mcps_handler,
-        create_mcp_handler,
-        get_mcp_handler,
-        update_mcp_handler,
-        delete_mcp_handler,
-        fetch_mcp_tools_handler,
-        refresh_mcp_tools_handler,
-        execute_mcp_tool_handler,
+        mcps_index,
+        mcps_create,
+        mcps_show,
+        mcps_update,
+        mcps_destroy,
+        mcps_fetch_tools,
+        mcps_refresh_tools,
+        mcps_execute_tool,
         // MCP server admin endpoints
-        list_mcp_servers_handler,
-        get_mcp_server_handler,
-        create_mcp_server_handler,
-        update_mcp_server_handler,
+        mcp_servers_index,
+        mcp_servers_show,
+        mcp_servers_create,
+        mcp_servers_update,
         // Unified auth config endpoints
-        create_auth_config_handler,
-        list_auth_configs_handler,
-        get_auth_config_handler,
-        delete_auth_config_handler,
+        mcp_auth_configs_create,
+        mcp_auth_configs_index,
+        mcp_auth_configs_show,
+        mcp_auth_configs_destroy,
         // OAuth flow endpoints
-        oauth_login_handler,
-        oauth_token_exchange_handler,
+        mcp_oauth_login,
+        mcp_oauth_token_exchange,
         // OAuth discovery endpoints
-        oauth_discover_as_handler,
-        oauth_discover_mcp_handler,
-        standalone_dynamic_register_handler,
+        mcp_oauth_discover_as,
+        mcp_oauth_discover_mcp,
+        mcp_oauth_dynamic_register,
         // OAuth token endpoints
-        get_oauth_token_handler,
-        delete_oauth_token_handler
+        mcp_oauth_tokens_show,
+        mcp_oauth_tokens_destroy
     )
 )]
 pub struct BodhiOpenAPIDoc;

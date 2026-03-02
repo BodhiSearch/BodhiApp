@@ -1,45 +1,41 @@
 use crate::proxy_router;
 use crate::{
-  app_info_handler, approve_access_request_handler, approve_request_handler, auth_callback_handler,
-  auth_initiate_handler, change_user_role_handler, copy_alias_handler,
-  create_access_request_handler, create_alias_handler, create_api_model_handler,
-  create_pull_request_handler, create_token_handler, create_toolset_handler, delete_alias_handler,
-  delete_api_model_handler, delete_setting_handler, delete_toolset_handler,
-  deny_access_request_handler, dev_db_reset_handler, dev_secrets_handler, disable_type_handler,
-  enable_type_handler, envs_handler, execute_toolset_handler, fetch_models_handler,
-  get_access_request_review_handler, get_access_request_status_handler, get_api_formats_handler,
-  get_api_model_handler, get_download_status_handler, get_toolset_handler, get_user_alias_handler,
-  health_handler, list_aliases_handler, list_all_requests_handler, list_api_models_handler,
-  list_downloads_handler, list_local_modelfiles_handler, list_pending_requests_handler,
-  list_settings_handler, list_tokens_handler, list_toolset_types_handler, list_toolsets_handler,
-  list_users_handler, logout_handler, ping_handler, queue_status_handler, refresh_metadata_handler,
-  reject_request_handler, remove_user_handler, request_status_handler, setup_handler,
-  sync_models_handler, test_api_model_handler, update_alias_handler, update_api_model_handler,
-  update_setting_handler, update_token_handler, update_toolset_handler, user_info_handler,
-  user_request_access_handler, BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier,
-  ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
-  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW, ENDPOINT_API_MODELS,
-  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
-  ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
-  ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_DB_RESET,
-  ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
-  ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
-  ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
-  ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
+  api_models_create, api_models_destroy, api_models_fetch_models, api_models_formats,
+  api_models_index, api_models_show, api_models_sync, api_models_test, api_models_update,
+  apps_approve_access_request, apps_create_access_request, apps_deny_access_request,
+  apps_get_access_request_review, apps_get_access_request_status, auth_callback, auth_initiate,
+  auth_logout, dev_db_reset_handler, dev_secrets_handler, envs_handler, health_handler,
+  modelfiles_index, models_copy, models_create, models_destroy, models_index, models_pull_create,
+  models_pull_index, models_pull_show, models_show, models_update, ping_handler,
+  queue_status_handler, refresh_metadata_handler, tokens_create, tokens_index, tokens_update,
+  users_access_request_approve, users_access_request_reject, users_access_requests_index,
+  users_access_requests_pending, users_change_role, users_destroy, users_index, users_info,
+  users_request_access, users_request_status, BodhiOpenAPIDoc, GlobalErrorResponses,
+  OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE,
+  ENDPOINT_ACCESS_REQUESTS_DENY, ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW,
+  ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS,
+  ENDPOINT_API_MODELS_TEST, ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS,
+  ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
+  ENDPOINT_DEV_DB_RESET, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT,
+  ENDPOINT_MODELS, ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL,
+  ENDPOINT_PING, ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS,
+  ENDPOINT_TOOLSET_TYPES, ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS,
+  ENDPOINT_USER_REQUEST_STATUS,
 };
 use crate::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
   ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
 };
 use crate::{
-  create_auth_config_handler, create_mcp_handler, create_mcp_server_handler,
-  delete_auth_config_handler, delete_mcp_handler, delete_oauth_token_handler,
-  execute_mcp_tool_handler, fetch_mcp_tools_handler, get_auth_config_handler, get_mcp_handler,
-  get_mcp_server_handler, get_oauth_token_handler, list_auth_configs_handler,
-  list_mcp_servers_handler, list_mcps_handler, oauth_discover_as_handler,
-  oauth_discover_mcp_handler, oauth_login_handler, oauth_token_exchange_handler,
-  refresh_mcp_tools_handler, standalone_dynamic_register_handler, update_mcp_handler,
-  update_mcp_server_handler, ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_FETCH_TOOLS,
+  mcp_auth_configs_create, mcp_auth_configs_destroy, mcp_auth_configs_index, mcp_auth_configs_show,
+  mcp_oauth_discover_as, mcp_oauth_discover_mcp, mcp_oauth_dynamic_register, mcp_oauth_login,
+  mcp_oauth_token_exchange, mcp_oauth_tokens_destroy, mcp_oauth_tokens_show, mcp_servers_create,
+  mcp_servers_index, mcp_servers_show, mcp_servers_update, mcps_create, mcps_destroy,
+  mcps_execute_tool, mcps_fetch_tools, mcps_index, mcps_refresh_tools, mcps_show, mcps_update,
+  settings_destroy, settings_index, settings_update, setup_create, setup_show,
+  toolset_types_disable, toolset_types_enable, toolset_types_index, toolsets_create,
+  toolsets_destroy, toolsets_execute, toolsets_index, toolsets_show, toolsets_update,
+  ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_FETCH_TOOLS,
   ENDPOINT_MCPS_OAUTH_DISCOVER_AS, ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
   ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE, ENDPOINT_MCP_SERVERS,
 };
@@ -80,29 +76,26 @@ pub async fn build_routes(
   let public_apis = Router::new()
     .route(ENDPOINT_PING, get(ping_handler))
     .route(ENDPOINT_HEALTH, get(health_handler))
-    .route(ENDPOINT_APP_INFO, get(app_info_handler))
-    .route(ENDPOINT_APP_SETUP, post(setup_handler))
+    .route(ENDPOINT_APP_INFO, get(setup_show))
+    .route(ENDPOINT_APP_SETUP, post(setup_create))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
-    .route(ENDPOINT_LOGOUT, post(logout_handler))
+    .route(ENDPOINT_LOGOUT, post(auth_logout))
     // App access request endpoints (unauthenticated)
     .route(
       ENDPOINT_APPS_REQUEST_ACCESS,
-      post(create_access_request_handler),
+      post(apps_create_access_request),
     )
     .route(
       ENDPOINT_APPS_ACCESS_REQUESTS_ID,
-      get(get_access_request_status_handler),
+      get(apps_get_access_request_status),
     );
 
   let mut optional_auth = Router::new()
-    .route(ENDPOINT_USER_INFO, get(user_info_handler))
-    .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate_handler))
-    .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback_handler))
-    .route(
-      ENDPOINT_USER_REQUEST_ACCESS,
-      post(user_request_access_handler),
-    )
-    .route(ENDPOINT_USER_REQUEST_STATUS, get(request_status_handler));
+    .route(ENDPOINT_USER_INFO, get(users_info))
+    .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate))
+    .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback))
+    .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
+    .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status));
 
   // Dev-only routes with optional auth
   if !app_service.setting_service().is_production().await {
@@ -134,12 +127,9 @@ pub async fn build_routes(
     .route(ENDPOINT_OLLAMA_SHOW, post(ollama_model_show_handler))
     .route(ENDPOINT_OLLAMA_CHAT, post(ollama_model_chat_handler))
     // Basic Bodhi APIs
-    .route(ENDPOINT_MODELS, get(list_aliases_handler))
-    .route(
-      &format!("{ENDPOINT_MODELS}/{{id}}"),
-      get(get_user_alias_handler),
-    )
-    .route(ENDPOINT_MODEL_FILES, get(list_local_modelfiles_handler))
+    .route(ENDPOINT_MODELS, get(models_index))
+    .route(&format!("{ENDPOINT_MODELS}/{{id}}"), get(models_show))
+    .route(ENDPOINT_MODEL_FILES, get(modelfiles_index))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -157,89 +147,77 @@ pub async fn build_routes(
   // Toolset instance CRUD APIs (session-only, no OAuth or API tokens)
   let user_session_apis = Router::new()
     // Toolset types listing
-    .route(ENDPOINT_TOOLSET_TYPES, get(list_toolset_types_handler))
-    .route(ENDPOINT_TOOLSETS, post(create_toolset_handler))
+    .route(ENDPOINT_TOOLSET_TYPES, get(toolset_types_index))
+    .route(ENDPOINT_TOOLSETS, post(toolsets_create))
+    .route(&format!("{ENDPOINT_TOOLSETS}/{{id}}"), get(toolsets_show))
+    .route(&format!("{ENDPOINT_TOOLSETS}/{{id}}"), put(toolsets_update))
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
-      get(get_toolset_handler),
-    )
-    .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
-      put(update_toolset_handler),
-    )
-    .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
-      delete(delete_toolset_handler),
+      delete(toolsets_destroy),
     )
     // MCP CRUD (session-only)
-    .route(ENDPOINT_MCPS, post(create_mcp_handler))
-    .route(ENDPOINT_MCPS_FETCH_TOOLS, post(fetch_mcp_tools_handler))
-    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), put(update_mcp_handler))
-    .route(
-      &format!("{ENDPOINT_MCPS}/{{id}}"),
-      delete(delete_mcp_handler),
-    )
+    .route(ENDPOINT_MCPS, post(mcps_create))
+    .route(ENDPOINT_MCPS_FETCH_TOOLS, post(mcps_fetch_tools))
+    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), put(mcps_update))
+    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), delete(mcps_destroy))
     // Unified auth config endpoints
-    .route(ENDPOINT_MCPS_AUTH_CONFIGS, post(create_auth_config_handler))
-    .route(ENDPOINT_MCPS_AUTH_CONFIGS, get(list_auth_configs_handler))
+    .route(ENDPOINT_MCPS_AUTH_CONFIGS, post(mcp_auth_configs_create))
+    .route(ENDPOINT_MCPS_AUTH_CONFIGS, get(mcp_auth_configs_index))
     .route(
       &format!("{ENDPOINT_MCPS_AUTH_CONFIGS}/{{id}}"),
-      get(get_auth_config_handler),
+      get(mcp_auth_configs_show),
     )
     .route(
       &format!("{ENDPOINT_MCPS_AUTH_CONFIGS}/{{id}}"),
-      delete(delete_auth_config_handler),
+      delete(mcp_auth_configs_destroy),
     )
     // OAuth login and token exchange (nested under auth-configs)
     .route(
       &format!("{ENDPOINT_MCPS_AUTH_CONFIGS}/{{id}}/login"),
-      post(oauth_login_handler),
+      post(mcp_oauth_login),
     )
     .route(
       &format!("{ENDPOINT_MCPS_AUTH_CONFIGS}/{{id}}/token"),
-      post(oauth_token_exchange_handler),
+      post(mcp_oauth_token_exchange),
     )
     // OAuth token endpoints
     .route(
       "/bodhi/v1/mcps/oauth-tokens/{token_id}",
-      get(get_oauth_token_handler),
+      get(mcp_oauth_tokens_show),
     )
     .route(
       "/bodhi/v1/mcps/oauth-tokens/{token_id}",
-      delete(delete_oauth_token_handler),
+      delete(mcp_oauth_tokens_destroy),
     )
     // OAuth discovery
-    .route(
-      ENDPOINT_MCPS_OAUTH_DISCOVER_AS,
-      post(oauth_discover_as_handler),
-    )
+    .route(ENDPOINT_MCPS_OAUTH_DISCOVER_AS, post(mcp_oauth_discover_as))
     .route(
       ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
-      post(oauth_discover_mcp_handler),
+      post(mcp_oauth_discover_mcp),
     )
     // Standalone dynamic client registration (no server_id)
     .route(
       ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE,
-      post(standalone_dynamic_register_handler),
+      post(mcp_oauth_dynamic_register),
     )
     // MCP servers (read for all users)
-    .route(ENDPOINT_MCP_SERVERS, get(list_mcp_servers_handler))
+    .route(ENDPOINT_MCP_SERVERS, get(mcp_servers_index))
     .route(
       &format!("{ENDPOINT_MCP_SERVERS}/{{id}}"),
-      get(get_mcp_server_handler),
+      get(mcp_servers_show),
     )
     // App access request review/approve/deny (session-only)
     .route(
       ENDPOINT_ACCESS_REQUESTS_REVIEW,
-      get(get_access_request_review_handler),
+      get(apps_get_access_request_review),
     )
     .route(
       ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(approve_access_request_handler),
+      put(apps_approve_access_request),
     )
     .route(
       ENDPOINT_ACCESS_REQUESTS_DENY,
-      post(deny_access_request_handler),
+      post(apps_deny_access_request),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -248,8 +226,8 @@ pub async fn build_routes(
 
   // Toolset and MCP list API (session and OAuth, no API tokens)
   let user_oauth_apis = Router::new()
-    .route(ENDPOINT_TOOLSETS, get(list_toolsets_handler))
-    .route(ENDPOINT_MCPS, get(list_mcps_handler))
+    .route(ENDPOINT_TOOLSETS, get(toolsets_index))
+    .route(ENDPOINT_MCPS, get(mcps_index))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -270,7 +248,7 @@ pub async fn build_routes(
   let toolset_exec_apis = Router::new()
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}/tools/{{tool_name}}/execute"),
-      post(execute_toolset_handler),
+      post(toolsets_execute),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -297,14 +275,14 @@ pub async fn build_routes(
   let mcp_validator: Arc<dyn auth_middleware::AccessRequestValidator> =
     Arc::new(McpAccessRequestValidator);
   let mcp_exec_apis = Router::new()
-    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), get(get_mcp_handler))
+    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), get(mcps_show))
     .route(
       &format!("{ENDPOINT_MCPS}/{{id}}/tools/refresh"),
-      post(refresh_mcp_tools_handler),
+      post(mcps_refresh_tools),
     )
     .route(
       &format!("{ENDPOINT_MCPS}/{{id}}/tools/{{tool_name}}/execute"),
-      post(execute_mcp_tool_handler),
+      post(mcps_execute_tool),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -329,45 +307,42 @@ pub async fn build_routes(
 
   // Power user APIs (role=power_user or scope=scope_token_power_user)
   let power_user_apis = Router::new()
-    .route(ENDPOINT_MODELS, post(create_alias_handler))
+    .route(ENDPOINT_MODELS, post(models_create))
     .route(
       &format!("{ENDPOINT_MODELS}/{{id}}"),
-      put(update_alias_handler).delete(delete_alias_handler),
+      put(models_update).delete(models_destroy),
     )
-    .route(
-      &format!("{ENDPOINT_MODELS}/{{id}}/copy"),
-      post(copy_alias_handler),
-    )
-    .route(ENDPOINT_MODEL_PULL, get(list_downloads_handler))
-    .route(ENDPOINT_MODEL_PULL, post(create_pull_request_handler))
+    .route(&format!("{ENDPOINT_MODELS}/{{id}}/copy"), post(models_copy))
+    .route(ENDPOINT_MODEL_PULL, get(models_pull_index))
+    .route(ENDPOINT_MODEL_PULL, post(models_pull_create))
     .route(
       &format!("{ENDPOINT_MODEL_PULL}/{{id}}"),
-      get(get_download_status_handler),
+      get(models_pull_show),
     )
     // API Models management
-    .route(ENDPOINT_API_MODELS, get(list_api_models_handler))
-    .route(ENDPOINT_API_MODELS, post(create_api_model_handler))
+    .route(ENDPOINT_API_MODELS, get(api_models_index))
+    .route(ENDPOINT_API_MODELS, post(api_models_create))
+    .route(ENDPOINT_API_MODELS_API_FORMATS, get(api_models_formats))
+    .route(ENDPOINT_API_MODELS_TEST, post(api_models_test))
     .route(
-      ENDPOINT_API_MODELS_API_FORMATS,
-      get(get_api_formats_handler),
-    )
-    .route(ENDPOINT_API_MODELS_TEST, post(test_api_model_handler))
-    .route(ENDPOINT_API_MODELS_FETCH_MODELS, post(fetch_models_handler))
-    .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
-      get(get_api_model_handler),
+      ENDPOINT_API_MODELS_FETCH_MODELS,
+      post(api_models_fetch_models),
     )
     .route(
       &format!("{ENDPOINT_API_MODELS}/{{id}}"),
-      put(update_api_model_handler),
+      get(api_models_show),
     )
     .route(
       &format!("{ENDPOINT_API_MODELS}/{{id}}"),
-      delete(delete_api_model_handler),
+      put(api_models_update),
+    )
+    .route(
+      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
+      delete(api_models_destroy),
     )
     .route(
       &format!("{ENDPOINT_API_MODELS}/{{id}}/sync-models"),
-      post(sync_models_handler),
+      post(api_models_sync),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -385,11 +360,11 @@ pub async fn build_routes(
 
   // Session-only power user APIs (token management, metadata refresh, queue status)
   let power_user_session_apis = Router::new()
-    .route(ENDPOINT_TOKENS, post(create_token_handler))
-    .route(ENDPOINT_TOKENS, get(list_tokens_handler))
+    .route(ENDPOINT_TOKENS, post(tokens_create))
+    .route(ENDPOINT_TOKENS, get(tokens_index))
     .route(
       &format!("{ENDPOINT_TOKENS}/{{token_id}}"),
-      put(update_token_handler),
+      put(tokens_update),
     )
     .route(ENDPOINT_MODELS_REFRESH, post(refresh_metadata_handler))
     .route(ENDPOINT_QUEUE, get(queue_status_handler))
@@ -401,29 +376,29 @@ pub async fn build_routes(
     ));
 
   let admin_session_apis = Router::new()
-    .route(ENDPOINT_SETTINGS, get(list_settings_handler))
+    .route(ENDPOINT_SETTINGS, get(settings_index))
     .route(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
-      put(update_setting_handler),
+      put(settings_update),
     )
     .route(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
-      delete(delete_setting_handler),
+      delete(settings_destroy),
     )
     // Toolset type enable/disable (admin only)
     .route(
       "/bodhi/v1/toolset_types/{toolset_type}/app-config",
-      put(enable_type_handler),
+      put(toolset_types_enable),
     )
     .route(
       "/bodhi/v1/toolset_types/{toolset_type}/app-config",
-      delete(disable_type_handler),
+      delete(toolset_types_disable),
     )
     // MCP server create/update (admin only)
-    .route(ENDPOINT_MCP_SERVERS, post(create_mcp_server_handler))
+    .route(ENDPOINT_MCP_SERVERS, post(mcp_servers_create))
     .route(
       &format!("{ENDPOINT_MCP_SERVERS}/{{id}}"),
-      put(update_mcp_server_handler),
+      put(mcp_servers_update),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -436,25 +411,28 @@ pub async fn build_routes(
   let manager_session_apis = Router::new()
     .route(
       ENDPOINT_ACCESS_REQUESTS_PENDING,
-      get(list_pending_requests_handler),
+      get(users_access_requests_pending),
     )
-    .route(ENDPOINT_ACCESS_REQUESTS_ALL, get(list_all_requests_handler))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_ALL,
+      get(users_access_requests_index),
+    )
     .route(
       &format!("{ENDPOINT_ACCESS_REQUESTS_ALL}/{{id}}/approve"),
-      post(approve_request_handler),
+      post(users_access_request_approve),
     )
     .route(
       &format!("{ENDPOINT_ACCESS_REQUESTS_ALL}/{{id}}/reject"),
-      post(reject_request_handler),
+      post(users_access_request_reject),
     )
-    .route(ENDPOINT_USERS, get(list_users_handler))
+    .route(ENDPOINT_USERS, get(users_index))
     .route(
       &format!("{ENDPOINT_USERS}/{{user_id}}/role"),
-      put(change_user_role_handler),
+      put(users_change_role),
     )
     .route(
       &format!("{ENDPOINT_USERS}/{{user_id}}"),
-      delete(remove_user_handler),
+      delete(users_destroy),
     )
     .route_layer(from_fn_with_state(
       state.clone(),

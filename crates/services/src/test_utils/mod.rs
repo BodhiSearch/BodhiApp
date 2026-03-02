@@ -1,5 +1,6 @@
 mod app;
 mod auth;
+mod auth_context;
 mod bodhi;
 mod data;
 mod db;

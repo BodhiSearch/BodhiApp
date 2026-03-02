@@ -1,9 +1,7 @@
 use super::temp_dir;
 use crate::app_access_requests::{AccessRequestRepository, AppAccessRequestRow};
 use crate::apps::{AppInstanceRepository, AppInstanceRow};
-use crate::db::{
-  sea_migrations::Migrator, ApiKeyUpdate, DbCore, DbError, DefaultDbService, TimeService,
-};
+use crate::db::{sea_migrations::Migrator, DbCore, DbError, DefaultDbService, TimeService};
 use crate::mcps::{
   McpAuthHeaderRow, McpAuthRepository, McpInstanceRepository, McpOAuthConfigRow, McpOAuthTokenRow,
   McpRow, McpServerRepository, McpServerRow, McpWithServerRow,
@@ -16,6 +14,7 @@ use crate::settings::{DbSetting, SettingsRepository};
 use crate::tokens::{ApiToken, TokenRepository};
 use crate::toolsets::{AppToolsetConfigRow, ToolsetRepository, ToolsetRow};
 use crate::users::{AccessRepository, UserAccessRequest};
+use crate::ApiKeyUpdate;
 use crate::UserAccessRequestStatus;
 use chrono::{DateTime, Utc};
 use rstest::fixture;

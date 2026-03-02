@@ -1,4 +1,3 @@
-use axum::extract::rejection::JsonRejection;
 use errmeta::{AppError, ErrorType};
 use validator::{ValidationError, ValidationErrors};
 
@@ -20,7 +19,7 @@ pub enum ObjValidationError {
   FilePatternMismatch(String),
 
   #[error("Prefix is required when forwarding all requests.")]
-  #[error_meta(error_type = ErrorType::BadRequest, code = "obj_validation_error-forward_all_requires_prefix")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   ForwardAllRequiresPrefix,
 }
 
@@ -167,72 +166,3 @@ impl From<reqwest::Error> for ReqwestError {
   }
 }
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("Invalid JSON in request: {source}.")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
-pub struct JsonRejectionError {
-  #[from]
-  source: JsonRejection,
-}
-
-#[cfg(test)]
-mod tests {
-  use crate::shared_objs::{ApiError, JsonRejectionError};
-  use axum::{body::Body, http::StatusCode, response::Response, routing::get, Json, Router};
-  use axum_extra::extract::WithRejection;
-  use http_body_util::BodyExt;
-  use rstest::rstest;
-  use serde::{Deserialize, Serialize};
-  use serde_json::{json, Value};
-  use tower::ServiceExt;
-
-  async fn parse<T: serde::de::DeserializeOwned>(response: Response<Body>) -> T {
-    let bytes = response.into_body().collect().await.unwrap().to_bytes();
-    serde_json::from_slice(&bytes).unwrap()
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_json_rejection_error() {
-    #[derive(Debug, Serialize, Deserialize)]
-    struct Input {
-      source: String,
-    }
-
-    async fn with_json_rejection(
-      WithRejection(Json(value), _): WithRejection<Json<Input>, JsonRejectionError>,
-    ) -> Result<Response, ApiError> {
-      let input = value.source;
-      Ok(
-        Response::builder()
-          .status(418)
-          .body(Body::from(format!("{{\"message\": \"ok - {input}\"}}")))
-          .unwrap(),
-      )
-    }
-
-    let router = Router::new().route("/", get(with_json_rejection));
-    let response = router
-      .oneshot(
-        axum::http::Request::builder()
-          .uri("/")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    let response = parse::<Value>(response).await;
-    assert_eq!(
-      json! {{
-        "error": {
-          "message": "Invalid JSON in request: Expected request with `Content-Type: application/json`.",
-          "type": "invalid_request_error",
-          "code": "json_rejection_error",
-          "param": {"source": "Expected request with `Content-Type: application/json`"}
-        }
-      }},
-      response
-    );
-  }
-}

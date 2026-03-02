@@ -1,4 +1,5 @@
 pub(crate) mod api_token_entity;
+mod error;
 #[cfg(test)]
 #[path = "test_token_repository.rs"]
 mod test_token_repository;
@@ -7,6 +8,7 @@ mod token_repository;
 mod token_service;
 
 pub use api_token_entity::ApiToken;
+pub use error::*;
 pub use token_objs::*;
 pub use token_repository::*;
 pub use token_service::*;

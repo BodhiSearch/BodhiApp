@@ -12,7 +12,7 @@ The `auth_middleware` crate serves as BodhiApp's HTTP authentication and authori
 
 ### AuthContext Enum
 
-The central type for authentication state propagation. Auth middleware validates credentials and injects `Extension<AuthContext>` into request extensions. Route handlers consume it via `Extension<AuthContext>` with pattern matching.
+The central type for authentication state propagation. `AuthContext` is defined in the `services` crate (`services/src/auth/auth_context.rs`) and re-exported from `auth_middleware`. Auth middleware validates credentials and injects `Extension<AuthContext>` into request extensions. Route handlers consume it via `Extension<AuthContext>` with pattern matching.
 
 **Variants:**
 - `Anonymous` -- No authentication present (used by `optional_auth_middleware` when no valid credentials found)
@@ -22,6 +22,7 @@ The central type for authentication state propagation. Auth middleware validates
 
 **Convenience methods:**
 - `user_id() -> Option<&str>` -- Returns user ID for all authenticated variants, None for Anonymous
+- `require_user_id() -> Result<&str, AuthContextError>` -- Returns user ID or 403 AuthContextError for Anonymous (preferred over `.expect()`)
 - `token() -> Option<&str>` -- Returns the token string for all authenticated variants, None for Anonymous
 - `external_app_token() -> Option<&str>` -- Returns the original external client token for ExternalApp, None for other variants
 - `app_role() -> Option<AppRole>` -- Converts variant-specific role into unified `AppRole` enum; returns None for Anonymous, Session with no role, or ExternalApp with no role
@@ -124,7 +125,7 @@ async fn my_handler(Extension(auth_context): Extension<AuthContext>) -> Response
 
 ## Test Utilities
 
-Behind the `test-utils` feature flag in `test_utils/auth_context.rs`:
+Behind the `test-utils` feature flag. `AuthContext` factory methods are defined in `services/test_utils/auth_context.rs` (moved from `auth_middleware/test_utils/auth_context.rs` as part of the AuthContext migration to the `services` crate). They are re-exported from `auth_middleware::test_utils`.
 
 **Factory methods on `AuthContext`:**
 - `test_session(user_id, username, role)` -- Creates Session variant with default "test-token"
@@ -165,10 +166,11 @@ Behind the `test-utils` feature flag in `test_utils/auth_context.rs`:
 
 ## Module Structure
 
-- `auth_context.rs` -- `AuthContext` enum definition, convenience methods
-- `auth_middleware/` -- `auth_middleware`, `optional_auth_middleware`, `remove_app_headers`, `AuthError`, session key constants
-- `api_auth_middleware.rs` -- `api_auth_middleware`, `ApiAuthError`, role-based authorization logic
-- `access_request_auth_middleware/` -- `access_request_auth_middleware`, `AccessRequestAuthError`, `AccessRequestValidator` trait, `ToolsetAccessRequestValidator`, `McpAccessRequestValidator`
+- `auth_context.rs` -- Re-export shim: `pub use services::AuthContext;` (definition now in `services/src/auth/auth_context.rs`)
+- `middleware_error.rs` -- `MiddlewareError` struct: captures `AppError` metadata, implements `axum::IntoResponse`. Replaces `services::ApiError` as the return type for all middleware functions. Has blanket `From<T: AppError + 'static>` impl.
+- `auth_middleware/` -- `auth_middleware`, `optional_auth_middleware`, `remove_app_headers`, `AuthError`, session key constants. Return type: `Result<Response, MiddlewareError>`.
+- `api_auth_middleware.rs` -- `api_auth_middleware`, `ApiAuthError`, role-based authorization logic. Return type: `Result<Response, MiddlewareError>`.
+- `access_request_auth_middleware/` -- `access_request_auth_middleware`, `AccessRequestAuthError`, `AccessRequestValidator` trait, `ToolsetAccessRequestValidator`, `McpAccessRequestValidator`. Return type: `Result<Response, MiddlewareError>`.
 - `token_service/` -- `DefaultTokenService` (takes `Arc<dyn TimeService>` in constructor), `CachedExchangeResult`, token validation/refresh/exchange orchestration
 - `canonical_url_middleware.rs` -- Canonical URL redirection middleware
 - `utils.rs` -- `app_status_or_default`, `generate_random_string`, `ApiErrorResponse`

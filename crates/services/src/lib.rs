@@ -28,6 +28,7 @@ mod models;
 
 // -- Persistence
 pub mod db;
+pub use db::*;
 
 // -- User management
 mod users;
@@ -71,8 +72,5 @@ pub use utils::*;
 // -- Re-exports: error types for downstream crates
 // These allow downstream crates to use services:: instead of errmeta:: directly.
 pub use errmeta::{impl_error_from, AppError, EntityError, ErrorType, IoError, RwLockReadError};
-// These are defined in shared_objs (axum/serde-dependent error types)
-pub use shared_objs::{
-  ApiError, ErrorBody, JsonRejectionError, ObjValidationError, OpenAIApiError, ReqwestError,
-  SerdeJsonError, SerdeYamlError,
-};
+// These are defined in shared_objs (serde/validator-dependent error types)
+pub use shared_objs::{ObjValidationError, ReqwestError, SerdeJsonError, SerdeYamlError};

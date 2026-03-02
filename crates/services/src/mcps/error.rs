@@ -1,6 +1,7 @@
+use crate::auth::AuthContextError;
 use crate::db::{encryption::EncryptionError, DbError};
 use crate::mcps::mcp_objs::McpInstanceNameError;
-use errmeta::{AppError, ErrorType};
+use errmeta::{AppError, EntityError, ErrorType};
 use mcp_client::McpClientError;
 
 // ============================================================================
@@ -43,7 +44,10 @@ pub enum McpServerError {
   DescriptionTooLong,
 
   #[error(transparent)]
-  DbError(#[from] DbError),
+  Auth(#[from] AuthContextError),
+
+  #[error(transparent)]
+  Db(#[from] DbError),
 }
 
 // ============================================================================
@@ -120,13 +124,28 @@ pub enum McpError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   OAuthDiscoveryFailed(String),
 
+  #[error("{0}")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  Forbidden(String),
+
   #[error(transparent)]
-  DbError(#[from] DbError),
+  Db(#[from] DbError),
+
+  #[error(transparent)]
+  Auth(#[from] AuthContextError),
 }
 
 impl From<EncryptionError> for McpError {
   fn from(e: EncryptionError) -> Self {
     McpError::EncryptionError(e.to_string())
+  }
+}
+
+impl From<EntityError> for McpError {
+  fn from(e: EntityError) -> Self {
+    match e {
+      EntityError::NotFound(entity) => McpError::McpNotFound(entity),
+    }
   }
 }
 

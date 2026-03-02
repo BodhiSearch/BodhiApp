@@ -33,7 +33,7 @@ export function PullForm() {
       form.reset();
     },
     onError: (message, code) => {
-      if (code === 'pull_error-file_already_exists') {
+      if (code === 'model_route_error-file_already_exists') {
         form.setError('filename', { message });
       } else {
         form.setError('repo', { message });

@@ -64,8 +64,9 @@ pub async fn health_handler() -> Json<PingResponse> {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use super::PingResponse;
   use crate::test_utils::build_test_router;
+  use crate::{ENDPOINT_HEALTH, ENDPOINT_PING};
   use axum::{
     body::Body,
     http::{Request, StatusCode},

@@ -192,7 +192,16 @@ impl AppServiceStubBuilder {
       .and_then(|o| o.as_ref())
       .cloned()
       .expect("db_service must be set before building token_service");
-    Some(Arc::new(crate::DefaultTokenService::new(db_service)))
+    let time_service: Arc<dyn TimeService> = self
+      .time_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
+    Some(Arc::new(crate::DefaultTokenService::new(
+      db_service,
+      time_service,
+    )))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {

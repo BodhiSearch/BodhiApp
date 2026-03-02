@@ -1,4 +1,4 @@
-use crate::{app_status_or_default, AuthContext, DefaultTokenService};
+use crate::{AuthContext, DefaultTokenService, MiddlewareError};
 use axum::{
   extract::{Request, State},
   http::{header::HOST, HeaderMap},
@@ -11,7 +11,7 @@ use services::{
   db::DbError, extract_claims, AppInstanceError, AppStatus, AuthServiceError, TokenError,
   UserIdClaims,
 };
-use services::{ApiError, AppError, ErrorType};
+use services::{AppError, ErrorType};
 use services::{RoleError, TokenScopeError, UserScopeError};
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -107,8 +107,8 @@ pub enum AuthError {
   #[error("Session expired. Please log out and log in again.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   RefreshTokenNotFound,
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::Authentication, code = "auth_error-tower_sessions", args_delegate = false)]
+  #[error("{0}")]
+  #[error_meta(error_type = ErrorType::Authentication)]
   TowerSession(#[from] tower_sessions::session::Error),
   #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
@@ -123,7 +123,7 @@ pub async fn auth_middleware(
   State(state): State<Arc<dyn RouterState>>,
   mut req: Request,
   next: Next,
-) -> Result<Response, ApiError> {
+) -> Result<Response, MiddlewareError> {
   remove_app_headers(&mut req);
 
   let app_service = state.app_service();
@@ -138,9 +138,18 @@ pub async fn auth_middleware(
     app_service.time_service(),
   );
 
-  if app_status_or_default(&app_instance_service).await == AppStatus::Setup {
+  // Single get_instance() call: extract both status and client_id
+  let instance = app_instance_service.get_instance().await?;
+  let status = instance
+    .as_ref()
+    .map(|i| i.status.clone())
+    .unwrap_or_default();
+  if status == AppStatus::Setup {
     return Err(AuthError::AppStatusInvalid(AppStatus::Setup).into());
   }
+  let instance_client_id = instance
+    .ok_or(AppInstanceError::NotFound)?
+    .client_id;
 
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
     let header = header
@@ -169,6 +178,7 @@ pub async fn auth_middleware(
       );
 
       let auth_context = AuthContext::Session {
+        client_id: instance_client_id,
         user_id,
         username: claims.preferred_username,
         role: Some(role),
@@ -192,7 +202,7 @@ pub async fn optional_auth_middleware(
   State(state): State<Arc<dyn RouterState>>,
   mut req: Request,
   next: Next,
-) -> Result<Response, ApiError> {
+) -> Result<Response, MiddlewareError> {
   remove_app_headers(&mut req);
   let app_service = state.app_service();
   let app_instance_service = app_service.app_instance_service();
@@ -206,11 +216,21 @@ pub async fn optional_auth_middleware(
     app_service.time_service(),
   );
 
-  // Check app status
-  if app_status_or_default(&app_instance_service).await == AppStatus::Setup {
-    req.extensions_mut().insert(AuthContext::Anonymous);
+  // Single get_instance() call: extract both status and client_id
+  let instance = app_instance_service.get_instance().await.ok().flatten();
+  let status = instance
+    .as_ref()
+    .map(|i| i.status.clone())
+    .unwrap_or_default();
+  if status == AppStatus::Setup {
+    req.extensions_mut().insert(AuthContext::Anonymous { client_id: None });
     return Ok(next.run(req).await);
   }
+
+  let instance_client_id = instance.map(|i| i.client_id);
+
+  // Fall back to Anonymous when instance lookup fails
+  let anon = || AuthContext::Anonymous { client_id: instance_client_id.clone() };
 
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
     debug!("optional_auth_middleware: validating bearer token");
@@ -225,12 +245,12 @@ pub async fn optional_auth_middleware(
             ?err,
             "optional_auth_middleware: bearer token validation failed"
           );
-          req.extensions_mut().insert(AuthContext::Anonymous);
+          req.extensions_mut().insert(anon());
         }
       }
     } else {
       debug!("optional_auth_middleware: Authorization header is not valid UTF-8");
-      req.extensions_mut().insert(AuthContext::Anonymous);
+      req.extensions_mut().insert(anon());
     }
   } else if is_same_origin(req.headers()) {
     // session token
@@ -242,14 +262,20 @@ pub async fn optional_auth_middleware(
         {
           Ok((validated_token, role)) => {
             debug!("optional_auth_middleware: session token validated successfully");
-            let claims = extract_claims::<UserIdClaims>(&validated_token)?;
-            let auth_context = AuthContext::Session {
-              user_id: claims.sub.clone(),
-              username: claims.preferred_username,
-              role,
-              token: validated_token,
-            };
-            req.extensions_mut().insert(auth_context);
+            if let Some(client_id) = instance_client_id.clone() {
+              let claims = extract_claims::<UserIdClaims>(&validated_token)?;
+              let auth_context = AuthContext::Session {
+                client_id,
+                user_id: claims.sub.clone(),
+                username: claims.preferred_username,
+                role,
+                token: validated_token,
+              };
+              req.extensions_mut().insert(auth_context);
+            } else {
+              debug!("optional_auth_middleware: no instance client_id, falling back to Anonymous");
+              req.extensions_mut().insert(anon());
+            }
           }
           Err(err) => {
             debug!(
@@ -259,20 +285,20 @@ pub async fn optional_auth_middleware(
             if should_clear_session(&err) {
               clear_session_auth_data(&session).await;
             }
-            req.extensions_mut().insert(AuthContext::Anonymous);
+            req.extensions_mut().insert(anon());
           }
         }
       }
       Ok(None) => {
-        req.extensions_mut().insert(AuthContext::Anonymous);
+        req.extensions_mut().insert(anon());
       }
       Err(err) => {
         debug!(?err, "optional_auth_middleware: error reading session");
-        req.extensions_mut().insert(AuthContext::Anonymous);
+        req.extensions_mut().insert(anon());
       }
     }
   } else {
-    req.extensions_mut().insert(AuthContext::Anonymous);
+    req.extensions_mut().insert(anon());
   }
   // Continue with the request
   Ok(next.run(req).await)

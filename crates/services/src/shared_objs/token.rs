@@ -43,7 +43,7 @@ pub enum AccessRequestValidationError {
 #[error_meta(trait_to_impl = AppError)]
 pub enum TokenError {
   #[error("Invalid token: {0}.")]
-  #[error_meta(error_type = ErrorType::Authentication, code = "token_error-json_web_token")]
+  #[error_meta(error_type = ErrorType::Authentication)]
   JsonWebToken(jsonwebtoken::errors::Error),
   #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]

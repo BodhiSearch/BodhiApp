@@ -1,5 +1,4 @@
 use clap::Parser;
-use services::ApiError;
 use services::{AuthService, KeycloakAuthService};
 
 #[derive(Parser)]
@@ -26,13 +25,13 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   if let Err(err) = internal_main().await {
-    eprintln!("Error: {}", serde_json::to_string(&err)?);
+    eprintln!("Error: {}", err);
     std::process::exit(1);
   }
   Ok(())
 }
 
-async fn internal_main() -> Result<(), ApiError> {
+async fn internal_main() -> Result<(), Box<dyn std::error::Error>> {
   let cli = Cli::parse();
 
   // Create the auth service

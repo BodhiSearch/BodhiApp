@@ -1,5 +1,4 @@
 use super::SettingMetadata;
-use crate::{ApiError, OpenAIApiError};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_yaml::Number;
@@ -224,8 +223,6 @@ fn test_setting_metadata_convert_error(
   #[case] expected_error: &str,
 ) {
   let app_error = metadata.convert(input).unwrap_err();
-  let message = OpenAIApiError::from(ApiError::from(app_error))
-    .error
-    .message;
+  let message = app_error.to_string();
   assert_eq!(expected_error, message.trim());
 }

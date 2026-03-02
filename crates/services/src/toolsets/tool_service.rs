@@ -5,7 +5,8 @@ use super::toolset_objs::{
 };
 use super::ToolsetError;
 use super::ToolsetRow;
-use crate::db::{encryption::encrypt_api_key, ApiKeyUpdate, DbError, DbService, TimeService};
+use crate::db::{encryption::encrypt_api_key, DbError, DbService, TimeService};
+use crate::ApiKeyUpdate;
 use serde_json::json;
 use std::fmt::Debug;
 use std::sync::Arc;

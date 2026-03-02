@@ -5826,7 +5826,7 @@
                 },
                 "example": {
                   "error": {
-                    "code": "settings_error-invalid_setting",
+                    "code": "settings_route_error-not_found",
                     "message": "Setting not found: INVALID_KEY",
                     "type": "not_found_error"
                   }
@@ -5938,7 +5938,7 @@
                 },
                 "example": {
                   "error": {
-                    "code": "settings_error-not_found",
+                    "code": "settings_route_error-not_found",
                     "message": "Setting not found: INVALID_KEY",
                     "type": "not_found_error"
                   }
@@ -8628,7 +8628,7 @@
             }
           }
         ],
-        "description": "API key update enum (mirrors services::db::ApiKeyUpdate)"
+        "description": "API key update enum (mirrors services::ApiKeyUpdate)"
       },
       "ApiModelResponse": {
         "type": "object",
@@ -12443,6 +12443,7 @@
       },
       "LocalModelResponse": {
         "type": "object",
+        "description": "Local model file response",
         "required": [
           "repo",
           "filename",
@@ -13908,6 +13909,7 @@
       },
       "PaginatedAliasResponse": {
         "type": "object",
+        "description": "Paginated list of all model aliases (user, model, and API)",
         "required": [
           "data",
           "total",
@@ -13967,6 +13969,7 @@
       },
       "PaginatedApiTokenResponse": {
         "type": "object",
+        "description": "Paginated list of API tokens",
         "required": [
           "data",
           "total",
@@ -13996,6 +13999,7 @@
       },
       "PaginatedDownloadResponse": {
         "type": "object",
+        "description": "Paginated list of download requests",
         "required": [
           "data",
           "total",
@@ -14025,6 +14029,7 @@
       },
       "PaginatedLocalModelResponse": {
         "type": "object",
+        "description": "Paginated list of local model files",
         "required": [
           "data",
           "total",
@@ -14103,6 +14108,7 @@
       },
       "PaginatedUserAliasResponse": {
         "type": "object",
+        "description": "Paginated list of user-defined model aliases",
         "required": [
           "data",
           "total",
@@ -15597,6 +15603,7 @@
       },
       "UserAliasResponse": {
         "type": "object",
+        "description": "User-defined model alias response",
         "required": [
           "id",
           "alias",

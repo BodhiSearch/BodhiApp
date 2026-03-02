@@ -1,11 +1,11 @@
-use crate::AuthContext;
+use crate::{AuthContext, MiddlewareError};
 use axum::{
   extract::{Request, State},
   middleware::Next,
   response::Response,
 };
 use server_core::RouterState;
-use services::{ApiError, AppError, ErrorType};
+use services::{AppError, ErrorType};
 use services::{ResourceRole, RoleError, TokenScope, TokenScopeError, UserScope, UserScopeError};
 use std::sync::Arc;
 
@@ -36,7 +36,7 @@ pub async fn api_auth_middleware(
   State(_state): State<Arc<dyn RouterState>>,
   req: Request,
   next: Next,
-) -> Result<Response, ApiError> {
+) -> Result<Response, MiddlewareError> {
   Ok(
     authorize_request(
       required_role,
@@ -95,7 +95,7 @@ async fn authorize_request(
     AuthContext::ExternalApp { role: None, .. } => {
       return Err(ApiAuthError::MissingAuth);
     }
-    AuthContext::Anonymous => {
+    AuthContext::Anonymous { .. } => {
       return Err(ApiAuthError::MissingAuth);
     }
   }
@@ -278,7 +278,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_api_auth_middleware_missing_role() -> anyhow::Result<()> {
-    let ctx = AuthContext::Anonymous;
+    let ctx = AuthContext::Anonymous { client_id: None };
     let router = test_router_with_auth_context(ResourceRole::User, None, ctx).await;
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
@@ -358,7 +358,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_api_auth_middleware_user_scope_missing_auth() -> anyhow::Result<()> {
-    let ctx = AuthContext::Anonymous;
+    let ctx = AuthContext::Anonymous { client_id: None };
     let router =
       test_router_user_scope_with_auth_context(ResourceRole::User, Some(UserScope::User), ctx)
         .await;

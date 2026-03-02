@@ -1,16 +1,13 @@
-use auth_middleware::AuthContext;
+use crate::{ApiError, AuthScope};
 use axum::{
   body::Body,
-  extract::State,
   http::StatusCode,
   response::{IntoResponse, Response},
-  Extension, Json,
+  Json,
 };
 use serde_json::json;
-use server_core::RouterState;
-use services::{db::DbError, AppInstanceError, SessionServiceError};
-use services::{ApiError, AppError, SerdeJsonError};
-use std::sync::Arc;
+use services::{AppError, SerdeJsonError};
+use services::{AppInstanceError, DbError, SessionServiceError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -25,18 +22,15 @@ pub enum DevError {
   SessionServiceError(#[from] SessionServiceError),
 }
 
-pub async fn dev_secrets_handler(
-  Extension(auth_context): Extension<AuthContext>,
-  State(state): State<Arc<dyn RouterState>>,
-) -> Result<Response, ApiError> {
-  let app_instance_service = state.app_service().app_instance_service();
-  let status = app_instance_service.get_status().await.unwrap_or_default();
-  let instance = app_instance_service.get_instance().await.ok().flatten();
+pub async fn dev_secrets_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
+  let app_instance = auth_scope.app_instance();
+  let status = app_instance.get_status().await.unwrap_or_default();
+  let instance = app_instance.get_instance().await.ok().flatten();
 
   let value = json! {{
     "status": status,
     "app_info": instance,
-    "auth_context": auth_context,
+    "auth_context": auth_scope.auth_context(),
   }};
   Ok(
     Response::builder()
@@ -46,10 +40,9 @@ pub async fn dev_secrets_handler(
   )
 }
 
-pub async fn envs_handler(State(state): State<Arc<dyn RouterState>>) -> Result<Response, ApiError> {
-  let envs = state
-    .app_service()
-    .setting_service()
+pub async fn envs_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
+  let envs = auth_scope
+    .settings()
     .list()
     .await
     .into_iter()
@@ -57,17 +50,14 @@ pub async fn envs_handler(State(state): State<Arc<dyn RouterState>>) -> Result<R
   Ok((StatusCode::OK, Json(envs)).into_response())
 }
 
-pub async fn dev_db_reset_handler(
-  State(state): State<Arc<dyn RouterState>>,
-) -> Result<Response, ApiError> {
-  let app_service = state.app_service();
-  app_service
-    .db_service()
+pub async fn dev_db_reset_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
+  auth_scope
+    .db()
     .reset_all_tables()
     .await
     .map_err(DevError::from)?;
-  app_service
-    .session_service()
+  auth_scope
+    .sessions()
     .clear_all_sessions()
     .await
     .map_err(DevError::from)?;
@@ -76,17 +66,19 @@ pub async fn dev_db_reset_handler(
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use super::dev_db_reset_handler;
+  use crate::AuthScope;
   use anyhow_trace::anyhow_trace;
-  use axum::{body::Body, extract::State, http::StatusCode};
+  use auth_middleware::AuthContext;
+  use axum::{body::Body, http::StatusCode};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde_json::json;
   use serde_json::Value;
-  use server_core::{DefaultRouterState, MockSharedContext, RouterState};
   use services::AliasSource;
   use services::{
-    test_utils::app_service_stub, ApiToken, AppService, DownloadRequest, DownloadStatus,
-    ModelMetadataRow, TokenStatus, ToolsetRow,
+    test_utils::app_service_stub, ApiToken, AppService, AuthScopedAppService, DownloadRequest,
+    DownloadStatus, ModelMetadataRow, TokenStatus, ToolsetRow,
   };
   use services::{ApiFormat, UserAlias};
   use std::sync::Arc;
@@ -104,10 +96,12 @@ mod tests {
     #[future] app_service_stub: services::test_utils::AppServiceStub,
   ) -> anyhow::Result<()> {
     let app_service: Arc<dyn AppService> = Arc::new(app_service_stub.await);
-    let mock_context = Arc::new(MockSharedContext::default());
-    let router_state = Arc::new(DefaultRouterState::new(mock_context, app_service.clone()));
+    let auth_scope = AuthScope(AuthScopedAppService::new(
+      app_service.clone(),
+      AuthContext::Anonymous { client_id: None },
+    ));
 
-    let response = dev_db_reset_handler(State(router_state as Arc<dyn RouterState>)).await?;
+    let response = dev_db_reset_handler(auth_scope).await?;
 
     assert_eq!(StatusCode::OK, response.status());
     let body = body_to_json(response.into_body()).await;
@@ -241,9 +235,11 @@ mod tests {
     session_store.save(&record).await?;
 
     // Reset database
-    let mock_context = Arc::new(MockSharedContext::default());
-    let router_state = Arc::new(DefaultRouterState::new(mock_context, app_service.clone()));
-    let response = dev_db_reset_handler(State(router_state as Arc<dyn RouterState>)).await?;
+    let auth_scope = AuthScope(AuthScopedAppService::new(
+      app_service.clone(),
+      AuthContext::Anonymous { client_id: None },
+    ));
+    let response = dev_db_reset_handler(auth_scope).await?;
     assert_eq!(StatusCode::OK, response.status());
 
     // Verify all tables are empty

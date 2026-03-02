@@ -243,7 +243,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
 
   // Build DefaultAppService with all services in correct order
   let token_service: Arc<dyn services::TokenService> =
-    Arc::new(services::DefaultTokenService::new(db_service.clone()));
+    Arc::new(services::DefaultTokenService::new(db_service.clone(), time_service.clone()));
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -576,7 +576,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   ));
 
   let token_service: Arc<dyn services::TokenService> =
-    Arc::new(services::DefaultTokenService::new(db_service.clone()));
+    Arc::new(services::DefaultTokenService::new(db_service.clone(), time_service.clone()));
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,

@@ -14,7 +14,7 @@
 - `src/shared_objs/mod.rs` - Module declarations and re-exports
 - `src/shared_objs/error_api.rs` - `ApiError` struct: captures `AppError` metadata, `From<T: AppError>`, converts to `OpenAIApiError`, implements `axum::IntoResponse`
 - `src/shared_objs/error_oai.rs` - `OpenAIApiError`, `ErrorBody`: OpenAI-compatible error envelope with utoipa `ToSchema`
-- `src/shared_objs/error_wrappers.rs` - `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `JsonRejectionError`, `ObjValidationError`: framework-dependent error wrappers with `AppError` implementations
+- `src/shared_objs/error_wrappers.rs` - `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `ObjValidationError`: framework-dependent error wrappers with `AppError` implementations
 - `src/shared_objs/utils.rs` - `is_default()` helper, `ILLEGAL_CHARS` regex, `to_safe_filename()`
 - `src/shared_objs/log.rs` - `mask_sensitive_value()`, `mask_form_params()`, `log_http_request()`, `log_http_response()`, `log_http_error()`
 
@@ -346,7 +346,7 @@ For detailed patterns and migration checklists, see `.claude/skills/test-service
 - `mcp_client` - MCP protocol client for tool discovery and execution
 - `sea-orm` - Database ORM (SQLite and PostgreSQL backends)
 - `sea-orm-migration` - Schema migrations with dual-database support
-- `axum` - HTTP framework integration (for `ApiError`, `JsonRejectionError`)
+- `axum` - HTTP framework integration (for `ai_apis` module response types)
 - `serde` / `serde_json` / `serde_yaml` - Serialization framework
 - `utoipa` - OpenAPI schema generation (`ToSchema` derives on domain types)
 - `validator` - Input validation (`Validate` derive on domain types)

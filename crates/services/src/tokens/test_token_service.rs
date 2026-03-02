@@ -1,6 +1,7 @@
 use super::{DefaultTokenService, TokenService};
-use crate::test_utils::{test_db_service, TestDbService};
+use crate::test_utils::{test_db_service, FrozenTimeService, TestDbService};
 use crate::tokens::ApiToken;
+use crate::TokenScope;
 use crate::TokenStatus;
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
@@ -18,7 +19,8 @@ async fn test_create_and_get_api_token(
 ) -> anyhow::Result<()> {
   let now = db_service.now();
   let db_service = Arc::new(db_service);
-  let token_service = DefaultTokenService::new(db_service.clone());
+  let time_service = Arc::new(FrozenTimeService::default());
+  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
 
   let mut token = ApiToken {
     id: "tok_test1".to_string(),
@@ -56,7 +58,8 @@ async fn test_list_api_tokens(
 ) -> anyhow::Result<()> {
   let now = db_service.now();
   let db_service = Arc::new(db_service);
-  let token_service = DefaultTokenService::new(db_service.clone());
+  let time_service = Arc::new(FrozenTimeService::default());
+  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
 
   for i in 0..3 {
     let mut token = ApiToken {
@@ -91,7 +94,8 @@ async fn test_get_api_token_by_prefix(
 ) -> anyhow::Result<()> {
   let now = db_service.now();
   let db_service = Arc::new(db_service);
-  let token_service = DefaultTokenService::new(db_service.clone());
+  let time_service = Arc::new(FrozenTimeService::default());
+  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
 
   let mut token = ApiToken {
     id: "tok_prefix".to_string(),
@@ -127,7 +131,8 @@ async fn test_update_api_token(
 ) -> anyhow::Result<()> {
   let now = db_service.now();
   let db_service = Arc::new(db_service);
-  let token_service = DefaultTokenService::new(db_service.clone());
+  let time_service = Arc::new(FrozenTimeService::default());
+  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
 
   let mut token = ApiToken {
     id: "tok_update".to_string(),
@@ -152,6 +157,45 @@ async fn test_update_api_token(
     .unwrap();
   assert_eq!("updated-name", updated.name);
   assert_eq!(TokenStatus::Inactive, updated.status);
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_token_generates_valid_token(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let db_service = Arc::new(db_service);
+  let time_service = Arc::new(FrozenTimeService::default());
+  let token_service = DefaultTokenService::new(db_service.clone(), time_service);
+
+  let (raw_token, api_token) = token_service
+    .create_token("user1", "my-token".to_string(), TokenScope::User)
+    .await?;
+
+  // Raw token starts with bodhiapp_ prefix
+  assert!(raw_token.starts_with("bodhiapp_"));
+
+  // Token prefix is first 8 chars after "bodhiapp_"
+  let expected_prefix = &raw_token[.."bodhiapp_".len() + 8];
+  assert_eq!(expected_prefix, api_token.token_prefix);
+
+  // Token is persisted and retrievable
+  assert_eq!("my-token", api_token.name);
+  assert_eq!("user1", api_token.user_id);
+  assert_eq!("scope_token_user", api_token.scopes);
+  assert_eq!(TokenStatus::Active, api_token.status);
+
+  // Can retrieve by prefix
+  let retrieved = token_service
+    .get_api_token_by_prefix(&api_token.token_prefix)
+    .await?;
+  assert!(retrieved.is_some());
 
   Ok(())
 }
