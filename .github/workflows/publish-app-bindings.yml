@@ -42,9 +42,11 @@ jobs:
           - host: windows-latest
             build: npm run build:release:win
             target: x86_64-pc-windows-msvc
+            optional: true
     name: build-${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
     timeout-minutes: 60
+    continue-on-error: ${{ matrix.settings.optional || false }}
     steps:
       - name: envs
         shell: bash
@@ -156,6 +158,18 @@ jobs:
       - name: Setup npm packages
         working-directory: crates/lib_bodhiserver_napi
         run: npm run create-npm-dirs
+
+      - name: Remove npm dirs for unavailable platform artifacts
+        working-directory: crates/lib_bodhiserver_napi
+        shell: bash
+        run: |
+          for dir in npm/*/; do
+            platform=$(basename "$dir")
+            if ! ls artifacts/*/app-bindings.${platform}.node 1>/dev/null 2>&1; then
+              echo "::warning::No artifact found for $platform, removing $dir"
+              rm -rf "$dir"
+            fi
+          done
 
       - name: Move artifacts
         working-directory: crates/lib_bodhiserver_napi
