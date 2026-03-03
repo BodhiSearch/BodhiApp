@@ -1,11 +1,10 @@
-use auth_middleware::AuthContext;
+use crate::ApiError;
 use axum::{
   extract::{FromRef, FromRequestParts},
   http::request::Parts,
 };
-use server_core::RouterState;
-use crate::ApiError;
-use services::AuthScopedAppService;
+use services::AuthContext;
+use services::{AppService, AuthScopedAppService};
 use std::{ops::Deref, sync::Arc};
 
 /// Newtype wrapper around `AuthScopedAppService` that implements `FromRequestParts`
@@ -30,7 +29,7 @@ impl Deref for AuthScope {
 impl<S> FromRequestParts<S> for AuthScope
 where
   S: Send + Sync,
-  Arc<dyn RouterState>: FromRef<S>,
+  Arc<dyn AppService>: FromRef<S>,
 {
   type Rejection = ApiError;
 
@@ -38,17 +37,21 @@ where
     // Extract AuthContext from extensions (set by auth middleware before handler runs).
     // Falls back to Anonymous if no middleware has set the extension (e.g., public endpoints
     // or optional auth endpoints where middleware may not have populated it).
-    let auth_context = parts
-      .extensions
-      .get::<AuthContext>()
-      .cloned()
-      .unwrap_or(AuthContext::Anonymous { client_id: None });
+    let auth_context =
+      parts
+        .extensions
+        .get::<AuthContext>()
+        .cloned()
+        .unwrap_or(AuthContext::Anonymous {
+          client_id: None,
+          tenant_id: None,
+        });
 
-    // Extract the router state using FromRef (same mechanism as State<T> extractor)
-    let router_state = Arc::<dyn RouterState>::from_ref(state);
+    // Extract the app service using FromRef (same mechanism as State<T> extractor)
+    let app_service = Arc::<dyn AppService>::from_ref(state);
 
     Ok(AuthScope(AuthScopedAppService::new(
-      router_state.app_service(),
+      app_service,
       auth_context,
     )))
   }

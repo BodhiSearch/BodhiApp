@@ -1,10 +1,12 @@
 use crate::{
   auth::AuthContextError,
   db::{DbService, TimeService},
-  AccessRequestService, AiApiService, AppInstanceService, AppService, AuthContext,
-  AuthScopedMcpService, AuthScopedTokenService, AuthScopedToolService, AuthScopedUserService,
-  AuthService, CacheService, ConcurrencyService, DataService, HubService, McpService,
-  NetworkService, QueueProducer, SessionService, SettingService, TokenService, ToolService,
+  inference::InferenceService,
+  AccessRequestService, AiApiService, AppService, AuthContext, AuthScopedApiModelService,
+  AuthScopedDataService, AuthScopedDownloadService, AuthScopedMcpService, AuthScopedTokenService,
+  AuthScopedToolService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
+  CacheService, ConcurrencyService, DataService, HubService, McpService, NetworkService,
+  QueueProducer, SessionService, SettingService, TenantService, TokenService, ToolService,
 };
 use std::sync::Arc;
 
@@ -41,6 +43,14 @@ impl AuthScopedAppService {
     self.auth_context.require_client_id()
   }
 
+  pub fn tenant_id(&self) -> Option<&str> {
+    self.auth_context.tenant_id()
+  }
+
+  pub fn require_tenant_id(&self) -> Result<&str, AuthContextError> {
+    self.auth_context.require_tenant_id()
+  }
+
   /// Returns an auth-scoped token service. Each call clones the inner Arc and AuthContext,
   /// so bind to a local variable if calling multiple methods: `let svc = auth_scope.tokens();`
   pub fn tokens(&self) -> AuthScopedTokenService {
@@ -59,6 +69,27 @@ impl AuthScopedAppService {
     AuthScopedUserService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
+  /// Returns an auth-scoped API model service. Each call clones the inner Arc and AuthContext.
+  pub fn api_models(&self) -> AuthScopedApiModelService {
+    AuthScopedApiModelService::new(self.app_service.clone(), self.auth_context.clone())
+  }
+
+  /// Returns an auth-scoped download service. Each call clones the inner Arc and AuthContext.
+  pub fn downloads(&self) -> AuthScopedDownloadService {
+    AuthScopedDownloadService::new(self.app_service.clone(), self.auth_context.clone())
+  }
+
+  /// Returns an auth-scoped data service. Each call clones the inner Arc and AuthContext,
+  /// so bind to a local variable if calling multiple methods: `let svc = auth_scope.data();`
+  pub fn data(&self) -> AuthScopedDataService {
+    AuthScopedDataService::new(self.app_service.clone(), self.auth_context.clone())
+  }
+
+  /// Returns an auth-scoped user access request service.
+  pub fn user_access_requests(&self) -> AuthScopedUserAccessRequestService {
+    AuthScopedUserAccessRequestService::new(self.app_service.clone(), self.auth_context.clone())
+  }
+
   // Domain-level factory methods (D1-D9)
   // These are consistent short-name accessors for services that don't require
   // user_id injection. They return Arc<dyn Service> directly.
@@ -68,9 +99,9 @@ impl AuthScopedAppService {
     self.app_service.setting_service()
   }
 
-  /// D2: App instance domain
-  pub fn app_instance(&self) -> Arc<dyn AppInstanceService> {
-    self.app_service.app_instance_service()
+  /// D2: Tenant domain
+  pub fn tenant(&self) -> Arc<dyn TenantService> {
+    self.app_service.tenant_service()
   }
 
   /// D3: Auth flow domain (OAuth registration, token exchange, etc.)
@@ -106,6 +137,11 @@ impl AuthScopedAppService {
   /// D9: Time domain
   pub fn time(&self) -> Arc<dyn TimeService> {
     self.app_service.time_service()
+  }
+
+  /// D10: Inference domain (LLM request routing — local and remote)
+  pub fn inference(&self) -> Arc<dyn InferenceService> {
+    self.app_service.inference_service()
   }
 
   // Legacy pass-through accessors (kept for backward compatibility with tests
@@ -146,8 +182,8 @@ impl AuthScopedAppService {
     self.app_service.queue_producer()
   }
 
-  pub fn app_instance_service(&self) -> Arc<dyn AppInstanceService> {
-    self.app_service.app_instance_service()
+  pub fn tenant_service(&self) -> Arc<dyn TenantService> {
+    self.app_service.tenant_service()
   }
 
   pub fn access_request_service(&self) -> Arc<dyn AccessRequestService> {

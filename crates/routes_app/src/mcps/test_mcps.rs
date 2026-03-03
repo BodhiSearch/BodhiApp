@@ -1,11 +1,11 @@
 use crate::mcps::{
   mcps_create, mcps_destroy, mcps_execute_tool, mcps_fetch_tools, mcps_index, mcps_list_tools,
-  mcps_refresh_tools, mcps_show, mcps_update, CreateMcpRequest, FetchMcpToolsRequest, McpAuth,
-  McpExecuteRequest, McpExecuteResponse, McpResponse, McpToolsResponse, UpdateMcpRequest,
+  mcps_refresh_tools, mcps_show, mcps_update, FetchMcpToolsRequest, McpAuth, McpExecuteRequest,
+  McpExecuteResponse, McpToolsResponse,
 };
+use crate::test_utils::RequestAuthContextExt;
 use crate::test_utils::{build_mcp_test_state, fixed_dt};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{delete, get, post, put};
@@ -13,26 +13,19 @@ use axum::Router;
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use server_core::test_utils::ResponseTestExt;
+use services::AuthContext;
 use services::MockMcpService;
 use services::ResourceRole;
-use services::{Mcp, McpAuthType, McpExecutionResponse, McpServerInfo, McpTool};
+use services::{Mcp, McpAuthType, McpExecutionResponse, McpRequest, McpTool, McpWithServerEntity};
 use tower::ServiceExt;
 
-fn test_server_info() -> McpServerInfo {
-  McpServerInfo {
-    id: "server-uuid-1".to_string(),
-    url: "https://mcp.deepwiki.com/mcp".to_string(),
-    name: "DeepWiki".to_string(),
-    enabled: true,
-  }
-}
-
 #[fixture]
-fn test_mcp_instance() -> Mcp {
+fn test_mcp_entity() -> McpWithServerEntity {
   let now = fixed_dt();
-  Mcp {
+  McpWithServerEntity {
     id: "mcp-uuid-1".to_string(),
-    mcp_server: test_server_info(),
+    user_id: "user123".to_string(),
+    mcp_server_id: "server-uuid-1".to_string(),
     slug: "deepwiki".to_string(),
     name: "DeepWiki MCP".to_string(),
     description: Some("Deep wiki search".to_string()),
@@ -43,6 +36,9 @@ fn test_mcp_instance() -> Mcp {
     auth_uuid: None,
     created_at: now,
     updated_at: now,
+    server_url: "https://mcp.deepwiki.com/mcp".to_string(),
+    server_name: "DeepWiki".to_string(),
+    server_enabled: true,
   }
 }
 
@@ -73,30 +69,28 @@ async fn test_router_for_crud(mock_mcp_service: MockMcpService) -> anyhow::Resul
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
+async fn test_create_mcp_success(test_mcp_entity: McpWithServerEntity) -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
-  let instance = test_mcp_instance.clone();
+  let instance = test_mcp_entity.clone();
 
   mock
     .expect_create()
-    .withf(
-      |user_id, name, slug, mcp_server_id, _, _, _, _, auth_type, _| {
-        user_id == "user123"
-          && name == "DeepWiki MCP"
-          && slug == "deepwiki"
-          && mcp_server_id == "server-uuid-1"
-          && *auth_type == McpAuthType::Public
-      },
-    )
+    .withf(|_, user_id, form| {
+      user_id == "user123"
+        && form.name == "DeepWiki MCP"
+        && form.slug == "deepwiki"
+        && form.mcp_server_id.as_deref() == Some("server-uuid-1")
+        && form.auth_type == McpAuthType::Public
+    })
     .times(1)
-    .returning(move |_, _, _, _, _, _, _, _, _, _| Ok(instance.clone()));
+    .returning(move |_, _, _| Ok(instance.clone()));
 
   let app = test_router_for_crud(mock).await?;
 
-  let body = serde_json::to_string(&CreateMcpRequest {
+  let body = serde_json::to_string(&McpRequest {
     name: "DeepWiki MCP".to_string(),
     slug: "deepwiki".to_string(),
-    mcp_server_id: "server-uuid-1".to_string(),
+    mcp_server_id: Some("server-uuid-1".to_string()),
     description: Some("Deep wiki search".to_string()),
     enabled: true,
     tools_cache: None,
@@ -120,7 +114,7 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
 
   assert_eq!(StatusCode::CREATED, response.status());
 
-  let body: McpResponse = response.json().await?;
+  let body: Mcp = response.json().await?;
   assert_eq!("mcp-uuid-1", body.id);
   assert_eq!("deepwiki", body.slug);
   assert_eq!(McpAuthType::Public, body.auth_type);
@@ -131,26 +125,28 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Result<()> {
+async fn test_create_mcp_with_auth_uuid(
+  test_mcp_entity: McpWithServerEntity,
+) -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
-  let mut instance = test_mcp_instance.clone();
+  let mut instance = test_mcp_entity.clone();
   instance.auth_type = McpAuthType::Header;
   instance.auth_uuid = Some("auth-uuid-1".to_string());
 
   mock
     .expect_create()
-    .withf(|_, _, _, _, _, _, _, _, auth_type, auth_uuid| {
-      *auth_type == McpAuthType::Header && auth_uuid.as_deref() == Some("auth-uuid-1")
+    .withf(|_, _, form| {
+      form.auth_type == McpAuthType::Header && form.auth_uuid.as_deref() == Some("auth-uuid-1")
     })
     .times(1)
-    .returning(move |_, _, _, _, _, _, _, _, _, _| Ok(instance.clone()));
+    .returning(move |_, _, _| Ok(instance.clone()));
 
   let app = test_router_for_crud(mock).await?;
 
-  let body = serde_json::to_string(&CreateMcpRequest {
+  let body = serde_json::to_string(&McpRequest {
     name: "DeepWiki MCP".to_string(),
     slug: "deepwiki".to_string(),
-    mcp_server_id: "server-uuid-1".to_string(),
+    mcp_server_id: Some("server-uuid-1".to_string()),
     description: None,
     enabled: true,
     tools_cache: None,
@@ -172,7 +168,7 @@ async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Resul
   let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::CREATED, response.status());
-  let body: McpResponse = response.json().await?;
+  let body: Mcp = response.json().await?;
   assert_eq!(McpAuthType::Header, body.auth_type);
   assert_eq!(Some("auth-uuid-1".to_string()), body.auth_uuid);
   Ok(())
@@ -185,29 +181,33 @@ async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Resul
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_update_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
+async fn test_update_mcp_success(test_mcp_entity: McpWithServerEntity) -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
-  let mut updated = test_mcp_instance.clone();
+  let mut updated = test_mcp_entity.clone();
   updated.name = "Updated Name".to_string();
 
   mock
     .expect_update()
-    .withf(|user_id, id, name, slug, _, _, _, _, _, _| {
-      user_id == "user123" && id == "mcp-uuid-1" && name == "Updated Name" && slug == "deepwiki"
+    .withf(|_, user_id, id, form| {
+      user_id == "user123"
+        && id == "mcp-uuid-1"
+        && form.name == "Updated Name"
+        && form.slug == "deepwiki"
     })
     .times(1)
-    .returning(move |_, _, _, _, _, _, _, _, _, _| Ok(updated.clone()));
+    .returning(move |_, _, _, _| Ok(updated.clone()));
 
   let app = test_router_for_crud(mock).await?;
 
-  let body = serde_json::to_string(&UpdateMcpRequest {
+  let body = serde_json::to_string(&McpRequest {
     name: "Updated Name".to_string(),
     slug: "deepwiki".to_string(),
+    mcp_server_id: None,
     description: Some("Deep wiki search".to_string()),
     enabled: true,
     tools_filter: None,
     tools_cache: None,
-    auth_type: None,
+    auth_type: McpAuthType::Public,
     auth_uuid: None,
   })?;
 
@@ -225,7 +225,7 @@ async fn test_update_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
   let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let body: McpResponse = response.json().await?;
+  let body: Mcp = response.json().await?;
   assert_eq!("Updated Name", body.name);
   Ok(())
 }
@@ -242,9 +242,9 @@ async fn test_delete_mcp_success() -> anyhow::Result<()> {
 
   mock
     .expect_delete()
-    .withf(|user_id, id| user_id == "user123" && id == "mcp-uuid-1")
+    .withf(|_, user_id, id| user_id == "user123" && id == "mcp-uuid-1")
     .times(1)
-    .returning(|_, _| Ok(()));
+    .returning(|_, _, _| Ok(()));
 
   let app = test_router_for_crud(mock).await?;
 
@@ -276,13 +276,13 @@ async fn test_fetch_mcp_tools_with_inline_auth() -> anyhow::Result<()> {
 
   mock
     .expect_fetch_tools_for_server()
-    .withf(|server_id, auth_key, auth_val, _| {
+    .withf(|_, server_id, auth_key, auth_val, _| {
       server_id == "server-uuid-1"
         && auth_key.as_deref() == Some("Authorization")
         && auth_val.as_deref() == Some("Bearer test-key")
     })
     .times(1)
-    .returning(|_, _, _, _| {
+    .returning(|_, _, _, _, _| {
       Ok(vec![McpTool {
         name: "search".to_string(),
         description: None,
@@ -327,14 +327,14 @@ async fn test_fetch_mcp_tools_with_auth_uuid() -> anyhow::Result<()> {
 
   mock
     .expect_fetch_tools_for_server()
-    .withf(|server_id, auth_key, auth_val, auth_uuid| {
+    .withf(|_, server_id, auth_key, auth_val, auth_uuid| {
       server_id == "server-uuid-1"
         && auth_key.is_none()
         && auth_val.is_none()
         && auth_uuid.as_deref() == Some("uuid-123")
     })
     .times(1)
-    .returning(|_, _, _, _| Ok(vec![]));
+    .returning(|_, _, _, _, _| Ok(vec![]));
 
   let app = test_router_for_crud(mock).await?;
 
@@ -372,11 +372,11 @@ async fn test_execute_mcp_tool_success() -> anyhow::Result<()> {
 
   mock
     .expect_execute()
-    .withf(|user_id, id, tool_name, _| {
+    .withf(|_, user_id, id, tool_name, _| {
       user_id == "user123" && id == "mcp-uuid-1" && tool_name == "read_wiki_structure"
     })
     .times(1)
-    .returning(|_, _, _, _| {
+    .returning(|_, _, _, _, _| {
       Ok(McpExecutionResponse {
         result: Some(serde_json::json!({"content": "wiki data"})),
         error: None,
@@ -613,7 +613,8 @@ async fn test_integration_update_mcp_keep_existing_auth() -> anyhow::Result<()> 
   let update_body = json!({
     "name": "Renamed MCP",
     "slug": "keep-auth-mcp",
-    "enabled": true
+    "enabled": true,
+    "auth_type": "header"
   });
   let update_resp = router
     .clone()

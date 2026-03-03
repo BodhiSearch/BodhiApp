@@ -5,6 +5,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString, IntoStaticStr};
 use utoipa::ToSchema;
+use validator::Validate;
 
 // ============================================================================
 // McpServer - Admin-managed MCP server registry (public API model)
@@ -138,8 +139,6 @@ pub struct McpAuthHeader {
   pub header_key: String,
   /// Whether an encrypted header value is stored
   pub has_header_value: bool,
-  /// User who created this config
-  pub created_by: String,
   /// When this config was created
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
@@ -173,7 +172,6 @@ pub struct McpOAuthConfig {
   pub scopes: Option<String>,
   pub has_client_secret: bool,
   pub has_registration_access_token: bool,
-  pub created_by: String,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
@@ -195,7 +193,7 @@ pub struct McpOAuthToken {
   pub expires_at: Option<i64>,
   pub has_access_token: bool,
   pub has_refresh_token: bool,
-  pub created_by: String,
+  pub user_id: String,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
@@ -305,7 +303,6 @@ pub enum McpAuthConfigResponse {
     mcp_server_id: String,
     header_key: String,
     has_header_value: bool,
-    created_by: String,
     #[schema(value_type = String, format = "date-time")]
     created_at: DateTime<Utc>,
     #[schema(value_type = String, format = "date-time")]
@@ -329,7 +326,6 @@ pub enum McpAuthConfigResponse {
     token_endpoint_auth_method: Option<String>,
     has_client_secret: bool,
     has_registration_access_token: bool,
-    created_by: String,
     #[schema(value_type = String, format = "date-time")]
     created_at: DateTime<Utc>,
     #[schema(value_type = String, format = "date-time")]
@@ -351,13 +347,6 @@ impl McpAuthConfigResponse {
       McpAuthConfigResponse::Oauth { mcp_server_id, .. } => mcp_server_id,
     }
   }
-
-  pub fn created_by(&self) -> &str {
-    match self {
-      McpAuthConfigResponse::Header { created_by, .. } => created_by,
-      McpAuthConfigResponse::Oauth { created_by, .. } => created_by,
-    }
-  }
 }
 
 impl From<McpAuthHeader> for McpAuthConfigResponse {
@@ -368,7 +357,6 @@ impl From<McpAuthHeader> for McpAuthConfigResponse {
       mcp_server_id: h.mcp_server_id,
       header_key: h.header_key,
       has_header_value: h.has_header_value,
-      created_by: h.created_by,
       created_at: h.created_at,
       updated_at: h.updated_at,
     }
@@ -391,7 +379,6 @@ impl From<McpOAuthConfig> for McpAuthConfigResponse {
       token_endpoint_auth_method: o.token_endpoint_auth_method,
       has_client_secret: o.has_client_secret,
       has_registration_access_token: o.has_registration_access_token,
-      created_by: o.created_by,
       created_at: o.created_at,
       updated_at: o.updated_at,
     }
@@ -402,6 +389,151 @@ impl From<McpOAuthConfig> for McpAuthConfigResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct McpAuthConfigsListResponse {
   pub auth_configs: Vec<McpAuthConfigResponse>,
+}
+
+// ============================================================================
+// Entity → Response conversions
+// ============================================================================
+
+impl From<super::mcp_server_entity::McpServerEntity> for McpServer {
+  fn from(entity: super::mcp_server_entity::McpServerEntity) -> Self {
+    Self {
+      id: entity.id,
+      url: entity.url,
+      name: entity.name,
+      description: entity.description,
+      enabled: entity.enabled,
+      created_by: entity.created_by,
+      updated_by: entity.updated_by,
+      created_at: entity.created_at,
+      updated_at: entity.updated_at,
+    }
+  }
+}
+
+impl From<super::mcp_entity::McpWithServerEntity> for Mcp {
+  fn from(row: super::mcp_entity::McpWithServerEntity) -> Self {
+    let tools_cache: Option<Vec<McpTool>> = row
+      .tools_cache
+      .as_ref()
+      .and_then(|tc| serde_json::from_str(tc).ok());
+    let tools_filter: Option<Vec<String>> = row
+      .tools_filter
+      .as_ref()
+      .and_then(|tf| serde_json::from_str(tf).ok());
+
+    Self {
+      id: row.id,
+      mcp_server: McpServerInfo {
+        id: row.mcp_server_id,
+        url: row.server_url,
+        name: row.server_name,
+        enabled: row.server_enabled,
+      },
+      slug: row.slug,
+      name: row.name,
+      description: row.description,
+      enabled: row.enabled,
+      tools_cache,
+      tools_filter,
+      auth_type: row.auth_type,
+      auth_uuid: row.auth_uuid,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }
+  }
+}
+
+// ============================================================================
+// McpRequest - Input for creating/updating MCP instances
+// ============================================================================
+
+/// Input for creating or updating an MCP instance.
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct McpRequest {
+  /// Human-readable name (required)
+  #[validate(
+    length(min = 1, max = 100),
+    custom(function = "validate_mcp_instance_name_validator")
+  )]
+  pub name: String,
+  /// User-defined slug for this instance (1-24 chars, alphanumeric + hyphens)
+  #[validate(
+    length(min = 1, max = 24),
+    custom(function = "validate_mcp_slug_validator")
+  )]
+  pub slug: String,
+  /// MCP server ID (required for create, ignored for update)
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub mcp_server_id: Option<String>,
+  /// Optional description
+  #[serde(default)]
+  #[validate(length(max = 255))]
+  pub description: Option<String>,
+  /// Whether this instance is enabled
+  pub enabled: bool,
+  /// Cached tool schemas from the MCP server (JSON array)
+  #[serde(default)]
+  pub tools_cache: Option<Vec<McpTool>>,
+  /// Whitelisted tool names
+  #[serde(default)]
+  pub tools_filter: Option<Vec<String>>,
+  /// Authentication type
+  #[serde(default)]
+  pub auth_type: McpAuthType,
+  /// Reference to auth config
+  #[serde(default)]
+  pub auth_uuid: Option<String>,
+}
+
+// ============================================================================
+// McpServerRequest - Input for creating/updating MCP servers
+// ============================================================================
+
+/// Input for creating or updating an MCP server.
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct McpServerRequest {
+  /// MCP server endpoint URL (trimmed, case-insensitive unique)
+  #[validate(
+    length(min = 1, max = 2048),
+    custom(function = "validate_mcp_server_url_validator")
+  )]
+  pub url: String,
+  /// Human-readable display name
+  #[validate(length(min = 1, max = 100))]
+  pub name: String,
+  /// Optional description
+  #[serde(default)]
+  #[validate(length(max = 255))]
+  pub description: Option<String>,
+  /// Whether this MCP server is enabled
+  pub enabled: bool,
+  /// Optional auth config to create alongside the server (create only)
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub auth_config: Option<CreateMcpAuthConfigRequest>,
+}
+
+// ============================================================================
+// Validator-derive wrapper functions
+// ============================================================================
+
+fn validate_mcp_instance_name_validator(_name: &str) -> Result<(), validator::ValidationError> {
+  // Length checks are handled by #[validate(length(...))]; this is for custom logic only.
+  Ok(())
+}
+
+fn validate_mcp_slug_validator(slug: &str) -> Result<(), validator::ValidationError> {
+  if !MCP_SLUG_REGEX.is_match(slug) {
+    return Err(validator::ValidationError::new("invalid_mcp_slug"));
+  }
+  Ok(())
+}
+
+fn validate_mcp_server_url_validator(url: &str) -> Result<(), validator::ValidationError> {
+  if url::Url::parse(url).is_err() {
+    return Err(validator::ValidationError::new("invalid_mcp_server_url"));
+  }
+  Ok(())
 }
 
 // ============================================================================
@@ -417,135 +549,6 @@ pub const MAX_MCP_DESCRIPTION_LEN: usize = 255;
 pub const MAX_MCP_SERVER_NAME_LEN: usize = 100;
 pub const MAX_MCP_SERVER_URL_LEN: usize = 2048;
 pub const MAX_MCP_AUTH_CONFIG_NAME_LEN: usize = 100;
-
-/// Validate MCP instance name (required, max MAX_MCP_INSTANCE_NAME_LEN chars)
-pub fn validate_mcp_instance_name(name: &str) -> Result<(), McpInstanceNameError> {
-  if name.is_empty() {
-    return Err(McpInstanceNameError::Empty);
-  }
-  if name.len() > MAX_MCP_INSTANCE_NAME_LEN {
-    return Err(McpInstanceNameError::TooLong {
-      name: name.to_string(),
-      max_len: MAX_MCP_INSTANCE_NAME_LEN,
-    });
-  }
-  Ok(())
-}
-
-/// Error type for MCP instance name validation
-#[derive(Debug, Clone, PartialEq)]
-pub enum McpInstanceNameError {
-  Empty,
-  TooLong { name: String, max_len: usize },
-}
-
-impl std::fmt::Display for McpInstanceNameError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      McpInstanceNameError::Empty => write!(f, "MCP instance name cannot be empty"),
-      McpInstanceNameError::TooLong { max_len, .. } => {
-        write!(f, "MCP instance name cannot exceed {} characters", max_len)
-      }
-    }
-  }
-}
-
-/// Validate MCP instance slug format and length
-pub fn validate_mcp_slug(slug: &str) -> Result<(), String> {
-  if slug.is_empty() {
-    return Err("MCP slug cannot be empty".to_string());
-  }
-  if slug.len() > MAX_MCP_SLUG_LEN {
-    return Err(format!(
-      "MCP slug cannot exceed {} characters",
-      MAX_MCP_SLUG_LEN
-    ));
-  }
-  if !MCP_SLUG_REGEX.is_match(slug) {
-    return Err("MCP slug can only contain alphanumeric characters and hyphens".to_string());
-  }
-  Ok(())
-}
-
-/// Validate MCP instance description length
-pub fn validate_mcp_description(description: &str) -> Result<(), String> {
-  if description.len() > MAX_MCP_DESCRIPTION_LEN {
-    return Err(format!(
-      "MCP description cannot exceed {} characters",
-      MAX_MCP_DESCRIPTION_LEN
-    ));
-  }
-  Ok(())
-}
-
-/// Validate MCP server name (required, max 100 chars)
-pub fn validate_mcp_server_name(name: &str) -> Result<(), String> {
-  if name.is_empty() {
-    return Err("MCP server name cannot be empty".to_string());
-  }
-  if name.len() > MAX_MCP_SERVER_NAME_LEN {
-    return Err(format!(
-      "MCP server name cannot exceed {} characters",
-      MAX_MCP_SERVER_NAME_LEN
-    ));
-  }
-  Ok(())
-}
-
-/// Validate MCP server URL (required, valid URL format, max 2048 chars)
-pub fn validate_mcp_server_url(url: &str) -> Result<(), String> {
-  if url.is_empty() {
-    return Err("MCP server URL cannot be empty".to_string());
-  }
-  if url.len() > MAX_MCP_SERVER_URL_LEN {
-    return Err(format!(
-      "MCP server URL cannot exceed {} characters",
-      MAX_MCP_SERVER_URL_LEN
-    ));
-  }
-  url::Url::parse(url).map_err(|_| "MCP server URL is not a valid URL".to_string())?;
-  Ok(())
-}
-
-/// Validate MCP server description length (reuses same limit as MCP instance)
-pub fn validate_mcp_server_description(description: &str) -> Result<(), String> {
-  if description.len() > MAX_MCP_DESCRIPTION_LEN {
-    return Err(format!(
-      "MCP server description cannot exceed {} characters",
-      MAX_MCP_DESCRIPTION_LEN
-    ));
-  }
-  Ok(())
-}
-
-/// Validate auth config name (required, max 100 chars)
-pub fn validate_mcp_auth_config_name(name: &str) -> Result<(), String> {
-  if name.is_empty() {
-    return Err("Auth config name cannot be empty".to_string());
-  }
-  if name.len() > MAX_MCP_AUTH_CONFIG_NAME_LEN {
-    return Err(format!(
-      "Auth config name cannot exceed {} characters",
-      MAX_MCP_AUTH_CONFIG_NAME_LEN
-    ));
-  }
-  Ok(())
-}
-
-/// Validate OAuth endpoint URL (authorization_endpoint, token_endpoint, etc.)
-pub fn validate_oauth_endpoint_url(url: &str, field_name: &str) -> Result<(), String> {
-  if url.is_empty() {
-    return Err(format!("{} cannot be empty", field_name));
-  }
-  if url.len() > MAX_MCP_SERVER_URL_LEN {
-    return Err(format!(
-      "{} cannot exceed {} characters",
-      field_name, MAX_MCP_SERVER_URL_LEN
-    ));
-  }
-  url::Url::parse(url).map_err(|_| format!("{} is not a valid URL", field_name))?;
-  Ok(())
-}
 
 #[cfg(test)]
 #[path = "test_mcp_objs_validation.rs"]

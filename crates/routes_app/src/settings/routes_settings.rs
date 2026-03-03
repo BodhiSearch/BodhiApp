@@ -1,16 +1,10 @@
 use crate::settings::error::SettingsRouteError;
-use crate::settings::settings_api_schemas::UpdateSettingRequest;
 use crate::shared::AuthScope;
+use crate::{ApiError, OpenAIApiError, ValidatedJson};
 use crate::{API_TAG_SETTINGS, ENDPOINT_SETTINGS};
-use axum::{
-  extract::Path,
-  Json,
-};
+use axum::{extract::Path, Json};
 use services::SettingInfo;
-use crate::{ApiError, OpenAIApiError};
-use services::{BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_KEEP_ALIVE_SECS};
-
-const EDIT_SETTINGS_ALLOWED: &[&str] = &[BODHI_EXEC_VARIANT, BODHI_KEEP_ALIVE_SECS];
+use services::{UpdateSettingRequest, BODHI_HOME, EDIT_SETTINGS_ALLOWED, LLM_SETTINGS};
 
 /// List all application settings
 ///
@@ -54,9 +48,7 @@ const EDIT_SETTINGS_ALLOWED: &[&str] = &[BODHI_EXEC_VARIANT, BODHI_KEEP_ALIVE_SE
         ("session_auth" = ["resource_admin"])
     )
 )]
-pub async fn settings_index(
-  auth_scope: AuthScope,
-) -> Result<Json<Vec<SettingInfo>>, ApiError> {
+pub async fn settings_index(auth_scope: AuthScope) -> Result<Json<Vec<SettingInfo>>, ApiError> {
   let settings = auth_scope.settings().list().await;
   Ok(Json(settings))
 }
@@ -111,7 +103,7 @@ pub async fn settings_index(
 pub async fn settings_update(
   auth_scope: AuthScope,
   Path(key): Path<String>,
-  Json(payload): Json<UpdateSettingRequest>,
+  ValidatedJson(request): ValidatedJson<UpdateSettingRequest>,
 ) -> Result<Json<SettingInfo>, ApiError> {
   let settings = auth_scope.settings();
 
@@ -125,8 +117,11 @@ pub async fn settings_update(
   if !EDIT_SETTINGS_ALLOWED.contains(&key.as_str()) {
     return Err(SettingsRouteError::Unsupported(key))?;
   }
+  if settings.is_multi_tenant().await && LLM_SETTINGS.contains(&key.as_str()) {
+    return Err(SettingsRouteError::Unsupported(key))?;
+  }
   let metadata = settings.get_setting_metadata(&key).await;
-  let value = metadata.convert(payload.value)?;
+  let value = metadata.convert(request.value)?;
   settings.set_setting_value(&key, &value).await?;
 
   let (updated_value, source) = settings.get_setting_value_with_source(&key).await;
@@ -196,6 +191,9 @@ pub async fn settings_destroy(
     return Err(SettingsRouteError::NotFound(key))?;
   }
   if !EDIT_SETTINGS_ALLOWED.contains(&key.as_str()) {
+    return Err(SettingsRouteError::Unsupported(key))?;
+  }
+  if settings.is_multi_tenant().await && LLM_SETTINGS.contains(&key.as_str()) {
     return Err(SettingsRouteError::Unsupported(key))?;
   }
   settings.delete_setting(&key).await?;

@@ -1,13 +1,31 @@
-use crate::mcps::{
-  CreateMcpServerRequest, ListMcpServersResponse, McpServerQuery, McpServerResponse,
-  UpdateMcpServerRequest, ENDPOINT_MCP_SERVERS,
-};
-use crate::{ApiError, AuthScope, API_TAG_MCPS};
+use crate::mcps::{McpServerQuery, ENDPOINT_MCP_SERVERS};
+use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_MCPS};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
   Json,
 };
+use services::{McpServer, McpServerRequest};
+
+// ============================================================================
+// MCP Server Response types
+// ============================================================================
+
+/// MCP server response with computed mcp counts and optional auth config.
+#[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct McpServerResponse {
+  #[serde(flatten)]
+  pub server: McpServer,
+  pub enabled_mcp_count: i64,
+  pub disabled_mcp_count: i64,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub auth_config: Option<services::McpAuthConfigResponse>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct ListMcpServersResponse {
+  pub mcp_servers: Vec<McpServerResponse>,
+}
 
 // ============================================================================
 // MCP Server Admin Handlers
@@ -19,7 +37,7 @@ use axum::{
   path = ENDPOINT_MCP_SERVERS,
   tag = API_TAG_MCPS,
   operation_id = "createMcpServer",
-  request_body = CreateMcpServerRequest,
+  request_body = McpServerRequest,
   responses(
     (status = 201, description = "MCP server created", body = McpServerResponse),
     (status = 400, description = "Validation error"),
@@ -29,45 +47,29 @@ use axum::{
 )]
 pub async fn mcp_servers_create(
   auth_scope: AuthScope,
-  Json(request): Json<CreateMcpServerRequest>,
+  ValidatedJson(request): ValidatedJson<McpServerRequest>,
 ) -> Result<(StatusCode, Json<McpServerResponse>), ApiError> {
   let mcps = auth_scope.mcps();
 
-  let server = mcps
-    .create_mcp_server(
-      &request.name,
-      &request.url,
-      request.description,
-      request.enabled,
-    )
-    .await?;
+  let auth_config_request = request.auth_config.clone();
+  let entity = mcps.create_mcp_server(request).await?;
+  let server_id = entity.id.clone();
+  let server: McpServer = entity.into();
 
-  let auth_config = if let Some(config_request) = request.auth_config {
-    Some(
-      mcps
-        .create_auth_config(&server.id, config_request)
-        .await?,
-    )
+  let auth_config = if let Some(config_request) = auth_config_request {
+    Some(mcps.create_auth_config(&server_id, config_request).await?)
   } else {
     None
   };
 
-  let (enabled_count, disabled_count) = mcps.count_mcps_for_server(&server.id).await?;
+  let (enabled_count, disabled_count) = mcps.count_mcps_for_server(&server_id).await?;
 
   Ok((
     StatusCode::CREATED,
     Json(McpServerResponse {
-      id: server.id,
-      url: server.url,
-      name: server.name,
-      description: server.description,
-      enabled: server.enabled,
-      created_by: server.created_by,
-      updated_by: server.updated_by,
+      server,
       enabled_mcp_count: enabled_count,
       disabled_mcp_count: disabled_count,
-      created_at: server.created_at.to_rfc3339(),
-      updated_at: server.updated_at.to_rfc3339(),
       auth_config,
     }),
   ))
@@ -82,7 +84,7 @@ pub async fn mcp_servers_create(
   params(
     ("id" = String, Path, description = "MCP server UUID")
   ),
-  request_body = UpdateMcpServerRequest,
+  request_body = McpServerRequest,
   responses(
     (status = 200, description = "MCP server updated", body = McpServerResponse),
     (status = 400, description = "Validation error"),
@@ -94,34 +96,20 @@ pub async fn mcp_servers_create(
 pub async fn mcp_servers_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-  Json(request): Json<UpdateMcpServerRequest>,
+  ValidatedJson(request): ValidatedJson<McpServerRequest>,
 ) -> Result<Json<McpServerResponse>, ApiError> {
   let mcps = auth_scope.mcps();
 
-  let server = mcps
-    .update_mcp_server(
-      &id,
-      &request.name,
-      &request.url,
-      request.description,
-      request.enabled,
-    )
-    .await?;
+  let entity = mcps.update_mcp_server(&id, request).await?;
+  let server_id = entity.id.clone();
+  let server: McpServer = entity.into();
 
-  let (enabled_count, disabled_count) = mcps.count_mcps_for_server(&server.id).await?;
+  let (enabled_count, disabled_count) = mcps.count_mcps_for_server(&server_id).await?;
 
   Ok(Json(McpServerResponse {
-    id: server.id,
-    url: server.url,
-    name: server.name,
-    description: server.description,
-    enabled: server.enabled,
-    created_by: server.created_by,
-    updated_by: server.updated_by,
+    server,
     enabled_mcp_count: enabled_count,
     disabled_mcp_count: disabled_count,
-    created_at: server.created_at.to_rfc3339(),
-    updated_at: server.updated_at.to_rfc3339(),
     auth_config: None,
   }))
 }
@@ -147,25 +135,19 @@ pub async fn mcp_servers_show(
 ) -> Result<Json<McpServerResponse>, ApiError> {
   let mcps = auth_scope.mcps();
 
-  let server = mcps
+  let entity = mcps
     .get_mcp_server(&id)
     .await?
     .ok_or_else(|| services::EntityError::NotFound("MCP server".to_string()))?;
+  let server_id = entity.id.clone();
+  let server: McpServer = entity.into();
 
-  let (enabled_count, disabled_count) = mcps.count_mcps_for_server(&server.id).await?;
+  let (enabled_count, disabled_count) = mcps.count_mcps_for_server(&server_id).await?;
 
   Ok(Json(McpServerResponse {
-    id: server.id,
-    url: server.url,
-    name: server.name,
-    description: server.description,
-    enabled: server.enabled,
-    created_by: server.created_by,
-    updated_by: server.updated_by,
+    server,
     enabled_mcp_count: enabled_count,
     disabled_mcp_count: disabled_count,
-    created_at: server.created_at.to_rfc3339(),
-    updated_at: server.updated_at.to_rfc3339(),
     auth_config: None,
   }))
 }
@@ -190,23 +172,17 @@ pub async fn mcp_servers_index(
 ) -> Result<Json<ListMcpServersResponse>, ApiError> {
   let mcps = auth_scope.mcps();
 
-  let servers = mcps.list_mcp_servers(query.enabled).await?;
+  let entities = mcps.list_mcp_servers(query.enabled).await?;
 
-  let mut responses = Vec::with_capacity(servers.len());
-  for server in servers {
-    let (enabled_count, disabled_count) = mcps.count_mcps_for_server(&server.id).await?;
+  let mut responses = Vec::with_capacity(entities.len());
+  for entity in entities {
+    let server_id = entity.id.clone();
+    let server: McpServer = entity.into();
+    let (enabled_count, disabled_count) = mcps.count_mcps_for_server(&server_id).await?;
     responses.push(McpServerResponse {
-      id: server.id,
-      url: server.url,
-      name: server.name,
-      description: server.description,
-      enabled: server.enabled,
-      created_by: server.created_by,
-      updated_by: server.updated_by,
+      server,
       enabled_mcp_count: enabled_count,
       disabled_mcp_count: disabled_count,
-      created_at: server.created_at.to_rfc3339(),
-      updated_at: server.updated_at.to_rfc3339(),
       auth_config: None,
     });
   }

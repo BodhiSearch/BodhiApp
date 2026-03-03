@@ -1,7 +1,6 @@
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_index,
-  api_models_show, api_models_sync, api_models_test, api_models_update, ApiKey, ApiModelResponse,
-  CreateApiModelRequest, FetchModelsRequest, TestCreds, TestPromptRequest, ENDPOINT_API_MODELS,
+  api_models_show, api_models_sync, api_models_test, api_models_update, ENDPOINT_API_MODELS,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -12,18 +11,19 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::{test_db_service, AppServiceStubBuilder, TestDbService};
-use services::ApiFormat::OpenAI;
+use services::AuthContext;
+use services::{ApiFormat::OpenAI, ResourceRole};
+use services::{
+  ApiKey, ApiKeyUpdate, ApiModelOutput, ApiModelRequest, FetchModelsRequest, TestCreds,
+  TestPromptRequest,
+};
 use std::sync::Arc;
 use tower::ServiceExt;
 use validator::Validate;
 
 fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
-  let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), app_service);
   Router::new()
     .route(ENDPOINT_API_MODELS, get(api_models_index))
     .route(ENDPOINT_API_MODELS, post(api_models_create))
@@ -51,7 +51,12 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
       &format!("{}/{{id}}/sync-models", ENDPOINT_API_MODELS),
       post(api_models_sync),
     )
-    .with_state(Arc::new(router_state))
+    .layer(axum::Extension(AuthContext::test_session(
+      "test-user",
+      "testuser",
+      ResourceRole::PowerUser,
+    )))
+    .with_state(app_service)
 }
 
 #[rstest]
@@ -73,7 +78,7 @@ async fn test_create_api_model_handler_validation_error_empty_api_key(
   let json_request = json!({
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "",  // Invalid: empty api_key
+    "api_key": {"action": "set", "value": ""},  // Invalid: empty api_key
     "models": ["gpt-4"]
   });
 
@@ -107,26 +112,27 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
     .build()
     .await?;
 
-  let create_request = CreateApiModelRequest {
+  let create_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
-    api_key: ApiKey::some("sk-test123456789".to_string())?,
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec!["gpt-4".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
   };
 
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?;
 
   // Verify response status is 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
   // Verify error response contains validation error code for URL
+  // ValidatedJson catches validation errors before reaching the service
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
-  assert_eq!("obj_validation_error-validation_errors", error_code);
+  assert_eq!("validation_error", error_code);
 
   Ok(())
 }
@@ -146,17 +152,17 @@ async fn test_create_api_model_handler_validation_error_empty_models(
     .build()
     .await?;
 
-  let create_request = CreateApiModelRequest {
+  let create_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string())?,
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![], // Invalid: empty models array
     prefix: None,
     forward_all_with_prefix: false,
   };
 
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?;
 
   // Verify response status is 400 Bad Request
@@ -165,7 +171,7 @@ async fn test_create_api_model_handler_validation_error_empty_models(
   // Verify error response contains validation error code
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
-  assert_eq!("obj_validation_error-validation_errors", error_code);
+  assert_eq!("api_model_service_error-validation", error_code);
 
   Ok(())
 }
@@ -185,24 +191,24 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
     .build()
     .await?;
 
-  let create_request = CreateApiModelRequest {
+  let create_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string())?,
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![], // Empty models is valid for forward_all mode
     prefix: Some("fwd/".to_string()),
     forward_all_with_prefix: true,
   };
 
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?;
 
   // Verify response status is 201 Created
   assert_eq!(response.status(), StatusCode::CREATED);
 
   // Verify the API model was created with forward_all_with_prefix=true
-  let response_body = response.json::<ApiModelResponse>().await?;
+  let response_body = response.json::<ApiModelOutput>().await?;
   assert_eq!(response_body.forward_all_with_prefix, true);
   assert_eq!(response_body.prefix, Some("fwd/".to_string()));
   assert_eq!(response_body.models, Vec::<String>::new());
@@ -225,17 +231,17 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
     .build()
     .await?;
 
-  let create_request = CreateApiModelRequest {
+  let create_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string())?,
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![],
     prefix: None, // Invalid: forward_all_with_prefix requires a prefix
     forward_all_with_prefix: true,
   };
 
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?;
 
   // Verify response status is 400 Bad Request
@@ -244,20 +250,9 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   // Verify error response contains validation error code for prefix
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
-  assert_eq!(
-    "obj_validation_error-forward_all_requires_prefix",
-    error_code
-  );
+  assert_eq!("api_model_service_error-validation", error_code);
 
   Ok(())
-}
-
-#[rstest]
-fn test_api_key_masking() {
-  use crate::mask_api_key;
-
-  assert_eq!(mask_api_key("sk-1234567890abcdef"), "sk-...abcdef");
-  assert_eq!(mask_api_key("short"), "***");
 }
 
 #[rstest]

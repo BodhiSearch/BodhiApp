@@ -1,23 +1,18 @@
 use crate::shared::AuthScope;
+use crate::{ApiError, OpenAIApiError, ValidatedJson};
 use crate::{
-  ApiFormatsResponse, ApiModelResponse, CreateApiModelRequest, FetchModelsRequest,
-  FetchModelsResponse, PaginatedApiModelResponse, PaginationSortParams, TestCreds,
-  TestPromptRequest, TestPromptResponse, UpdateApiModelRequest, API_TAG_API_MODELS,
-  ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS,
-  ENDPOINT_API_MODELS_TEST,
+  PaginationSortParams, API_TAG_API_MODELS, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
+  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
 };
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
   Json,
 };
-use axum_extra::extract::WithRejection;
-use services::{ApiAlias, ApiFormat};
-use crate::{ApiError, JsonRejectionError, OpenAIApiError};
-use services::ObjValidationError;
-use std::sync::Arc;
-use ulid::Ulid;
-use validator::Validate;
+use services::{
+  ApiFormat, ApiFormatsResponse, ApiModelOutput, ApiModelRequest, FetchModelsRequest,
+  FetchModelsResponse, PaginatedApiModelOutput, TestCreds, TestPromptRequest, TestPromptResponse,
+};
 
 /// List all API model configurations
 #[utoipa::path(
@@ -29,13 +24,13 @@ use validator::Validate;
     description = "Retrieves paginated list of all configured API model aliases including external API formats like OpenAI, etc. API keys are masked in list view for security.",
     params(PaginationSortParams),
     responses(
-        (status = 200, description = "API model configurations retrieved successfully", body = PaginatedApiModelResponse,
+        (status = 200, description = "API model configurations retrieved successfully", body = PaginatedApiModelOutput,
          example = json!({
              "data": [{
                  "id": "openai-gpt4",
                  "api_format": "openai",
                  "base_url": "https://api.openai.com/v1",
-                 "api_key": "sk-****"
+                 "has_api_key": true
              }],
              "total": 1,
              "page": 1,
@@ -51,32 +46,12 @@ use validator::Validate;
 pub async fn api_models_index(
   auth_scope: AuthScope,
   Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedApiModelResponse>, ApiError> {
-  let db = auth_scope.db();
-
-  // Get all API model aliases
-  let aliases = db.list_api_model_aliases().await?;
-
-  // Apply pagination
-  let total = aliases.len();
-  let start = (params.page - 1) * params.page_size;
-  let end = std::cmp::min(start + params.page_size, total);
-
-  let page_data: Vec<ApiModelResponse> = aliases[start..end]
-    .iter()
-    .map(|alias| {
-      // For list view, always show masked API key indicator for security
-      // (checking individual key existence would be inefficient here)
-      ApiModelResponse::from_alias(alias.clone(), true)
-    })
-    .collect();
-
-  Ok(Json(PaginatedApiModelResponse {
-    data: page_data,
-    total,
-    page: params.page,
-    page_size: params.page_size,
-  }))
+) -> Result<Json<PaginatedApiModelOutput>, ApiError> {
+  let result = auth_scope
+    .api_models()
+    .list(params.page, params.page_size)
+    .await?;
+  Ok(Json(result))
 }
 
 /// Get a specific API model configuration
@@ -91,13 +66,13 @@ pub async fn api_models_index(
         ("id" = String, Path, description = "Unique identifier for the API model alias", example = "openai-gpt4")
     ),
     responses(
-        (status = 200, description = "API model configuration retrieved successfully", body = ApiModelResponse,
+        (status = 200, description = "API model configuration retrieved successfully", body = ApiModelOutput,
          example = json!({
              "id": "openai-gpt4",
              "api_format": "openai",
              "base_url": "https://api.openai.com/v1",
-             "api_key": "sk-****",
-             "model": "gpt-4"
+             "has_api_key": true,
+             "models": ["gpt-4"]
          })),
         (status = 404, description = "API model with specified ID not found", body = OpenAIApiError,
          example = json!({
@@ -117,20 +92,9 @@ pub async fn api_models_index(
 pub async fn api_models_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<ApiModelResponse>, ApiError> {
-  let db = auth_scope.db();
-
-  let api_alias = db.get_api_model_alias(&id).await?.ok_or_else(|| {
-    ApiError::from(services::EntityError::NotFound(format!(
-      "API model '{}' not found",
-      id
-    )))
-  })?;
-
-  // Check if API key exists for this model
-  let has_api_key = db.get_api_key_for_alias(&id).await?.is_some();
-
-  Ok(Json(ApiModelResponse::from_alias(api_alias, has_api_key)))
+) -> Result<Json<ApiModelOutput>, ApiError> {
+  let result = auth_scope.api_models().get(&id).await?;
+  Ok(Json(result))
 }
 
 /// Create a new API model configuration
@@ -139,9 +103,9 @@ pub async fn api_models_show(
     path = ENDPOINT_API_MODELS,
     tag = API_TAG_API_MODELS,
     operation_id = "createApiModel",
-    request_body = CreateApiModelRequest,
+    request_body = ApiModelRequest,
     responses(
-        (status = 201, description = "API model created", body = ApiModelResponse),
+        (status = 201, description = "API model created", body = ApiModelOutput),
         (status = 409, description = "Alias already exists", body = OpenAIApiError),
     ),
     security(
@@ -152,67 +116,10 @@ pub async fn api_models_show(
 )]
 pub async fn api_models_create(
   auth_scope: AuthScope,
-  WithRejection(Json(payload), _): WithRejection<Json<CreateApiModelRequest>, JsonRejectionError>,
-) -> Result<(StatusCode, Json<ApiModelResponse>), ApiError> {
-  // Validate the request
-  payload
-    .validate()
-    .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
-
-  // Additional validation: forward_all_with_prefix mode validation
-  payload.validate_forward_all().map_err(|e| {
-    if e.code.as_ref() == "prefix_required" {
-      ApiError::from(ObjValidationError::ForwardAllRequiresPrefix)
-    } else if e.code.as_ref() == "models_required" {
-      // Convert validation error to ValidationErrors for consistency
-      let mut errors = validator::ValidationErrors::new();
-      errors.add("models", e);
-      ApiError::from(ObjValidationError::ValidationErrors(errors))
-    } else {
-      ApiError::from(ObjValidationError::ForwardAllRequiresPrefix)
-    }
-  })?;
-
-  let db = auth_scope.db();
-  let time = auth_scope.time();
-
-  // Generate a unique ULID for the API model
-  let id = Ulid::new().to_string();
-
-  // Create the API model alias
-  let now = time.utc_now();
-  // Reset models to empty if forward_all_with_prefix is true
-  let models = if payload.forward_all_with_prefix {
-    Vec::new()
-  } else {
-    payload.models
-  };
-
-  let api_alias = ApiAlias::new(
-    id,
-    payload.api_format,
-    payload.base_url.trim_end_matches('/').to_string(),
-    models,
-    payload.prefix,
-    payload.forward_all_with_prefix,
-    now,
-  );
-
-  // Convert ApiKey to Option<String> for DB
-  let api_key_option = payload.api_key.as_option().map(|s| s.to_string());
-
-  db
-    .create_api_model_alias(&api_alias, api_key_option)
-    .await?;
-
-  // For forward_all models, populate cache asynchronously (fire-and-forget)
-  if api_alias.forward_all_with_prefix {
-    spawn_cache_refresh(auth_scope.app_service().clone(), api_alias.id.clone());
-  }
-
-  let response = ApiModelResponse::from_alias(api_alias, payload.api_key.is_some());
-
-  Ok((StatusCode::CREATED, Json(response)))
+  ValidatedJson(form): ValidatedJson<ApiModelRequest>,
+) -> Result<(StatusCode, Json<ApiModelOutput>), ApiError> {
+  let result = auth_scope.api_models().create(form).await?;
+  Ok((StatusCode::CREATED, Json(result)))
 }
 
 /// Update an existing API model configuration
@@ -224,9 +131,9 @@ pub async fn api_models_create(
     params(
         ("id" = String, Path, description = "API model ID")
     ),
-    request_body = UpdateApiModelRequest,
+    request_body = ApiModelRequest,
     responses(
-        (status = 200, description = "API model updated", body = ApiModelResponse),
+        (status = 200, description = "API model updated", body = ApiModelOutput),
         (status = 404, description = "API model not found", body = OpenAIApiError),
     ),
     security(
@@ -238,62 +145,10 @@ pub async fn api_models_create(
 pub async fn api_models_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-  WithRejection(Json(payload), _): WithRejection<Json<UpdateApiModelRequest>, JsonRejectionError>,
-) -> Result<Json<ApiModelResponse>, ApiError> {
-  // Validate the request
-  payload
-    .validate()
-    .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
-
-  // Additional validation: forward_all_with_prefix mode validation
-  payload.validate_forward_all().map_err(|e| {
-    if e.code.as_ref() == "prefix_required" {
-      ApiError::from(ObjValidationError::ForwardAllRequiresPrefix)
-    } else if e.code.as_ref() == "models_required" {
-      // Convert validation error to ValidationErrors for consistency
-      let mut errors = validator::ValidationErrors::new();
-      errors.add("models", e);
-      ApiError::from(ObjValidationError::ValidationErrors(errors))
-    } else {
-      ApiError::from(ObjValidationError::ForwardAllRequiresPrefix)
-    }
-  })?;
-
-  let db = auth_scope.db();
-  let time = auth_scope.time();
-
-  // Get existing API model
-  let mut api_alias = db.get_api_model_alias(&id).await?.ok_or_else(|| {
-    ApiError::from(services::EntityError::NotFound(format!(
-      "API model '{}' not found",
-      id
-    )))
-  })?;
-
-  // Update all fields (api_key is handled separately for security)
-  api_alias.api_format = payload.api_format;
-  api_alias.base_url = payload.base_url.trim_end_matches('/').to_string();
-  api_alias.models = payload.models.into();
-  api_alias.prefix = if payload.prefix.as_ref().is_some_and(|p| p.is_empty()) {
-    None
-  } else {
-    payload.prefix
-  };
-  api_alias.forward_all_with_prefix = payload.forward_all_with_prefix;
-
-  api_alias.updated_at = time.utc_now();
-
-  // Convert DTO enum to service enum
-  let api_key_update = services::ApiKeyUpdate::from(payload.api_key.clone());
-  db
-    .update_api_model_alias(&id, &api_alias, api_key_update)
-    .await?;
-
-  // Check if API key exists after update
-  let has_api_key = db.get_api_key_for_alias(&id).await?.is_some();
-
-  // Return response with masked API key
-  Ok(Json(ApiModelResponse::from_alias(api_alias, has_api_key)))
+  ValidatedJson(form): ValidatedJson<ApiModelRequest>,
+) -> Result<Json<ApiModelOutput>, ApiError> {
+  let result = auth_scope.api_models().update(&id, form).await?;
+  Ok(Json(result))
 }
 
 /// Delete an API model configuration
@@ -319,23 +174,16 @@ pub async fn api_models_destroy(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-  let db = auth_scope.db();
-
-  // Check if API model exists
-  if db.get_api_model_alias(&id).await?.is_none() {
-    return Err(ApiError::from(services::EntityError::NotFound(format!(
-      "API model '{}' not found",
-      id
-    ))));
-  }
-
-  // Delete the API model
-  db.delete_api_model_alias(&id).await?;
-
+  auth_scope.api_models().delete(&id).await?;
   Ok(StatusCode::NO_CONTENT)
 }
 
-/// Test API connectivity with a prompt
+/// Test API connectivity with a prompt.
+//
+// CRUD uniformity exception: This is a utility endpoint, not CRUD. It uses
+// `require_tenant_id()` / `require_user_id()` directly to resolve stored
+// credentials when `TestCreds::Id` is provided, since this operation crosses
+// the CRUD boundary (reading from an existing API model to perform a test).
 #[utoipa::path(
     post,
     path = ENDPOINT_API_MODELS_TEST.to_owned(),
@@ -354,15 +202,12 @@ pub async fn api_models_destroy(
 )]
 pub async fn api_models_test(
   auth_scope: AuthScope,
-  WithRejection(Json(payload), _): WithRejection<Json<TestPromptRequest>, JsonRejectionError>,
+  ValidatedJson(payload): ValidatedJson<TestPromptRequest>,
 ) -> Result<Json<TestPromptResponse>, ApiError> {
-  // Validate the request
-  payload
-    .validate()
-    .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
-
   let ai_api = auth_scope.ai_api();
   let db = auth_scope.db();
+  let tenant_id = auth_scope.require_tenant_id()?;
+  let user_id = auth_scope.require_user_id()?;
 
   // Resolve credentials using TestCreds enum
   let result = match &payload.creds {
@@ -379,15 +224,18 @@ pub async fn api_models_test(
     }
     TestCreds::Id(id) => {
       // Look up stored model configuration by ID
-      let api_model = db.get_api_model_alias(id).await?.ok_or_else(|| {
-        ApiError::from(services::EntityError::NotFound(format!(
-          "API model '{}' not found",
-          id
-        )))
-      })?;
+      let api_model = db
+        .get_api_model_alias(tenant_id, user_id, id)
+        .await?
+        .ok_or_else(|| {
+          ApiError::from(services::EntityError::NotFound(format!(
+            "API model '{}' not found",
+            id
+          )))
+        })?;
 
       // Get stored key (may be None if no key configured)
-      let stored_key = db.get_api_key_for_alias(id).await?;
+      let stored_key = db.get_api_key_for_alias(tenant_id, user_id, id).await?;
 
       ai_api
         .test_prompt(
@@ -407,7 +255,12 @@ pub async fn api_models_test(
   }
 }
 
-/// Fetch available models from the API
+/// Fetch available models from the API.
+//
+// CRUD uniformity exception: This is a utility endpoint, not CRUD. It uses
+// `require_tenant_id()` / `require_user_id()` directly to resolve stored
+// credentials when `TestCreds::Id` is provided, since this operation crosses
+// the CRUD boundary (reading from an existing API model to perform a fetch).
 #[utoipa::path(
     post,
     path = ENDPOINT_API_MODELS_FETCH_MODELS.to_owned(),
@@ -426,15 +279,12 @@ pub async fn api_models_test(
 )]
 pub async fn api_models_fetch_models(
   auth_scope: AuthScope,
-  WithRejection(Json(payload), _): WithRejection<Json<FetchModelsRequest>, JsonRejectionError>,
+  ValidatedJson(payload): ValidatedJson<FetchModelsRequest>,
 ) -> Result<Json<FetchModelsResponse>, ApiError> {
-  // Validate the request
-  payload
-    .validate()
-    .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
-
   let ai_api = auth_scope.ai_api();
   let db = auth_scope.db();
+  let tenant_id = auth_scope.require_tenant_id()?;
+  let user_id = auth_scope.require_user_id()?;
 
   // Resolve credentials using TestCreds enum
   let models = match &payload.creds {
@@ -449,15 +299,18 @@ pub async fn api_models_fetch_models(
     }
     TestCreds::Id(id) => {
       // Look up stored model configuration by ID
-      let api_model = db.get_api_model_alias(id).await?.ok_or_else(|| {
-        ApiError::from(services::EntityError::NotFound(format!(
-          "API model '{}' not found",
-          id
-        )))
-      })?;
+      let api_model = db
+        .get_api_model_alias(tenant_id, user_id, id)
+        .await?
+        .ok_or_else(|| {
+          ApiError::from(services::EntityError::NotFound(format!(
+            "API model '{}' not found",
+            id
+          )))
+        })?;
 
       // Get stored key (may be None if no key configured)
-      let stored_key = db.get_api_key_for_alias(id).await?;
+      let stored_key = db.get_api_key_for_alias(tenant_id, user_id, id).await?;
 
       ai_api
         .fetch_models(stored_key, api_model.base_url.trim_end_matches('/'))
@@ -509,12 +362,12 @@ pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, ApiError> 
         ("id" = String, Path, description = "Unique identifier for the API model alias", example = "openai-gpt4")
     ),
     responses(
-        (status = 200, description = "Models synced to cache successfully", body = ApiModelResponse,
+        (status = 200, description = "Models synced to cache successfully", body = ApiModelOutput,
          example = json!({
              "id": "openai-gpt4",
              "api_format": "openai",
              "base_url": "https://api.openai.com/v1",
-             "api_key_masked": "sk-****1234",
+             "has_api_key": true,
              "models": ["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"],
              "prefix": null,
              "forward_all_with_prefix": false,
@@ -533,70 +386,9 @@ pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, ApiError> 
 pub async fn api_models_sync(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<ApiModelResponse>, ApiError> {
-  let db = auth_scope.db();
-  let ai_api = auth_scope.ai_api();
-  let time = auth_scope.time();
-
-  // Get the API alias - if not found, return error
-  let Some(api_alias) = db.get_api_model_alias(&id).await? else {
-    return Err(ApiError::from(services::EntityError::NotFound(format!(
-      "API model {} not found",
-      id
-    ))));
-  };
-
-  // Get API key (optional)
-  let api_key = db.get_api_key_for_alias(&id).await.ok().flatten();
-
-  // Fetch models from remote API synchronously
-  let models = ai_api
-    .fetch_models(api_key, &api_alias.base_url)
-    .await?;
-
-  // Update cache in DB
-  let now = time.utc_now();
-  db
-    .update_api_model_cache(&id, models.clone(), now)
-    .await?;
-
-  // Get refreshed alias
-  let Some(updated_alias) = db.get_api_model_alias(&id).await? else {
-    return Err(ApiError::from(services::EntityError::NotFound(format!(
-      "API model {} not found",
-      id
-    ))));
-  };
-
-  // Check if API key exists
-  let has_api_key = db
-    .get_api_key_for_alias(&id)
-    .await
-    .ok()
-    .flatten()
-    .is_some();
-
-  Ok(Json(ApiModelResponse::from_alias(
-    updated_alias,
-    has_api_key,
-  )))
-}
-
-/// Helper function to spawn async cache refresh for forward_all models
-fn spawn_cache_refresh(app_service: Arc<dyn services::AppService>, alias_id: String) {
-  tokio::spawn(async move {
-    let db = app_service.db_service();
-    let ai_api = app_service.ai_api_service();
-    let time_service = app_service.time_service();
-
-    if let Ok(Some(alias)) = db.get_api_model_alias(&alias_id).await {
-      let api_key: Option<String> = db.get_api_key_for_alias(&alias_id).await.ok().flatten();
-      if let Ok(models) = ai_api.fetch_models(api_key, &alias.base_url).await {
-        let now = time_service.utc_now();
-        let _ = db.update_api_model_cache(&alias_id, models, now).await;
-      }
-    }
-  });
+) -> Result<Json<ApiModelOutput>, ApiError> {
+  let result = auth_scope.api_models().sync_cache(&id).await?;
+  Ok(Json(result))
 }
 
 #[cfg(test)]

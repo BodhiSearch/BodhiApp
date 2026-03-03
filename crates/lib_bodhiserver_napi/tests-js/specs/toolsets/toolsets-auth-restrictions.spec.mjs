@@ -73,7 +73,7 @@ test.describe('Session Auth - Toolset Endpoints', { tag: ['@oauth', '@toolsets']
     await sessionPage.goto(sharedServerUrl);
 
     const data = await sessionPage.evaluate(async (sharedServerUrl) => {
-      const response = await fetch(`${sharedServerUrl}/bodhi/v1/toolsets`, {
+      const response = await fetch(`${sharedServerUrl}/bodhi/v1/toolset_types`, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -84,9 +84,9 @@ test.describe('Session Auth - Toolset Endpoints', { tag: ['@oauth', '@toolsets']
       return await response.json();
     }, sharedServerUrl);
 
-    expect(data.toolset_types).toBeDefined();
-    expect(Array.isArray(data.toolset_types)).toBe(true);
-    const exaType = data.toolset_types.find((t) => t.toolset_type === TOOLSET_TYPE);
+    expect(data.types).toBeDefined();
+    expect(Array.isArray(data.types)).toBe(true);
+    const exaType = data.types.find((t) => t.toolset_type === TOOLSET_TYPE);
     expect(exaType).toBeTruthy();
 
     await sessionContext.close();

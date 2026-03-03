@@ -1,30 +1,35 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::toolsets::routes_toolsets::routes_toolsets;
-use crate::toolsets::toolsets_api_schemas::{ApiKeyUpdateDto, ListToolsetsResponse};
+use crate::toolsets::toolsets_api_schemas::ListToolsetsResponse;
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
 use chrono::Utc;
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
-use server_core::{DefaultRouterState, MockSharedContext, RouterState};
+use services::AuthContext;
+
 use services::{test_utils::AppServiceStubBuilder, MockToolService};
-use services::{AppToolsetConfig, ToolDefinition, Toolset, ToolsetExecutionResponse};
+use services::{AppToolsetConfig, ToolDefinition, ToolsetEntity, ToolsetExecutionResponse};
 use services::{ResourceRole, UserScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 
 #[fixture]
-fn test_instance() -> Toolset {
+fn test_instance() -> ToolsetEntity {
   let now = Utc::now();
-  Toolset {
+  ToolsetEntity {
     id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+    tenant_id: "test-tenant".to_string(),
+    user_id: "user123".to_string(),
     slug: "my-exa-search".to_string(),
     toolset_type: "builtin-exa-search".to_string(),
     description: Some("Test instance".to_string()),
     enabled: true,
-    has_api_key: true,
+    encrypted_api_key: Some("encrypted".to_string()),
+    salt: Some("salt".to_string()),
+    nonce: Some("nonce".to_string()),
     created_at: now,
     updated_at: now,
   }
@@ -60,10 +65,7 @@ async fn test_router(mock_tool_service: MockToolService) -> anyhow::Result<Route
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::new()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   Ok(routes_toolsets(state))
 }
@@ -79,7 +81,7 @@ async fn test_router(mock_tool_service: MockToolService) -> anyhow::Result<Route
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_toolsets(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
   #[case] is_session: bool,
   #[case] is_oauth_filtered: bool,
   #[case] expected_count: usize,
@@ -100,15 +102,15 @@ async fn test_list_toolsets(
 
   mock_tool_service
     .expect_list()
-    .withf(|user_id| user_id == "user123")
+    .withf(|_, user_id| user_id == "user123")
     .times(1)
-    .returning(move |_| Ok(instances_to_return.clone()));
+    .returning(move |_, _| Ok(instances_to_return.clone()));
 
   // Mock toolset_types fetching
   mock_tool_service
     .expect_list_app_toolset_configs()
     .times(1)
-    .returning(|| Ok(vec![]));
+    .returning(|_| Ok(vec![]));
 
   let app = test_router(mock_tool_service).await?;
 
@@ -148,7 +150,7 @@ async fn test_list_toolsets(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_toolsets_session_returns_all_toolset_types(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
 ) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
   let instance_clone = test_instance.clone();
@@ -157,9 +159,9 @@ async fn test_list_toolsets_session_returns_all_toolset_types(
 
   mock_tool_service
     .expect_list()
-    .withf(|user_id| user_id == "user123")
+    .withf(|_, user_id| user_id == "user123")
     .times(1)
-    .returning(move |_| Ok(vec![instance_clone.clone()]));
+    .returning(move |_, _| Ok(vec![instance_clone.clone()]));
 
   let config = AppToolsetConfig {
     toolset_type: "builtin-exa-search".to_string(),
@@ -174,7 +176,7 @@ async fn test_list_toolsets_session_returns_all_toolset_types(
   mock_tool_service
     .expect_list_app_toolset_configs()
     .times(1)
-    .returning(move || Ok(vec![config.clone()]));
+    .returning(move |_| Ok(vec![config.clone()]));
 
   let app = test_router(mock_tool_service).await?;
 
@@ -209,7 +211,7 @@ async fn test_list_toolsets_session_returns_all_toolset_types(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
 ) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
   let instance_clone = test_instance.clone();
@@ -218,9 +220,9 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
 
   mock_tool_service
     .expect_list()
-    .withf(|user_id| user_id == "user123")
+    .withf(|_, user_id| user_id == "user123")
     .times(1)
-    .returning(move |_| Ok(vec![instance_clone.clone()]));
+    .returning(move |_, _| Ok(vec![instance_clone.clone()]));
 
   let config = AppToolsetConfig {
     toolset_type: "builtin-exa-search".to_string(),
@@ -236,7 +238,7 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
   mock_tool_service
     .expect_list_app_toolset_configs()
     .times(1)
-    .returning(move || Ok(vec![config.clone()]));
+    .returning(move |_| Ok(vec![config.clone()]));
 
   let app = test_router(mock_tool_service).await?;
 
@@ -276,15 +278,15 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() -> 
 
   mock_tool_service
     .expect_list()
-    .withf(|user_id| user_id == "user123")
+    .withf(|_, user_id| user_id == "user123")
     .times(1)
-    .returning(|_| Ok(vec![]));
+    .returning(|_, _| Ok(vec![]));
 
   // OAuth with empty scopes now returns all types (no filtering)
   mock_tool_service
     .expect_list_app_toolset_configs()
     .times(1)
-    .returning(|| Ok(vec![]));
+    .returning(|_| Ok(vec![]));
 
   let app = test_router(mock_tool_service).await?;
 
@@ -329,7 +331,7 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() -> 
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_toolset(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
   #[case] slug: &str,
   #[case] expected_status: StatusCode,
   #[case] _error_code: Option<&str>,
@@ -342,13 +344,14 @@ async fn test_create_toolset(
     mock_tool_service
       .expect_create()
       .times(1)
-      .returning(move |_, _, _, _, _, _| Ok(instance_clone.clone()));
+      .returning(move |_, _, _| Ok(instance_clone.clone()));
   } else if expected_status == StatusCode::CONFLICT {
     mock_tool_service
       .expect_create()
       .times(1)
-      .returning(|_, _, _, _, _, _| Err(services::ToolsetError::SlugExists("slug".to_string())));
+      .returning(|_, _, _| Err(services::ToolsetError::SlugExists("slug".to_string())));
   }
+  // BAD_REQUEST cases are now handled by ValidatedJson before reaching the service
 
   let app = test_router(mock_tool_service).await?;
 
@@ -357,7 +360,7 @@ async fn test_create_toolset(
     "slug": slug,
     "description": "Test instance",
     "enabled": true,
-    "api_key": "test-key"
+    "api_key": {"action": "set", "value": "test-key"}
   });
 
   let response = app
@@ -390,7 +393,7 @@ async fn test_create_toolset(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_get_toolset(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
   #[case] returns_instance: bool,
   #[case] expected_status: StatusCode,
 ) -> anyhow::Result<()> {
@@ -404,7 +407,7 @@ async fn test_get_toolset(
   mock_tool_service
     .expect_get()
     .times(1)
-    .returning(move |_, _| {
+    .returning(move |_, _, _| {
       if returns_instance {
         Ok(Some(instance_clone.clone()))
       } else {
@@ -437,27 +440,16 @@ async fn test_get_toolset(
 // ============================================================================
 
 #[rstest]
-#[case::success("updated-slug", ApiKeyUpdateDto::Keep, StatusCode::OK, None)]
-#[case::api_key_set("updated-slug", ApiKeyUpdateDto::Set(Some("new-key".to_string())), StatusCode::OK, None)]
-#[case::api_key_keep("updated-slug", ApiKeyUpdateDto::Keep, StatusCode::OK, None)]
-#[case::validation_error(
-  "",
-  ApiKeyUpdateDto::Keep,
-  StatusCode::BAD_REQUEST,
-  Some("validation_error")
-)]
-#[case::slug_conflict(
-  "conflict-slug",
-  ApiKeyUpdateDto::Keep,
-  StatusCode::CONFLICT,
-  Some("entity_error")
-)]
+#[case::success("updated-slug", StatusCode::OK, None)]
+#[case::api_key_set("updated-slug", StatusCode::OK, None)]
+#[case::api_key_keep("updated-slug", StatusCode::OK, None)]
+#[case::validation_error("", StatusCode::BAD_REQUEST, Some("validation_error"))]
+#[case::slug_conflict("conflict-slug", StatusCode::CONFLICT, Some("entity_error"))]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_update_toolset(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
   #[case] slug: &str,
-  #[case] api_key: ApiKeyUpdateDto,
   #[case] expected_status: StatusCode,
   #[case] _error_code: Option<&str>,
 ) -> anyhow::Result<()> {
@@ -469,13 +461,14 @@ async fn test_update_toolset(
     mock_tool_service
       .expect_update()
       .times(1)
-      .returning(move |_, _, _, _, _, _| Ok(instance_clone.clone()));
+      .returning(move |_, _, _, _| Ok(instance_clone.clone()));
   } else if expected_status == StatusCode::CONFLICT {
     mock_tool_service
       .expect_update()
       .times(1)
-      .returning(|_, _, _, _, _, _| Err(services::ToolsetError::SlugExists("slug".to_string())));
+      .returning(|_, _, _, _| Err(services::ToolsetError::SlugExists("slug".to_string())));
   }
+  // BAD_REQUEST cases are now handled by ValidatedJson before reaching the service
 
   let app = test_router(mock_tool_service).await?;
 
@@ -483,7 +476,7 @@ async fn test_update_toolset(
     "slug": slug,
     "description": "Updated description",
     "enabled": true,
-    "api_key": api_key
+    "api_key": {"action": "keep"}
   });
 
   let response = app
@@ -511,7 +504,7 @@ async fn test_update_toolset(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_update_toolset_not_found(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
   #[case] _returns_instance: bool,
   #[case] expected_status: StatusCode,
 ) -> anyhow::Result<()> {
@@ -520,7 +513,7 @@ async fn test_update_toolset_not_found(
   mock_tool_service
     .expect_update()
     .times(1)
-    .returning(|_, _, _, _, _, _| {
+    .returning(|_, _, _, _| {
       Err(services::ToolsetError::ToolsetNotFound(
         "Toolset".to_string(),
       ))
@@ -532,7 +525,7 @@ async fn test_update_toolset_not_found(
     "slug": "updated-slug",
     "description": "Updated description",
     "enabled": true,
-    "api_key": {"action": "Keep"}
+    "api_key": {"action": "keep"}
   });
 
   let response = app
@@ -565,7 +558,7 @@ async fn test_update_toolset_not_found(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_delete_toolset(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
   #[case] succeeds: bool,
   #[case] expected_status: StatusCode,
 ) -> anyhow::Result<()> {
@@ -575,12 +568,12 @@ async fn test_delete_toolset(
     mock_tool_service
       .expect_delete()
       .times(1)
-      .returning(|_, _| Ok(()));
+      .returning(|_, _, _| Ok(()));
   } else {
     mock_tool_service
       .expect_delete()
       .times(1)
-      .returning(|_, _| {
+      .returning(|_, _, _| {
         Err(services::ToolsetError::ToolsetNotFound(
           "Toolset".to_string(),
         ))
@@ -617,7 +610,7 @@ async fn test_delete_toolset(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_execute_toolset(
-  test_instance: Toolset,
+  test_instance: ToolsetEntity,
   #[case] succeeds: bool,
   #[case] expected_status: StatusCode,
 ) -> anyhow::Result<()> {
@@ -627,7 +620,7 @@ async fn test_execute_toolset(
     mock_tool_service
       .expect_execute()
       .times(1)
-      .returning(|_, _, _, _| {
+      .returning(|_, _, _, _, _| {
         Ok(ToolsetExecutionResponse {
           result: Some(serde_json::json!({"success": true})),
           error: None,
@@ -637,7 +630,7 @@ async fn test_execute_toolset(
     mock_tool_service
       .expect_execute()
       .times(1)
-      .returning(|_, _, _, _| Err(services::ToolsetError::MethodNotFound("search".to_string())));
+      .returning(|_, _, _, _, _| Err(services::ToolsetError::MethodNotFound("search".to_string())));
   }
 
   let app = test_router(mock_tool_service).await?;

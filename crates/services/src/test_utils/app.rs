@@ -2,13 +2,15 @@ use super::{build_temp_dir, copy_test_dir};
 use super::{MockAccessRequestService, StubNetworkService};
 use crate::{
   db::{DbService, TimeService},
+  inference::{InferenceService, MockInferenceService},
   test_utils::{test_db_service, test_db_service_with_temp_dir, SettingServiceStub, TestDbService},
-  AccessRequestService, AiApiService, AppInstance, AppInstanceService, AppService, AuthService,
-  CacheService, ConcurrencyService, DataService, DefaultAppInstanceService, DefaultMcpService,
-  DefaultSessionService, DefaultToolService, HfHubService, HubService, LocalConcurrencyService,
-  LocalDataService, McpService, MockAuthService, MockExaService, MockHubService, MockQueueProducer,
-  MokaCacheService, NetworkService, QueueProducer, SessionService, SettingService, TokenService,
-  ToolService, BODHI_EXEC_LOOKUP_PATH,
+  AccessRequestService, AiApiService, ApiModelService, AppService, AuthService, CacheService,
+  ConcurrencyService, DataService, DefaultApiModelService, DefaultDownloadService,
+  DefaultMcpService, DefaultSessionService, DefaultTenantService, DefaultToolService,
+  DownloadService, HfHubService, HubService, LocalConcurrencyService, LocalDataService, McpService,
+  MockAuthService, MockExaService, MockHubService, MockQueueProducer, MokaCacheService,
+  NetworkService, QueueProducer, SessionService, SettingService, Tenant, TenantService,
+  TokenService, ToolService, BODHI_EXEC_LOOKUP_PATH,
 };
 use derive_builder::Builder;
 use rstest::fixture;
@@ -57,7 +59,7 @@ pub struct AppServiceStub {
   pub setting_service: Option<Arc<dyn SettingService>>,
   pub db_service: Option<Arc<dyn DbService>>,
   pub session_service: Option<Arc<dyn SessionService>>,
-  pub app_instance_service: Option<Arc<dyn AppInstanceService>>,
+  pub tenant_service: Option<Arc<dyn TenantService>>,
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService>>,
 
@@ -73,7 +75,10 @@ pub struct AppServiceStub {
   pub data_service: Option<Arc<dyn DataService>>,
   #[builder(default = "self.default_tool_service()")]
   pub tool_service: Option<Arc<dyn ToolService>>,
+  #[builder(default = "self.default_ai_api_service()")]
   pub ai_api_service: Option<Arc<dyn AiApiService>>,
+  #[builder(default = "self.default_inference_service()")]
+  pub inference_service: Option<Arc<dyn InferenceService>>,
   #[builder(default = "self.default_concurrency_service()")]
   pub concurrency_service: Option<Arc<dyn ConcurrencyService>>,
   #[builder(default = "self.default_queue_producer()")]
@@ -84,10 +89,14 @@ pub struct AppServiceStub {
   pub mcp_service: Option<Arc<dyn McpService>>,
   #[builder(default = "self.default_token_service()")]
   pub token_service: Option<Arc<dyn TokenService>>,
+  #[builder(default = "self.default_api_model_service()")]
+  pub api_model_service: Option<Arc<dyn ApiModelService>>,
+  #[builder(default = "self.default_download_service()")]
+  pub download_service: Option<Arc<dyn DownloadService>>,
 }
 
 impl AppServiceStubBuilder {
-  /// Async build that auto-initializes db_service, session_service, and app_instance_service if not explicitly set.
+  /// Async build that auto-initializes db_service, session_service, and tenant_service if not explicitly set.
   pub async fn build(&mut self) -> Result<AppServiceStub, AppServiceStubBuilderError> {
     if !matches!(&self.db_service, Some(Some(_))) {
       self.with_db_service().await;
@@ -95,8 +104,8 @@ impl AppServiceStubBuilder {
     if !matches!(&self.session_service, Some(Some(_))) {
       self.with_session_service().await;
     }
-    if !matches!(&self.app_instance_service, Some(Some(_))) {
-      self.with_app_instance_service().await;
+    if !matches!(&self.tenant_service, Some(Some(_))) {
+      self.with_tenant_service().await;
     }
     self.fallback_build()
   }
@@ -160,6 +169,10 @@ impl AppServiceStubBuilder {
     Some(Arc::new(StubNetworkService { ip: None }))
   }
 
+  fn default_inference_service(&self) -> Option<Arc<dyn InferenceService>> {
+    Some(Arc::new(MockInferenceService::new()))
+  }
+
   fn default_access_request_service(&self) -> Option<Arc<dyn AccessRequestService>> {
     Some(Arc::new(MockAccessRequestService::new()))
   }
@@ -181,6 +194,55 @@ impl AppServiceStubBuilder {
     Some(Arc::new(DefaultMcpService::new(
       db_service,
       mcp_client,
+      time_service,
+    )))
+  }
+
+  fn default_ai_api_service(&self) -> Option<Arc<dyn AiApiService>> {
+    Some(Arc::new(crate::MockAiApiService::new()))
+  }
+
+  fn default_api_model_service(&self) -> Option<Arc<dyn ApiModelService>> {
+    let db_service = self
+      .db_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .expect("db_service must be set before building api_model_service");
+    let time_service: Arc<dyn TimeService> = self
+      .time_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
+    let ai_api_service: Arc<dyn AiApiService> = self
+      .ai_api_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .unwrap_or_else(|| Arc::new(crate::MockAiApiService::new()));
+    Some(Arc::new(DefaultApiModelService::new(
+      db_service,
+      time_service,
+      ai_api_service,
+    )))
+  }
+
+  fn default_download_service(&self) -> Option<Arc<dyn DownloadService>> {
+    let db_service = self
+      .db_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .expect("db_service must be set before building download_service");
+    let time_service: Arc<dyn TimeService> = self
+      .time_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
+    Some(Arc::new(DefaultDownloadService::new(
+      db_service,
       time_service,
     )))
   }
@@ -325,27 +387,27 @@ impl AppServiceStubBuilder {
     self
   }
 
-  /// Creates DefaultAppInstanceService with empty DB (no app instance row)
-  pub async fn with_app_instance_service(&mut self) -> &mut Self {
+  /// Creates DefaultTenantService with empty DB (no tenant row)
+  pub async fn with_tenant_service(&mut self) -> &mut Self {
     let db_service = self.get_db_service().await;
-    let svc = DefaultAppInstanceService::new(db_service);
-    self.app_instance_service = Some(Some(Arc::new(svc)));
+    let svc = DefaultTenantService::new(db_service);
+    self.tenant_service = Some(Some(Arc::new(svc)));
     self
   }
 
-  /// Creates DefaultAppInstanceService and persists the given AppInstance to DB
-  pub async fn with_app_instance(&mut self, instance: AppInstance) -> &mut Self {
+  /// Creates DefaultTenantService and persists the given Tenant to DB
+  pub async fn with_tenant(&mut self, instance: Tenant) -> &mut Self {
     let db_service = self.get_db_service().await;
-    let svc = DefaultAppInstanceService::new(db_service);
+    let svc = DefaultTenantService::new(db_service);
     svc
-      .create_instance(
+      .create_tenant(
         &instance.client_id,
         &instance.client_secret,
         instance.status,
       )
       .await
       .unwrap();
-    self.app_instance_service = Some(Some(Arc::new(svc)));
+    self.tenant_service = Some(Some(Arc::new(svc)));
     self
   }
 
@@ -410,8 +472,8 @@ impl AppService for AppServiceStub {
     self.session_service.clone().unwrap()
   }
 
-  fn app_instance_service(&self) -> Arc<dyn AppInstanceService> {
-    self.app_instance_service.clone().unwrap()
+  fn tenant_service(&self) -> Arc<dyn TenantService> {
+    self.tenant_service.clone().unwrap()
   }
 
   fn cache_service(&self) -> Arc<dyn CacheService> {
@@ -463,5 +525,26 @@ impl AppService for AppServiceStub {
 
   fn token_service(&self) -> Arc<dyn TokenService> {
     self.token_service.clone().unwrap()
+  }
+
+  fn inference_service(&self) -> Arc<dyn InferenceService> {
+    self
+      .inference_service
+      .clone()
+      .expect("inference_service not configured in test stub")
+  }
+
+  fn api_model_service(&self) -> Arc<dyn ApiModelService> {
+    self
+      .api_model_service
+      .clone()
+      .expect("api_model_service not configured in test stub")
+  }
+
+  fn download_service(&self) -> Arc<dyn DownloadService> {
+    self
+      .download_service
+      .clone()
+      .expect("download_service not configured in test stub")
   }
 }

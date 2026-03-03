@@ -1,7 +1,7 @@
 import {
   AccessRequestActionResponse,
   AccessRequestReviewResponse,
-  ApproveAccessRequestBody,
+  ApproveAccessRequest,
   McpApproval,
   McpServerReviewInfo,
   OpenAiApiError,
@@ -22,7 +22,7 @@ type ErrorResponse = OpenAiApiError;
 export type {
   AccessRequestActionResponse,
   AccessRequestReviewResponse,
-  ApproveAccessRequestBody,
+  ApproveAccessRequest,
   McpApproval,
   McpServerReviewInfo,
   RequestedResources,
@@ -75,10 +75,10 @@ export function useApproveAppAccessRequest(options?: {
 }): UseMutationResult<
   AxiosResponse<AccessRequestActionResponse>,
   AxiosError<ErrorResponse>,
-  { id: string; body: ApproveAccessRequestBody }
+  { id: string; body: ApproveAccessRequest }
 > {
   const queryClient = useQueryClient();
-  return useMutationQuery<AccessRequestActionResponse, { id: string; body: ApproveAccessRequestBody }>(
+  return useMutationQuery<AccessRequestActionResponse, { id: string; body: ApproveAccessRequest }>(
     ({ id }) => `${BODHI_API_BASE}/access-requests/${id}/approve`,
     'put',
     {

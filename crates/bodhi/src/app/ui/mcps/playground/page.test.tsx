@@ -31,7 +31,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { McpResponse, McpTool } from '@/hooks/useMcps';
+import type { Mcp, McpTool } from '@/hooks/useMcps';
 
 const pushMock = vi.fn();
 let mockSearchParams: URLSearchParams;
@@ -59,7 +59,7 @@ const secondTool: McpTool = {
   },
 };
 
-const mcpWithTools: McpResponse = {
+const mcpWithTools: Mcp = {
   ...mockMcp,
   tools_cache: [mockMcpTool, secondTool],
   tools_filter: ['read_wiki_structure'],

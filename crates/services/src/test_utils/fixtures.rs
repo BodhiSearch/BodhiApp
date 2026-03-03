@@ -1,23 +1,24 @@
-use super::ModelMetadataRowBuilder;
+use super::ModelMetadataEntityBuilder;
 use crate::models::{
   AliasSource, ApiAlias, ApiAliasBuilder, ContextLimits, ModelCapabilities, ToolCapabilities,
   UserAlias,
 };
-use crate::{AppInstance, AppStatus};
+use crate::{AppStatus, Tenant};
 use chrono::{DateTime, Utc};
 use rstest::fixture;
 
-use super::{TEST_CLIENT_ID, TEST_CLIENT_SECRET};
+use super::{TEST_CLIENT_ID, TEST_CLIENT_SECRET, TEST_TENANT_ID, TEST_USER_ID};
 
 /// Fixed deterministic timestamp matching `FrozenTimeService` default (2025-01-01T00:00:00Z).
 pub fn fixed_dt() -> DateTime<Utc> {
   chrono::TimeZone::with_ymd_and_hms(&Utc, 2025, 1, 1, 0, 0, 0).unwrap()
 }
 
-impl AppInstance {
+impl Tenant {
   pub fn test_default() -> Self {
     let now = fixed_dt();
     Self {
+      id: "01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string(),
       client_id: TEST_CLIENT_ID.to_string(),
       client_secret: TEST_CLIENT_SECRET.to_string(),
       status: AppStatus::Ready,
@@ -35,8 +36,8 @@ impl AppInstance {
 }
 
 #[fixture]
-pub fn app_instance() -> AppInstance {
-  AppInstance::test_default()
+pub fn tenant() -> Tenant {
+  Tenant::test_default()
 }
 
 /// Create a test ApiModelAlias with incrementing timestamps for sorting tests
@@ -78,6 +79,14 @@ pub async fn seed_test_api_models(
   db_service: &dyn crate::db::DbService,
   base_time: DateTime<Utc>,
 ) -> anyhow::Result<Vec<ApiAlias>> {
+  seed_test_api_models_for_user(db_service, base_time, TEST_USER_ID).await
+}
+
+pub async fn seed_test_api_models_for_user(
+  db_service: &dyn crate::db::DbService,
+  base_time: DateTime<Utc>,
+  user_id: &str,
+) -> anyhow::Result<Vec<ApiAlias>> {
   let aliases = vec![
     create_test_api_model_alias("openai-gpt4", vec!["gpt-4".to_string()], base_time),
     create_test_api_model_alias(
@@ -117,7 +126,12 @@ pub async fn seed_test_api_models(
 
   for alias in &aliases {
     db_service
-      .create_api_model_alias(alias, Some("sk-test-key-123456789".to_string()))
+      .create_api_model_alias(
+        TEST_TENANT_ID,
+        user_id,
+        alias,
+        Some("sk-test-key-123456789".to_string()),
+      )
       .await?;
   }
 
@@ -125,25 +139,25 @@ pub async fn seed_test_api_models(
 }
 
 // =============================================================================
-// ModelMetadataRow Test Factories
+// ModelMetadataEntity Test Factories
 // =============================================================================
 
-/// Creates a ModelMetadataRowBuilder pre-configured with required timestamps.
+/// Creates a ModelMetadataEntityBuilder pre-configured with required timestamps.
 /// Use this as a starting point and chain additional builder methods.
-pub fn model_metadata_builder(now: DateTime<Utc>) -> ModelMetadataRowBuilder {
-  let mut builder = ModelMetadataRowBuilder::default();
+pub fn model_metadata_builder(now: DateTime<Utc>) -> ModelMetadataEntityBuilder {
+  let mut builder = ModelMetadataEntityBuilder::default();
   builder.extracted_at(now).created_at(now).updated_at(now);
   builder
 }
 
-/// Creates a test ModelMetadataRow for a local GGUF model file.
+/// Creates a test ModelMetadataEntity for a local GGUF model file.
 /// source is always 'model' since UserAlias and ModelAlias both reference the same physical file.
 pub fn create_test_model_metadata(
   repo: &str,
   filename: &str,
   snapshot: &str,
   now: DateTime<Utc>,
-) -> crate::models::ModelMetadataRow {
+) -> crate::models::ModelMetadataEntity {
   let mut builder = model_metadata_builder(now);
   builder
     .source(AliasSource::Model)
@@ -152,10 +166,10 @@ pub fn create_test_model_metadata(
     .snapshot(snapshot);
   builder
     .build()
-    .expect("Failed to build test ModelMetadataRow")
+    .expect("Failed to build test ModelMetadataEntity")
 }
 
-/// Creates a test ModelMetadataRow for a local GGUF model with capabilities.
+/// Creates a test ModelMetadataEntity for a local GGUF model with capabilities.
 pub fn create_test_model_metadata_with_capabilities(
   repo: &str,
   filename: &str,
@@ -164,7 +178,7 @@ pub fn create_test_model_metadata_with_capabilities(
   thinking: bool,
   function_calling: bool,
   now: DateTime<Utc>,
-) -> crate::models::ModelMetadataRow {
+) -> crate::models::ModelMetadataEntity {
   let mut builder = model_metadata_builder(now);
   builder
     .source(AliasSource::Model)
@@ -182,28 +196,28 @@ pub fn create_test_model_metadata_with_capabilities(
     });
   builder
     .build()
-    .expect("Failed to build test ModelMetadataRow with capabilities")
+    .expect("Failed to build test ModelMetadataEntity with capabilities")
 }
 
-/// Creates a test ModelMetadataRow for an API model (e.g., OpenAI GPT-4).
+/// Creates a test ModelMetadataEntity for an API model (e.g., OpenAI GPT-4).
 pub fn create_test_api_model_metadata(
   api_model_id: &str,
   now: DateTime<Utc>,
-) -> crate::models::ModelMetadataRow {
+) -> crate::models::ModelMetadataEntity {
   let mut builder = model_metadata_builder(now);
   builder.source(AliasSource::Api).api_model_id(api_model_id);
   builder
     .build()
-    .expect("Failed to build test API ModelMetadataRow")
+    .expect("Failed to build test API ModelMetadataEntity")
 }
 
-/// Creates a test ModelMetadataRow for an API model with context limits.
+/// Creates a test ModelMetadataEntity for an API model with context limits.
 pub fn create_test_api_model_metadata_with_context(
   api_model_id: &str,
   max_input_tokens: u64,
   max_output_tokens: u64,
   now: DateTime<Utc>,
-) -> crate::models::ModelMetadataRow {
+) -> crate::models::ModelMetadataEntity {
   let mut builder = model_metadata_builder(now);
   builder
     .source(AliasSource::Api)
@@ -214,13 +228,14 @@ pub fn create_test_api_model_metadata_with_context(
     });
   builder
     .build()
-    .expect("Failed to build test API ModelMetadataRow with context")
+    .expect("Failed to build test API ModelMetadataEntity with context")
 }
 
 /// Seed database with test user aliases (replaces YAML fixture files)
 pub async fn seed_test_user_aliases(
   db_service: &dyn crate::db::DbService,
 ) -> anyhow::Result<Vec<UserAlias>> {
+  use crate::test_utils::db::{TEST_TENANT_ID, TEST_USER_ID};
   let now = db_service.now();
   let aliases = vec![
     UserAlias::llama3_with_time(now),
@@ -229,7 +244,9 @@ pub async fn seed_test_user_aliases(
   ];
 
   for alias in &aliases {
-    db_service.create_user_alias(alias).await?;
+    db_service
+      .create_user_alias(TEST_TENANT_ID, TEST_USER_ID, alias)
+      .await?;
   }
 
   Ok(aliases)

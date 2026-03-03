@@ -1,4 +1,4 @@
-use services::{AccessRequestError, AuthServiceError, ToolsetError};
+use services::{AccessRequestError, AuthServiceError, TenantError, ToolsetError};
 use services::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -55,4 +55,7 @@ pub enum AppsRouteError {
 
   #[error(transparent)]
   ToolServiceError(#[from] ToolsetError),
+
+  #[error(transparent)]
+  TenantError(#[from] TenantError),
 }

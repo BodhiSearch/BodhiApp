@@ -8,7 +8,7 @@ Embeddable server library: service composition (`AppServiceBuilder`), applicatio
 
 ## Architecture Position
 
-**Upstream**: `services`, `server_core`, `auth_middleware`, `routes_app`, `server_app`
+**Upstream**: `services`, `server_core`, `routes_app`, `server_app`
 **Downstream**: `bodhi/src-tauri`, `lib_bodhiserver_napi`
 
 ## Key Components

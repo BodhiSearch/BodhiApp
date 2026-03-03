@@ -8,6 +8,7 @@ mod test {
   // Both patterns are acceptable violations - auth coverage is provided separately.
   // ============================================================================
 
+  use crate::test_utils::RequestAuthContextExt;
   use crate::{ollama_model_show_handler, ollama_models_handler};
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -18,10 +19,9 @@ mod test {
   };
   use rstest::rstest;
   use serde_json::{json, Value};
-  use server_core::{
-    test_utils::{router_state_stub, RequestTestExt, ResponseTestExt},
-    DefaultRouterState,
-  };
+  use server_core::test_utils::{router_state_stub, RequestTestExt, ResponseTestExt};
+  use services::AppService;
+  use services::{AuthContext, ResourceRole};
   use std::sync::Arc;
   use tower::ServiceExt;
   use validator::ValidateLength;
@@ -30,13 +30,22 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_ollama_routes_models_list(
-    #[future] router_state_stub: DefaultRouterState,
+    #[future] router_state_stub: Arc<dyn AppService>,
   ) -> anyhow::Result<()> {
     let app = Router::new()
       .route("/api/tags", get(ollama_models_handler))
-      .with_state(Arc::new(router_state_stub));
+      .with_state(router_state_stub);
     let response = app
-      .oneshot(Request::get("/api/tags").body(Body::empty()).unwrap())
+      .oneshot(
+        Request::get("/api/tags")
+          .body(Body::empty())
+          .unwrap()
+          .with_auth_context(AuthContext::test_session(
+            "test-user",
+            "testuser",
+            ResourceRole::User,
+          )),
+      )
       .await?
       .json::<Value>()
       .await?;
@@ -57,13 +66,21 @@ mod test {
   #[tokio::test]
   #[anyhow_trace]
   async fn test_ollama_model_show(
-    #[future] router_state_stub: DefaultRouterState,
+    #[future] router_state_stub: Arc<dyn AppService>,
   ) -> anyhow::Result<()> {
     let app = Router::new()
       .route("/api/show", post(ollama_model_show_handler))
-      .with_state(Arc::new(router_state_stub));
+      .with_state(router_state_stub);
     let response = app
-      .oneshot(Request::post("/api/show").json(json! {{"name": "llama3:instruct"}})?)
+      .oneshot(
+        Request::post("/api/show")
+          .json(json! {{"name": "llama3:instruct"}})?
+          .with_auth_context(AuthContext::test_session(
+            "test-user",
+            "testuser",
+            ResourceRole::User,
+          )),
+      )
       .await?
       .json::<Value>()
       .await?;

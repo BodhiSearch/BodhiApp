@@ -1,7 +1,7 @@
 use crate::{ApiError, AuthScope, TokenInfo, UserResponse, API_TAG_AUTH, ENDPOINT_USER_INFO};
-use auth_middleware::AuthContext;
 use axum::Json;
 use services::AppRole;
+use services::AuthContext;
 use services::{extract_claims, Claims};
 use tracing::debug;
 

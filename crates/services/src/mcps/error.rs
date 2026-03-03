@@ -1,6 +1,5 @@
 use crate::auth::AuthContextError;
 use crate::db::{encryption::EncryptionError, DbError};
-use crate::mcps::mcp_objs::McpInstanceNameError;
 use errmeta::{AppError, EntityError, ErrorType};
 use mcp_client::McpClientError;
 
@@ -145,15 +144,6 @@ impl From<EntityError> for McpError {
   fn from(e: EntityError) -> Self {
     match e {
       EntityError::NotFound(entity) => McpError::McpNotFound(entity),
-    }
-  }
-}
-
-impl From<McpInstanceNameError> for McpError {
-  fn from(e: McpInstanceNameError) -> Self {
-    match e {
-      McpInstanceNameError::Empty => McpError::NameRequired,
-      McpInstanceNameError::TooLong { name, max_len } => McpError::NameTooLong { name, max_len },
     }
   }
 }

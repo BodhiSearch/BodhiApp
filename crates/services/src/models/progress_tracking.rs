@@ -41,6 +41,7 @@ const SYNC_INTERVAL: u64 = 3000;
 #[derive(Debug)]
 pub struct DatabaseProgress {
   db_service: Arc<dyn DbService>,
+  tenant_id: String,
   request_id: String,
   downloaded_bytes: Arc<AtomicU64>,
   total_bytes: Arc<AtomicU64>,
@@ -58,6 +59,7 @@ impl Clone for DatabaseProgress {
   fn clone(&self) -> Self {
     Self {
       db_service: self.db_service.clone(),
+      tenant_id: self.tenant_id.clone(),
       request_id: self.request_id.clone(),
       downloaded_bytes: self.downloaded_bytes.clone(),
       total_bytes: self.total_bytes.clone(),
@@ -68,9 +70,10 @@ impl Clone for DatabaseProgress {
 
 impl DatabaseProgress {
   /// Create a new database progress tracker
-  pub fn new(db_service: Arc<dyn DbService>, request_id: String) -> Self {
+  pub fn new(db_service: Arc<dyn DbService>, tenant_id: String, request_id: String) -> Self {
     Self {
       db_service,
+      tenant_id,
       request_id,
       downloaded_bytes: Arc::new(AtomicU64::new(0)),
       total_bytes: Arc::new(AtomicU64::new(0)),
@@ -89,6 +92,7 @@ impl DatabaseProgress {
 
     update_download_progress(
       self.db_service.clone(),
+      self.tenant_id.clone(),
       self.request_id.clone(),
       downloaded,
       total,
@@ -155,12 +159,13 @@ impl HfProgress for DatabaseProgress {
 /// Updates download request progress in database
 async fn update_download_progress(
   db_service: Arc<dyn DbService>,
+  tenant_id: String,
   request_id: String,
   downloaded_bytes: u64,
   total_bytes: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   let mut download_request = db_service
-    .get_download_request(&request_id)
+    .get_download_request(&tenant_id, &request_id)
     .await?
     .ok_or_else(|| format!("Download request {} not found", request_id))?;
 

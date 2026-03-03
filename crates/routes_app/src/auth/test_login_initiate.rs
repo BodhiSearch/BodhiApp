@@ -1,6 +1,7 @@
+use crate::middleware::optional_auth_middleware;
+use crate::test_utils::RequestAuthContextExt;
 use crate::{auth_initiate, RedirectResponse};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{optional_auth_middleware, test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::to_bytes;
 use axum::{
   http::{status::StatusCode, Request},
@@ -11,8 +12,9 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
-use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedContext, RouterState};
+use server_core::test_utils::RequestTestExt;
 use services::test_utils::temp_bodhi_home;
+use services::AuthContext;
 use services::{
   test_utils::{expired_token, token, AppServiceStubBuilder, SettingServiceStub},
   AppService, DefaultSessionService, SessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
@@ -52,7 +54,8 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .build_session_service(dbfile)
     .await;
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -63,10 +66,7 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .await;
   let app_service = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
     .layer(app_service.session_service().session_layer())
@@ -76,7 +76,10 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .oneshot(
       Request::post("/auth/initiate")
         .json(json! {{}})?
-        .with_auth_context(AuthContext::Anonymous { client_id: None }),
+        .with_auth_context(AuthContext::Anonymous {
+          client_id: None,
+          tenant_id: None,
+        }),
     )
     .await?;
 
@@ -141,7 +144,8 @@ async fn test_auth_initiate_handler_loopback_host_detection(
     .build_session_service(dbfile)
     .await;
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -152,10 +156,7 @@ async fn test_auth_initiate_handler_loopback_host_detection(
     .await;
   let app_service = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
     .layer(app_service.session_service().session_layer())
@@ -167,7 +168,10 @@ async fn test_auth_initiate_handler_loopback_host_detection(
       Request::post("/auth/initiate")
         .header("Host", "localhost:1135")
         .json(json! {{}})?
-        .with_auth_context(AuthContext::Anonymous { client_id: None }),
+        .with_auth_context(AuthContext::Anonymous {
+          client_id: None,
+          tenant_id: None,
+        }),
     )
     .await?;
 
@@ -212,7 +216,8 @@ async fn test_auth_initiate_handler_network_host_usage(
     .build_session_service(dbfile)
     .await;
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -223,10 +228,7 @@ async fn test_auth_initiate_handler_network_host_usage(
     .await;
   let app_service = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
     .layer(app_service.session_service().session_layer())
@@ -238,7 +240,10 @@ async fn test_auth_initiate_handler_network_host_usage(
       Request::post("/auth/initiate")
         .header("Host", "192.168.1.100:1135")
         .json(json! {{}})?
-        .with_auth_context(AuthContext::Anonymous { client_id: None }),
+        .with_auth_context(AuthContext::Anonymous {
+          client_id: None,
+          tenant_id: None,
+        }),
     )
     .await?;
 
@@ -316,15 +321,10 @@ async fn auth_initiate_handler_with_token_response(
     ))
     .with_default_session_service(Arc::new(session_service));
   builder.with_db_service().await;
-  builder
-    .with_app_instance(services::AppInstance::test_default())
-    .await;
+  builder.with_tenant(services::Tenant::test_default()).await;
   let app_service = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))

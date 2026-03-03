@@ -1,5 +1,5 @@
 use crate::db::DbError;
-use crate::{AppInstanceError, AuthServiceError, ToolsetError};
+use crate::{AuthServiceError, TenantError, ToolsetError};
 use errmeta::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -39,7 +39,7 @@ pub enum AccessRequestError {
   Tool(#[from] ToolsetError),
 
   #[error(transparent)]
-  AppInstance(#[from] AppInstanceError),
+  Tenant(#[from] TenantError),
 }
 
 pub(crate) type Result<T> = std::result::Result<T, AccessRequestError>;

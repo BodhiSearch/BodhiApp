@@ -1,7 +1,6 @@
 import {
-  ApiModelResponse,
-  CreateApiModelRequest,
-  UpdateApiModelRequest,
+  ApiModelOutput,
+  ApiModelRequest,
   TestPromptRequest,
   TestPromptResponse,
   FetchModelsRequest,
@@ -28,9 +27,9 @@ export const ENDPOINT_API_MODELS_FORMATS = '/bodhi/v1/api-models/api-formats';
  */
 export function useApiModel(
   id: string,
-  options?: UseQueryOptions<ApiModelResponse, AxiosError<ErrorResponse>>
-): UseQueryResult<ApiModelResponse, AxiosError<ErrorResponse>> {
-  return useQuery<ApiModelResponse>(['api-models', id], `${ENDPOINT_API_MODELS}/${id}`, undefined, {
+  options?: UseQueryOptions<ApiModelOutput, AxiosError<ErrorResponse>>
+): UseQueryResult<ApiModelOutput, AxiosError<ErrorResponse>> {
+  return useQuery<ApiModelOutput>(['api-models', id], `${ENDPOINT_API_MODELS}/${id}`, undefined, {
     enabled: !!id,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
@@ -42,11 +41,11 @@ export function useApiModel(
  * Hook to create a new API model
  */
 export function useCreateApiModel(
-  options?: UseMutationOptions<AxiosResponse<ApiModelResponse>, AxiosError<ErrorResponse>, CreateApiModelRequest>
-): UseMutationResult<AxiosResponse<ApiModelResponse>, AxiosError<ErrorResponse>, CreateApiModelRequest> {
+  options?: UseMutationOptions<AxiosResponse<ApiModelOutput>, AxiosError<ErrorResponse>, ApiModelRequest>
+): UseMutationResult<AxiosResponse<ApiModelOutput>, AxiosError<ErrorResponse>, ApiModelRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<ApiModelResponse, CreateApiModelRequest>(
+  return useMutationQuery<ApiModelOutput, ApiModelRequest>(
     ENDPOINT_API_MODELS,
     'post',
     {
@@ -68,19 +67,15 @@ export function useCreateApiModel(
  */
 export function useUpdateApiModel(
   options?: UseMutationOptions<
-    AxiosResponse<ApiModelResponse>,
+    AxiosResponse<ApiModelOutput>,
     AxiosError<ErrorResponse>,
-    { id: string; data: UpdateApiModelRequest }
+    { id: string; data: ApiModelRequest }
   >
-): UseMutationResult<
-  AxiosResponse<ApiModelResponse>,
-  AxiosError<ErrorResponse>,
-  { id: string; data: UpdateApiModelRequest }
-> {
+): UseMutationResult<AxiosResponse<ApiModelOutput>, AxiosError<ErrorResponse>, { id: string; data: ApiModelRequest }> {
   const queryClient = useQueryClient();
 
-  // Transform from: {id: string; data: UpdateApiModelRequest} → endpoint: /api-models/${id}, body: data
-  return useMutationQuery<ApiModelResponse, { id: string; data: UpdateApiModelRequest }>(
+  // Transform from: {id: string; data: ApiModelRequest} → endpoint: /api-models/${id}, body: data
+  return useMutationQuery<ApiModelOutput, { id: string; data: ApiModelRequest }>(
     ({ id }) => `${ENDPOINT_API_MODELS}/${id}`,
     'put',
     {
@@ -159,11 +154,11 @@ export function useApiFormats(
 /**
  * Helper function to check if a model is an API model
  */
-export function isApiModel(model: unknown): model is ApiModelResponse {
+export function isApiModel(model: unknown): model is ApiModelOutput {
   return (
     typeof model === 'object' &&
     model !== null &&
-    'api_key_masked' in model &&
+    'has_api_key' in model &&
     'base_url' in model &&
     'api_format' in model
   );

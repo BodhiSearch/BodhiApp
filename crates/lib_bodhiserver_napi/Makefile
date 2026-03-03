@@ -57,6 +57,9 @@ test-playwright-headed: build-debug install-js ## Run Playwright tests in headed
 test-playwright-ci: build-debug install-js ## Run Playwright tests in CI mode
 	npm run test:playwright:ci
 
+test.napi.sqlite: build-debug install-js ## Run Playwright tests with UI mode
+	npm run test:playwright:sqlite
+
 format: format-rust format-js ## Format all code (Rust and JavaScript)
 
 format-rust: ## Format Rust code

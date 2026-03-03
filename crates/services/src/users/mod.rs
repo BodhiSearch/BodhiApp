@@ -6,5 +6,5 @@ mod test_access_repository;
 mod user_objs;
 
 pub use access_repository::AccessRepository;
-pub use access_request_entity::UserAccessRequest;
+pub use access_request_entity::UserAccessRequestEntity;
 pub use user_objs::*;

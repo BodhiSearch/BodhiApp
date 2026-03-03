@@ -7,19 +7,11 @@ use crate::ollama::{
 };
 use crate::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
-  ApiFormatsResponse, ApiKey, ApiKeyUpdateAction, ApiModelResponse, ApproveAccessRequestBody,
-  AuthCallbackRequest, CreateAccessRequestBody, CreateAccessRequestResponse, CreateApiModelRequest,
-  FetchModelsRequest, FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse,
-  PaginationSortParams, PingResponse, TestCreds, TestPromptRequest, TestPromptResponse,
-  UpdateApiModelRequest, UpdateApiTokenRequest,
+  AuthCallbackRequest, CreateAccessRequestResponse, LocalModelResponse, PaginationSortParams,
+  PingResponse,
 };
 use crate::{
-  ApiTokenResponse, AppInfo, ApproveUserAccessRequest, ChangeRoleRequest, CopyAliasRequest,
-  CreateAliasRequest, CreateApiTokenRequest, ListUsersParams, NewDownloadRequest,
-  PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
-  PaginatedLocalModelResponse, PaginatedUserAccessResponse, PaginatedUserAliasResponse,
-  QueueStatusResponse, RedirectResponse, RefreshRequest, RefreshResponse, RefreshSource,
-  UpdateAliasRequest, UpdateSettingRequest, UserAccessStatusResponse, UserAliasResponse,
+  AppInfo, ListUsersParams, PaginatedLocalModelResponse, QueueStatusResponse, RedirectResponse,
   UserResponse, __path_api_models_create, __path_api_models_destroy,
   __path_api_models_fetch_models, __path_api_models_formats, __path_api_models_index,
   __path_api_models_show, __path_api_models_sync, __path_api_models_test, __path_api_models_update,
@@ -38,20 +30,18 @@ use crate::{
 };
 // Toolsets DTOs and handlers
 use crate::{
-  ApiKeyUpdateDto, CreateToolsetRequest, ExecuteToolsetRequest, ListToolsetTypesResponse,
-  ListToolsetsResponse, ToolsetResponse, UpdateToolsetRequest, __path_toolset_types_disable,
-  __path_toolset_types_enable, __path_toolset_types_index, __path_toolsets_create,
-  __path_toolsets_destroy, __path_toolsets_execute, __path_toolsets_index, __path_toolsets_show,
-  __path_toolsets_update,
+  ExecuteToolsetRequest, ListToolsetTypesResponse, ListToolsetsResponse, ToolsetResponse,
+  __path_toolset_types_disable, __path_toolset_types_enable, __path_toolset_types_index,
+  __path_toolsets_create, __path_toolsets_destroy, __path_toolsets_execute, __path_toolsets_index,
+  __path_toolsets_show, __path_toolsets_update,
 };
 // MCP DTOs and handlers
 use crate::{
-  CreateAuthConfigBody, CreateMcpRequest, CreateMcpServerRequest, DynamicRegisterRequest,
-  DynamicRegisterResponse, FetchMcpToolsRequest, ListMcpServersResponse, ListMcpsResponse, McpAuth,
-  McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse,
-  OAuthDiscoverAsRequest, OAuthDiscoverAsResponse, OAuthDiscoverMcpRequest,
-  OAuthDiscoverMcpResponse, OAuthLoginRequest, OAuthLoginResponse, OAuthTokenExchangeRequest,
-  OAuthTokenResponse, UpdateMcpRequest, UpdateMcpServerRequest, __path_mcp_auth_configs_create,
+  CreateAuthConfig, DynamicRegisterRequest, DynamicRegisterResponse, FetchMcpToolsRequest,
+  ListMcpServersResponse, ListMcpsResponse, McpAuth, McpExecuteRequest, McpExecuteResponse,
+  McpServerResponse, McpToolsResponse, OAuthDiscoverAsRequest, OAuthDiscoverAsResponse,
+  OAuthDiscoverMcpRequest, OAuthDiscoverMcpResponse, OAuthLoginRequest, OAuthLoginResponse,
+  OAuthTokenExchangeRequest, OAuthTokenResponse, __path_mcp_auth_configs_create,
   __path_mcp_auth_configs_destroy, __path_mcp_auth_configs_index, __path_mcp_auth_configs_show,
   __path_mcp_oauth_discover_as, __path_mcp_oauth_discover_mcp, __path_mcp_oauth_dynamic_register,
   __path_mcp_oauth_login, __path_mcp_oauth_token_exchange, __path_mcp_oauth_tokens_destroy,
@@ -61,6 +51,7 @@ use crate::{
   __path_mcps_show, __path_mcps_update,
 };
 // Settings and setup DTOs and handlers
+use crate::OpenAIApiError;
 use crate::{
   SetupRequest, SetupResponse, __path_settings_destroy, __path_settings_index,
   __path_settings_update, __path_setup_create, __path_setup_show,
@@ -80,14 +71,21 @@ use async_openai::types::{
   },
   models::{ListModelResponse, Model},
 };
-use crate::OpenAIApiError;
 use services::{
-  Alias, ApiFormat, ApiToken, AppAccessRequestStatus, AppRole, AppStatus, ApprovalStatus,
-  CreateMcpAuthConfigRequest, DownloadRequest, DownloadStatus, FlowType, McpAuthConfigResponse,
-  McpAuthConfigsListResponse, McpAuthType, McpServer, McpServerInfo, McpTool, OAIRequestParams,
-  ResourceRole, SettingInfo, SettingMetadata, SettingService, SettingSource,
-  TokenScope, TokenStatus, ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionResponse,
-  UserInfo, UserListResponse, UserScope,
+  Alias, AliasResponse, ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiKey, ApiKeyUpdate,
+  ApiModelOutput, ApiModelRequest, AppAccessRequestStatus, AppRole, AppStatus, ApprovalStatus,
+  ApproveAccessRequest, ApproveUserAccessRequest, ChangeRoleRequest, CopyAliasRequest,
+  CreateAccessRequest, CreateMcpAuthConfigRequest, CreateTokenRequest, DownloadRequest,
+  DownloadStatus, FetchModelsRequest, FetchModelsResponse, FlowType, Mcp, McpAuthConfigResponse,
+  McpAuthConfigsListResponse, McpAuthType, McpRequest, McpServer, McpServerInfo, McpServerRequest,
+  McpTool, ModelAliasResponse, NewDownloadRequest, OAIRequestParams, PaginatedAliasResponse,
+  PaginatedApiModelOutput, PaginatedDownloadResponse, PaginatedTokenResponse,
+  PaginatedUserAccessResponse, PaginatedUserAliasResponse, RefreshRequest, RefreshResponse,
+  RefreshSource, ResourceRole, SettingInfo, SettingMetadata, SettingService, SettingSource,
+  TestCreds, TestPromptRequest, TestPromptResponse, TokenCreated, TokenDetail, TokenScope,
+  TokenStatus, ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionResponse,
+  ToolsetRequest, UpdateSettingRequest, UpdateTokenRequest, UserAccessStatusResponse,
+  UserAliasRequest, UserAliasResponse, UserInfo, UserListResponse, UserScope,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -293,11 +291,11 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             ApproveUserAccessRequest,
             PaginatedUserAccessResponse,
             // app access requests
-            CreateAccessRequestBody,
+            CreateAccessRequest,
             CreateAccessRequestResponse,
             AccessRequestStatusResponse,
             AccessRequestReviewResponse,
-            ApproveAccessRequestBody,
+            ApproveAccessRequest,
             AccessRequestActionResponse,
             FlowType,
             AppAccessRequestStatus,
@@ -308,19 +306,18 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             UserInfo,
             ChangeRoleRequest,
             // api keys/token
-            CreateApiTokenRequest,
-            ApiTokenResponse,
-            UpdateApiTokenRequest,
+            CreateTokenRequest,
+            TokenCreated,
+            UpdateTokenRequest,
             TokenStatus,
-            PaginatedApiTokenResponse,
-            ApiToken,
+            PaginatedTokenResponse,
+            TokenDetail,
             // api models
-            PaginatedApiModelResponse,
-            ApiModelResponse,
-            CreateApiModelRequest,
-            UpdateApiModelRequest,
+            PaginatedApiModelOutput,
+            ApiModelOutput,
+            ApiModelRequest,
             ApiKey,
-            ApiKeyUpdateAction,
+            ApiKeyUpdate,
             TestCreds,
             TestPromptRequest,
             TestPromptResponse,
@@ -329,14 +326,16 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             ApiFormatsResponse,
             ApiFormat,
             // models
-            CreateAliasRequest,
+            UserAliasRequest,
             CopyAliasRequest,
             OAIRequestParams,
             PaginatedUserAliasResponse,
             UserAliasResponse,
-            UpdateAliasRequest,
+            ModelAliasResponse,
+            ApiAliasResponse,
             PaginationSortParams,
             PaginatedAliasResponse,
+            AliasResponse,
             Alias,
             PaginatedLocalModelResponse,
             LocalModelResponse,
@@ -370,9 +369,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             EmbeddingInput,
             EmbeddingUsage,
             // toolsets
-            CreateToolsetRequest,
-            UpdateToolsetRequest,
-            ApiKeyUpdateDto,
+            ToolsetRequest,
             ToolsetResponse,
             ListToolsetsResponse,
             ListToolsetTypesResponse,
@@ -382,13 +379,11 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             Toolset,
             ToolsetExecutionResponse,
             // mcps
-            CreateMcpRequest,
-            UpdateMcpRequest,
-            CreateMcpServerRequest,
-            UpdateMcpServerRequest,
+            McpRequest,
+            McpServerRequest,
+            Mcp,
             FetchMcpToolsRequest,
             McpAuth,
-            McpResponse,
             McpServerResponse,
             ListMcpsResponse,
             ListMcpServersResponse,
@@ -399,7 +394,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             McpExecuteRequest,
             McpExecuteResponse,
             // unified auth configs
-            CreateAuthConfigBody,
+            CreateAuthConfig,
             McpAuthType,
             CreateMcpAuthConfigRequest,
             McpAuthConfigResponse,

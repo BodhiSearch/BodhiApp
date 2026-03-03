@@ -1,4 +1,4 @@
-import type { CreateAliasRequest, UpdateAliasRequest } from '@bodhiapp/ts-client';
+import type { UserAliasRequest } from '@bodhiapp/ts-client';
 import * as z from 'zod';
 
 import { type LocalAlias } from '@/lib/utils';
@@ -39,7 +39,7 @@ export const createAliasFormSchema = z.object({
 export type AliasFormData = z.infer<typeof createAliasFormSchema>;
 
 // Conversion functions between form and API formats
-export const convertFormToApi = (formData: AliasFormData): CreateAliasRequest => ({
+export const convertFormToApi = (formData: AliasFormData): UserAliasRequest => ({
   alias: formData.alias,
   repo: formData.repo,
   filename: formData.filename,
@@ -53,7 +53,8 @@ export const convertFormToApi = (formData: AliasFormData): CreateAliasRequest =>
     : undefined,
 });
 
-export const convertFormToUpdateApi = (formData: AliasFormData): UpdateAliasRequest => ({
+export const convertFormToUpdateApi = (formData: AliasFormData): UserAliasRequest => ({
+  alias: formData.alias,
   repo: formData.repo,
   filename: formData.filename,
   snapshot: formData.snapshot || null,

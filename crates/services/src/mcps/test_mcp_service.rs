@@ -1,7 +1,7 @@
 use crate::db::{DbService, TimeService};
-use crate::mcps::{DefaultMcpService, McpServerRow, McpService};
+use crate::mcps::{DefaultMcpService, McpRequest, McpServerRow, McpService};
 use crate::mcps::{McpAuthType, McpExecutionRequest, RegistrationType};
-use crate::test_utils::{test_db_service, FrozenTimeService, TestDbService};
+use crate::test_utils::{test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID};
 use anyhow_trace::anyhow_trace;
 use errmeta::AppError;
 use mcp_client::{McpTool, MockMcpClient};
@@ -15,6 +15,7 @@ async fn setup_server(db: &dyn DbService) -> McpServerRow {
   let now = db.now();
   let row = McpServerRow {
     id: "server-1".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     url: "https://mcp.example.com/mcp".to_string(),
     name: "Test MCP Server".to_string(),
     description: Some("Test server".to_string()),
@@ -24,7 +25,7 @@ async fn setup_server(db: &dyn DbService) -> McpServerRow {
     created_at: now,
     updated_at: now,
   };
-  db.create_mcp_server(&row).await.unwrap();
+  db.create_mcp_server("", &row).await.unwrap();
   row
 }
 
@@ -49,7 +50,7 @@ async fn test_mcp_service_create_with_header_auth(
 
   let auth_header = service
     .create_auth_header(
-      "user-1",
+      "",
       "Header",
       "server-1",
       "Authorization",
@@ -59,23 +60,26 @@ async fn test_mcp_service_create_with_header_auth(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "My Tavily",
-      "my-tavily",
-      "server-1",
-      Some("Tavily search".to_string()),
-      true,
-      None,
-      None,
-      McpAuthType::Header,
-      Some(auth_header.id.clone()),
+      McpRequest {
+        name: "My Tavily".to_string(),
+        slug: "my-tavily".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: Some("Tavily search".to_string()),
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Header,
+        auth_uuid: Some(auth_header.id.clone()),
+      },
     )
     .await?;
 
   assert_eq!(McpAuthType::Header, mcp.auth_type);
   assert_eq!(Some(auth_header.id.clone()), mcp.auth_uuid);
 
-  let decrypted = db.get_decrypted_auth_header(&auth_header.id).await?;
+  let decrypted = db.get_decrypted_auth_header("", &auth_header.id).await?;
   assert_eq!(
     Some((
       "Authorization".to_string(),
@@ -103,16 +107,19 @@ async fn test_mcp_service_create_with_public_auth(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "Public MCP",
-      "public-mcp",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Public,
-      None,
+      McpRequest {
+        name: "Public MCP".to_string(),
+        slug: "public-mcp".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Public,
+        auth_uuid: None,
+      },
     )
     .await?;
 
@@ -138,43 +145,50 @@ async fn test_mcp_service_update_switch_public_to_header(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "My MCP",
-      "my-mcp",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Public,
-      None,
+      McpRequest {
+        name: "My MCP".to_string(),
+        slug: "my-mcp".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Public,
+        auth_uuid: None,
+      },
     )
     .await?;
   assert_eq!(McpAuthType::Public, mcp.auth_type);
 
   let auth_header = service
-    .create_auth_header("user-1", "Header", "server-1", "X-Api-Key", "key-abc-123")
+    .create_auth_header("", "Header", "server-1", "X-Api-Key", "key-abc-123")
     .await?;
 
   let updated = service
     .update(
+      "",
       "user-1",
       &mcp.id,
-      "My MCP",
-      "my-mcp",
-      None,
-      true,
-      None,
-      None,
-      Some(McpAuthType::Header),
-      Some(auth_header.id.clone()),
+      McpRequest {
+        name: "My MCP".to_string(),
+        slug: "my-mcp".to_string(),
+        mcp_server_id: None,
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Header,
+        auth_uuid: Some(auth_header.id.clone()),
+      },
     )
     .await?;
 
   assert_eq!(McpAuthType::Header, updated.auth_type);
   assert_eq!(Some(auth_header.id.clone()), updated.auth_uuid);
 
-  let decrypted = db.get_decrypted_auth_header(&auth_header.id).await?;
+  let decrypted = db.get_decrypted_auth_header("", &auth_header.id).await?;
   assert_eq!(
     Some(("X-Api-Key".to_string(), "key-abc-123".to_string())),
     decrypted
@@ -198,44 +212,45 @@ async fn test_mcp_service_update_switch_header_to_public_preserves_auth_header(
   let service = DefaultMcpService::new(db.clone(), Arc::new(mock_client), default_time_service());
 
   let auth_header = service
-    .create_auth_header(
-      "user-1",
-      "Header",
-      "server-1",
-      "Authorization",
-      "Bearer token",
-    )
+    .create_auth_header("", "Header", "server-1", "Authorization", "Bearer token")
     .await?;
   let auth_id = auth_header.id.clone();
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "Auth MCP",
-      "auth-mcp",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Header,
-      Some(auth_id.clone()),
+      McpRequest {
+        name: "Auth MCP".to_string(),
+        slug: "auth-mcp".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Header,
+        auth_uuid: Some(auth_id.clone()),
+      },
     )
     .await?;
   assert_eq!(McpAuthType::Header, mcp.auth_type);
 
   let updated = service
     .update(
+      "",
       "user-1",
       &mcp.id,
-      "Auth MCP",
-      "auth-mcp",
-      None,
-      true,
-      None,
-      None,
-      Some(McpAuthType::Public),
-      None,
+      McpRequest {
+        name: "Auth MCP".to_string(),
+        slug: "auth-mcp".to_string(),
+        mcp_server_id: None,
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Public,
+        auth_uuid: None,
+      },
     )
     .await?;
 
@@ -244,7 +259,7 @@ async fn test_mcp_service_update_switch_header_to_public_preserves_auth_header(
 
   // Auth headers are admin-managed resources - they should persist
   // even when MCP instances stop using them, so they can be reused
-  let preserved = db.get_mcp_auth_header(&auth_id).await?;
+  let preserved = db.get_mcp_auth_header("", &auth_id).await?;
   assert!(
     preserved.is_some(),
     "auth header should be preserved for reuse"
@@ -269,7 +284,7 @@ async fn test_mcp_service_update_keep_existing_auth(
 
   let auth_header = service
     .create_auth_header(
-      "user-1",
+      "",
       "Header",
       "server-1",
       "Authorization",
@@ -280,31 +295,38 @@ async fn test_mcp_service_update_keep_existing_auth(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "Auth MCP",
-      "keep-auth",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Header,
-      Some(auth_id.clone()),
+      McpRequest {
+        name: "Auth MCP".to_string(),
+        slug: "keep-auth".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Header,
+        auth_uuid: Some(auth_id.clone()),
+      },
     )
     .await?;
 
   let updated = service
     .update(
+      "",
       "user-1",
       &mcp.id,
-      "Renamed MCP",
-      "keep-auth",
-      Some("new desc".to_string()),
-      true,
-      None,
-      None,
-      None, // auth_type = None means keep existing
-      None,
+      McpRequest {
+        name: "Renamed MCP".to_string(),
+        slug: "keep-auth".to_string(),
+        mcp_server_id: None,
+        description: Some("new desc".to_string()),
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Header, // same as existing, keeps auth_uuid
+        auth_uuid: None,
+      },
     )
     .await?;
 
@@ -312,7 +334,7 @@ async fn test_mcp_service_update_keep_existing_auth(
   assert_eq!(McpAuthType::Header, updated.auth_type);
   assert_eq!(Some(auth_id.clone()), updated.auth_uuid);
 
-  let decrypted = db.get_decrypted_auth_header(&auth_id).await?;
+  let decrypted = db.get_decrypted_auth_header("", &auth_id).await?;
   assert_eq!(
     Some((
       "Authorization".to_string(),
@@ -339,36 +361,33 @@ async fn test_mcp_service_delete_preserves_auth_header(
   let service = DefaultMcpService::new(db.clone(), Arc::new(mock_client), default_time_service());
 
   let auth_header = service
-    .create_auth_header(
-      "user-1",
-      "Header",
-      "server-1",
-      "Authorization",
-      "Bearer token",
-    )
+    .create_auth_header("", "Header", "server-1", "Authorization", "Bearer token")
     .await?;
   let auth_id = auth_header.id.clone();
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "Delete Me",
-      "delete-me",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Header,
-      Some(auth_id.clone()),
+      McpRequest {
+        name: "Delete Me".to_string(),
+        slug: "delete-me".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Header,
+        auth_uuid: Some(auth_id.clone()),
+      },
     )
     .await?;
 
-  service.delete("user-1", &mcp.id).await?;
+  service.delete("", "user-1", &mcp.id).await?;
 
   // Auth headers are admin-managed shared resources - they should persist
   // even when MCP instances are deleted, so they can be reused
-  let preserved = db.get_mcp_auth_header(&auth_id).await?;
+  let preserved = db.get_mcp_auth_header("", &auth_id).await?;
   assert!(
     preserved.is_some(),
     "auth header should be preserved for reuse on MCP delete"
@@ -410,7 +429,7 @@ async fn test_mcp_service_fetch_tools_passes_auth_header(
 
   let auth_header = service
     .create_auth_header(
-      "user-1",
+      "",
       "Header",
       "server-1",
       "Authorization",
@@ -420,20 +439,23 @@ async fn test_mcp_service_fetch_tools_passes_auth_header(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "Tavily",
-      "tavily",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Header,
-      Some(auth_header.id.clone()),
+      McpRequest {
+        name: "Tavily".to_string(),
+        slug: "tavily".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Header,
+        auth_uuid: Some(auth_header.id.clone()),
+      },
     )
     .await?;
 
-  let tools = service.fetch_tools("user-1", &mcp.id).await?;
+  let tools = service.fetch_tools("", "user-1", &mcp.id).await?;
   assert_eq!(1, tools.len());
   assert_eq!("search", tools[0].name);
   Ok(())
@@ -467,6 +489,7 @@ async fn test_mcp_service_fetch_tools_for_server_passes_inline_auth(
 
   let tools = service
     .fetch_tools_for_server(
+      "",
       "server-1",
       Some("X-Api-Key".to_string()),
       Some("inline-key-value".to_string()),
@@ -514,7 +537,7 @@ async fn test_mcp_service_execute_passes_auth_header(
 
   let auth_header = service
     .create_auth_header(
-      "user-1",
+      "",
       "Header",
       "server-1",
       "Authorization",
@@ -524,23 +547,27 @@ async fn test_mcp_service_execute_passes_auth_header(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "Tavily Exec",
-      "tavily-exec",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Header,
-      Some(auth_header.id.clone()),
+      McpRequest {
+        name: "Tavily Exec".to_string(),
+        slug: "tavily-exec".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Header,
+        auth_uuid: Some(auth_header.id.clone()),
+      },
     )
     .await?;
 
-  service.fetch_tools("user-1", &mcp.id).await?;
+  service.fetch_tools("", "user-1", &mcp.id).await?;
 
   let response = service
     .execute(
+      "",
       "user-1",
       &mcp.id,
       "tavily_search",
@@ -589,7 +616,7 @@ async fn test_mcp_service_fetch_tools_for_server_with_oauth_auth_uuid(
 
   let oauth_config = service
     .create_oauth_config(
-      "user-1",
+      "",
       "OAuth",
       "server-1",
       "my-client-id",
@@ -607,6 +634,7 @@ async fn test_mcp_service_fetch_tools_for_server_with_oauth_auth_uuid(
 
   let token = service
     .store_oauth_token(
+      "",
       "user-1",
       &oauth_config.id,
       "test-oauth-access-token",
@@ -617,7 +645,7 @@ async fn test_mcp_service_fetch_tools_for_server_with_oauth_auth_uuid(
     .await?;
 
   let tools = service
-    .fetch_tools_for_server("server-1", None, None, Some(token.id.clone()))
+    .fetch_tools_for_server("", "server-1", None, None, Some(token.id.clone()))
     .await?;
 
   assert_eq!(1, tools.len());
@@ -662,7 +690,7 @@ async fn test_mcp_service_execute_with_oauth_auth_type(
 
   let oauth_config = service
     .create_oauth_config(
-      "user-1",
+      "",
       "OAuth",
       "server-1",
       "client-id",
@@ -680,6 +708,7 @@ async fn test_mcp_service_execute_with_oauth_auth_type(
 
   let token = service
     .store_oauth_token(
+      "",
       "user-1",
       &oauth_config.id,
       "test-oauth-access-token",
@@ -691,26 +720,30 @@ async fn test_mcp_service_execute_with_oauth_auth_type(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "OAuth MCP",
-      "oauth-mcp",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Oauth,
-      Some(token.id.clone()),
+      McpRequest {
+        name: "OAuth MCP".to_string(),
+        slug: "oauth-mcp".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Oauth,
+        auth_uuid: Some(token.id.clone()),
+      },
     )
     .await?;
 
   assert_eq!(McpAuthType::Oauth, mcp.auth_type);
   assert_eq!(Some(token.id.clone()), mcp.auth_uuid);
 
-  service.fetch_tools("user-1", &mcp.id).await?;
+  service.fetch_tools("", "user-1", &mcp.id).await?;
 
   let response = service
     .execute(
+      "",
       "user-1",
       &mcp.id,
       "oauth_search",
@@ -742,7 +775,7 @@ async fn test_mcp_service_update_orphan_cleanup_oauth_to_public(
 
   let oauth_config = service
     .create_oauth_config(
-      "user-1",
+      "",
       "OAuth",
       "server-1",
       "client-id",
@@ -760,6 +793,7 @@ async fn test_mcp_service_update_orphan_cleanup_oauth_to_public(
 
   let token = service
     .store_oauth_token(
+      "",
       "user-1",
       &oauth_config.id,
       "access-token",
@@ -771,16 +805,19 @@ async fn test_mcp_service_update_orphan_cleanup_oauth_to_public(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "OAuth MCP",
-      "oauth-cleanup",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Oauth,
-      Some(token.id.clone()),
+      McpRequest {
+        name: "OAuth MCP".to_string(),
+        slug: "oauth-cleanup".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Oauth,
+        auth_uuid: Some(token.id.clone()),
+      },
     )
     .await?;
 
@@ -788,29 +825,33 @@ async fn test_mcp_service_update_orphan_cleanup_oauth_to_public(
 
   let updated = service
     .update(
+      "",
       "user-1",
       &mcp.id,
-      "OAuth MCP",
-      "oauth-cleanup",
-      None,
-      true,
-      None,
-      None,
-      Some(McpAuthType::Public),
-      None,
+      McpRequest {
+        name: "OAuth MCP".to_string(),
+        slug: "oauth-cleanup".to_string(),
+        mcp_server_id: None,
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Public,
+        auth_uuid: None,
+      },
     )
     .await?;
 
   assert_eq!(McpAuthType::Public, updated.auth_type);
   assert_eq!(None, updated.auth_uuid);
 
-  let config = db.get_mcp_oauth_config(&oauth_config.id).await?;
+  let config = db.get_mcp_oauth_config("", &oauth_config.id).await?;
   assert!(
     config.is_some(),
     "OAuth config should be preserved on auth type change"
   );
 
-  let token_row = db.get_mcp_oauth_token("user-1", &token.id).await?;
+  let token_row = db.get_mcp_oauth_token("", "user-1", &token.id).await?;
   assert!(
     token_row.is_none(),
     "OAuth token should be deleted on auth type change"
@@ -835,7 +876,7 @@ async fn test_mcp_service_delete_cleans_up_oauth_config(
 
   let oauth_config = service
     .create_oauth_config(
-      "user-1",
+      "",
       "OAuth",
       "server-1",
       "client-id",
@@ -853,6 +894,7 @@ async fn test_mcp_service_delete_cleans_up_oauth_config(
 
   let token = service
     .store_oauth_token(
+      "",
       "user-1",
       &oauth_config.id,
       "access-token",
@@ -864,28 +906,31 @@ async fn test_mcp_service_delete_cleans_up_oauth_config(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "Delete OAuth",
-      "delete-oauth",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Oauth,
-      Some(token.id.clone()),
+      McpRequest {
+        name: "Delete OAuth".to_string(),
+        slug: "delete-oauth".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Oauth,
+        auth_uuid: Some(token.id.clone()),
+      },
     )
     .await?;
 
-  service.delete("user-1", &mcp.id).await?;
+  service.delete("", "user-1", &mcp.id).await?;
 
-  let config = db.get_mcp_oauth_config(&oauth_config.id).await?;
+  let config = db.get_mcp_oauth_config("", &oauth_config.id).await?;
   assert!(
     config.is_some(),
     "OAuth config should be preserved when MCP is deleted"
   );
 
-  let token_row = db.get_mcp_oauth_token("user-1", &token.id).await?;
+  let token_row = db.get_mcp_oauth_token("", "user-1", &token.id).await?;
   assert!(
     token_row.is_none(),
     "OAuth token should be deleted when MCP is deleted"
@@ -1143,7 +1188,7 @@ async fn test_resolve_oauth_token_expired_with_refresh_success(
   // Create OAuth config with token_endpoint pointing to mockito
   let oauth_config = service
     .create_oauth_config(
-      "user-1",
+      "",
       "OAuth",
       "server-1",
       "client-id",
@@ -1164,6 +1209,7 @@ async fn test_resolve_oauth_token_expired_with_refresh_success(
   // Expiry check: now(1735689600) >= expires_at(1735689630) - 60 = 1735689570 => TRUE (expired)
   let token = service
     .store_oauth_token(
+      "",
       "user-1",
       &oauth_config.id,
       "old-access-token",
@@ -1176,16 +1222,19 @@ async fn test_resolve_oauth_token_expired_with_refresh_success(
   // Create MCP instance using OAuth auth
   let mcp = service
     .create(
+      "",
       "user-1",
-      "Refresh MCP",
-      "refresh-mcp",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Oauth,
-      Some(token.id.clone()),
+      McpRequest {
+        name: "Refresh MCP".to_string(),
+        slug: "refresh-mcp".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Oauth,
+        auth_uuid: Some(token.id.clone()),
+      },
     )
     .await?;
 
@@ -1230,7 +1279,7 @@ async fn test_resolve_oauth_token_expired_with_refresh_success(
 
   let service2 = DefaultMcpService::new(db.clone(), Arc::new(mock_client2), default_time_service());
 
-  let tools = service2.fetch_tools("user-1", &mcp.id).await?;
+  let tools = service2.fetch_tools("", "user-1", &mcp.id).await?;
   assert_eq!(1, tools.len());
   assert_eq!("refreshed-tool", tools[0].name);
 
@@ -1255,7 +1304,7 @@ async fn test_resolve_oauth_token_expired_no_refresh_returns_error(
 
   let oauth_config = service
     .create_oauth_config(
-      "user-1",
+      "",
       "OAuth",
       "server-1",
       "client-id",
@@ -1274,6 +1323,7 @@ async fn test_resolve_oauth_token_expired_no_refresh_returns_error(
   // Store token with short expiry and NO refresh token
   let token = service
     .store_oauth_token(
+      "",
       "user-1",
       &oauth_config.id,
       "expired-access-token",
@@ -1285,20 +1335,23 @@ async fn test_resolve_oauth_token_expired_no_refresh_returns_error(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "NoRefresh MCP",
-      "norefresh-mcp",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Oauth,
-      Some(token.id.clone()),
+      McpRequest {
+        name: "NoRefresh MCP".to_string(),
+        slug: "norefresh-mcp".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Oauth,
+        auth_uuid: Some(token.id.clone()),
+      },
     )
     .await?;
 
-  let result = service.fetch_tools("user-1", &mcp.id).await;
+  let result = service.fetch_tools("", "user-1", &mcp.id).await;
   let err = result.unwrap_err();
   assert_eq!("mcp_error-o_auth_token_expired", err.code());
 
@@ -1325,7 +1378,7 @@ async fn test_resolve_oauth_token_expired_refresh_http_failure(
 
   let oauth_config = service
     .create_oauth_config(
-      "user-1",
+      "",
       "OAuth",
       "server-1",
       "client-id",
@@ -1344,6 +1397,7 @@ async fn test_resolve_oauth_token_expired_refresh_http_failure(
   // Store token with short expiry and a refresh token
   let token = service
     .store_oauth_token(
+      "",
       "user-1",
       &oauth_config.id,
       "expired-access-token",
@@ -1355,16 +1409,19 @@ async fn test_resolve_oauth_token_expired_refresh_http_failure(
 
   let mcp = service
     .create(
+      "",
       "user-1",
-      "FailRefresh MCP",
-      "failrefresh-mcp",
-      "server-1",
-      None,
-      true,
-      None,
-      None,
-      McpAuthType::Oauth,
-      Some(token.id.clone()),
+      McpRequest {
+        name: "FailRefresh MCP".to_string(),
+        slug: "failrefresh-mcp".to_string(),
+        mcp_server_id: Some("server-1".to_string()),
+        description: None,
+        enabled: true,
+        tools_cache: None,
+        tools_filter: None,
+        auth_type: McpAuthType::Oauth,
+        auth_uuid: Some(token.id.clone()),
+      },
     )
     .await?;
 
@@ -1382,7 +1439,7 @@ async fn test_resolve_oauth_token_expired_refresh_http_failure(
   let mock_client2 = MockMcpClient::new();
   let service2 = DefaultMcpService::new(db.clone(), Arc::new(mock_client2), default_time_service());
 
-  let result = service2.fetch_tools("user-1", &mcp.id).await;
+  let result = service2.fetch_tools("", "user-1", &mcp.id).await;
   let err = result.unwrap_err();
   assert_eq!("mcp_error-o_auth_refresh_failed", err.code());
 

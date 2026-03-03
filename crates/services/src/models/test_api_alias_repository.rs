@@ -33,20 +33,23 @@ async fn test_api_model_alias_crud(
 
   ctx
     .service
-    .create_api_model_alias(&alias, Some("sk-test-key".to_string()))
+    .create_api_model_alias("", "", &alias, Some("sk-test-key".to_string()))
     .await?;
 
-  let fetched = ctx.service.get_api_model_alias(&alias.id).await?;
+  let fetched = ctx.service.get_api_model_alias("", "", &alias.id).await?;
   assert!(fetched.is_some());
   let fetched = fetched.unwrap();
   assert_eq!(alias.id, fetched.id);
   assert_eq!(alias.base_url, fetched.base_url);
 
-  let api_key = ctx.service.get_api_key_for_alias(&alias.id).await?;
+  let api_key = ctx.service.get_api_key_for_alias("", "", &alias.id).await?;
   assert_eq!(Some("sk-test-key".to_string()), api_key);
 
-  ctx.service.delete_api_model_alias(&alias.id).await?;
-  let deleted = ctx.service.get_api_model_alias(&alias.id).await?;
+  ctx
+    .service
+    .delete_api_model_alias("", "", &alias.id)
+    .await?;
+  let deleted = ctx.service.get_api_model_alias("", "", &alias.id).await?;
   assert!(deleted.is_none());
   Ok(())
 }

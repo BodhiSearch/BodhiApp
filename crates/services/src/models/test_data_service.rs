@@ -2,7 +2,7 @@ use crate::models::{Alias, ApiAlias, ApiAliasRepository, ApiFormat};
 use crate::{
   test_utils::{
     test_data_service, test_db_service, test_hf_service, TestDataService, TestDbService,
-    TestHfService,
+    TestHfService, TEST_TENANT_ID, TEST_USER_ID,
   },
   DataService, LocalDataService,
 };
@@ -21,7 +21,9 @@ async fn test_local_data_service_find_alias(
   #[from(test_data_service)]
   service: TestDataService,
 ) -> anyhow::Result<()> {
-  let alias = service.find_alias("testalias-exists:instruct").await;
+  let alias = service
+    .find_alias(TEST_TENANT_ID, TEST_USER_ID, "testalias-exists:instruct")
+    .await;
   assert!(alias.is_some());
   let alias = alias.unwrap();
   match &alias {
@@ -42,7 +44,9 @@ async fn test_find_alias_not_found(
   #[from(test_data_service)]
   service: TestDataService,
 ) -> anyhow::Result<()> {
-  let alias = service.find_alias("nonexistent-alias").await;
+  let alias = service
+    .find_alias(TEST_TENANT_ID, TEST_USER_ID, "nonexistent-alias")
+    .await;
   assert_eq!(None, alias);
   Ok(())
 }
@@ -69,14 +73,14 @@ async fn test_find_alias_api_by_model_name(
     db_service.now(),
   );
   db_service
-    .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+    .create_api_model_alias("", "", &api_alias, Some("test-key".to_string()))
     .await?;
 
   // Test finding by model name
-  let found = data_service.find_alias("gpt-4").await;
+  let found = data_service.find_alias("", "", "gpt-4").await;
   assert!(matches!(found, Some(Alias::Api(api)) if api.id == "openai-api"));
 
-  let found = data_service.find_alias("gpt-3.5-turbo").await;
+  let found = data_service.find_alias("", "", "gpt-3.5-turbo").await;
   assert!(matches!(found, Some(Alias::Api(api)) if api.id == "openai-api"));
 
   Ok(())
@@ -114,10 +118,17 @@ async fn test_find_alias_priority_cases(
     db_service.now(),
   );
   db_service
-    .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+    .create_api_model_alias(
+      TEST_TENANT_ID,
+      TEST_USER_ID,
+      &api_alias,
+      Some("test-key".to_string()),
+    )
     .await?;
 
-  let found = data_service.find_alias(search_alias).await;
+  let found = data_service
+    .find_alias(TEST_TENANT_ID, TEST_USER_ID, search_alias)
+    .await;
 
   if should_find {
     let alias = found.expect("Expected to find alias");
@@ -160,11 +171,18 @@ async fn test_find_alias_user_priority_over_api(
     db_service.now(),
   );
   db_service
-    .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+    .create_api_model_alias(
+      TEST_TENANT_ID,
+      TEST_USER_ID,
+      &api_alias,
+      Some("test-key".to_string()),
+    )
     .await?;
 
   // Should find user alias, not API alias (user has priority)
-  let found = data_service.find_alias("testalias-exists:instruct").await;
+  let found = data_service
+    .find_alias(TEST_TENANT_ID, TEST_USER_ID, "testalias-exists:instruct")
+    .await;
   assert!(matches!(found, Some(Alias::User(_))));
 
   Ok(())
@@ -179,7 +197,7 @@ async fn test_local_data_service_list_aliases(
   #[from(test_data_service)]
   service: TestDataService,
 ) -> anyhow::Result<()> {
-  let result = service.list_aliases().await?;
+  let result = service.list_aliases(TEST_TENANT_ID, TEST_USER_ID).await?;
   // Should have at least the 3 seeded user aliases + model aliases from hub
   assert!(result.len() >= 3);
   // Check that user aliases are present
@@ -202,14 +220,20 @@ async fn test_local_data_service_delete_alias(
   service: TestDataService,
 ) -> anyhow::Result<()> {
   // First, verify alias exists
-  let alias = service.find_alias("tinyllama:instruct").await;
+  let alias = service
+    .find_alias(TEST_TENANT_ID, TEST_USER_ID, "tinyllama:instruct")
+    .await;
   assert!(alias.is_some());
   let id = match alias.unwrap() {
     Alias::User(u) => u.id,
     _ => panic!("Expected User alias"),
   };
-  service.delete_alias(&id).await?;
-  let alias = service.find_alias("tinyllama:instruct").await;
+  service
+    .delete_alias(TEST_TENANT_ID, TEST_USER_ID, &id)
+    .await?;
+  let alias = service
+    .find_alias(TEST_TENANT_ID, TEST_USER_ID, "tinyllama:instruct")
+    .await;
   assert!(alias.is_none());
   Ok(())
 }
@@ -223,7 +247,9 @@ async fn test_local_data_service_delete_alias_not_found(
   #[from(test_data_service)]
   service: TestDataService,
 ) -> anyhow::Result<()> {
-  let result = service.delete_alias("nonexistent-id").await;
+  let result = service
+    .delete_alias(TEST_TENANT_ID, TEST_USER_ID, "nonexistent-id")
+    .await;
   let err = result.unwrap_err();
   assert_eq!("data_service_error-alias_not_found", err.code());
   Ok(())
@@ -239,16 +265,22 @@ async fn test_local_data_service_copy_alias(
   service: TestDataService,
 ) -> anyhow::Result<()> {
   // Get the ID of the tinyllama alias
-  let alias = service.find_alias("tinyllama:instruct").await;
+  let alias = service
+    .find_alias(TEST_TENANT_ID, TEST_USER_ID, "tinyllama:instruct")
+    .await;
   let id = match alias.unwrap() {
     Alias::User(u) => u.id,
     _ => panic!("Expected User alias"),
   };
 
-  let new_alias = service.copy_alias(&id, "tinyllama:mymodel").await?;
+  let new_alias = service
+    .copy_alias(TEST_TENANT_ID, TEST_USER_ID, &id, "tinyllama:mymodel")
+    .await?;
   assert_eq!("tinyllama:mymodel", new_alias.alias);
 
-  let found = service.find_user_alias("tinyllama:mymodel").await;
+  let found = service
+    .find_user_alias(TEST_TENANT_ID, TEST_USER_ID, "tinyllama:mymodel")
+    .await;
   assert!(found.is_some());
   let found = found.unwrap();
   assert_eq!("tinyllama:mymodel", found.alias);
@@ -282,10 +314,10 @@ async fn test_find_alias_with_prefix_matches(
     db_service.now(),
   );
   db_service
-    .create_api_model_alias(&test_alias, Some("test-key".to_string()))
+    .create_api_model_alias("", "", &test_alias, Some("test-key".to_string()))
     .await?;
 
-  let found = data_service.find_alias(search_term).await;
+  let found = data_service.find_alias("", "", search_term).await;
   let Some(Alias::Api(api)) = found else {
     panic!("Expected to find Api alias, but found none");
   };
@@ -317,10 +349,10 @@ async fn test_find_alias_with_non_matching_prefix_returns_none(
     db_service.now(),
   );
   db_service
-    .create_api_model_alias(&test_alias, Some("test-key".to_string()))
+    .create_api_model_alias("", "", &test_alias, Some("test-key".to_string()))
     .await?;
 
-  let found = data_service.find_alias(search_term).await;
+  let found = data_service.find_alias("", "", search_term).await;
   assert!(found.is_none());
 
   Ok(())
@@ -348,18 +380,18 @@ async fn test_find_alias_without_prefix_does_not_match_prefixed_api(
     db_service.now(),
   );
   db_service
-    .create_api_model_alias(&prefixed_alias, Some("test-key".to_string()))
+    .create_api_model_alias("", "", &prefixed_alias, Some("test-key".to_string()))
     .await?;
 
   // Searching for "gpt-4" should NOT match the prefixed API
-  let found = data_service.find_alias("gpt-4").await;
+  let found = data_service.find_alias("", "", "gpt-4").await;
   assert!(
     found.is_none(),
     "Should not match 'gpt-4' when API has prefix 'azure/'"
   );
 
   // Searching for "azure/gpt-4" SHOULD match
-  let found = data_service.find_alias("azure/gpt-4").await;
+  let found = data_service.find_alias("", "", "azure/gpt-4").await;
   assert!(matches!(found, Some(Alias::Api(api)) if api.id == "azure-openai"));
 
   Ok(())

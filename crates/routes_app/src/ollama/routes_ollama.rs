@@ -1,20 +1,17 @@
 use super::ollama_api_schemas::*;
 use super::{ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS};
+use crate::shared::AuthScope;
 use crate::API_TAG_OLLAMA;
 use async_openai::types::chat::{
   CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
 };
 use axum::{
-  body::Body,
-  extract::State,
   http::StatusCode,
   response::{IntoResponse, Response},
   Json,
 };
 use futures_util::StreamExt;
-use server_core::RouterState;
-use services::GGUF;
-use services::{Alias, ModelAlias, UserAlias};
+use services::{inference::LlmEndpoint, Alias, ModelAlias, SettingService, UserAlias, GGUF};
 use std::{fs, sync::Arc, time::UNIX_EPOCH};
 
 /// List available models in Ollama format
@@ -53,24 +50,22 @@ use std::{fs, sync::Arc, time::UNIX_EPOCH};
     ),
 )]
 pub async fn ollama_models_handler(
-  State(state): State<Arc<dyn RouterState>>,
+  auth_scope: AuthScope,
 ) -> Result<Json<ModelsResponse>, Json<OllamaError>> {
-  let aliases = state
-    .app_service()
-    .data_service()
-    .list_aliases()
-    .await
-    .map_err(|err| {
-      Json(OllamaError {
-        error: err.to_string(),
-      })
-    })?;
+  let setting_service = auth_scope.setting_service();
+  let aliases = auth_scope.data().list_aliases().await.map_err(|err| {
+    Json(OllamaError {
+      error: err.to_string(),
+    })
+  })?;
 
   let mut models = Vec::new();
   for alias in aliases {
     match alias {
-      Alias::User(user) => models.push(user_alias_to_ollama_model(state.clone(), user)),
-      Alias::Model(model) => models.push(model_alias_to_ollama_model(state.clone(), model).await),
+      Alias::User(user) => models.push(user_alias_to_ollama_model(user)),
+      Alias::Model(model) => {
+        models.push(model_alias_to_ollama_model(&setting_service, model).await)
+      }
       Alias::Api(_) => {}
     }
   }
@@ -78,7 +73,7 @@ pub async fn ollama_models_handler(
   Ok(Json(ModelsResponse { models }))
 }
 
-pub fn user_alias_to_ollama_model(_state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
+pub fn user_alias_to_ollama_model(alias: UserAlias) -> Model {
   Model {
     model: alias.alias,
     modified_at: alias.created_at.timestamp() as u32,
@@ -95,9 +90,12 @@ pub fn user_alias_to_ollama_model(_state: Arc<dyn RouterState>, alias: UserAlias
   }
 }
 
-pub async fn model_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> Model {
+pub async fn model_alias_to_ollama_model(
+  setting_service: &Arc<dyn SettingService>,
+  alias: ModelAlias,
+) -> Model {
   // Construct path from HF cache structure
-  let hf_cache = state.app_service().setting_service().hf_cache().await;
+  let hf_cache = setting_service.hf_cache().await;
   let path = hf_cache
     .join(alias.repo.path())
     .join("snapshots")
@@ -170,12 +168,12 @@ pub async fn model_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: Mod
     ),
 )]
 pub async fn ollama_model_show_handler(
-  State(state): State<Arc<dyn RouterState>>,
+  auth_scope: AuthScope,
   Json(request): Json<ShowRequest>,
 ) -> Result<Json<ShowResponse>, Json<OllamaError>> {
-  let alias = state
-    .app_service()
-    .data_service()
+  let setting_service = auth_scope.setting_service();
+  let alias = auth_scope
+    .data()
     .find_alias(&request.name)
     .await
     .ok_or_else(|| {
@@ -183,18 +181,21 @@ pub async fn ollama_model_show_handler(
         error: "model not found".to_string(),
       })
     })?;
-  let model = alias_to_ollama_model_show(state, alias).await;
+  let model = alias_to_ollama_model_show(&setting_service, alias).await;
   Ok(Json(model))
 }
 
-pub async fn alias_to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> ShowResponse {
+pub async fn alias_to_ollama_model_show(
+  setting_service: &Arc<dyn SettingService>,
+  alias: Alias,
+) -> ShowResponse {
   match alias {
     Alias::User(user_alias) => {
       let request_params = serde_yaml::to_string(&user_alias.request_params).unwrap_or_default();
       let context_params = serde_yaml::to_string(&user_alias.context_params).unwrap_or_default();
       let parameters = format!("{context_params}{request_params}");
       let template = "".to_string(); // Chat template removed since llama.cpp now handles this
-      let model = user_alias_to_ollama_model(state, user_alias);
+      let model = user_alias_to_ollama_model(user_alias);
 
       ShowResponse {
         details: model.details,
@@ -208,7 +209,7 @@ pub async fn alias_to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alia
     }
     Alias::Model(model_alias) => {
       // Create a minimal ShowResponse for auto-discovered models
-      let model = model_alias_to_ollama_model(state, model_alias.clone()).await;
+      let model = model_alias_to_ollama_model(setting_service, model_alias.clone()).await;
       ShowResponse {
         details: model.details,
         license: "".to_string(),
@@ -303,54 +304,98 @@ pub async fn alias_to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alia
     ),
 )]
 pub async fn ollama_model_chat_handler(
-  State(state): State<Arc<dyn RouterState>>,
+  auth_scope: AuthScope,
   Json(ollama_request): Json<ChatRequest>,
 ) -> Result<Response, Json<OllamaError>> {
   let request: CreateChatCompletionRequest = ollama_request.into();
   let stream = request.stream.unwrap_or(true);
 
-  // Get raw response from forward_request
   let request_value = serde_json::to_value(&request).map_err(|e| {
     Json(OllamaError {
       error: format!("failed to serialize request: {e}"),
     })
   })?;
-  let response = state
-    .forward_request(server_core::LlmEndpoint::ChatCompletions, request_value)
-    .await
-    .map_err(|e| {
-      Json(OllamaError {
-        error: format!("chat completion error: {e}"),
-      })
-    })?;
 
-  let mut response_builder = Response::builder().status(response.status());
-  if let Some(headers) = response_builder.headers_mut() {
-    *headers = response.headers().clone();
-  }
+  let model = request_value
+    .get("model")
+    .and_then(|v| v.as_str())
+    .unwrap_or("")
+    .to_string();
 
-  // For non-streaming responses, we need to convert the entire response
+  let alias = auth_scope.data().find_alias(&model).await.ok_or_else(|| {
+    Json(OllamaError {
+      error: format!("model not found: {model}"),
+    })
+  })?;
+
+  let inference = auth_scope.inference();
+
+  use services::Alias as AliasType;
+  let oai_response = match alias {
+    AliasType::User(_) | AliasType::Model(_) => inference
+      .forward_local(LlmEndpoint::ChatCompletions, request_value, alias)
+      .await
+      .map_err(|e| {
+        Json(OllamaError {
+          error: format!("chat completion error: {e}"),
+        })
+      })?,
+    AliasType::Api(ref api_alias) => {
+      let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
+      let user_id = auth_scope
+        .auth_context()
+        .user_id()
+        .unwrap_or("")
+        .to_string();
+      let api_key = auth_scope
+        .db_service()
+        .get_api_key_for_alias(&tenant_id, &user_id, &api_alias.id)
+        .await
+        .ok()
+        .flatten();
+      inference
+        .forward_remote(
+          LlmEndpoint::ChatCompletions,
+          request_value,
+          api_alias,
+          api_key,
+        )
+        .await
+        .map_err(|e| {
+          Json(OllamaError {
+            error: format!("chat completion error: {e}"),
+          })
+        })?
+    }
+  };
+
+  // InferenceService returns axum::response::Response directly
+  // For non-streaming responses, we need to convert the entire response body
   if !stream {
-    let bytes = response.bytes().await.map_err(|e| {
+    use axum::body::to_bytes;
+    let (_parts, body) = oai_response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.map_err(|e| {
       Json(OllamaError {
         error: format!("failed to read response bytes: {e}"),
       })
     })?;
 
-    let oai_response: CreateChatCompletionResponse =
+    let oai_chat_response: CreateChatCompletionResponse =
       serde_json::from_slice(&bytes).map_err(|e| {
         Json(OllamaError {
           error: format!("failed to parse response: {e}"),
         })
       })?;
 
-    let ollama_response: ChatResponse = oai_response.into();
+    let ollama_response: ChatResponse = oai_chat_response.into();
     return Ok((StatusCode::OK, Json(ollama_response)).into_response());
   }
 
   // For streaming, transform each SSE chunk into Ollama format
-  let stream = response.bytes_stream().map(move |chunk| {
-    let chunk = chunk.map_err(|e| format!("error reading chunk: {e}"))?;
+  // The response body is an axum::body::Body stream
+  let body_stream = oai_response.into_body().into_data_stream();
+  let transformed_stream = body_stream.map(move |chunk| {
+    let chunk: axum::body::Bytes = chunk.map_err(|e| format!("error reading chunk: {e}"))?;
     let text = String::from_utf8_lossy(&chunk);
 
     if text.starts_with("data: ") {
@@ -376,12 +421,16 @@ pub async fn ollama_model_chat_handler(
     }
   });
 
-  let body = Body::from_stream(stream);
-  response_builder.body(body).map_err(|e| {
-    Json(OllamaError {
-      error: format!("failed to build response: {e}"),
+  use axum::body::Body;
+  let body = Body::from_stream(transformed_stream);
+  Response::builder()
+    .status(StatusCode::OK)
+    .body(body)
+    .map_err(|e| {
+      Json(OllamaError {
+        error: format!("failed to build response: {e}"),
+      })
     })
-  })
 }
 
 #[cfg(test)]

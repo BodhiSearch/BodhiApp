@@ -1,14 +1,14 @@
 use crate::build_routes;
 use axum::{body::Body, http::Request, Router};
 use chrono::Utc;
-use server_core::{DefaultSharedContext, MockSharedContext, SharedContext};
+use server_core::{DefaultSharedContext, SharedContext, StandaloneInferenceService};
 use services::{
   db::DbService,
   test_utils::{
     access_token_claims, build_token, AppServiceStubBuilder, StubNetworkService, StubQueue,
-    TEST_CLIENT_ID,
+    TEST_CLIENT_ID, TEST_TENANT_ID,
   },
-  AppInstance, AppService, SessionService, {ApiToken, TokenStatus},
+  AppService, SessionService, Tenant, {TokenEntity, TokenStatus},
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
@@ -41,7 +41,7 @@ pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>,
     .await
     .with_session_service()
     .await
-    .with_app_instance(AppInstance::test_default())
+    .with_tenant(Tenant::test_default())
     .await
     .queue_producer(stub_queue)
     .network_service(stub_network);
@@ -51,8 +51,7 @@ pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>,
     .clone()
     .expect("temp_home should be set by builder");
   let app_service: Arc<dyn AppService> = Arc::new(app_service_stub);
-  let ctx: Arc<dyn SharedContext> = Arc::new(MockSharedContext::default());
-  let router = build_routes(ctx, app_service.clone(), None).await;
+  let router = build_routes(app_service.clone(), None).await;
   Ok((router, app_service, temp_home))
 }
 
@@ -206,11 +205,11 @@ pub async fn build_live_test_router() -> anyhow::Result<(
     .await
     .with_session_service()
     .await
-    .with_app_instance(AppInstance::test_default())
+    .with_tenant(Tenant::test_default())
     .await
     .queue_producer(stub_queue)
     .network_service(stub_network);
-  let app_service_stub = builder.build().await?;
+  let mut app_service_stub = builder.build().await?;
   let temp_home = app_service_stub
     .temp_home
     .clone()
@@ -218,12 +217,31 @@ pub async fn build_live_test_router() -> anyhow::Result<(
 
   let hub_service = app_service_stub.hub_service.clone().unwrap();
   let setting_service = app_service_stub.setting_service.clone().unwrap();
-  let app_service: Arc<dyn AppService> = Arc::new(app_service_stub);
 
   // DefaultSharedContext::new uses DefaultServerFactory (spawns real llama.cpp)
   let ctx: Arc<dyn SharedContext> =
     Arc::new(DefaultSharedContext::new(hub_service, setting_service).await);
-  let router = build_routes(ctx.clone(), app_service.clone(), None).await;
+
+  // Wire StandaloneInferenceService with the real SharedContext so live inference works
+  let keep_alive_secs = app_service_stub
+    .setting_service
+    .as_ref()
+    .expect("setting_service should be set")
+    .keep_alive()
+    .await;
+  let ai_api_service = app_service_stub
+    .ai_api_service
+    .clone()
+    .expect("ai_api_service should be set");
+  app_service_stub.inference_service = Some(Arc::new(StandaloneInferenceService::new(
+    ctx.clone(),
+    ai_api_service,
+    keep_alive_secs,
+  )));
+
+  let app_service: Arc<dyn AppService> = Arc::new(app_service_stub);
+
+  let router = build_routes(app_service.clone(), None).await;
   Ok((router, app_service, ctx, temp_home))
 }
 
@@ -249,8 +267,9 @@ pub async fn create_test_api_token(db_service: &dyn DbService) -> anyhow::Result
   let token_hash = format!("{:x}", hasher.finalize());
 
   let now = Utc::now();
-  let mut api_token = ApiToken {
+  let mut api_token = TokenEntity {
     id: Uuid::new_v4().to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     user_id: "test-user".to_string(),
     name: "Test API Token".to_string(),
     token_prefix: token_prefix.to_string(),
@@ -260,7 +279,9 @@ pub async fn create_test_api_token(db_service: &dyn DbService) -> anyhow::Result
     created_at: now,
     updated_at: now,
   };
-  db_service.create_api_token(&mut api_token).await?;
+  db_service
+    .create_api_token(TEST_TENANT_ID, &mut api_token)
+    .await?;
 
   Ok(token_str)
 }

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use ulid::Ulid;
 
 use super::error::{AccessRequestError, Result};
-use super::{AppAccessRequestRow, AppAccessRequestStatus, ApprovalStatus, FlowType};
+use super::{AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, FlowType};
 use crate::db::{DbService, TimeService};
 use crate::AuthService;
 use crate::UserScope;
@@ -13,18 +13,20 @@ use crate::UserScope;
 #[async_trait]
 pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
   /// Create a draft access request
+  #[allow(clippy::too_many_arguments)]
   async fn create_draft(
     &self,
+    tenant_id: &str,
     app_client_id: String,
     flow_type: FlowType,
     redirect_uri: Option<String>,
     tools_requested: Vec<super::ToolsetTypeRequest>,
-    mcp_servers_requested: Vec<super::McpServerRequest>,
+    mcp_servers_requested: Vec<super::RequestedMcpServer>,
     requested_role: UserScope,
-  ) -> Result<AppAccessRequestRow>;
+  ) -> Result<AppAccessRequest>;
 
   /// Get access request by ID
-  async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequestRow>>;
+  async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequest>>;
 
   /// Approve access request and register with KC
   async fn approve_request(
@@ -35,10 +37,10 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     tool_approvals: Vec<super::ToolsetApproval>,
     mcp_approvals: Vec<super::McpApproval>,
     approved_role: UserScope,
-  ) -> Result<AppAccessRequestRow>;
+  ) -> Result<AppAccessRequest>;
 
   /// Deny access request
-  async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow>;
+  async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequest>;
 
   /// Build review URL for a given access request ID
   fn build_review_url(&self, access_request_id: &str) -> String;
@@ -95,13 +97,14 @@ impl DefaultAccessRequestService {
 impl AccessRequestService for DefaultAccessRequestService {
   async fn create_draft(
     &self,
+    tenant_id: &str,
     app_client_id: String,
     flow_type: FlowType,
     redirect_uri: Option<String>,
     toolsets_requested: Vec<super::ToolsetTypeRequest>,
-    mcp_servers_requested: Vec<super::McpServerRequest>,
+    mcp_servers_requested: Vec<super::RequestedMcpServer>,
     requested_role: UserScope,
-  ) -> Result<AppAccessRequestRow> {
+  ) -> Result<AppAccessRequest> {
     if flow_type == FlowType::Redirect && redirect_uri.is_none() {
       return Err(AccessRequestError::MissingRedirectUri);
     }
@@ -125,8 +128,9 @@ impl AccessRequestService for DefaultAccessRequestService {
       }
     });
 
-    let row = AppAccessRequestRow {
+    let row = AppAccessRequest {
       id: access_request_id,
+      tenant_id: tenant_id.to_string(),
       app_client_id,
       app_name: None,
       app_description: None,
@@ -149,8 +153,8 @@ impl AccessRequestService for DefaultAccessRequestService {
     Ok(created_row)
   }
 
-  async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequestRow>> {
-    let row = self.db_service.get(id).await?;
+  async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequest>> {
+    let row = self.db_service.get("", id).await?;
     Ok(row)
   }
 
@@ -162,7 +166,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     tool_approvals: Vec<super::ToolsetApproval>,
     mcp_approvals: Vec<super::McpApproval>,
     approved_role: UserScope,
-  ) -> Result<AppAccessRequestRow> {
+  ) -> Result<AppAccessRequest> {
     let row = self
       .get_request(id)
       .await?
@@ -219,7 +223,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     Ok(updated_row)
   }
 
-  async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow> {
+  async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequest> {
     let row = self
       .get_request(id)
       .await?

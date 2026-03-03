@@ -1,9 +1,9 @@
 use crate::{BootstrapError, DefaultEnvWrapper};
+use services::{AppType, EnvType};
 use services::{
-  AppInstance, EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_COMMIT_SHA,
+  EnvWrapper, Tenant, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_COMMIT_SHA,
   BODHI_ENV_TYPE, BODHI_VERSION,
 };
-use services::{AppType, EnvType};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -27,8 +27,8 @@ pub struct AppOptions {
   pub auth_realm: String,
   /// App settings (configurable via settings.yaml)
   pub app_settings: HashMap<String, String>,
-  /// App instance with OAuth credentials and status (optional)
-  pub app_instance: Option<AppInstance>,
+  /// Tenant with OAuth credentials and status (optional)
+  pub tenant: Option<Tenant>,
 }
 
 /// Custom builder for AppOptions that handles internal state management
@@ -47,7 +47,7 @@ pub struct AppOptionsBuilder {
 
   // Configuration fields
   app_settings: HashMap<String, String>,
-  app_instance: Option<AppInstance>,
+  tenant: Option<Tenant>,
 }
 
 impl AppOptionsBuilder {
@@ -115,9 +115,9 @@ impl AppOptionsBuilder {
     self
   }
 
-  /// Sets app instance with OAuth credentials and status
-  pub fn set_app_instance(mut self, instance: AppInstance) -> Self {
-    self.app_instance = Some(instance);
+  /// Sets tenant with OAuth credentials and status
+  pub fn set_tenant(mut self, instance: Tenant) -> Self {
+    self.tenant = Some(instance);
     self
   }
 
@@ -147,7 +147,7 @@ impl AppOptionsBuilder {
         .auth_realm
         .ok_or_else(|| BootstrapError::ValidationError(BODHI_AUTH_REALM.to_string()))?,
       app_settings: self.app_settings,
-      app_instance: self.app_instance,
+      tenant: self.tenant,
     })
   }
 

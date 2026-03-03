@@ -1,11 +1,4 @@
-import type {
-  ApiFormat,
-  ApiKey,
-  ApiKeyUpdateAction,
-  ApiModelResponse,
-  CreateApiModelRequest,
-  UpdateApiModelRequest,
-} from '@bodhiapp/ts-client';
+import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, ApiModelOutput } from '@bodhiapp/ts-client';
 import * as z from 'zod';
 
 // API format presets for AI APIs
@@ -129,29 +122,32 @@ export type ApiModelFormData = z.infer<typeof createApiModelSchema>;
 export type UpdateApiModelFormData = z.infer<typeof updateApiModelSchema>;
 
 /**
- * Converts form data to CreateApiModelRequest for the API
+ * Converts form data to ApiModelRequest for the API
  *
  * @param formData - The form data from the UI
- * @returns CreateApiModelRequest with proper ApiKey type (string | null)
+ * @returns ApiModelRequest with proper ApiKeyUpdate type
  *
- * Note: When useApiKey is false, we send null (not undefined) to explicitly
+ * Note: When useApiKey is false, we send {action: 'set', value: null} to explicitly
  * indicate "no API key" for public APIs
  */
-export const convertFormToCreateRequest = (formData: ApiModelFormData): CreateApiModelRequest => ({
+export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModelRequest => ({
   api_format: formData.api_format as ApiFormat,
   base_url: formData.base_url,
-  api_key: formData.useApiKey && formData.api_key ? formData.api_key : null,
+  api_key:
+    formData.useApiKey && formData.api_key
+      ? { action: 'set' as const, value: formData.api_key as ApiKey }
+      : { action: 'set' as const, value: null },
   models: formData.models,
   prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
   forward_all_with_prefix: formData.forward_all_with_prefix,
 });
 
 /**
- * Converts form data to UpdateApiModelRequest for the API
+ * Converts form data to ApiModelRequest for the API (update)
  *
  * @param formData - The form data from the UI
  * @param initialData - The original API model data (optional, used to track changes)
- * @returns UpdateApiModelRequest with ApiKeyUpdateAction
+ * @returns ApiModelRequest with ApiKeyUpdate
  *
  * Note: API key update logic:
  * - Checkbox checked + user typed new value → {action: 'set', value: newKey}
@@ -161,8 +157,8 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): CreateAp
  */
 export const convertFormToUpdateRequest = (
   formData: UpdateApiModelFormData,
-  initialData?: ApiModelResponse
-): UpdateApiModelRequest => ({
+  initialData?: ApiModelOutput
+): ApiModelRequest => ({
   api_format: formData.api_format as ApiFormat,
   base_url: formData.base_url,
   api_key: (() => {
@@ -173,19 +169,19 @@ export const convertFormToUpdateRequest = (
         return { action: 'set' as const, value: formData.api_key as ApiKey };
       }
       // User didn't type anything - keep existing key if we have one
-      else if (initialData?.api_key_masked === '***') {
+      else if (initialData?.has_api_key) {
         return { action: 'keep' as const };
       }
       // User didn't type anything and no existing key
       else {
-        return { action: 'set' as const, value: null as ApiKey };
+        return { action: 'set' as const, value: null };
       }
     }
     // Checkbox is unchecked - remove API key
     else {
-      return { action: 'set' as const, value: null as ApiKey };
+      return { action: 'set' as const, value: null };
     }
-  })(),
+  })() as ApiKeyUpdate,
   models: formData.models,
   prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
   forward_all_with_prefix: formData.forward_all_with_prefix,
@@ -197,18 +193,18 @@ export const convertFormToUpdateRequest = (
  * @param apiData - The API model response from the backend
  * @returns Form data with correct checkbox states
  *
- * Note: api_key_masked semantics:
- * - "***": API key is stored → checkbox CHECKED (has key)
- * - null: No API key stored → checkbox UNCHECKED (no key)
+ * Note: has_api_key semantics:
+ * - true: API key is stored → checkbox CHECKED (has key)
+ * - false: No API key stored → checkbox UNCHECKED (no key)
  */
-export const convertApiToForm = (apiData: ApiModelResponse): ApiModelFormData => ({
+export const convertApiToForm = (apiData: ApiModelOutput): ApiModelFormData => ({
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',
   models: apiData.models,
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
-  useApiKey: apiData.api_key_masked != null, // "***" = has key stored, checkbox checked
+  useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
   forward_all_with_prefix: apiData.forward_all_with_prefix || false,
 });
 
@@ -218,18 +214,18 @@ export const convertApiToForm = (apiData: ApiModelResponse): ApiModelFormData =>
  * @param apiData - The API model response from the backend
  * @returns Update form data with correct checkbox states
  *
- * Note: api_key_masked semantics:
- * - "***": API key is stored → checkbox CHECKED (has key)
- * - null: No API key stored → checkbox UNCHECKED (no key)
+ * Note: has_api_key semantics:
+ * - true: API key is stored → checkbox CHECKED (has key)
+ * - false: No API key stored → checkbox UNCHECKED (no key)
  */
-export const convertApiToUpdateForm = (apiData: ApiModelResponse): UpdateApiModelFormData => ({
+export const convertApiToUpdateForm = (apiData: ApiModelOutput): UpdateApiModelFormData => ({
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',
   models: apiData.models,
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
-  useApiKey: apiData.api_key_masked != null, // "***" = has key stored, checkbox checked
+  useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
   forward_all_with_prefix: apiData.forward_all_with_prefix || false,
 });
 

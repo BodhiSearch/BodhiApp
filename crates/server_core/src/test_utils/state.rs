@@ -1,7 +1,8 @@
-use crate::{ContextError, DefaultRouterState, MockSharedContext, ServerFactory};
+use crate::ServerFactory;
 use llama_server_proc::{LlamaServerArgs, Server};
 use rstest::fixture;
 use services::test_utils::{app_service_stub, AppServiceStub};
+use services::AppService;
 use std::{
   path::Path,
   sync::{Arc, Mutex},
@@ -9,11 +10,8 @@ use std::{
 
 #[fixture]
 #[awt]
-pub async fn router_state_stub(#[future] app_service_stub: AppServiceStub) -> DefaultRouterState {
-  DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service_stub),
-  )
+pub async fn router_state_stub(#[future] app_service_stub: AppServiceStub) -> Arc<dyn AppService> {
+  Arc::new(app_service_stub)
 }
 
 #[derive(Debug)]
@@ -40,7 +38,7 @@ impl ServerFactory for ServerFactoryStub {
     &self,
     _executable_path: &Path,
     _server_args: &LlamaServerArgs,
-  ) -> Result<Box<dyn Server>, ContextError> {
+  ) -> Result<Box<dyn Server>, crate::ContextError> {
     Ok(self.servers.lock().unwrap().pop().unwrap())
   }
 }

@@ -1,34 +1,7 @@
 use serde::{Deserialize, Serialize};
 use services::Toolset;
-use services::UserScope;
-use services::{AppAccessRequestStatus, ApprovedResources, FlowType, RequestedResources};
+use services::{AppAccessRequestStatus, FlowType, RequestedResources};
 use utoipa::ToSchema;
-
-// Request body for POST /apps/request-access
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(example = json!({
-    "app_client_id": "my-app-client",
-    "flow_type": "redirect",
-    "redirect_url": "https://myapp.com/callback",
-    "requested_role": "scope_user_user",
-    "requested": {
-        "toolset_types": [
-            {"toolset_type": "builtin-exa-search"}
-        ]
-    }
-}))]
-pub struct CreateAccessRequestBody {
-  /// App client ID from Keycloak
-  pub app_client_id: String,
-  /// Flow type: "redirect" or "popup"
-  pub flow_type: FlowType,
-  /// Redirect URL for result notification (required for redirect flow)
-  pub redirect_url: Option<String>,
-  /// Role requested for the external app (scope_user_user or scope_user_power_user)
-  pub requested_role: UserScope,
-  /// Resources requested (tools, etc.)
-  pub requested: Option<RequestedResources>,
-}
 
 // Response for POST /apps/request-access
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -126,32 +99,4 @@ pub struct AccessRequestActionResponse {
   /// Redirect URL (present for redirect flow)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub redirect_url: Option<String>,
-}
-
-// Request body for PUT /access-requests/:id/approve
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(example = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-        "toolsets": [
-            {
-                "toolset_type": "builtin-exa-search",
-                "status": "approved",
-                "instance": {"id": "instance-uuid"}
-            }
-        ],
-        "mcps": [
-            {
-                "url": "https://mcp.deepwiki.com/mcp",
-                "status": "approved",
-                "instance": {"id": "instance-uuid"}
-            }
-        ]
-    }
-}))]
-pub struct ApproveAccessRequestBody {
-  /// Role to grant for the approved request (scope_user_user or scope_user_power_user)
-  pub approved_role: UserScope,
-  /// Approved resources with selections
-  pub approved: ApprovedResources,
 }

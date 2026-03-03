@@ -1,9 +1,8 @@
 import {
   AppToolsetConfig,
   ToolsetResponse,
-  CreateToolsetRequest,
-  UpdateToolsetRequest,
-  ApiKeyUpdateDto,
+  ToolsetRequest,
+  ApiKeyUpdate,
   ListToolsetsResponse,
   ToolsetDefinition,
   ListToolsetTypesResponse,
@@ -19,15 +18,7 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 type ErrorResponse = OpenAiApiError;
 
 // Re-export types for consumers
-export type {
-  ToolsetResponse,
-  CreateToolsetRequest,
-  UpdateToolsetRequest,
-  ApiKeyUpdateDto,
-  ToolsetDefinition,
-  ToolDefinition,
-  AppToolsetConfig,
-};
+export type { ToolsetResponse, ToolsetRequest, ApiKeyUpdate, ToolsetDefinition, ToolDefinition, AppToolsetConfig };
 
 // ============================================================================
 // Endpoints
@@ -69,10 +60,10 @@ export function useToolset(
 export function useCreateToolset(options?: {
   onSuccess?: (toolset: ToolsetResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<ToolsetResponse>, AxiosError<ErrorResponse>, CreateToolsetRequest> {
+}): UseMutationResult<AxiosResponse<ToolsetResponse>, AxiosError<ErrorResponse>, ToolsetRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<ToolsetResponse, CreateToolsetRequest>(() => TOOLSETS_ENDPOINT, 'post', {
+  return useMutationQuery<ToolsetResponse, ToolsetRequest>(() => TOOLSETS_ENDPOINT, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(['toolsets']);
       options?.onSuccess?.(response.data);
@@ -90,14 +81,10 @@ export function useCreateToolset(options?: {
 export function useUpdateToolset(options?: {
   onSuccess?: (toolset: ToolsetResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<
-  AxiosResponse<ToolsetResponse>,
-  AxiosError<ErrorResponse>,
-  UpdateToolsetRequest & { id: string }
-> {
+}): UseMutationResult<AxiosResponse<ToolsetResponse>, AxiosError<ErrorResponse>, ToolsetRequest & { id: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<ToolsetResponse, UpdateToolsetRequest & { id: string }>(
+  return useMutationQuery<ToolsetResponse, ToolsetRequest & { id: string }>(
     ({ id }) => `${TOOLSETS_ENDPOINT}/${id}`,
     'put',
     {

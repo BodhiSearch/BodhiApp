@@ -1,23 +1,25 @@
 #![allow(dead_code)]
 
-use auth_middleware::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use cookie::Cookie;
+use routes_app::middleware::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use rstest::fixture;
 use serde_json::Value;
 use serde_yaml::Value as YamlValue;
 use server_app::{ServeCommand, ServerShutdownHandle};
+use server_core::{DefaultSharedContext, StandaloneInferenceService};
 use services::test_utils::TEST_CLIENT_ID;
 use services::{
   db::{DbCore, DefaultDbService, DefaultTimeService},
   hash_key,
+  inference::InferenceService,
   test_utils::{
     access_token_claims, build_token, test_auth_service, OfflineHubService, StubNetworkService,
     StubQueue,
   },
-  AppInstanceService, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
-  DefaultAppInstanceService, DefaultAppService, DefaultEnvWrapper, DefaultExaService,
-  DefaultMcpService, DefaultSessionService, DefaultSettingService, DefaultToolService, EnvWrapper,
-  HfHubService, LocalConcurrencyService, LocalDataService, MokaCacheService, SettingService,
+  AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService, DefaultAppService,
+  DefaultEnvWrapper, DefaultExaService, DefaultMcpService, DefaultSessionService,
+  DefaultSettingService, DefaultTenantService, DefaultToolService, EnvWrapper, HfHubService,
+  LocalConcurrencyService, LocalDataService, MokaCacheService, SettingService, TenantService,
   BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH,
   BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
 };
@@ -166,10 +168,10 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let resource_client_secret = std::env::var("INTEG_TEST_RESOURCE_CLIENT_SECRET")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_SECRET not set"))?;
 
-  // Create app instance service with registration
-  let app_instance_service = DefaultAppInstanceService::new(db_service.clone());
-  app_instance_service
-    .create_instance(
+  // Create tenant service with registration
+  let tenant_service = DefaultTenantService::new(db_service.clone());
+  tenant_service
+    .create_tenant(
       &resource_client_id,
       &resource_client_secret,
       AppStatus::Ready,
@@ -203,7 +205,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let cache_service = Arc::new(MokaCacheService::default());
 
   // Build AI API service
-  let ai_api_service = Arc::new(DefaultAiApiService::with_db_service(db_service.clone()));
+  let ai_api_service = Arc::new(DefaultAiApiService::new());
 
   // Build concurrency service
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
@@ -220,7 +222,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     exa_service,
     time_service.clone(),
   ));
-  let app_instance_service = Arc::new(app_instance_service);
+  let tenant_service: Arc<dyn TenantService> = Arc::new(tenant_service);
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
     auth_service.clone(),
@@ -242,8 +244,25 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   ));
 
   // Build DefaultAppService with all services in correct order
-  let token_service: Arc<dyn services::TokenService> =
-    Arc::new(services::DefaultTokenService::new(db_service.clone(), time_service.clone()));
+  let token_service: Arc<dyn services::TokenService> = Arc::new(
+    services::DefaultTokenService::new(db_service.clone(), time_service.clone()),
+  );
+  let ctx = Arc::new(DefaultSharedContext::new(hub_service.clone(), setting_service.clone()).await);
+  let keep_alive_secs = setting_service.keep_alive().await;
+  let inference_service: Arc<dyn InferenceService> = Arc::new(StandaloneInferenceService::new(
+    ctx,
+    ai_api_service.clone(),
+    keep_alive_secs,
+  ));
+  let api_model_service: Arc<dyn services::ApiModelService> =
+    Arc::new(services::DefaultApiModelService::new(
+      db_service.clone(),
+      time_service.clone(),
+      ai_api_service.clone(),
+    ));
+  let download_service: Arc<dyn services::DownloadService> = Arc::new(
+    services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
+  );
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -251,7 +270,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     auth_service,
     db_service,
     session_service,
-    app_instance_service,
+    tenant_service,
     cache_service,
     time_service,
     ai_api_service,
@@ -262,6 +281,9 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     access_request_service,
     mcp_service,
     token_service,
+    inference_service,
+    api_model_service,
+    download_service,
   );
 
   Ok(Arc::new(app_service))
@@ -311,10 +333,10 @@ pub async fn get_oauth_tokens(app_service: &dyn AppService) -> anyhow::Result<(S
   let auth_url = setting_service.auth_url().await;
   let realm = setting_service.auth_realm().await;
   let instance = app_service
-    .app_instance_service()
-    .get_instance()
+    .tenant_service()
+    .get_standalone_app()
     .await?
-    .expect("AppInstance is not set");
+    .expect("Tenant is not set");
   let client_id = instance.client_id;
   let client_secret = instance.client_secret;
   let username = std::env::var("INTEG_TEST_USERNAME")
@@ -516,10 +538,10 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     db_service.clone(),
   );
 
-  // Create app instance service with test app registration (no real Keycloak client)
-  let app_instance_service = DefaultAppInstanceService::new(db_service.clone());
-  app_instance_service
-    .create_instance(
+  // Create tenant service with test app registration (no real Keycloak client)
+  let tenant_service = DefaultTenantService::new(db_service.clone());
+  tenant_service
+    .create_tenant(
       "test-resource-client",
       "test-resource-secret",
       AppStatus::Ready,
@@ -547,7 +569,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   // Auth service uses fake URL — never called (cache is seeded by ExternalTokenSimulator)
   let auth_service = Arc::new(test_auth_service(&auth_server_url));
   let cache_service = Arc::new(MokaCacheService::default());
-  let ai_api_service = Arc::new(DefaultAiApiService::with_db_service(db_service.clone()));
+  let ai_api_service = Arc::new(DefaultAiApiService::new());
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
   let queue_producer: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
   let exa_service = Arc::new(DefaultExaService::new());
@@ -556,7 +578,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     exa_service,
     time_service.clone(),
   ));
-  let app_instance_service = Arc::new(app_instance_service);
+  let tenant_service: Arc<dyn TenantService> = Arc::new(tenant_service);
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
     auth_service.clone(),
@@ -575,8 +597,25 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     time_service.clone(),
   ));
 
-  let token_service: Arc<dyn services::TokenService> =
-    Arc::new(services::DefaultTokenService::new(db_service.clone(), time_service.clone()));
+  let token_service: Arc<dyn services::TokenService> = Arc::new(
+    services::DefaultTokenService::new(db_service.clone(), time_service.clone()),
+  );
+  let ctx = Arc::new(DefaultSharedContext::new(hub_service.clone(), setting_service.clone()).await);
+  let keep_alive_secs = setting_service.keep_alive().await;
+  let inference_service: Arc<dyn InferenceService> = Arc::new(StandaloneInferenceService::new(
+    ctx,
+    ai_api_service.clone(),
+    keep_alive_secs,
+  ));
+  let api_model_service: Arc<dyn services::ApiModelService> =
+    Arc::new(services::DefaultApiModelService::new(
+      db_service.clone(),
+      time_service.clone(),
+      ai_api_service.clone(),
+    ));
+  let download_service: Arc<dyn services::DownloadService> = Arc::new(
+    services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
+  );
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -584,7 +623,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     auth_service,
     db_service,
     session_service,
-    app_instance_service,
+    tenant_service,
     cache_service,
     time_service,
     ai_api_service,
@@ -595,6 +634,9 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     access_request_service,
     mcp_service,
     token_service,
+    inference_service,
+    api_model_service,
+    download_service,
   );
 
   Ok(Arc::new(app_service))
@@ -651,10 +693,10 @@ pub async fn create_test_session_for_live_server(
   claims["resource_access"][TEST_CLIENT_ID]["roles"] = serde_json::json!(roles);
 
   // Also set roles under the actual client_id used by setup_test_app_service,
-  // since the token service resolves client_id from app_instance_service.get_instance()
+  // since the token service resolves client_id from tenant_service.get_standalone_app()
   let actual_client_id = app_service
-    .app_instance_service()
-    .get_instance()
+    .tenant_service()
+    .get_standalone_app()
     .await?
     .map(|inst| inst.client_id)
     .unwrap_or_else(|| TEST_CLIENT_ID.to_string());

@@ -13,7 +13,7 @@ import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2, typedHttp } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
-import { ApiModelResponse } from '@bodhiapp/ts-client';
+import { ApiModelOutput } from '@bodhiapp/ts-client';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -77,11 +77,11 @@ beforeEach(() => {
   mockToast.mockClear();
 });
 
-const mockApiModelResponse: ApiModelResponse = {
+const mockApiModelOutput: ApiModelOutput = {
   id: 'test-api-model',
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
-  api_key_masked: '***', // Has API key
+  has_api_key: true, // Has API key
   models: ['gpt-4', 'gpt-3.5-turbo'],
   prefix: null,
   forward_all_with_prefix: false,
@@ -111,7 +111,7 @@ async function renderCreateFormWithoutApiKey() {
 async function renderEditFormUsingStoredCreds() {
   const user = userEvent.setup();
   await act(async () => {
-    render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
+    render(<ApiModelForm mode="edit" initialData={mockApiModelOutput} />, {
       wrapper: createWrapper(),
     });
   });
@@ -137,8 +137,8 @@ describe('ApiModelForm', () => {
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn(undefined),
       ...mockApiFormats({ data: ['openai'] }),
-      ...mockCreateApiModel(mockApiModelResponse),
-      ...mockUpdateApiModel('test-api-model', mockApiModelResponse),
+      ...mockCreateApiModel(mockApiModelOutput),
+      ...mockUpdateApiModel('test-api-model', mockApiModelOutput),
       ...mockFetchApiModels({ models: ['gpt-4', 'gpt-3.5-turbo'] }),
       ...mockTestApiModel({ success: true, response: 'Test successful!' })
     );
@@ -248,7 +248,7 @@ describe('ApiModelForm', () => {
     it('creates API model successfully', async () => {
       const user = userEvent.setup();
 
-      server.use(...mockCreateApiModel(mockApiModelResponse));
+      server.use(...mockCreateApiModel(mockApiModelOutput));
 
       await act(async () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
@@ -307,27 +307,21 @@ describe('ApiModelForm', () => {
     describe('API key field initialization', () => {
       it.each([
         {
-          description: 'when api_key_masked is "***" (has stored key)',
-          apiKeyMasked: '***' as const,
+          description: 'when has_api_key is true (has stored key)',
+          hasApiKey: true,
           checkboxChecked: true,
           inputDisabled: false,
         },
         {
-          description: 'when api_key_masked is null (no stored key)',
-          apiKeyMasked: null,
+          description: 'when has_api_key is false (no stored key)',
+          hasApiKey: false,
           checkboxChecked: false,
           inputDisabled: true,
         },
-        {
-          description: 'when api_key_masked is undefined (no stored key)',
-          apiKeyMasked: undefined,
-          checkboxChecked: false,
-          inputDisabled: true,
-        },
-      ])('renders API key field correctly $description', async ({ apiKeyMasked, checkboxChecked, inputDisabled }) => {
-        const testData: ApiModelResponse = {
-          ...mockApiModelResponse,
-          api_key_masked: apiKeyMasked,
+      ])('renders API key field correctly $description', async ({ hasApiKey, checkboxChecked, inputDisabled }) => {
+        const testData: ApiModelOutput = {
+          ...mockApiModelOutput,
+          has_api_key: hasApiKey,
           prefix: null,
         };
 
@@ -375,9 +369,9 @@ describe('ApiModelForm', () => {
       ])(
         'renders prefix field correctly $description',
         async ({ prefix, checkboxChecked, inputDisabled, inputValue }) => {
-          const testData: ApiModelResponse = {
-            ...mockApiModelResponse,
-            api_key_masked: '***',
+          const testData: ApiModelOutput = {
+            ...mockApiModelOutput,
+            has_api_key: true,
             prefix,
           };
 
@@ -413,13 +407,13 @@ describe('ApiModelForm', () => {
           response: 'Test successful with stored credentials',
         }),
         ...mockUpdateApiModel('test-api-model', {
-          ...mockApiModelResponse,
+          ...mockApiModelOutput,
           models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'],
         })
       );
 
       await act(async () => {
-        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
+        render(<ApiModelForm mode="edit" initialData={mockApiModelOutput} />, {
           wrapper: createWrapper(),
         });
       });
@@ -515,7 +509,7 @@ describe('ApiModelForm', () => {
 
         server.use(
           ...mockCreateApiModel({
-            ...mockApiModelResponse,
+            ...mockApiModelOutput,
             prefix: 'azure/',
           })
         );
@@ -549,7 +543,7 @@ describe('ApiModelForm', () => {
 
         server.use(
           ...mockCreateApiModel({
-            ...mockApiModelResponse,
+            ...mockApiModelOutput,
             prefix: null,
           })
         );
@@ -582,14 +576,14 @@ describe('ApiModelForm', () => {
     describe('Edit Mode', () => {
       it('updates prefix value', async () => {
         const user = userEvent.setup();
-        const dataWithPrefix: ApiModelResponse = {
-          ...mockApiModelResponse,
+        const dataWithPrefix: ApiModelOutput = {
+          ...mockApiModelOutput,
           prefix: 'azure/',
         };
 
         server.use(
           ...mockUpdateApiModel('test-api-model', {
-            ...mockApiModelResponse,
+            ...mockApiModelOutput,
             prefix: 'openai:',
           })
         );
@@ -621,14 +615,14 @@ describe('ApiModelForm', () => {
 
       it('removes prefix by unchecking checkbox', async () => {
         const user = userEvent.setup();
-        const dataWithPrefix: ApiModelResponse = {
-          ...mockApiModelResponse,
+        const dataWithPrefix: ApiModelOutput = {
+          ...mockApiModelOutput,
           prefix: 'azure/',
         };
 
         server.use(
           ...mockUpdateApiModel('test-api-model', {
-            ...mockApiModelResponse,
+            ...mockApiModelOutput,
             prefix: null,
           })
         );
@@ -660,14 +654,14 @@ describe('ApiModelForm', () => {
 
       it('keeps prefix unchanged when checkbox stays checked', async () => {
         const user = userEvent.setup();
-        const dataWithPrefix: ApiModelResponse = {
-          ...mockApiModelResponse,
+        const dataWithPrefix: ApiModelOutput = {
+          ...mockApiModelOutput,
           prefix: 'azure/',
         };
 
         server.use(
           ...mockUpdateApiModel('test-api-model', {
-            ...mockApiModelResponse,
+            ...mockApiModelOutput,
             prefix: 'azure/',
           })
         );
@@ -711,8 +705,8 @@ describe('ApiModelForm', () => {
             response: 'Test successful without API key',
           }),
           ...mockCreateApiModel({
-            ...mockApiModelResponse,
-            api_key_masked: null,
+            ...mockApiModelOutput,
+            has_api_key: false,
           })
         );
 
@@ -775,7 +769,7 @@ describe('ApiModelForm', () => {
       it.each([
         {
           description: 'sends {action: "set", value: "new-key"} when updating existing key with new value',
-          initialApiKeyMasked: '***' as const,
+          initialHasApiKey: true,
           userActions: {
             toggleCheckbox: false, // Keep checkbox checked
             typeNewKey: 'sk-new-key-456',
@@ -784,7 +778,7 @@ describe('ApiModelForm', () => {
         },
         {
           description: 'sends {action: "set", value: null} when clearing existing key by unchecking checkbox',
-          initialApiKeyMasked: '***' as const,
+          initialHasApiKey: true,
           userActions: {
             toggleCheckbox: true, // Uncheck to remove key
             typeNewKey: undefined,
@@ -793,7 +787,7 @@ describe('ApiModelForm', () => {
         },
         {
           description: 'sends {action: "keep"} when keeping existing key unchanged',
-          initialApiKeyMasked: '***' as const,
+          initialHasApiKey: true,
           userActions: {
             toggleCheckbox: false, // Keep checkbox checked
             typeNewKey: undefined, // Don't type anything
@@ -802,7 +796,7 @@ describe('ApiModelForm', () => {
         },
         {
           description: 'sends {action: "set", value: "new-key"} when adding key to model without existing key',
-          initialApiKeyMasked: null,
+          initialHasApiKey: false,
           userActions: {
             toggleCheckbox: true, // Check to enable input
             typeNewKey: 'sk-new-key-789',
@@ -811,18 +805,18 @@ describe('ApiModelForm', () => {
         },
         {
           description: 'sends {action: "set", value: null} when keeping model without key unchanged',
-          initialApiKeyMasked: null,
+          initialHasApiKey: false,
           userActions: {
             toggleCheckbox: false, // Keep unchecked
             typeNewKey: undefined,
           },
           expectedApiKeyRequest: { action: 'set', value: null },
         },
-      ])('$description', async ({ initialApiKeyMasked, userActions, expectedApiKeyRequest }) => {
+      ])('$description', async ({ initialHasApiKey, userActions, expectedApiKeyRequest }) => {
         const user = userEvent.setup();
-        const testData: ApiModelResponse = {
-          ...mockApiModelResponse,
-          api_key_masked: initialApiKeyMasked,
+        const testData: ApiModelOutput = {
+          ...mockApiModelOutput,
+          has_api_key: initialHasApiKey,
         };
 
         // Capture the request body using MSW handler
@@ -836,8 +830,8 @@ describe('ApiModelForm', () => {
             capturedRequestBody = await request.json();
 
             return response(200 as const).json({
-              ...mockApiModelResponse,
-              api_key_masked: initialApiKeyMasked,
+              ...mockApiModelOutput,
+              has_api_key: initialHasApiKey,
             });
           })
         );
@@ -882,7 +876,7 @@ describe('ApiModelForm', () => {
         const user = userEvent.setup();
 
         await act(async () => {
-          render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
+          render(<ApiModelForm mode="edit" initialData={mockApiModelOutput} />, {
             wrapper: createWrapper(),
           });
         });
@@ -914,7 +908,7 @@ describe('ApiModelForm', () => {
         );
 
         await act(async () => {
-          render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
+          render(<ApiModelForm mode="edit" initialData={mockApiModelOutput} />, {
             wrapper: createWrapper(),
           });
         });

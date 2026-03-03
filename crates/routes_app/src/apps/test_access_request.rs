@@ -1,23 +1,22 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::{
   apps::AccessRequestActionResponse, apps_approve_access_request, apps_deny_access_request,
   ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
 };
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{body::Body, http::StatusCode, routing::put};
 use axum::{routing::post, Router};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
-use server_core::{
-  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
-};
+use server_core::test_utils::ResponseTestExt;
 use services::AppAccessRequestStatus;
+use services::AuthContext;
 use services::ResourceRole;
 use services::{
-  test_utils::{AppServiceStubBuilder, FrozenTimeService},
+  test_utils::{AppServiceStubBuilder, FrozenTimeService, TEST_TENANT_ID},
   DbService, DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService,
-  RegisterAccessRequestConsentResponse, {AppAccessRequestRow, FlowType, ToolsetRow},
+  RegisterAccessRequestConsentResponse, {AppAccessRequest, FlowType},
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -27,7 +26,7 @@ use tower::ServiceExt;
 // ============================================================================
 
 struct TestHarness {
-  state: Arc<dyn RouterState>,
+  state: Arc<dyn services::AppService>,
   db_service: Arc<dyn DbService>,
 }
 
@@ -47,9 +46,7 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
   ));
 
   // Real AccessRequestService backed by same DB + mock auth
-  builder
-    .with_app_instance(services::AppInstance::test_default())
-    .await;
+  builder.with_tenant(services::Tenant::test_default()).await;
   let access_request_service: Arc<dyn services::AccessRequestService> =
     Arc::new(DefaultAccessRequestService::new(
       db_service.clone(),
@@ -65,10 +62,7 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   Ok(TestHarness { state, db_service })
 }
@@ -83,10 +77,11 @@ async fn seed_draft_request(
   flow_type: FlowType,
   redirect_uri: Option<&str>,
   requested_role: &str,
-) -> anyhow::Result<AppAccessRequestRow> {
+) -> anyhow::Result<AppAccessRequest> {
   let now = chrono::Utc::now();
-  let row = AppAccessRequestRow {
+  let row = AppAccessRequest {
     id: request_id.to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     app_client_id: "test-app-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -104,7 +99,8 @@ async fn seed_draft_request(
     created_at: now,
     updated_at: now,
   };
-  Ok(db_service.create(&row).await?)
+  let result = db_service.create(&row).await?;
+  Ok(result)
 }
 
 async fn seed_toolset_instance(
@@ -115,8 +111,9 @@ async fn seed_toolset_instance(
   has_api_key: bool,
 ) -> anyhow::Result<()> {
   let now = chrono::Utc::now();
-  let row = ToolsetRow {
+  let row = services::ToolsetEntity {
     id: instance_id.to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     user_id: user_id.to_string(),
     toolset_type: "builtin-exa-search".to_string(),
     slug: "my-exa-instance".to_string(),
@@ -140,7 +137,7 @@ async fn seed_toolset_instance(
     created_at: now,
     updated_at: now,
   };
-  db_service.create_toolset(&row).await?;
+  db_service.create_toolset(TEST_TENANT_ID, &row).await?;
   Ok(())
 }
 

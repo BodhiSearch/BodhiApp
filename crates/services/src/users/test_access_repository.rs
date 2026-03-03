@@ -1,5 +1,5 @@
 use crate::{
-  test_utils::{sea_context, setup_env},
+  test_utils::{sea_context, setup_env, TEST_TENANT_ID},
   users::AccessRepository,
   UserAccessRequestStatus,
 };
@@ -22,7 +22,7 @@ async fn test_insert_and_get_pending_request(
 
   let inserted = ctx
     .service
-    .insert_pending_request(username.clone(), user_id.clone())
+    .insert_pending_request(TEST_TENANT_ID, username.clone(), user_id.clone())
     .await?;
 
   assert!(!inserted.id.is_empty());
@@ -33,7 +33,10 @@ async fn test_insert_and_get_pending_request(
   assert_eq!(ctx.now, inserted.created_at);
   assert_eq!(ctx.now, inserted.updated_at);
 
-  let fetched = ctx.service.get_pending_request(user_id).await?;
+  let fetched = ctx
+    .service
+    .get_pending_request(TEST_TENANT_ID, user_id)
+    .await?;
   assert!(fetched.is_some());
   assert_eq!(inserted, fetched.unwrap());
 
@@ -51,14 +54,24 @@ async fn test_get_request_by_id(
   let ctx = sea_context(db_type).await;
   let inserted = ctx
     .service
-    .insert_pending_request("test@example.com".to_string(), "user-001".to_string())
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "test@example.com".to_string(),
+      "user-001".to_string(),
+    )
     .await?;
 
-  let fetched = ctx.service.get_request_by_id(&inserted.id).await?;
+  let fetched = ctx
+    .service
+    .get_request_by_id(TEST_TENANT_ID, &inserted.id)
+    .await?;
   assert!(fetched.is_some());
   assert_eq!(inserted, fetched.unwrap());
 
-  let not_found = ctx.service.get_request_by_id("nonexistent-id").await?;
+  let not_found = ctx
+    .service
+    .get_request_by_id(TEST_TENANT_ID, "nonexistent-id")
+    .await?;
   assert!(not_found.is_none());
 
   Ok(())
@@ -83,15 +96,21 @@ async fn test_list_pending_requests(
   for (username, user_id) in &test_data {
     ctx
       .service
-      .insert_pending_request(username.to_string(), user_id.to_string())
+      .insert_pending_request(TEST_TENANT_ID, username.to_string(), user_id.to_string())
       .await?;
   }
 
-  let (page1, total) = ctx.service.list_pending_requests(1, 2).await?;
+  let (page1, total) = ctx
+    .service
+    .list_pending_requests(TEST_TENANT_ID, 1, 2)
+    .await?;
   assert_eq!(3, total);
   assert_eq!(2, page1.len());
 
-  let (page2, total) = ctx.service.list_pending_requests(2, 2).await?;
+  let (page2, total) = ctx
+    .service
+    .list_pending_requests(TEST_TENANT_ID, 2, 2)
+    .await?;
   assert_eq!(3, total);
   assert_eq!(1, page2.len());
 
@@ -116,27 +135,40 @@ async fn test_list_all_requests(
 
   let inserted = ctx
     .service
-    .insert_pending_request("test1@example.com".to_string(), "user-001".to_string())
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "test1@example.com".to_string(),
+      "user-001".to_string(),
+    )
     .await?;
+
   ctx
     .service
-    .insert_pending_request("test2@example.com".to_string(), "user-002".to_string())
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "test2@example.com".to_string(),
+      "user-002".to_string(),
+    )
     .await?;
 
   ctx
     .service
     .update_request_status(
+      TEST_TENANT_ID,
       &inserted.id,
       UserAccessRequestStatus::Approved,
       "admin@example.com".to_string(),
     )
     .await?;
 
-  let (pending, pending_total) = ctx.service.list_pending_requests(1, 10).await?;
+  let (pending, pending_total) = ctx
+    .service
+    .list_pending_requests(TEST_TENANT_ID, 1, 10)
+    .await?;
   assert_eq!(1, pending_total);
   assert_eq!(1, pending.len());
 
-  let (all, all_total) = ctx.service.list_all_requests(1, 10).await?;
+  let (all, all_total) = ctx.service.list_all_requests(TEST_TENANT_ID, 1, 10).await?;
   assert_eq!(2, all_total);
   assert_eq!(2, all.len());
 
@@ -155,12 +187,17 @@ async fn test_update_request_status(
 
   let inserted = ctx
     .service
-    .insert_pending_request("test@example.com".to_string(), "user-001".to_string())
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "test@example.com".to_string(),
+      "user-001".to_string(),
+    )
     .await?;
 
   ctx
     .service
     .update_request_status(
+      TEST_TENANT_ID,
       &inserted.id,
       UserAccessRequestStatus::Approved,
       "admin@example.com".to_string(),
@@ -169,7 +206,7 @@ async fn test_update_request_status(
 
   let updated = ctx
     .service
-    .get_request_by_id(&inserted.id)
+    .get_request_by_id(TEST_TENANT_ID, &inserted.id)
     .await?
     .expect("Request should exist");
 
@@ -179,7 +216,7 @@ async fn test_update_request_status(
 
   let pending = ctx
     .service
-    .get_pending_request("user-001".to_string())
+    .get_pending_request(TEST_TENANT_ID, "user-001".to_string())
     .await?;
   assert!(pending.is_none());
 

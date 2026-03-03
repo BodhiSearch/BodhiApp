@@ -19,11 +19,14 @@ pub use mcp_client::McpTool;
 pub use mcp_objs::*;
 pub use mcp_service::*;
 
-pub use mcp_auth_header_entity::McpAuthHeaderRow;
-pub use mcp_entity::{McpRow, McpWithServerRow};
-pub use mcp_oauth_config_entity::McpOAuthConfigRow;
-pub use mcp_oauth_token_entity::McpOAuthTokenRow;
-pub use mcp_server_entity::McpServerRow;
+pub use mcp_auth_header_entity::{McpAuthHeaderEntity, McpAuthHeaderRow};
+pub use mcp_entity::{McpEntity, McpRow, McpWithServerEntity};
+pub use mcp_oauth_config_entity::{McpOAuthConfigEntity, McpOAuthConfigRow};
+pub use mcp_oauth_token_entity::{McpOAuthTokenEntity, McpOAuthTokenRow};
+pub use mcp_server_entity::{McpServerEntity, McpServerRow};
+
+// Backward-compatible alias
+pub type McpWithServerRow = McpWithServerEntity;
 
 pub use mcp_auth_repository::McpAuthRepository;
 pub use mcp_instance_repository::McpInstanceRepository;

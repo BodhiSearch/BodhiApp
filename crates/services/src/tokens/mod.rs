@@ -7,7 +7,7 @@ mod token_objs;
 mod token_repository;
 mod token_service;
 
-pub use api_token_entity::ApiToken;
+pub use api_token_entity::TokenEntity;
 pub use error::*;
 pub use token_objs::*;
 pub use token_repository::*;

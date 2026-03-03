@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 
-import { ApiTokenResponse } from '@bodhiapp/ts-client';
+import { TokenCreated } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -24,7 +24,7 @@ export const createTokenSchema = z.object({
 export type TokenFormData = z.infer<typeof createTokenSchema>;
 
 interface TokenFormProps {
-  onTokenCreated: (token: ApiTokenResponse) => void;
+  onTokenCreated: (token: TokenCreated) => void;
 }
 
 export function TokenForm({ onTokenCreated }: TokenFormProps) {

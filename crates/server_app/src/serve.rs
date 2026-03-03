@@ -1,17 +1,16 @@
 use crate::{
-  build_server_handle, shutdown_signal, ServerError, ServerHandle, ServerKeepAlive,
-  ShutdownCallback, TaskJoinError, VariantChangeListener,
+  build_server_handle, shutdown_signal, ServerError, ServerHandle, ShutdownCallback, TaskJoinError,
+  VariantChangeListener,
 };
 use axum::Router;
 use include_dir::Dir;
 use routes_app::build_routes;
-use server_core::{ContextError, DefaultSharedContext, SharedContext};
 use services::{impl_error_from, AppError, ErrorType};
-use services::{AppService, SettingServiceError};
+use services::{AppService, SettingServiceError, BODHI_KEEP_ALIVE_SECS, DEFAULT_KEEP_ALIVE_SECS};
+use services::{SettingSource, SettingsChangeListener};
 use std::sync::Arc;
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
 use tower_serve_static::ServeDir;
-use tracing::error;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -20,8 +19,6 @@ pub enum ServeError {
   Setting(#[from] SettingServiceError),
   #[error(transparent)]
   Join(#[from] TaskJoinError),
-  #[error(transparent)]
-  Context(#[from] ContextError),
   #[error(transparent)]
   Server(#[from] ServerError),
   #[error("Server started but readiness signal not received.")]
@@ -38,16 +35,45 @@ pub enum ServeCommand {
   ByParams { host: String, port: u16 },
 }
 
-pub struct ShutdownContextCallback {
-  ctx: Arc<dyn SharedContext>,
+pub struct ShutdownInferenceCallback {
+  app_service: Arc<dyn AppService>,
 }
 
 #[async_trait::async_trait]
-impl ShutdownCallback for ShutdownContextCallback {
+impl ShutdownCallback for ShutdownInferenceCallback {
   async fn shutdown(&self) {
-    if let Err(err) = self.ctx.stop().await {
-      tracing::warn!(err = ?err, "error stopping llama context");
+    if let Err(err) = self.app_service.inference_service().stop().await {
+      tracing::warn!(err = ?err, "error stopping inference service");
     }
+  }
+}
+
+/// Listener that forwards keep-alive setting changes to InferenceService.
+#[derive(Debug)]
+struct KeepAliveSettingListener {
+  app_service: Arc<dyn AppService>,
+}
+
+impl SettingsChangeListener for KeepAliveSettingListener {
+  fn on_change(
+    &self,
+    key: &str,
+    _prev_value: &Option<serde_yaml::Value>,
+    _prev_source: &SettingSource,
+    new_value: &Option<serde_yaml::Value>,
+    _new_source: &SettingSource,
+  ) {
+    if key != BODHI_KEEP_ALIVE_SECS {
+      return;
+    }
+    let new_keep_alive = new_value
+      .as_ref()
+      .and_then(|v| v.as_i64())
+      .unwrap_or(DEFAULT_KEEP_ALIVE_SECS);
+    let inference = self.app_service.inference_service();
+    tokio::task::spawn(async move {
+      inference.set_keep_alive(new_keep_alive).await;
+    });
   }
 }
 
@@ -99,25 +125,17 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let exec_path = service.setting_service().exec_path_from().await;
-    if !exec_path.exists() {
-      error!("exec not found at {}", exec_path.to_string_lossy());
-      return Err(ContextError::ExecNotExists(
-        exec_path.to_string_lossy().to_string(),
-      ))?;
-    }
-    let ctx = DefaultSharedContext::new(service.hub_service(), service.setting_service()).await;
-    let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
+    // Register variant change and keep-alive listeners via InferenceService
     setting_service
-      .add_listener(Arc::new(VariantChangeListener::new(ctx.clone())))
+      .add_listener(Arc::new(VariantChangeListener::new(
+        service.inference_service(),
+      )))
       .await;
-
-    let keep_alive = Arc::new(ServerKeepAlive::new(
-      ctx.clone(),
-      setting_service.keep_alive().await,
-    ));
-    setting_service.add_listener(keep_alive.clone()).await;
-    ctx.add_state_listener(keep_alive).await;
+    setting_service
+      .add_listener(Arc::new(KeepAliveSettingListener {
+        app_service: service.clone(),
+      }))
+      .await;
 
     // Create static router from directory if provided
     let static_router = static_dir.map(|dir| {
@@ -125,13 +143,15 @@ impl ServeCommand {
       Router::new().fallback_service(static_service)
     });
 
-    let app = build_routes(ctx.clone(), service, static_router).await;
+    let app = build_routes(service.clone(), static_router).await;
     let scheme = setting_service.scheme().await;
     let server_url = format!("{scheme}://{host}:{port}");
     let public_url = setting_service.public_server_url().await;
 
     let join_handle: JoinHandle<std::result::Result<(), ServeError>> = tokio::spawn(async move {
-      let callback = Box::new(ShutdownContextCallback { ctx });
+      let callback = Box::new(ShutdownInferenceCallback {
+        app_service: service,
+      });
       match server.start_new(app, Some(callback)).await {
         Ok(()) => Ok(()),
         Err(err) => {

@@ -238,7 +238,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Fetch available models from the API */
+        /** Fetch available models from the API. */
         post: operations["fetchApiModels"];
         delete?: never;
         options?: never;
@@ -255,7 +255,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Test API connectivity with a prompt */
+        /** Test API connectivity with a prompt. */
         post: operations["testApiModel"];
         delete?: never;
         options?: never;
@@ -1423,33 +1423,24 @@ export interface components {
         };
         /** @description Validated API key wrapper - validates length when Some, allows None for public APIs */
         ApiKey: string | null;
-        /** @description Represents an API key update action for API model updates */
-        ApiKeyUpdateAction: {
+        /** @description Represents an API key update operation for API model aliases and toolsets. */
+        ApiKeyUpdate: {
             /** @enum {string} */
             action: "keep";
         } | {
-            /** @description Set a new API key (or add one if none exists) - can be None for public APIs */
+            /** @description Set a new API key (or add one if none exists) - ApiKey validates length */
             value: components["schemas"]["ApiKey"];
             /** @enum {string} */
             action: "set";
         };
-        /** @description API key update enum (mirrors services::ApiKeyUpdate) */
-        ApiKeyUpdateDto: {
-            /** @enum {string} */
-            action: "Keep";
-        } | {
-            /** @description Set a new API key (or clear if None) */
-            value: string | null;
-            /** @enum {string} */
-            action: "Set";
-        };
         /**
-         * @description Response containing API model configuration
+         * @description Output type for API model configuration.
          * @example {
          *       "api_format": "openai",
-         *       "api_key_masked": "sk-...abc123",
          *       "base_url": "https://api.openai.com/v1",
          *       "created_at": "2024-01-01T00:00:00Z",
+         *       "forward_all_with_prefix": false,
+         *       "has_api_key": true,
          *       "id": "openai-gpt4",
          *       "models": [
          *         "gpt-4",
@@ -1459,11 +1450,11 @@ export interface components {
          *       "updated_at": "2024-01-01T00:00:00Z"
          *     }
          */
-        ApiModelResponse: {
+        ApiModelOutput: {
             id: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
-            api_key_masked?: string | null;
+            has_api_key: boolean;
             models: string[];
             prefix?: string | null;
             forward_all_with_prefix: boolean;
@@ -1472,34 +1463,35 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
-        ApiToken: {
-            id: string;
-            user_id: string;
-            name: string;
-            token_prefix: string;
-            token_hash: string;
-            scopes: string;
-            status: components["schemas"]["TokenStatus"];
-            /**
-             * Format: date-time
-             * @example 2024-11-10T04:52:06.786Z
-             */
-            created_at: string;
-            /**
-             * Format: date-time
-             * @example 2024-11-10T04:52:06.786Z
-             */
-            updated_at: string;
-        };
-        /** @example {
-         *       "token": "bodhiapp_1234567890abcdef"
-         *     } */
-        ApiTokenResponse: {
-            /**
-             * @description API token with bodhiapp_ prefix for programmatic access
-             * @example bodhiapp_1234567890abcdef
-             */
-            token: string;
+        /**
+         * @description Input request for creating or updating an API model configuration.
+         * @example {
+         *       "api_format": "openai",
+         *       "api_key": {
+         *         "action": "set",
+         *         "value": "sk-..."
+         *       },
+         *       "base_url": "https://api.openai.com/v1",
+         *       "models": [
+         *         "gpt-4",
+         *         "gpt-3.5-turbo"
+         *       ],
+         *       "prefix": "openai"
+         *     }
+         */
+        ApiModelRequest: {
+            /** @description API format/protocol (e.g., "openai") */
+            api_format: components["schemas"]["ApiFormat"];
+            /** @description API base URL */
+            base_url: string;
+            /** @description API key update action (Keep/Set with Some or None) */
+            api_key?: components["schemas"]["ApiKeyUpdate"];
+            /** @description List of available models */
+            models: string[];
+            /** @description Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4") */
+            prefix?: string | null;
+            /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
+            forward_all_with_prefix?: boolean;
         };
         /** @enum {string} */
         AppAccessRequestStatus: "draft" | "approved" | "denied" | "failed" | "expired";
@@ -1558,7 +1550,9 @@ export interface components {
         };
         /** @enum {string} */
         ApprovalStatus: "approved" | "denied";
-        /** @example {
+        /**
+         * @description Request for approving an app access request
+         * @example {
          *       "approved": {
          *         "mcps": [
          *           {
@@ -1580,8 +1574,9 @@ export interface components {
          *         ]
          *       },
          *       "approved_role": "scope_user_user"
-         *     } */
-        ApproveAccessRequestBody: {
+         *     }
+         */
+        ApproveAccessRequest: {
             /** @description Role to grant for the approved request (scope_user_user or scope_user_power_user) */
             approved_role: components["schemas"]["UserScope"];
             /** @description Approved resources with selections */
@@ -1631,11 +1626,8 @@ export interface components {
         };
         /** @description Change user role request */
         ChangeRoleRequest: {
-            /**
-             * @description Role to assign to the user
-             * @example resource_manager
-             */
-            role: string;
+            /** @description Role to assign to the user */
+            role: components["schemas"]["ResourceRole"];
         };
         ChatChoice: {
             /**
@@ -2033,7 +2025,9 @@ export interface components {
         CopyAliasRequest: {
             alias: string;
         };
-        /** @example {
+        /**
+         * @description Request for creating an app access request
+         * @example {
          *       "app_client_id": "my-app-client",
          *       "flow_type": "redirect",
          *       "redirect_url": "https://myapp.com/callback",
@@ -2045,8 +2039,9 @@ export interface components {
          *         ]
          *       },
          *       "requested_role": "scope_user_user"
-         *     } */
-        CreateAccessRequestBody: {
+         *     }
+         */
+        CreateAccessRequest: {
             /** @description App client ID from Keycloak */
             app_client_id: string;
             /** @description Flow type: "redirect" or "popup" */
@@ -2070,59 +2065,8 @@ export interface components {
             /** @description Review URL for user to approve/deny */
             review_url: string;
         };
-        CreateAliasRequest: {
-            alias: string;
-            repo: string;
-            filename: string;
-            snapshot?: string | null;
-            request_params?: null | components["schemas"]["OAIRequestParams"];
-            context_params?: string[] | null;
-        };
-        /**
-         * @description Request to create a new API model configuration
-         * @example {
-         *       "api_format": "openai",
-         *       "api_key": "sk-...",
-         *       "base_url": "https://api.openai.com/v1",
-         *       "models": [
-         *         "gpt-4",
-         *         "gpt-3.5-turbo"
-         *       ],
-         *       "prefix": "openai"
-         *     }
-         */
-        CreateApiModelRequest: {
-            /** @description API format/protocol (e.g., "openai") */
-            api_format: components["schemas"]["ApiFormat"];
-            /** @description API base URL */
-            base_url: string;
-            /** @description API key for authentication (null for public APIs) */
-            api_key?: components["schemas"]["ApiKey"];
-            /** @description List of available models */
-            models: string[];
-            /** @description Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4") */
-            prefix?: string | null;
-            /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
-            forward_all_with_prefix?: boolean;
-        };
-        /**
-         * @description Request to create a new API token
-         * @example {
-         *       "name": "My Integration Token",
-         *       "scope": "scope_token_user"
-         *     }
-         */
-        CreateApiTokenRequest: {
-            /**
-             * @description Descriptive name for the API token (minimum 3 characters)
-             * @example My Integration Token
-             */
-            name?: string | null;
-            /** @description Token scope defining access level */
-            scope: components["schemas"]["TokenScope"];
-        };
         /** @description Wrapper for creating auth configs with server_id in body instead of path */
-        CreateAuthConfigBody: components["schemas"]["CreateMcpAuthConfigRequest"] & {
+        CreateAuthConfig: components["schemas"]["CreateMcpAuthConfigRequest"] & {
             mcp_server_id: string;
         };
         CreateChatCompletionRequest: {
@@ -2400,36 +2344,18 @@ export interface components {
             /** @enum {string} */
             type: "oauth";
         };
-        CreateMcpRequest: {
-            name: string;
-            slug: string;
-            mcp_server_id: string;
-            description?: string | null;
-            enabled: boolean;
-            tools_cache?: components["schemas"]["McpTool"][] | null;
-            tools_filter?: string[] | null;
-            auth_type?: components["schemas"]["McpAuthType"];
-            auth_uuid?: string | null;
-        };
-        CreateMcpServerRequest: {
-            url: string;
-            name: string;
-            description?: string | null;
-            enabled: boolean;
-            auth_config?: null | components["schemas"]["CreateMcpAuthConfigRequest"];
-        };
-        /** @description Request to create a toolset */
-        CreateToolsetRequest: {
-            /** @description Toolset type identifier (e.g., "builtin-exa-search") */
-            toolset_type: string;
-            /** @description User-defined slug for this toolset (1-24 chars, alphanumeric + hyphens) */
-            slug: string;
-            /** @description Optional description for this toolset */
-            description?: string | null;
-            /** @description Whether this toolset is enabled */
-            enabled?: boolean;
-            /** @description API key for the toolset */
-            api_key: string;
+        /** @example {
+         *       "name": "My Integration Token",
+         *       "scope": "scope_token_user"
+         *     } */
+        CreateTokenRequest: {
+            /**
+             * @description Descriptive name for the API token
+             * @example My Integration Token
+             */
+            name?: string | null;
+            /** @description Token scope defining access level */
+            scope: components["schemas"]["TokenScope"];
         };
         CustomGrammarFormatParam: {
             /** @description The grammar definition. */
@@ -2472,25 +2398,16 @@ export interface components {
             filename: string;
             status: components["schemas"]["DownloadStatus"];
             error?: string | null;
-            /**
-             * Format: date-time
-             * @example 2024-11-10T04:52:06.786Z
-             */
-            created_at: string;
-            /**
-             * Format: date-time
-             * @example 2024-11-10T04:52:06.786Z
-             */
-            updated_at: string;
             /** Format: int64 */
             total_bytes?: number | null;
             /** Format: int64 */
-            downloaded_bytes?: number;
-            /**
-             * Format: date-time
-             * @example 2024-11-10T04:52:06.786Z
-             */
-            started_at: string;
+            downloaded_bytes: number;
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
         };
         /** @enum {string} */
         DownloadStatus: "pending" | "completed" | "error";
@@ -2690,7 +2607,7 @@ export interface components {
             mcp_servers: components["schemas"]["McpServerResponse"][];
         };
         ListMcpsResponse: {
-            mcps: components["schemas"]["McpResponse"][];
+            mcps: components["schemas"]["Mcp"][];
         };
         ListModelResponse: {
             object: string;
@@ -2705,7 +2622,8 @@ export interface components {
             toolsets: components["schemas"]["ToolsetResponse"][];
             toolset_types: components["schemas"]["AppToolsetConfig"][];
         };
-        /** @description List users query parameters */
+        /** @description List users query parameters. Intentionally omits sort fields (unlike PaginationSortParams)
+         *     because user listing is fetched from the auth service which handles its own ordering. */
         ListUsersParams: {
             /**
              * Format: int32
@@ -2786,7 +2704,6 @@ export interface components {
             mcp_server_id: string;
             header_key: string;
             has_header_value: boolean;
-            created_by: string;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -2808,7 +2725,6 @@ export interface components {
             token_endpoint_auth_method?: string | null;
             has_client_secret: boolean;
             has_registration_access_token: boolean;
-            created_by: string;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -2832,19 +2748,26 @@ export interface components {
         McpInstance: {
             id: string;
         };
-        McpResponse: {
-            id: string;
-            mcp_server: components["schemas"]["McpServerInfo"];
-            slug: string;
+        /** @description Input for creating or updating an MCP instance. */
+        McpRequest: {
+            /** @description Human-readable name (required) */
             name: string;
+            /** @description User-defined slug for this instance (1-24 chars, alphanumeric + hyphens) */
+            slug: string;
+            /** @description MCP server ID (required for create, ignored for update) */
+            mcp_server_id?: string | null;
+            /** @description Optional description */
             description?: string | null;
+            /** @description Whether this instance is enabled */
             enabled: boolean;
+            /** @description Cached tool schemas from the MCP server (JSON array) */
             tools_cache?: components["schemas"]["McpTool"][] | null;
+            /** @description Whitelisted tool names */
             tools_filter?: string[] | null;
-            auth_type: components["schemas"]["McpAuthType"];
+            /** @description Authentication type */
+            auth_type?: components["schemas"]["McpAuthType"];
+            /** @description Reference to auth config */
             auth_uuid?: string | null;
-            created_at: string;
-            updated_at: string;
         };
         /** @description Admin-managed MCP server registry entry.
          *     Admins/managers register MCP server URLs that users can then create instances of. */
@@ -2883,23 +2806,24 @@ export interface components {
             name: string;
             enabled: boolean;
         };
+        /** @description Input for creating or updating an MCP server. */
         McpServerRequest: {
+            /** @description MCP server endpoint URL (trimmed, case-insensitive unique) */
             url: string;
-        };
-        McpServerResponse: {
-            id: string;
-            url: string;
+            /** @description Human-readable display name */
             name: string;
+            /** @description Optional description */
             description?: string | null;
+            /** @description Whether this MCP server is enabled */
             enabled: boolean;
-            created_by: string;
-            updated_by: string;
+            auth_config?: null | components["schemas"]["CreateMcpAuthConfigRequest"];
+        };
+        /** @description MCP server response with computed mcp counts and optional auth config. */
+        McpServerResponse: components["schemas"]["McpServer"] & {
             /** Format: int64 */
             enabled_mcp_count: number;
             /** Format: int64 */
             disabled_mcp_count: number;
-            created_at: string;
-            updated_at: string;
             auth_config?: null | components["schemas"]["McpAuthConfigResponse"];
         };
         McpServerReviewInfo: {
@@ -2994,7 +2918,7 @@ export interface components {
             models: components["schemas"]["OllamaModel"][];
         };
         /**
-         * @description Request to pull a model file from HuggingFace
+         * @description Request for creating a new download request
          * @example {
          *       "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
          *       "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"
@@ -3066,7 +2990,7 @@ export interface components {
             expires_at?: number | null;
             has_access_token: boolean;
             has_refresh_token: boolean;
-            created_by: string;
+            user_id: string;
             created_at: string;
             updated_at: string;
         };
@@ -3153,15 +3077,8 @@ export interface components {
             page_size: number;
         };
         /** @description Paginated response for API model listings */
-        PaginatedApiModelResponse: {
-            data: components["schemas"]["ApiModelResponse"][];
-            total: number;
-            page: number;
-            page_size: number;
-        };
-        /** @description Paginated list of API tokens */
-        PaginatedApiTokenResponse: {
-            data: components["schemas"]["ApiToken"][];
+        PaginatedApiModelOutput: {
+            data: components["schemas"]["ApiModelOutput"][];
             total: number;
             page: number;
             page_size: number;
@@ -3180,6 +3097,12 @@ export interface components {
             page: number;
             page_size: number;
         };
+        PaginatedTokenResponse: {
+            data: components["schemas"]["TokenDetail"][];
+            total: number;
+            page: number;
+            page_size: number;
+        };
         /**
          * @description Paginated response for access requests
          * @example {
@@ -3188,11 +3111,11 @@ export interface components {
          *       "requests": [
          *         {
          *           "created_at": "2024-01-01T12:00:00Z",
-         *           "email": "user@example.com",
-         *           "id": 1,
-         *           "reviewer": null,
+         *           "id": "01HXXXXXX",
          *           "status": "pending",
-         *           "updated_at": "2024-01-01T12:00:00Z"
+         *           "updated_at": "2024-01-01T12:00:00Z",
+         *           "user_id": "auth0|123",
+         *           "username": "user@example.com"
          *         }
          *       ],
          *       "total": 1
@@ -3331,9 +3254,12 @@ export interface components {
          * @enum {string}
          */
         RegistrationType: "pre_registered" | "dynamic_registration";
+        RequestedMcpServer: {
+            url: string;
+        };
         RequestedResources: {
             toolset_types?: components["schemas"]["ToolsetTypeRequest"][];
-            mcp_servers?: components["schemas"]["McpServerRequest"][];
+            mcp_servers?: components["schemas"]["RequestedMcpServer"][];
         };
         /** @enum {string} */
         ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
@@ -3496,6 +3422,28 @@ export interface components {
             response?: string | null;
             error?: string | null;
         };
+        /** @example {
+         *       "token": "bodhiapp_1234567890abcdef"
+         *     } */
+        TokenCreated: {
+            /**
+             * @description API token with bodhiapp_ prefix for programmatic access
+             * @example bodhiapp_1234567890abcdef
+             */
+            token: string;
+        };
+        TokenDetail: {
+            id: string;
+            user_id: string;
+            name: string;
+            token_prefix: string;
+            scopes: string;
+            status: components["schemas"]["TokenStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
         /** @description API Token information response */
         TokenInfo: {
             role: components["schemas"]["TokenScope"];
@@ -3584,6 +3532,19 @@ export interface components {
         ToolsetInstance: {
             id: string;
         };
+        /** @description Input for creating or updating a toolset instance. */
+        ToolsetRequest: {
+            /** @description Toolset type identifier (required for create, ignored for update) */
+            toolset_type?: string | null;
+            /** @description User-defined slug for this instance (1-24 chars, alphanumeric + hyphens) */
+            slug: string;
+            /** @description Optional description for this instance */
+            description?: string | null;
+            /** @description Whether this instance is enabled */
+            enabled?: boolean;
+            /** @description API key update action (Keep or Set) */
+            api_key?: components["schemas"]["ApiKeyUpdate"];
+        };
         /** @description Toolset response */
         ToolsetResponse: {
             /** @description Unique instance identifier (UUID) */
@@ -3625,74 +3586,6 @@ export interface components {
             /** @description A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token. */
             bytes?: number[] | null;
         };
-        UpdateAliasRequest: {
-            repo: string;
-            filename: string;
-            snapshot?: string | null;
-            request_params?: null | components["schemas"]["OAIRequestParams"];
-            context_params?: string[] | null;
-        };
-        /**
-         * @description Request to update an existing API model configuration
-         * @example {
-         *       "api_format": "openai",
-         *       "api_key": {
-         *         "action": "keep"
-         *       },
-         *       "base_url": "https://api.openai.com/v1",
-         *       "models": [
-         *         "gpt-4-turbo",
-         *         "gpt-3.5-turbo"
-         *       ],
-         *       "prefix": "openai"
-         *     }
-         */
-        UpdateApiModelRequest: {
-            /** @description API format/protocol (required) */
-            api_format: components["schemas"]["ApiFormat"];
-            /** @description API base URL (required) */
-            base_url: string;
-            /** @description API key update action (Keep/Set with Some or None) */
-            api_key?: components["schemas"]["ApiKeyUpdateAction"];
-            /** @description List of available models (required) */
-            models: string[];
-            /** @description Optional prefix for model namespacing */
-            prefix?: string | null;
-            /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
-            forward_all_with_prefix?: boolean;
-        };
-        /**
-         * @description Request to update an existing API token
-         * @example {
-         *       "name": "Updated Token Name",
-         *       "status": "inactive"
-         *     }
-         */
-        UpdateApiTokenRequest: {
-            /**
-             * @description New descriptive name for the token (minimum 3 characters)
-             * @example Updated Token Name
-             */
-            name: string;
-            /** @description New status for the token (active/inactive) */
-            status: components["schemas"]["TokenStatus"];
-        };
-        UpdateMcpRequest: {
-            name: string;
-            slug: string;
-            description?: string | null;
-            enabled: boolean;
-            tools_filter?: string[] | null;
-            tools_cache?: components["schemas"]["McpTool"][] | null;
-            auth_type?: null | components["schemas"]["McpAuthType"];
-            auth_uuid?: string | null;
-        };
-        UpdateMcpServerRequest: {
-            url: string;
-            name: string;
-            description?: string | null;
-            enabled: boolean;
-        };
         /**
          * @description Request to update a setting value
          * @example {
@@ -3703,16 +3596,18 @@ export interface components {
             /** @description New value for the setting (type depends on setting metadata) */
             value: unknown;
         };
-        /** @description Request to update a toolset (full PUT - all fields required except api_key) */
-        UpdateToolsetRequest: {
-            /** @description User-defined slug for this toolset */
-            slug: string;
-            /** @description Optional description for this toolset */
-            description?: string | null;
-            /** @description Whether this toolset is enabled */
-            enabled: boolean;
-            /** @description API key update action (Keep or Set) */
-            api_key?: components["schemas"]["ApiKeyUpdateDto"];
+        /** @example {
+         *       "name": "Updated Token Name",
+         *       "status": "inactive"
+         *     } */
+        UpdateTokenRequest: {
+            /**
+             * @description New descriptive name for the token
+             * @example Updated Token Name
+             */
+            name: string;
+            /** @description New status for the token (active/inactive) */
+            status: components["schemas"]["TokenStatus"];
         };
         UrlCitation: {
             /**
@@ -3730,6 +3625,7 @@ export interface components {
             /** @description The URL of the web resource. */
             url: string;
         };
+        /** @description User access request output type for API responses */
         UserAccessRequest: {
             id: string;
             username: string;
@@ -3747,7 +3643,9 @@ export interface components {
          * @description Response for checking access request status
          * @example {
          *       "created_at": "2024-01-01T12:00:00Z",
-         *       "status": "pending"
+         *       "status": "pending",
+         *       "updated_at": "2024-01-01T12:00:00Z",
+         *       "username": "user@example.com"
          *     }
          */
         UserAccessStatusResponse: {
@@ -3779,6 +3677,33 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /**
+         * @description Input request for creating or updating a user model alias.
+         * @example {
+         *       "alias": "llama3:instruct",
+         *       "context_params": [
+         *         "--ctx-size 4096"
+         *       ],
+         *       "filename": "Meta-Llama-3-8B-Instruct.Q4_K_M.gguf",
+         *       "repo": "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+         *       "request_params": {
+         *         "temperature": 0.7
+         *       }
+         *     }
+         */
+        UserAliasRequest: {
+            /** @description Alias name — unique per (tenant_id, user_id) scope */
+            alias: string;
+            /** @description Repository in format "user/repo" */
+            repo: string;
+            /** @description Filename of the GGUF model */
+            filename: string;
+            /** @description Snapshot/commit identifier (optional — defaults to latest available) */
+            snapshot?: string | null;
+            request_params?: null | components["schemas"]["OAIRequestParams"];
+            /** @description Context parameters for the model */
+            context_params?: string[] | null;
         };
         /** @description User-defined model alias response */
         UserAliasResponse: {
@@ -4318,7 +4243,7 @@ export interface operations {
         /** @description Approval details with tool selections */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ApproveAccessRequestBody"];
+                "application/json": components["schemas"]["ApproveAccessRequest"];
             };
         };
         responses: {
@@ -4706,8 +4631,8 @@ export interface operations {
                      *       "data": [
                      *         {
                      *           "api_format": "openai",
-                     *           "api_key": "sk-****",
                      *           "base_url": "https://api.openai.com/v1",
+                     *           "has_api_key": true,
                      *           "id": "openai-gpt4"
                      *         }
                      *       ],
@@ -4715,7 +4640,7 @@ export interface operations {
                      *       "page_size": 10,
                      *       "total": 1
                      *     } */
-                    "application/json": components["schemas"]["PaginatedApiModelResponse"];
+                    "application/json": components["schemas"]["PaginatedApiModelOutput"];
                 };
             };
             /** @description Invalid request parameters */
@@ -4765,7 +4690,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateApiModelRequest"];
+                "application/json": components["schemas"]["ApiModelRequest"];
             };
         };
         responses: {
@@ -4775,7 +4700,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiModelResponse"];
+                    "application/json": components["schemas"]["ApiModelOutput"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5029,12 +4954,14 @@ export interface operations {
                 content: {
                     /** @example {
                      *       "api_format": "openai",
-                     *       "api_key": "sk-****",
                      *       "base_url": "https://api.openai.com/v1",
+                     *       "has_api_key": true,
                      *       "id": "openai-gpt4",
-                     *       "model": "gpt-4"
+                     *       "models": [
+                     *         "gpt-4"
+                     *       ]
                      *     } */
-                    "application/json": components["schemas"]["ApiModelResponse"];
+                    "application/json": components["schemas"]["ApiModelOutput"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5103,7 +5030,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateApiModelRequest"];
+                "application/json": components["schemas"]["ApiModelRequest"];
             };
         };
         responses: {
@@ -5113,7 +5040,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiModelResponse"];
+                    "application/json": components["schemas"]["ApiModelOutput"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5252,10 +5179,10 @@ export interface operations {
                 content: {
                     /** @example {
                      *       "api_format": "openai",
-                     *       "api_key_masked": "sk-****1234",
                      *       "base_url": "https://api.openai.com/v1",
                      *       "created_at": "2024-01-01T00:00:00Z",
                      *       "forward_all_with_prefix": false,
+                     *       "has_api_key": true,
                      *       "id": "openai-gpt4",
                      *       "models": [
                      *         "gpt-4",
@@ -5265,7 +5192,7 @@ export interface operations {
                      *       "prefix": null,
                      *       "updated_at": "2024-01-01T00:00:00Z"
                      *     } */
-                    "application/json": components["schemas"]["ApiModelResponse"];
+                    "application/json": components["schemas"]["ApiModelOutput"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5394,7 +5321,7 @@ export interface operations {
         /** @description Access request details */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateAccessRequestBody"];
+                "application/json": components["schemas"]["CreateAccessRequest"];
             };
         };
         responses: {
@@ -5780,7 +5707,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateMcpRequest"];
+                "application/json": components["schemas"]["McpRequest"];
             };
         };
         responses: {
@@ -5790,7 +5717,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["McpResponse"];
+                    "application/json": components["schemas"]["Mcp"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5898,7 +5825,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateAuthConfigBody"];
+                "application/json": components["schemas"]["CreateAuthConfig"];
             };
         };
         responses: {
@@ -6664,7 +6591,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateMcpServerRequest"];
+                "application/json": components["schemas"]["McpServerRequest"];
             };
         };
         responses: {
@@ -6800,7 +6727,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateMcpServerRequest"];
+                "application/json": components["schemas"]["McpServerRequest"];
             };
         };
         responses: {
@@ -6883,7 +6810,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["McpResponse"];
+                    "application/json": components["schemas"]["Mcp"];
                 };
             };
             /** @description Invalid request parameters */
@@ -6943,7 +6870,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateMcpRequest"];
+                "application/json": components["schemas"]["McpRequest"];
             };
         };
         responses: {
@@ -6953,7 +6880,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["McpResponse"];
+                    "application/json": components["schemas"]["Mcp"];
                 };
             };
             /** @description Invalid request parameters */
@@ -7656,7 +7583,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateAliasRequest"];
+                "application/json": components["schemas"]["UserAliasRequest"];
             };
         };
         responses: {
@@ -7874,7 +7801,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateAliasRequest"];
+                "application/json": components["schemas"]["UserAliasRequest"];
             };
         };
         responses: {
@@ -8501,7 +8428,7 @@ export interface operations {
                      *       "page_size": 10,
                      *       "total": 2
                      *     } */
-                    "application/json": components["schemas"]["PaginatedApiTokenResponse"];
+                    "application/json": components["schemas"]["PaginatedTokenResponse"];
                 };
             };
             /** @description Invalid request parameters */
@@ -8558,7 +8485,7 @@ export interface operations {
                  *         "scope_token_user"
                  *       ]
                  *     } */
-                "application/json": components["schemas"]["CreateApiTokenRequest"];
+                "application/json": components["schemas"]["CreateTokenRequest"];
             };
         };
         responses: {
@@ -8571,7 +8498,7 @@ export interface operations {
                     /** @example {
                      *       "token": "bodhiapp_1234567890abcdef"
                      *     } */
-                    "application/json": components["schemas"]["ApiTokenResponse"];
+                    "application/json": components["schemas"]["TokenCreated"];
                 };
             };
             /** @description Invalid request parameters */
@@ -8632,7 +8559,7 @@ export interface operations {
                  *       "name": "Updated Token Name",
                  *       "status": "inactive"
                  *     } */
-                "application/json": components["schemas"]["UpdateApiTokenRequest"];
+                "application/json": components["schemas"]["UpdateTokenRequest"];
             };
         };
         responses: {
@@ -8651,7 +8578,7 @@ export interface operations {
                      *       "updated_at": "2024-11-10T04:52:06.786Z",
                      *       "user_id": "auth0|123456789"
                      *     } */
-                    "application/json": components["schemas"]["ApiToken"];
+                    "application/json": components["schemas"]["TokenDetail"];
                 };
             };
             /** @description Invalid request parameters */
@@ -8961,7 +8888,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateToolsetRequest"];
+                "application/json": components["schemas"]["ToolsetRequest"];
             };
         };
         responses: {
@@ -9097,7 +9024,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateToolsetRequest"];
+                "application/json": components["schemas"]["ToolsetRequest"];
             };
         };
         responses: {

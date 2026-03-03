@@ -1,3 +1,4 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::{oai_model_handler, oai_models_handler};
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -9,18 +10,18 @@ use chrono::Utc;
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use serde_json::{json, Value};
-use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
+use server_core::test_utils::ResponseTestExt;
+use services::test_utils::TEST_TENANT_ID;
 use services::{test_utils::AppServiceStubBuilder, AppService};
-use services::{ApiAlias, ApiFormat};
+use services::{ApiAlias, ApiFormat, AuthContext, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
 
 fn create_router(service: Arc<dyn services::AppService>) -> Router {
-  let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), service);
   Router::new()
     .route("/v1/models", axum::routing::get(oai_models_handler))
     .route("/v1/models/{id}", axum::routing::get(oai_model_handler))
-    .with_state(Arc::new(router_state))
+    .with_state(service)
 }
 
 #[fixture]
@@ -42,7 +43,16 @@ async fn app() -> Router {
 #[anyhow_trace]
 async fn test_oai_models_handler_list_all(#[future] app: Router) -> anyhow::Result<()> {
   let response = app
-    .oneshot(Request::builder().uri("/v1/models").body(Body::empty())?)
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
@@ -80,7 +90,12 @@ async fn test_oai_model_handler_found(#[future] app: Router) -> anyhow::Result<(
     .oneshot(
       Request::builder()
         .uri("/v1/models/llama3:instruct")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -135,12 +150,26 @@ async fn test_oai_models_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     Utc::now(),
   );
   db_service
-    .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+    .create_api_model_alias(
+      TEST_TENANT_ID,
+      "test-user",
+      &api_alias,
+      Some("test-key".to_string()),
+    )
     .await?;
 
   let app = create_router(Arc::new(service));
   let response = app
-    .oneshot(Request::builder().uri("/v1/models").body(Body::empty())?)
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
@@ -183,12 +212,26 @@ async fn test_oai_models_handler_api_alias_without_prefix() -> anyhow::Result<()
     Utc::now(),
   );
   db_service
-    .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+    .create_api_model_alias(
+      TEST_TENANT_ID,
+      "test-user",
+      &api_alias,
+      Some("test-key".to_string()),
+    )
     .await?;
 
   let app = create_router(Arc::new(service));
   let response = app
-    .oneshot(Request::builder().uri("/v1/models").body(Body::empty())?)
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
@@ -230,7 +273,12 @@ async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     Utc::now(),
   );
   db_service
-    .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+    .create_api_model_alias(
+      TEST_TENANT_ID,
+      "test-user",
+      &api_alias,
+      Some("test-key".to_string()),
+    )
     .await?;
 
   let app = create_router(Arc::new(service));
@@ -238,7 +286,12 @@ async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     .oneshot(
       Request::builder()
         .uri("/v1/models/openai%2Fgpt-4")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -281,7 +334,12 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
     Utc::now(),
   );
   db_service
-    .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+    .create_api_model_alias(
+      TEST_TENANT_ID,
+      "test-user",
+      &api_alias,
+      Some("test-key".to_string()),
+    )
     .await?;
 
   let app = create_router(Arc::new(service));
@@ -289,7 +347,12 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
     .oneshot(
       Request::builder()
         .uri("/v1/models/gpt-4")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
     )
     .await?;
 

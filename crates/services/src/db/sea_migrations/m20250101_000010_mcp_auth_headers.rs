@@ -13,13 +13,13 @@ enum McpServers {
 enum McpAuthHeaders {
   Table,
   Id,
+  TenantId,
   Name,
   McpServerId,
   HeaderKey,
   EncryptedHeaderValue,
   HeaderValueSalt,
   HeaderValueNonce,
-  CreatedBy,
   CreatedAt,
   UpdatedAt,
 }
@@ -32,6 +32,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(McpAuthHeaders::Table)
           .col(string(McpAuthHeaders::Id).primary_key())
+          .col(string(McpAuthHeaders::TenantId))
           .col(string(McpAuthHeaders::Name).default("Header"))
           .col(string(McpAuthHeaders::McpServerId))
           .foreign_key(
@@ -46,7 +47,6 @@ impl MigrationTrait for Migration {
           .col(string(McpAuthHeaders::EncryptedHeaderValue))
           .col(string(McpAuthHeaders::HeaderValueSalt))
           .col(string(McpAuthHeaders::HeaderValueNonce))
-          .col(string(McpAuthHeaders::CreatedBy))
           .col(timestamp_with_time_zone(McpAuthHeaders::CreatedAt))
           .col(timestamp_with_time_zone(McpAuthHeaders::UpdatedAt))
           .to_owned(),
@@ -59,6 +59,16 @@ impl MigrationTrait for Migration {
           .name("idx_mcp_auth_headers_mcp_server_id")
           .table(McpAuthHeaders::Table)
           .col(McpAuthHeaders::McpServerId)
+          .to_owned(),
+      )
+      .await?;
+
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_mcp_auth_headers_tenant_id")
+          .table(McpAuthHeaders::Table)
+          .col(McpAuthHeaders::TenantId)
           .to_owned(),
       )
       .await?;

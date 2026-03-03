@@ -1,7 +1,7 @@
 use crate::{
-  app_access_requests::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus},
+  app_access_requests::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus},
   db::DbError,
-  test_utils::{sea_context, setup_env},
+  test_utils::{sea_context, setup_env, TEST_TENANT_ID},
   FlowType,
 };
 use anyhow_trace::anyhow_trace;
@@ -11,9 +11,10 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-fn make_request(id: &str, now: chrono::DateTime<chrono::Utc>) -> AppAccessRequestRow {
-  AppAccessRequestRow {
+fn make_request(id: &str, now: chrono::DateTime<chrono::Utc>) -> AppAccessRequest {
+  AppAccessRequest {
     id: id.to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     app_client_id: "test-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: Some("A test application".to_string()),
@@ -48,11 +49,11 @@ async fn test_create_and_get_access_request(
   let created = ctx.service.create(&row).await?;
   assert_eq!(row, created);
 
-  let fetched = ctx.service.get(&id).await?;
+  let fetched = ctx.service.get(TEST_TENANT_ID, &id).await?;
   assert!(fetched.is_some());
   assert_eq!(row, fetched.unwrap());
 
-  let not_found = ctx.service.get("nonexistent").await?;
+  let not_found = ctx.service.get(TEST_TENANT_ID, "nonexistent").await?;
   assert!(not_found.is_none());
 
   Ok(())
@@ -183,13 +184,16 @@ async fn test_get_by_access_request_scope(
     .update_approval(&id, "user-1", "{}", "scope_user_user", &scope)
     .await?;
 
-  let found = ctx.service.get_by_access_request_scope(&scope).await?;
+  let found = ctx
+    .service
+    .get_by_access_request_scope(TEST_TENANT_ID, &scope)
+    .await?;
   assert!(found.is_some());
   assert_eq!(id, found.unwrap().id);
 
   let not_found = ctx
     .service
-    .get_by_access_request_scope("nonexistent-scope")
+    .get_by_access_request_scope("", "nonexistent-scope")
     .await?;
   assert!(not_found.is_none());
 
@@ -211,7 +215,7 @@ async fn test_get_marks_expired_draft(
   row.expires_at = ctx.now - Duration::minutes(5);
   ctx.service.create(&row).await?;
 
-  let fetched = ctx.service.get(&id).await?;
+  let fetched = ctx.service.get(TEST_TENANT_ID, &id).await?;
   assert!(fetched.is_some());
   let fetched = fetched.unwrap();
   assert_eq!(AppAccessRequestStatus::Expired, fetched.status);
@@ -232,7 +236,7 @@ async fn test_get_returns_draft_when_not_expired(
   let row = make_request(&id, ctx.now);
   ctx.service.create(&row).await?;
 
-  let fetched = ctx.service.get(&id).await?;
+  let fetched = ctx.service.get(TEST_TENANT_ID, &id).await?;
   assert!(fetched.is_some());
   let fetched = fetched.unwrap();
   assert_eq!(AppAccessRequestStatus::Draft, fetched.status);
@@ -251,7 +255,7 @@ async fn perform_update(
   service: &crate::db::DefaultDbService,
   id: &str,
   op: &UpdateOp,
-) -> Result<AppAccessRequestRow, DbError> {
+) -> Result<AppAccessRequest, DbError> {
   match op {
     UpdateOp::Approval => {
       service

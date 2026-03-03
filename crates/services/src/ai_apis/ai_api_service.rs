@@ -1,13 +1,10 @@
 use super::error::{AiApiServiceError, Result};
-use crate::db::DbService;
 use crate::models::ApiAlias;
 use async_trait::async_trait;
 use axum::body::Body;
 use axum::response::Response;
-use derive_new::new;
 use reqwest::Client;
 use serde_json::Value;
-use std::sync::Arc;
 use std::time::Duration;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
@@ -30,46 +27,35 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
   /// API key is optional - if None, requests without authentication (API may return 401)
   async fn fetch_models(&self, api_key: Option<String>, base_url: &str) -> Result<Vec<String>>;
 
-  /// Forward request to remote API
-  async fn forward_request(&self, api_path: &str, id: &str, request: Value) -> Result<Response>;
+  /// Forward request to remote API using a pre-resolved alias and optional API key.
+  async fn forward_request(
+    &self,
+    api_path: &str,
+    api_alias: &ApiAlias,
+    api_key: Option<String>,
+    request: Value,
+  ) -> Result<Response>;
 }
 
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct DefaultAiApiService {
   client: Client,
-  db_service: Arc<dyn DbService>,
 }
 
-impl DefaultAiApiService {
-  /// Create a new AI API service with default client
-  pub fn with_db_service(db_service: Arc<dyn DbService>) -> Self {
+impl Default for DefaultAiApiService {
+  fn default() -> Self {
     let client = Client::builder()
       .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
       .build()
       .expect("Failed to create HTTP client");
-
-    Self::new(client, db_service)
+    Self { client }
   }
+}
 
-  /// Get API configuration for an id
-  /// API key is optional - returns None if not configured
-  async fn get_api_config(&self, id: &str) -> Result<(ApiAlias, Option<String>)> {
-    // Get the API model alias configuration
-    let api_alias = self
-      .db_service
-      .get_api_model_alias(id)
-      .await
-      .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?
-      .ok_or_else(|| AiApiServiceError::ModelNotFound(id.to_string()))?;
-
-    // Get the decrypted API key (optional - may not be configured)
-    let api_key = self
-      .db_service
-      .get_api_key_for_alias(id)
-      .await
-      .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?;
-
-    Ok((api_alias, api_key))
+impl DefaultAiApiService {
+  /// Create a new AI API service with default HTTP client settings
+  pub fn new() -> Self {
+    Self::default()
   }
 
   /// Convert HTTP status to appropriate error
@@ -183,10 +169,10 @@ impl AiApiService for DefaultAiApiService {
   async fn forward_request(
     &self,
     api_path: &str,
-    id: &str,
+    api_alias: &ApiAlias,
+    api_key: Option<String>,
     mut request: Value,
   ) -> Result<Response> {
-    let (api_alias, api_key) = self.get_api_config(id).await?;
     let url = format!("{}{}", api_alias.base_url, api_path);
 
     // Handle prefix stripping if configured

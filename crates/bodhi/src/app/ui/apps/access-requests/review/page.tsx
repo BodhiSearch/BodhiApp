@@ -21,7 +21,7 @@ import {
   useApproveAppAccessRequest,
   useDenyAppAccessRequest,
 } from '@/hooks/useAppAccessRequests';
-import type { AccessRequestActionResponse, ApproveAccessRequestBody } from '@/hooks/useAppAccessRequests';
+import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/useAppAccessRequests';
 import type { UserScope } from '@bodhiapp/ts-client';
 import { useUser } from '@/hooks/useUsers';
 
@@ -267,7 +267,7 @@ const ReviewContent = () => {
 
   const handleApprove = () => {
     setIsSubmitting(true);
-    const body: ApproveAccessRequestBody = {
+    const body: ApproveAccessRequest = {
       approved_role: approvedRole!,
       approved: {
         toolsets: (reviewData.tools_info ?? []).map((tool) => ({

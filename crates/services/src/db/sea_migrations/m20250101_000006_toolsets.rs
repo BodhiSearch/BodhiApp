@@ -7,6 +7,7 @@ pub struct Migration;
 enum Toolsets {
   Table,
   Id,
+  TenantId,
   UserId,
   ToolsetType,
   Slug,
@@ -23,6 +24,7 @@ enum Toolsets {
 enum AppToolsetConfigs {
   Table,
   Id,
+  TenantId,
   ToolsetType,
   Enabled,
   UpdatedBy,
@@ -38,6 +40,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(Toolsets::Table)
           .col(string(Toolsets::Id).primary_key())
+          .col(string(Toolsets::TenantId))
           .col(string(Toolsets::UserId))
           .col(string(Toolsets::ToolsetType))
           .col(string(Toolsets::Slug))
@@ -84,15 +87,64 @@ impl MigrationTrait for Migration {
       .await?;
 
     manager
+      .create_index(
+        Index::create()
+          .name("idx_toolsets_tenant_id")
+          .table(Toolsets::Table)
+          .col(Toolsets::TenantId)
+          .to_owned(),
+      )
+      .await?;
+
+    // Unique composite index: (tenant_id, user_id, toolset_type, slug)
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_toolsets_tenant_user_type_slug")
+          .table(Toolsets::Table)
+          .col(Toolsets::TenantId)
+          .col(Toolsets::UserId)
+          .col(Toolsets::ToolsetType)
+          .col(Toolsets::Slug)
+          .unique()
+          .to_owned(),
+      )
+      .await?;
+
+    manager
       .create_table(
         Table::create()
           .table(AppToolsetConfigs::Table)
           .col(string(AppToolsetConfigs::Id).primary_key())
-          .col(string(AppToolsetConfigs::ToolsetType).unique_key())
+          .col(string(AppToolsetConfigs::TenantId))
+          .col(string(AppToolsetConfigs::ToolsetType))
           .col(boolean(AppToolsetConfigs::Enabled).default(false))
           .col(string(AppToolsetConfigs::UpdatedBy))
           .col(timestamp_with_time_zone(AppToolsetConfigs::CreatedAt))
           .col(timestamp_with_time_zone(AppToolsetConfigs::UpdatedAt))
+          .to_owned(),
+      )
+      .await?;
+
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_app_toolset_configs_tenant_id")
+          .table(AppToolsetConfigs::Table)
+          .col(AppToolsetConfigs::TenantId)
+          .to_owned(),
+      )
+      .await?;
+
+    // Composite unique index: (tenant_id, toolset_type)
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_app_toolset_configs_tenant_toolset_type")
+          .table(AppToolsetConfigs::Table)
+          .col(AppToolsetConfigs::TenantId)
+          .col(AppToolsetConfigs::ToolsetType)
+          .unique()
           .to_owned(),
       )
       .await?;

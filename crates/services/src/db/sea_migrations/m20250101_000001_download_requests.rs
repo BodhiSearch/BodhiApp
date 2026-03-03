@@ -7,6 +7,7 @@ pub struct Migration;
 enum DownloadRequests {
   Table,
   Id,
+  TenantId,
   Repo,
   Filename,
   Status,
@@ -26,6 +27,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(DownloadRequests::Table)
           .col(string(DownloadRequests::Id).primary_key())
+          .col(string(DownloadRequests::TenantId))
           .col(string(DownloadRequests::Repo))
           .col(string(DownloadRequests::Filename))
           .col(string(DownloadRequests::Status))
@@ -45,6 +47,16 @@ impl MigrationTrait for Migration {
           .name("idx_download_requests_status")
           .table(DownloadRequests::Table)
           .col(DownloadRequests::Status)
+          .to_owned(),
+      )
+      .await?;
+
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_download_requests_tenant_id")
+          .table(DownloadRequests::Table)
+          .col(DownloadRequests::TenantId)
           .to_owned(),
       )
       .await?;

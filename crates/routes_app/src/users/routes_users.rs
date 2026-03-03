@@ -1,11 +1,12 @@
 use crate::users::error::UsersRouteError;
-use crate::users::users_api_schemas::{ChangeRoleRequest, ListUsersParams};
-use crate::{ApiError, AuthScope, OpenAIApiError, API_TAG_AUTH};
+use crate::users::users_api_schemas::ListUsersParams;
+use crate::{ApiError, AuthScope, OpenAIApiError, ValidatedJson, API_TAG_AUTH};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
   Json,
 };
+use services::ChangeRoleRequest;
 use services::UserListResponse;
 use tracing::{error, info, warn};
 
@@ -68,18 +69,27 @@ pub async fn users_index(
 pub async fn users_change_role(
   auth_scope: AuthScope,
   Path(user_id): Path<String>,
-  Json(request): Json<ChangeRoleRequest>,
+  ValidatedJson(request): ValidatedJson<ChangeRoleRequest>,
 ) -> Result<StatusCode, ApiError> {
-  let requester_id = auth_scope.require_user_id()?;
+  // Validate role hierarchy: caller's role must be >= target role
+  let caller_role = match auth_scope.auth_context() {
+    services::AuthContext::Session {
+      role: Some(role), ..
+    } => role,
+    _ => return Err(UsersRouteError::InsufficientPrivileges)?,
+  };
+  if !caller_role.has_access_to(&request.role) {
+    warn!(
+      "Role hierarchy violation: caller role {:?} cannot assign {:?}",
+      caller_role, request.role
+    );
+    return Err(UsersRouteError::InsufficientPrivileges)?;
+  }
 
-  info!(
-    "User {} changing role for user {} to role {}",
-    requester_id, user_id, request.role
-  );
-
+  let role_name = request.role.to_string();
   auth_scope
     .users()
-    .assign_user_role(&user_id, &request.role)
+    .assign_user_role(&user_id, &role_name)
     .await
     .map_err(|e| {
       error!("Failed to change user role: {}", e);
@@ -88,17 +98,21 @@ pub async fn users_change_role(
 
   // Clear existing sessions for the user to ensure new role is applied
   // Note: We don't fail the operation if session clearing fails, just log it
-  match auth_scope.session_service().clear_sessions_for_user(&user_id).await {
+  match auth_scope
+    .session_service()
+    .clear_sessions_for_user(&user_id)
+    .await
+  {
     Ok(cleared_count) => {
       info!(
-        "Successfully changed role for user {} to {} by {}, cleared {} sessions",
-        user_id, request.role, requester_id, cleared_count
+        "Successfully changed role for user {} to {}, cleared {} sessions",
+        user_id, role_name, cleared_count
       );
     }
     Err(e) => {
       warn!(
-        "Changed role for user {} to {} by {}, but failed to clear sessions: {}",
-        user_id, request.role, requester_id, e
+        "Changed role for user {} to {}, but failed to clear sessions: {}",
+        user_id, role_name, e
       );
     }
   }
@@ -129,10 +143,6 @@ pub async fn users_destroy(
   auth_scope: AuthScope,
   Path(user_id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-  let requester_id = auth_scope.require_user_id()?;
-
-  info!("User {} removing user {}", requester_id, user_id);
-
   auth_scope
     .users()
     .remove_user(&user_id)
@@ -142,7 +152,7 @@ pub async fn users_destroy(
       UsersRouteError::RemoveFailed(e.to_string())
     })?;
 
-  info!("Successfully removed user {} by {}", user_id, requester_id);
+  info!("Successfully removed user {}", user_id);
   Ok(StatusCode::OK)
 }
 

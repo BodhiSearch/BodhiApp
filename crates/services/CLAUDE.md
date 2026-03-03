@@ -8,6 +8,10 @@
 
 Domain types + business logic hub. All domain objects live here co-located with services that use them. Re-exports `errmeta` types so downstream crates import from `services::` only.
 
+**Multi-Tenant Transaction Pattern**: All mutating DbService operations that create/update tenant-scoped rows use `begin_tenant_txn(tenant_id)` from `DbCore` trait (`src/db/db_core.rs`). This returns a `DatabaseTransaction`. On PostgreSQL it issues `SET LOCAL app.current_tenant_id = '<tenant_id>'` before the operation, activating the RLS policies from migration `m20250101_000014_rls.rs`. On SQLite it returns a plain transaction (no RLS; app-layer `WHERE tenant_id = ?` clauses provide the isolation). Callers are responsible for calling `.commit().await?` on the returned transaction. **Settings are global** (no tenant_id column) — use `DefaultDbService` directly for settings operations.
+
+**API Token Format**: `bodhiapp_<base64url_random>.<client_id>` where `client_id` is the tenant's OAuth client ID. The token prefix for DB lookup is `bodhiapp_` + first 8 chars of the random part. The SHA-256 hash covers the full token string including `.<client_id>`. Token lookup via prefix is cross-tenant by design; the tenant is resolved from the `client_id` suffix after a successful hash verification.
+
 ## Architecture Position
 
 ```
@@ -15,9 +19,9 @@ errmeta / errmeta_derive / llama_server_proc / mcp_client
                          ↓
                     [services]  ← YOU ARE HERE
                     ↓        ↓
-            server_core   auth_middleware
-                    ↓        ↓
-                  routes_app
+            server_core
+                    ↓
+                  routes_app (includes middleware)
 ```
 
 **Re-exports**: `AppError`, `ErrorType`, `IoError`, `EntityError`, `RwLockReadError`, `impl_error_from!` from errmeta. Also `pub use db::*` in lib.rs — use `services::DbService` not `services::db::DbService`.
@@ -69,16 +73,60 @@ Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_sc
 Each domain module follows `*_objs.rs` pattern for types and `error.rs` for errors:
 - `auth/auth_objs.rs` — `ResourceRole`, `TokenScope`, `UserScope`, `AppRole`, `UserInfo`
 - `auth/auth_context.rs` — `AuthContext` enum, `AuthContextError`
-- `tokens/token_objs.rs` — `TokenStatus`, `ApiTokenRow`
-- `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `JsonVec`, `DownloadStatus`
+- `tokens/token_objs.rs` — `TokenStatus`, `TokenDetail`, `CreateTokenRequest`, `UpdateTokenRequest`
+- `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `JsonVec`, `DownloadStatus`, `ApiModelRequest`, `UserAliasRequest`
 - `settings/setting_objs.rs` — `Setting`, `EnvType`, `AppType`, `LogLevel`
 - `tenants/tenant_objs.rs` — `AppStatus`, tenant types
-- `mcps/mcp_objs.rs` — MCP types, `validate_mcp_instance_name()`
-- `toolsets/toolset_objs.rs` — toolset types
-- `app_access_requests/access_request_objs.rs` — access request types
+- `mcps/mcp_objs.rs` — MCP types, `McpRequest`, `McpServerRequest` (both derive `Validate`)
+- `toolsets/toolset_objs.rs` — `Toolset`, `ToolsetRequest` (derives `Validate`)
+- `app_access_requests/access_request_objs.rs` — `AppAccessRequest` (renamed from `AppAccessRequestRow`)
 - `shared_objs/` — `error_wrappers.rs`, `utils.rs`, `log.rs`, `token.rs` (JWT parsing)
 - `tenants/` — tenant management module
 - `inference/` — `InferenceService` trait, `LlmEndpoint`, `InferenceError`
+
+### Entity Alias Index
+
+| Domain | Alias | Entity File |
+|--------|-------|-------------|
+| Toolset | `ToolsetEntity` | `src/toolsets/toolset_entity.rs` |
+| MCP Instance | `McpEntity` | `src/mcps/mcp_entity.rs` |
+| MCP Server | `McpServerEntity` | `src/mcps/mcp_server_entity.rs` |
+| MCP Auth Header | `McpAuthHeaderEntity` | `src/mcps/mcp_auth_header_entity.rs` |
+| MCP OAuth Config | `McpOAuthConfigEntity` | `src/mcps/mcp_oauth_config_entity.rs` |
+| MCP OAuth Token | `McpOAuthTokenEntity` | `src/mcps/mcp_oauth_token_entity.rs` |
+| MCP + Server join | `McpWithServerEntity` | `src/mcps/mcp_entity.rs` |
+| API Model | `ApiModelEntity` | `src/models/api_model_alias_entity.rs` |
+| User Alias | `UserAliasEntity` | `src/models/user_alias_entity.rs` |
+| Token | `TokenEntity` | `src/tokens/api_token_entity.rs` |
+| Download | `DownloadEntity` | `src/models/download_request_entity.rs` |
+| Model Metadata | `ModelMetadataEntity` | `src/models/model_metadata_entity.rs` |
+| User Access Req | `UserAccessRequestEntity` | `src/users/access_request_entity.rs` |
+| App Access Req | `AppAccessRequestEntity` | `src/app_access_requests/app_access_request_entity.rs` |
+
+All entities follow `pub type <Domain>Entity = Model;` pattern. Standard fields: `id` (ULID), `tenant_id`, `user_id` (for user-scoped), `created_at`/`updated_at`.
+
+### CRUD Conventions
+
+**Request types** (in `*_objs.rs`): Named `*Request`, derive `Serialize, Deserialize, Validate, ToSchema`. Exclude `id`, `tenant_id`, `user_id`, timestamps.
+
+**Service layer**: Services do NOT call `form.validate()` — input assumed validated by routes. Services return Entity types; route handlers convert Entity→Response via `.into()`. Business invariants requiring service deps stay in services. DB constraints handle uniqueness/FK violations → mapped to domain errors. Exceptions: Token returns `TokenDetail` directly, ApiModel returns `ApiModelOutput`.
+
+**AuthScoped services**: Inject `tenant_id`/`user_id` from `AuthContext` only — no validation, no authorization. Return Entity types (pass through). Routes MUST use auth_scoped services exclusively.
+
+**Route handlers**: `ValidatedJson<DomainRequest>` for body extraction. Handlers own field validation and operation-specific authorization. No `require_tenant_id()`/`require_user_id()` — AuthScoped handles.
+
+**Response types** (in `*_objs.rs`): Separate struct from entity. Exclude `tenant_id`, `user_id`. Secret fields → `has_<secret>: bool`. `impl From<Entity> for ResponseType` defined in services.
+
+## Service Return Types
+
+Services return Entity types. Route handlers convert Entity→Response via `.into()`:
+- Service methods return Entity types (e.g., `McpWithServerEntity`, `McpServerEntity`, `ToolsetEntity`)
+- Entity types are `pub` re-exported so routes_app can import and use `From<Entity> for Response`
+- `impl From<Entity> for ResponseType` conversions defined in services `*_objs.rs` files
+- Services do NOT call `form.validate()` — input assumed validated by routes layer
+- Business invariants requiring service deps stay in services (e.g., UserAlias file existence check)
+- DB constraints handle uniqueness/FK violations → mapped to domain errors
+- Exception: Token domain returns Response types (`TokenDetail`), ApiModel returns `ApiModelOutput` (complex repository)
 
 ## Error Handling
 

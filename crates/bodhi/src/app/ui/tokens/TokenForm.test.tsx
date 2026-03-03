@@ -1,5 +1,5 @@
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
-import { ApiTokenResponse } from '@bodhiapp/ts-client';
+import { TokenCreated } from '@bodhiapp/ts-client';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
@@ -8,7 +8,7 @@ import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import { mockCreateToken, mockCreateTokenError } from '@/test-utils/msw-v2/handlers/tokens';
 import { describe, expect, it, vi } from 'vitest';
 
-const mockToken: ApiTokenResponse = {
+const mockToken: TokenCreated = {
   token: 'test-token-123',
 };
 

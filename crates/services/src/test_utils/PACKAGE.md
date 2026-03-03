@@ -6,7 +6,7 @@
 
 Entry point: `src/test_utils/mod.rs` — declares 20 sub-modules with `pub use *` re-exports.
 
-Also re-exports: `MockAccessRequestService`, `MockInferenceService`, `MockSettingsRepository`, `ModelMetadataRowBuilder`.
+Also re-exports: `MockAccessRequestService`, `MockInferenceService`, `MockSettingsRepository`, `ModelMetadataEntityBuilder`.
 
 Static constant: `SNAPSHOT` — test snapshot hash.
 

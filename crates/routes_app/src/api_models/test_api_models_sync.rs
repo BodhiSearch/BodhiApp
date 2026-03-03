@@ -1,7 +1,6 @@
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_index,
-  api_models_show, api_models_sync, api_models_test, api_models_update, ApiKey, ApiModelResponse,
-  CreateApiModelRequest, ENDPOINT_API_MODELS,
+  api_models_show, api_models_sync, api_models_test, api_models_update, ENDPOINT_API_MODELS,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -13,21 +12,21 @@ use axum::{
 use mockall::predicate;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
+use services::AuthContext;
 use services::{
-  test_utils::{test_db_service, AppServiceStubBuilder, TestDbService},
+  test_utils::{test_db_service, AppServiceStubBuilder, TestDbService, TEST_TENANT_ID},
   ApiAliasRepository,
 };
-use services::{ApiAliasBuilder, ApiFormat::OpenAI};
+use services::{
+  ApiAliasBuilder, ApiFormat::OpenAI, ApiKey, ApiKeyUpdate, ApiModelOutput, ApiModelRequest,
+  ResourceRole,
+};
 use std::sync::Arc;
 use tower::ServiceExt;
 use uuid::Uuid;
 
 fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
-  let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), app_service);
   Router::new()
     .route(ENDPOINT_API_MODELS, get(api_models_index))
     .route(ENDPOINT_API_MODELS, post(api_models_create))
@@ -55,7 +54,12 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
       &format!("{}/{{id}}/sync-models", ENDPOINT_API_MODELS),
       post(api_models_sync),
     )
-    .with_state(Arc::new(router_state))
+    .layer(axum::Extension(AuthContext::test_session(
+      "test-user",
+      "testuser",
+      ResourceRole::PowerUser,
+    )))
+    .with_state(app_service)
 }
 
 #[rstest]
@@ -93,19 +97,19 @@ async fn test_sync_models_handler_success(
   );
 
   // First create an API model
-  let create_request = CreateApiModelRequest {
+  let create_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123".to_string())?,
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123".to_string())?),
     models: vec![],
     prefix: Some("fwd/".to_string()),
     forward_all_with_prefix: true,
   };
 
   let create_response = test_router(app_service.clone())
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?
-    .json::<ApiModelResponse>()
+    .json::<ApiModelOutput>()
     .await?;
 
   // Sync models
@@ -123,7 +127,7 @@ async fn test_sync_models_handler_success(
   assert_eq!(StatusCode::OK, sync_response.status());
 
   // Verify response contains the API model with cached models (unprefixed)
-  let sync_body = sync_response.json::<ApiModelResponse>().await?;
+  let sync_body = sync_response.json::<ApiModelOutput>().await?;
   assert_eq!(create_response.id, sync_body.id);
   assert_eq!(OpenAI, sync_body.api_format);
   // Models should be returned without prefix - UI applies prefix
@@ -160,16 +164,25 @@ async fn test_create_api_model_success(
     .build_with_time(now)?;
 
   db_service
-    .create_api_model_alias(&api_alias, Some("sk-test123".to_string()))
+    .create_api_model_alias(
+      TEST_TENANT_ID,
+      "",
+      &api_alias,
+      Some("sk-test123".to_string()),
+    )
     .await?;
 
   // Verify it was created
-  let retrieved = db_service.get_api_model_alias(&test_id).await?;
+  let retrieved = db_service
+    .get_api_model_alias(TEST_TENANT_ID, "", &test_id)
+    .await?;
   let retrieved = retrieved.ok_or_else(|| anyhow::anyhow!("expected api model alias to exist"))?;
   assert_eq!(retrieved.id, test_id);
 
   // Verify API key is encrypted but retrievable
-  let api_key = db_service.get_api_key_for_alias(&test_id).await?;
+  let api_key = db_service
+    .get_api_key_for_alias(TEST_TENANT_ID, "", &test_id)
+    .await?;
   assert_eq!(api_key, Some("sk-test123".to_string()));
 
   Ok(())
@@ -195,17 +208,25 @@ async fn test_delete_api_model(
     .build_with_time(now)?;
 
   db_service
-    .create_api_model_alias(&api_alias, Some("sk-test".to_string()))
+    .create_api_model_alias(TEST_TENANT_ID, "", &api_alias, Some("sk-test".to_string()))
     .await?;
 
   // Verify it exists
-  assert!(db_service.get_api_model_alias("to-delete").await?.is_some());
+  assert!(db_service
+    .get_api_model_alias(TEST_TENANT_ID, "", "to-delete")
+    .await?
+    .is_some());
 
   // Delete it
-  db_service.delete_api_model_alias("to-delete").await?;
+  db_service
+    .delete_api_model_alias(TEST_TENANT_ID, "", "to-delete")
+    .await?;
 
   // Verify it's gone
-  assert!(db_service.get_api_model_alias("to-delete").await?.is_none());
+  assert!(db_service
+    .get_api_model_alias(TEST_TENANT_ID, "", "to-delete")
+    .await?
+    .is_none());
 
   Ok(())
 }

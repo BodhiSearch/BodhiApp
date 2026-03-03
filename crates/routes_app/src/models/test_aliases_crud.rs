@@ -1,4 +1,4 @@
-use crate::models::models_api_schemas::{AliasResponse, PaginatedAliasResponse, UserAliasResponse};
+use crate::test_utils::RequestAuthContextExt;
 use crate::{models_copy, models_create, models_destroy, models_index, models_show, models_update};
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -10,21 +10,21 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use serde_json::Value;
-use server_core::{
-  test_utils::{router_state_stub, RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
+use server_core::test_utils::{router_state_stub, RequestTestExt, ResponseTestExt};
+use services::{
+  test_utils::{app_service_stub, AppServiceStub},
+  AuthContext, OAIRequestParamsBuilder, ResourceRole,
 };
-use services::test_utils::{app_service_stub, AppServiceStub};
-use services::OAIRequestParamsBuilder;
+use services::{AliasResponse, PaginatedAliasResponse, UserAliasResponse};
 use std::sync::Arc;
 use tower::ServiceExt;
 
-fn test_router(router_state_stub: DefaultRouterState) -> Router {
+fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
   Router::new()
     .route("/api/models", get(models_index))
     .route("/api/models/{id}", get(models_show).delete(models_destroy))
     .route("/api/models/{id}/copy", post(models_copy))
-    .with_state(Arc::new(router_state_stub))
+    .with_state(app_service)
 }
 
 #[rstest]
@@ -32,10 +32,18 @@ fn test_router(router_state_stub: DefaultRouterState) -> Router {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_local_aliases_handler(
-  #[future] router_state_stub: DefaultRouterState,
+  #[future] router_state_stub: Arc<dyn services::AppService>,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models").body(Body::empty())?)
+    .oneshot(
+      Request::get("/api/models")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?
     .json::<Value>()
     .await?;
@@ -56,10 +64,18 @@ async fn test_list_local_aliases_handler(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_local_aliases_page_size(
-  #[future] router_state_stub: DefaultRouterState,
+  #[future] router_state_stub: Arc<dyn services::AppService>,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models?page=2&page_size=4").body(Body::empty())?)
+    .oneshot(
+      Request::get("/api/models?page=2&page_size=4")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?
     .json::<Value>()
     .await?;
@@ -76,10 +92,18 @@ async fn test_list_local_aliases_page_size(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_local_aliases_over_limit_page_size(
-  #[future] router_state_stub: DefaultRouterState,
+  #[future] router_state_stub: Arc<dyn services::AppService>,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models?page_size=150").body(Body::empty())?)
+    .oneshot(
+      Request::get("/api/models?page_size=150")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?
     .json::<Value>()
     .await?;
@@ -93,10 +117,18 @@ async fn test_list_local_aliases_over_limit_page_size(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_local_aliases_response_structure(
-  #[future] router_state_stub: DefaultRouterState,
+  #[future] router_state_stub: Arc<dyn services::AppService>,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models").body(Body::empty())?)
+    .oneshot(
+      Request::get("/api/models")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?
     .json::<PaginatedAliasResponse>()
     .await?;
@@ -123,10 +155,18 @@ async fn test_list_local_aliases_response_structure(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_local_aliases_sorting(
-  #[future] router_state_stub: DefaultRouterState,
+  #[future] router_state_stub: Arc<dyn services::AppService>,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models?sort=repo&sort_order=desc").body(Body::empty())?)
+    .oneshot(
+      Request::get("/api/models?sort=repo&sort_order=desc")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?
     .json::<PaginatedAliasResponse>()
     .await?;
@@ -140,10 +180,18 @@ async fn test_list_local_aliases_sorting(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_get_alias_handler(
-  #[future] router_state_stub: DefaultRouterState,
+  #[future] router_state_stub: Arc<dyn services::AppService>,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models/test-llama3-instruct").body(Body::empty())?)
+    .oneshot(
+      Request::get("/api/models/test-llama3-instruct")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?;
   assert_eq!(StatusCode::OK, response.status());
   let alias_response = response.json::<UserAliasResponse>().await?;
@@ -162,10 +210,18 @@ async fn test_get_alias_handler(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_get_alias_handler_non_existent(
-  #[future] router_state_stub: DefaultRouterState,
+  #[future] router_state_stub: Arc<dyn services::AppService>,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models/non_existent_alias").body(Body::empty())?)
+    .oneshot(
+      Request::get("/api/models/non_existent_alias")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?;
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
@@ -179,10 +235,7 @@ async fn test_get_alias_handler_non_existent(
 #[fixture]
 #[awt]
 async fn app(#[future] app_service_stub: AppServiceStub) -> Router {
-  let router_state = DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service_stub),
-  );
+  let app_service: Arc<dyn services::AppService> = Arc::new(app_service_stub);
   Router::new()
     .route("/api/models", post(models_create))
     .route(
@@ -190,7 +243,7 @@ async fn app(#[future] app_service_stub: AppServiceStub) -> Router {
       put(models_update).delete(models_destroy),
     )
     .route("/api/models/{id}/copy", post(models_copy))
-    .with_state(Arc::new(router_state))
+    .with_state(app_service)
 }
 
 fn payload() -> Value {
@@ -255,7 +308,15 @@ async fn test_create_alias_handler(
   #[case] expected_snapshot: &str,
 ) -> anyhow::Result<()> {
   let response = app
-    .oneshot(Request::post("/api/models").json(&payload)?)
+    .oneshot(
+      Request::post("/api/models")
+        .json(&payload)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
+    )
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
   let response = response.json::<UserAliasResponse>().await?;
@@ -283,7 +344,15 @@ async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> a
   });
 
   let response = app
-    .oneshot(Request::post("/api/models").json(&payload)?)
+    .oneshot(
+      Request::post("/api/models")
+        .json(&payload)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
+    )
     .await?;
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
@@ -300,6 +369,7 @@ async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> a
 #[anyhow_trace]
 async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> {
   let payload = serde_json::json!({
+    "alias": "tinyllama:instruct",
     "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
     "filename": "tinyllama-1.1b-chat-v0.3.Q2_K.gguf",
 
@@ -318,7 +388,12 @@ async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> 
       Request::builder()
         .method(Method::PUT)
         .uri("/api/models/test-tinyllama-instruct")
-        .json(&payload)?,
+        .json(&payload)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
     )
     .await?;
 
@@ -362,7 +437,15 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
   });
 
   let response = app
-    .oneshot(Request::post("/api/models").json(&payload)?)
+    .oneshot(
+      Request::post("/api/models")
+        .json(&payload)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -390,6 +473,7 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
   ]
 }), Method::POST, "/api/models", "hub_service_error-file_not_found")]
 #[case(serde_json::json!({
+  "alias": "tinyllama:instruct",
   "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
   "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
 
@@ -413,7 +497,17 @@ async fn test_create_alias_repo_not_downloaded_error(
   #[case] expected_error_code: &str,
 ) -> anyhow::Result<()> {
   let response = app
-    .oneshot(Request::builder().method(method).uri(url).json(&payload)?)
+    .oneshot(
+      Request::builder()
+        .method(method)
+        .uri(url)
+        .json(&payload)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::NOT_FOUND, response.status());

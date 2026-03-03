@@ -126,7 +126,7 @@ function EditToolsetContent() {
       slug: data.slug,
       description: data.description || null,
       enabled: data.enabled,
-      api_key: data.api_key === '' ? { action: 'Keep' } : { action: 'Set', value: data.api_key },
+      api_key: data.api_key === '' ? { action: 'keep' } : { action: 'set', value: data.api_key },
     });
   };
 

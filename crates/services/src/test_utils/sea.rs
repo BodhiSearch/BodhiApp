@@ -3,9 +3,9 @@ use crate::{
   test_utils::FrozenTimeService,
 };
 use chrono::{DateTime, Utc};
-use sea_orm::Database;
+use sea_orm::{ConnectOptions, Database};
 use sea_orm_migration::MigratorTrait;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use tempfile::TempDir;
 
 pub struct SeaTestContext {
@@ -38,9 +38,11 @@ pub async fn sea_context(db_type: &str) -> SeaTestContext {
       let pg_url = std::env::var("INTEG_TEST_APP_DB_PG_URL")
         .expect("INTEG_TEST_APP_DB_PG_URL must be set for PostgreSQL tests");
 
-      let db = Database::connect(&pg_url)
+      let mut opts = ConnectOptions::new(&pg_url);
+      opts.connect_timeout(Duration::from_secs(3));
+      let db = Database::connect(opts)
         .await
-        .expect("Failed to connect to PostgreSQL");
+        .expect(format!("Failed to connect to PostgreSQL on {pg_url}").as_str());
 
       Migrator::fresh(&db).await.unwrap();
 

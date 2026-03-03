@@ -1,17 +1,16 @@
 use crate::tokens::error::TokenRouteError;
 use crate::tokens::tokens_api_schemas::{
-  ApiTokenResponse, CreateApiTokenRequest, PaginatedApiTokenResponse, UpdateApiTokenRequest,
+  CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail, UpdateTokenRequest,
 };
+use crate::{ApiError, OpenAIApiError, ValidatedJson};
 use crate::{AuthScope, PaginationSortParams, API_TAG_API_KEYS, ENDPOINT_TOKENS};
-use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
   Json,
 };
-use axum_extra::extract::WithRejection;
-use crate::{ApiError, JsonRejectionError, OpenAIApiError};
-use services::{ApiToken, ResourceRole, TokenScope};
+use services::AuthContext;
+use services::{ResourceRole, TokenScope};
 
 /// Create a new API token
 ///
@@ -26,7 +25,7 @@ use services::{ApiToken, ResourceRole, TokenScope};
     summary = "Create API Token",
     description = "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
     request_body(
-        content = CreateApiTokenRequest,
+        content = CreateTokenRequest,
         description = "API token creation parameters",
         example = json!({
             "name": "My Integration Token",
@@ -34,7 +33,7 @@ use services::{ApiToken, ResourceRole, TokenScope};
         })
     ),
     responses(
-        (status = 201, description = "API token created successfully", body = ApiTokenResponse,
+        (status = 201, description = "API token created successfully", body = TokenCreated,
          example = json!({
              "token": "bodhiapp_1234567890abcdef"
          })),
@@ -46,8 +45,8 @@ use services::{ApiToken, ResourceRole, TokenScope};
 )]
 pub async fn tokens_create(
   auth_scope: AuthScope,
-  WithRejection(Json(payload), _): WithRejection<Json<CreateApiTokenRequest>, JsonRejectionError>,
-) -> Result<(StatusCode, Json<ApiTokenResponse>), ApiError> {
+  ValidatedJson(request): ValidatedJson<CreateTokenRequest>,
+) -> Result<(StatusCode, Json<TokenCreated>), ApiError> {
   let AuthContext::Session {
     role: Some(user_role),
     ..
@@ -57,25 +56,22 @@ pub async fn tokens_create(
   };
 
   // Validate privilege escalation - users cannot create tokens with higher privileges than their role
-  let token_scope = match (user_role, &payload.scope) {
+  let token_scope = match (user_role, &request.scope) {
     // User can only create user-level tokens
-    (ResourceRole::User, TokenScope::User) => Ok(payload.scope),
+    (ResourceRole::User, TokenScope::User) => Ok(request.scope),
     (ResourceRole::User, _) => Err(TokenRouteError::PrivilegeEscalation),
 
     // Other roles (PowerUser, Manager, Admin) can create user or power_user tokens
-    (_, TokenScope::User | TokenScope::PowerUser) => Ok(payload.scope),
+    (_, TokenScope::User | TokenScope::PowerUser) => Ok(request.scope),
   }?;
 
-  let (token_str, _api_token) = auth_scope
-    .tokens()
-    .create_token(payload.name.unwrap_or_default(), token_scope)
-    .await?;
+  let validated = CreateTokenRequest {
+    name: request.name,
+    scope: token_scope,
+  };
+  let token_created = auth_scope.tokens().create_token(validated).await?;
 
-  // Return token (shown only once!)
-  Ok((
-    StatusCode::CREATED,
-    Json(ApiTokenResponse { token: token_str }),
-  ))
+  Ok((StatusCode::CREATED, Json(token_created)))
 }
 
 /// Update an existing API token
@@ -95,7 +91,7 @@ pub async fn tokens_create(
          example = "550e8400-e29b-41d4-a716-446655440000")
     ),
     request_body(
-        content = UpdateApiTokenRequest,
+        content = UpdateTokenRequest,
         description = "Token update request",
         example = json!({
             "name": "Updated Token Name",
@@ -103,7 +99,7 @@ pub async fn tokens_create(
         })
     ),
     responses(
-        (status = 200, description = "Token updated successfully", body = ApiToken,
+        (status = 200, description = "Token updated successfully", body = TokenDetail,
          example = json!({
              "id": "550e8400-e29b-41d4-a716-446655440000",
              "user_id": "auth0|123456789",
@@ -130,12 +126,9 @@ pub async fn tokens_create(
 pub async fn tokens_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-  WithRejection(Json(payload), _): WithRejection<Json<UpdateApiTokenRequest>, JsonRejectionError>,
-) -> Result<Json<ApiToken>, ApiError> {
-  let token = auth_scope
-    .tokens()
-    .update_token(&id, payload.name, payload.status)
-    .await?;
+  ValidatedJson(request): ValidatedJson<UpdateTokenRequest>,
+) -> Result<Json<TokenDetail>, ApiError> {
+  let token = auth_scope.tokens().update_token(&id, request).await?;
   Ok(Json(token))
 }
 
@@ -154,7 +147,7 @@ pub async fn tokens_update(
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of API tokens", body = PaginatedApiTokenResponse,
+        (status = 200, description = "List of API tokens", body = PaginatedTokenResponse,
          example = json!({
              "data": [
                  {
@@ -189,18 +182,11 @@ pub async fn tokens_update(
 pub async fn tokens_index(
   auth_scope: AuthScope,
   Query(query): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedApiTokenResponse>, ApiError> {
+) -> Result<Json<PaginatedTokenResponse>, ApiError> {
   let per_page = query.page_size.min(100);
-  let (tokens, total) = auth_scope
+  let paginated = auth_scope
     .tokens()
     .list_tokens(query.page, per_page)
     .await?;
-
-  let paginated = PaginatedApiTokenResponse {
-    data: tokens,
-    total,
-    page: query.page,
-    page_size: per_page,
-  };
   Ok(Json(paginated))
 }

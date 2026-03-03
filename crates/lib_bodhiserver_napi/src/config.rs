@@ -1,4 +1,4 @@
-use lib_bodhiserver::{AppInstance, AppOptionsBuilder, AppStatus, BootstrapError};
+use lib_bodhiserver::{AppOptionsBuilder, AppStatus, BootstrapError, Tenant};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -108,7 +108,7 @@ pub fn try_build_app_options_internal(
     builder = builder.set_system_setting(&key, &value)?;
   }
 
-  // Build AppInstance when both client credentials are provided
+  // Build Tenant when both client credentials are provided
   if let (Some(client_id), Some(client_secret)) = (config.client_id, config.client_secret) {
     let status = if let Some(status_str) = config.app_status {
       status_str.parse::<AppStatus>().map_err(|_| {
@@ -118,14 +118,15 @@ pub fn try_build_app_options_internal(
       AppStatus::Ready
     };
     let now = chrono::Utc::now();
-    let instance = AppInstance {
+    let instance = Tenant {
+      id: ulid::Ulid::new().to_string(),
       client_id,
       client_secret,
       status,
       created_at: now,
       updated_at: now,
     };
-    builder = builder.set_app_instance(instance);
+    builder = builder.set_tenant(instance);
   }
   Ok(builder)
 }
@@ -348,7 +349,7 @@ mod tests {
     assert_eq!(app_options.app_version, "1.0.0");
     assert_eq!(app_options.auth_url, "http://localhost:8080");
     assert_eq!(app_options.auth_realm, "bodhi");
-    assert!(app_options.app_instance.is_some());
+    assert!(app_options.tenant.is_some());
     Ok(())
   }
 }

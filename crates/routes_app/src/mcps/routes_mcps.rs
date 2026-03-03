@@ -1,14 +1,21 @@
 use crate::mcps::{
-  CreateMcpRequest, FetchMcpToolsRequest, ListMcpsResponse, McpAuth, McpExecuteRequest,
-  McpExecuteResponse, McpResponse, McpRouteError, McpToolsResponse, UpdateMcpRequest,
-  ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS,
+  FetchMcpToolsRequest, McpAuth, McpExecuteRequest, McpExecuteResponse, McpRouteError,
+  McpToolsResponse, ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS,
 };
-use crate::{ApiError, AuthScope, API_TAG_MCPS};
-use axum::{
-  extract::Path,
-  http::StatusCode,
-  Json,
+use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_MCPS};
+use axum::{extract::Path, http::StatusCode, Json};
+use services::{
+  ApprovalStatus, ApprovedResources, AuthContext, Mcp, McpRequest, McpWithServerEntity,
 };
+
+// ============================================================================
+// MCP Instance Response types
+// ============================================================================
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct ListMcpsResponse {
+  pub mcps: Vec<Mcp>,
+}
 
 // ============================================================================
 // MCP Instance CRUD Handlers
@@ -25,12 +32,41 @@ use axum::{
   ),
   security(("bearer" = []))
 )]
-pub async fn mcps_index(
-  auth_scope: AuthScope,
-) -> Result<Json<ListMcpsResponse>, ApiError> {
-  let mcps = auth_scope.mcps().list().await?;
-  let responses: Vec<McpResponse> = mcps.into_iter().map(McpResponse::from).collect();
-  Ok(Json(ListMcpsResponse { mcps: responses }))
+pub async fn mcps_index(auth_scope: AuthScope) -> Result<Json<ListMcpsResponse>, ApiError> {
+  let entities = auth_scope.mcps().list().await?;
+
+  // Filter MCP list for ExternalApp tokens: only return MCPs approved in the access request
+  let entities: Vec<McpWithServerEntity> = if let AuthContext::ExternalApp {
+    access_request_id: Some(ar_id),
+    ..
+  } = auth_scope.auth_context()
+  {
+    let request = auth_scope
+      .access_request_service()
+      .get_request(ar_id)
+      .await?;
+    let approved_ids: std::collections::HashSet<String> = request
+      .and_then(|r| r.approved)
+      .and_then(|json| serde_json::from_str::<ApprovedResources>(&json).ok())
+      .map(|res| {
+        res
+          .mcps
+          .into_iter()
+          .filter(|a| a.status == ApprovalStatus::Approved)
+          .filter_map(|a| a.instance.map(|i| i.id))
+          .collect()
+      })
+      .unwrap_or_default();
+    entities
+      .into_iter()
+      .filter(|m| approved_ids.contains(&m.id))
+      .collect()
+  } else {
+    entities
+  };
+
+  let mcps: Vec<Mcp> = entities.into_iter().map(|e| e.into()).collect();
+  Ok(Json(ListMcpsResponse { mcps }))
 }
 
 /// Create a new MCP instance
@@ -39,43 +75,25 @@ pub async fn mcps_index(
   path = ENDPOINT_MCPS,
   tag = API_TAG_MCPS,
   operation_id = "createMcp",
-  request_body = CreateMcpRequest,
+  request_body = McpRequest,
   responses(
-    (status = 201, description = "MCP created", body = McpResponse),
+    (status = 201, description = "MCP created", body = Mcp),
     (status = 400, description = "Validation error"),
   ),
   security(("bearer" = []))
 )]
 pub async fn mcps_create(
   auth_scope: AuthScope,
-  Json(request): Json<CreateMcpRequest>,
-) -> Result<(StatusCode, Json<McpResponse>), ApiError> {
-  if request.name.is_empty() {
-    return Err(McpRouteError::Validation("name is required".to_string()).into());
-  }
-  if request.slug.is_empty() {
-    return Err(McpRouteError::Validation("slug is required".to_string()).into());
-  }
-  if request.mcp_server_id.is_empty() {
+  ValidatedJson(request): ValidatedJson<McpRequest>,
+) -> Result<(StatusCode, Json<Mcp>), ApiError> {
+  if request.mcp_server_id.is_none() || request.mcp_server_id.as_deref() == Some("") {
     return Err(McpRouteError::Validation("mcp_server_id is required".to_string()).into());
   }
 
-  let mcp = auth_scope
-    .mcps()
-    .create(
-      &request.name,
-      &request.slug,
-      &request.mcp_server_id,
-      request.description,
-      request.enabled,
-      request.tools_cache,
-      request.tools_filter,
-      request.auth_type.clone(),
-      request.auth_uuid,
-    )
-    .await?;
+  let entity = auth_scope.mcps().create(request).await?;
+  let mcp: Mcp = entity.into();
 
-  Ok((StatusCode::CREATED, Json(McpResponse::from(mcp))))
+  Ok((StatusCode::CREATED, Json(mcp)))
 }
 
 /// Get a specific MCP instance by ID
@@ -88,7 +106,7 @@ pub async fn mcps_create(
     ("id" = String, Path, description = "MCP instance UUID")
   ),
   responses(
-    (status = 200, description = "MCP instance", body = McpResponse),
+    (status = 200, description = "MCP instance", body = Mcp),
     (status = 404, description = "MCP not found"),
   ),
   security(("bearer" = []))
@@ -96,14 +114,14 @@ pub async fn mcps_create(
 pub async fn mcps_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<McpResponse>, ApiError> {
-  let mcp = auth_scope
+) -> Result<Json<Mcp>, ApiError> {
+  let entity = auth_scope
     .mcps()
     .get(&id)
     .await?
     .ok_or_else(|| services::EntityError::NotFound("MCP".to_string()))?;
 
-  Ok(Json(McpResponse::from(mcp)))
+  Ok(Json(entity.into()))
 }
 
 /// Update an MCP instance
@@ -115,9 +133,9 @@ pub async fn mcps_show(
   params(
     ("id" = String, Path, description = "MCP instance UUID")
   ),
-  request_body = UpdateMcpRequest,
+  request_body = McpRequest,
   responses(
-    (status = 200, description = "MCP updated", body = McpResponse),
+    (status = 200, description = "MCP updated", body = Mcp),
     (status = 400, description = "Validation error"),
     (status = 404, description = "MCP not found"),
   ),
@@ -126,31 +144,11 @@ pub async fn mcps_show(
 pub async fn mcps_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-  Json(request): Json<UpdateMcpRequest>,
-) -> Result<Json<McpResponse>, ApiError> {
-  if request.name.is_empty() {
-    return Err(McpRouteError::Validation("name is required".to_string()).into());
-  }
-  if request.slug.is_empty() {
-    return Err(McpRouteError::Validation("slug is required".to_string()).into());
-  }
+  ValidatedJson(request): ValidatedJson<McpRequest>,
+) -> Result<Json<Mcp>, ApiError> {
+  let entity = auth_scope.mcps().update(&id, request).await?;
 
-  let mcp = auth_scope
-    .mcps()
-    .update(
-      &id,
-      &request.name,
-      &request.slug,
-      request.description,
-      request.enabled,
-      request.tools_filter,
-      request.tools_cache,
-      request.auth_type,
-      request.auth_uuid,
-    )
-    .await?;
-
-  Ok(Json(McpResponse::from(mcp)))
+  Ok(Json(entity.into()))
 }
 
 /// Delete an MCP instance
@@ -247,12 +245,13 @@ pub async fn mcps_list_tools(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<Json<McpToolsResponse>, ApiError> {
-  let mcp = auth_scope
+  let entity = auth_scope
     .mcps()
     .get(&id)
     .await?
     .ok_or_else(|| services::EntityError::NotFound("MCP".to_string()))?;
 
+  let mcp: Mcp = entity.into();
   let tools = mcp.tools_cache.unwrap_or_default();
   Ok(Json(McpToolsResponse { tools }))
 }

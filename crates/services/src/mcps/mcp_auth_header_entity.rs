@@ -7,13 +7,13 @@ use sea_orm::FromQueryResult;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  pub tenant_id: String,
   pub name: String,
   pub mcp_server_id: String,
   pub header_key: String,
   pub encrypted_header_value: String,
   pub header_value_salt: String,
   pub header_value_nonce: String,
-  pub created_by: String,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -44,7 +44,6 @@ pub struct McpAuthHeaderView {
   pub name: String,
   pub mcp_server_id: String,
   pub header_key: String,
-  pub created_by: String,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -57,44 +56,14 @@ impl From<McpAuthHeaderView> for crate::mcps::McpAuthHeader {
       mcp_server_id: v.mcp_server_id,
       header_key: v.header_key,
       has_header_value: true,
-      created_by: v.created_by,
       created_at: v.created_at,
       updated_at: v.updated_at,
     }
   }
 }
 
-// ============================================================================
-// McpAuthHeaderRow - Database row for header-based MCP authentication configs
-// ============================================================================
+/// Type alias — McpAuthHeaderEntity is the entity Model.
+pub type McpAuthHeaderEntity = Model;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct McpAuthHeaderRow {
-  pub id: String,
-  pub name: String,
-  pub mcp_server_id: String,
-  pub header_key: String,
-  pub encrypted_header_value: String,
-  pub header_value_salt: String,
-  pub header_value_nonce: String,
-  pub created_by: String,
-  pub created_at: chrono::DateTime<chrono::Utc>,
-  pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-
-impl From<Model> for McpAuthHeaderRow {
-  fn from(m: Model) -> Self {
-    McpAuthHeaderRow {
-      id: m.id,
-      name: m.name,
-      mcp_server_id: m.mcp_server_id,
-      header_key: m.header_key,
-      encrypted_header_value: m.encrypted_header_value,
-      header_value_salt: m.header_value_salt,
-      header_value_nonce: m.header_value_nonce,
-      created_by: m.created_by,
-      created_at: m.created_at,
-      updated_at: m.updated_at,
-    }
-  }
-}
+/// Backward-compatible alias (deprecated — use McpAuthHeaderEntity).
+pub type McpAuthHeaderRow = Model;

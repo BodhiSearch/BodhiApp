@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { ApiToken } from '@bodhiapp/ts-client';
+import { TokenDetail } from '@bodhiapp/ts-client';
 import { Shield } from 'lucide-react';
 
 import { CreateTokenDialog } from '@/app/ui/tokens/CreateTokenDialog';
@@ -67,7 +67,7 @@ export function TokenPageContent() {
     enabled: !appLoading,
   });
 
-  const handleStatusChange = (token: ApiToken, checked: boolean) => {
+  const handleStatusChange = (token: TokenDetail, checked: boolean) => {
     updateToken({
       id: token.id,
       name: token.name,
@@ -90,7 +90,7 @@ export function TokenPageContent() {
     );
   }
 
-  const renderRow = (token: ApiToken) => (
+  const renderRow = (token: TokenDetail) => (
     <>
       <TableCell data-testid={`token-name-${token.id}`}>{token.name || '-'}</TableCell>
       <TableCell data-testid={`token-scope-${token.id}`}>{token.scopes}</TableCell>

@@ -1,18 +1,18 @@
 use oauth2::url::ParseError;
 use services::{AppError, ErrorType};
-use services::{AppInstanceError, AppStatus, AuthServiceError, TokenError};
+use services::{AppStatus, AuthServiceError, TenantError, TokenError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum AuthRouteError {
-  #[error("Application instance not found.")]
+  #[error("Tenant not found.")]
   #[error_meta(error_type = ErrorType::InvalidAppState)]
-  AppInstanceNotFound,
+  TenantNotFound,
   #[error("Application status is invalid for this operation. Current status: {0}.")]
   #[error_meta(error_type = ErrorType::InvalidAppState)]
   AppStatusInvalid(AppStatus),
   #[error(transparent)]
-  AppInstanceError(#[from] AppInstanceError),
+  TenantError(#[from] TenantError),
   #[error("{0}")]
   #[error_meta(error_type = ErrorType::Authentication, args_delegate = false)]
   SessionError(#[from] tower_sessions::session::Error),

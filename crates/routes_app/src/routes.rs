@@ -1,3 +1,8 @@
+use crate::middleware::{
+  access_request_auth_middleware, api_auth_middleware, auth_middleware, canonical_url_middleware,
+  optional_auth_middleware, AccessRequestValidator, McpAccessRequestValidator,
+  ToolsetAccessRequestValidator,
+};
 use crate::proxy_router;
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_formats,
@@ -43,17 +48,11 @@ use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
   ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
-use auth_middleware::canonical_url_middleware;
-use auth_middleware::{
-  access_request_auth_middleware, api_auth_middleware, auth_middleware, optional_auth_middleware,
-  McpAccessRequestValidator, ToolsetAccessRequestValidator,
-};
 use axum::{
   middleware::from_fn_with_state,
   routing::{delete, get, post, put},
   Router,
 };
-use server_core::{DefaultRouterState, RouterState, SharedContext};
 use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
 use services::{ResourceRole, TokenScope, UserScope};
 use std::sync::Arc;
@@ -66,11 +65,10 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 pub async fn build_routes(
-  ctx: Arc<dyn SharedContext>,
   app_service: Arc<dyn AppService>,
   static_router: Option<Router>,
 ) -> Router {
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(ctx, app_service.clone()));
+  let state = app_service.clone();
 
   // Public APIs (no auth required)
   let public_apis = Router::new()
@@ -219,6 +217,31 @@ pub async fn build_routes(
       ENDPOINT_ACCESS_REQUESTS_DENY,
       post(apps_deny_access_request),
     )
+    // API Models management (session-only, user role)
+    .route(ENDPOINT_API_MODELS, get(api_models_index))
+    .route(ENDPOINT_API_MODELS, post(api_models_create))
+    .route(ENDPOINT_API_MODELS_API_FORMATS, get(api_models_formats))
+    .route(ENDPOINT_API_MODELS_TEST, post(api_models_test))
+    .route(
+      ENDPOINT_API_MODELS_FETCH_MODELS,
+      post(api_models_fetch_models),
+    )
+    .route(
+      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
+      get(api_models_show),
+    )
+    .route(
+      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
+      put(api_models_update),
+    )
+    .route(
+      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
+      delete(api_models_destroy),
+    )
+    .route(
+      &format!("{ENDPOINT_API_MODELS}/{{id}}/sync-models"),
+      post(api_models_sync),
+    )
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| api_auth_middleware(ResourceRole::User, None, None, state, req, next),
@@ -243,8 +266,7 @@ pub async fn build_routes(
     ));
 
   // Toolset execute API with access request middleware - session and OAuth tokens, NOT API tokens
-  let toolset_validator: Arc<dyn auth_middleware::AccessRequestValidator> =
-    Arc::new(ToolsetAccessRequestValidator);
+  let toolset_validator: Arc<dyn AccessRequestValidator> = Arc::new(ToolsetAccessRequestValidator);
   let toolset_exec_apis = Router::new()
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}/tools/{{tool_name}}/execute"),
@@ -272,8 +294,7 @@ pub async fn build_routes(
     ));
 
   // MCP exec APIs with access request middleware - session and OAuth tokens, NOT API tokens
-  let mcp_validator: Arc<dyn auth_middleware::AccessRequestValidator> =
-    Arc::new(McpAccessRequestValidator);
+  let mcp_validator: Arc<dyn AccessRequestValidator> = Arc::new(McpAccessRequestValidator);
   let mcp_exec_apis = Router::new()
     .route(&format!("{ENDPOINT_MCPS}/{{id}}"), get(mcps_show))
     .route(
@@ -318,31 +339,6 @@ pub async fn build_routes(
     .route(
       &format!("{ENDPOINT_MODEL_PULL}/{{id}}"),
       get(models_pull_show),
-    )
-    // API Models management
-    .route(ENDPOINT_API_MODELS, get(api_models_index))
-    .route(ENDPOINT_API_MODELS, post(api_models_create))
-    .route(ENDPOINT_API_MODELS_API_FORMATS, get(api_models_formats))
-    .route(ENDPOINT_API_MODELS_TEST, post(api_models_test))
-    .route(
-      ENDPOINT_API_MODELS_FETCH_MODELS,
-      post(api_models_fetch_models),
-    )
-    .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
-      get(api_models_show),
-    )
-    .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
-      put(api_models_update),
-    )
-    .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
-      delete(api_models_destroy),
-    )
-    .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}/sync-models"),
-      post(api_models_sync),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -467,7 +463,7 @@ pub async fn build_routes(
   GlobalErrorResponses.modify(&mut openapi);
 
   // Build final router
-  let router = Router::<Arc<dyn RouterState>>::new()
+  let router = Router::<Arc<dyn AppService>>::new()
     .merge(public_apis)
     .merge(optional_auth)
     .merge(protected_apis)

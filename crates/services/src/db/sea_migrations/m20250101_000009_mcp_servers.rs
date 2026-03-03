@@ -7,6 +7,7 @@ pub struct Migration;
 enum McpServers {
   Table,
   Id,
+  TenantId,
   Url,
   Name,
   Description,
@@ -21,7 +22,8 @@ enum McpServers {
 enum Mcps {
   Table,
   Id,
-  CreatedBy,
+  TenantId,
+  UserId,
   McpServerId,
   Name,
   Slug,
@@ -43,6 +45,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(McpServers::Table)
           .col(string(McpServers::Id).primary_key())
+          .col(string(McpServers::TenantId))
           .col(string(McpServers::Url))
           .col(string(McpServers::Name).default(""))
           .col(string_null(McpServers::Description))
@@ -56,11 +59,22 @@ impl MigrationTrait for Migration {
       .await?;
 
     manager
+      .create_index(
+        Index::create()
+          .name("idx_mcp_servers_tenant_id")
+          .table(McpServers::Table)
+          .col(McpServers::TenantId)
+          .to_owned(),
+      )
+      .await?;
+
+    manager
       .create_table(
         Table::create()
           .table(Mcps::Table)
           .col(string(Mcps::Id).primary_key())
-          .col(string(Mcps::CreatedBy))
+          .col(string(Mcps::TenantId))
+          .col(string(Mcps::UserId))
           .col(string(Mcps::McpServerId))
           .foreign_key(
             ForeignKey::create()
@@ -87,9 +101,9 @@ impl MigrationTrait for Migration {
     manager
       .create_index(
         Index::create()
-          .name("idx_mcps_created_by")
+          .name("idx_mcps_user_id")
           .table(Mcps::Table)
-          .col(Mcps::CreatedBy)
+          .col(Mcps::UserId)
           .to_owned(),
       )
       .await?;
@@ -104,30 +118,40 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_mcps_tenant_id")
+          .table(Mcps::Table)
+          .col(Mcps::TenantId)
+          .to_owned(),
+      )
+      .await?;
+
     let db = manager.get_connection();
     let backend = db.get_database_backend();
     match backend {
       sea_orm::DatabaseBackend::Sqlite => {
         db.execute_unprepared(
           "CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_servers_url_unique \
-           ON mcp_servers(url COLLATE NOCASE)",
+           ON mcp_servers(tenant_id, url COLLATE NOCASE)",
         )
         .await?;
         db.execute_unprepared(
-          "CREATE UNIQUE INDEX IF NOT EXISTS idx_mcps_created_by_slug_unique \
-           ON mcps(created_by COLLATE NOCASE, slug COLLATE NOCASE)",
+          "CREATE UNIQUE INDEX IF NOT EXISTS idx_mcps_user_id_slug_unique \
+           ON mcps(tenant_id, user_id COLLATE NOCASE, slug COLLATE NOCASE)",
         )
         .await?;
       }
       sea_orm::DatabaseBackend::Postgres => {
         db.execute_unprepared(
           "CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_servers_url_unique \
-           ON mcp_servers(LOWER(url))",
+           ON mcp_servers(tenant_id, LOWER(url))",
         )
         .await?;
         db.execute_unprepared(
-          "CREATE UNIQUE INDEX IF NOT EXISTS idx_mcps_created_by_slug_unique \
-           ON mcps(LOWER(created_by), LOWER(slug))",
+          "CREATE UNIQUE INDEX IF NOT EXISTS idx_mcps_user_id_slug_unique \
+           ON mcps(tenant_id, LOWER(user_id), LOWER(slug))",
         )
         .await?;
       }

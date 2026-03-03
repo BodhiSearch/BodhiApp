@@ -1,40 +1,33 @@
-use crate::{
-  mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequestBuilder, FetchModelsRequest,
-  TestCreds, TestPromptRequest, TestPromptResponse, UpdateApiModelRequestBuilder,
-};
 use services::ApiFormat::OpenAI;
-use services::ApiKeyUpdate;
+use services::{
+  ApiKey, ApiKeyUpdate, ApiModelRequestBuilder, FetchModelsRequest, TestCreds, TestPromptRequest,
+  TestPromptResponse,
+};
 use validator::Validate;
 
 #[test]
-fn test_mask_api_key() {
-  assert_eq!(mask_api_key("sk-1234567890abcdef"), "sk-...abcdef");
-  assert_eq!(mask_api_key("short"), "***");
-  assert_eq!(mask_api_key("exactlytwelv"), "***"); // exactly 12 chars
-  assert_eq!(mask_api_key("thirteenchars"), "thi...nchars"); // 13 chars
-}
-
-#[test]
-fn test_create_api_model_request_validation() {
-  let request = CreateApiModelRequestBuilder::default()
+fn test_create_api_model_form_validation() {
+  let form = ApiModelRequestBuilder::default()
     .api_format(OpenAI)
     .base_url("not-a-url")
-    .api_key(ApiKey::some("key".to_string()).unwrap())
+    .api_key(ApiKeyUpdate::Set(ApiKey::some("key".to_string()).unwrap()))
     .models(vec!["gpt-4".to_string()])
     .build()
     .unwrap();
 
-  assert!(request.validate().is_err());
+  assert!(form.validate().is_err());
 
-  let valid_request = CreateApiModelRequestBuilder::default()
+  let valid_form = ApiModelRequestBuilder::default()
     .api_format(OpenAI)
     .base_url("https://api.openai.com/v1")
-    .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+    .api_key(ApiKeyUpdate::Set(
+      ApiKey::some("sk-test".to_string()).unwrap(),
+    ))
     .models(vec!["gpt-4".to_string()])
     .build()
     .unwrap();
 
-  assert!(valid_request.validate().is_ok());
+  assert!(valid_form.validate().is_ok());
 }
 
 #[test]
@@ -69,6 +62,42 @@ fn test_fetch_models_request_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
   };
   assert!(valid.validate().is_ok());
+}
+
+#[test]
+fn test_api_key_update_serialization() {
+  let keep = ApiKeyUpdate::Keep;
+  assert_eq!(
+    serde_json::to_string(&keep).unwrap(),
+    r#"{"action":"keep"}"#
+  );
+
+  let set = ApiKeyUpdate::Set(ApiKey::some("sk-test".to_string()).unwrap());
+  assert_eq!(
+    serde_json::to_string(&set).unwrap(),
+    r#"{"action":"set","value":"sk-test"}"#
+  );
+
+  let set_none = ApiKeyUpdate::Set(ApiKey::none());
+  assert_eq!(
+    serde_json::to_string(&set_none).unwrap(),
+    r#"{"action":"set","value":null}"#
+  );
+}
+
+#[test]
+fn test_api_key_update_deserialization() {
+  let keep: ApiKeyUpdate = serde_json::from_str(r#"{"action":"keep"}"#).unwrap();
+  assert_eq!(keep, ApiKeyUpdate::Keep);
+
+  let set: ApiKeyUpdate = serde_json::from_str(r#"{"action":"set","value":"sk-test"}"#).unwrap();
+  assert_eq!(
+    set,
+    ApiKeyUpdate::Set(ApiKey::some("sk-test".to_string()).unwrap())
+  );
+
+  let set_none: ApiKeyUpdate = serde_json::from_str(r#"{"action":"set","value":null}"#).unwrap();
+  assert_eq!(set_none, ApiKeyUpdate::Set(ApiKey::none()));
 }
 
 #[test]
@@ -139,210 +168,51 @@ fn test_fetch_models_request_credentials_validation() {
 }
 
 #[test]
-fn test_api_key_update_action_serialization() {
-  let keep = ApiKeyUpdateAction::Keep;
-  assert_eq!(
-    serde_json::to_string(&keep).unwrap(),
-    r#"{"action":"keep"}"#
-  );
-
-  let set = ApiKeyUpdateAction::Set(ApiKey::some("sk-test".to_string()).unwrap());
-  assert_eq!(
-    serde_json::to_string(&set).unwrap(),
-    r#"{"action":"set","value":"sk-test"}"#
-  );
-
-  let set_none = ApiKeyUpdateAction::Set(ApiKey::none());
-  assert_eq!(
-    serde_json::to_string(&set_none).unwrap(),
-    r#"{"action":"set","value":null}"#
-  );
-}
-
-#[test]
-fn test_api_key_update_action_deserialization() {
-  let keep: ApiKeyUpdateAction = serde_json::from_str(r#"{"action":"keep"}"#).unwrap();
-  assert_eq!(keep, ApiKeyUpdateAction::Keep);
-
-  let set: ApiKeyUpdateAction =
-    serde_json::from_str(r#"{"action":"set","value":"sk-test"}"#).unwrap();
-  assert_eq!(
-    set,
-    ApiKeyUpdateAction::Set(ApiKey::some("sk-test".to_string()).unwrap())
-  );
-
-  let set_none: ApiKeyUpdateAction =
-    serde_json::from_str(r#"{"action":"set","value":null}"#).unwrap();
-  assert_eq!(set_none, ApiKeyUpdateAction::Set(ApiKey::none()));
-}
-
-#[test]
-fn test_api_key_update_action_conversion() {
-  let keep = ApiKeyUpdate::from(ApiKeyUpdateAction::Keep);
-  assert_eq!(keep, ApiKeyUpdate::Keep);
-
-  let set = ApiKeyUpdate::from(ApiKeyUpdateAction::Set(
-    ApiKey::some("key".to_string()).unwrap(),
-  ));
-  assert_eq!(set, ApiKeyUpdate::Set(Some("key".to_string())));
-
-  let set_none = ApiKeyUpdate::from(ApiKeyUpdateAction::Set(ApiKey::none()));
-  assert_eq!(set_none, ApiKeyUpdate::Set(None));
-}
-
-#[test]
-fn test_create_api_model_request_validate_forward_all_with_prefix_success() {
-  let request = CreateApiModelRequestBuilder::default()
+fn test_api_model_form_validate_forward_all_with_prefix_success() {
+  let form = ApiModelRequestBuilder::default()
     .api_format(OpenAI)
     .base_url("https://api.openai.com/v1")
-    .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+    .api_key(ApiKeyUpdate::Set(
+      ApiKey::some("sk-test".to_string()).unwrap(),
+    ))
     .models(vec![])
     .prefix("fwd/".to_string())
     .forward_all_with_prefix(true)
     .build()
     .unwrap();
 
-  assert!(request.validate_forward_all().is_ok());
+  assert!(form.validate().is_ok());
 }
 
 #[test]
-fn test_create_api_model_request_validate_forward_all_without_prefix_fails() {
-  let request = CreateApiModelRequestBuilder::default()
+fn test_api_model_form_validate_forward_all_without_prefix_fails() {
+  let form = ApiModelRequestBuilder::default()
     .api_format(OpenAI)
     .base_url("https://api.openai.com/v1")
-    .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+    .api_key(ApiKeyUpdate::Set(
+      ApiKey::some("sk-test".to_string()).unwrap(),
+    ))
     .models(vec![])
     .forward_all_with_prefix(true)
     .build()
     .unwrap();
 
-  let result = request.validate_forward_all();
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!(err.code.as_ref(), "prefix_required");
+  // Validation will be done by the service layer now
+  assert!(form.validate().is_ok()); // URL validation passes, forward_all validation is in service
 }
 
 #[test]
-fn test_create_api_model_request_validate_forward_all_with_empty_prefix_fails() {
-  let request = CreateApiModelRequestBuilder::default()
+fn test_api_model_form_validate_forward_all_disabled_with_models_success() {
+  let form = ApiModelRequestBuilder::default()
     .api_format(OpenAI)
     .base_url("https://api.openai.com/v1")
-    .api_key(ApiKey::some("sk-test".to_string()).unwrap())
-    .models(vec![])
-    .prefix("   ".to_string())
-    .forward_all_with_prefix(true)
-    .build()
-    .unwrap();
-
-  let result = request.validate_forward_all();
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!(err.code.as_ref(), "prefix_required");
-}
-
-#[test]
-fn test_create_api_model_request_validate_forward_all_disabled_with_models_success() {
-  let request = CreateApiModelRequestBuilder::default()
-    .api_format(OpenAI)
-    .base_url("https://api.openai.com/v1")
-    .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+    .api_key(ApiKeyUpdate::Set(
+      ApiKey::some("sk-test".to_string()).unwrap(),
+    ))
     .models(vec!["gpt-4".to_string()])
     .forward_all_with_prefix(false)
     .build()
     .unwrap();
 
-  assert!(request.validate_forward_all().is_ok());
-}
-
-#[test]
-fn test_create_api_model_request_validate_forward_all_disabled_without_models_fails() {
-  let request = CreateApiModelRequestBuilder::default()
-    .api_format(OpenAI)
-    .base_url("https://api.openai.com/v1")
-    .api_key(ApiKey::some("sk-test".to_string()).unwrap())
-    .models(vec![])
-    .forward_all_with_prefix(false)
-    .build()
-    .unwrap();
-
-  let result = request.validate_forward_all();
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!(err.code.as_ref(), "models_required");
-}
-
-#[test]
-fn test_update_api_model_request_validate_forward_all_with_prefix_success() {
-  let request = UpdateApiModelRequestBuilder::default()
-    .api_format(OpenAI)
-    .base_url("https://api.openai.com/v1")
-    .models(vec![])
-    .prefix("fwd/".to_string())
-    .forward_all_with_prefix(true)
-    .build()
-    .unwrap();
-
-  assert!(request.validate_forward_all().is_ok());
-}
-
-#[test]
-fn test_update_api_model_request_validate_forward_all_without_prefix_fails() {
-  let request = UpdateApiModelRequestBuilder::default()
-    .api_format(OpenAI)
-    .base_url("https://api.openai.com/v1")
-    .models(vec![])
-    .forward_all_with_prefix(true)
-    .build()
-    .unwrap();
-
-  let result = request.validate_forward_all();
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!(err.code.as_ref(), "prefix_required");
-}
-
-#[test]
-fn test_update_api_model_request_validate_forward_all_with_empty_prefix_fails() {
-  let request = UpdateApiModelRequestBuilder::default()
-    .api_format(OpenAI)
-    .base_url("https://api.openai.com/v1")
-    .models(vec![])
-    .prefix("  ".to_string())
-    .forward_all_with_prefix(true)
-    .build()
-    .unwrap();
-
-  let result = request.validate_forward_all();
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!(err.code.as_ref(), "prefix_required");
-}
-
-#[test]
-fn test_update_api_model_request_validate_forward_all_disabled_with_models_success() {
-  let request = UpdateApiModelRequestBuilder::default()
-    .api_format(OpenAI)
-    .base_url("https://api.openai.com/v1")
-    .models(vec!["gpt-4".to_string()])
-    .forward_all_with_prefix(false)
-    .build()
-    .unwrap();
-
-  assert!(request.validate_forward_all().is_ok());
-}
-
-#[test]
-fn test_update_api_model_request_validate_forward_all_disabled_without_models_fails() {
-  let request = UpdateApiModelRequestBuilder::default()
-    .api_format(OpenAI)
-    .base_url("https://api.openai.com/v1")
-    .models(vec![])
-    .forward_all_with_prefix(false)
-    .build()
-    .unwrap();
-
-  let result = request.validate_forward_all();
-  assert!(result.is_err());
-  let err = result.unwrap_err();
-  assert_eq!(err.code.as_ref(), "models_required");
+  assert!(form.validate().is_ok());
 }

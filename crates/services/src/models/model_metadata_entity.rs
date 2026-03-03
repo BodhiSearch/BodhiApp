@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema, DeriveEntityModel)]
 #[sea_orm(table_name = "model_metadata")]
-#[schema(as = ModelMetadataRow)]
+#[schema(as = ModelMetadataEntity)]
 #[cfg_attr(
   any(test, feature = "test-utils"),
   derive(Default, derive_builder::Builder)
@@ -18,6 +18,7 @@ use utoipa::ToSchema;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  pub tenant_id: String,
   pub source: AliasSource,
   pub repo: Option<String>,
   pub filename: Option<String>,
@@ -39,7 +40,7 @@ pub struct Model {
   pub updated_at: DateTime<Utc>,
 }
 
-pub type ModelMetadataRow = Model;
+pub type ModelMetadataEntity = Model;
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}

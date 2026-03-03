@@ -1,8 +1,11 @@
 use crate::db::{DbCore, DbError, TimeService};
-use crate::toolsets::app_toolset_config_entity as app_toolset_config;
 use chrono::{DateTime, Utc};
-use sea_orm::{ActiveModelTrait, ConnectionTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{
+  ConnectionTrait, DatabaseConnection, DatabaseTransaction, Statement, TransactionTrait,
+};
 use sea_orm_migration::MigratorTrait;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -29,26 +32,17 @@ impl DefaultDbService {
     &self.db
   }
 
-  async fn seed_toolset_configs(&self) -> Result<(), DbError> {
-    use sea_orm::ColumnTrait;
-    use sea_orm::QueryFilter;
-    let existing = app_toolset_config::Entity::find()
-      .filter(app_toolset_config::Column::ToolsetType.eq("builtin-exa-search"))
-      .one(&self.db)
-      .await?;
-    if existing.is_none() {
-      let now = self.time_service.utc_now();
-      let model = app_toolset_config::ActiveModel {
-        id: Set(ulid::Ulid::new().to_string()),
-        toolset_type: Set("builtin-exa-search".to_string()),
-        enabled: Set(false),
-        updated_by: Set("system".to_string()),
-        created_at: Set(now),
-        updated_at: Set(now),
-      };
-      model.insert(&self.db).await?;
-    }
-    Ok(())
+  pub async fn with_tenant_txn<T, F>(&self, tenant_id: &str, f: F) -> Result<T, DbError>
+  where
+    F: for<'a> FnOnce(
+      &'a DatabaseTransaction,
+    ) -> Pin<Box<dyn Future<Output = Result<T, DbError>> + Send + 'a>>,
+    T: Send,
+  {
+    let txn = self.begin_tenant_txn(tenant_id).await?;
+    let result = f(&txn).await?;
+    txn.commit().await.map_err(DbError::from)?;
+    Ok(result)
   }
 }
 
@@ -56,7 +50,6 @@ impl DefaultDbService {
 impl DbCore for DefaultDbService {
   async fn migrate(&self) -> Result<(), DbError> {
     crate::db::sea_migrations::Migrator::up(&self.db, None).await?;
-    self.seed_toolset_configs().await?;
     Ok(())
   }
 
@@ -68,12 +61,30 @@ impl DbCore for DefaultDbService {
     &self.encryption_key
   }
 
+  async fn begin_tenant_txn(
+    &self,
+    tenant_id: &str,
+  ) -> Result<sea_orm::DatabaseTransaction, DbError> {
+    let txn = self.db.begin().await.map_err(DbError::from)?;
+    if self.db.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      txn
+        .execute(Statement::from_sql_and_values(
+          sea_orm::DatabaseBackend::Postgres,
+          "SELECT set_config('app.current_tenant_id', $1, true)",
+          [tenant_id.into()],
+        ))
+        .await
+        .map_err(DbError::from)?;
+    }
+    Ok(txn)
+  }
+
   async fn reset_all_tables(&self) -> Result<(), DbError> {
     let backend = self.db.get_database_backend();
     match backend {
       sea_orm::DatabaseBackend::Postgres => {
         // Use TRUNCATE CASCADE for Postgres
-        // Note: apps table is NOT reset - it holds app instance (client credentials, status)
+        // Note: tenants table is NOT reset - it holds tenant (client credentials, status)
         sea_orm::ConnectionTrait::execute_unprepared(
           &self.db,
           "TRUNCATE TABLE settings,
@@ -89,7 +100,7 @@ impl DbCore for DefaultDbService {
              model_metadata,
              api_model_aliases,
              api_tokens,
-             access_requests,
+             user_access_requests,
              download_requests
            CASCADE",
         )
@@ -97,7 +108,7 @@ impl DbCore for DefaultDbService {
       }
       _ => {
         // Use DELETE FROM for SQLite
-        // Note: apps table is NOT reset - it holds app instance (client credentials, status)
+        // Note: tenants table is NOT reset - it holds tenant (client credentials, status)
         sea_orm::ConnectionTrait::execute_unprepared(
           &self.db,
           "DELETE FROM settings;
@@ -113,15 +124,13 @@ impl DbCore for DefaultDbService {
            DELETE FROM model_metadata;
            DELETE FROM api_model_aliases;
            DELETE FROM api_tokens;
-           DELETE FROM access_requests;
+           DELETE FROM user_access_requests;
            DELETE FROM download_requests;",
         )
         .await?;
       }
     }
 
-    // Re-seed default config
-    self.seed_toolset_configs().await?;
     Ok(())
   }
 }

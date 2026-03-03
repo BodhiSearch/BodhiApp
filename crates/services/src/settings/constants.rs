@@ -58,10 +58,17 @@ pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
 pub const BODHI_SESSION_DB_URL: &str = "BODHI_SESSION_DB_URL";
 pub const BODHI_APP_DB_URL: &str = "BODHI_APP_DB_URL";
 pub const BODHI_DEPLOYMENT: &str = "BODHI_DEPLOYMENT";
+pub const BODHI_MULTITENANT_CLIENT_ID: &str = "BODHI_MULTITENANT_CLIENT_ID";
 
 // RunPod settings
 pub const BODHI_ON_RUNPOD: &str = "BODHI_ON_RUNPOD";
 pub const RUNPOD_POD_ID: &str = "RUNPOD_POD_ID";
+
+/// Settings that are allowed to be edited via the API
+pub const EDIT_SETTINGS_ALLOWED: &[&str] = &[BODHI_EXEC_VARIANT, BODHI_KEEP_ALIVE_SECS];
+
+/// Settings that are LLM-related and cannot be modified in multi-tenant mode
+pub const LLM_SETTINGS: &[&str] = &[BODHI_EXEC_VARIANT, BODHI_KEEP_ALIVE_SECS];
 
 pub const SETTING_VARS: &[&str] = &[
   HF_HOME,

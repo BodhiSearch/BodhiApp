@@ -1,11 +1,12 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::toolsets::routes_toolsets::routes_toolsets;
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
 use rstest::rstest;
-use server_core::{DefaultRouterState, MockSharedContext, RouterState};
+use services::AuthContext;
+
 use services::{test_utils::AppServiceStubBuilder, MockToolService};
 use services::{AppToolsetConfig, ToolDefinition, ToolsetDefinition};
 use services::{ResourceRole, UserScope};
@@ -18,10 +19,7 @@ async fn test_router(mock_tool_service: MockToolService) -> anyhow::Result<Route
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::new()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   Ok(routes_toolsets(state))
 }
@@ -112,9 +110,9 @@ async fn test_enable_type(
   if succeeds {
     mock_tool_service
       .expect_set_app_toolset_enabled()
-      .withf(|toolset_type, enabled, _user_id| toolset_type == "builtin-exa-search" && *enabled)
+      .withf(|_, toolset_type, enabled, _user_id| toolset_type == "builtin-exa-search" && *enabled)
       .times(1)
-      .returning(|toolset_type, _, updated_by| {
+      .returning(|_, toolset_type, _, updated_by| {
         Ok(AppToolsetConfig {
           toolset_type: toolset_type.to_string(),
           name: "Exa Web Search".to_string(),
@@ -130,7 +128,7 @@ async fn test_enable_type(
     mock_tool_service
       .expect_set_app_toolset_enabled()
       .times(1)
-      .returning(|toolset_type, _, _| {
+      .returning(|_, toolset_type, _, _| {
         Err(services::ToolsetError::InvalidToolsetType(
           toolset_type.to_string(),
         ))
@@ -172,9 +170,11 @@ async fn test_disable_type(
   if succeeds {
     mock_tool_service
       .expect_set_app_toolset_enabled()
-      .withf(|toolset_type, enabled, _user_id| toolset_type == "builtin-exa-search" && !(*enabled))
+      .withf(|_, toolset_type, enabled, _user_id| {
+        toolset_type == "builtin-exa-search" && !(*enabled)
+      })
       .times(1)
-      .returning(|toolset_type, _, updated_by| {
+      .returning(|_, toolset_type, _, updated_by| {
         Ok(AppToolsetConfig {
           toolset_type: toolset_type.to_string(),
           name: "Exa Web Search".to_string(),
@@ -190,7 +190,7 @@ async fn test_disable_type(
     mock_tool_service
       .expect_set_app_toolset_enabled()
       .times(1)
-      .returning(|toolset_type, _, _| {
+      .returning(|_, toolset_type, _, _| {
         Err(services::ToolsetError::InvalidToolsetType(
           toolset_type.to_string(),
         ))

@@ -1,12 +1,12 @@
 import { TokenDialog } from '@/app/ui/tokens/TokenDialog';
-import { ApiTokenResponse } from '@bodhiapp/ts-client';
+import { TokenCreated } from '@bodhiapp/ts-client';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('TokenDialog', () => {
-  const mockToken: ApiTokenResponse = {
+  const mockToken: TokenCreated = {
     token: 'test-token-123',
   };
 

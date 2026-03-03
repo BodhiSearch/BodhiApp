@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { ApiModelResponse } from '@bodhiapp/ts-client';
+import { ApiModelOutput } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
@@ -22,7 +22,7 @@ import { useTestConnection } from './useTestConnection';
 
 interface UseApiModelFormProps {
   mode: 'create' | 'edit' | 'setup';
-  initialData?: ApiModelResponse;
+  initialData?: ApiModelOutput;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (data: any) => void;
   onError?: (error: string) => void;
@@ -56,7 +56,7 @@ export function useApiModelForm({
           models: initialData?.models || [],
           prefix: initialData?.prefix || '',
           usePrefix: Boolean(initialData?.prefix),
-          useApiKey: initialData?.api_key_masked != null, // "***" = has key, checkbox checked
+          useApiKey: initialData?.has_api_key === true, // true = has key, checkbox checked
           forward_all_with_prefix: initialData?.forward_all_with_prefix || false,
         }
       : mode === 'setup'

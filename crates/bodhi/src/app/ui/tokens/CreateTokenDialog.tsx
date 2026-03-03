@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { ApiTokenResponse } from '@bodhiapp/ts-client';
+import { TokenCreated } from '@bodhiapp/ts-client';
 
 import { TokenDialog } from '@/app/ui/tokens/TokenDialog';
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
@@ -14,14 +14,14 @@ interface CreateTokenDialogProps {
 }
 
 export function CreateTokenDialog({ open, onClose }: CreateTokenDialogProps) {
-  const [createdToken, setCreatedToken] = useState<ApiTokenResponse | null>(null);
+  const [createdToken, setCreatedToken] = useState<TokenCreated | null>(null);
 
   const handleClose = () => {
     setCreatedToken(null);
     onClose();
   };
 
-  const handleTokenCreated = (token: ApiTokenResponse) => {
+  const handleTokenCreated = (token: TokenCreated) => {
     setCreatedToken(token);
   };
 

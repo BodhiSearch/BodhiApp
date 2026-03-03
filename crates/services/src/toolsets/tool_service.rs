@@ -1,12 +1,12 @@
 use super::exa_service::ExaService;
+use super::toolset_entity::ToolsetEntity;
 use super::toolset_objs::{
-  validate_toolset_description, validate_toolset_slug, AppToolsetConfig, FunctionDefinition,
-  ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionRequest, ToolsetExecutionResponse,
+  AppToolsetConfig, FunctionDefinition, ToolDefinition, ToolsetDefinition, ToolsetExecutionRequest,
+  ToolsetExecutionResponse, ToolsetRequest,
 };
 use super::ToolsetError;
-use super::ToolsetRow;
 use crate::db::{encryption::encrypt_api_key, DbError, DbService, TimeService};
-use crate::ApiKeyUpdate;
+use crate::RawApiKeyUpdate;
 use serde_json::json;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -16,7 +16,11 @@ use ulid::Ulid;
 #[async_trait::async_trait]
 pub trait ToolService: Debug + Send + Sync {
   /// List tool definitions for user (only configured and enabled toolsets)
-  async fn list_tools_for_user(&self, user_id: &str) -> Result<Vec<ToolDefinition>, ToolsetError>;
+  async fn list_tools_for_user(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+  ) -> Result<Vec<ToolDefinition>, ToolsetError>;
 
   /// List all available toolsets with their tools (nested structure)
   async fn list_all_toolsets(&self) -> Result<Vec<ToolsetDefinition>, ToolsetError>;
@@ -26,39 +30,40 @@ pub trait ToolService: Debug + Send + Sync {
   // ============================================================================
 
   /// List all toolset instances for user
-  async fn list(&self, user_id: &str) -> Result<Vec<Toolset>, ToolsetError>;
+  async fn list(&self, tenant_id: &str, user_id: &str) -> Result<Vec<ToolsetEntity>, ToolsetError>;
 
   /// Get a specific toolset instance by ID
-  async fn get(&self, user_id: &str, id: &str) -> Result<Option<Toolset>, ToolsetError>;
+  async fn get(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ToolsetEntity>, ToolsetError>;
 
   /// Create a new toolset instance
   async fn create(
     &self,
+    tenant_id: &str,
     user_id: &str,
-    toolset_type: &str,
-    slug: &str,
-    description: Option<String>,
-    enabled: bool,
-    api_key: String,
-  ) -> Result<Toolset, ToolsetError>;
+    request: ToolsetRequest,
+  ) -> Result<ToolsetEntity, ToolsetError>;
 
   /// Update an existing toolset instance
   async fn update(
     &self,
+    tenant_id: &str,
     user_id: &str,
     id: &str,
-    slug: &str,
-    description: Option<String>,
-    enabled: bool,
-    api_key_update: ApiKeyUpdate,
-  ) -> Result<Toolset, ToolsetError>;
+    request: ToolsetRequest,
+  ) -> Result<ToolsetEntity, ToolsetError>;
 
   /// Delete a toolset instance
-  async fn delete(&self, user_id: &str, id: &str) -> Result<(), ToolsetError>;
+  async fn delete(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), ToolsetError>;
 
   /// Execute a tool on a toolset instance
   async fn execute(
     &self,
+    tenant_id: &str,
     user_id: &str,
     id: &str,
     method: &str,
@@ -79,7 +84,11 @@ pub trait ToolService: Debug + Send + Sync {
   fn validate_type(&self, toolset_type: &str) -> Result<(), ToolsetError>;
 
   /// Check if toolset type is enabled at app level
-  async fn is_type_enabled(&self, toolset_type: &str) -> Result<bool, ToolsetError>;
+  async fn is_type_enabled(
+    &self,
+    tenant_id: &str,
+    toolset_type: &str,
+  ) -> Result<bool, ToolsetError>;
 
   // ============================================================================
   // App-level toolset type configuration (Admin only)
@@ -88,17 +97,22 @@ pub trait ToolService: Debug + Send + Sync {
   /// Set app-level enable/disable for a toolset type
   async fn set_app_toolset_enabled(
     &self,
+    tenant_id: &str,
     toolset_type: &str,
     enabled: bool,
     updated_by: &str,
   ) -> Result<AppToolsetConfig, ToolsetError>;
 
   /// List all app-level toolset configurations
-  async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfig>, ToolsetError>;
+  async fn list_app_toolset_configs(
+    &self,
+    tenant_id: &str,
+  ) -> Result<Vec<AppToolsetConfig>, ToolsetError>;
 
   /// Get app-level config for specific toolset type
   async fn get_app_toolset_config(
     &self,
+    tenant_id: &str,
     toolset_type: &str,
   ) -> Result<Option<AppToolsetConfig>, ToolsetError>;
 }
@@ -230,26 +244,16 @@ impl DefaultToolService {
       ],
     }]
   }
-
-  /// Convert toolset row to public model
-  fn toolset_row_to_model(&self, row: ToolsetRow) -> Toolset {
-    Toolset {
-      id: row.id,
-      slug: row.slug,
-      toolset_type: row.toolset_type,
-      description: row.description,
-      enabled: row.enabled,
-      has_api_key: row.encrypted_api_key.is_some(),
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-    }
-  }
 }
 
 #[async_trait::async_trait]
 impl ToolService for DefaultToolService {
-  async fn list_tools_for_user(&self, user_id: &str) -> Result<Vec<ToolDefinition>, ToolsetError> {
-    let toolsets = self.db_service.list_toolsets(user_id).await?;
+  async fn list_tools_for_user(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+  ) -> Result<Vec<ToolDefinition>, ToolsetError> {
+    let toolsets = self.db_service.list_toolsets(tenant_id, user_id).await?;
 
     // Collect unique toolset_types that are enabled with API keys
     let enabled_toolset_types: std::collections::HashSet<String> = toolsets
@@ -277,98 +281,98 @@ impl ToolService for DefaultToolService {
   // Toolset instance management
   // ============================================================================
 
-  async fn list(&self, user_id: &str) -> Result<Vec<Toolset>, ToolsetError> {
-    let rows = self.db_service.list_toolsets(user_id).await?;
-    Ok(
-      rows
-        .into_iter()
-        .map(|r| self.toolset_row_to_model(r))
-        .collect(),
-    )
+  async fn list(&self, tenant_id: &str, user_id: &str) -> Result<Vec<ToolsetEntity>, ToolsetError> {
+    let rows = self.db_service.list_toolsets(tenant_id, user_id).await?;
+    Ok(rows)
   }
 
-  async fn get(&self, user_id: &str, id: &str) -> Result<Option<Toolset>, ToolsetError> {
-    let row = self.db_service.get_toolset(id).await?;
+  async fn get(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ToolsetEntity>, ToolsetError> {
+    let row = self.db_service.get_toolset(tenant_id, id).await?;
 
     // Return None if not found OR user doesn't own it (hide existence)
     Ok(match row {
-      Some(r) if r.user_id == user_id => Some(self.toolset_row_to_model(r)),
+      Some(r) if r.user_id == user_id => Some(r),
       _ => None,
     })
   }
 
   async fn create(
     &self,
+    tenant_id: &str,
     user_id: &str,
-    toolset_type: &str,
-    slug: &str,
-    description: Option<String>,
-    enabled: bool,
-    api_key: String,
-  ) -> Result<Toolset, ToolsetError> {
-    // Validate slug format
-    validate_toolset_slug(slug).map_err(ToolsetError::InvalidSlug)?;
-
-    // Validate description if provided
-    if let Some(ref desc) = description {
-      validate_toolset_description(desc).map_err(ToolsetError::InvalidDescription)?;
-    }
+    request: ToolsetRequest,
+  ) -> Result<ToolsetEntity, ToolsetError> {
+    let toolset_type = request
+      .toolset_type
+      .as_deref()
+      .ok_or_else(|| ToolsetError::InvalidToolsetType("toolset_type is required".to_string()))?;
 
     // Validate toolset_type exists
     self.validate_type(toolset_type)?;
 
     // Check app-level enabled
-    if !self.is_type_enabled(toolset_type).await? {
+    if !self.is_type_enabled(tenant_id, toolset_type).await? {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
     // Check slug uniqueness (case-insensitive)
     if self
       .db_service
-      .get_toolset_by_slug(user_id, slug)
+      .get_toolset_by_slug(tenant_id, user_id, &request.slug)
       .await?
       .is_some()
     {
-      return Err(ToolsetError::SlugExists(slug.to_string()));
+      return Err(ToolsetError::SlugExists(request.slug.clone()));
     }
 
-    // Encrypt API key
-    let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), &api_key)
-      .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+    // Extract and encrypt API key
+    let api_key_raw = request.api_key.into_raw_update();
+    let (encrypted, salt, nonce) = match api_key_raw {
+      RawApiKeyUpdate::Set(Some(ref key)) => {
+        let (enc, s, n) = encrypt_api_key(self.db_service.encryption_key(), key)
+          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+        (Some(enc), Some(s), Some(n))
+      }
+      _ => (None, None, None),
+    };
 
-    // Create row
+    // Create entity
     let now = self.time_service.utc_now();
-    let row = ToolsetRow {
+    let entity = ToolsetEntity {
       id: Ulid::new().to_string(),
+      tenant_id: tenant_id.to_string(),
       user_id: user_id.to_string(),
       toolset_type: toolset_type.to_string(),
-      slug: slug.to_string(),
-      description,
-      enabled,
-      encrypted_api_key: Some(encrypted),
-      salt: Some(salt),
-      nonce: Some(nonce),
+      slug: request.slug,
+      description: request.description,
+      enabled: request.enabled,
+      encrypted_api_key: encrypted,
+      salt,
+      nonce,
       created_at: now,
       updated_at: now,
     };
 
-    let result = self.db_service.create_toolset(&row).await?;
-    Ok(self.toolset_row_to_model(result))
+    let result = self.db_service.create_toolset(tenant_id, &entity).await?;
+    Ok(result)
   }
 
   async fn update(
     &self,
+    tenant_id: &str,
     user_id: &str,
     id: &str,
-    slug: &str,
-    description: Option<String>,
-    enabled: bool,
-    api_key_update: ApiKeyUpdate,
-  ) -> Result<Toolset, ToolsetError> {
+    request: ToolsetRequest,
+  ) -> Result<ToolsetEntity, ToolsetError> {
     // Fetch existing
     let existing = self
       .db_service
-      .get_toolset(id)
+      .get_toolset(tenant_id, id)
       .await?
       .ok_or_else(|| ToolsetError::ToolsetNotFound(id.to_string()))?;
 
@@ -377,60 +381,58 @@ impl ToolService for DefaultToolService {
       return Err(ToolsetError::ToolsetNotFound(id.to_string()));
     }
 
-    // Validate slug format
-    validate_toolset_slug(slug).map_err(ToolsetError::InvalidSlug)?;
-
-    // Validate description if provided
-    if let Some(ref desc) = description {
-      validate_toolset_description(desc).map_err(ToolsetError::InvalidDescription)?;
-    }
-
     // Check slug uniqueness if changed (case-insensitive)
-    if slug.to_lowercase() != existing.slug.to_lowercase()
+    if request.slug.to_lowercase() != existing.slug.to_lowercase()
       && self
         .db_service
-        .get_toolset_by_slug(user_id, slug)
+        .get_toolset_by_slug(tenant_id, user_id, &request.slug)
         .await?
         .is_some()
     {
-      return Err(ToolsetError::SlugExists(slug.to_string()));
+      return Err(ToolsetError::SlugExists(request.slug.clone()));
     }
 
     // Check app-level enabled if trying to enable
-    if enabled && !self.is_type_enabled(&existing.toolset_type).await? {
+    if request.enabled
+      && !self
+        .is_type_enabled(tenant_id, &existing.toolset_type)
+        .await?
+    {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
     // Handle API key update
+    let api_key_update = request.api_key.into_raw_update();
     let (encrypted, salt, nonce, db_api_key_update) = match api_key_update {
-      ApiKeyUpdate::Keep => (
+      RawApiKeyUpdate::Keep => (
         existing.encrypted_api_key,
         existing.salt,
         existing.nonce,
-        ApiKeyUpdate::Keep,
+        RawApiKeyUpdate::Keep,
       ),
-      ApiKeyUpdate::Set(Some(new_key)) => {
+      RawApiKeyUpdate::Set(Some(new_key)) => {
         let (enc, s, n) = encrypt_api_key(self.db_service.encryption_key(), &new_key)
           .map_err(|e| DbError::EncryptionError(e.to_string()))?;
         (
           Some(enc.clone()),
           Some(s.clone()),
           Some(n.clone()),
-          ApiKeyUpdate::Set(Some(enc)),
+          RawApiKeyUpdate::Set(Some(enc)),
         )
       }
-      ApiKeyUpdate::Set(None) => (None, None, None, ApiKeyUpdate::Set(None)),
+      RawApiKeyUpdate::Set(None) => (None, None, None, RawApiKeyUpdate::Set(None)),
     };
 
-    // Update row
+    // Update entity
     let now = self.time_service.utc_now();
-    let row = ToolsetRow {
+    let entity = ToolsetEntity {
       id: id.to_string(),
+      tenant_id: tenant_id.to_string(),
       user_id: user_id.to_string(),
       toolset_type: existing.toolset_type,
-      slug: slug.to_string(),
-      description,
-      enabled,
+      slug: request.slug,
+      description: request.description,
+      enabled: request.enabled,
       encrypted_api_key: encrypted,
       salt,
       nonce,
@@ -440,16 +442,16 @@ impl ToolService for DefaultToolService {
 
     let result = self
       .db_service
-      .update_toolset(&row, db_api_key_update)
+      .update_toolset(tenant_id, &entity, db_api_key_update)
       .await?;
-    Ok(self.toolset_row_to_model(result))
+    Ok(result)
   }
 
-  async fn delete(&self, user_id: &str, id: &str) -> Result<(), ToolsetError> {
+  async fn delete(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), ToolsetError> {
     // Fetch and verify ownership
     let existing = self
       .db_service
-      .get_toolset(id)
+      .get_toolset(tenant_id, id)
       .await?
       .ok_or_else(|| ToolsetError::ToolsetNotFound(id.to_string()))?;
 
@@ -458,12 +460,13 @@ impl ToolService for DefaultToolService {
     }
 
     // Allow delete even if app-level type disabled
-    self.db_service.delete_toolset(id).await?;
+    self.db_service.delete_toolset(tenant_id, id).await?;
     Ok(())
   }
 
   async fn execute(
     &self,
+    tenant_id: &str,
     user_id: &str,
     id: &str,
     method: &str,
@@ -472,7 +475,7 @@ impl ToolService for DefaultToolService {
     // Fetch instance and verify ownership
     let instance = self
       .db_service
-      .get_toolset(id)
+      .get_toolset(tenant_id, id)
       .await?
       .ok_or_else(|| ToolsetError::ToolsetNotFound(id.to_string()))?;
 
@@ -481,7 +484,10 @@ impl ToolService for DefaultToolService {
     }
 
     // Check app-level type enabled
-    if !self.is_type_enabled(&instance.toolset_type).await? {
+    if !self
+      .is_type_enabled(tenant_id, &instance.toolset_type)
+      .await?
+    {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
@@ -493,7 +499,7 @@ impl ToolService for DefaultToolService {
     // Get decrypted API key
     let api_key = self
       .db_service
-      .get_toolset_api_key(id)
+      .get_toolset_api_key(tenant_id, id)
       .await?
       .ok_or(ToolsetError::ToolsetNotConfigured)?;
 
@@ -540,9 +546,17 @@ impl ToolService for DefaultToolService {
     }
   }
 
-  async fn is_type_enabled(&self, toolset_type: &str) -> Result<bool, ToolsetError> {
+  async fn is_type_enabled(
+    &self,
+    tenant_id: &str,
+    toolset_type: &str,
+  ) -> Result<bool, ToolsetError> {
     // Check database for app-level configuration
-    match self.db_service.get_app_toolset_config(toolset_type).await? {
+    match self
+      .db_service
+      .get_app_toolset_config(tenant_id, toolset_type)
+      .await?
+    {
       Some(config) => Ok(config.enabled),
       None => Ok(false), // Default to disabled if no config exists (security-by-default)
     }
@@ -554,6 +568,7 @@ impl ToolService for DefaultToolService {
 
   async fn set_app_toolset_enabled(
     &self,
+    tenant_id: &str,
     toolset_type: &str,
     enabled: bool,
     updated_by: &str,
@@ -564,7 +579,7 @@ impl ToolService for DefaultToolService {
     // Call db_service to upsert app_toolset_configs record
     let db_row = self
       .db_service
-      .set_app_toolset_enabled(toolset_type, enabled, updated_by)
+      .set_app_toolset_enabled(tenant_id, toolset_type, enabled, updated_by)
       .await?;
 
     // Enrich with name/description from ToolsetDefinition
@@ -583,8 +598,11 @@ impl ToolService for DefaultToolService {
     })
   }
 
-  async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfig>, ToolsetError> {
-    let db_rows = self.db_service.list_app_toolset_configs().await?;
+  async fn list_app_toolset_configs(
+    &self,
+    tenant_id: &str,
+  ) -> Result<Vec<AppToolsetConfig>, ToolsetError> {
+    let db_rows = self.db_service.list_app_toolset_configs(tenant_id).await?;
 
     // Enrich each row with name/description from ToolsetDefinition
     let configs = db_rows
@@ -610,9 +628,13 @@ impl ToolService for DefaultToolService {
 
   async fn get_app_toolset_config(
     &self,
+    tenant_id: &str,
     toolset_type: &str,
   ) -> Result<Option<AppToolsetConfig>, ToolsetError> {
-    let db_row = self.db_service.get_app_toolset_config(toolset_type).await?;
+    let db_row = self
+      .db_service
+      .get_app_toolset_config(tenant_id, toolset_type)
+      .await?;
 
     Ok(db_row.and_then(|row| {
       self

@@ -7,6 +7,8 @@ pub struct Migration;
 enum ApiModelAliases {
   Table,
   Id,
+  TenantId,
+  UserId,
   ApiFormat,
   BaseUrl,
   Models,
@@ -34,6 +36,12 @@ impl MigrationTrait for Migration {
               .not_null()
               .primary_key(),
           )
+          .col(
+            ColumnDef::new(ApiModelAliases::TenantId)
+              .string()
+              .not_null(),
+          )
+          .col(ColumnDef::new(ApiModelAliases::UserId).string().not_null())
           .col(
             ColumnDef::new(ApiModelAliases::ApiFormat)
               .string()
@@ -114,10 +122,31 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Partial unique index on non-null prefix (raw SQL - identical for both backends)
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_api_model_aliases_tenant_id")
+          .table(ApiModelAliases::Table)
+          .col(ApiModelAliases::TenantId)
+          .to_owned(),
+      )
+      .await?;
+
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_api_model_aliases_user_id")
+          .table(ApiModelAliases::Table)
+          .col(ApiModelAliases::UserId)
+          .to_owned(),
+      )
+      .await?;
+
+    // Composite partial unique index: (tenant_id, user_id, prefix) where prefix is non-empty.
+    // This ensures prefix uniqueness is scoped per-tenant-user (not globally).
     let db = manager.get_connection();
     db.execute_unprepared(
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_api_model_aliases_prefix_unique ON api_model_aliases(prefix) WHERE prefix IS NOT NULL AND prefix != ''"
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_api_model_aliases_prefix_unique ON api_model_aliases(tenant_id, user_id, prefix) WHERE prefix IS NOT NULL AND prefix != ''"
     ).await?;
 
     Ok(())

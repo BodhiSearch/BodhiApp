@@ -34,7 +34,6 @@ pub use services::{AppCommand, AppType, EnvType, LogLevel};
 
 // Service interfaces and implementations from services crate
 pub use services::{
-  AppInstance,
   AppService,
   AppStatus,
   DefaultAppService,
@@ -42,6 +41,7 @@ pub use services::{
   DefaultSettingService,
   EnvWrapper,
   SettingService,
+  Tenant,
   BODHI_APP_TYPE,
   BODHI_AUTH_REALM,
   BODHI_AUTH_URL,

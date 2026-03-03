@@ -1,14 +1,13 @@
 // External imports
 import {
   Alias,
-  CreateAliasRequest,
   DownloadRequest,
   NewDownloadRequest,
   OpenAiApiError,
   PaginatedAliasResponse,
   PaginatedDownloadResponse,
   PaginatedLocalModelResponse,
-  UpdateAliasRequest,
+  UserAliasRequest,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -52,9 +51,9 @@ export function useModel(id: string) {
 export function useCreateModel(options?: {
   onSuccess?: (model: Alias) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, CreateAliasRequest> {
+}): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UserAliasRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<Alias, CreateAliasRequest>(ENDPOINT_MODELS, 'post', {
+  return useMutationQuery<Alias, UserAliasRequest>(ENDPOINT_MODELS, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(ENDPOINT_MODELS);
       options?.onSuccess?.(response.data);
@@ -72,9 +71,9 @@ export function useUpdateModel(
     onSuccess?: (model: Alias) => void;
     onError?: (message: string) => void;
   }
-): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UpdateAliasRequest> {
+): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UserAliasRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<Alias, UpdateAliasRequest>(
+  return useMutationQuery<Alias, UserAliasRequest>(
     () => `${ENDPOINT_MODELS}/${id}`,
     'put',
     {

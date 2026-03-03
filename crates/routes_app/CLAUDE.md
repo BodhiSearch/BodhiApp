@@ -2,21 +2,23 @@
 
 **Companion docs** (load as needed):
 - `PACKAGE.md` -- Implementation details, file index, error enum reference
+- `src/middleware/CLAUDE.md` -- Middleware-specific documentation (auth, authorization, token service)
+- `src/middleware/PACKAGE.md` -- Middleware module index and error enum reference
 - `TESTING.md` -- Test patterns, mocking strategy, router construction
 - `TECHDEBT.md` -- Known issues and planned refactors
 
 ## Purpose
 
-API orchestration layer: HTTP endpoint handlers for all BodhiApp application routes. Defines `ApiError`/`OpenAIApiError`/`ErrorBody` in `shared/` (moved from `services`). Consumes `AuthContext` from `auth_middleware` via the `AuthScope` extractor.
+API orchestration layer: HTTP endpoint handlers for all BodhiApp application routes. Defines `ApiError`/`OpenAIApiError`/`ErrorBody` in `shared/` (moved from `services`). Includes authentication/authorization middleware (merged from former `auth_middleware` crate) in `src/middleware/`. Consumes `AuthContext` via the `AuthScope` extractor.
 
 ## Architecture Position
 
 ```
-services + auth_middleware + server_core
-                  |
-             routes_app        <-- this crate
-            /     |      \
-    server_app  lib_bodhiserver  bodhi/src-tauri
+services + server_core
+         |
+    routes_app        <-- this crate (includes middleware module)
+    /     |      \
+server_app  lib_bodhiserver  bodhi/src-tauri
 ```
 
 State type: `Arc<dyn AppService>` (not `RouterState` -- that was removed).
@@ -75,6 +77,25 @@ Rails-style, no `_handler` suffix:
 - `<domain>_index` (list), `<domain>_show` (get), `<domain>_create`, `<domain>_update`, `<domain>_destroy`
 - Non-CRUD: descriptive names (`toolsets_execute`, `auth_initiate`, `auth_callback`)
 
+## JSON Extraction Convention
+
+All handlers accepting JSON bodies with Validate-deriving types use `ValidatedJson<DomainRequest>`:
+```rust
+async fn domain_create(
+  auth_scope: AuthScope,
+  ValidatedJson(form): ValidatedJson<DomainRequest>,
+) -> Result<Json<DomainOutput>, ApiError> {
+```
+Requires: `use crate::ValidatedJson;`
+
+`ValidatedJson` deserializes JSON and calls `form.validate()` automatically. Validation errors return 400 with structured error body. Services assume input is already validated — no `form.validate()` calls in services.
+
+**Entity→Response conversion**: Auth-scoped services return Entity types. Route handlers convert to Response via `.into()` before returning (e.g., `let mcp: Mcp = entity.into();`).
+
+**Two-layer authorization model**: Middleware checks endpoint access, route handler checks operation-specific params (e.g., token scope privileges).
+
+**Auth-scoped services only**: Route handlers MUST use `auth_scope.tokens()`, `auth_scope.mcps()`, etc. — never call domain services directly.
+
 ## Error Handling Chain
 
 Service error -> domain `<X>RouteError` (this crate) -> `ApiError` (`shared/api_error.rs`) -> OpenAI-compatible JSON.
@@ -82,10 +103,6 @@ Service error -> domain `<X>RouteError` (this crate) -> `ApiError` (`shared/api_
 `ApiError`, `OpenAIApiError`, `ErrorBody` are in `routes_app::shared` (import as `use crate::ApiError`, NOT `use services::ApiError`).
 
 Domain error enums wrap service errors via `#[error(transparent)]` + `#[from]`. Error codes auto-generated: `model_route_error-alias_not_found`.
-
-## ValidatedJson Extractor
-
-`ValidatedJson<T>` (`src/shared/validated_json.rs`) combines JSON deserialization with `validator::Validate`. Use instead of manual `WithRejection<Json<T>>` + `validate()`.
 
 ## OpenAPI Registration Checklist
 

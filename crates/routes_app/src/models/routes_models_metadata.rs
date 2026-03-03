@@ -5,15 +5,14 @@
 //! - Getting queue status
 
 use crate::models::error::ModelRouteError;
-use crate::models::models_api_schemas::{
-  ModelAliasResponse, QueueStatusResponse, RefreshRequest, RefreshResponse, RefreshResponseType,
-};
+use crate::models::models_api_schemas::{QueueStatusResponse, RefreshResponseType};
 use crate::shared::AuthScope;
+use crate::ApiError;
 use crate::API_TAG_MODELS;
 use axum::Json;
 use services::Alias;
-use crate::ApiError;
 use services::{extract_and_store_metadata, RefreshTask};
+use services::{ModelAliasResponse, RefreshRequest, RefreshResponse};
 use std::str::FromStr;
 
 /// Refresh metadata for models
@@ -63,14 +62,10 @@ pub async fn refresh_metadata_handler(
         .map_err(|e| ModelRouteError::InvalidRepoFormat(e.to_string()))?;
 
       // Find the ModelAlias for this GGUF file
-      let all_aliases = auth_scope
-        .data_service()
-        .list_aliases()
-        .await
-        .map_err(|e| {
-          tracing::error!("Failed to list aliases: {}", e);
-          ModelRouteError::ListAliasesFailed
-        })?;
+      let all_aliases = auth_scope.data().list_aliases().await.map_err(|e| {
+        tracing::error!("Failed to list aliases: {}", e);
+        ModelRouteError::ListAliasesFailed
+      })?;
 
       let alias = all_aliases
         .into_iter()

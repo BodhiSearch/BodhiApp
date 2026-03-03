@@ -1,29 +1,25 @@
-use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{test_utils::AppServiceStubBuilder, AppService, MockMcpService};
 use std::sync::Arc;
 
-/// Builds a `RouterState` from a `MockMcpService`.
+/// Builds an `Arc<dyn AppService>` from a `MockMcpService`.
 /// Callers build their own `Router` with specific routes and call `.with_state(state)`.
 pub async fn build_mcp_test_state(
   mock_mcp_service: MockMcpService,
-) -> anyhow::Result<Arc<dyn RouterState>> {
+) -> anyhow::Result<Arc<dyn AppService>> {
   let mcp_svc: Arc<dyn services::McpService> = Arc::new(mock_mcp_service);
   let app_service = AppServiceStubBuilder::default()
     .mcp_service(mcp_svc)
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::new()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn AppService> = Arc::new(app_service);
   Ok(state)
 }
 
-/// Builds a `RouterState` and returns the `AppService` for direct service access in tests.
+/// Builds an `Arc<dyn AppService>` and returns it alongside for direct service access in tests.
 pub async fn build_mcp_test_state_with_app_service(
   mock_mcp_service: MockMcpService,
-) -> anyhow::Result<(Arc<dyn RouterState>, Arc<dyn AppService>)> {
+) -> anyhow::Result<(Arc<dyn AppService>, Arc<dyn AppService>)> {
   let mcp_svc: Arc<dyn services::McpService> = Arc::new(mock_mcp_service);
   let app_service: Arc<dyn AppService> = Arc::new(
     AppServiceStubBuilder::default()
@@ -32,11 +28,7 @@ pub async fn build_mcp_test_state_with_app_service(
       .await?,
   );
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::new()),
-    app_service.clone(),
-  ));
-  Ok((state, app_service))
+  Ok((app_service.clone(), app_service))
 }
 
 // ---------------------------------------------------------------------------

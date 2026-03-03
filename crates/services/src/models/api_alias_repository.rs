@@ -4,43 +4,69 @@ use crate::db::{
 };
 use crate::models::api_model_alias_entity::{self as api_model_alias, ApiAliasView};
 use crate::models::ApiAlias;
-use crate::ApiKeyUpdate;
+use crate::RawApiKeyUpdate;
 use chrono::{DateTime, Utc};
 use sea_orm::prelude::*;
-use sea_orm::{QueryOrder, Set};
+use sea_orm::{PaginatorTrait, QueryOrder, Set};
 
 #[async_trait::async_trait]
 pub trait ApiAliasRepository: Send + Sync {
   async fn create_api_model_alias(
     &self,
+    tenant_id: &str,
+    user_id: &str,
     alias: &ApiAlias,
     api_key: Option<String>,
   ) -> Result<(), DbError>;
 
-  async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError>;
+  async fn get_api_model_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ApiAlias>, DbError>;
 
   async fn update_api_model_alias(
     &self,
+    tenant_id: &str,
+    user_id: &str,
     id: &str,
     model: &ApiAlias,
-    api_key: ApiKeyUpdate,
+    api_key: RawApiKeyUpdate,
   ) -> Result<(), DbError>;
 
   async fn update_api_model_cache(
     &self,
+    tenant_id: &str,
     id: &str,
     models: Vec<String>,
     fetched_at: DateTime<Utc>,
   ) -> Result<(), DbError>;
 
-  async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError>;
+  async fn delete_api_model_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<(), DbError>;
 
-  async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError>;
+  async fn list_api_model_aliases(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+  ) -> Result<Vec<ApiAlias>, DbError>;
 
-  async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError>;
+  async fn get_api_key_for_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<String>, DbError>;
 
   async fn check_prefix_exists(
     &self,
+    tenant_id: &str,
+    user_id: &str,
     prefix: &str,
     exclude_id: Option<String>,
   ) -> Result<bool, DbError>;
@@ -50,14 +76,14 @@ pub trait ApiAliasRepository: Send + Sync {
 impl ApiAliasRepository for DefaultDbService {
   async fn create_api_model_alias(
     &self,
+    tenant_id: &str,
+    user_id: &str,
     alias: &ApiAlias,
     api_key: Option<String>,
   ) -> Result<(), DbError> {
-    if let Some(ref prefix) = alias.prefix {
-      if !prefix.is_empty() && self.check_prefix_exists(prefix, None).await? {
-        return Err(DbError::PrefixExists(prefix.clone()));
-      }
-    }
+    let tenant_id_owned = tenant_id.to_string();
+    let user_id = user_id.to_string();
+    let alias = alias.clone();
 
     let (encrypted_api_key, salt, nonce) = if let Some(ref key) = api_key {
       let (enc, s, n) = encrypt_api_key(&self.encryption_key, key)
@@ -67,58 +93,95 @@ impl ApiAliasRepository for DefaultDbService {
       (None, None, None)
     };
 
-    let model = api_model_alias::ActiveModel {
-      id: Set(alias.id.clone()),
-      api_format: Set(alias.api_format.clone()),
-      base_url: Set(alias.base_url.clone()),
-      models: Set(alias.models.clone()),
-      prefix: Set(alias.prefix.clone()),
-      forward_all_with_prefix: Set(alias.forward_all_with_prefix),
-      models_cache: Set(alias.models_cache.clone()),
-      cache_fetched_at: Set(alias.cache_fetched_at),
-      encrypted_api_key: Set(encrypted_api_key),
-      salt: Set(salt),
-      nonce: Set(nonce),
-      created_at: Set(alias.created_at),
-      updated_at: Set(alias.updated_at),
-    };
-    api_model_alias::Entity::insert(model)
-      .exec(&self.db)
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          if let Some(ref prefix) = alias.prefix {
+            if !prefix.is_empty() {
+              let count = api_model_alias::Entity::find()
+                .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))
+                .filter(api_model_alias::Column::UserId.eq(&user_id))
+                .filter(api_model_alias::Column::Prefix.eq(prefix.as_str()))
+                .count(txn)
+                .await
+                .map_err(DbError::from)?;
+              if count > 0 {
+                return Err(DbError::PrefixExists(prefix.clone()));
+              }
+            }
+          }
+
+          let model = api_model_alias::ActiveModel {
+            id: Set(alias.id.clone()),
+            tenant_id: Set(tenant_id_owned),
+            user_id: Set(user_id),
+            api_format: Set(alias.api_format.clone()),
+            base_url: Set(alias.base_url.clone()),
+            models: Set(alias.models.clone()),
+            prefix: Set(alias.prefix.clone()),
+            forward_all_with_prefix: Set(alias.forward_all_with_prefix),
+            models_cache: Set(alias.models_cache.clone()),
+            cache_fetched_at: Set(alias.cache_fetched_at),
+            encrypted_api_key: Set(encrypted_api_key),
+            salt: Set(salt),
+            nonce: Set(nonce),
+            created_at: Set(alias.created_at),
+            updated_at: Set(alias.updated_at),
+          };
+          api_model_alias::Entity::insert(model)
+            .exec(txn)
+            .await
+            .map_err(DbError::from)?;
+          Ok(())
+        })
+      })
       .await
-      .map_err(DbError::from)?;
-    Ok(())
   }
 
-  async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError> {
-    let result = api_model_alias::Entity::find_by_id(id.to_string())
-      .into_partial_model::<ApiAliasView>()
-      .one(&self.db)
-      .await
-      .map_err(DbError::from)?;
+  async fn get_api_model_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ApiAlias>, DbError> {
+    let tenant_id_owned = tenant_id.to_string();
+    let user_id_owned = user_id.to_string();
+    let id_owned = id.to_string();
 
-    Ok(result.map(Into::into))
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          let result = api_model_alias::Entity::find_by_id(id_owned)
+            .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))
+            .filter(api_model_alias::Column::UserId.eq(&user_id_owned))
+            .into_partial_model::<ApiAliasView>()
+            .one(txn)
+            .await
+            .map_err(DbError::from)?;
+
+          Ok(result.map(Into::into))
+        })
+      })
+      .await
   }
 
   async fn update_api_model_alias(
     &self,
+    tenant_id: &str,
+    user_id: &str,
     id: &str,
     model: &ApiAlias,
-    api_key: ApiKeyUpdate,
+    api_key: RawApiKeyUpdate,
   ) -> Result<(), DbError> {
-    if let Some(ref prefix) = model.prefix {
-      if !prefix.is_empty()
-        && self
-          .check_prefix_exists(prefix, Some(id.to_string()))
-          .await?
-      {
-        return Err(DbError::PrefixExists(prefix.clone()));
-      }
-    }
+    let tenant_id_owned = tenant_id.to_string();
+    let user_id = user_id.to_string();
+    let id = id.to_string();
+    let model = model.clone();
 
     let now = self.time_service.utc_now();
 
     let mut active = api_model_alias::ActiveModel {
-      id: Set(id.to_string()),
+      id: Set(id.clone()),
       api_format: Set(model.api_format.clone()),
       base_url: Set(model.base_url.clone()),
       models: Set(model.models.clone()),
@@ -129,7 +192,7 @@ impl ApiAliasRepository for DefaultDbService {
     };
 
     match api_key {
-      ApiKeyUpdate::Set(api_key_opt) => match api_key_opt {
+      RawApiKeyUpdate::Set(api_key_opt) => match api_key_opt {
         Some(api_key) => {
           let (encrypted, s, n) = encrypt_api_key(&self.encryption_key, &api_key)
             .map_err(|e| DbError::EncryptionError(e.to_string()))?;
@@ -143,91 +206,197 @@ impl ApiAliasRepository for DefaultDbService {
           active.nonce = Set(None);
         }
       },
-      ApiKeyUpdate::Keep => {}
+      RawApiKeyUpdate::Keep => {}
     }
 
-    api_model_alias::Entity::update(active)
-      .exec(&self.db)
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          if let Some(ref prefix) = model.prefix {
+            if !prefix.is_empty() {
+              let mut query = api_model_alias::Entity::find()
+                .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))
+                .filter(api_model_alias::Column::UserId.eq(&user_id))
+                .filter(api_model_alias::Column::Prefix.eq(prefix.as_str()));
+              query = query.filter(api_model_alias::Column::Id.ne(&id));
+              let count = query.count(txn).await.map_err(DbError::from)?;
+              if count > 0 {
+                return Err(DbError::PrefixExists(prefix.clone()));
+              }
+            }
+          }
+
+          // Verify ownership before updating: only update if tenant_id and user_id match
+          let exists = api_model_alias::Entity::find()
+            .filter(api_model_alias::Column::Id.eq(&id))
+            .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))
+            .filter(api_model_alias::Column::UserId.eq(&user_id))
+            .count(txn)
+            .await
+            .map_err(DbError::from)?
+            > 0;
+
+          if exists {
+            api_model_alias::Entity::update(active)
+              .exec(txn)
+              .await
+              .map_err(DbError::from)?;
+          }
+          Ok(())
+        })
+      })
       .await
-      .map_err(DbError::from)?;
-    Ok(())
   }
 
   async fn update_api_model_cache(
     &self,
+    tenant_id: &str,
     id: &str,
     models: Vec<String>,
     fetched_at: DateTime<Utc>,
   ) -> Result<(), DbError> {
+    let id = id.to_string();
+
     let active = api_model_alias::ActiveModel {
-      id: Set(id.to_string()),
+      id: Set(id),
       models_cache: Set(models.into()),
       cache_fetched_at: Set(fetched_at),
       ..Default::default()
     };
 
-    api_model_alias::Entity::update(active)
-      .exec(&self.db)
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          api_model_alias::Entity::update(active)
+            .exec(txn)
+            .await
+            .map_err(DbError::from)?;
+          Ok(())
+        })
+      })
       .await
-      .map_err(DbError::from)?;
-    Ok(())
   }
 
-  async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError> {
-    api_model_alias::Entity::delete_by_id(id.to_string())
-      .exec(&self.db)
+  async fn delete_api_model_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<(), DbError> {
+    let tenant_id_owned = tenant_id.to_string();
+    let user_id = user_id.to_string();
+    let id = id.to_string();
+
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          api_model_alias::Entity::delete_many()
+            .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))
+            .filter(api_model_alias::Column::UserId.eq(&user_id))
+            .filter(api_model_alias::Column::Id.eq(&id))
+            .exec(txn)
+            .await
+            .map_err(DbError::from)?;
+          Ok(())
+        })
+      })
       .await
-      .map_err(DbError::from)?;
-    Ok(())
   }
 
-  async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError> {
-    let results = api_model_alias::Entity::find()
-      .order_by_desc(api_model_alias::Column::CreatedAt)
-      .into_partial_model::<ApiAliasView>()
-      .all(&self.db)
-      .await
-      .map_err(DbError::from)?;
+  async fn list_api_model_aliases(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+  ) -> Result<Vec<ApiAlias>, DbError> {
+    let tenant_id_owned = tenant_id.to_string();
+    let user_id_owned = user_id.to_string();
 
-    Ok(results.into_iter().map(Into::into).collect())
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          let results = api_model_alias::Entity::find()
+            .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))
+            .filter(api_model_alias::Column::UserId.eq(&user_id_owned))
+            .order_by_desc(api_model_alias::Column::CreatedAt)
+            .into_partial_model::<ApiAliasView>()
+            .all(txn)
+            .await
+            .map_err(DbError::from)?;
+
+          Ok(results.into_iter().map(Into::into).collect())
+        })
+      })
+      .await
   }
 
-  async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError> {
-    let result = api_model_alias::Entity::find_by_id(id.to_string())
-      .one(&self.db)
-      .await
-      .map_err(DbError::from)?;
+  async fn get_api_key_for_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<String>, DbError> {
+    let tenant_id_owned = tenant_id.to_string();
+    let user_id_owned = user_id.to_string();
+    let id_owned = id.to_string();
+    let encryption_key = self.encryption_key.clone();
 
-    match result {
-      Some(m) => match (m.encrypted_api_key, m.salt, m.nonce) {
-        (Some(encrypted), Some(salt), Some(nonce)) => {
-          let api_key = decrypt_api_key(&self.encryption_key, &encrypted, &salt, &nonce)
-            .map_err(|e| DbError::EncryptionError(e.to_string()))?;
-          Ok(Some(api_key))
-        }
-        (None, None, None) => Ok(None),
-        _ => Err(DbError::EncryptionError(format!(
-          "Data corruption: API key encryption fields are partially NULL for alias '{}'",
-          id
-        ))),
-      },
-      None => Ok(None),
-    }
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          let result = api_model_alias::Entity::find_by_id(id_owned.clone())
+            .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))
+            .filter(api_model_alias::Column::UserId.eq(&user_id_owned))
+            .one(txn)
+            .await
+            .map_err(DbError::from)?;
+
+          match result {
+            Some(m) => match (m.encrypted_api_key, m.salt, m.nonce) {
+              (Some(encrypted), Some(salt), Some(nonce)) => {
+                let api_key = decrypt_api_key(&encryption_key, &encrypted, &salt, &nonce)
+                  .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+                Ok(Some(api_key))
+              }
+              (None, None, None) => Ok(None),
+              _ => Err(DbError::EncryptionError(format!(
+                "Data corruption: API key encryption fields are partially NULL for alias '{}'",
+                id_owned
+              ))),
+            },
+            None => Ok(None),
+          }
+        })
+      })
+      .await
   }
 
   async fn check_prefix_exists(
     &self,
+    tenant_id: &str,
+    user_id: &str,
     prefix: &str,
     exclude_id: Option<String>,
   ) -> Result<bool, DbError> {
-    let mut query =
-      api_model_alias::Entity::find().filter(api_model_alias::Column::Prefix.eq(prefix));
+    let tenant_id_owned = tenant_id.to_string();
+    let user_id_owned = user_id.to_string();
+    let prefix_owned = prefix.to_string();
 
-    if let Some(id) = exclude_id {
-      query = query.filter(api_model_alias::Column::Id.ne(id));
-    }
+    self
+      .with_tenant_txn(tenant_id, |txn| {
+        Box::pin(async move {
+          let mut query = api_model_alias::Entity::find()
+            .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))
+            .filter(api_model_alias::Column::UserId.eq(&user_id_owned))
+            .filter(api_model_alias::Column::Prefix.eq(&prefix_owned));
 
-    let count = query.count(&self.db).await.map_err(DbError::from)?;
-    Ok(count > 0)
+          if let Some(id) = exclude_id {
+            query = query.filter(api_model_alias::Column::Id.ne(id));
+          }
+
+          let count = query.count(txn).await.map_err(DbError::from)?;
+          Ok(count > 0)
+        })
+      })
+      .await
   }
 }

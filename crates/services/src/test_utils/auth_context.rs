@@ -1,3 +1,4 @@
+use super::db::TEST_TENANT_ID;
 use crate::{AuthContext, ResourceRole, TokenScope, UserScope};
 
 const DEFAULT_CLIENT_ID: &str = "test-client-id";
@@ -6,18 +7,21 @@ impl AuthContext {
   pub fn test_anonymous() -> Self {
     AuthContext::Anonymous {
       client_id: Some(DEFAULT_CLIENT_ID.to_string()),
+      tenant_id: Some(TEST_TENANT_ID.to_string()),
     }
   }
 
   pub fn test_anonymous_with_client_id(client_id: &str) -> Self {
     AuthContext::Anonymous {
       client_id: Some(client_id.to_string()),
+      tenant_id: Some(TEST_TENANT_ID.to_string()),
     }
   }
 
   pub fn test_session(user_id: &str, username: &str, role: ResourceRole) -> Self {
     AuthContext::Session {
       client_id: DEFAULT_CLIENT_ID.to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       username: username.to_string(),
       role: Some(role),
@@ -28,6 +32,7 @@ impl AuthContext {
   pub fn test_session_no_role(user_id: &str, username: &str) -> Self {
     AuthContext::Session {
       client_id: DEFAULT_CLIENT_ID.to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       username: username.to_string(),
       role: None,
@@ -43,6 +48,7 @@ impl AuthContext {
   ) -> Self {
     AuthContext::Session {
       client_id: DEFAULT_CLIENT_ID.to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       username: username.to_string(),
       role: Some(role),
@@ -53,6 +59,7 @@ impl AuthContext {
   pub fn test_api_token(user_id: &str, role: TokenScope) -> Self {
     AuthContext::ApiToken {
       client_id: DEFAULT_CLIENT_ID.to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       role,
       token: "test-api-token".to_string(),
@@ -67,6 +74,7 @@ impl AuthContext {
   ) -> Self {
     AuthContext::ExternalApp {
       client_id: DEFAULT_CLIENT_ID.to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       role: Some(role),
       token: "test-external-token".to_string(),
@@ -83,6 +91,7 @@ impl AuthContext {
   ) -> Self {
     AuthContext::ExternalApp {
       client_id: DEFAULT_CLIENT_ID.to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       role: None,
       token: "test-external-token".to_string(),

@@ -1,9 +1,9 @@
 use crate::{
   models::{
-    AliasSource, ContextLimits, ModelArchitecture, ModelCapabilities, ModelMetadataRepository,
-    ModelMetadataRow, ToolCapabilities,
+    AliasSource, ContextLimits, ModelArchitecture, ModelCapabilities, ModelMetadataEntity,
+    ModelMetadataRepository, ToolCapabilities,
   },
-  test_utils::{sea_context, setup_env},
+  test_utils::{sea_context, setup_env, TEST_TENANT_ID},
 };
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
@@ -21,8 +21,9 @@ async fn test_upsert_and_get_model_metadata(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let metadata = ModelMetadataRow {
+  let metadata = ModelMetadataEntity {
     id: String::new(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     source: AliasSource::Model,
     repo: Some("test/repo".to_string()),
     filename: Some("model.gguf".to_string()),
@@ -58,7 +59,7 @@ async fn test_upsert_and_get_model_metadata(
 
   let fetched = ctx
     .service
-    .get_model_metadata_by_file("test/repo", "model.gguf", "main")
+    .get_model_metadata_by_file(TEST_TENANT_ID, "test/repo", "model.gguf", "main")
     .await?;
   assert!(fetched.is_some());
   let fetched = fetched.unwrap();
@@ -103,7 +104,7 @@ async fn test_batch_get_metadata(
   ];
 
   for (repo, filename, snapshot) in &files {
-    let metadata = ModelMetadataRow {
+    let metadata = ModelMetadataEntity {
       id: String::new(),
       source: AliasSource::Model,
       repo: Some(repo.clone()),
@@ -118,7 +119,7 @@ async fn test_batch_get_metadata(
     ctx.service.upsert_model_metadata(&metadata).await?;
   }
 
-  let result = ctx.service.batch_get_metadata_by_files(&files).await?;
+  let result = ctx.service.batch_get_metadata_by_files("", &files).await?;
   assert_eq!(3, result.len());
   Ok(())
 }
@@ -133,7 +134,7 @@ async fn test_list_model_metadata(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
   for i in 0..3 {
-    let metadata = ModelMetadataRow {
+    let metadata = ModelMetadataEntity {
       id: String::new(),
       source: AliasSource::Model,
       repo: Some(format!("repo{}", i)),
@@ -148,7 +149,7 @@ async fn test_list_model_metadata(
     ctx.service.upsert_model_metadata(&metadata).await?;
   }
 
-  let result = ctx.service.list_model_metadata().await?;
+  let result = ctx.service.list_model_metadata("").await?;
   assert_eq!(3, result.len());
   Ok(())
 }

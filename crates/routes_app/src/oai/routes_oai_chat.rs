@@ -1,17 +1,17 @@
 use super::error::OAIRouteError;
 use super::{ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS};
+use crate::shared::AuthScope;
 use crate::API_TAG_OPENAI;
+use crate::{ApiError, JsonRejectionError};
 use async_openai::types::{
   chat::{
     CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
   },
   embeddings::{CreateEmbeddingRequest, CreateEmbeddingResponse},
 };
-use axum::{body::Body, extract::State, response::Response, Json};
+use axum::{response::Response, Json};
 use axum_extra::extract::WithRejection;
-use server_core::{LlmEndpoint, RouterState};
-use crate::{ApiError, JsonRejectionError};
-use std::sync::Arc;
+use services::inference::LlmEndpoint;
 
 /// Validates basic structure of chat completion request
 fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), OAIRouteError> {
@@ -123,23 +123,53 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), O
     ),
 )]
 pub async fn chat_completions_handler(
-  State(state): State<Arc<dyn RouterState>>,
+  auth_scope: AuthScope,
   WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, JsonRejectionError>,
 ) -> Result<Response, ApiError> {
   // Validate basic request structure
   validate_chat_completion_request(&request)?;
 
-  // Forward request directly as Value (no re-serialization needed)
-  let response = state
-    .forward_request(LlmEndpoint::ChatCompletions, request)
-    .await?;
-  let mut response_builder = Response::builder().status(response.status());
-  if let Some(headers) = response_builder.headers_mut() {
-    *headers = response.headers().clone();
-  }
-  let stream = response.bytes_stream();
-  let body = Body::from_stream(stream);
-  Ok(response_builder.body(body).map_err(OAIRouteError::Http)?)
+  let model = request
+    .get("model")
+    .and_then(|v| v.as_str())
+    .unwrap_or("")
+    .to_string();
+
+  let alias = auth_scope
+    .data()
+    .find_alias(&model)
+    .await
+    .ok_or_else(|| ApiError::from(services::DataServiceError::AliasNotFound(model)))?;
+
+  let inference = auth_scope.inference();
+
+  use services::Alias;
+  let response = match alias {
+    Alias::User(_) | Alias::Model(_) => inference
+      .forward_local(LlmEndpoint::ChatCompletions, request, alias)
+      .await
+      .map_err(ApiError::from)?,
+    Alias::Api(ref api_alias) => {
+      let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
+      let user_id = auth_scope
+        .auth_context()
+        .user_id()
+        .unwrap_or("")
+        .to_string();
+      let api_key = auth_scope
+        .db_service()
+        .get_api_key_for_alias(&tenant_id, &user_id, &api_alias.id)
+        .await
+        .ok()
+        .flatten();
+      inference
+        .forward_remote(LlmEndpoint::ChatCompletions, request, api_alias, api_key)
+        .await
+        .map_err(ApiError::from)?
+    }
+  };
+
+  Ok(response)
 }
 
 /// Create embeddings
@@ -184,20 +214,47 @@ pub async fn chat_completions_handler(
     ),
 )]
 pub async fn embeddings_handler(
-  State(state): State<Arc<dyn RouterState>>,
+  auth_scope: AuthScope,
   WithRejection(Json(request), _): WithRejection<Json<CreateEmbeddingRequest>, JsonRejectionError>,
 ) -> Result<Response, ApiError> {
+  let model = request.model.clone();
   let request_value = serde_json::to_value(request).map_err(OAIRouteError::Serialization)?;
-  let response = state
-    .forward_request(LlmEndpoint::Embeddings, request_value)
-    .await?;
-  let mut response_builder = Response::builder().status(response.status());
-  if let Some(headers) = response_builder.headers_mut() {
-    *headers = response.headers().clone();
-  }
-  let stream = response.bytes_stream();
-  let body = Body::from_stream(stream);
-  Ok(response_builder.body(body).map_err(OAIRouteError::Http)?)
+
+  let alias = auth_scope
+    .data()
+    .find_alias(&model)
+    .await
+    .ok_or_else(|| ApiError::from(services::DataServiceError::AliasNotFound(model)))?;
+
+  let inference = auth_scope.inference();
+
+  use services::Alias;
+  let response = match alias {
+    Alias::User(_) | Alias::Model(_) => inference
+      .forward_local(LlmEndpoint::Embeddings, request_value, alias)
+      .await
+      .map_err(ApiError::from)?,
+    Alias::Api(ref api_alias) => {
+      let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
+      let user_id = auth_scope
+        .auth_context()
+        .user_id()
+        .unwrap_or("")
+        .to_string();
+      let api_key = auth_scope
+        .db_service()
+        .get_api_key_for_alias(&tenant_id, &user_id, &api_alias.id)
+        .await
+        .ok()
+        .flatten();
+      inference
+        .forward_remote(LlmEndpoint::Embeddings, request_value, api_alias, api_key)
+        .await
+        .map_err(ApiError::from)?
+    }
+  };
+
+  Ok(response)
 }
 
 #[cfg(test)]

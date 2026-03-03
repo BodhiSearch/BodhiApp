@@ -1,6 +1,6 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::{users_change_role, users_destroy, users_index};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
   http::{Request, StatusCode},
@@ -12,8 +12,9 @@ use mockall::predicate::{always, eq};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
-use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
+use server_core::test_utils::ResponseTestExt;
 use services::test_utils::temp_bodhi_home;
+use services::AuthContext;
 use services::{
   test_utils::{build_token_with_exp, AppServiceStubBuilder},
   MockAuthService, MockSessionService, UserListResponse,
@@ -70,10 +71,7 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
     .await?;
 
   // Create router with handler
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users", get(users_index))
@@ -129,10 +127,7 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
     .await?;
 
   // Create router with handler
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users", get(users_index))
@@ -196,10 +191,7 @@ async fn test_list_users_handler_pagination_parameters(
     .await?;
 
   // Create router with handler
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users", get(users_index))
@@ -264,10 +256,7 @@ async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> any
     .await?;
 
   // Create router with handler
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users/{user_id}/role", put(users_change_role))
@@ -317,10 +306,7 @@ async fn test_remove_user_handler_success(_temp_bodhi_home: TempDir) -> anyhow::
     .build()
     .await?;
 
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users/{user_id}", delete(users_destroy))
@@ -360,10 +346,7 @@ async fn test_remove_user_handler_auth_error(_temp_bodhi_home: TempDir) -> anyho
     .build()
     .await?;
 
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users/{user_id}", delete(users_destroy))
@@ -415,10 +398,7 @@ async fn test_change_user_role_handler_auth_error(_temp_bodhi_home: TempDir) -> 
     .build()
     .await?;
 
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users/{user_id}/role", put(users_change_role))
@@ -479,10 +459,7 @@ async fn test_change_user_role_session_clear_failure_still_succeeds(
     .build()
     .await?;
 
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users/{user_id}/role", put(users_change_role))
@@ -502,5 +479,110 @@ async fn test_change_user_role_session_clear_failure_still_succeeds(
 
   // Should still succeed even though session clearing failed
   assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+// ============================================================================
+// users_change_role - privilege escalation prevention (P1-3)
+// ============================================================================
+
+#[rstest]
+#[case::manager_assigning_admin(ResourceRole::Manager, ResourceRole::Admin)]
+#[case::power_user_assigning_manager(ResourceRole::PowerUser, ResourceRole::Manager)]
+#[case::user_assigning_power_user(ResourceRole::User, ResourceRole::PowerUser)]
+#[case::user_assigning_admin(ResourceRole::User, ResourceRole::Admin)]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_change_user_role_privilege_escalation_rejected(
+  _temp_bodhi_home: TempDir,
+  #[case] caller_role: ResourceRole,
+  #[case] target_role: ResourceRole,
+) -> anyhow::Result<()> {
+  let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
+
+  // No mock expectations needed - handler should reject before calling service
+  let app_service = AppServiceStubBuilder::default().build().await?;
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
+
+  let router = Router::new()
+    .route("/bodhi/v1/users/{user_id}/role", put(users_change_role))
+    .with_state(state);
+
+  let body = serde_json::json!({ "role": target_role.to_string() });
+  let request = Request::put("/bodhi/v1/users/user-123/role")
+    .header("Content-Type", "application/json")
+    .body(Body::from(body.to_string()))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "caller-user-id",
+      "caller@example.com",
+      caller_role,
+      &test_token,
+    ));
+
+  let response = router.oneshot(request).await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let response_json = response.json::<Value>().await?;
+  assert_eq!(
+    "users_route_error-insufficient_privileges",
+    response_json["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[case::admin_assigning_admin(ResourceRole::Admin, ResourceRole::Admin)]
+#[case::admin_assigning_manager(ResourceRole::Admin, ResourceRole::Manager)]
+#[case::manager_assigning_user(ResourceRole::Manager, ResourceRole::User)]
+#[case::manager_assigning_manager(ResourceRole::Manager, ResourceRole::Manager)]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_change_user_role_allowed_when_caller_has_sufficient_role(
+  _temp_bodhi_home: TempDir,
+  #[case] caller_role: ResourceRole,
+  #[case] target_role: ResourceRole,
+) -> anyhow::Result<()> {
+  let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
+
+  let target_role_str = target_role.to_string();
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_assign_user_role()
+    .times(1)
+    .with(always(), eq("user-123"), eq(target_role_str))
+    .return_once(|_, _, _| Ok(()));
+
+  let mut mock_session = MockSessionService::default();
+  mock_session
+    .expect_clear_sessions_for_user()
+    .times(1)
+    .return_once(|_| Ok(0));
+
+  let app_service = AppServiceStubBuilder::default()
+    .auth_service(Arc::new(mock_auth))
+    .session_service(Arc::new(mock_session))
+    .build()
+    .await?;
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
+
+  let router = Router::new()
+    .route("/bodhi/v1/users/{user_id}/role", put(users_change_role))
+    .with_state(state);
+
+  let body = serde_json::json!({ "role": target_role.to_string() });
+  let request = Request::put("/bodhi/v1/users/user-123/role")
+    .header("Content-Type", "application/json")
+    .body(Body::from(body.to_string()))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "caller-user-id",
+      "caller@example.com",
+      caller_role,
+      &test_token,
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+
   Ok(())
 }

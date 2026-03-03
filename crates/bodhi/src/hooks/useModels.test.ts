@@ -1,7 +1,6 @@
 import type {
   Alias,
-  CreateAliasRequest,
-  UpdateAliasRequest,
+  UserAliasRequest,
   PaginatedAliasResponse,
   PaginatedLocalModelResponse,
   PaginatedDownloadResponse,
@@ -140,8 +139,8 @@ const mockPullModelResponse: DownloadRequest = {
   error: null,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
-  total_bytes: undefined,
-  downloaded_bytes: undefined,
+  total_bytes: null,
+  downloaded_bytes: 0,
   started_at: '2024-01-01T00:00:00Z',
 };
 
@@ -345,7 +344,7 @@ describe('Model Hooks', () => {
   });
 
   describe('useCreateModel', () => {
-    const createRequest: CreateAliasRequest = {
+    const createRequest: UserAliasRequest = {
       alias: 'new-model',
       repo: 'test/repo',
       filename: 'model.gguf',
@@ -417,7 +416,8 @@ describe('Model Hooks', () => {
 
   describe('useUpdateModel', () => {
     const id = 'test-uuid-1';
-    const updateRequest: UpdateAliasRequest = {
+    const updateRequest: UserAliasRequest = {
+      alias: 'test-model',
       repo: 'updated/repo',
       filename: 'updated-model.gguf',
       request_params: { temperature: 0.8 },
@@ -603,7 +603,10 @@ describe('Model Hooks', () => {
         }
       });
 
-      expect(onError).toHaveBeenCalledWith(expect.stringContaining('already exists'), 'model_route_error-file_already_exists');
+      expect(onError).toHaveBeenCalledWith(
+        expect.stringContaining('already exists'),
+        'model_route_error-file_already_exists'
+      );
     });
 
     it('calls onError with default message when none provided', async () => {

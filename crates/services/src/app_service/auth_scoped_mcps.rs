@@ -1,12 +1,12 @@
 use crate::{
   AppService, AuthContext, CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpError,
-  McpExecutionRequest, McpExecutionResponse, McpOAuthToken, McpServer, McpServerError, McpTool,
-  Mcp, McpAuthType,
+  McpExecutionRequest, McpExecutionResponse, McpOAuthToken, McpRequest, McpServerEntity,
+  McpServerError, McpServerRequest, McpTool, McpWithServerEntity,
 };
 use std::sync::Arc;
 
-/// Auth-scoped wrapper around McpService that injects user_id from AuthContext.
-/// User-scoped methods automatically inject the authenticated user's ID.
+/// Auth-scoped wrapper around McpService that injects user_id and tenant_id from AuthContext.
+/// User-scoped methods automatically inject the authenticated user's ID and tenant ID.
 /// Server-level and discovery methods delegate directly (no user_id needed).
 pub struct AuthScopedMcpService {
   app_service: Arc<dyn AppService>,
@@ -24,100 +24,73 @@ impl AuthScopedMcpService {
   // ========== User-scoped MCP instance methods ==========
 
   /// List MCP instances for the authenticated user.
-  pub async fn list(&self) -> Result<Vec<Mcp>, McpError> {
+  pub async fn list(&self) -> Result<Vec<McpWithServerEntity>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
-    self.app_service.mcp_service().list(user_id).await
+    self
+      .app_service
+      .mcp_service()
+      .list(tenant_id, user_id)
+      .await
   }
 
   /// Get a specific MCP instance by ID for the authenticated user.
-  pub async fn get(&self, id: &str) -> Result<Option<Mcp>, McpError> {
+  pub async fn get(&self, id: &str) -> Result<Option<McpWithServerEntity>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
-    let mcp = self.app_service.mcp_service().get(user_id, id).await?;
-    Ok(mcp)
+    self
+      .app_service
+      .mcp_service()
+      .get(tenant_id, user_id, id)
+      .await
   }
 
   /// Create a new MCP instance for the authenticated user.
-  #[allow(clippy::too_many_arguments)]
-  pub async fn create(
-    &self,
-    name: &str,
-    slug: &str,
-    mcp_server_id: &str,
-    description: Option<String>,
-    enabled: bool,
-    tools_cache: Option<Vec<McpTool>>,
-    tools_filter: Option<Vec<String>>,
-    auth_type: McpAuthType,
-    auth_uuid: Option<String>,
-  ) -> Result<Mcp, McpError> {
+  pub async fn create(&self, request: McpRequest) -> Result<McpWithServerEntity, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
-    let mcp = self
+    self
       .app_service
       .mcp_service()
-      .create(
-        user_id,
-        name,
-        slug,
-        mcp_server_id,
-        description,
-        enabled,
-        tools_cache,
-        tools_filter,
-        auth_type,
-        auth_uuid,
-      )
-      .await?;
-    Ok(mcp)
+      .create(tenant_id, user_id, request)
+      .await
   }
 
   /// Update an existing MCP instance for the authenticated user.
-  #[allow(clippy::too_many_arguments)]
   pub async fn update(
     &self,
     id: &str,
-    name: &str,
-    slug: &str,
-    description: Option<String>,
-    enabled: bool,
-    tools_filter: Option<Vec<String>>,
-    tools_cache: Option<Vec<McpTool>>,
-    auth_type: Option<McpAuthType>,
-    auth_uuid: Option<String>,
-  ) -> Result<Mcp, McpError> {
+    request: McpRequest,
+  ) -> Result<McpWithServerEntity, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
-    let mcp = self
+    self
       .app_service
       .mcp_service()
-      .update(
-        user_id,
-        id,
-        name,
-        slug,
-        description,
-        enabled,
-        tools_filter,
-        tools_cache,
-        auth_type,
-        auth_uuid,
-      )
-      .await?;
-    Ok(mcp)
+      .update(tenant_id, user_id, id, request)
+      .await
   }
 
   /// Delete an MCP instance for the authenticated user.
   pub async fn delete(&self, id: &str) -> Result<(), McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
-    self.app_service.mcp_service().delete(user_id, id).await?;
+    self
+      .app_service
+      .mcp_service()
+      .delete(tenant_id, user_id, id)
+      .await?;
     Ok(())
   }
 
   /// Fetch and refresh tools for an MCP instance owned by the authenticated user.
   pub async fn fetch_tools(&self, id: &str) -> Result<Vec<McpTool>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     let tools = self
       .app_service
       .mcp_service()
-      .fetch_tools(user_id, id)
+      .fetch_tools(tenant_id, user_id, id)
       .await?;
     Ok(tools)
   }
@@ -129,11 +102,12 @@ impl AuthScopedMcpService {
     tool_name: &str,
     request: McpExecutionRequest,
   ) -> Result<McpExecutionResponse, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     let response = self
       .app_service
       .mcp_service()
-      .execute(user_id, id, tool_name, request)
+      .execute(tenant_id, user_id, id, tool_name, request)
       .await?;
     Ok(response)
   }
@@ -146,47 +120,46 @@ impl AuthScopedMcpService {
     mcp_server_id: &str,
     request: CreateMcpAuthConfigRequest,
   ) -> Result<McpAuthConfigResponse, McpError> {
-    let user_id = self.auth_context.require_user_id()?;
+    let tenant_id = self.auth_context.require_tenant_id()?;
     self
       .app_service
       .mcp_service()
-      .create_auth_config(user_id, mcp_server_id, request)
+      .create_auth_config(tenant_id, mcp_server_id, request)
       .await
   }
 
   /// Delete an auth config. No authorization check — middleware handles access control.
   pub async fn delete_auth_config(&self, config_id: &str) -> Result<(), McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     self
       .app_service
       .mcp_service()
-      .delete_auth_config(config_id)
+      .delete_auth_config(tenant_id, config_id)
       .await
   }
 
   // ========== OAuth token methods (user-scoped) ==========
 
   /// Get an OAuth token by ID for the authenticated user.
-  pub async fn get_oauth_token(
-    &self,
-    token_id: &str,
-  ) -> Result<Option<McpOAuthToken>, McpError> {
+  pub async fn get_oauth_token(&self, token_id: &str) -> Result<Option<McpOAuthToken>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .mcp_service()
-      .get_oauth_token(user_id, token_id)
+      .get_oauth_token(tenant_id, user_id, token_id)
       .await
   }
 
   /// Delete an OAuth token for the authenticated user.
   pub async fn delete_oauth_token(&self, token_id: &str) -> Result<(), McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
-      .db_service()
-      .delete_mcp_oauth_token(user_id, token_id)
-      .await?;
-    Ok(())
+      .mcp_service()
+      .delete_oauth_token(tenant_id, user_id, token_id)
+      .await
   }
 
   /// Exchange an authorization code for tokens.
@@ -197,11 +170,19 @@ impl AuthScopedMcpService {
     redirect_uri: &str,
     code_verifier: &str,
   ) -> Result<McpOAuthToken, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .mcp_service()
-      .exchange_oauth_token(user_id, config_id, code, redirect_uri, code_verifier)
+      .exchange_oauth_token(
+        tenant_id,
+        user_id,
+        config_id,
+        code,
+        redirect_uri,
+        code_verifier,
+      )
       .await
   }
 
@@ -212,10 +193,11 @@ impl AuthScopedMcpService {
     &self,
     mcp_server_id: &str,
   ) -> Result<Vec<McpAuthConfigResponse>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     self
       .app_service
       .mcp_service()
-      .list_auth_configs(mcp_server_id)
+      .list_auth_configs(tenant_id, mcp_server_id)
       .await
   }
 
@@ -224,10 +206,11 @@ impl AuthScopedMcpService {
     &self,
     config_id: &str,
   ) -> Result<Option<McpAuthConfigResponse>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     self
       .app_service
       .mcp_service()
-      .get_auth_config(config_id)
+      .get_auth_config(tenant_id, config_id)
       .await
   }
 
@@ -236,10 +219,11 @@ impl AuthScopedMcpService {
     &self,
     config_id: &str,
   ) -> Result<Option<crate::McpOAuthConfig>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     self
       .app_service
       .mcp_service()
-      .get_oauth_config(config_id)
+      .get_oauth_config(tenant_id, config_id)
       .await
   }
 
@@ -248,16 +232,14 @@ impl AuthScopedMcpService {
   /// Create a new MCP server. Injects user_id as created_by.
   pub async fn create_mcp_server(
     &self,
-    name: &str,
-    url: &str,
-    description: Option<String>,
-    enabled: bool,
-  ) -> Result<McpServer, McpServerError> {
+    request: McpServerRequest,
+  ) -> Result<McpServerEntity, McpServerError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .mcp_service()
-      .create_mcp_server(name, url, description, enabled, user_id)
+      .create_mcp_server(tenant_id, user_id, request)
       .await
   }
 
@@ -265,48 +247,47 @@ impl AuthScopedMcpService {
   pub async fn update_mcp_server(
     &self,
     id: &str,
-    name: &str,
-    url: &str,
-    description: Option<String>,
-    enabled: bool,
-  ) -> Result<McpServer, McpServerError> {
+    request: McpServerRequest,
+  ) -> Result<McpServerEntity, McpServerError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .mcp_service()
-      .update_mcp_server(id, name, url, description, enabled, user_id)
+      .update_mcp_server(tenant_id, id, user_id, request)
       .await
   }
 
   /// Get an MCP server by ID.
-  pub async fn get_mcp_server(
-    &self,
-    id: &str,
-  ) -> Result<Option<McpServer>, McpServerError> {
-    self.app_service.mcp_service().get_mcp_server(id).await
+  pub async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServerEntity>, McpServerError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
+    self
+      .app_service
+      .mcp_service()
+      .get_mcp_server(tenant_id, id)
+      .await
   }
 
   /// List MCP servers, optionally filtered by enabled status.
   pub async fn list_mcp_servers(
     &self,
     enabled: Option<bool>,
-  ) -> Result<Vec<McpServer>, McpServerError> {
+  ) -> Result<Vec<McpServerEntity>, McpServerError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     self
       .app_service
       .mcp_service()
-      .list_mcp_servers(enabled)
+      .list_mcp_servers(tenant_id, enabled)
       .await
   }
 
   /// Count enabled/disabled MCPs for a server.
-  pub async fn count_mcps_for_server(
-    &self,
-    server_id: &str,
-  ) -> Result<(i64, i64), McpServerError> {
+  pub async fn count_mcps_for_server(&self, server_id: &str) -> Result<(i64, i64), McpServerError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     self
       .app_service
       .mcp_service()
-      .count_mcps_for_server(server_id)
+      .count_mcps_for_server(tenant_id, server_id)
       .await
   }
 
@@ -320,20 +301,24 @@ impl AuthScopedMcpService {
     auth_header_value: Option<String>,
     auth_uuid: Option<String>,
   ) -> Result<Vec<McpTool>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     self
       .app_service
       .mcp_service()
-      .fetch_tools_for_server(server_id, auth_header_key, auth_header_value, auth_uuid)
+      .fetch_tools_for_server(
+        tenant_id,
+        server_id,
+        auth_header_key,
+        auth_header_value,
+        auth_uuid,
+      )
       .await
   }
 
   // ========== OAuth discovery/DCR (direct delegation) ==========
 
   /// Discover OAuth metadata from an authorization server URL.
-  pub async fn discover_oauth_metadata(
-    &self,
-    url: &str,
-  ) -> Result<serde_json::Value, McpError> {
+  pub async fn discover_oauth_metadata(&self, url: &str) -> Result<serde_json::Value, McpError> {
     self
       .app_service
       .mcp_service()
@@ -367,4 +352,3 @@ impl AuthScopedMcpService {
       .await
   }
 }
-

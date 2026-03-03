@@ -1,9 +1,9 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::tokens::tokens_api_schemas::{
-  ApiTokenResponse, CreateApiTokenRequest, PaginatedApiTokenResponse, UpdateApiTokenRequest,
+  CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail, UpdateTokenRequest,
 };
 use crate::{tokens_create, tokens_index, tokens_update};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
   http::{Method, Request},
@@ -13,16 +13,14 @@ use axum::{
 use hyper::StatusCode;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
+use services::AuthContext;
 use services::{
   test_utils::{
     access_token_claims, build_token, test_db_service, AppServiceStub, AppServiceStubBuilder,
-    TestDbService,
+    TestDbService, TEST_TENANT_ID,
   },
-  AppService, {ApiToken, TokenRepository, TokenStatus},
+  AppService, {TokenEntity, TokenRepository, TokenStatus},
 };
 use services::{ResourceRole, TokenScope};
 use sha2::{Digest, Sha256};
@@ -31,15 +29,12 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 async fn app(app_service_stub: AppServiceStub) -> Router {
-  let router_state = DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service_stub),
-  );
+  let app_service: Arc<dyn AppService> = Arc::new(app_service_stub);
   Router::new()
     .route("/api/tokens", post(tokens_create))
     .route("/api/tokens", get(tokens_index))
     .route("/api/tokens/{token_id}", put(tokens_update))
-    .with_state(Arc::new(router_state))
+    .with_state(app_service)
 }
 
 #[rstest]
@@ -62,8 +57,9 @@ async fn test_list_tokens_pagination(
 
   // Create multiple tokens
   for i in 1..=15 {
-    let mut token = ApiToken {
+    let mut token = TokenEntity {
       id: Uuid::new_v4().to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       name: format!("Test Token {}", i),
       token_prefix: format!("bodhiapp_test{:02}", i),
@@ -73,7 +69,9 @@ async fn test_list_tokens_pagination(
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };
-    db_service.create_api_token(&mut token).await?;
+    db_service
+      .create_api_token(TEST_TENANT_ID, &mut token)
+      .await?;
   }
 
   let router = app(app_service).await;
@@ -96,7 +94,7 @@ async fn test_list_tokens_pagination(
     .await?;
 
   assert_eq!(response.status(), StatusCode::OK);
-  let list_response = response.json::<PaginatedApiTokenResponse>().await?;
+  let list_response = response.json::<PaginatedTokenResponse>().await?;
   assert_eq!(list_response.data.len(), 10);
   assert_eq!(list_response.total, 15);
   assert_eq!(list_response.page, 1);
@@ -119,7 +117,7 @@ async fn test_list_tokens_pagination(
     .await?;
 
   assert_eq!(response.status(), StatusCode::OK);
-  let list_response = response.json::<PaginatedApiTokenResponse>().await?;
+  let list_response = response.json::<PaginatedTokenResponse>().await?;
   assert_eq!(list_response.data.len(), 5);
   assert_eq!(list_response.total, 15);
   assert_eq!(list_response.page, 2);
@@ -165,7 +163,7 @@ async fn test_list_tokens_empty(
     .await?;
 
   assert_eq!(response.status(), StatusCode::OK);
-  let list_response = response.json::<PaginatedApiTokenResponse>().await?;
+  let list_response = response.json::<PaginatedTokenResponse>().await?;
   assert_eq!(list_response.data.len(), 0);
   assert_eq!(list_response.total, 0);
   assert_eq!(list_response.page, 1); // Default page
@@ -221,7 +219,7 @@ async fn test_create_token_handler_role_scope_mapping(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .json(&CreateApiTokenRequest {
+        .json(&CreateTokenRequest {
           name: Some(format!("Test Token for {:?}", role)),
           scope: requested_scope,
         })?
@@ -236,7 +234,7 @@ async fn test_create_token_handler_role_scope_mapping(
 
   assert_eq!(StatusCode::CREATED, response.status());
 
-  let token_response = response.json::<ApiTokenResponse>().await?;
+  let token_response = response.json::<TokenCreated>().await?;
   assert!(
     token_response.token.starts_with("bodhiapp_"),
     "Token should start with 'bodhiapp_' prefix"
@@ -282,7 +280,7 @@ async fn test_create_token_handler_success(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .json(&CreateApiTokenRequest {
+        .json(&CreateTokenRequest {
           name: Some(token_name.to_string()),
           scope: TokenScope::User,
         })?
@@ -297,7 +295,7 @@ async fn test_create_token_handler_success(
 
   assert_eq!(StatusCode::CREATED, response.status());
 
-  let token_response = response.json::<ApiTokenResponse>().await?;
+  let token_response = response.json::<TokenCreated>().await?;
   let token_str = &token_response.token;
 
   // Verify token format
@@ -358,7 +356,7 @@ async fn test_create_token_handler_without_name(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .json(&CreateApiTokenRequest {
+        .json(&CreateTokenRequest {
           name: None,
           scope: TokenScope::User,
         })?
@@ -373,7 +371,7 @@ async fn test_create_token_handler_without_name(
 
   assert_eq!(StatusCode::CREATED, response.status());
 
-  let token_response = response.json::<ApiTokenResponse>().await?;
+  let token_response = response.json::<TokenCreated>().await?;
   let token_prefix = &token_response.token[.."bodhiapp_".len() + 8];
 
   // Verify token has empty name
@@ -408,11 +406,14 @@ async fn test_create_token_handler_missing_auth(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .json(&CreateApiTokenRequest {
+        .json(&CreateTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
         })?
-        .with_auth_context(AuthContext::Anonymous { client_id: None }),
+        .with_auth_context(AuthContext::Anonymous {
+          client_id: None,
+          tenant_id: None,
+        }),
     )
     .await?;
 
@@ -444,7 +445,7 @@ async fn test_create_token_handler_invalid_role(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .json(&CreateApiTokenRequest {
+        .json(&CreateTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
         })?
@@ -480,7 +481,7 @@ async fn test_create_token_handler_missing_role(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .json(&CreateApiTokenRequest {
+        .json(&CreateTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
         })?
@@ -512,8 +513,9 @@ async fn test_update_token_handler_success(
   let now = app_service.time_service().utc_now();
 
   // Create initial token
-  let mut token = ApiToken {
+  let mut token = TokenEntity {
     id: Uuid::new_v4().to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     user_id: user_id.to_string(),
     name: "Initial Name".to_string(),
     token_prefix: "bodhiapp_test123".to_string(),
@@ -523,7 +525,9 @@ async fn test_update_token_handler_success(
     created_at: now,
     updated_at: now,
   };
-  test_db_service.create_api_token(&mut token).await?;
+  test_db_service
+    .create_api_token(TEST_TENANT_ID, &mut token)
+    .await?;
 
   // Setup app with router
   let app = app(app_service).await;
@@ -534,7 +538,7 @@ async fn test_update_token_handler_success(
       Request::builder()
         .method(Method::PUT)
         .uri(format!("/api/tokens/{}", token.id))
-        .json(&UpdateApiTokenRequest {
+        .json(&UpdateTokenRequest {
           name: "Updated Name".to_string(),
           status: TokenStatus::Inactive,
         })?
@@ -549,14 +553,14 @@ async fn test_update_token_handler_success(
 
   assert_eq!(response.status(), StatusCode::OK);
 
-  let updated_token = response.json::<ApiToken>().await?;
+  let updated_token = response.json::<TokenDetail>().await?;
   assert_eq!(updated_token.name, "Updated Name");
   assert_eq!(updated_token.status, TokenStatus::Inactive);
   assert_eq!(updated_token.id, token.id);
 
   // Verify DB was updated
   let db_token = test_db_service
-    .get_api_token_by_id(&user_id, &token.id)
+    .get_api_token_by_id(TEST_TENANT_ID, &user_id, &token.id)
     .await?
     .expect("Token should exist in database");
   assert_eq!(db_token.name, "Updated Name");
@@ -588,7 +592,7 @@ async fn test_update_token_handler_not_found(
       Request::builder()
         .method(Method::PUT)
         .uri("/api/tokens/non-existent-id")
-        .json(&UpdateApiTokenRequest {
+        .json(&UpdateTokenRequest {
           name: "Updated Name".to_string(),
           status: TokenStatus::Inactive,
         })?

@@ -8,8 +8,8 @@ use crate::models::progress_tracking::DatabaseProgress;
 use crate::models::{HubFile, Repo};
 use crate::Progress;
 use crate::{
-  models::{DownloadRepository, DownloadRequest},
-  test_utils::{test_db_service, test_hf_service, TestDbService, TestHfService},
+  models::{DownloadRepository, DownloadRequestEntity},
+  test_utils::{test_db_service, test_hf_service, TestDbService, TestHfService, TEST_TENANT_ID},
   HubService,
 };
 use anyhow_trace::anyhow_trace;
@@ -49,12 +49,13 @@ async fn test_database_progress_integration(
   let db_service = Arc::new(db_service);
 
   // Create a download request
-  let request = DownloadRequest::new_pending("test/repo", "test.gguf", now);
+  let request = DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "test.gguf", now);
   db_service.create_download_request(&request).await?;
 
   // Create DatabaseProgress
   let mut progress = Progress::Database(DatabaseProgress::new(
     db_service.clone(),
+    request.tenant_id.clone(),
     request.id.clone(),
   ));
 
@@ -81,7 +82,9 @@ async fn test_database_progress_integration(
   assert!(event_received, "Timed out waiting for finish update");
 
   // Verify final database state
-  let retrieved = db_service.get_download_request(&request.id).await?;
+  let retrieved = db_service
+    .get_download_request(TEST_TENANT_ID, &request.id)
+    .await?;
   assert!(retrieved.is_some());
 
   let retrieved = retrieved.unwrap();
@@ -108,7 +111,7 @@ async fn test_hub_service_with_database_progress(
   let db_service = Arc::new(db_service);
 
   // Create a download request
-  let request = DownloadRequest::new_pending("test/repo", "test.gguf", now);
+  let request = DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "test.gguf", now);
   db_service.create_download_request(&request).await?;
 
   // Setup mock HubService to accept progress parameter
@@ -121,6 +124,7 @@ async fn test_hub_service_with_database_progress(
   // Test with DatabaseProgress
   let progress = Progress::Database(DatabaseProgress::new(
     db_service.clone(),
+    request.tenant_id.clone(),
     request.id.clone(),
   ));
   let result = test_hf_service

@@ -5,7 +5,7 @@ use axum_test::TestServer;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
-use server_core::{DefaultRouterState, MockSharedContext};
+
 use services::test_utils::temp_bodhi_home;
 use services::{
   test_utils::{AppServiceStubBuilder, SessionTestExt},
@@ -34,10 +34,7 @@ async fn test_logout_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
       .await?,
   );
 
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
 
   let router = Router::new()
     .route("/app/logout", post(auth_logout))

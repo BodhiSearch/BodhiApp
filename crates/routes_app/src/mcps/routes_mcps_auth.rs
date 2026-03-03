@@ -1,9 +1,9 @@
 use crate::mcps::{
-  AuthConfigsQuery, CreateAuthConfigBody, McpRouteError, OAuthLoginRequest, OAuthLoginResponse,
+  AuthConfigsQuery, CreateAuthConfig, McpRouteError, OAuthLoginRequest, OAuthLoginResponse,
   OAuthTokenExchangeRequest, OAuthTokenResponse, ENDPOINT_MCPS_AUTH_CONFIGS,
 };
+use crate::middleware::generate_random_string;
 use crate::{ApiError, AuthScope, API_TAG_MCPS};
-use auth_middleware::generate_random_string;
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -24,7 +24,7 @@ use tower_sessions::Session;
   path = ENDPOINT_MCPS_AUTH_CONFIGS,
   tag = API_TAG_MCPS,
   operation_id = "createMcpAuthConfig",
-  request_body = CreateAuthConfigBody,
+  request_body = CreateAuthConfig,
   responses(
     (status = 201, description = "Auth config created", body = McpAuthConfigResponse),
     (status = 400, description = "Validation error"),
@@ -33,7 +33,7 @@ use tower_sessions::Session;
 )]
 pub async fn mcp_auth_configs_create(
   auth_scope: AuthScope,
-  Json(body): Json<CreateAuthConfigBody>,
+  Json(body): Json<CreateAuthConfig>,
 ) -> Result<(StatusCode, Json<McpAuthConfigResponse>), ApiError> {
   let config = auth_scope
     .mcps()
@@ -58,7 +58,10 @@ pub async fn mcp_auth_configs_index(
   auth_scope: AuthScope,
   Query(query): Query<AuthConfigsQuery>,
 ) -> Result<Json<McpAuthConfigsListResponse>, ApiError> {
-  let auth_configs = auth_scope.mcps().list_auth_configs(&query.mcp_server_id).await?;
+  let auth_configs = auth_scope
+    .mcps()
+    .list_auth_configs(&query.mcp_server_id)
+    .await?;
   Ok(Json(McpAuthConfigsListResponse { auth_configs }))
 }
 

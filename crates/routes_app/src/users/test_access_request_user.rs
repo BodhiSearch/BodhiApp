@@ -1,9 +1,9 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::{
   users_request_access, users_request_status, ENDPOINT_USER_REQUEST_ACCESS,
   ENDPOINT_USER_REQUEST_STATUS,
 };
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
   http::Request,
@@ -13,13 +13,12 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
-use server_core::{
-  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
-};
+use server_core::test_utils::ResponseTestExt;
 use services::test_utils::temp_bodhi_home;
+use services::AuthContext;
 use services::ResourceRole;
 use services::{
-  test_utils::{test_db_service_with_temp_dir, AppServiceStubBuilder},
+  test_utils::{test_db_service_with_temp_dir, AppServiceStubBuilder, TEST_TENANT_ID},
   AccessRepository,
 };
 use std::sync::Arc;
@@ -40,10 +39,7 @@ async fn test_user_request_access_success(temp_bodhi_home: TempDir) -> anyhow::R
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
@@ -74,10 +70,7 @@ async fn test_user_request_access_already_has_role(temp_bodhi_home: TempDir) -> 
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
@@ -116,6 +109,7 @@ async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> a
   // Insert a pending request first
   db_service
     .insert_pending_request(
+      TEST_TENANT_ID,
       "duplicate@example.com".to_string(),
       "dup-user-id".to_string(),
     )
@@ -126,10 +120,7 @@ async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> a
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
@@ -166,6 +157,7 @@ async fn test_request_status_found(temp_bodhi_home: TempDir) -> anyhow::Result<(
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   db_service
     .insert_pending_request(
+      TEST_TENANT_ID,
       "status@example.com".to_string(),
       "status-user-id".to_string(),
     )
@@ -176,10 +168,7 @@ async fn test_request_status_found(temp_bodhi_home: TempDir) -> anyhow::Result<(
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status))
@@ -214,10 +203,7 @@ async fn test_request_status_not_found(temp_bodhi_home: TempDir) -> anyhow::Resu
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status))

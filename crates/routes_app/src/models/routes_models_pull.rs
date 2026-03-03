@@ -1,17 +1,17 @@
 use crate::models::error::ModelRouteError;
-use crate::models::models_api_schemas::{NewDownloadRequest, PaginatedDownloadResponse};
 use crate::shared::AuthScope;
+use crate::{ApiError, OpenAIApiError, ValidatedJson};
 use crate::{PaginationSortParams, API_TAG_MODELS, ENDPOINT_MODEL_PULL};
 use axum::http::StatusCode;
 use axum::{
   extract::{Path, Query},
   Json,
 };
-use axum_extra::extract::WithRejection;
-use services::DbError;
 use services::Repo;
-use crate::{ApiError, JsonRejectionError, OpenAIApiError};
-use services::{AppService, DatabaseProgress, DownloadRequest, DownloadStatus, Progress};
+use services::{
+  AppService, DatabaseProgress, DownloadRequest, DownloadStatus, NewDownloadRequest,
+  PaginatedDownloadResponse, Progress,
+};
 use std::sync::Arc;
 use tokio::spawn;
 use tracing::debug;
@@ -55,18 +55,11 @@ pub async fn models_pull_index(
   auth_scope: AuthScope,
   Query(query): Query<PaginationSortParams>,
 ) -> Result<Json<PaginatedDownloadResponse>, ApiError> {
-  let downloads = auth_scope
-    .db()
-    .list_download_requests(query.page, query.page_size)
+  let result = auth_scope
+    .downloads()
+    .list(query.page, query.page_size)
     .await?;
-
-  let paginated = PaginatedDownloadResponse {
-    data: downloads.0,
-    total: downloads.1 as usize,
-    page: query.page,
-    page_size: query.page_size,
-  };
-  Ok(Json(paginated))
+  Ok(Json(result))
 }
 
 /// Start a new model file download
@@ -115,15 +108,14 @@ pub async fn models_pull_index(
 )]
 pub async fn models_pull_create(
   auth_scope: AuthScope,
-  WithRejection(Json(payload), _): WithRejection<Json<NewDownloadRequest>, JsonRejectionError>,
+  ValidatedJson(payload): ValidatedJson<NewDownloadRequest>,
 ) -> Result<(StatusCode, Json<DownloadRequest>), ApiError> {
   let repo = Repo::try_from(payload.repo.clone())?;
 
-  // Check if the file is already downloaded
-  if let Ok(true) =
-    auth_scope
-      .hub()
-      .local_file_exists(&repo, &payload.filename, None)
+  // Check if the file is already downloaded (no auth required)
+  if let Ok(true) = auth_scope
+    .hub()
+    .local_file_exists(&repo, &payload.filename, None)
   {
     return Err(ModelRouteError::FileAlreadyExists {
       repo: repo.to_string(),
@@ -133,30 +125,20 @@ pub async fn models_pull_create(
   }
 
   // Check for existing pending download request
-  let pending_downloads = auth_scope
-    .db()
-    .find_download_request_by_repo_filename(&payload.repo, &payload.filename)
-    .await?
-    .into_iter()
-    .find(|r| r.repo == payload.repo && r.filename == payload.filename);
+  let existing = auth_scope
+    .downloads()
+    .find_by_repo_filename(&payload.repo, &payload.filename)
+    .await?;
 
-  if let Some(existing_request) = pending_downloads {
-    return Ok((StatusCode::OK, Json(existing_request)));
+  if let Some(existing_request) = existing {
+    return Ok((StatusCode::OK, Json(existing_request.into())));
   }
 
-  let download_request = DownloadRequest::new_pending(
-    repo.to_string().as_str(),
-    payload.filename.as_str(),
-    auth_scope.time().utc_now(),
-  );
-
-  auth_scope
-    .db()
-    .create_download_request(&download_request)
-    .await?;
+  let download_request = auth_scope.downloads().create(&payload).await?;
 
   let app_service = auth_scope.app_service().clone();
   let request_id = download_request.id.clone();
+  let tenant_id = download_request.tenant_id.clone();
 
   spawn(async move {
     let result = execute_pull_by_repo_file(
@@ -166,14 +148,15 @@ pub async fn models_pull_create(
       None,
       Some(Progress::Database(DatabaseProgress::new(
         app_service.db_service().clone(),
+        tenant_id.clone(),
         request_id.clone(),
       ))),
     )
     .await;
-    update_download_status(app_service, request_id, result).await;
+    update_download_status(app_service, tenant_id, request_id, result).await;
   });
 
-  Ok((StatusCode::CREATED, Json(download_request)))
+  Ok((StatusCode::CREATED, Json(download_request.into())))
 }
 
 /// Get the status of a specific download request
@@ -219,30 +202,16 @@ pub async fn models_pull_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<Json<DownloadRequest>, ApiError> {
-  let download_request = auth_scope
-    .db()
-    .get_download_request(&id)
-    .await?
-    .ok_or_else(|| DbError::ItemNotFound {
-      id,
-      item_type: "download_requests".to_string(),
-    })?;
-
-  Ok(Json(download_request))
+  let download_request = auth_scope.downloads().get(&id).await?;
+  Ok(Json(download_request.into()))
 }
 
 async fn update_download_status(
   app_service: Arc<dyn AppService>,
+  tenant_id: String,
   request_id: String,
   result: Result<(), ModelRouteError>,
 ) {
-  let mut download_request = app_service
-    .db_service()
-    .get_download_request(&request_id)
-    .await
-    .expect("Failed to get download request")
-    .expect("Download request not found");
-
   let (status, error) = match result {
     Ok(_) => (DownloadStatus::Completed, None),
     Err(e) => {
@@ -250,15 +219,19 @@ async fn update_download_status(
       (DownloadStatus::Error, Some(api_error.to_string()))
     }
   };
-  download_request.status = status;
-  download_request.error = error;
-  download_request.updated_at = app_service.time_service().utc_now();
 
-  app_service
-    .db_service()
-    .update_download_request(&download_request)
+  if let Err(e) = app_service
+    .download_service()
+    .update_status(&tenant_id, &request_id, status, error)
     .await
-    .expect("Failed to update download request");
+  {
+    tracing::error!(
+      request_id = %request_id,
+      tenant_id = %tenant_id,
+      error = %e,
+      "Failed to update download request status"
+    );
+  }
 }
 
 async fn execute_pull_by_repo_file(

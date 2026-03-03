@@ -8,6 +8,7 @@ use sea_orm::FromQueryResult;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  pub tenant_id: String,
   pub name: String,
   pub mcp_server_id: String,
   pub registration_type: RegistrationType,
@@ -24,7 +25,6 @@ pub struct Model {
   pub client_id_issued_at: Option<DateTime<Utc>>,
   pub token_endpoint_auth_method: Option<String>,
   pub scopes: Option<String>,
-  pub created_by: String,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -74,7 +74,6 @@ pub struct McpOAuthConfigView {
   pub client_id_issued_at: Option<DateTime<Utc>>,
   pub token_endpoint_auth_method: Option<String>,
   pub scopes: Option<String>,
-  pub created_by: String,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -95,64 +94,14 @@ impl From<McpOAuthConfigView> for crate::mcps::McpOAuthConfig {
       scopes: v.scopes,
       has_client_secret: v.encrypted_client_secret.is_some(),
       has_registration_access_token: v.encrypted_registration_access_token.is_some(),
-      created_by: v.created_by,
       created_at: v.created_at,
       updated_at: v.updated_at,
     }
   }
 }
 
-// ============================================================================
-// McpOAuthConfigRow - Database row for OAuth 2.1 client configs (pre-registered or dynamic)
-// ============================================================================
+/// Type alias — McpOAuthConfigEntity is the entity Model.
+pub type McpOAuthConfigEntity = Model;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct McpOAuthConfigRow {
-  pub id: String,
-  pub name: String,
-  pub mcp_server_id: String,
-  pub registration_type: RegistrationType,
-  pub client_id: String,
-  pub encrypted_client_secret: Option<String>,
-  pub client_secret_salt: Option<String>,
-  pub client_secret_nonce: Option<String>,
-  pub authorization_endpoint: String,
-  pub token_endpoint: String,
-  pub registration_endpoint: Option<String>,
-  pub encrypted_registration_access_token: Option<String>,
-  pub registration_access_token_salt: Option<String>,
-  pub registration_access_token_nonce: Option<String>,
-  pub client_id_issued_at: Option<chrono::DateTime<chrono::Utc>>,
-  pub token_endpoint_auth_method: Option<String>,
-  pub scopes: Option<String>,
-  pub created_by: String,
-  pub created_at: chrono::DateTime<chrono::Utc>,
-  pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-
-impl From<Model> for McpOAuthConfigRow {
-  fn from(m: Model) -> Self {
-    McpOAuthConfigRow {
-      id: m.id,
-      name: m.name,
-      mcp_server_id: m.mcp_server_id,
-      registration_type: m.registration_type,
-      client_id: m.client_id,
-      encrypted_client_secret: m.encrypted_client_secret,
-      client_secret_salt: m.client_secret_salt,
-      client_secret_nonce: m.client_secret_nonce,
-      authorization_endpoint: m.authorization_endpoint,
-      token_endpoint: m.token_endpoint,
-      registration_endpoint: m.registration_endpoint,
-      encrypted_registration_access_token: m.encrypted_registration_access_token,
-      registration_access_token_salt: m.registration_access_token_salt,
-      registration_access_token_nonce: m.registration_access_token_nonce,
-      client_id_issued_at: m.client_id_issued_at,
-      token_endpoint_auth_method: m.token_endpoint_auth_method,
-      scopes: m.scopes,
-      created_by: m.created_by,
-      created_at: m.created_at,
-      updated_at: m.updated_at,
-    }
-  }
-}
+/// Backward-compatible alias (deprecated — use McpOAuthConfigEntity).
+pub type McpOAuthConfigRow = Model;

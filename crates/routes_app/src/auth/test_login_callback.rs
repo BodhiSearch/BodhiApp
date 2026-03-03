@@ -1,6 +1,6 @@
+use crate::middleware::optional_auth_middleware;
 use crate::{auth_callback, auth_initiate, generate_pkce, RedirectResponse};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::optional_auth_middleware;
 use axum::{
   http::{status::StatusCode, Request},
   middleware::from_fn_with_state,
@@ -13,10 +13,7 @@ use oauth2::{AccessToken, RefreshToken};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext, RouterState,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::temp_bodhi_home;
 use services::{
   test_utils::{
@@ -90,7 +87,8 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .setting_service(Arc::new(setting_service))
     .with_default_session_service(session_service.clone());
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -102,10 +100,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let app_service = builder.build().await?;
 
   let app_service = Arc::new(app_service);
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state: Arc<dyn AppService> = app_service.clone();
 
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
@@ -168,7 +163,8 @@ async fn test_auth_callback_handler_state_not_in_session(
     .build_session_service(temp_bodhi_home.path().join("test.db"))
     .await;
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -179,10 +175,7 @@ async fn test_auth_callback_handler_state_not_in_session(
     .await;
   let app_service: AppServiceStub = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route("/auth/callback", post(auth_callback))
     .layer(app_service.session_service().session_layer())
@@ -257,7 +250,8 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     .setting_service(Arc::new(setting_service))
     .with_default_session_service(session_service.clone());
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -269,10 +263,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let app_service = builder.build().await?;
 
   let app_service = Arc::new(app_service);
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state: Arc<dyn AppService> = app_service.clone();
 
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
@@ -338,7 +329,8 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
   let mut builder = AppServiceStubBuilder::default();
   builder.with_default_session_service(session_service.clone());
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -349,10 +341,7 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
     .await;
   let app_service: AppServiceStub = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
     .route("/auth/callback", post(auth_callback))
@@ -412,7 +401,8 @@ async fn test_auth_callback_handler_auth_service_error(
     .auth_service(Arc::new(mock_auth_service))
     .with_default_session_service(session_service.clone());
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -423,10 +413,7 @@ async fn test_auth_callback_handler_auth_service_error(
     .await;
   let app_service: AppServiceStub = builder.build().await?;
   let app_service = Arc::new(app_service);
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
     .route("/auth/callback", post(auth_callback))

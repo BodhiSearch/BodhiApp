@@ -1,23 +1,18 @@
 use crate::models::error::ModelRouteError;
-use crate::models::models_api_schemas::{
-  AliasResponse, CopyAliasRequest, CreateAliasRequest, LocalModelResponse, PaginatedAliasResponse,
-  PaginatedLocalModelResponse, UpdateAliasRequest, UserAliasResponse,
-};
+use crate::models::models_api_schemas::{LocalModelResponse, PaginatedLocalModelResponse};
 use crate::shared::AuthScope;
+use crate::{ApiError, OpenAIApiError, ValidatedJson};
 use crate::{PaginationSortParams, API_TAG_MODELS, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
   Json,
 };
-use axum_extra::extract::WithRejection;
 use services::Alias;
-use crate::{ApiError, JsonRejectionError, OpenAIApiError};
 use services::{
-  DataServiceError, HubFile, HubServiceError, OAIRequestParams, Repo, UserAlias,
-  UserAliasBuilder, SNAPSHOT_MAIN,
+  AliasResponse, CopyAliasRequest, DataServiceError, HubFile, PaginatedAliasResponse,
+  UserAliasResponse,
 };
-use tracing::debug;
 
 /// List all model aliases as discriminated union (user, model, and API aliases)
 #[utoipa::path(
@@ -81,7 +76,7 @@ pub async fn models_index(
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
 
   // Fetch all aliases using unified DataService (User + Model + API)
-  let mut aliases = auth_scope.data_service().list_aliases().await?;
+  let mut aliases = auth_scope.data().list_aliases().await?;
 
   // Sort aliases directly
   sort_aliases(&mut aliases, &sort, &sort_order);
@@ -101,10 +96,11 @@ pub async fn models_index(
     .collect();
 
   // Batch query metadata for all file paths
+  // Model metadata is not tenant-scoped (shared across tenants), use empty string for tenant_id
   let metadata_map = if !file_keys.is_empty() {
     auth_scope
       .db_service()
-      .batch_get_metadata_by_files(&file_keys)
+      .batch_get_metadata_by_files("", &file_keys)
       .await
       .unwrap_or_default()
   } else {
@@ -193,7 +189,7 @@ pub async fn modelfiles_index(
 
   let metadata_map = auth_scope
     .db_service()
-    .batch_get_metadata_by_files(&keys)
+    .batch_get_metadata_by_files("", &keys)
     .await
     .map_err(|e| {
       tracing::error!("Failed to batch fetch metadata: {}", e);
@@ -336,7 +332,7 @@ pub async fn models_show(
   Path(id): Path<String>,
 ) -> Result<Json<UserAliasResponse>, ApiError> {
   let user_alias = auth_scope
-    .data_service()
+    .data()
     .get_user_alias_by_id(&id)
     .await
     .ok_or(DataServiceError::AliasNotFound(id))?;
@@ -345,6 +341,7 @@ pub async fn models_show(
   let metadata = auth_scope
     .db_service()
     .get_model_metadata_by_file(
+      "",
       &user_alias.repo.to_string(),
       &user_alias.filename,
       &user_alias.snapshot,
@@ -365,7 +362,7 @@ pub async fn models_show(
     path = ENDPOINT_MODELS,
     tag = API_TAG_MODELS,
     operation_id = "createAlias",
-    request_body = CreateAliasRequest,
+    request_body = services::UserAliasRequest,
     responses(
       (status = 201, description = "Alias created succesfully", body = UserAliasResponse),
     ),
@@ -377,19 +374,9 @@ pub async fn models_show(
 )]
 pub async fn models_create(
   auth_scope: AuthScope,
-  WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, JsonRejectionError>,
+  ValidatedJson(form): ValidatedJson<services::UserAliasRequest>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  let alias = execute_create_alias(
-    &auth_scope,
-    payload.alias.clone(),
-    Repo::try_from(payload.repo)?,
-    payload.filename,
-    payload.snapshot,
-    payload.request_params.unwrap_or_default(),
-    payload.context_params.unwrap_or_default(),
-    false,
-  )
-  .await?;
+  let alias = auth_scope.data().create_alias_from_form(form).await?;
   Ok((StatusCode::CREATED, Json(UserAliasResponse::from(alias))))
 }
 
@@ -402,7 +389,7 @@ pub async fn models_create(
         ("id" = String, Path, description = "UUID of the alias to update")
     ),
     operation_id = "updateAlias",
-    request_body = UpdateAliasRequest,
+    request_body = services::UserAliasRequest,
     responses(
       (status = 200, description = "Alias updated succesfully", body = UserAliasResponse),
     ),
@@ -415,58 +402,9 @@ pub async fn models_create(
 pub async fn models_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-  WithRejection(Json(payload), _): WithRejection<Json<UpdateAliasRequest>, JsonRejectionError>,
+  ValidatedJson(form): ValidatedJson<services::UserAliasRequest>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  // Get existing alias by UUID to verify it exists
-  let existing = auth_scope
-    .data_service()
-    .get_user_alias_by_id(&id)
-    .await
-    .ok_or(DataServiceError::AliasNotFound(id.clone()))?;
-
-  let repo = Repo::try_from(payload.repo)?;
-  let filename = payload.filename;
-  let snapshot = payload.snapshot;
-
-  // Verify file exists locally
-  let file_exists =
-    auth_scope
-      .hub_service()
-      .local_file_exists(&repo, &filename, snapshot.clone())?;
-  if !file_exists {
-    return Err(
-      ModelRouteError::HubService(HubServiceError::FileNotFound {
-        filename: filename.clone(),
-        repo: repo.to_string(),
-        snapshot: snapshot
-          .clone()
-          .unwrap_or_else(|| SNAPSHOT_MAIN.to_string()),
-      })
-      .into(),
-    );
-  }
-  let local_model_file = auth_scope
-    .hub_service()
-    .find_local_file(&repo, &filename, snapshot)?;
-
-  let updated_alias = UserAlias {
-    id: existing.id.clone(),
-    alias: existing.alias.clone(),
-    repo,
-    filename,
-    snapshot: local_model_file.snapshot,
-    request_params: payload.request_params.unwrap_or_default(),
-    context_params: payload.context_params.unwrap_or_default().into(),
-    created_at: existing.created_at,
-    updated_at: auth_scope.time_service().utc_now(),
-  };
-
-  auth_scope
-    .db_service()
-    .update_user_alias(&existing.id, &updated_alias)
-    .await
-    .map_err(DataServiceError::from)?;
-
+  let updated_alias = auth_scope.data().update_alias_from_form(&id, form).await?;
   Ok((StatusCode::OK, Json(UserAliasResponse::from(updated_alias))))
 }
 
@@ -491,7 +429,7 @@ pub async fn models_destroy(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-  auth_scope.data_service().delete_alias(&id).await?;
+  auth_scope.data().delete_alias(&id).await?;
   Ok(StatusCode::OK)
 }
 
@@ -516,77 +454,13 @@ pub async fn models_destroy(
 pub async fn models_copy(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-  WithRejection(Json(payload), _): WithRejection<Json<CopyAliasRequest>, JsonRejectionError>,
+  ValidatedJson(payload): ValidatedJson<CopyAliasRequest>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  let new_alias = auth_scope
-    .data_service()
-    .copy_alias(&id, &payload.alias)
-    .await?;
+  let new_alias = auth_scope.data().copy_alias(&id, &payload.alias).await?;
   Ok((
     StatusCode::CREATED,
     Json(UserAliasResponse::from(new_alias)),
   ))
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn execute_create_alias(
-  auth_scope: &AuthScope,
-  alias: String,
-  repo: Repo,
-  filename: String,
-  snapshot: Option<String>,
-  oai_request_params: OAIRequestParams,
-  context_params: Vec<String>,
-  update: bool,
-) -> Result<UserAlias, ModelRouteError> {
-  if auth_scope
-    .data_service()
-    .find_user_alias(&alias)
-    .await
-    .is_some()
-  {
-    if !update {
-      return Err(DataServiceError::AliasExists(alias.clone()).into());
-    }
-    debug!("Updating existing alias: '{}'", alias);
-  } else {
-    debug!("Creating new alias: '{}'", alias);
-  }
-  let file_exists = auth_scope
-    .hub_service()
-    .local_file_exists(&repo, &filename, snapshot.clone())?;
-  let local_model_file = match file_exists {
-    true => {
-      debug!(
-        "repo: '{}', filename: '{}', already exists in $HF_HOME",
-        &repo, &filename
-      );
-      auth_scope
-        .hub_service()
-        .find_local_file(&repo, &filename, snapshot.clone())?
-    }
-    false => {
-      return Err(ModelRouteError::HubService(HubServiceError::FileNotFound {
-        filename: filename.clone(),
-        repo: repo.to_string(),
-        snapshot: snapshot
-          .clone()
-          .unwrap_or_else(|| SNAPSHOT_MAIN.to_string()),
-      }));
-    }
-  };
-  let now = auth_scope.time_service().utc_now();
-  let user_alias = UserAliasBuilder::default()
-    .alias(alias)
-    .repo(repo)
-    .filename(filename)
-    .snapshot(local_model_file.snapshot)
-    .request_params(oai_request_params)
-    .context_params(context_params)
-    .build_with_time(now)?;
-  auth_scope.data_service().save_alias(&user_alias).await?;
-  debug!("model alias: '{}' saved to database", user_alias.alias);
-  Ok(user_alias)
 }
 
 #[cfg(test)]

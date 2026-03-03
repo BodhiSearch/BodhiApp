@@ -25,6 +25,20 @@ Entry point: `src/lib.rs` -- re-exports all public modules with conditional `tes
 
 Standalone: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`
 
+### Middleware (`src/middleware/`)
+
+Authentication, authorization, and request processing middleware. Merged from the former `auth_middleware` crate. See `src/middleware/CLAUDE.md` and `src/middleware/PACKAGE.md` for details.
+
+| Module | Purpose |
+|--------|---------|
+| `auth/` | `auth_middleware`, `optional_auth_middleware`, `AuthError` |
+| `apis/` | `api_auth_middleware`, `ApiAuthError` |
+| `access_requests/` | `access_request_auth_middleware`, entity-level access control |
+| `token_service/` | `DefaultTokenService`, `CachedExchangeResult` |
+| `redirects/` | `canonical_url_middleware` |
+| `error.rs` | `MiddlewareError` |
+| `utils.rs` | `app_status_or_default`, `generate_random_string` |
+
 ### Shared Infrastructure (`src/shared/`)
 
 | File | Purpose |
@@ -33,7 +47,6 @@ Standalone: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`
 | `error_oai.rs` | `OpenAIApiError`, `ErrorBody` |
 | `error_wrappers.rs` | Framework error type wrappers |
 | `auth_scope_extractor.rs` | `AuthScope` Axum extractor |
-| `validated_json.rs` | `ValidatedJson<T>` extractor |
 | `pagination.rs` | Pagination params, paginated response |
 | `constants.rs` | API tag constants, endpoint paths |
 | `openapi.rs` | `BodhiOpenAPIDoc`, `OpenAPIEnvModifier`, `GlobalErrorResponses` |

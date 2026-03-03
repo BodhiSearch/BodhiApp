@@ -5,6 +5,7 @@ pub mod test_utils;
 pub mod test_utils;
 
 // -- Shared infrastructure
+pub mod middleware;
 mod shared;
 
 // -- Domain route modules (folders)

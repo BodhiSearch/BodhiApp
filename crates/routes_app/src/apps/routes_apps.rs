@@ -1,9 +1,8 @@
 use crate::apps::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
-  ApproveAccessRequestBody, AppsRouteError, CreateAccessRequestBody, CreateAccessRequestResponse,
-  ToolTypeReviewInfo,
+  AppsRouteError, CreateAccessRequestResponse, ToolTypeReviewInfo,
 };
-use crate::{ApiError, AuthScope, OpenAIApiError, API_TAG_AUTH};
+use crate::{ApiError, AuthScope, OpenAIApiError, ValidatedJson, API_TAG_AUTH};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -11,8 +10,8 @@ use axum::{
 };
 use serde::Deserialize;
 use services::{
-  AppAccessRequestStatus, ApprovalStatus, FlowType, McpServerRequest,
-  RequestedResources, ToolsetTypeRequest,
+  AppAccessRequestStatus, ApprovalStatus, ApproveAccessRequest, CreateAccessRequest, FlowType,
+  RequestedMcpServer, RequestedResources, ToolsetTypeRequest,
 };
 use services::{ResourceRole, UserScope};
 use tracing::{debug, info};
@@ -38,7 +37,7 @@ pub struct AccessRequestStatusQuery {
     summary = "Create Access Request",
     description = "Create an access request for an app to access user resources. Always creates a draft for user review. Unauthenticated endpoint.",
     request_body(
-        content = CreateAccessRequestBody,
+        content = CreateAccessRequest,
         description = "Access request details"
     ),
     responses(
@@ -50,15 +49,15 @@ pub struct AccessRequestStatusQuery {
 )]
 pub async fn apps_create_access_request(
   auth_scope: AuthScope,
-  Json(body): Json<CreateAccessRequestBody>,
+  ValidatedJson(request): ValidatedJson<CreateAccessRequest>,
 ) -> Result<(StatusCode, Json<CreateAccessRequestResponse>), ApiError> {
   debug!(
     "Creating access request for app_client_id: {}",
-    body.app_client_id
+    request.app_client_id
   );
 
   // Validate redirect_url for redirect flow
-  if body.flow_type == FlowType::Redirect && body.redirect_url.is_none() {
+  if request.flow_type == FlowType::Redirect && request.redirect_url.is_none() {
     return Err(AppsRouteError::MissingRedirectUrl)?;
   }
 
@@ -68,16 +67,16 @@ pub async fn apps_create_access_request(
   // 3. App info will be fetched during review (when user is authenticated)
   debug!(
     "Creating access request for app_client_id: {} (app info will be fetched during review)",
-    body.app_client_id
+    request.app_client_id
   );
 
-  let tool_types: Vec<ToolsetTypeRequest> = body
+  let tool_types: Vec<ToolsetTypeRequest> = request
     .requested
     .as_ref()
     .map(|r| r.toolset_types.clone())
     .unwrap_or_default();
 
-  let mcp_servers: Vec<McpServerRequest> = body
+  let mcp_servers: Vec<RequestedMcpServer> = request
     .requested
     .as_ref()
     .map(|r| r.mcp_servers.clone())
@@ -89,14 +88,22 @@ pub async fn apps_create_access_request(
   }
 
   let access_request_service = auth_scope.access_request_service();
+  // Look up the standalone app's tenant_id to ensure access requests are created
+  // with the correct tenant_id (auth context may be anonymous/"" for this unauthenticated endpoint)
+  let tenant = auth_scope
+    .tenant_service()
+    .get_standalone_app()
+    .await?
+    .ok_or(AppsRouteError::NotFound)?;
   let created = access_request_service
     .create_draft(
-      body.app_client_id,
-      body.flow_type,
-      body.redirect_url,
+      &tenant.id,
+      request.app_client_id,
+      request.flow_type,
+      request.redirect_url,
       tool_types,
       mcp_servers,
-      body.requested_role,
+      request.requested_role,
     )
     .await?;
 
@@ -195,7 +202,11 @@ pub async fn apps_get_access_request_review(
   let tools_svc = auth_scope.tools();
   let mcps_svc = auth_scope.mcps();
   let all_user_toolsets = tools_svc.list().await?;
-  let all_user_mcps = mcps_svc.list().await?;
+  let all_user_mcp_entities = mcps_svc.list().await?;
+  let all_user_mcps: Vec<services::Mcp> = all_user_mcp_entities
+    .into_iter()
+    .map(|e| e.into())
+    .collect();
 
   let mut tools_info = Vec::new();
 
@@ -204,10 +215,11 @@ pub async fn apps_get_access_request_review(
       .get_type(&tool_type_req.toolset_type)
       .ok_or_else(|| AppsRouteError::InvalidToolType(tool_type_req.toolset_type.clone()))?;
 
-    let instances = all_user_toolsets
+    let instances: Vec<services::Toolset> = all_user_toolsets
       .iter()
       .filter(|t| t.toolset_type == tool_type_req.toolset_type)
       .cloned()
+      .map(|e| e.into())
       .collect();
 
     tools_info.push(ToolTypeReviewInfo {
@@ -259,7 +271,7 @@ pub async fn apps_get_access_request_review(
         ("id" = String, Path, description = "Access request ID")
     ),
     request_body(
-        content = ApproveAccessRequestBody,
+        content = ApproveAccessRequest,
         description = "Approval details with tool selections"
     ),
     responses(
@@ -275,29 +287,28 @@ pub async fn apps_get_access_request_review(
 pub async fn apps_approve_access_request(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-  Json(body): Json<ApproveAccessRequestBody>,
+  ValidatedJson(approval_input): ValidatedJson<ApproveAccessRequest>,
 ) -> Result<Json<AccessRequestActionResponse>, ApiError> {
   let user_id = auth_scope.require_user_id()?;
   let token = auth_scope
     .auth_context()
     .token()
-    .expect("requires auth middleware");
-  info!("User {} approving access request {}", user_id, id);
+    .ok_or(AppsRouteError::InsufficientPrivileges)?;
 
   // Extract approver's role from session and compute max grantable scope
-  let approver_role =
-    if let services::AuthContext::Session { role, .. } = auth_scope.auth_context() {
-      role.ok_or(AppsRouteError::InsufficientPrivileges)?
-    } else {
-      return Err(AppsRouteError::InsufficientPrivileges)?;
-    };
+  let approver_role = if let services::AuthContext::Session { role, .. } = auth_scope.auth_context()
+  {
+    role.ok_or(AppsRouteError::InsufficientPrivileges)?
+  } else {
+    return Err(AppsRouteError::InsufficientPrivileges)?;
+  };
   let max_grantable = if approver_role >= ResourceRole::PowerUser {
     UserScope::PowerUser
   } else {
     UserScope::User
   };
 
-  let approved_scope = body.approved_role;
+  let approved_scope = approval_input.approved_role;
 
   // Fetch the access request to get requested_role for privilege escalation check
   let access_request_service = auth_scope.access_request_service();
@@ -324,7 +335,7 @@ pub async fn apps_approve_access_request(
   }
 
   // Validate tool instances using auth-scoped tool service (enforces ownership via user_id)
-  for approval in &body.approved.toolsets {
+  for approval in &approval_input.approved.toolsets {
     if approval.status == ApprovalStatus::Approved {
       let instance = approval.instance.as_ref().ok_or_else(|| {
         AppsRouteError::ToolInstanceNotConfigured(format!(
@@ -333,27 +344,27 @@ pub async fn apps_approve_access_request(
         ))
       })?;
 
-      let toolset = auth_scope
+      let toolset_entity = auth_scope
         .tools()
         .get(&instance.id)
         .await?
         .ok_or_else(|| AppsRouteError::ToolInstanceNotOwned(instance.id.clone()))?;
 
-      if toolset.toolset_type != approval.toolset_type {
+      if toolset_entity.toolset_type != approval.toolset_type {
         return Err(AppsRouteError::InvalidToolType(format!(
           "Instance {} is not of type {}",
           instance.id, approval.toolset_type
         )))?;
       }
 
-      if !toolset.enabled {
+      if !toolset_entity.enabled {
         return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
           "Instance {} is not enabled",
           instance.id
         )))?;
       }
 
-      if !toolset.has_api_key {
+      if toolset_entity.encrypted_api_key.is_none() {
         return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
           "Instance {} does not have API key configured",
           instance.id
@@ -363,7 +374,7 @@ pub async fn apps_approve_access_request(
   }
 
   // Validate MCP instances using auth-scoped mcp service (enforces ownership via user_id)
-  for approval in &body.approved.mcps {
+  for approval in &approval_input.approved.mcps {
     if approval.status == ApprovalStatus::Approved {
       let instance = approval.instance.as_ref().ok_or_else(|| {
         AppsRouteError::ToolInstanceNotConfigured(format!(
@@ -372,20 +383,20 @@ pub async fn apps_approve_access_request(
         ))
       })?;
 
-      let mcp = auth_scope
+      let mcp_entity = auth_scope
         .mcps()
         .get(&instance.id)
         .await?
         .ok_or_else(|| AppsRouteError::ToolInstanceNotOwned(instance.id.clone()))?;
 
-      if mcp.mcp_server.url != approval.url {
+      if mcp_entity.server_url != approval.url {
         return Err(AppsRouteError::InvalidToolType(format!(
           "MCP instance {} is not connected to server {}",
           instance.id, approval.url
         )))?;
       }
 
-      if !mcp.enabled {
+      if !mcp_entity.enabled {
         return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
           "MCP instance {} is not enabled",
           instance.id
@@ -399,13 +410,12 @@ pub async fn apps_approve_access_request(
       &id,
       user_id,
       token,
-      body.approved.toolsets,
-      body.approved.mcps,
+      approval_input.approved.toolsets,
+      approval_input.approved.mcps,
       approved_scope,
     )
     .await?;
 
-  info!("Access request {} approved by user {}", id, user_id);
   Ok(Json(AccessRequestActionResponse {
     status: updated.status,
     flow_type: updated.flow_type,
@@ -438,12 +448,10 @@ pub async fn apps_deny_access_request(
   Path(id): Path<String>,
 ) -> Result<Json<AccessRequestActionResponse>, ApiError> {
   let user_id = auth_scope.require_user_id()?;
-  info!("User {} denying access request {}", user_id, id);
 
   let access_request_service = auth_scope.access_request_service();
   let updated = access_request_service.deny_request(&id, user_id).await?;
 
-  info!("Access request {} denied by user {}", id, user_id);
   Ok(Json(AccessRequestActionResponse {
     status: updated.status,
     flow_type: updated.flow_type,

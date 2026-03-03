@@ -148,39 +148,26 @@ export type ApiFormatsResponse = {
 export type ApiKey = string | null;
 
 /**
- * Represents an API key update action for API model updates
+ * Represents an API key update operation for API model aliases and toolsets.
  */
-export type ApiKeyUpdateAction = {
+export type ApiKeyUpdate = {
     action: 'keep';
 } | {
     /**
-     * Set a new API key (or add one if none exists) - can be None for public APIs
+     * Set a new API key (or add one if none exists) - ApiKey validates length
      */
     value: ApiKey;
     action: 'set';
 };
 
 /**
- * API key update enum (mirrors services::ApiKeyUpdate)
+ * Output type for API model configuration.
  */
-export type ApiKeyUpdateDto = {
-    action: 'Keep';
-} | {
-    /**
-     * Set a new API key (or clear if None)
-     */
-    value: string | null;
-    action: 'Set';
-};
-
-/**
- * Response containing API model configuration
- */
-export type ApiModelResponse = {
+export type ApiModelOutput = {
     id: string;
     api_format: ApiFormat;
     base_url: string;
-    api_key_masked?: string | null;
+    has_api_key: boolean;
     models: Array<string>;
     prefix?: string | null;
     forward_all_with_prefix: boolean;
@@ -188,23 +175,34 @@ export type ApiModelResponse = {
     updated_at: string;
 };
 
-export type ApiToken = {
-    id: string;
-    user_id: string;
-    name: string;
-    token_prefix: string;
-    token_hash: string;
-    scopes: string;
-    status: TokenStatus;
-    created_at: string;
-    updated_at: string;
-};
-
-export type ApiTokenResponse = {
+/**
+ * Input request for creating or updating an API model configuration.
+ */
+export type ApiModelRequest = {
     /**
-     * API token with bodhiapp_ prefix for programmatic access
+     * API format/protocol (e.g., "openai")
      */
-    token: string;
+    api_format: ApiFormat;
+    /**
+     * API base URL
+     */
+    base_url: string;
+    /**
+     * API key update action (Keep/Set with Some or None)
+     */
+    api_key?: ApiKeyUpdate;
+    /**
+     * List of available models
+     */
+    models: Array<string>;
+    /**
+     * Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4")
+     */
+    prefix?: string | null;
+    /**
+     * Whether to forward all requests with this prefix (true) or only selected models (false)
+     */
+    forward_all_with_prefix?: boolean;
 };
 
 export type AppAccessRequestStatus = 'draft' | 'approved' | 'denied' | 'failed' | 'expired';
@@ -267,7 +265,10 @@ export type AppToolsetConfig = {
 
 export type ApprovalStatus = 'approved' | 'denied';
 
-export type ApproveAccessRequestBody = {
+/**
+ * Request for approving an app access request
+ */
+export type ApproveAccessRequest = {
     /**
      * Role to grant for the approved request (scope_user_user or scope_user_power_user)
      */
@@ -320,7 +321,7 @@ export type ChangeRoleRequest = {
     /**
      * Role to assign to the user
      */
-    role: string;
+    role: ResourceRole;
 };
 
 export type ChatChoice = {
@@ -837,7 +838,10 @@ export type CopyAliasRequest = {
     alias: string;
 };
 
-export type CreateAccessRequestBody = {
+/**
+ * Request for creating an app access request
+ */
+export type CreateAccessRequest = {
     /**
      * App client ID from Keycloak
      */
@@ -872,63 +876,10 @@ export type CreateAccessRequestResponse = {
     review_url: string;
 };
 
-export type CreateAliasRequest = {
-    alias: string;
-    repo: string;
-    filename: string;
-    snapshot?: string | null;
-    request_params?: null | OaiRequestParams;
-    context_params?: Array<string> | null;
-};
-
-/**
- * Request to create a new API model configuration
- */
-export type CreateApiModelRequest = {
-    /**
-     * API format/protocol (e.g., "openai")
-     */
-    api_format: ApiFormat;
-    /**
-     * API base URL
-     */
-    base_url: string;
-    /**
-     * API key for authentication (null for public APIs)
-     */
-    api_key?: ApiKey;
-    /**
-     * List of available models
-     */
-    models: Array<string>;
-    /**
-     * Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4")
-     */
-    prefix?: string | null;
-    /**
-     * Whether to forward all requests with this prefix (true) or only selected models (false)
-     */
-    forward_all_with_prefix?: boolean;
-};
-
-/**
- * Request to create a new API token
- */
-export type CreateApiTokenRequest = {
-    /**
-     * Descriptive name for the API token (minimum 3 characters)
-     */
-    name?: string | null;
-    /**
-     * Token scope defining access level
-     */
-    scope: TokenScope;
-};
-
 /**
  * Wrapper for creating auth configs with server_id in body instead of path
  */
-export type CreateAuthConfigBody = CreateMcpAuthConfigRequest & {
+export type CreateAuthConfig = CreateMcpAuthConfigRequest & {
     mcp_server_id: string;
 };
 
@@ -1256,50 +1207,15 @@ export type CreateMcpAuthConfigRequest = {
     type: 'oauth';
 };
 
-export type CreateMcpRequest = {
-    name: string;
-    slug: string;
-    mcp_server_id: string;
-    description?: string | null;
-    enabled: boolean;
-    tools_cache?: Array<McpTool> | null;
-    tools_filter?: Array<string> | null;
-    auth_type?: McpAuthType;
-    auth_uuid?: string | null;
-};
-
-export type CreateMcpServerRequest = {
-    url: string;
-    name: string;
-    description?: string | null;
-    enabled: boolean;
-    auth_config?: null | CreateMcpAuthConfigRequest;
-};
-
-/**
- * Request to create a toolset
- */
-export type CreateToolsetRequest = {
+export type CreateTokenRequest = {
     /**
-     * Toolset type identifier (e.g., "builtin-exa-search")
+     * Descriptive name for the API token
      */
-    toolset_type: string;
+    name?: string | null;
     /**
-     * User-defined slug for this toolset (1-24 chars, alphanumeric + hyphens)
+     * Token scope defining access level
      */
-    slug: string;
-    /**
-     * Optional description for this toolset
-     */
-    description?: string | null;
-    /**
-     * Whether this toolset is enabled
-     */
-    enabled?: boolean;
-    /**
-     * API key for the toolset
-     */
-    api_key: string;
+    scope: TokenScope;
 };
 
 export type CustomGrammarFormatParam = {
@@ -1363,11 +1279,11 @@ export type DownloadRequest = {
     filename: string;
     status: DownloadStatus;
     error?: string | null;
+    total_bytes?: number | null;
+    downloaded_bytes: number;
+    started_at?: string | null;
     created_at: string;
     updated_at: string;
-    total_bytes?: number | null;
-    downloaded_bytes?: number;
-    started_at: string;
 };
 
 export type DownloadStatus = 'pending' | 'completed' | 'error';
@@ -1609,7 +1525,7 @@ export type ListMcpServersResponse = {
 };
 
 export type ListMcpsResponse = {
-    mcps: Array<McpResponse>;
+    mcps: Array<Mcp>;
 };
 
 export type ListModelResponse = {
@@ -1633,7 +1549,8 @@ export type ListToolsetsResponse = {
 };
 
 /**
- * List users query parameters
+ * List users query parameters. Intentionally omits sort fields (unlike PaginationSortParams)
+ * because user listing is fetched from the auth service which handles its own ordering.
  */
 export type ListUsersParams = {
     page?: number | null;
@@ -1727,7 +1644,6 @@ export type McpAuthConfigResponse = {
     mcp_server_id: string;
     header_key: string;
     has_header_value: boolean;
-    created_by: string;
     created_at: string;
     updated_at: string;
     type: 'header';
@@ -1745,7 +1661,6 @@ export type McpAuthConfigResponse = {
     token_endpoint_auth_method?: string | null;
     has_client_secret: boolean;
     has_registration_access_token: boolean;
-    created_by: string;
     created_at: string;
     updated_at: string;
     type: 'oauth';
@@ -1773,19 +1688,46 @@ export type McpInstance = {
     id: string;
 };
 
-export type McpResponse = {
-    id: string;
-    mcp_server: McpServerInfo;
-    slug: string;
+/**
+ * Input for creating or updating an MCP instance.
+ */
+export type McpRequest = {
+    /**
+     * Human-readable name (required)
+     */
     name: string;
+    /**
+     * User-defined slug for this instance (1-24 chars, alphanumeric + hyphens)
+     */
+    slug: string;
+    /**
+     * MCP server ID (required for create, ignored for update)
+     */
+    mcp_server_id?: string | null;
+    /**
+     * Optional description
+     */
     description?: string | null;
+    /**
+     * Whether this instance is enabled
+     */
     enabled: boolean;
+    /**
+     * Cached tool schemas from the MCP server (JSON array)
+     */
     tools_cache?: Array<McpTool> | null;
+    /**
+     * Whitelisted tool names
+     */
     tools_filter?: Array<string> | null;
-    auth_type: McpAuthType;
+    /**
+     * Authentication type
+     */
+    auth_type?: McpAuthType;
+    /**
+     * Reference to auth config
+     */
     auth_uuid?: string | null;
-    created_at: string;
-    updated_at: string;
 };
 
 /**
@@ -1841,22 +1783,35 @@ export type McpServerInfo = {
     enabled: boolean;
 };
 
+/**
+ * Input for creating or updating an MCP server.
+ */
 export type McpServerRequest = {
+    /**
+     * MCP server endpoint URL (trimmed, case-insensitive unique)
+     */
     url: string;
+    /**
+     * Human-readable display name
+     */
+    name: string;
+    /**
+     * Optional description
+     */
+    description?: string | null;
+    /**
+     * Whether this MCP server is enabled
+     */
+    enabled: boolean;
+    auth_config?: null | CreateMcpAuthConfigRequest;
 };
 
-export type McpServerResponse = {
-    id: string;
-    url: string;
-    name: string;
-    description?: string | null;
-    enabled: boolean;
-    created_by: string;
-    updated_by: string;
+/**
+ * MCP server response with computed mcp counts and optional auth config.
+ */
+export type McpServerResponse = McpServer & {
     enabled_mcp_count: number;
     disabled_mcp_count: number;
-    created_at: string;
-    updated_at: string;
     auth_config?: null | McpAuthConfigResponse;
 };
 
@@ -1988,7 +1943,7 @@ export type ModelsResponse = {
 };
 
 /**
- * Request to pull a model file from HuggingFace
+ * Request for creating a new download request
  */
 export type NewDownloadRequest = {
     /**
@@ -2056,7 +2011,7 @@ export type OAuthTokenResponse = {
     expires_at?: number | null;
     has_access_token: boolean;
     has_refresh_token: boolean;
-    created_by: string;
+    user_id: string;
     created_at: string;
     updated_at: string;
 };
@@ -2125,18 +2080,8 @@ export type PaginatedAliasResponse = {
 /**
  * Paginated response for API model listings
  */
-export type PaginatedApiModelResponse = {
-    data: Array<ApiModelResponse>;
-    total: number;
-    page: number;
-    page_size: number;
-};
-
-/**
- * Paginated list of API tokens
- */
-export type PaginatedApiTokenResponse = {
-    data: Array<ApiToken>;
+export type PaginatedApiModelOutput = {
+    data: Array<ApiModelOutput>;
     total: number;
     page: number;
     page_size: number;
@@ -2157,6 +2102,13 @@ export type PaginatedDownloadResponse = {
  */
 export type PaginatedLocalModelResponse = {
     data: Array<LocalModelResponse>;
+    total: number;
+    page: number;
+    page_size: number;
+};
+
+export type PaginatedTokenResponse = {
+    data: Array<TokenDetail>;
     total: number;
     page: number;
     page_size: number;
@@ -2322,9 +2274,13 @@ export type RefreshSource = 'all' | 'model';
  */
 export type RegistrationType = 'pre_registered' | 'dynamic_registration';
 
+export type RequestedMcpServer = {
+    url: string;
+};
+
 export type RequestedResources = {
     toolset_types?: Array<ToolsetTypeRequest>;
-    mcp_servers?: Array<McpServerRequest>;
+    mcp_servers?: Array<RequestedMcpServer>;
 };
 
 export type ResourceRole = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
@@ -2487,6 +2443,24 @@ export type TestPromptResponse = {
     error?: string | null;
 };
 
+export type TokenCreated = {
+    /**
+     * API token with bodhiapp_ prefix for programmatic access
+     */
+    token: string;
+};
+
+export type TokenDetail = {
+    id: string;
+    user_id: string;
+    name: string;
+    token_prefix: string;
+    scopes: string;
+    status: TokenStatus;
+    created_at: string;
+    updated_at: string;
+};
+
 /**
  * API Token information response
  */
@@ -2627,6 +2601,32 @@ export type ToolsetInstance = {
 };
 
 /**
+ * Input for creating or updating a toolset instance.
+ */
+export type ToolsetRequest = {
+    /**
+     * Toolset type identifier (required for create, ignored for update)
+     */
+    toolset_type?: string | null;
+    /**
+     * User-defined slug for this instance (1-24 chars, alphanumeric + hyphens)
+     */
+    slug: string;
+    /**
+     * Optional description for this instance
+     */
+    description?: string | null;
+    /**
+     * Whether this instance is enabled
+     */
+    enabled?: boolean;
+    /**
+     * API key update action (Keep or Set)
+     */
+    api_key?: ApiKeyUpdate;
+};
+
+/**
  * Toolset response
  */
 export type ToolsetResponse = {
@@ -2687,76 +2687,6 @@ export type TopLogprobs = {
     bytes?: Array<number> | null;
 };
 
-export type UpdateAliasRequest = {
-    repo: string;
-    filename: string;
-    snapshot?: string | null;
-    request_params?: null | OaiRequestParams;
-    context_params?: Array<string> | null;
-};
-
-/**
- * Request to update an existing API model configuration
- */
-export type UpdateApiModelRequest = {
-    /**
-     * API format/protocol (required)
-     */
-    api_format: ApiFormat;
-    /**
-     * API base URL (required)
-     */
-    base_url: string;
-    /**
-     * API key update action (Keep/Set with Some or None)
-     */
-    api_key?: ApiKeyUpdateAction;
-    /**
-     * List of available models (required)
-     */
-    models: Array<string>;
-    /**
-     * Optional prefix for model namespacing
-     */
-    prefix?: string | null;
-    /**
-     * Whether to forward all requests with this prefix (true) or only selected models (false)
-     */
-    forward_all_with_prefix?: boolean;
-};
-
-/**
- * Request to update an existing API token
- */
-export type UpdateApiTokenRequest = {
-    /**
-     * New descriptive name for the token (minimum 3 characters)
-     */
-    name: string;
-    /**
-     * New status for the token (active/inactive)
-     */
-    status: TokenStatus;
-};
-
-export type UpdateMcpRequest = {
-    name: string;
-    slug: string;
-    description?: string | null;
-    enabled: boolean;
-    tools_filter?: Array<string> | null;
-    tools_cache?: Array<McpTool> | null;
-    auth_type?: null | McpAuthType;
-    auth_uuid?: string | null;
-};
-
-export type UpdateMcpServerRequest = {
-    url: string;
-    name: string;
-    description?: string | null;
-    enabled: boolean;
-};
-
 /**
  * Request to update a setting value
  */
@@ -2767,26 +2697,15 @@ export type UpdateSettingRequest = {
     value: unknown;
 };
 
-/**
- * Request to update a toolset (full PUT - all fields required except api_key)
- */
-export type UpdateToolsetRequest = {
+export type UpdateTokenRequest = {
     /**
-     * User-defined slug for this toolset
+     * New descriptive name for the token
      */
-    slug: string;
+    name: string;
     /**
-     * Optional description for this toolset
+     * New status for the token (active/inactive)
      */
-    description?: string | null;
-    /**
-     * Whether this toolset is enabled
-     */
-    enabled: boolean;
-    /**
-     * API key update action (Keep or Set)
-     */
-    api_key?: ApiKeyUpdateDto;
+    status: TokenStatus;
 };
 
 export type UrlCitation = {
@@ -2808,6 +2727,9 @@ export type UrlCitation = {
     url: string;
 };
 
+/**
+ * User access request output type for API responses
+ */
 export type UserAccessRequest = {
     id: string;
     username: string;
@@ -2852,6 +2774,33 @@ export type UserAlias = {
     context_params?: JsonVec;
     created_at: string;
     updated_at: string;
+};
+
+/**
+ * Input request for creating or updating a user model alias.
+ */
+export type UserAliasRequest = {
+    /**
+     * Alias name — unique per (tenant_id, user_id) scope
+     */
+    alias: string;
+    /**
+     * Repository in format "user/repo"
+     */
+    repo: string;
+    /**
+     * Filename of the GGUF model
+     */
+    filename: string;
+    /**
+     * Snapshot/commit identifier (optional — defaults to latest available)
+     */
+    snapshot?: string | null;
+    request_params?: null | OaiRequestParams;
+    /**
+     * Context parameters for the model
+     */
+    context_params?: Array<string> | null;
 };
 
 /**
@@ -3233,7 +3182,7 @@ export type ApproveAppsAccessRequestData = {
     /**
      * Approval details with tool selections
      */
-    body: ApproveAccessRequestBody;
+    body: ApproveAccessRequest;
     path: {
         /**
          * Access request ID
@@ -3475,13 +3424,13 @@ export type ListApiModelsResponses = {
     /**
      * API model configurations retrieved successfully
      */
-    200: PaginatedApiModelResponse;
+    200: PaginatedApiModelOutput;
 };
 
 export type ListApiModelsResponse = ListApiModelsResponses[keyof ListApiModelsResponses];
 
 export type CreateApiModelData = {
-    body: CreateApiModelRequest;
+    body: ApiModelRequest;
     path?: never;
     query?: never;
     url: '/bodhi/v1/api-models';
@@ -3516,7 +3465,7 @@ export type CreateApiModelResponses = {
     /**
      * API model created
      */
-    201: ApiModelResponse;
+    201: ApiModelOutput;
 };
 
 export type CreateApiModelResponse = CreateApiModelResponses[keyof CreateApiModelResponses];
@@ -3719,13 +3668,13 @@ export type GetApiModelResponses = {
     /**
      * API model configuration retrieved successfully
      */
-    200: ApiModelResponse;
+    200: ApiModelOutput;
 };
 
 export type GetApiModelResponse = GetApiModelResponses[keyof GetApiModelResponses];
 
 export type UpdateApiModelData = {
-    body: UpdateApiModelRequest;
+    body: ApiModelRequest;
     path: {
         /**
          * API model ID
@@ -3765,7 +3714,7 @@ export type UpdateApiModelResponses = {
     /**
      * API model updated
      */
-    200: ApiModelResponse;
+    200: ApiModelOutput;
 };
 
 export type UpdateApiModelResponse = UpdateApiModelResponses[keyof UpdateApiModelResponses];
@@ -3811,7 +3760,7 @@ export type SyncModelsResponses = {
     /**
      * Models synced to cache successfully
      */
-    200: ApiModelResponse;
+    200: ApiModelOutput;
 };
 
 export type SyncModelsResponse = SyncModelsResponses[keyof SyncModelsResponses];
@@ -3871,7 +3820,7 @@ export type CreateAccessRequestData = {
     /**
      * Access request details
      */
-    body: CreateAccessRequestBody;
+    body: CreateAccessRequest;
     path?: never;
     query?: never;
     url: '/bodhi/v1/apps/request-access';
@@ -4100,7 +4049,7 @@ export type ListMcpsResponses = {
 export type ListMcpsResponse2 = ListMcpsResponses[keyof ListMcpsResponses];
 
 export type CreateMcpData = {
-    body: CreateMcpRequest;
+    body: McpRequest;
     path?: never;
     query?: never;
     url: '/bodhi/v1/mcps';
@@ -4131,7 +4080,7 @@ export type CreateMcpResponses = {
     /**
      * MCP created
      */
-    201: McpResponse;
+    201: Mcp;
 };
 
 export type CreateMcpResponse = CreateMcpResponses[keyof CreateMcpResponses];
@@ -4176,7 +4125,7 @@ export type ListMcpAuthConfigsResponses = {
 export type ListMcpAuthConfigsResponse = ListMcpAuthConfigsResponses[keyof ListMcpAuthConfigsResponses];
 
 export type CreateMcpAuthConfigData = {
-    body: CreateAuthConfigBody;
+    body: CreateAuthConfig;
     path?: never;
     query?: never;
     url: '/bodhi/v1/mcps/auth-configs';
@@ -4683,7 +4632,7 @@ export type ListMcpServersResponses = {
 export type ListMcpServersResponse2 = ListMcpServersResponses[keyof ListMcpServersResponses];
 
 export type CreateMcpServerData = {
-    body: CreateMcpServerRequest;
+    body: McpServerRequest;
     path?: never;
     query?: never;
     url: '/bodhi/v1/mcps/servers';
@@ -4770,7 +4719,7 @@ export type GetMcpServerResponses = {
 export type GetMcpServerResponse = GetMcpServerResponses[keyof GetMcpServerResponses];
 
 export type UpdateMcpServerData = {
-    body: UpdateMcpServerRequest;
+    body: McpServerRequest;
     path: {
         /**
          * MCP server UUID
@@ -4906,13 +4855,13 @@ export type GetMcpResponses = {
     /**
      * MCP instance
      */
-    200: McpResponse;
+    200: Mcp;
 };
 
 export type GetMcpResponse = GetMcpResponses[keyof GetMcpResponses];
 
 export type UpdateMcpData = {
-    body: UpdateMcpRequest;
+    body: McpRequest;
     path: {
         /**
          * MCP instance UUID
@@ -4952,7 +4901,7 @@ export type UpdateMcpResponses = {
     /**
      * MCP updated
      */
-    200: McpResponse;
+    200: Mcp;
 };
 
 export type UpdateMcpResponse = UpdateMcpResponses[keyof UpdateMcpResponses];
@@ -5306,7 +5255,7 @@ export type ListAllModelsResponses = {
 export type ListAllModelsResponse = ListAllModelsResponses[keyof ListAllModelsResponses];
 
 export type CreateAliasData = {
-    body: CreateAliasRequest;
+    body: UserAliasRequest;
     path?: never;
     query?: never;
     url: '/bodhi/v1/models';
@@ -5481,7 +5430,7 @@ export type GetAliasResponses = {
 export type GetAliasResponse = GetAliasResponses[keyof GetAliasResponses];
 
 export type UpdateAliasData = {
-    body: UpdateAliasRequest;
+    body: UserAliasRequest;
     path: {
         /**
          * UUID of the alias to update
@@ -5823,7 +5772,7 @@ export type ListApiTokensResponses = {
     /**
      * List of API tokens
      */
-    200: PaginatedApiTokenResponse;
+    200: PaginatedTokenResponse;
 };
 
 export type ListApiTokensResponse = ListApiTokensResponses[keyof ListApiTokensResponses];
@@ -5832,7 +5781,7 @@ export type CreateApiTokenData = {
     /**
      * API token creation parameters
      */
-    body: CreateApiTokenRequest;
+    body: CreateTokenRequest;
     path?: never;
     query?: never;
     url: '/bodhi/v1/tokens';
@@ -5863,7 +5812,7 @@ export type CreateApiTokenResponses = {
     /**
      * API token created successfully
      */
-    201: ApiTokenResponse;
+    201: TokenCreated;
 };
 
 export type CreateApiTokenResponse = CreateApiTokenResponses[keyof CreateApiTokenResponses];
@@ -5872,7 +5821,7 @@ export type UpdateApiTokenData = {
     /**
      * Token update request
      */
-    body: UpdateApiTokenRequest;
+    body: UpdateTokenRequest;
     path: {
         /**
          * Unique identifier of the API token to update
@@ -5912,7 +5861,7 @@ export type UpdateApiTokenResponses = {
     /**
      * Token updated successfully
      */
-    200: ApiToken;
+    200: TokenDetail;
 };
 
 export type UpdateApiTokenResponse = UpdateApiTokenResponses[keyof UpdateApiTokenResponses];
@@ -6084,7 +6033,7 @@ export type ListToolsetsResponses = {
 export type ListToolsetsResponse2 = ListToolsetsResponses[keyof ListToolsetsResponses];
 
 export type CreateToolsetData = {
-    body: CreateToolsetRequest;
+    body: ToolsetRequest;
     path?: never;
     query?: never;
     url: '/bodhi/v1/toolsets';
@@ -6217,7 +6166,7 @@ export type GetToolsetResponses = {
 export type GetToolsetResponse = GetToolsetResponses[keyof GetToolsetResponses];
 
 export type UpdateToolsetData = {
-    body: UpdateToolsetRequest;
+    body: ToolsetRequest;
     path: {
         /**
          * Toolset instance UUID

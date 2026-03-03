@@ -169,16 +169,32 @@ impl BodhiServer {
     let parts = bootstrap.into_parts();
 
     // Build the app service
-    let app_service: Arc<dyn AppService> =
-      Arc::new(build_app_service(parts).await.map_err(|e| {
-        Error::new(
-          Status::GenericFailure,
-          format!("Failed to build app service: {}", e),
-        )
-      })?);
-    update_with_option(&app_service, app_options.app_instance.as_ref())
+    let app_service_inner = build_app_service(parts).await.map_err(|e| {
+      Error::new(
+        Status::GenericFailure,
+        format!("Failed to build app service: {}", e),
+      )
+    })?;
+    let app_service: Arc<dyn AppService> = Arc::new(app_service_inner);
+    update_with_option(&app_service, app_options.tenant.as_ref())
       .await
       .map_err(|err| Error::new(Status::GenericFailure, err.to_string()))?;
+    if app_options.tenant.is_some() {
+      let persisted = app_service
+        .tenant_service()
+        .get_standalone_app()
+        .await
+        .map_err(|err| Error::new(Status::GenericFailure, err.to_string()))?;
+      match persisted {
+        Some(tenant) if !tenant.id.is_empty() => {}
+        _ => {
+          return Err(Error::new(
+            Status::GenericFailure,
+            "Tenant was not persisted with a valid ID after update.".to_string(),
+          ));
+        }
+      }
+    }
     // Create and start the server
     let serve_command = ServeCommand::ByParams {
       host: self.host(),

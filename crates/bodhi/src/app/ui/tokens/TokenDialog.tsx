@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { ApiTokenResponse } from '@bodhiapp/ts-client';
+import { TokenCreated } from '@bodhiapp/ts-client';
 import { Shield } from 'lucide-react';
 
 import { CopyButton } from '@/components/CopyButton';
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 
 interface TokenDialogProps {
-  token: ApiTokenResponse;
+  token: TokenCreated;
   open: boolean;
   onClose: () => void;
 }

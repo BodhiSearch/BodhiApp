@@ -5,11 +5,7 @@ use crate::mcps::{
   ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE,
 };
 use crate::{ApiError, AuthScope, API_TAG_MCPS};
-use axum::{
-  extract::Path,
-  http::StatusCode,
-  Json,
-};
+use axum::{extract::Path, http::StatusCode, Json};
 
 // ============================================================================
 // OAuth Discovery Handlers

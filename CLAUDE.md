@@ -70,9 +70,9 @@ llama_server_proc    mcp_client
         \               /
          services (ALL domain types + business logic)
         /          \
-server_core    auth_middleware
+server_core         |
         \          /
-         routes_app (ApiError, OpenAIApiError here)
+         routes_app (ApiError, OpenAIApiError, middleware here)
              |
          server_app
              |
@@ -89,7 +89,7 @@ When implementing a feature spanning multiple crates, always work upstream-to-do
 
 1. **Upstream Rust crate first**: Change the most upstream crate affected. Run `cargo test -p <crate>`. Verify no regressions in upstream crates.
 2. **Repeat downstream**: Move to next crate in the chain. Run cumulative tests.
-3. **Continue through the chain**: `services` -> `routes_app` -> `server_app` -> leaf crates.
+3. **Continue through the chain**: `services` -> `server_core` -> `routes_app` -> `server_app` -> leaf crates.
 4. **Full backend validation**: `make test.backend` after all Rust changes.
 5. **Regenerate TypeScript types**: `make build.ts-client` to update frontend types.
 6. **Frontend component tests**: Change UI in `crates/bodhi/src/`, using `@bodhiapp/ts-client` types. Run `cd crates/bodhi && npm run test`.
@@ -106,10 +106,11 @@ When implementing a feature spanning multiple crates, always work upstream-to-do
 
 ### Architectural Patterns
 - **Time handling**: Use `TimeService` (never `Utc::now()`) — see `crates/services/src/db/time_service.rs`
-- **Error handling**: service errors -> `ApiError` (in `routes_app::shared`) -> OpenAI-compatible responses. Auth context errors use `AuthContextError` (in `services`). Middleware errors use `MiddlewareError` (in `auth_middleware`). `ApiError` is NOT in `services`.
+- **Error handling**: service errors -> `ApiError` (in `routes_app::shared`) -> OpenAI-compatible responses. Auth context errors use `AuthContextError` (in `services`). Middleware errors use `MiddlewareError` (in `routes_app::middleware`). `ApiError` is NOT in `services`.
 - **AuthScope extractor**: All route handlers use `AuthScopedAppService` via `AuthScope`. Infrastructure uses `AppService` directly. See `crates/CLAUDE.md` for details.
 - **Imports**: Avoid `use super::*` in `#[cfg(test)]` modules — use explicit imports
 - **Multi-tenant**: Mutating DB ops use `begin_tenant_txn(tenant_id)` for RLS on PostgreSQL
+- **CRUD conventions**: See `crates/CLAUDE.md` "CRUD Convention Reference" for entity aliases, Request types, ValidatedJson, route handler patterns
 
 ### Testing Practices
 - **rstest for all Rust tests**: `#[case]` for parameterized, `#[values]` for combinatorial, `#[fixture]` for shared setup

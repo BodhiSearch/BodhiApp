@@ -2,12 +2,13 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 // ============================================================================
-// AppAccessRequestRow - Database row for app access request consent tracking
+// AppAccessRequest - Database row for app access request consent tracking
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AppAccessRequestRow {
+pub struct AppAccessRequest {
   pub id: String,
+  pub tenant_id: String,
   pub app_client_id: String,
   pub app_name: Option<String>,
   pub app_description: Option<String>,
@@ -108,7 +109,7 @@ pub struct ToolsetInstance {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct McpServerRequest {
+pub struct RequestedMcpServer {
   pub url: String,
 }
 
@@ -138,5 +139,63 @@ pub struct RequestedResources {
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub toolset_types: Vec<ToolsetTypeRequest>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub mcp_servers: Vec<McpServerRequest>,
+  pub mcp_servers: Vec<RequestedMcpServer>,
+}
+
+// ============================================================================
+// Request types for app access request domain
+// ============================================================================
+
+/// Request for creating an app access request
+#[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]
+#[schema(example = json!({
+    "app_client_id": "my-app-client",
+    "flow_type": "redirect",
+    "redirect_url": "https://myapp.com/callback",
+    "requested_role": "scope_user_user",
+    "requested": {
+        "toolset_types": [
+            {"toolset_type": "builtin-exa-search"}
+        ]
+    }
+}))]
+pub struct CreateAccessRequest {
+  /// App client ID from Keycloak
+  pub app_client_id: String,
+  /// Flow type: "redirect" or "popup"
+  pub flow_type: FlowType,
+  /// Redirect URL for result notification (required for redirect flow)
+  pub redirect_url: Option<String>,
+  /// Role requested for the external app (scope_user_user or scope_user_power_user)
+  pub requested_role: crate::UserScope,
+  /// Resources requested (tools, etc.)
+  pub requested: Option<RequestedResources>,
+}
+
+/// Request for approving an app access request
+#[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]
+#[schema(example = json!({
+    "approved_role": "scope_user_user",
+    "approved": {
+        "toolsets": [
+            {
+                "toolset_type": "builtin-exa-search",
+                "status": "approved",
+                "instance": {"id": "instance-uuid"}
+            }
+        ],
+        "mcps": [
+            {
+                "url": "https://mcp.deepwiki.com/mcp",
+                "status": "approved",
+                "instance": {"id": "instance-uuid"}
+            }
+        ]
+    }
+}))]
+pub struct ApproveAccessRequest {
+  /// Role to grant for the approved request (scope_user_user or scope_user_power_user)
+  pub approved_role: crate::UserScope,
+  /// Approved resources with selections
+  pub approved: ApprovedResources,
 }

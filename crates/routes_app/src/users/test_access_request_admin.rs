@@ -1,9 +1,9 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::{
   users_access_request_approve, users_access_request_reject, users_access_requests_index,
   users_access_requests_pending, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING,
 };
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
   http::Request,
@@ -13,13 +13,14 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
-use server_core::{
-  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
-};
+use server_core::test_utils::ResponseTestExt;
 use services::test_utils::temp_bodhi_home;
+use services::AuthContext;
 use services::ResourceRole;
 use services::{
-  test_utils::{build_token_with_exp, test_db_service_with_temp_dir, AppServiceStubBuilder},
+  test_utils::{
+    build_token_with_exp, test_db_service_with_temp_dir, AppServiceStubBuilder, TEST_TENANT_ID,
+  },
   DefaultSessionService, MockAuthService, SessionService,
   {AccessRepository, UserAccessRequestStatus},
 };
@@ -50,7 +51,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
   let user_id = "test-user-123";
   let username = "testuser@example.com";
   let access_request = db_service
-    .insert_pending_request(username.to_string(), user_id.to_string())
+    .insert_pending_request(TEST_TENANT_ID, username.to_string(), user_id.to_string())
     .await?;
 
   // 4. Simulate user having multiple active sessions
@@ -100,7 +101,8 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
   let mut builder = AppServiceStubBuilder::default();
   builder.db_service(db_arc);
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_secret".to_string(),
 
@@ -116,10 +118,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
     .await?;
 
   // 9. Create router with approve endpoint
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(
@@ -164,9 +163,8 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
 
   // 13. Verify request status was updated
   let updated_request = state
-    .app_service()
     .db_service()
-    .get_request_by_id(&access_request.id)
+    .get_request_by_id(TEST_TENANT_ID, &access_request.id)
     .await?
     .unwrap();
   assert_eq!(UserAccessRequestStatus::Approved, updated_request.status);
@@ -188,10 +186,18 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
 async fn test_list_pending_requests_success(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   db_service
-    .insert_pending_request("user1@example.com".to_string(), "user-1".to_string())
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "user1@example.com".to_string(),
+      "user-1".to_string(),
+    )
     .await?;
   db_service
-    .insert_pending_request("user2@example.com".to_string(), "user-2".to_string())
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "user2@example.com".to_string(),
+      "user-2".to_string(),
+    )
     .await?;
 
   let app_service = AppServiceStubBuilder::default()
@@ -199,10 +205,7 @@ async fn test_list_pending_requests_success(temp_bodhi_home: TempDir) -> anyhow:
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(
@@ -217,7 +220,12 @@ async fn test_list_pending_requests_success(temp_bodhi_home: TempDir) -> anyhow:
         "{}?page=1&page_size=10",
         ENDPOINT_ACCESS_REQUESTS_PENDING
       ))
-      .body(Body::empty())?,
+      .body(Body::empty())?
+      .with_auth_context(AuthContext::test_session(
+        "test-user",
+        "testuser",
+        ResourceRole::Admin,
+      )),
     )
     .await?;
 
@@ -238,7 +246,11 @@ async fn test_list_pending_requests_success(temp_bodhi_home: TempDir) -> anyhow:
 async fn test_list_all_requests_success(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   db_service
-    .insert_pending_request("user1@example.com".to_string(), "user-1".to_string())
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "user1@example.com".to_string(),
+      "user-1".to_string(),
+    )
     .await?;
 
   let app_service = AppServiceStubBuilder::default()
@@ -246,10 +258,7 @@ async fn test_list_all_requests_success(temp_bodhi_home: TempDir) -> anyhow::Res
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(
@@ -264,7 +273,12 @@ async fn test_list_all_requests_success(temp_bodhi_home: TempDir) -> anyhow::Res
         "{}?page=1&page_size=10",
         ENDPOINT_ACCESS_REQUESTS_ALL
       ))
-      .body(Body::empty())?,
+      .body(Body::empty())?
+      .with_auth_context(AuthContext::test_session(
+        "test-user",
+        "testuser",
+        ResourceRole::Admin,
+      )),
     )
     .await?;
 
@@ -285,6 +299,7 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let access_request = db_service
     .insert_pending_request(
+      TEST_TENANT_ID,
       "toreject@example.com".to_string(),
       "reject-user-id".to_string(),
     )
@@ -298,10 +313,7 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(
@@ -330,9 +342,8 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
 
   // Verify the request was rejected
   let updated = state
-    .app_service()
     .db_service()
-    .get_request_by_id(&access_request.id)
+    .get_request_by_id(TEST_TENANT_ID, &access_request.id)
     .await?
     .unwrap();
   assert_eq!(UserAccessRequestStatus::Rejected, updated.status);
@@ -351,7 +362,11 @@ async fn test_approve_request_insufficient_privileges(
 ) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let access_request = db_service
-    .insert_pending_request("priv@example.com".to_string(), "priv-user-id".to_string())
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "priv@example.com".to_string(),
+      "priv-user-id".to_string(),
+    )
     .await?;
 
   let app_service = AppServiceStubBuilder::default()
@@ -359,10 +374,7 @@ async fn test_approve_request_insufficient_privileges(
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(
@@ -414,10 +426,7 @@ async fn test_approve_request_not_found(temp_bodhi_home: TempDir) -> anyhow::Res
     .build()
     .await?;
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route(

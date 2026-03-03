@@ -1,6 +1,6 @@
+use crate::auth::AuthContextError;
 use crate::auth::AuthServiceError;
 use crate::{AppService, AuthContext, UserListResponse};
-use crate::auth::AuthContextError;
 use std::sync::Arc;
 
 /// Auth-scoped wrapper around AuthService that injects the reviewer's token from AuthContext.

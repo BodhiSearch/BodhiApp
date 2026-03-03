@@ -1,4 +1,4 @@
-use crate::models::models_api_schemas::PaginatedDownloadResponse;
+use crate::test_utils::RequestAuthContextExt;
 use crate::{models_pull_create, models_pull_index, models_pull_show, wait_for_event};
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -11,28 +11,26 @@ use mockall::predicate::{always, eq};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
+use services::AuthContext;
 use services::{
   test_utils::{
     app_service_stub_builder, test_db_service, test_hf_service, AppServiceStubBuilder,
-    TestDbService, TestHfService,
+    TestDbService, TestHfService, TEST_TENANT_ID,
   },
-  AppService, DownloadRepository, {DownloadRequest, DownloadStatus},
+  AppService, DownloadRepository, DownloadRequest, DownloadRequestEntity, DownloadStatus,
+  PaginatedDownloadResponse, ResourceRole,
 };
 use services::{HubFile, Repo};
 use std::{sync::Arc, time::Duration};
 use tower::ServiceExt;
 
 fn test_router(service: Arc<dyn AppService>) -> Router {
-  let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), service);
   Router::new()
     .route("/modelfiles/pull", post(models_pull_create))
     .route("/modelfiles/pull/status/{id}", get(models_pull_show))
     .route("/modelfiles/pull/downloads", get(models_pull_index))
-    .with_state(Arc::new(router_state))
+    .with_state(service)
 }
 
 #[rstest]
@@ -71,7 +69,15 @@ async fn test_pull_by_repo_file_success(
   });
 
   let response = router
-    .oneshot(Request::post("/modelfiles/pull").json(&payload)?)
+    .oneshot(
+      Request::post("/modelfiles/pull")
+        .json(&payload)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::Admin,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::CREATED, response.status());
@@ -89,7 +95,7 @@ async fn test_pull_by_repo_file_success(
   );
 
   let final_status = db_service
-    .get_download_request(&download_request.id)
+    .get_download_request(TEST_TENANT_ID, &download_request.id)
     .await?
     .unwrap();
   assert_eq!(final_status.status, DownloadStatus::Completed);
@@ -143,7 +149,8 @@ async fn test_pull_by_repo_file_existing_pending_download(
   db_service: TestDbService,
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
-  let pending_request = DownloadRequest::new_pending(
+  let pending_request = DownloadRequestEntity::new_pending(
+    TEST_TENANT_ID,
     &Repo::testalias().to_string(),
     &Repo::testalias_model_q4(),
     db_service.now(),
@@ -164,7 +171,15 @@ async fn test_pull_by_repo_file_existing_pending_download(
   });
 
   let response = router
-    .oneshot(Request::post("/modelfiles/pull").json(&payload)?)
+    .oneshot(
+      Request::post("/modelfiles/pull")
+        .json(&payload)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
@@ -195,12 +210,19 @@ async fn test_get_download_status_success(
     .build()
     .await?;
   let router = test_router(Arc::new(app_service));
-  let test_request = DownloadRequest::new_pending("test/repo", "test.gguf", db_service.now());
+  let test_request =
+    DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "test.gguf", db_service.now());
   db_service.create_download_request(&test_request).await?;
 
   let response = router
     .oneshot(
-      Request::get(format!("/modelfiles/pull/status/{}", test_request.id)).body(Body::empty())?,
+      Request::get(format!("/modelfiles/pull/status/{}", test_request.id))
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
     )
     .await?;
 
@@ -231,13 +253,21 @@ async fn test_get_download_status_not_found(
 
   let router = test_router(Arc::new(app_service));
   let response = router
-    .oneshot(Request::get("/modelfiles/pull/status/non_existent_id").body(Body::empty())?)
+    .oneshot(
+      Request::get("/modelfiles/pull/status/non_existent_id")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
   assert_eq!(
-    "db_error-item_not_found",
+    "download_service_error-not_found",
     response["error"]["code"].as_str().unwrap()
   );
   Ok(())
@@ -254,9 +284,24 @@ async fn test_list_downloads(
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
   // Create test downloads with different statuses
-  let download1 = DownloadRequest::new_pending("test/repo1", "file1.gguf", db_service.now());
-  let mut download2 = DownloadRequest::new_pending("test/repo2", "file2.gguf", db_service.now());
-  let mut download3 = DownloadRequest::new_pending("test/repo3", "file3.gguf", db_service.now());
+  let download1 = DownloadRequestEntity::new_pending(
+    TEST_TENANT_ID,
+    "test/repo1",
+    "file1.gguf",
+    db_service.now(),
+  );
+  let mut download2 = DownloadRequestEntity::new_pending(
+    TEST_TENANT_ID,
+    "test/repo2",
+    "file2.gguf",
+    db_service.now(),
+  );
+  let mut download3 = DownloadRequestEntity::new_pending(
+    TEST_TENANT_ID,
+    "test/repo3",
+    "file3.gguf",
+    db_service.now(),
+  );
 
   let db_service = Arc::new(db_service);
   db_service.create_download_request(&download1).await?;
@@ -278,7 +323,15 @@ async fn test_list_downloads(
   let router = test_router(Arc::new(app_service));
 
   let response = router
-    .oneshot(Request::get("/modelfiles/pull/downloads?page=1&page_size=10").body(Body::empty())?)
+    .oneshot(
+      Request::get("/modelfiles/pull/downloads?page=1&page_size=10")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
+    )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());

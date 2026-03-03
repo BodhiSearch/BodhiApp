@@ -1,4 +1,4 @@
-import { ApiTokenResponse, PaginatedApiTokenResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { TokenCreated, PaginatedTokenResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -15,17 +15,16 @@ import {
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
-const mockTokenResponse: ApiTokenResponse = {
+const mockTokenResponse: TokenCreated = {
   token: 'test-token-123',
 };
 
-const mockListResponse: PaginatedApiTokenResponse = {
+const mockListResponse: PaginatedTokenResponse = {
   data: [
     {
       id: 'token-1',
       name: 'Test Token 1',
       status: 'active',
-      token_hash: 'hash123',
       token_prefix: 'bodhiapp_test01',
       scopes: 'scope_token_user',
       user_id: 'user-123',
@@ -42,7 +41,6 @@ const mockUpdatedToken = {
   id: 'token-1',
   name: 'Updated Token',
   status: 'inactive' as const,
-  token_hash: 'hash123',
   token_prefix: 'bodhiapp_test01',
   scopes: 'scope_token_user',
   user_id: 'user-123',
@@ -186,7 +184,6 @@ describe('useCreateToken', () => {
             name: 'New Token',
             status: 'active',
             scopes: 'scope_token_user',
-            token_hash: 'newhash456',
             token_prefix: 'jwt-token-id-new',
             user_id: 'user-123',
             created_at: '2024-01-02T00:00:00Z',

@@ -10,10 +10,7 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::temp_dir;
 use services::{
   test_utils::{bodhi_home_setting, AppServiceStubBuilder, EnvWrapperStub, MockSettingsRepository},
@@ -26,12 +23,11 @@ use tempfile::TempDir;
 use tower::ServiceExt;
 
 async fn app(app_service: Arc<dyn services::AppService>) -> Router {
-  let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), app_service);
   Router::new()
     .route(ENDPOINT_SETTINGS, get(settings_index))
     .route("/v1/bodhi/settings/{key}", put(settings_update))
     .route("/v1/bodhi/settings/{key}", delete(settings_destroy))
-    .with_state(Arc::new(router_state))
+    .with_state(app_service)
 }
 
 fn noop_settings_repo() -> Arc<MockSettingsRepository> {

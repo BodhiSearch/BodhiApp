@@ -4,9 +4,9 @@ use crate::mcps::{
   OAuthDiscoverAsRequest, OAuthDiscoverAsResponse, OAuthDiscoverMcpRequest,
   OAuthDiscoverMcpResponse,
 };
-use crate::test_utils::{build_mcp_test_state, build_mcp_test_state_with_app_service, fixed_dt};
+use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{build_mcp_test_state, fixed_dt};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{delete, get, post};
@@ -15,9 +15,10 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
+use services::AuthContext;
+use services::McpOAuthToken;
 use services::MockMcpService;
 use services::ResourceRole;
-use services::{McpOAuthToken, RegistrationType};
 use tower::ServiceExt;
 
 async fn test_router_for_oauth_discovery(
@@ -230,7 +231,7 @@ fn test_oauth_token() -> McpOAuthToken {
     expires_at: Some(1700000000),
     has_access_token: true,
     has_refresh_token: true,
-    created_by: "user123".to_string(),
+    user_id: "user123".to_string(),
     created_at: now,
     updated_at: now,
   }
@@ -258,9 +259,9 @@ async fn test_get_oauth_token_handler_success() -> anyhow::Result<()> {
 
   mock
     .expect_get_oauth_token()
-    .withf(|user_id, token_id| user_id == "user123" && token_id == "token-uuid-1")
+    .withf(|_, user_id, token_id| user_id == "user123" && token_id == "token-uuid-1")
     .times(1)
-    .returning(move |_, _| Ok(Some(token.clone())));
+    .returning(move |_, _, _| Ok(Some(token.clone())));
 
   let app = test_router_for_oauth_tokens(mock).await?;
 
@@ -296,9 +297,9 @@ async fn test_get_oauth_token_handler_wrong_user_returns_404() -> anyhow::Result
 
   mock
     .expect_get_oauth_token()
-    .withf(|user_id, token_id| user_id == "wrong-user" && token_id == "token-uuid-1")
+    .withf(|_, user_id, token_id| user_id == "wrong-user" && token_id == "token-uuid-1")
     .times(1)
-    .returning(|_, _| Ok(None));
+    .returning(|_, _, _| Ok(None));
 
   let app = test_router_for_oauth_tokens(mock).await?;
 
@@ -321,81 +322,19 @@ async fn test_get_oauth_token_handler_wrong_user_returns_404() -> anyhow::Result
 #[tokio::test]
 #[anyhow_trace]
 async fn test_delete_oauth_token_handler_success() -> anyhow::Result<()> {
-  use services::{McpOAuthConfigRow, McpOAuthTokenRow, McpServerRow};
+  let mut mock = MockMcpService::new();
 
-  let mock = MockMcpService::new();
-  let (state, app_service) = build_mcp_test_state_with_app_service(mock).await?;
-  let db_service = app_service.db_service();
+  mock
+    .expect_delete_oauth_token()
+    .withf(|tenant_id, user_id, token_id| {
+      tenant_id == services::test_utils::TEST_TENANT_ID
+        && user_id == "user123"
+        && token_id == "token-uuid-1"
+    })
+    .times(1)
+    .returning(|_, _, _| Ok(()));
 
-  let now_ts = fixed_dt();
-
-  // Insert prerequisite rows (server -> config -> token)
-  let server_row = McpServerRow {
-    id: "server-uuid-1".to_string(),
-    url: "https://mcp.example.com".to_string(),
-    name: "Test Server".to_string(),
-    description: None,
-    enabled: true,
-    created_by: "admin".to_string(),
-    updated_by: "admin".to_string(),
-    created_at: now_ts,
-    updated_at: now_ts,
-  };
-  db_service.create_mcp_server(&server_row).await?;
-
-  let config_row = McpOAuthConfigRow {
-    id: "oauth-config-uuid-1".to_string(),
-    name: "Test OAuth".to_string(),
-    mcp_server_id: "server-uuid-1".to_string(),
-    registration_type: RegistrationType::PreRegistered,
-    client_id: "client-123".to_string(),
-    encrypted_client_secret: None,
-    client_secret_salt: None,
-    client_secret_nonce: None,
-    authorization_endpoint: "https://auth.example.com/authorize".to_string(),
-    token_endpoint: "https://auth.example.com/token".to_string(),
-    registration_endpoint: None,
-    encrypted_registration_access_token: None,
-    registration_access_token_salt: None,
-    registration_access_token_nonce: None,
-    client_id_issued_at: None,
-    token_endpoint_auth_method: None,
-    scopes: Some("openid".to_string()),
-    created_by: "user123".to_string(),
-    created_at: now_ts,
-    updated_at: now_ts,
-  };
-  db_service.create_mcp_oauth_config(&config_row).await?;
-
-  let token_row = McpOAuthTokenRow {
-    id: "token-uuid-1".to_string(),
-    mcp_oauth_config_id: "oauth-config-uuid-1".to_string(),
-    encrypted_access_token: "enc_at".to_string(),
-    access_token_salt: "salt".to_string(),
-    access_token_nonce: "nonce".to_string(),
-    encrypted_refresh_token: None,
-    refresh_token_salt: None,
-    refresh_token_nonce: None,
-    scopes_granted: Some("openid".to_string()),
-    expires_at: None,
-    created_by: "user123".to_string(),
-    created_at: now_ts,
-    updated_at: now_ts,
-  };
-  db_service.create_mcp_oauth_token(&token_row).await?;
-
-  // Verify the token exists before delete
-  let before = db_service
-    .get_mcp_oauth_token("user123", "token-uuid-1")
-    .await?;
-  assert!(before.is_some(), "token should exist before delete");
-
-  let app = Router::new()
-    .route(
-      "/mcps/oauth-tokens/{token_id}",
-      delete(mcp_oauth_tokens_destroy),
-    )
-    .with_state(state);
+  let app = test_router_for_oauth_tokens(mock).await?;
 
   let request = Request::builder()
     .method("DELETE")
@@ -409,14 +348,5 @@ async fn test_delete_oauth_token_handler_success() -> anyhow::Result<()> {
   let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::NO_CONTENT, response.status());
-
-  // Verify the token was actually deleted from the database
-  let after = db_service
-    .get_mcp_oauth_token("user123", "token-uuid-1")
-    .await?;
-  assert!(
-    after.is_none(),
-    "token should be deleted after handler call"
-  );
   Ok(())
 }

@@ -12,6 +12,7 @@ mod m20250101_000010_mcp_auth_headers;
 mod m20250101_000011_mcp_oauth;
 mod m20250101_000012_settings;
 mod m20250101_000013_apps;
+mod m20250101_000014_rls;
 use sea_orm_migration::prelude::*;
 
 pub struct Migrator;
@@ -34,6 +35,7 @@ impl MigratorTrait for Migrator {
       Box::new(m20250101_000011_mcp_oauth::Migration),
       Box::new(m20250101_000012_settings::Migration),
       Box::new(m20250101_000013_apps::Migration),
+      Box::new(m20250101_000014_rls::Migration),
     ]
   }
 }

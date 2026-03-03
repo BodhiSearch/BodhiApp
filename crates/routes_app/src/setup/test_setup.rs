@@ -12,15 +12,11 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::ReqwestError;
 use services::{
   test_utils::{AppServiceStubBuilder, SettingServiceStub},
-  AppInstance, AppService, AppStatus, AuthServiceError, ClientRegistrationResponse,
-  MockAuthService,
+  AppService, AppStatus, AuthServiceError, ClientRegistrationResponse, MockAuthService, Tenant,
 };
 use std::{collections::HashMap, sync::Arc};
 use tower::ServiceExt;
@@ -41,14 +37,11 @@ async fn test_app_info_handler(
   #[case] expected: AppInfo,
 ) -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
-    .with_app_instance(AppInstance::test_with_status(status))
+    .with_tenant(Tenant::test_with_status(status))
     .await
     .build()
     .await?;
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
     .with_state(state);
@@ -71,16 +64,13 @@ async fn test_setup_handler_error() -> anyhow::Result<()> {
   };
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .with_app_instance(AppInstance::test_default())
+      .with_tenant(Tenant::test_default())
       .await
       .auth_service(Arc::new(MockAuthService::new()))
       .build()
       .await?,
   );
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
 
   let router = Router::new()
     .route("/setup", post(setup_create))
@@ -97,8 +87,13 @@ async fn test_setup_handler_error() -> anyhow::Result<()> {
     body["error"]["code"].as_str().unwrap()
   );
 
-  let app_instance_service = app_service.app_instance_service();
-  assert_eq!(AppStatus::Ready, app_instance_service.get_status().await?);
+  let tenant_service = app_service.tenant_service();
+  let status = tenant_service
+    .get_standalone_app()
+    .await?
+    .map(|t| t.status)
+    .unwrap_or_default();
+  assert_eq!(AppStatus::Ready, status);
   Ok(())
 }
 
@@ -123,16 +118,13 @@ async fn test_setup_handler_success() -> anyhow::Result<()> {
     });
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .with_app_instance_service()
+      .with_tenant_service()
       .await
       .auth_service(Arc::new(mock_auth_service))
       .build()
       .await?,
   );
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
   let router = Router::new()
     .route("/setup", post(setup_create))
     .with_state(state);
@@ -142,9 +134,14 @@ async fn test_setup_handler_success() -> anyhow::Result<()> {
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let app_instance_service = app_service.app_instance_service();
-  assert_eq!(expected_status, app_instance_service.get_status().await?);
-  let instance = app_instance_service.get_instance().await?;
+  let tenant_service = app_service.tenant_service();
+  let status = tenant_service
+    .get_standalone_app()
+    .await?
+    .map(|t| t.status)
+    .unwrap_or_default();
+  assert_eq!(expected_status, status);
+  let instance = tenant_service.get_standalone_app().await?;
   assert!(instance.is_some());
   Ok(())
 }
@@ -183,17 +180,14 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .with_app_instance_service()
+      .with_tenant_service()
       .await
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
       .build()
       .await?,
   );
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
 
   let router = Router::new()
     .route("/setup", post(setup_create))
@@ -213,12 +207,14 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let app_instance_service = app_service.app_instance_service();
-  assert_eq!(
-    AppStatus::ResourceAdmin,
-    app_instance_service.get_status().await?
-  );
-  let instance = app_instance_service.get_instance().await?;
+  let tenant_service = app_service.tenant_service();
+  let status = tenant_service
+    .get_standalone_app()
+    .await?
+    .map(|t| t.status)
+    .unwrap_or_default();
+  assert_eq!(AppStatus::ResourceAdmin, status);
+  let instance = tenant_service.get_standalone_app().await?;
   assert!(instance.is_some());
   Ok(())
 }
@@ -257,17 +253,14 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .with_app_instance_service()
+      .with_tenant_service()
       .await
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
       .build()
       .await?,
   );
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
 
   let router = Router::new()
     .route("/setup", post(setup_create))
@@ -287,12 +280,14 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let app_instance_service = app_service.app_instance_service();
-  assert_eq!(
-    AppStatus::ResourceAdmin,
-    app_instance_service.get_status().await?
-  );
-  let instance = app_instance_service.get_instance().await?;
+  let tenant_service = app_service.tenant_service();
+  let status = tenant_service
+    .get_standalone_app()
+    .await?
+    .map(|t| t.status)
+    .unwrap_or_default();
+  assert_eq!(AppStatus::ResourceAdmin, status);
+  let instance = tenant_service.get_standalone_app().await?;
   assert!(instance.is_some());
   Ok(())
 }
@@ -334,17 +329,14 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .with_app_instance_service()
+      .with_tenant_service()
       .await
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
       .build()
       .await?,
   );
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
 
   let router = Router::new()
     .route("/setup", post(setup_create))
@@ -364,12 +356,14 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let app_instance_service = app_service.app_instance_service();
-  assert_eq!(
-    AppStatus::ResourceAdmin,
-    app_instance_service.get_status().await?
-  );
-  let instance = app_instance_service.get_instance().await?;
+  let tenant_service = app_service.tenant_service();
+  let status = tenant_service
+    .get_standalone_app()
+    .await?
+    .map(|t| t.status)
+    .unwrap_or_default();
+  assert_eq!(AppStatus::ResourceAdmin, status);
+  let instance = tenant_service.get_standalone_app().await?;
   assert!(instance.is_some());
   Ok(())
 }
@@ -389,16 +383,13 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
     });
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .with_app_instance_service()
+      .with_tenant_service()
       .await
       .auth_service(Arc::new(mock_auth_service))
       .build()
       .await?,
   );
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
   let router = Router::new()
     .route("/setup", post(setup_create))
     .with_state(state);
@@ -422,10 +413,7 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_setup_handler_bad_request(#[case] body: &str) -> anyhow::Result<()> {
   let app_service = Arc::new(AppServiceStubBuilder::default().build().await?);
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
   let router = Router::new()
     .route("/setup", post(setup_create))
     .with_state(state);
@@ -451,16 +439,13 @@ async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .with_app_instance_service()
+      .with_tenant_service()
       .await
       .auth_service(Arc::new(mock_auth_service))
       .build()
       .await?,
   );
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
   let router = Router::new()
     .route("/setup", post(setup_create))
     .with_state(state);

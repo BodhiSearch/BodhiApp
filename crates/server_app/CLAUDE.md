@@ -8,7 +8,7 @@ Standalone HTTP server orchestration: server lifecycle (start/shutdown), listene
 
 ## Architecture Position
 
-**Upstream**: `services`, `server_core`, `auth_middleware`, `routes_app`, `llama_server_proc`
+**Upstream**: `services`, `server_core`, `routes_app`, `llama_server_proc`
 **Downstream**: None (consumed by `lib_bodhiserver`, `bodhi/src-tauri`)
 
 ## Key Components

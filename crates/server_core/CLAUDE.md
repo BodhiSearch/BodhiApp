@@ -15,7 +15,7 @@ services / llama_server_proc
               ↓
          [server_core]  ← YOU ARE HERE
               ↓
-    auth_middleware / routes_app / server_app / lib_bodhiserver
+    routes_app / server_app / lib_bodhiserver
 ```
 
 Depends on `services` (domain types, business logic), `llama_server_proc` (LLM process management). Does NOT depend on `objs` (absorbed into `services`).

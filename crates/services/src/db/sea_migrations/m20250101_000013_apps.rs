@@ -4,8 +4,9 @@ use sea_orm_migration::{prelude::*, schema::*};
 pub struct Migration;
 
 #[derive(DeriveIden)]
-enum Apps {
+enum Tenants {
   Table,
+  Id,
   ClientId,
   EncryptedClientSecret,
   SaltClientSecret,
@@ -21,22 +22,36 @@ impl MigrationTrait for Migration {
     manager
       .create_table(
         Table::create()
-          .table(Apps::Table)
-          .col(string(Apps::ClientId).primary_key())
-          .col(string(Apps::EncryptedClientSecret))
-          .col(string(Apps::SaltClientSecret))
-          .col(string(Apps::NonceClientSecret))
-          .col(string(Apps::AppStatus).default("setup"))
-          .col(timestamp_with_time_zone(Apps::CreatedAt))
-          .col(timestamp_with_time_zone(Apps::UpdatedAt))
+          .table(Tenants::Table)
+          .col(string(Tenants::Id).primary_key())
+          .col(string(Tenants::ClientId).unique_key())
+          .col(string_null(Tenants::EncryptedClientSecret))
+          .col(string_null(Tenants::SaltClientSecret))
+          .col(string_null(Tenants::NonceClientSecret))
+          .col(string(Tenants::AppStatus).default("setup"))
+          .col(timestamp_with_time_zone(Tenants::CreatedAt))
+          .col(timestamp_with_time_zone(Tenants::UpdatedAt))
           .to_owned(),
       )
-      .await
+      .await?;
+
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_tenants_client_id")
+          .table(Tenants::Table)
+          .col(Tenants::ClientId)
+          .unique()
+          .to_owned(),
+      )
+      .await?;
+
+    Ok(())
   }
 
   async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
     manager
-      .drop_table(Table::drop().table(Apps::Table).to_owned())
+      .drop_table(Table::drop().table(Tenants::Table).to_owned())
       .await
   }
 }

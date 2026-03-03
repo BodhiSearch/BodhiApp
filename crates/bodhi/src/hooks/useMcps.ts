@@ -1,18 +1,16 @@
 import {
-  CreateAuthConfigBody,
+  CreateAuthConfig,
   CreateMcpAuthConfigRequest,
+  Mcp,
   McpAuthConfigResponse,
   McpAuthConfigsListResponse,
   McpServerInfo,
   McpServerResponse,
-  CreateMcpServerRequest,
-  UpdateMcpServerRequest,
+  McpServerRequest,
+  McpRequest,
   ListMcpServersResponse,
   McpTool,
-  McpResponse,
   McpAuth,
-  CreateMcpRequest,
-  UpdateMcpRequest,
   FetchMcpToolsRequest,
   ListMcpsResponse,
   McpToolsResponse,
@@ -34,20 +32,18 @@ import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/ho
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 export type {
-  CreateAuthConfigBody,
+  CreateAuthConfig,
   CreateMcpAuthConfigRequest,
+  Mcp,
   McpAuthConfigResponse,
   McpAuthConfigsListResponse,
   McpServerInfo,
   McpServerResponse,
-  CreateMcpServerRequest,
-  UpdateMcpServerRequest,
+  McpServerRequest,
+  McpRequest,
   ListMcpServersResponse,
   McpTool,
-  McpResponse,
   McpAuth,
-  CreateMcpRequest,
-  UpdateMcpRequest,
   FetchMcpToolsRequest,
   ListMcpsResponse,
   McpToolsResponse,
@@ -85,11 +81,8 @@ export function useMcps(options?: { enabled?: boolean }): UseQueryResult<ListMcp
   return useQuery<ListMcpsResponse>(['mcps'], MCPS_ENDPOINT, undefined, options);
 }
 
-export function useMcp(
-  id: string,
-  options?: { enabled?: boolean }
-): UseQueryResult<McpResponse, AxiosError<ErrorResponse>> {
-  return useQuery<McpResponse>(['mcps', id], `${MCPS_ENDPOINT}/${id}`, undefined, options);
+export function useMcp(id: string, options?: { enabled?: boolean }): UseQueryResult<Mcp, AxiosError<ErrorResponse>> {
+  return useQuery<Mcp>(['mcps', id], `${MCPS_ENDPOINT}/${id}`, undefined, options);
 }
 
 // ============================================================================
@@ -163,12 +156,12 @@ export function useGetOAuthToken(
 // ============================================================================
 
 export function useCreateMcp(options?: {
-  onSuccess?: (mcp: McpResponse) => void;
+  onSuccess?: (mcp: Mcp) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<McpResponse>, AxiosError<ErrorResponse>, CreateMcpRequest> {
+}): UseMutationResult<AxiosResponse<Mcp>, AxiosError<ErrorResponse>, McpRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<McpResponse, CreateMcpRequest>(() => MCPS_ENDPOINT, 'post', {
+  return useMutationQuery<Mcp, McpRequest>(() => MCPS_ENDPOINT, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(['mcps']);
       options?.onSuccess?.(response.data);
@@ -181,12 +174,12 @@ export function useCreateMcp(options?: {
 }
 
 export function useUpdateMcp(options?: {
-  onSuccess?: (mcp: McpResponse) => void;
+  onSuccess?: (mcp: Mcp) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<McpResponse>, AxiosError<ErrorResponse>, UpdateMcpRequest & { id: string }> {
+}): UseMutationResult<AxiosResponse<Mcp>, AxiosError<ErrorResponse>, McpRequest & { id: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<McpResponse, UpdateMcpRequest & { id: string }>(
+  return useMutationQuery<Mcp, McpRequest & { id: string }>(
     ({ id }) => `${MCPS_ENDPOINT}/${id}`,
     'put',
     {
@@ -233,10 +226,10 @@ export function useDeleteMcp(options?: {
 export function useCreateMcpServer(options?: {
   onSuccess?: (server: McpServerResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<McpServerResponse>, AxiosError<ErrorResponse>, CreateMcpServerRequest> {
+}): UseMutationResult<AxiosResponse<McpServerResponse>, AxiosError<ErrorResponse>, McpServerRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<McpServerResponse, CreateMcpServerRequest>(() => MCP_SERVERS_ENDPOINT, 'post', {
+  return useMutationQuery<McpServerResponse, McpServerRequest>(() => MCP_SERVERS_ENDPOINT, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(['mcp_servers']);
       options?.onSuccess?.(response.data);
@@ -251,14 +244,10 @@ export function useCreateMcpServer(options?: {
 export function useUpdateMcpServer(options?: {
   onSuccess?: (server: McpServerResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<
-  AxiosResponse<McpServerResponse>,
-  AxiosError<ErrorResponse>,
-  UpdateMcpServerRequest & { id: string }
-> {
+}): UseMutationResult<AxiosResponse<McpServerResponse>, AxiosError<ErrorResponse>, McpServerRequest & { id: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<McpServerResponse, UpdateMcpServerRequest & { id: string }>(
+  return useMutationQuery<McpServerResponse, McpServerRequest & { id: string }>(
     ({ id }) => `${MCP_SERVERS_ENDPOINT}/${id}`,
     'put',
     {
@@ -459,10 +448,10 @@ export function useDeleteOAuthToken(options?: {
 export function useCreateAuthConfig(options?: {
   onSuccess?: (config: McpAuthConfigResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<McpAuthConfigResponse>, AxiosError<ErrorResponse>, CreateAuthConfigBody> {
+}): UseMutationResult<AxiosResponse<McpAuthConfigResponse>, AxiosError<ErrorResponse>, CreateAuthConfig> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<McpAuthConfigResponse, CreateAuthConfigBody>(() => MCPS_AUTH_CONFIGS_ENDPOINT, 'post', {
+  return useMutationQuery<McpAuthConfigResponse, CreateAuthConfig>(() => MCPS_AUTH_CONFIGS_ENDPOINT, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(['auth-configs']);
       options?.onSuccess?.(response.data);

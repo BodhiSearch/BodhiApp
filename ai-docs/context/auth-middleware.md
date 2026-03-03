@@ -1,1 +1,0 @@
-../../crates/auth_middleware/CLAUDE.md

@@ -1,9 +1,9 @@
 import {
-  ApiToken,
-  ApiTokenResponse,
-  CreateApiTokenRequest,
-  PaginatedApiTokenResponse,
-  UpdateApiTokenRequest,
+  TokenDetail,
+  TokenCreated,
+  CreateTokenRequest,
+  PaginatedTokenResponse,
+  UpdateTokenRequest,
   OpenAiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosResponse, AxiosError } from 'axios';
@@ -20,7 +20,7 @@ export const ENDPOINT_TOKEN_ID = `${BODHI_API_BASE}/tokens/{id}`;
 
 // Hooks
 export function useListTokens(page: number = 1, pageSize: number = 10, options?: { enabled?: boolean }) {
-  return useQuery<PaginatedApiTokenResponse>(
+  return useQuery<PaginatedTokenResponse>(
     ['tokens', page.toString(), pageSize.toString()],
     API_TOKENS_ENDPOINT,
     { page, page_size: pageSize },
@@ -29,12 +29,12 @@ export function useListTokens(page: number = 1, pageSize: number = 10, options?:
 }
 
 export function useCreateToken(options?: {
-  onSuccess?: (response: ApiTokenResponse) => void;
+  onSuccess?: (response: TokenCreated) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<ApiTokenResponse>, AxiosError<ErrorResponse>, CreateApiTokenRequest> {
+}): UseMutationResult<AxiosResponse<TokenCreated>, AxiosError<ErrorResponse>, CreateTokenRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<ApiTokenResponse, CreateApiTokenRequest>(API_TOKENS_ENDPOINT, 'post', {
+  return useMutationQuery<TokenCreated, CreateTokenRequest>(API_TOKENS_ENDPOINT, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(['tokens']);
       options?.onSuccess?.(response.data);
@@ -47,17 +47,17 @@ export function useCreateToken(options?: {
 }
 
 // Interface for update token request that includes the ID for URL construction
-interface UpdateTokenRequestWithId extends UpdateApiTokenRequest {
+interface UpdateTokenRequestWithId extends UpdateTokenRequest {
   id: string;
 }
 
 export function useUpdateToken(options?: {
-  onSuccess?: (token: ApiToken) => void;
+  onSuccess?: (token: TokenDetail) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<ApiToken>, AxiosError<ErrorResponse>, UpdateTokenRequestWithId> {
+}): UseMutationResult<AxiosResponse<TokenDetail>, AxiosError<ErrorResponse>, UpdateTokenRequestWithId> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<ApiToken, UpdateTokenRequestWithId>(
+  return useMutationQuery<TokenDetail, UpdateTokenRequestWithId>(
     ({ id }) => `${API_TOKENS_ENDPOINT}/${id}`,
     'put',
     {

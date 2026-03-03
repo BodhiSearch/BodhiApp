@@ -290,7 +290,7 @@ export function mockModelPull(
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     total_bytes = null,
-    downloaded_bytes,
+    downloaded_bytes = 0,
     started_at = new Date().toISOString(),
     ...rest
   }: Partial<components['schemas']['DownloadRequest']> = {},

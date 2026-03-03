@@ -1,64 +1,22 @@
+// NOTE: Types in this file are utility/action DTOs that don't use services/DB
+// for persistence. They don't follow the <Domain>Request/<Domain>Response naming
+// convention used by CRUD entities.
+
 use serde::{Deserialize, Serialize};
-use services::{
-  CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpAuthType, McpOAuthToken, McpServerInfo,
-  McpTool,
-};
+use services::{CreateMcpAuthConfigRequest, McpOAuthToken, McpTool};
 use utoipa::{IntoParams, ToSchema};
 
 // ============================================================================
-// MCP Server (mcp_servers table) DTOs
+// MCP Server Query DTOs
 // ============================================================================
-
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct CreateMcpServerRequest {
-  pub url: String,
-  pub name: String,
-  #[serde(default)]
-  pub description: Option<String>,
-  pub enabled: bool,
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub auth_config: Option<CreateMcpAuthConfigRequest>,
-}
-
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct UpdateMcpServerRequest {
-  pub url: String,
-  pub name: String,
-  #[serde(default)]
-  pub description: Option<String>,
-  pub enabled: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct McpServerResponse {
-  pub id: String,
-  pub url: String,
-  pub name: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub description: Option<String>,
-  pub enabled: bool,
-  pub created_by: String,
-  pub updated_by: String,
-  pub enabled_mcp_count: i64,
-  pub disabled_mcp_count: i64,
-  pub created_at: String,
-  pub updated_at: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub auth_config: Option<McpAuthConfigResponse>,
-}
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct McpServerQuery {
   pub enabled: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ListMcpServersResponse {
-  pub mcp_servers: Vec<McpServerResponse>,
-}
-
 // ============================================================================
-// MCP Instance (mcps table) DTOs
+// MCP Instance DTOs (tool discovery, execution)
 // ============================================================================
 
 #[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
@@ -82,70 +40,6 @@ pub struct FetchMcpToolsRequest {
   pub auth_uuid: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct CreateMcpRequest {
-  pub name: String,
-  pub slug: String,
-  pub mcp_server_id: String,
-  #[serde(default)]
-  pub description: Option<String>,
-  pub enabled: bool,
-  #[serde(default)]
-  pub tools_cache: Option<Vec<McpTool>>,
-  #[serde(default)]
-  pub tools_filter: Option<Vec<String>>,
-  #[serde(default)]
-  pub auth_type: McpAuthType,
-  #[serde(default)]
-  pub auth_uuid: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct UpdateMcpRequest {
-  pub name: String,
-  pub slug: String,
-  #[serde(default)]
-  pub description: Option<String>,
-  pub enabled: bool,
-  #[serde(default)]
-  pub tools_filter: Option<Vec<String>>,
-  #[serde(default)]
-  pub tools_cache: Option<Vec<McpTool>>,
-  #[serde(default)]
-  pub auth_type: Option<McpAuthType>,
-  #[serde(default)]
-  pub auth_uuid: Option<String>,
-}
-
-// ============================================================================
-// MCP Instance Response types
-// ============================================================================
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct McpResponse {
-  pub id: String,
-  pub mcp_server: McpServerInfo,
-  pub slug: String,
-  pub name: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub description: Option<String>,
-  pub enabled: bool,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tools_cache: Option<Vec<McpTool>>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tools_filter: Option<Vec<String>>,
-  pub auth_type: McpAuthType,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub auth_uuid: Option<String>,
-  pub created_at: String,
-  pub updated_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ListMcpsResponse {
-  pub mcps: Vec<McpResponse>,
-}
-
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct McpToolsResponse {
   pub tools: Vec<McpTool>,
@@ -164,32 +58,13 @@ pub struct McpExecuteResponse {
   pub error: Option<String>,
 }
 
-impl From<services::Mcp> for McpResponse {
-  fn from(mcp: services::Mcp) -> Self {
-    McpResponse {
-      id: mcp.id,
-      mcp_server: mcp.mcp_server,
-      slug: mcp.slug,
-      name: mcp.name,
-      description: mcp.description,
-      enabled: mcp.enabled,
-      tools_cache: mcp.tools_cache,
-      tools_filter: mcp.tools_filter,
-      auth_type: mcp.auth_type,
-      auth_uuid: mcp.auth_uuid,
-      created_at: mcp.created_at.to_rfc3339(),
-      updated_at: mcp.updated_at.to_rfc3339(),
-    }
-  }
-}
-
 // ============================================================================
 // Unified Auth Config DTOs
 // ============================================================================
 
 /// Wrapper for creating auth configs with server_id in body instead of path
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct CreateAuthConfigBody {
+pub struct CreateAuthConfig {
   pub mcp_server_id: String,
   #[serde(flatten)]
   pub config: CreateMcpAuthConfigRequest,
@@ -215,7 +90,7 @@ pub struct OAuthTokenResponse {
   pub expires_at: Option<i64>,
   pub has_access_token: bool,
   pub has_refresh_token: bool,
-  pub created_by: String,
+  pub user_id: String,
   pub created_at: String,
   pub updated_at: String,
 }
@@ -229,7 +104,7 @@ impl From<McpOAuthToken> for OAuthTokenResponse {
       expires_at: t.expires_at,
       has_access_token: t.has_access_token,
       has_refresh_token: t.has_refresh_token,
-      created_by: t.created_by,
+      user_id: t.user_id,
       created_at: t.created_at.to_rfc3339(),
       updated_at: t.updated_at.to_rfc3339(),
     }

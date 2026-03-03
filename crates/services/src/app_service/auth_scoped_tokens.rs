@@ -1,4 +1,7 @@
-use crate::{ApiToken, AppService, AuthContext, TokenScope, TokenServiceError, TokenStatus};
+use crate::{
+  AppService, AuthContext, CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail,
+  TokenServiceError, UpdateTokenRequest,
+};
 use std::sync::Arc;
 
 pub struct AuthScopedTokenService {
@@ -19,22 +22,24 @@ impl AuthScopedTokenService {
     &self,
     page: usize,
     per_page: usize,
-  ) -> Result<(Vec<ApiToken>, usize), TokenServiceError> {
+  ) -> Result<PaginatedTokenResponse, TokenServiceError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .token_service()
-      .list_api_tokens(user_id, page, per_page)
+      .list_api_tokens(tenant_id, user_id, page, per_page)
       .await
   }
 
   /// Get a specific API token by id for the authenticated user
-  pub async fn get_token(&self, id: &str) -> Result<Option<ApiToken>, TokenServiceError> {
+  pub async fn get_token(&self, id: &str) -> Result<Option<TokenDetail>, TokenServiceError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .token_service()
-      .get_api_token_by_id(user_id, id)
+      .get_api_token_by_id(tenant_id, user_id, id)
       .await
   }
 
@@ -42,14 +47,14 @@ impl AuthScopedTokenService {
   /// Delegates token generation (random bytes, hashing, ULID) to TokenService.
   pub async fn create_token(
     &self,
-    name: String,
-    scope: TokenScope,
-  ) -> Result<(String, ApiToken), TokenServiceError> {
+    request: CreateTokenRequest,
+  ) -> Result<TokenCreated, TokenServiceError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .token_service()
-      .create_token(user_id, name, scope)
+      .create_token(tenant_id, user_id, request)
       .await
   }
 
@@ -57,14 +62,14 @@ impl AuthScopedTokenService {
   pub async fn update_token(
     &self,
     id: &str,
-    name: String,
-    status: TokenStatus,
-  ) -> Result<ApiToken, TokenServiceError> {
+    request: UpdateTokenRequest,
+  ) -> Result<TokenDetail, TokenServiceError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .token_service()
-      .update_token(user_id, id, name, status)
+      .update_token(tenant_id, user_id, id, request)
       .await
   }
 }

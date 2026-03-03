@@ -1,6 +1,6 @@
-use crate::{tokens_create, tokens_index, tokens_update, CreateApiTokenRequest};
+use crate::test_utils::RequestAuthContextExt;
+use crate::{tokens_create, tokens_index, tokens_update, CreateTokenRequest};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   http::{Method, Request},
   routing::{get, post, put},
@@ -10,25 +10,23 @@ use hyper::StatusCode;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
-use server_core::{test_utils::{RequestTestExt, ResponseTestExt}, DefaultRouterState, MockSharedContext};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::{
   access_token_claims, build_token, test_db_service, AppServiceStub, AppServiceStubBuilder,
   TestDbService,
 };
+use services::AuthContext;
 use services::{ResourceRole, TokenScope};
 use std::sync::Arc;
 use tower::ServiceExt;
 
 async fn app(app_service_stub: AppServiceStub) -> Router {
-  let router_state = DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service_stub),
-  );
+  let app_service: Arc<dyn services::AppService> = Arc::new(app_service_stub);
   Router::new()
     .route("/api/tokens", post(tokens_create))
     .route("/api/tokens", get(tokens_index))
     .route("/api/tokens/{token_id}", put(tokens_update))
-    .with_state(Arc::new(router_state))
+    .with_state(app_service)
 }
 
 #[rstest]
@@ -59,7 +57,7 @@ async fn test_create_token_privilege_escalation_user(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .json(&CreateApiTokenRequest {
+        .json(&CreateTokenRequest {
           name: Some("Escalation Attempt".to_string()),
           scope: requested_scope,
         })?

@@ -1,13 +1,12 @@
 use super::{AiApiService, AiApiServiceError, DefaultAiApiService};
 use crate::models::{ApiAlias, ApiFormat};
-use crate::test_utils::{fixed_dt, MockDbService};
+use crate::test_utils::fixed_dt;
 use anyhow_trace::anyhow_trace;
 use axum::http::StatusCode;
 use mockito::Server;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
-use std::sync::Arc;
 
 #[rstest]
 #[anyhow_trace]
@@ -15,8 +14,7 @@ use std::sync::Arc;
 async fn test_test_prompt_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -48,8 +46,7 @@ async fn test_test_prompt_success() -> anyhow::Result<()> {
 async fn test_test_prompt_too_long() -> anyhow::Result<()> {
   let server = Server::new_async().await;
   let url = server.url();
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
 
   let long_prompt = "a".repeat(31);
   let result = service
@@ -78,8 +75,7 @@ async fn test_test_prompt_too_long() -> anyhow::Result<()> {
 async fn test_fetch_models_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
 
   let _mock = server
     .mock("GET", "/models")
@@ -111,8 +107,7 @@ async fn test_fetch_models_success() -> anyhow::Result<()> {
 async fn test_api_unauthorized_error() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -134,8 +129,7 @@ async fn test_api_unauthorized_error() -> anyhow::Result<()> {
 #[anyhow_trace]
 #[tokio::test]
 async fn test_model_not_found() -> anyhow::Result<()> {
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
   let mut server = Server::new_async().await;
   let url = server.url();
 
@@ -195,24 +189,10 @@ async fn test_forward_chat_completion_model_prefix_handling(
   #[case] input_model: &str,
   #[case] expected_model: &str,
 ) -> anyhow::Result<()> {
-  let mut mock_db = MockDbService::new();
   let mut server = Server::new_async().await;
   let url = server.url();
 
-  // Create API alias with the provided parameters
   let api_alias = ApiAlias::new(api_id, api_format, &url, models, prefix, false, fixed_dt());
-
-  // Setup mock expectations
-  let api_id_owned = api_id.to_string();
-  mock_db
-    .expect_get_api_model_alias()
-    .with(mockall::predicate::eq(api_id_owned.clone()))
-    .returning(move |_| Ok(Some(api_alias.clone())));
-
-  mock_db
-    .expect_get_api_key_for_alias()
-    .with(mockall::predicate::eq(api_id_owned))
-    .returning(|_| Ok(Some("test-key".to_string())));
 
   let incoming_request = json! {{
     "model": input_model,
@@ -242,11 +222,12 @@ async fn test_forward_chat_completion_model_prefix_handling(
     .with_body(r#"{"choices":[{"message":{"content":"Hi there!"}}]}"#)
     .create_async()
     .await;
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
   let response = service
     .forward_request(
       "/chat/completions",
-      api_id,
+      &api_alias,
+      Some("test-key".to_string()),
       serde_json::from_value(incoming_request)?,
     )
     .await?;
@@ -258,12 +239,10 @@ async fn test_forward_chat_completion_model_prefix_handling(
 #[anyhow_trace]
 #[tokio::test]
 async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
-  let mut mock_db = MockDbService::new();
   let mut server = Server::new_async().await;
   let url = server.url();
   let api_id = "test-api-no-key";
 
-  // Create API alias without API key
   let api_alias = ApiAlias::new(
     api_id,
     ApiFormat::OpenAI,
@@ -273,18 +252,6 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
     false,
     fixed_dt(),
   );
-
-  // Setup mock expectations - no API key
-  let api_id_owned = api_id.to_string();
-  mock_db
-    .expect_get_api_model_alias()
-    .with(mockall::predicate::eq(api_id_owned.clone()))
-    .returning(move |_| Ok(Some(api_alias.clone())));
-
-  mock_db
-    .expect_get_api_key_for_alias()
-    .with(mockall::predicate::eq(api_id_owned))
-    .returning(|_| Ok(None)); // No API key configured
 
   let request = json! {{
     "model": "gpt-4",
@@ -296,7 +263,6 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
     ]
   }};
 
-  // Mock server expects request WITHOUT Authorization header
   let _mock = server
     .mock("POST", "/chat/completions")
     .match_header("content-type", "application/json")
@@ -309,11 +275,12 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
     .create_async()
     .await;
 
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
   let response = service
     .forward_request(
       "/chat/completions",
-      api_id,
+      &api_alias,
+      None,
       serde_json::from_value(request)?,
     )
     .await?;
@@ -342,8 +309,7 @@ async fn test_test_prompt_success_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -380,8 +346,7 @@ async fn test_test_prompt_failure_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -417,8 +382,7 @@ async fn test_fetch_models_success_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
 
   let _mock = server
     .mock("GET", "/models")
@@ -455,8 +419,7 @@ async fn test_fetch_models_failure_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiService::new();
 
   let _mock = server
     .mock("GET", "/models")

@@ -33,13 +33,16 @@ async fn test_create_and_get_user_alias_by_id(
   let id = ulid::Ulid::new().to_string();
   let alias = make_alias(&id, "test:model", ctx.now);
 
-  ctx.service.create_user_alias(&alias).await?;
+  ctx.service.create_user_alias("", "", &alias).await?;
 
-  let fetched = ctx.service.get_user_alias_by_id(&id).await?;
+  let fetched = ctx.service.get_user_alias_by_id("", "", &id).await?;
   assert!(fetched.is_some());
   assert_eq!(alias, fetched.unwrap());
 
-  let not_found = ctx.service.get_user_alias_by_id("nonexistent").await?;
+  let not_found = ctx
+    .service
+    .get_user_alias_by_id("", "", "nonexistent")
+    .await?;
   assert!(not_found.is_none());
 
   Ok(())
@@ -57,13 +60,19 @@ async fn test_get_user_alias_by_name(
   let id = ulid::Ulid::new().to_string();
   let alias = make_alias(&id, "lookup:model", ctx.now);
 
-  ctx.service.create_user_alias(&alias).await?;
+  ctx.service.create_user_alias("", "", &alias).await?;
 
-  let fetched = ctx.service.get_user_alias_by_name("lookup:model").await?;
+  let fetched = ctx
+    .service
+    .get_user_alias_by_name("", "", "lookup:model")
+    .await?;
   assert!(fetched.is_some());
   assert_eq!(alias, fetched.unwrap());
 
-  let not_found = ctx.service.get_user_alias_by_name("nonexistent").await?;
+  let not_found = ctx
+    .service
+    .get_user_alias_by_name("", "", "nonexistent")
+    .await?;
   assert!(not_found.is_none());
 
   Ok(())
@@ -81,7 +90,7 @@ async fn test_update_user_alias(
   let id = ulid::Ulid::new().to_string();
   let alias = make_alias(&id, "update:model", ctx.now);
 
-  ctx.service.create_user_alias(&alias).await?;
+  ctx.service.create_user_alias("", "", &alias).await?;
 
   let mut updated = alias.clone();
   updated.filename = "updated-model.gguf".to_string();
@@ -91,11 +100,11 @@ async fn test_update_user_alias(
     .build()
     .unwrap();
   updated.context_params = vec!["--ctx-size".to_string(), "4096".to_string()].into();
-  ctx.service.update_user_alias(&id, &updated).await?;
+  ctx.service.update_user_alias("", "", &id, &updated).await?;
 
   let fetched = ctx
     .service
-    .get_user_alias_by_id(&id)
+    .get_user_alias_by_id("", "", &id)
     .await?
     .expect("alias should exist");
   assert_eq!("updated-model.gguf", fetched.filename);
@@ -121,11 +130,19 @@ async fn test_delete_user_alias(
   let id = ulid::Ulid::new().to_string();
   let alias = make_alias(&id, "delete:model", ctx.now);
 
-  ctx.service.create_user_alias(&alias).await?;
-  assert!(ctx.service.get_user_alias_by_id(&id).await?.is_some());
+  ctx.service.create_user_alias("", "", &alias).await?;
+  assert!(ctx
+    .service
+    .get_user_alias_by_id("", "", &id)
+    .await?
+    .is_some());
 
-  ctx.service.delete_user_alias(&id).await?;
-  assert!(ctx.service.get_user_alias_by_id(&id).await?.is_none());
+  ctx.service.delete_user_alias("", "", &id).await?;
+  assert!(ctx
+    .service
+    .get_user_alias_by_id("", "", &id)
+    .await?
+    .is_none());
 
   Ok(())
 }
@@ -142,10 +159,10 @@ async fn test_list_user_aliases_ordered(
   let a2 = make_alias(&ulid::Ulid::new().to_string(), "b:model", ctx.now);
   let a1 = make_alias(&ulid::Ulid::new().to_string(), "a:model", ctx.now);
 
-  ctx.service.create_user_alias(&a2).await?;
-  ctx.service.create_user_alias(&a1).await?;
+  ctx.service.create_user_alias("", "", &a2).await?;
+  ctx.service.create_user_alias("", "", &a1).await?;
 
-  let list = ctx.service.list_user_aliases().await?;
+  let list = ctx.service.list_user_aliases("", "").await?;
   assert_eq!(2, list.len());
   assert_eq!("a:model", list[0].alias);
   assert_eq!("b:model", list[1].alias);
@@ -180,11 +197,11 @@ async fn test_user_alias_with_json_fields(
     updated_at: ctx.now,
   };
 
-  ctx.service.create_user_alias(&alias).await?;
+  ctx.service.create_user_alias("", "", &alias).await?;
 
   let fetched = ctx
     .service
-    .get_user_alias_by_id(&id)
+    .get_user_alias_by_id("", "", &id)
     .await?
     .expect("alias should exist");
   assert_eq!(Some(0.8), fetched.request_params.temperature);

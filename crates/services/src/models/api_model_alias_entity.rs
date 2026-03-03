@@ -8,6 +8,8 @@ use sea_orm::FromQueryResult;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  pub tenant_id: String,
+  pub user_id: String,
   pub api_format: ApiFormat,
   pub base_url: String,
   #[sea_orm(column_type = "JsonBinary")]
@@ -31,11 +33,14 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
+pub type ApiModelEntity = Model;
+
 /// View that excludes encryption fields for domain reads
 #[derive(Debug, Clone, DerivePartialModel, FromQueryResult)]
 #[sea_orm(entity = "Entity")]
 pub struct ApiAliasView {
   pub id: String,
+  pub user_id: String,
   pub api_format: ApiFormat,
   pub base_url: String,
   pub models: JsonVec,

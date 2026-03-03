@@ -1,10 +1,9 @@
 use crate::mcps::{
-  mcp_servers_create, mcp_servers_index, mcp_servers_show, mcp_servers_update,
-  CreateMcpServerRequest, McpServerResponse,
+  mcp_servers_create, mcp_servers_index, mcp_servers_show, mcp_servers_update, McpServerResponse,
 };
+use crate::test_utils::RequestAuthContextExt;
 use crate::test_utils::{build_mcp_test_state, fixed_dt};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{get, post, put};
@@ -13,15 +12,20 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
 use server_core::test_utils::ResponseTestExt;
+use services::AuthContext;
 use services::ResourceRole;
-use services::{CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpServer, RegistrationType};
+use services::{
+  CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpServerEntity, McpServerRequest,
+  RegistrationType,
+};
 use services::{McpServerError, MockMcpService};
 use tower::ServiceExt;
 
-fn test_mcp_server() -> McpServer {
+fn test_mcp_server_entity() -> McpServerEntity {
   let now = fixed_dt();
-  McpServer {
+  McpServerEntity {
     id: "server-uuid-1".to_string(),
+    tenant_id: "test-tenant-id".to_string(),
     url: "https://mcp.deepwiki.com/mcp".to_string(),
     name: "DeepWiki".to_string(),
     description: Some("DeepWiki MCP server".to_string()),
@@ -50,26 +54,26 @@ async fn test_router_for_mcp_servers(mock_mcp_service: MockMcpService) -> anyhow
 #[anyhow_trace]
 async fn test_create_mcp_server_success() -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
-  let server = test_mcp_server();
+  let server = test_mcp_server_entity();
 
   mock
     .expect_create_mcp_server()
-    .withf(|name, url, _, enabled, created_by| {
-      name == "DeepWiki"
-        && url == "https://mcp.deepwiki.com/mcp"
-        && *enabled
+    .withf(|_, created_by, form| {
+      form.name == "DeepWiki"
+        && form.url == "https://mcp.deepwiki.com/mcp"
+        && form.enabled
         && created_by == "admin-user"
     })
     .times(1)
-    .returning(move |_, _, _, _, _| Ok(server.clone()));
+    .returning(move |_, _, _| Ok(server.clone()));
 
   mock
     .expect_count_mcps_for_server()
-    .returning(|_| Ok((0, 0)));
+    .returning(|_, _| Ok((0, 0)));
 
   let app = test_router_for_mcp_servers(mock).await?;
 
-  let body = serde_json::to_string(&CreateMcpServerRequest {
+  let body = serde_json::to_string(&McpServerRequest {
     url: "https://mcp.deepwiki.com/mcp".to_string(),
     name: "DeepWiki".to_string(),
     description: Some("DeepWiki MCP server".to_string()),
@@ -93,9 +97,9 @@ async fn test_create_mcp_server_success() -> anyhow::Result<()> {
   assert_eq!(StatusCode::CREATED, response.status());
 
   let body: McpServerResponse = response.json().await?;
-  assert_eq!("server-uuid-1", body.id);
-  assert_eq!("DeepWiki", body.name);
-  assert_eq!("https://mcp.deepwiki.com/mcp", body.url);
+  assert_eq!("server-uuid-1", body.server.id);
+  assert_eq!("DeepWiki", body.server.name);
+  assert_eq!("https://mcp.deepwiki.com/mcp", body.server.url);
   assert_eq!(0, body.enabled_mcp_count);
   assert_eq!(0, body.disabled_mcp_count);
   Ok(())
@@ -110,7 +114,7 @@ async fn test_create_mcp_server_duplicate_url_returns_409() -> anyhow::Result<()
   mock
     .expect_create_mcp_server()
     .times(1)
-    .returning(|_, _, _, _, _| {
+    .returning(|_, _, _| {
       Err(McpServerError::UrlAlreadyExists(
         "https://mcp.deepwiki.com/mcp".to_string(),
       ))
@@ -118,7 +122,7 @@ async fn test_create_mcp_server_duplicate_url_returns_409() -> anyhow::Result<()
 
   let app = test_router_for_mcp_servers(mock).await?;
 
-  let body = serde_json::to_string(&CreateMcpServerRequest {
+  let body = serde_json::to_string(&McpServerRequest {
     url: "https://mcp.deepwiki.com/mcp".to_string(),
     name: "DeepWiki".to_string(),
     description: None,
@@ -148,18 +152,17 @@ async fn test_create_mcp_server_duplicate_url_returns_409() -> anyhow::Result<()
 #[anyhow_trace]
 async fn test_create_mcp_server_with_header_auth_config() -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
-  let server = test_mcp_server();
+  let server = test_mcp_server_entity();
 
   mock
     .expect_create_mcp_server()
     .times(1)
-    .returning(move |_, _, _, _, _| Ok(server.clone()));
+    .returning(move |_, _, _| Ok(server.clone()));
 
   mock
     .expect_create_auth_config()
-    .withf(|user_id, server_id, request| {
-      user_id == "admin-user"
-        && server_id == "server-uuid-1"
+    .withf(|_, server_id, request| {
+      server_id == "server-uuid-1"
         && matches!(request, CreateMcpAuthConfigRequest::Header { name, header_key, .. } if name == "My Header" && header_key == "Authorization")
     })
     .times(1)
@@ -170,7 +173,6 @@ async fn test_create_mcp_server_with_header_auth_config() -> anyhow::Result<()> 
         mcp_server_id: "server-uuid-1".to_string(),
         header_key: "Authorization".to_string(),
         has_header_value: true,
-        created_by: "admin-user".to_string(),
         created_at: fixed_dt(),
         updated_at: fixed_dt(),
       })
@@ -178,7 +180,7 @@ async fn test_create_mcp_server_with_header_auth_config() -> anyhow::Result<()> 
 
   mock
     .expect_count_mcps_for_server()
-    .returning(|_| Ok((0, 0)));
+    .returning(|_, _| Ok((0, 0)));
 
   let app = test_router_for_mcp_servers(mock).await?;
 
@@ -209,7 +211,7 @@ async fn test_create_mcp_server_with_header_auth_config() -> anyhow::Result<()> 
 
   assert_eq!(StatusCode::CREATED, response.status());
   let body: McpServerResponse = response.json().await?;
-  assert_eq!("server-uuid-1", body.id);
+  assert_eq!("server-uuid-1", body.server.id);
   assert!(body.auth_config.is_some());
   match body.auth_config.unwrap() {
     McpAuthConfigResponse::Header {
@@ -232,12 +234,12 @@ async fn test_create_mcp_server_with_header_auth_config() -> anyhow::Result<()> 
 #[anyhow_trace]
 async fn test_create_mcp_server_with_oauth_prereg_auth_config() -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
-  let server = test_mcp_server();
+  let server = test_mcp_server_entity();
 
   mock
     .expect_create_mcp_server()
     .times(1)
-    .returning(move |_, _, _, _, _| Ok(server.clone()));
+    .returning(move |_, _, _| Ok(server.clone()));
 
   mock
     .expect_create_auth_config()
@@ -257,7 +259,6 @@ async fn test_create_mcp_server_with_oauth_prereg_auth_config() -> anyhow::Resul
         token_endpoint_auth_method: None,
         has_client_secret: true,
         has_registration_access_token: false,
-        created_by: "admin-user".to_string(),
         created_at: fixed_dt(),
         updated_at: fixed_dt(),
       })
@@ -265,7 +266,7 @@ async fn test_create_mcp_server_with_oauth_prereg_auth_config() -> anyhow::Resul
 
   mock
     .expect_count_mcps_for_server()
-    .returning(|_| Ok((0, 0)));
+    .returning(|_, _| Ok((0, 0)));
 
   let app = test_router_for_mcp_servers(mock).await?;
 
@@ -315,16 +316,16 @@ async fn test_create_mcp_server_with_oauth_prereg_auth_config() -> anyhow::Resul
 #[anyhow_trace]
 async fn test_create_mcp_server_without_auth_config_backwards_compat() -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
-  let server = test_mcp_server();
+  let server = test_mcp_server_entity();
 
   mock
     .expect_create_mcp_server()
     .times(1)
-    .returning(move |_, _, _, _, _| Ok(server.clone()));
+    .returning(move |_, _, _| Ok(server.clone()));
 
   mock
     .expect_count_mcps_for_server()
-    .returning(|_| Ok((0, 0)));
+    .returning(|_, _| Ok((0, 0)));
 
   let app = test_router_for_mcp_servers(mock).await?;
 
@@ -350,7 +351,7 @@ async fn test_create_mcp_server_without_auth_config_backwards_compat() -> anyhow
 
   assert_eq!(StatusCode::CREATED, response.status());
   let body: McpServerResponse = response.json().await?;
-  assert_eq!("server-uuid-1", body.id);
+  assert_eq!("server-uuid-1", body.server.id);
   assert!(body.auth_config.is_none());
   Ok(())
 }

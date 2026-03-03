@@ -7,6 +7,7 @@ pub struct Migration;
 enum ModelMetadata {
   Table,
   Id,
+  TenantId,
   Source,
   Repo,
   Filename,
@@ -30,6 +31,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(ModelMetadata::Table)
           .col(string(ModelMetadata::Id).primary_key())
+          .col(string(ModelMetadata::TenantId))
           .col(string(ModelMetadata::Source))
           .col(string_null(ModelMetadata::Repo))
           .col(string_null(ModelMetadata::Filename))
@@ -55,12 +57,13 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Unique constraint on (source, repo, filename, snapshot, api_model_id)
+    // Unique constraint on (tenant_id, source, repo, filename, snapshot, api_model_id)
     manager
       .create_index(
         Index::create()
           .name("idx_model_metadata_unique_key")
           .table(ModelMetadata::Table)
+          .col(ModelMetadata::TenantId)
           .col(ModelMetadata::Source)
           .col(ModelMetadata::Repo)
           .col(ModelMetadata::Filename)
@@ -72,6 +75,16 @@ impl MigrationTrait for Migration {
       .await?;
 
     // Indexes for common query patterns
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_model_metadata_tenant_id")
+          .table(ModelMetadata::Table)
+          .col(ModelMetadata::TenantId)
+          .to_owned(),
+      )
+      .await?;
+
     manager
       .create_index(
         Index::create()

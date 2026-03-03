@@ -1,6 +1,6 @@
+use crate::test_utils::RequestAuthContextExt;
 use crate::{users_info, TokenInfo, UserResponse};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
   http::{status::StatusCode, Request},
@@ -9,9 +9,10 @@ use axum::{
 };
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
+use server_core::test_utils::ResponseTestExt;
+use services::AuthContext;
 use services::{
-  test_utils::{token, AppServiceStubBuilder},
+  test_utils::{token, AppServiceStubBuilder, TEST_TENANT_ID},
   AppService,
 };
 use services::{AppRole, ResourceRole, TokenScope, UserInfo, UserScope};
@@ -19,13 +20,9 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 fn test_router(app_service: Arc<dyn AppService>) -> Router {
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service,
-  ));
   Router::new()
     .route("/app/user", get(users_info))
-    .with_state(state)
+    .with_state(app_service)
 }
 
 #[rstest]
@@ -39,7 +36,10 @@ async fn test_user_info_handler_anonymous() -> anyhow::Result<()> {
     .oneshot(
       Request::get("/app/user")
         .body(Body::empty())?
-        .with_auth_context(AuthContext::Anonymous { client_id: None }),
+        .with_auth_context(AuthContext::Anonymous {
+          client_id: None,
+          tenant_id: None,
+        }),
     )
     .await?;
 
@@ -142,6 +142,7 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
 
   let auth_context = AuthContext::ExternalApp {
     client_id: "test-client-id".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     user_id: claims.sub.clone(),
     role: Some(user_scope),
     token: token.clone(),
@@ -188,6 +189,7 @@ async fn test_user_info_handler_session_without_role(
 
   let auth_context = AuthContext::Session {
     client_id: "test-client-id".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     user_id: claims.sub.clone(),
     username: "testuser@email.com".to_string(),
     role: None,
@@ -278,6 +280,7 @@ async fn test_user_info_handler_external_app_without_scope(
 
   let auth_context = AuthContext::ExternalApp {
     client_id: "test-client-id".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     user_id: claims.sub.clone(),
     role: None,
     token: token.clone(),

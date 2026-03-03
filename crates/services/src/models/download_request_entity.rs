@@ -10,6 +10,9 @@ use utoipa::ToSchema;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  #[serde(skip_serializing, default)]
+  #[schema(ignore = true)]
+  pub tenant_id: String,
   pub repo: String,
   pub filename: String,
   pub status: DownloadStatus,
@@ -26,7 +29,7 @@ pub struct Model {
   pub started_at: Option<DateTime<Utc>>,
 }
 
-pub type DownloadRequest = Model;
+pub type DownloadRequestEntity = Model;
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
@@ -34,9 +37,10 @@ pub enum Relation {}
 impl ActiveModelBehavior for ActiveModel {}
 
 impl Model {
-  pub fn new_pending(repo: &str, filename: &str, now: DateTime<Utc>) -> Self {
+  pub fn new_pending(tenant_id: &str, repo: &str, filename: &str, now: DateTime<Utc>) -> Self {
     Model {
       id: ulid::Ulid::new().to_string(),
+      tenant_id: tenant_id.to_string(),
       repo: repo.to_string(),
       filename: filename.to_string(),
       status: DownloadStatus::Pending,

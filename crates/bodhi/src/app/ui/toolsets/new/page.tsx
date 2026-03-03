@@ -100,7 +100,7 @@ function NewToolsetPageContent() {
       slug: data.slug,
       toolset_type: data.toolset_type,
       description: data.description || undefined,
-      api_key: data.api_key,
+      api_key: { action: 'set', value: data.api_key },
       enabled: data.enabled,
     });
   };

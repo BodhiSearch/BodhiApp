@@ -1,10 +1,11 @@
-use crate::shared::{utils::extract_request_host, AuthScope};
-use crate::{AuthCallbackRequest, AuthRouteError, RedirectResponse, API_TAG_AUTH, ENDPOINT_LOGOUT};
-use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
-use auth_middleware::{
+use crate::middleware::{
   app_status_or_default, generate_random_string, SESSION_KEY_ACCESS_TOKEN,
   SESSION_KEY_REFRESH_TOKEN, SESSION_KEY_USER_ID,
 };
+use crate::shared::{utils::extract_request_host, AuthScope};
+use crate::{ApiError, OpenAIApiError};
+use crate::{AuthCallbackRequest, AuthRouteError, RedirectResponse, API_TAG_AUTH, ENDPOINT_LOGOUT};
+use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
 use axum::{
   http::{
     header::{HeaderMap, CACHE_CONTROL},
@@ -16,7 +17,6 @@ use base64::{engine::general_purpose, Engine as _};
 use oauth2::url::Url;
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
 use services::{extract_claims, AppStatus, Claims, CHAT_PATH};
-use crate::{ApiError, OpenAIApiError};
 use sha2::{Digest, Sha256};
 use tower_sessions::Session;
 
@@ -66,11 +66,11 @@ pub async fn auth_initiate(
   }
 
   // User not authenticated, generate auth URL
-  let app_instance = auth_scope.app_instance();
-  let instance = app_instance
-    .get_instance()
+  let tenant_svc = auth_scope.tenant();
+  let instance = tenant_svc
+    .get_standalone_app()
     .await?
-    .ok_or(AuthRouteError::AppInstanceNotFound)?;
+    .ok_or(AuthRouteError::TenantNotFound)?;
   // Determine callback URL based on whether public host is explicitly configured
   let callback_url = if settings.get_public_host_explicit().await.is_some() {
     // Explicit configuration (including RunPod) - use configured callback URL
@@ -171,10 +171,10 @@ pub async fn auth_callback(
   Json(request): Json<AuthCallbackRequest>,
 ) -> Result<Json<RedirectResponse>, ApiError> {
   let settings = auth_scope.settings();
-  let app_instance = auth_scope.app_instance();
+  let tenant_svc = auth_scope.tenant();
   let auth_flow = auth_scope.auth_flow();
 
-  let app_status = app_status_or_default(&app_instance).await;
+  let app_status = app_status_or_default(&tenant_svc).await;
   if app_status == AppStatus::Setup {
     return Err(AuthRouteError::AppStatusInvalid(app_status))?;
   }
@@ -218,10 +218,10 @@ pub async fn auth_callback(
     .map_err(AuthRouteError::from)?
     .ok_or(AuthRouteError::SessionInfoNotFound)?;
 
-  let instance = app_instance
-    .get_instance()
+  let instance = tenant_svc
+    .get_standalone_app()
     .await?
-    .ok_or(AuthRouteError::AppInstanceNotFound)?;
+    .ok_or(AuthRouteError::TenantNotFound)?;
 
   // Exchange code for tokens
   let token_response = auth_flow
@@ -256,9 +256,7 @@ pub async fn auth_callback(
     auth_flow
       .make_resource_admin(&instance.client_id, &instance.client_secret, &user_id)
       .await?;
-    app_instance
-      .update_status(&AppStatus::Ready)
-      .await?;
+    tenant_svc.update_status(&AppStatus::Ready).await?;
     let (new_access_token, new_refresh_token) = auth_flow
       .refresh_token(&instance.client_id, &instance.client_secret, &refresh_token)
       .await?;
@@ -330,7 +328,10 @@ pub async fn auth_logout(
   session: Session,
 ) -> Result<Json<RedirectResponse>, ApiError> {
   let settings = auth_scope.settings();
-  session.delete().await.map_err(AuthRouteError::SessionDelete)?;
+  session
+    .delete()
+    .await
+    .map_err(AuthRouteError::SessionDelete)?;
   let ui_login = format!("{}/ui/login", settings.public_server_url().await);
   Ok(Json(RedirectResponse { location: ui_login }))
 }

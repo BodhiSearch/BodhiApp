@@ -1,8 +1,9 @@
 use crate::{
   db::{DbService, TimeService},
-  AccessRequestService, AiApiService, AppInstanceService, AuthService, CacheService,
-  ConcurrencyService, DataService, HubService, McpService, NetworkService, QueueProducer,
-  SessionService, SettingService, TokenService, ToolService,
+  inference::InferenceService,
+  AccessRequestService, AiApiService, ApiModelService, AuthService, CacheService,
+  ConcurrencyService, DataService, DownloadService, HubService, McpService, NetworkService,
+  QueueProducer, SessionService, SettingService, TenantService, TokenService, ToolService,
 };
 use std::sync::Arc;
 
@@ -20,7 +21,7 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn session_service(&self) -> Arc<dyn SessionService>;
 
-  fn app_instance_service(&self) -> Arc<dyn AppInstanceService>;
+  fn tenant_service(&self) -> Arc<dyn TenantService>;
 
   fn cache_service(&self) -> Arc<dyn CacheService>;
 
@@ -42,6 +43,12 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn token_service(&self) -> Arc<dyn TokenService>;
 
+  fn inference_service(&self) -> Arc<dyn InferenceService>;
+
+  fn api_model_service(&self) -> Arc<dyn ApiModelService>;
+
+  fn download_service(&self) -> Arc<dyn DownloadService>;
+
   fn queue_status(&self) -> String {
     self.queue_producer().queue_status()
   }
@@ -56,7 +63,7 @@ pub struct DefaultAppService {
   auth_service: Arc<dyn AuthService>,
   db_service: Arc<dyn DbService>,
   session_service: Arc<dyn SessionService>,
-  app_instance_service: Arc<dyn AppInstanceService>,
+  tenant_service: Arc<dyn TenantService>,
   cache_service: Arc<dyn CacheService>,
   time_service: Arc<dyn TimeService>,
   ai_api_service: Arc<dyn AiApiService>,
@@ -67,6 +74,9 @@ pub struct DefaultAppService {
   access_request_service: Arc<dyn AccessRequestService>,
   mcp_service: Arc<dyn McpService>,
   token_service: Arc<dyn TokenService>,
+  inference_service: Arc<dyn InferenceService>,
+  api_model_service: Arc<dyn ApiModelService>,
+  download_service: Arc<dyn DownloadService>,
 }
 
 impl AppService for DefaultAppService {
@@ -94,8 +104,8 @@ impl AppService for DefaultAppService {
     self.session_service.clone()
   }
 
-  fn app_instance_service(&self) -> Arc<dyn AppInstanceService> {
-    self.app_instance_service.clone()
+  fn tenant_service(&self) -> Arc<dyn TenantService> {
+    self.tenant_service.clone()
   }
 
   fn cache_service(&self) -> Arc<dyn CacheService> {
@@ -136,5 +146,17 @@ impl AppService for DefaultAppService {
 
   fn token_service(&self) -> Arc<dyn TokenService> {
     self.token_service.clone()
+  }
+
+  fn inference_service(&self) -> Arc<dyn InferenceService> {
+    self.inference_service.clone()
+  }
+
+  fn api_model_service(&self) -> Arc<dyn ApiModelService> {
+    self.api_model_service.clone()
+  }
+
+  fn download_service(&self) -> Arc<dyn DownloadService> {
+    self.download_service.clone()
   }
 }

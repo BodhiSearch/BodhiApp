@@ -15,6 +15,7 @@ enum McpServers {
 enum McpOauthConfigs {
   Table,
   Id,
+  TenantId,
   Name,
   McpServerId,
   RegistrationType,
@@ -31,7 +32,6 @@ enum McpOauthConfigs {
   ClientIdIssuedAt,
   TokenEndpointAuthMethod,
   Scopes,
-  CreatedBy,
   CreatedAt,
   UpdatedAt,
 }
@@ -40,6 +40,7 @@ enum McpOauthConfigs {
 enum McpOauthTokens {
   Table,
   Id,
+  TenantId,
   McpOauthConfigId,
   EncryptedAccessToken,
   AccessTokenSalt,
@@ -49,7 +50,7 @@ enum McpOauthTokens {
   RefreshTokenNonce,
   ScopesGranted,
   ExpiresAt,
-  CreatedBy,
+  UserId,
   CreatedAt,
   UpdatedAt,
 }
@@ -62,6 +63,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(McpOauthConfigs::Table)
           .col(string(McpOauthConfigs::Id).primary_key())
+          .col(string(McpOauthConfigs::TenantId))
           .col(string(McpOauthConfigs::Name).default("OAuth"))
           .col(string(McpOauthConfigs::McpServerId))
           .foreign_key(
@@ -90,7 +92,6 @@ impl MigrationTrait for Migration {
           ))
           .col(string_null(McpOauthConfigs::TokenEndpointAuthMethod))
           .col(string_null(McpOauthConfigs::Scopes))
-          .col(string(McpOauthConfigs::CreatedBy))
           .col(timestamp_with_time_zone(McpOauthConfigs::CreatedAt))
           .col(timestamp_with_time_zone(McpOauthConfigs::UpdatedAt))
           .to_owned(),
@@ -102,6 +103,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(McpOauthTokens::Table)
           .col(string(McpOauthTokens::Id).primary_key())
+          .col(string(McpOauthTokens::TenantId))
           .col(string(McpOauthTokens::McpOauthConfigId))
           .foreign_key(
             ForeignKey::create()
@@ -119,7 +121,7 @@ impl MigrationTrait for Migration {
           .col(string_null(McpOauthTokens::RefreshTokenNonce))
           .col(string_null(McpOauthTokens::ScopesGranted))
           .col(timestamp_with_time_zone_null(McpOauthTokens::ExpiresAt))
-          .col(string(McpOauthTokens::CreatedBy))
+          .col(string(McpOauthTokens::UserId))
           .col(timestamp_with_time_zone(McpOauthTokens::CreatedAt))
           .col(timestamp_with_time_zone(McpOauthTokens::UpdatedAt))
           .to_owned(),
@@ -139,9 +141,29 @@ impl MigrationTrait for Migration {
     manager
       .create_index(
         Index::create()
+          .name("idx_mcp_oauth_configs_tenant_id")
+          .table(McpOauthConfigs::Table)
+          .col(McpOauthConfigs::TenantId)
+          .to_owned(),
+      )
+      .await?;
+
+    manager
+      .create_index(
+        Index::create()
           .name("idx_mcp_oauth_tokens_mcp_oauth_config_id")
           .table(McpOauthTokens::Table)
           .col(McpOauthTokens::McpOauthConfigId)
+          .to_owned(),
+      )
+      .await?;
+
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_mcp_oauth_tokens_tenant_id")
+          .table(McpOauthTokens::Table)
+          .col(McpOauthTokens::TenantId)
           .to_owned(),
       )
       .await?;

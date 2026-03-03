@@ -7,6 +7,7 @@ pub struct Migration;
 enum AppAccessRequests {
   Table,
   Id,
+  TenantId,
   AppClientId,
   AppName,
   AppDescription,
@@ -33,6 +34,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(AppAccessRequests::Table)
           .col(string(AppAccessRequests::Id).primary_key())
+          .col(string(AppAccessRequests::TenantId))
           .col(string(AppAccessRequests::AppClientId))
           .col(string_null(AppAccessRequests::AppName))
           .col(string_null(AppAccessRequests::AppDescription))
@@ -73,10 +75,20 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_app_access_requests_tenant_id")
+          .table(AppAccessRequests::Table)
+          .col(AppAccessRequests::TenantId)
+          .to_owned(),
+      )
+      .await?;
+
     let db = manager.get_connection();
     db.execute_unprepared(
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_access_request_scope_unique \
-       ON app_access_requests(access_request_scope) \
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_access_request_scope_tenant_unique \
+       ON app_access_requests(tenant_id, access_request_scope) \
        WHERE access_request_scope IS NOT NULL",
     )
     .await?;

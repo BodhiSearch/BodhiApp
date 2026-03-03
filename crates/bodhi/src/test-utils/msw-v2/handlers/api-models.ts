@@ -25,7 +25,7 @@ export function mockApiModels(
     page_size = 30,
     total = 0,
     ...rest
-  }: Partial<components['schemas']['PaginatedApiModelResponse']> = {},
+  }: Partial<components['schemas']['PaginatedApiModelOutput']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -33,7 +33,7 @@ export function mockApiModels(
     typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-      const responseData: components['schemas']['PaginatedApiModelResponse'] = {
+      const responseData: components['schemas']['PaginatedApiModelOutput'] = {
         data,
         page,
         page_size,
@@ -74,23 +74,23 @@ export function mockApiModelsError(
 /**
  * Mock handler for API model creation endpoint with configurable responses
  *
- * Note: api_key_masked semantics:
- * - '***': API key exists (default)
- * - null: No API key stored
+ * Note: has_api_key semantics:
+ * - true: API key exists (default)
+ * - false: No API key stored
  */
 export function mockCreateApiModel(
   {
     id = 'test-api-model-123',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
-    api_key_masked = '***',
+    has_api_key = true,
     models = ['gpt-4'],
     prefix = null,
     forward_all_with_prefix = false,
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
-  }: Partial<components['schemas']['ApiModelResponse']> = {},
+  }: Partial<components['schemas']['ApiModelOutput']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -98,11 +98,11 @@ export function mockCreateApiModel(
     typedHttp.post(ENDPOINT_API_MODELS, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-      const responseData: components['schemas']['ApiModelResponse'] = {
+      const responseData: components['schemas']['ApiModelOutput'] = {
         id,
         api_format,
         base_url,
-        api_key_masked,
+        has_api_key,
         models,
         prefix,
         forward_all_with_prefix,
@@ -144,9 +144,9 @@ export function mockCreateApiModelError(
 /**
  * Mock handler for individual API model retrieval with configurable responses
  *
- * Note: api_key_masked semantics:
- * - '***': API key exists (default)
- * - null: No API key stored
+ * Note: has_api_key semantics:
+ * - true: API key exists (default)
+ * - false: No API key stored
  */
 export function mockGetApiModel(
   expectedId: string,
@@ -154,14 +154,14 @@ export function mockGetApiModel(
     id = '',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
-    api_key_masked = '***',
+    has_api_key = true,
     models = ['gpt-3.5-turbo'],
     prefix = null,
     forward_all_with_prefix = false,
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
-  }: Partial<components['schemas']['ApiModelResponse']> = {},
+  }: Partial<components['schemas']['ApiModelOutput']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -177,11 +177,11 @@ export function mockGetApiModel(
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
-      const responseData: components['schemas']['ApiModelResponse'] = {
+      const responseData: components['schemas']['ApiModelOutput'] = {
         id: id || (paramId as string),
         api_format,
         base_url,
-        api_key_masked,
+        has_api_key,
         models,
         prefix,
         forward_all_with_prefix,
@@ -232,9 +232,9 @@ export function mockGetApiModelError(
 /**
  * Mock handler for API model update endpoint with configurable responses
  *
- * Note: api_key_masked semantics:
- * - '***': API key exists (default)
- * - null: No API key stored
+ * Note: has_api_key semantics:
+ * - true: API key exists (default)
+ * - false: No API key stored
  */
 export function mockUpdateApiModel(
   expectedId: string,
@@ -242,14 +242,14 @@ export function mockUpdateApiModel(
     id = '',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
-    api_key_masked = '***',
+    has_api_key = true,
     models = ['gpt-4'],
     prefix = null,
     forward_all_with_prefix = false,
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
-  }: Partial<components['schemas']['ApiModelResponse']> = {},
+  }: Partial<components['schemas']['ApiModelOutput']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -265,11 +265,11 @@ export function mockUpdateApiModel(
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
-      const responseData: components['schemas']['ApiModelResponse'] = {
+      const responseData: components['schemas']['ApiModelOutput'] = {
         id: id || (paramId as string),
         api_format,
         base_url,
-        api_key_masked,
+        has_api_key,
         models,
         prefix,
         forward_all_with_prefix,
@@ -537,7 +537,7 @@ export function mockApiModelsDefault() {
         id: 'test-api-model',
         api_format: 'openai',
         base_url: 'https://api.openai.com/v1',
-        api_key_masked: '***', // Has API key
+        has_api_key: true, // Has API key
         models: ['gpt-4', 'gpt-3.5-turbo'],
         prefix: null,
         forward_all_with_prefix: false,
@@ -596,7 +596,7 @@ export function mockCreateApiModelSuccess() {
     id: 'test-model-123',
     api_format: 'openai',
     base_url: 'https://api.openai.com/v1',
-    api_key_masked: '***', // Has API key
+    has_api_key: true, // Has API key
     models: ['gpt-4'],
     prefix: null,
     forward_all_with_prefix: false,
@@ -606,12 +606,12 @@ export function mockCreateApiModelSuccess() {
 }
 
 /**
- * Mock API model with API key (masked as '***')
+ * Mock API model with API key (has_api_key: true)
  * Use this when testing scenarios where an API key exists
  */
-export function mockApiModelWithKey(overrides?: Partial<components['schemas']['ApiModelResponse']>) {
+export function mockApiModelWithKey(overrides?: Partial<components['schemas']['ApiModelOutput']>) {
   return mockCreateApiModel({
-    api_key_masked: '***',
+    has_api_key: true,
     ...overrides,
   });
 }
@@ -620,9 +620,9 @@ export function mockApiModelWithKey(overrides?: Partial<components['schemas']['A
  * Mock API model without API key (null)
  * Use this when testing public API scenarios or models without authentication
  */
-export function mockApiModelWithoutKey(overrides?: Partial<components['schemas']['ApiModelResponse']>) {
+export function mockApiModelWithoutKey(overrides?: Partial<components['schemas']['ApiModelOutput']>) {
   return mockCreateApiModel({
-    api_key_masked: null,
+    has_api_key: false,
     ...overrides,
   });
 }

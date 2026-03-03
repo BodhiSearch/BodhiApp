@@ -1,7 +1,10 @@
 #![allow(unused)]
-use auth_middleware::CachedExchangeResult;
 use chrono::{Duration, Utc};
-use services::{test_utils::build_token, AppService, CacheService};
+use routes_app::middleware::CachedExchangeResult;
+use services::{
+  test_utils::{build_token, TEST_TENANT_ID},
+  AppService, CacheService,
+};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -13,7 +16,7 @@ use uuid::Uuid;
 /// 1. `extract_claims()` does NOT verify JWT signatures - it only base64-decodes
 /// 2. The token service checks the cache before calling the auth server
 /// 3. We can create valid JWTs with `build_token()` (RSA-signed test keys)
-/// 4. The cache key is just SHA-256(bearer_token)[0..12]
+/// 4. The cache key is just SHA-256(bearer_token)[0..32]
 pub struct ExternalTokenSimulator {
   cache_service: Arc<dyn CacheService>,
   client_id: String,
@@ -57,7 +60,7 @@ impl ExternalTokenSimulator {
 
     let mut hasher = Sha256::new();
     hasher.update(bearer_jwt.as_bytes());
-    let token_digest = format!("{:x}", hasher.finalize())[0..12].to_string();
+    let token_digest = format!("{:x}", hasher.finalize())[0..32].to_string();
 
     let exchange_claims = serde_json::json!({
       "iss": "https://test-id.getbodhi.app/realms/bodhi",
@@ -71,9 +74,11 @@ impl ExternalTokenSimulator {
     let cached = CachedExchangeResult {
       token: exchange_jwt,
       client_id: self.client_id.clone(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       app_client_id: azp.to_string(),
       role: role.map(|r| r.to_string()),
       access_request_id,
+      cached_at: Utc::now().timestamp(),
     };
     let cached_json = serde_json::to_string(&cached)?;
     self

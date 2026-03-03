@@ -1,8 +1,6 @@
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_index,
-  api_models_show, api_models_sync, api_models_test, api_models_update, ApiKey, ApiKeyUpdateAction,
-  ApiModelResponse, CreateApiModelRequest, PaginatedApiModelResponse, UpdateApiModelRequest,
-  ENDPOINT_API_MODELS,
+  api_models_show, api_models_sync, api_models_test, api_models_update, ENDPOINT_API_MODELS,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -14,35 +12,34 @@ use axum::{
 use chrono::{DateTime, Utc};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::{
   seed_test_api_models, test_db_service, AppServiceStubBuilder, TestDbService,
 };
-use services::ApiFormat::OpenAI;
+use services::AuthContext;
+use services::{ApiFormat::OpenAI, ResourceRole};
+use services::{ApiKey, ApiKeyUpdate, ApiModelOutput, ApiModelRequest, PaginatedApiModelOutput};
 use std::sync::Arc;
 use tower::ServiceExt;
 use ulid::Ulid;
 
-/// Create expected ApiModelResponse for testing
+/// Create expected ApiModelOutput for testing
 fn create_expected_response(
   id: &str,
   api_format: &str,
   base_url: &str,
-  api_key_masked: Option<&str>,
+  has_api_key: bool,
   models: Vec<String>,
   prefix: Option<String>,
   created_at: DateTime<Utc>,
   updated_at: DateTime<Utc>,
-) -> ApiModelResponse {
+) -> ApiModelOutput {
   use std::str::FromStr;
-  ApiModelResponse {
+  ApiModelOutput {
     id: id.to_string(),
     api_format: services::ApiFormat::from_str(api_format).unwrap(),
     base_url: base_url.to_string(),
-    api_key_masked: api_key_masked.map(|s| s.to_string()),
+    has_api_key,
     models,
     prefix,
     forward_all_with_prefix: false,
@@ -51,17 +48,17 @@ fn create_expected_response(
   }
 }
 
-/// Create expected ApiModelResponse for list view (masked API key)
+/// Create expected ApiModelOutput for list view
 fn create_expected_list_response(
   id: &str,
   models: Vec<String>,
   created_at: DateTime<Utc>,
-) -> ApiModelResponse {
+) -> ApiModelOutput {
   create_expected_response(
     id,
     "openai",
     "https://api.openai.com/v1",
-    Some("***"), // Masked in list view
+    true, // has_api_key in list view
     models,
     None, // No prefix in original seed data
     created_at,
@@ -69,18 +66,18 @@ fn create_expected_list_response(
   )
 }
 
-/// Create expected ApiModelResponse for list view with prefix support
+/// Create expected ApiModelOutput for list view with prefix support
 fn create_expected_list_response_with_prefix(
   id: &str,
   models: Vec<String>,
   prefix: Option<String>,
   created_at: DateTime<Utc>,
-) -> ApiModelResponse {
+) -> ApiModelOutput {
   create_expected_response(
     id,
     "openai",
     "https://api.openai.com/v1",
-    Some("***"), // Masked in list view
+    true, // has_api_key in list view
     models,
     prefix,
     created_at,
@@ -89,7 +86,6 @@ fn create_expected_list_response_with_prefix(
 }
 
 fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
-  let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), app_service);
   Router::new()
     .route(ENDPOINT_API_MODELS, get(api_models_index))
     .route(ENDPOINT_API_MODELS, post(api_models_create))
@@ -117,7 +113,13 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
       &format!("{}/{{id}}/sync-models", ENDPOINT_API_MODELS),
       post(api_models_sync),
     )
-    .with_state(Arc::new(router_state))
+    // Inject a default test auth context so handlers can call require_tenant_id()
+    .layer(axum::Extension(AuthContext::test_session(
+      "test-user",
+      "testuser",
+      ResourceRole::PowerUser,
+    )))
+    .with_state(app_service)
 }
 
 #[rstest]
@@ -144,7 +146,7 @@ async fn test_list_api_models_handler(
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::get(ENDPOINT_API_MODELS).body(Body::empty())?)
     .await?
-    .json::<PaginatedApiModelResponse>()
+    .json::<PaginatedApiModelOutput>()
     .await?;
 
   // Verify response structure
@@ -190,7 +192,7 @@ async fn test_list_api_models_handler(
     ),
   ];
 
-  let expected_response = PaginatedApiModelResponse {
+  let expected_response = PaginatedApiModelOutput {
     data: expected_data,
     total: 7,
     page: 1,
@@ -224,10 +226,10 @@ async fn test_create_api_model_handler_success(
     .build()
     .await?;
 
-  let create_request = CreateApiModelRequest {
+  let create_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: input_url.to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string())?,
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
@@ -235,19 +237,19 @@ async fn test_create_api_model_handler_success(
 
   // Make POST request to create API model
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?;
 
   // Verify response status
   assert_eq!(response.status(), StatusCode::CREATED);
 
   // Verify response body
-  let api_response = response.json::<ApiModelResponse>().await?;
+  let api_response = response.json::<ApiModelOutput>().await?;
 
   // Verify the response structure (note: ID is now auto-generated ULID)
   assert_eq!(api_response.api_format, services::ApiFormat::OpenAI);
   assert_eq!(api_response.base_url, expected_url);
-  assert_eq!(api_response.api_key_masked, Some("***".to_string()));
+  assert!(api_response.has_api_key);
   assert_eq!(
     api_response.models,
     vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()]
@@ -280,10 +282,10 @@ async fn test_create_api_model_handler_generates_uuid(
     .build()
     .await?;
 
-  let create_request = CreateApiModelRequest {
+  let create_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string())?,
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec!["gpt-4".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
@@ -291,14 +293,14 @@ async fn test_create_api_model_handler_generates_uuid(
 
   // Make POST request to create API model (should succeed since ULIDs are unique)
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?;
 
   // Verify response status is 201 Created (no duplicate ID issue with ULIDs)
   assert_eq!(response.status(), StatusCode::CREATED);
 
   // Verify response structure
-  let api_response = response.json::<ApiModelResponse>().await?;
+  let api_response = response.json::<ApiModelOutput>().await?;
   assert!(Ulid::from_string(&api_response.id).is_ok());
 
   Ok(())
@@ -333,14 +335,14 @@ async fn test_get_api_model_handler_success(
   assert_eq!(response.status(), StatusCode::OK);
 
   // Verify response body
-  let api_response = response.json::<ApiModelResponse>().await?;
+  let api_response = response.json::<ApiModelOutput>().await?;
 
   // Create expected response
   let expected_response = create_expected_response(
     "openai-gpt4",
     "openai",
     "https://api.openai.com/v1",
-    Some("***"), // Masked in get view (no API key provided)
+    true, // has_api_key
     vec!["gpt-4".to_string()],
     None, // No prefix in original seed data
     base_time,
@@ -380,7 +382,7 @@ async fn test_get_api_model_handler_not_found(
   // Verify error code
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
-  assert_eq!("entity_error-not_found", error_code);
+  assert_eq!("api_model_service_error-not_found", error_code);
 
   Ok(())
 }
@@ -411,10 +413,10 @@ async fn test_update_api_model_handler_success(
     .build()
     .await?;
 
-  let update_request = UpdateApiModelRequest {
+  let update_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: input_url.to_string(), // Updated URL with potential trailing slashes
-    api_key: ApiKeyUpdateAction::Set(ApiKey::some("sk-updated123456789".to_string())?), // New API key
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-updated123456789".to_string())?), // New API key
     models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
     prefix: Some("openai".to_string()),
     forward_all_with_prefix: false,
@@ -422,21 +424,21 @@ async fn test_update_api_model_handler_success(
 
   // Make PUT request to update existing API model
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::put(format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).json(update_request)?)
+    .oneshot(Request::put(format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).json(update_form)?)
     .await?;
 
   // Verify response status
   assert_eq!(response.status(), StatusCode::OK);
 
   // Verify response body
-  let api_response = response.json::<ApiModelResponse>().await?;
+  let api_response = response.json::<ApiModelOutput>().await?;
 
   // Create expected response with updated values
   let expected_response = create_expected_response(
     "openai-gpt4",
     "openai",
     expected_url, // Expected URL with trailing slashes removed
-    Some("***"),  // Updated API key masked
+    true,         // has_api_key (updated key)
     vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
     Some("openai".to_string()), // Updated prefix
     base_time,    // Original created_at
@@ -463,10 +465,10 @@ async fn test_update_api_model_handler_not_found(
     .build()
     .await?;
 
-  let update_request = UpdateApiModelRequest {
+  let update_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v2".to_string(),
-    api_key: ApiKeyUpdateAction::Set(ApiKey::some("sk-updated123456789".to_string())?),
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-updated123456789".to_string())?),
     models: vec!["gpt-4-turbo".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
@@ -474,9 +476,7 @@ async fn test_update_api_model_handler_not_found(
 
   // Make PUT request to update non-existent API model
   let response = test_router(Arc::new(app_service))
-    .oneshot(
-      Request::put(format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).json(update_request)?,
-    )
+    .oneshot(Request::put(format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).json(update_form)?)
     .await?;
 
   // Verify response status is 404 Not Found
@@ -485,7 +485,7 @@ async fn test_update_api_model_handler_not_found(
   // Verify error code
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
-  assert_eq!("entity_error-not_found", error_code);
+  assert_eq!("api_model_service_error-not_found", error_code);
 
   Ok(())
 }
@@ -554,7 +554,7 @@ async fn test_delete_api_model_handler_not_found(
   // Verify error code
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
-  assert_eq!("entity_error-not_found", error_code);
+  assert_eq!("api_model_service_error-not_found", error_code);
 
   Ok(())
 }

@@ -13,7 +13,7 @@ use std::{
 };
 use tokio::sync::{Mutex, Notify};
 
-use crate::{db::DbService, models::ModelMetadataRow, DataService, HubService};
+use crate::{db::DbService, models::ModelMetadataEntity, DataService, HubService};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -39,13 +39,13 @@ pub enum MetadataExtractionError {
 /// 2. Locates GGUF file via hub_service.find_local_file()
 /// 3. Parses GGUF metadata via crate::models::gguf::GGUFMetadata::new()
 /// 4. Extracts capabilities via crate::models::gguf::extract_metadata()
-/// 5. Builds and upserts ModelMetadataRow
+/// 5. Builds and upserts ModelMetadataEntity
 /// 6. Returns the row for caller
 pub async fn extract_and_store_metadata(
   alias: &Alias,
   hub_service: &dyn HubService,
   db_service: &dyn DbService,
-) -> std::result::Result<ModelMetadataRow, MetadataExtractionError> {
+) -> std::result::Result<ModelMetadataEntity, MetadataExtractionError> {
   use crate::models::Repo;
   use std::str::FromStr;
 
@@ -92,8 +92,9 @@ pub async fn extract_and_store_metadata(
   // Convert to database row
   // Always use AliasSource::Model since this represents the physical GGUF file
   let now = db_service.now();
-  let metadata_row = ModelMetadataRow {
+  let metadata_row = ModelMetadataEntity {
     id: String::new(),
+    tenant_id: String::new(),
     source: AliasSource::Model,
     repo: Some(repo_str.clone()),
     filename: Some(filename.clone()),
@@ -309,7 +310,7 @@ impl RefreshWorker {
   async fn refresh_all(&self) -> Result<()> {
     tracing::info!("Refreshing metadata for all local GGUF models");
 
-    let aliases = self.data_service.list_aliases().await?;
+    let aliases = self.data_service.list_aliases("", "").await?;
     let local_aliases: Vec<&Alias> = aliases
       .iter()
       .filter(|a| matches!(a, Alias::User(_) | Alias::Model(_)))
@@ -352,7 +353,7 @@ impl RefreshWorker {
 
     let alias = self
       .data_service
-      .find_alias(alias_name)
+      .find_alias("", "", alias_name)
       .await
       .ok_or_else(|| format!("Alias not found: {}", alias_name))?;
 
@@ -382,7 +383,7 @@ impl RefreshWorker {
     // Check if metadata exists and snapshot matches (optimization for async queue)
     if let Some(existing) = self
       .db_service
-      .get_model_metadata_by_file(&repo_str, filename, snapshot)
+      .get_model_metadata_by_file("", &repo_str, filename, snapshot)
       .await?
     {
       if existing.snapshot.as_deref() == Some(snapshot.as_str()) {

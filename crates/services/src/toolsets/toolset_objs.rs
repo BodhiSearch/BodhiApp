@@ -1,8 +1,10 @@
+use crate::models::ApiKeyUpdate;
 use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use validator::Validate;
 
 // ============================================================================
 // ToolsetDefinition - Toolset containing multiple tools
@@ -76,6 +78,21 @@ pub struct Toolset {
   pub updated_at: DateTime<Utc>,
 }
 
+impl From<super::toolset_entity::ToolsetEntity> for Toolset {
+  fn from(entity: super::toolset_entity::ToolsetEntity) -> Self {
+    Self {
+      id: entity.id,
+      slug: entity.slug,
+      toolset_type: entity.toolset_type,
+      description: entity.description,
+      enabled: entity.enabled,
+      has_api_key: entity.encrypted_api_key.is_some(),
+      created_at: entity.created_at,
+      updated_at: entity.updated_at,
+    }
+  }
+}
+
 /// Application-level toolset configuration
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct AppToolsetConfig {
@@ -98,6 +115,55 @@ pub struct AppToolsetConfig {
 }
 
 // ============================================================================
+// ToolsetRequest - Input for create/update
+// ============================================================================
+
+fn default_enabled_true() -> bool {
+  true
+}
+
+fn default_api_key_keep() -> ApiKeyUpdate {
+  ApiKeyUpdate::Keep
+}
+
+/// Input for creating or updating a toolset instance.
+// Used as `ValidatedJson<ToolsetRequest>` in handlers for both create and update (PUT).
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
+pub struct ToolsetRequest {
+  /// Toolset type identifier (required for create, ignored for update)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub toolset_type: Option<String>,
+
+  /// User-defined slug for this instance (1-24 chars, alphanumeric + hyphens)
+  #[validate(
+    length(min = 1, max = 24),
+    custom(function = "validate_toolset_slug_validator")
+  )]
+  pub slug: String,
+
+  /// Optional description for this instance
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[validate(length(max = 255))]
+  pub description: Option<String>,
+
+  /// Whether this instance is enabled
+  #[serde(default = "default_enabled_true")]
+  pub enabled: bool,
+
+  /// API key update action (Keep or Set)
+  #[serde(default = "default_api_key_keep")]
+  pub api_key: ApiKeyUpdate,
+}
+
+fn validate_toolset_slug_validator(slug: &str) -> Result<(), validator::ValidationError> {
+  if !TOOLSET_SLUG_REGEX.is_match(slug) {
+    return Err(validator::ValidationError::new("invalid_toolset_slug"));
+  }
+  Ok(())
+}
+
+// ============================================================================
 // Toolset validation functions
 // ============================================================================
 
@@ -106,34 +172,6 @@ static TOOLSET_SLUG_REGEX: Lazy<Regex> =
 
 pub const MAX_TOOLSET_SLUG_LEN: usize = 24;
 pub const MAX_TOOLSET_DESCRIPTION_LEN: usize = 255;
-
-/// Validate toolset instance slug format and length
-pub fn validate_toolset_slug(slug: &str) -> Result<(), String> {
-  if slug.is_empty() {
-    return Err("Toolset slug cannot be empty".to_string());
-  }
-  if slug.len() > MAX_TOOLSET_SLUG_LEN {
-    return Err(format!(
-      "Toolset slug cannot exceed {} characters",
-      MAX_TOOLSET_SLUG_LEN
-    ));
-  }
-  if !TOOLSET_SLUG_REGEX.is_match(slug) {
-    return Err("Toolset slug can only contain alphanumeric characters and hyphens".to_string());
-  }
-  Ok(())
-}
-
-/// Validate toolset instance description length
-pub fn validate_toolset_description(description: &str) -> Result<(), String> {
-  if description.len() > MAX_TOOLSET_DESCRIPTION_LEN {
-    return Err(format!(
-      "Toolset description cannot exceed {} characters",
-      MAX_TOOLSET_DESCRIPTION_LEN
-    ));
-  }
-  Ok(())
-}
 
 // ============================================================================
 // ToolsetExecution - Request/Response for toolset tool execution

@@ -1,11 +1,12 @@
 // ============================================================================
 // VIOLATION DOCUMENTATION:
-// Handler tests in this file use MockSharedContext.expect_forward_request() for SSE streaming.
+// Handler tests in this file use MockInferenceService.expect_forward_local() for SSE streaming.
 // These tests CANNOT be migrated to build_test_router() without complex mock setup.
 // The 401 test for chat/embeddings endpoints is already in models_test.rs.
-// No allow tests are added here because they would require MockSharedContext expectations.
+// No allow tests are added here because they would require MockInferenceService expectations.
 // ============================================================================
 
+use crate::test_utils::RequestAuthContextExt;
 use crate::{chat_completions_handler, embeddings_handler};
 use anyhow_trace::anyhow_trace;
 use async_openai::types::{
@@ -16,24 +17,23 @@ use async_openai::types::{
   },
   embeddings::{CreateEmbeddingRequest, CreateEmbeddingResponse, EmbeddingInput},
 };
-use axum::{extract::Request, routing::post, Router};
+use axum::{extract::Request, response::Response, routing::post, Router};
 use futures_util::StreamExt;
-use llama_server_proc::test_utils::mock_response;
 use mockall::predicate::{eq, function};
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use rstest::rstest;
 use serde_json::json;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  ContextError, DefaultRouterState, LlmEndpoint, MockSharedContext,
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
+use services::{
+  inference::{InferenceError, LlmEndpoint, MockInferenceService},
+  test_utils::AppServiceStubBuilder,
+  Alias, AuthContext, ResourceRole,
 };
-use services::test_utils::AppServiceStubBuilder;
-use services::Alias;
 use std::sync::Arc;
 use tower::ServiceExt;
 
-fn non_streamed_response() -> reqwest::Response {
+fn non_streamed_axum_response() -> Result<Response, InferenceError> {
   let response = json! {{
     "id": "testid",
     "model": "testalias-exists:instruct",
@@ -48,7 +48,14 @@ fn non_streamed_response() -> reqwest::Response {
     "created": 1704067200,
     "object": "chat.completion",
   }};
-  mock_response(response.to_string())
+  let body = serde_json::to_string(&response).unwrap();
+  Ok(
+    axum::response::Response::builder()
+      .status(200)
+      .header("content-type", "application/json")
+      .body(axum::body::Body::from(body))
+      .unwrap(),
+  )
 }
 
 #[rstest]
@@ -56,11 +63,6 @@ fn non_streamed_response() -> reqwest::Response {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
-  let app_service = AppServiceStubBuilder::default()
-    .with_data_service()
-    .await
-    .build()
-    .await?;
   let request = CreateChatCompletionRequestArgs::default()
     .model("testalias-exists:instruct")
     .messages(vec![ChatCompletionRequestMessage::User(
@@ -70,9 +72,9 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
     )])
     .build()?;
   let request_value = serde_json::to_value(&request)?;
-  let mut ctx = MockSharedContext::default();
-  ctx
-    .expect_forward_request()
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_local()
     .with(
       eq(LlmEndpoint::ChatCompletions),
       eq(request_value),
@@ -81,13 +83,27 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
       ),
     )
     .times(1)
-    .return_once(move |_, _, _| Ok(non_streamed_response()));
-  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+    .return_once(move |_, _, _| non_streamed_axum_response());
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route("/v1/chat/completions", post(chat_completions_handler))
-    .with_state(Arc::new(router_state));
+    .with_state(router_state);
   let response = app
-    .oneshot(Request::post("/v1/chat/completions").json(request)?)
+    .oneshot(
+      Request::post("/v1/chat/completions")
+        .json(request)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?;
   assert_eq!(StatusCode::OK, response.status());
   let result: CreateChatCompletionResponse = response.json().await?;
@@ -105,7 +121,7 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
   Ok(())
 }
 
-fn streamed_response() -> Result<reqwest::Response, ContextError> {
+fn streamed_axum_response() -> Result<Response, InferenceError> {
   let stream = futures_util::stream::iter([
     " ", " After", " Monday", ",", " the", " next", " day", " is", " T", "ues", "day", ".",
   ])
@@ -137,14 +153,14 @@ fn streamed_response() -> Result<reqwest::Response, ContextError> {
     Ok::<_, std::io::Error>(chunk)
   });
 
-  let body = reqwest::Body::wrap_stream(stream);
-  Ok(reqwest::Response::from(
-    http::Response::builder()
+  let body = axum::body::Body::from_stream(stream);
+  Ok(
+    axum::response::Response::builder()
       .status(200)
       .header("content-type", "text/event-stream")
       .body(body)
-      .expect("failed to build http response"),
-  ))
+      .unwrap(),
+  )
 }
 
 #[rstest]
@@ -152,11 +168,6 @@ fn streamed_response() -> Result<reqwest::Response, ContextError> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
-  let app_service = AppServiceStubBuilder::default()
-    .with_data_service()
-    .await
-    .build()
-    .await?;
   let request = CreateChatCompletionRequestArgs::default()
     .model("testalias-exists:instruct")
     .stream(true)
@@ -167,9 +178,9 @@ async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
     )])
     .build()?;
   let request_value = serde_json::to_value(&request)?;
-  let mut ctx = MockSharedContext::default();
-  ctx
-    .expect_forward_request()
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_local()
     .with(
       eq(LlmEndpoint::ChatCompletions),
       eq(request_value),
@@ -178,14 +189,28 @@ async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
       ),
     )
     .times(1)
-    .return_once(move |_, _, _| streamed_response());
+    .return_once(move |_, _, _| streamed_axum_response());
 
-  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route("/v1/chat/completions", post(chat_completions_handler))
-    .with_state(Arc::new(router_state));
+    .with_state(router_state);
   let response = app
-    .oneshot(Request::post("/v1/chat/completions").json(request)?)
+    .oneshot(
+      Request::post("/v1/chat/completions")
+        .json(request)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?;
   assert_eq!(StatusCode::OK, response.status());
   let response: Vec<CreateChatCompletionStreamResponse> = response.sse().await?;
@@ -205,7 +230,7 @@ async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
   Ok(())
 }
 
-fn embeddings_response() -> reqwest::Response {
+fn embeddings_axum_response() -> Result<Response, InferenceError> {
   let response = json! {{
     "object": "list",
     "data": [
@@ -221,7 +246,14 @@ fn embeddings_response() -> reqwest::Response {
       "total_tokens": 8
     }
   }};
-  mock_response(response.to_string())
+  let body = serde_json::to_string(&response).unwrap();
+  Ok(
+    axum::response::Response::builder()
+      .status(200)
+      .header("content-type", "application/json")
+      .body(axum::body::Body::from(body))
+      .unwrap(),
+  )
 }
 
 #[rstest]
@@ -229,11 +261,6 @@ fn embeddings_response() -> reqwest::Response {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
-  let app_service = AppServiceStubBuilder::default()
-    .with_data_service()
-    .await
-    .build()
-    .await?;
   let request = CreateEmbeddingRequest {
     model: "testalias-exists:instruct".to_string(),
     input: EmbeddingInput::String("The quick brown fox jumps over the lazy dog".to_string()),
@@ -242,9 +269,9 @@ async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
     dimensions: None,
   };
   let request_value = serde_json::to_value(&request)?;
-  let mut ctx = MockSharedContext::default();
-  ctx
-    .expect_forward_request()
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_local()
     .with(
       eq(LlmEndpoint::Embeddings),
       eq(request_value),
@@ -253,13 +280,27 @@ async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
       ),
     )
     .times(1)
-    .return_once(move |_, _, _| Ok(embeddings_response()));
-  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+    .return_once(move |_, _, _| embeddings_axum_response());
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route("/v1/embeddings", post(embeddings_handler))
-    .with_state(Arc::new(router_state));
+    .with_state(router_state);
   let response = app
-    .oneshot(Request::post("/v1/embeddings").json(request)?)
+    .oneshot(
+      Request::post("/v1/embeddings")
+        .json(request)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
     .await?;
   assert_eq!(StatusCode::OK, response.status());
   let result: CreateEmbeddingResponse = response.json().await?;
@@ -287,11 +328,10 @@ async fn test_chat_completions_missing_model_field() -> anyhow::Result<()> {
     .await
     .build()
     .await?;
-  let ctx = MockSharedContext::default();
-  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route("/v1/chat/completions", post(chat_completions_handler))
-    .with_state(Arc::new(router_state));
+    .with_state(router_state);
 
   let response = app
     .oneshot(Request::post("/v1/chat/completions").json(json!({
@@ -318,11 +358,10 @@ async fn test_chat_completions_missing_messages_field() -> anyhow::Result<()> {
     .await
     .build()
     .await?;
-  let ctx = MockSharedContext::default();
-  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route("/v1/chat/completions", post(chat_completions_handler))
-    .with_state(Arc::new(router_state));
+    .with_state(router_state);
 
   let response = app
     .oneshot(Request::post("/v1/chat/completions").json(json!({
@@ -349,11 +388,10 @@ async fn test_chat_completions_invalid_stream_field() -> anyhow::Result<()> {
     .await
     .build()
     .await?;
-  let ctx = MockSharedContext::default();
-  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route("/v1/chat/completions", post(chat_completions_handler))
-    .with_state(Arc::new(router_state));
+    .with_state(router_state);
 
   let response = app
     .oneshot(Request::post("/v1/chat/completions").json(json!({

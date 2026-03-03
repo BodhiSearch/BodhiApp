@@ -6,7 +6,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
-  #[sea_orm(unique)]
+  pub tenant_id: String,
   pub toolset_type: String,
   pub enabled: bool,
   pub updated_by: String,
@@ -26,6 +26,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppToolsetConfigRow {
   pub id: String,
+  pub tenant_id: String,
   pub toolset_type: String,
   pub enabled: bool,
   pub updated_by: String,
@@ -37,6 +38,7 @@ impl From<Model> for AppToolsetConfigRow {
   fn from(m: Model) -> Self {
     AppToolsetConfigRow {
       id: m.id,
+      tenant_id: m.tenant_id,
       toolset_type: m.toolset_type,
       enabled: m.enabled,
       updated_by: m.updated_by,

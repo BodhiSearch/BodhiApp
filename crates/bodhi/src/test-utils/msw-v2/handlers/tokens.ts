@@ -22,7 +22,6 @@ export function mockTokens(
         id: 'token-1',
         name: 'Test Token 1',
         status: 'active',
-        token_hash: 'hash123',
         token_prefix: 'bodhiapp_test01',
         scopes: 'scope_token_user',
         user_id: 'user-123',
@@ -34,7 +33,7 @@ export function mockTokens(
     page = 1,
     page_size = 10,
     ...rest
-  }: Partial<components['schemas']['PaginatedApiTokenResponse']> = {},
+  }: Partial<components['schemas']['PaginatedTokenResponse']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -43,7 +42,7 @@ export function mockTokens(
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
-      const responseData: components['schemas']['PaginatedApiTokenResponse'] = {
+      const responseData: components['schemas']['PaginatedTokenResponse'] = {
         data,
         total,
         page,
@@ -61,7 +60,7 @@ export function mockTokens(
  * Uses generated OpenAPI types directly
  */
 export function mockCreateToken(
-  { token = 'test-token-123', ...rest }: Partial<components['schemas']['ApiTokenResponse']> = {},
+  { token = 'test-token-123', ...rest }: Partial<components['schemas']['TokenCreated']> = {},
   { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -73,7 +72,7 @@ export function mockCreateToken(
       if (delayMs) {
         await delay(delayMs);
       }
-      const responseData: components['schemas']['ApiTokenResponse'] = {
+      const responseData: components['schemas']['TokenCreated'] = {
         token,
         ...rest,
       };
@@ -93,14 +92,13 @@ export function mockUpdateToken(
     id = tokenId,
     name = 'Test Token 1',
     status = 'inactive',
-    token_hash = 'hash123',
     token_prefix = 'bodhiapp_test01',
     scopes = 'scope_token_user',
     user_id = 'user-123',
     created_at = '2024-01-01T00:00:00Z',
     updated_at = '2024-01-01T00:00:01Z',
     ...rest
-  }: Partial<components['schemas']['ApiToken']> = {},
+  }: Partial<components['schemas']['TokenDetail']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -114,11 +112,10 @@ export function mockUpdateToken(
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
-      const responseData: components['schemas']['ApiToken'] = {
+      const responseData: components['schemas']['TokenDetail'] = {
         id,
         name,
         status,
-        token_hash,
         token_prefix,
         scopes,
         user_id,
@@ -158,7 +155,7 @@ export function mockEmptyTokensList() {
 /**
  * Convenience method for create token with custom response
  */
-export function mockCreateTokenWithResponse(token: Partial<components['schemas']['ApiTokenResponse']>) {
+export function mockCreateTokenWithResponse(token: Partial<components['schemas']['TokenCreated']>) {
   return mockCreateToken(token);
 }
 

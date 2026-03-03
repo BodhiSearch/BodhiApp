@@ -37,7 +37,8 @@ pub use settings::*;
 pub use test_data::*;
 
 pub use crate::app_access_requests::MockAccessRequestService;
+pub use crate::inference::MockInferenceService;
 pub use crate::settings::settings_repository::MockSettingsRepository;
-pub type ModelMetadataRowBuilder = crate::models::model_metadata_entity::ModelBuilder;
+pub type ModelMetadataEntityBuilder = crate::models::model_metadata_entity::ModelBuilder;
 
 pub static SNAPSHOT: &str = "5007652f7a641fe7170e0bad4f63839419bd9213";

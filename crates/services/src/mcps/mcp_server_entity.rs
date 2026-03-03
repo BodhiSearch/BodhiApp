@@ -6,6 +6,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  pub tenant_id: String,
   pub url: String,
   pub name: String,
   pub description: Option<String>,
@@ -46,35 +47,8 @@ impl Related<super::mcp_oauth_config_entity::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-// ============================================================================
-// McpServerRow - Database row for admin MCP server URL allowlist
-// ============================================================================
+/// Type alias — McpServerEntity is the entity Model.
+pub type McpServerEntity = Model;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct McpServerRow {
-  pub id: String,
-  pub url: String,
-  pub name: String,
-  pub description: Option<String>,
-  pub enabled: bool,
-  pub created_by: String,
-  pub updated_by: String,
-  pub created_at: chrono::DateTime<chrono::Utc>,
-  pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-
-impl From<Model> for McpServerRow {
-  fn from(m: Model) -> Self {
-    McpServerRow {
-      id: m.id,
-      url: m.url,
-      name: m.name,
-      description: m.description,
-      enabled: m.enabled,
-      created_by: m.created_by,
-      updated_by: m.updated_by,
-      created_at: m.created_at,
-      updated_at: m.updated_at,
-    }
-  }
-}
+/// Backward-compatible alias (deprecated — use McpServerEntity).
+pub type McpServerRow = Model;

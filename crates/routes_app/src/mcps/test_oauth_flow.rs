@@ -3,8 +3,8 @@ use crate::mcps::{
   OAuthTokenExchangeRequest, OAuthTokenResponse,
 };
 use crate::test_utils::fixed_dt;
+use crate::test_utils::RequestAuthContextExt;
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::post;
@@ -13,13 +13,14 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
-use server_core::{DefaultRouterState, MockSharedContext, RouterState};
+use services::AuthContext;
+
 use services::ResourceRole;
 use services::{
   test_utils::AppServiceStubBuilder, AppService, DefaultSessionService, McpError, MockMcpService,
   SessionService,
 };
-use services::{McpOAuthConfig, McpOAuthToken, McpServer, RegistrationType};
+use services::{McpOAuthConfig, McpOAuthToken, McpServerEntity, RegistrationType};
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
@@ -43,15 +44,15 @@ fn test_oauth_config() -> McpOAuthConfig {
     scopes: Some("openid profile".to_string()),
     has_client_secret: true,
     has_registration_access_token: false,
-    created_by: "user123".to_string(),
     created_at: fixed_dt(),
     updated_at: fixed_dt(),
   }
 }
 
-fn test_mcp_server() -> McpServer {
-  McpServer {
+fn test_mcp_server_entity() -> McpServerEntity {
+  McpServerEntity {
     id: "server-1".to_string(),
+    tenant_id: "test-tenant-id".to_string(),
     url: "https://mcp.example.com".to_string(),
     name: "Test Server".to_string(),
     description: None,
@@ -80,10 +81,7 @@ async fn build_oauth_flow_router(
       .await?,
   );
 
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::new()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
 
   let router = Router::new()
     .route("/mcps/auth-configs/{id}/login", post(mcp_oauth_login))
@@ -110,19 +108,19 @@ async fn build_oauth_flow_router(
 async fn test_oauth_login_success() -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
   let config = test_oauth_config();
-  let server = test_mcp_server();
+  let server = test_mcp_server_entity();
 
   mock
     .expect_get_oauth_config()
-    .withf(|id| id == "oauth-config-1")
+    .withf(|_, id| id == "oauth-config-1")
     .times(1)
-    .returning(move |_| Ok(Some(config.clone())));
+    .returning(move |_, _| Ok(Some(config.clone())));
 
   mock
     .expect_get_mcp_server()
-    .withf(|id| id == "server-1")
+    .withf(|_, id| id == "server-1")
     .times(1)
-    .returning(move |_| Ok(Some(server.clone())));
+    .returning(move |_, _| Ok(Some(server.clone())));
 
   let (app, _session_service) = build_oauth_flow_router(mock).await?;
 
@@ -134,7 +132,12 @@ async fn test_oauth_login_success() -> anyhow::Result<()> {
     .method("POST")
     .uri("/mcps/auth-configs/oauth-config-1/login")
     .header("content-type", "application/json")
-    .body(Body::from(body))?;
+    .body(Body::from(body))?
+    .with_auth_context(AuthContext::test_session(
+      "user123",
+      "testuser",
+      ResourceRole::User,
+    ));
   let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::OK, response.status());
@@ -187,9 +190,9 @@ async fn test_oauth_login_config_not_found() -> anyhow::Result<()> {
 
   mock
     .expect_get_oauth_config()
-    .withf(|id| id == "nonexistent-config")
+    .withf(|_, id| id == "nonexistent-config")
     .times(1)
-    .returning(|_| Ok(None));
+    .returning(|_, _| Ok(None));
 
   let (app, _session_service) = build_oauth_flow_router(mock).await?;
 
@@ -201,7 +204,12 @@ async fn test_oauth_login_config_not_found() -> anyhow::Result<()> {
     .method("POST")
     .uri("/mcps/auth-configs/nonexistent-config/login")
     .header("content-type", "application/json")
-    .body(Body::from(body))?;
+    .body(Body::from(body))?
+    .with_auth_context(AuthContext::test_session(
+      "user123",
+      "testuser",
+      ResourceRole::User,
+    ));
   let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::NOT_FOUND, response.status());
@@ -220,7 +228,7 @@ async fn test_oauth_token_exchange_success() -> anyhow::Result<()> {
 
   mock
     .expect_exchange_oauth_token()
-    .withf(|user_id, config_id, code, redirect_uri, code_verifier| {
+    .withf(|_, user_id, config_id, code, redirect_uri, code_verifier| {
       user_id == "user123"
         && config_id == "oauth-config-1"
         && code == "auth-code-xyz"
@@ -228,7 +236,7 @@ async fn test_oauth_token_exchange_success() -> anyhow::Result<()> {
         && code_verifier == "test-code-verifier"
     })
     .times(1)
-    .returning(|_, _, _, _, _| {
+    .returning(|_, _, _, _, _, _| {
       let now = fixed_dt();
       Ok(McpOAuthToken {
         id: "token-uuid-1".to_string(),
@@ -237,7 +245,7 @@ async fn test_oauth_token_exchange_success() -> anyhow::Result<()> {
         expires_at: Some(1700000000),
         has_access_token: true,
         has_refresh_token: true,
-        created_by: "user123".to_string(),
+        user_id: "user123".to_string(),
         created_at: now,
         updated_at: now,
       })
@@ -407,7 +415,7 @@ async fn test_oauth_token_exchange_service_error() -> anyhow::Result<()> {
   mock
     .expect_exchange_oauth_token()
     .times(1)
-    .returning(|_, _, _, _, _| {
+    .returning(|_, _, _, _, _, _| {
       Err(McpError::OAuthTokenExchangeFailed(
         "token endpoint returned 401".to_string(),
       ))

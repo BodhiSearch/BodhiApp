@@ -1,10 +1,10 @@
 use crate::UserScope;
 use crate::{
   app_access_requests::{
-    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, ApprovalStatus, FlowType,
+    AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, FlowType,
     ToolsetApproval, ToolsetTypeRequest,
   },
-  test_utils::{test_db_service, TestDbService},
+  test_utils::{test_db_service, TestDbService, TEST_TENANT_ID},
   AccessRequestService, DefaultAccessRequestService, MockAuthService,
 };
 use anyhow_trace::anyhow_trace;
@@ -35,6 +35,7 @@ async fn test_create_draft_popup_valid(
 
   let result = service
     .create_draft(
+      TEST_TENANT_ID,
       "app-client-1".to_string(),
       FlowType::Popup,
       None,
@@ -79,6 +80,7 @@ async fn test_create_draft_redirect_valid(
 
   let result = service
     .create_draft(
+      TEST_TENANT_ID,
       "app-client-2".to_string(),
       FlowType::Redirect,
       Some("https://example.com/callback".to_string()),
@@ -120,6 +122,7 @@ async fn test_create_draft_redirect_missing_uri(
 
   let result = service
     .create_draft(
+      TEST_TENANT_ID,
       "app-client-1".to_string(),
       FlowType::Redirect,
       None,
@@ -149,8 +152,9 @@ async fn test_approve_request_already_processed(
   let expires_at = now + chrono::Duration::minutes(10);
 
   // Insert a row that is already approved
-  let row = AppAccessRequestRow {
+  let row = AppAccessRequest {
     id: "ar-approved-001".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,
@@ -212,8 +216,9 @@ async fn test_approve_request_threads_approved_role(
   let expires_at = now + chrono::Duration::minutes(10);
 
   // Insert a draft row
-  let row = AppAccessRequestRow {
+  let row = AppAccessRequest {
     id: "ar-draft-approve".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,
@@ -296,8 +301,9 @@ async fn test_get_request_expired_draft_returns_expired_record(
   // Set expires_at to 5 minutes in the past
   let expires_at = now - chrono::Duration::minutes(5);
 
-  let row = AppAccessRequestRow {
+  let row = AppAccessRequest {
     id: "ar-expired-001".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,
@@ -348,8 +354,9 @@ async fn test_approve_request_rejects_expired_draft(
   let now = db.now();
   let expires_at = now - chrono::Duration::minutes(5);
 
-  let row = AppAccessRequestRow {
+  let row = AppAccessRequest {
     id: "ar-expired-approve".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,
@@ -410,8 +417,9 @@ async fn test_deny_request_rejects_expired_draft(
   let now = db.now();
   let expires_at = now - chrono::Duration::minutes(5);
 
-  let row = AppAccessRequestRow {
+  let row = AppAccessRequest {
     id: "ar-expired-deny".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,

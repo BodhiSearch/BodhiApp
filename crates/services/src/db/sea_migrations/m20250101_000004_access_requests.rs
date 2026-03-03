@@ -4,9 +4,10 @@ use sea_orm_migration::{prelude::*, schema::*};
 pub struct Migration;
 
 #[derive(DeriveIden)]
-enum AccessRequests {
+enum UserAccessRequests {
   Table,
   Id,
+  TenantId,
   Username,
   UserId,
   Reviewer,
@@ -21,14 +22,15 @@ impl MigrationTrait for Migration {
     manager
       .create_table(
         Table::create()
-          .table(AccessRequests::Table)
-          .col(string(AccessRequests::Id).primary_key())
-          .col(string(AccessRequests::Username))
-          .col(string(AccessRequests::UserId))
-          .col(string_null(AccessRequests::Reviewer))
-          .col(string(AccessRequests::Status).default("pending"))
-          .col(timestamp_with_time_zone(AccessRequests::CreatedAt))
-          .col(timestamp_with_time_zone(AccessRequests::UpdatedAt))
+          .table(UserAccessRequests::Table)
+          .col(string(UserAccessRequests::Id).primary_key())
+          .col(string(UserAccessRequests::TenantId))
+          .col(string(UserAccessRequests::Username))
+          .col(string(UserAccessRequests::UserId))
+          .col(string_null(UserAccessRequests::Reviewer))
+          .col(string(UserAccessRequests::Status).default("pending"))
+          .col(timestamp_with_time_zone(UserAccessRequests::CreatedAt))
+          .col(timestamp_with_time_zone(UserAccessRequests::UpdatedAt))
           .to_owned(),
       )
       .await?;
@@ -36,9 +38,9 @@ impl MigrationTrait for Migration {
     manager
       .create_index(
         Index::create()
-          .name("idx_access_requests_user_id")
-          .table(AccessRequests::Table)
-          .col(AccessRequests::UserId)
+          .name("idx_user_access_requests_user_id")
+          .table(UserAccessRequests::Table)
+          .col(UserAccessRequests::UserId)
           .to_owned(),
       )
       .await?;
@@ -46,9 +48,19 @@ impl MigrationTrait for Migration {
     manager
       .create_index(
         Index::create()
-          .name("idx_access_requests_status")
-          .table(AccessRequests::Table)
-          .col(AccessRequests::Status)
+          .name("idx_user_access_requests_status")
+          .table(UserAccessRequests::Table)
+          .col(UserAccessRequests::Status)
+          .to_owned(),
+      )
+      .await?;
+
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_user_access_requests_tenant_id")
+          .table(UserAccessRequests::Table)
+          .col(UserAccessRequests::TenantId)
           .to_owned(),
       )
       .await?;
@@ -58,7 +70,7 @@ impl MigrationTrait for Migration {
 
   async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
     manager
-      .drop_table(Table::drop().table(AccessRequests::Table).to_owned())
+      .drop_table(Table::drop().table(UserAccessRequests::Table).to_owned())
       .await
   }
 }

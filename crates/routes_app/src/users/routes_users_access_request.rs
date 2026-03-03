@@ -1,16 +1,18 @@
+use crate::{ApiError, AuthScope, OpenAIApiError};
 use crate::{
-  ApproveUserAccessRequest, PaginatedUserAccessResponse, PaginationSortParams,
-  UserAccessStatusResponse, UsersRouteError, API_TAG_AUTH, ENDPOINT_ACCESS_REQUESTS_ALL,
+  PaginationSortParams, UsersRouteError, API_TAG_AUTH, ENDPOINT_ACCESS_REQUESTS_ALL,
   ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
-use crate::{ApiError, AuthScope, OpenAIApiError};
-use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
   response::Json,
 };
-use services::{extract_claims, Claims, UserAccessRequestStatus};
+use services::AuthContext;
+use services::{
+  extract_claims, ApproveUserAccessRequest, Claims, PaginatedUserAccessResponse,
+  UserAccessRequestStatus, UserAccessStatusResponse,
+};
 use tracing::{debug, error, info};
 
 // User endpoints
@@ -35,9 +37,7 @@ use tracing::{debug, error, info};
         ("session_auth" = [])
     )
 )]
-pub async fn users_request_access(
-  auth_scope: AuthScope,
-) -> Result<StatusCode, ApiError> {
+pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, ApiError> {
   // Session auth: extract username, user_id, and role
   let AuthContext::Session {
     ref user_id,
@@ -55,20 +55,16 @@ pub async fn users_request_access(
     return Err(UsersRouteError::AlreadyHasAccess)?;
   }
 
-  let db = auth_scope.db();
+  let svc = auth_scope.user_access_requests();
 
   // Check for existing pending request
-  if db
-    .get_pending_request(user_id.clone())
-    .await?
-    .is_some()
-  {
+  if svc.get_pending_request(user_id.clone()).await?.is_some() {
     debug!("User {} already has pending request", username);
     return Err(UsersRouteError::AlreadyPending)?;
   }
 
   // Create new access request
-  let _ = db
+  let _ = svc
     .insert_pending_request(username.to_string(), user_id.clone())
     .await?;
 
@@ -102,8 +98,8 @@ pub async fn users_request_status(
     return Err(UsersRouteError::PendingRequestNotFound)?;
   };
   debug!("Checking access request status for user {}", user_id);
-  let db = auth_scope.db();
-  if let Some(request) = db.get_pending_request(user_id.to_string()).await? {
+  let svc = auth_scope.user_access_requests();
+  if let Some(request) = svc.get_pending_request(user_id.to_string()).await? {
     Ok(Json(UserAccessStatusResponse::from(request)))
   } else {
     Err(UsersRouteError::PendingRequestNotFound)?
@@ -137,17 +133,15 @@ pub async fn users_access_requests_pending(
     params
   );
 
-  let db = auth_scope.db();
+  let svc = auth_scope.user_access_requests();
   let page_size = params.page_size.min(100);
   let page = params.page.min(u32::MAX as usize) as u32;
 
   // Get pending requests with pagination
-  let (requests, total) = db
-    .list_pending_requests(page, page_size as u32)
-    .await?;
+  let (requests, total) = svc.list_pending_requests(page, page_size as u32).await?;
 
   Ok(Json(PaginatedUserAccessResponse {
-    requests,
+    requests: requests.into_iter().map(Into::into).collect(),
     total,
     page: params.page,
     page_size,
@@ -176,8 +170,8 @@ pub async fn users_access_requests_index(
 ) -> Result<Json<PaginatedUserAccessResponse>, ApiError> {
   debug!("Listing all access requests with pagination: {:?}", params);
 
-  let db = auth_scope.db();
-  let (requests, total) = db
+  let svc = auth_scope.user_access_requests();
+  let (requests, total) = svc
     .list_all_requests(params.page as u32, params.page_size as u32)
     .await
     .map_err(|e| UsersRouteError::FetchFailed(e.to_string()))?;
@@ -186,7 +180,7 @@ pub async fn users_access_requests_index(
     page: params.page,
     page_size: params.page_size,
     total,
-    requests,
+    requests: requests.into_iter().map(Into::into).collect(),
   }))
 }
 
@@ -243,16 +237,16 @@ pub async fn users_access_request_approve(
     return Err(UsersRouteError::InsufficientPrivileges)?;
   }
 
-  let db = auth_scope.db();
+  let svc = auth_scope.user_access_requests();
 
   // Get the request details to obtain the user's email
-  let access_request = db
+  let access_request = svc
     .get_request_by_id(&id)
     .await?
     .ok_or_else(|| UsersRouteError::RequestNotFound(id.clone()))?;
 
   // Update request status to approved
-  db
+  svc
     .update_request_status(
       &id,
       UserAccessRequestStatus::Approved,
@@ -303,7 +297,10 @@ pub async fn users_access_request_reject(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-  let token = auth_scope.auth_context().token().expect("requires auth middleware");
+  let token = auth_scope
+    .auth_context()
+    .token()
+    .ok_or(UsersRouteError::InsufficientPrivileges)?;
   let claims: Claims = extract_claims::<Claims>(token)?;
 
   info!(
@@ -312,8 +309,8 @@ pub async fn users_access_request_reject(
   );
 
   // Update request status to rejected
-  let db = auth_scope.db();
-  db
+  let svc = auth_scope.user_access_requests();
+  svc
     .update_request_status(
       &id,
       UserAccessRequestStatus::Rejected,

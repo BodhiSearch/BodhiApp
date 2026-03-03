@@ -1,11 +1,11 @@
+use crate::middleware::app_status_or_default;
 use crate::setup::error::SetupRouteError;
 use crate::setup::setup_api_schemas::{AppInfo, SetupRequest, SetupResponse};
 use crate::shared::{utils::extract_request_host, AuthScope};
+use crate::{ApiError, JsonRejectionError};
 use crate::{API_TAG_SETUP, API_TAG_SYSTEM, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
-use auth_middleware::app_status_or_default;
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use crate::{ApiError, JsonRejectionError};
 use services::{AppStatus, LOGIN_CALLBACK_PATH};
 
 pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
@@ -26,11 +26,9 @@ pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
          })),
     )
 )]
-pub async fn setup_show(
-  auth_scope: AuthScope,
-) -> Result<Json<AppInfo>, ApiError> {
-  let app_instance = auth_scope.app_instance();
-  let status = app_status_or_default(&app_instance).await;
+pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, ApiError> {
+  let tenant_svc = auth_scope.tenant();
+  let status = app_status_or_default(&tenant_svc).await;
   let settings = auth_scope.settings();
   Ok(Json(AppInfo {
     version: settings.version().await,
@@ -66,9 +64,9 @@ pub async fn setup_create(
   headers: axum::http::HeaderMap,
   WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, JsonRejectionError>,
 ) -> Result<SetupResponse, ApiError> {
-  let app_instance = auth_scope.app_instance();
+  let tenant_svc = auth_scope.tenant();
   let auth_flow = auth_scope.auth_flow();
-  let status = app_status_or_default(&app_instance).await;
+  let status = app_status_or_default(&tenant_svc).await;
   if status != AppStatus::Setup {
     return Err(SetupRouteError::AlreadySetup)?;
   }
@@ -123,8 +121,8 @@ pub async fn setup_create(
       redirect_uris,
     )
     .await?;
-  app_instance
-    .create_instance(
+  tenant_svc
+    .create_tenant(
       &client_reg.client_id,
       &client_reg.client_secret,
       AppStatus::ResourceAdmin,

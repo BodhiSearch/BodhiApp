@@ -7,7 +7,7 @@ import type {
   McpAuthConfigResponse,
   McpAuthConfigsListResponse,
   McpExecuteResponse,
-  McpResponse,
+  Mcp,
   McpServerInfo,
   McpServerResponse,
   McpTool,
@@ -52,7 +52,7 @@ export const mockMcpServerResponse: McpServerResponse = {
   updated_at: '2024-01-01T00:00:00Z',
 };
 
-export const mockMcp: McpResponse = {
+export const mockMcp: Mcp = {
   id: 'mcp-uuid-1',
   mcp_server: mockMcpServerInfo,
   slug: 'example-mcp',
@@ -66,7 +66,7 @@ export const mockMcp: McpResponse = {
   updated_at: '2024-01-01T00:00:00Z',
 };
 
-export const mockMcpWithHeaderAuth: McpResponse = {
+export const mockMcpWithHeaderAuth: Mcp = {
   ...mockMcp,
   id: 'mcp-uuid-2',
   slug: 'header-mcp',
@@ -82,12 +82,12 @@ export const mockOAuthToken: OAuthTokenResponse = {
   expires_at: Math.floor(Date.now() / 1000) + 3600,
   has_access_token: true,
   has_refresh_token: true,
-  created_by: 'test-user',
+  user_id: 'test-user',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 };
 
-export const mockMcpWithOAuth: McpResponse = {
+export const mockMcpWithOAuth: Mcp = {
   ...mockMcp,
   id: 'mcp-uuid-3',
   slug: 'oauth-mcp',
@@ -96,7 +96,7 @@ export const mockMcpWithOAuth: McpResponse = {
   auth_uuid: 'oauth-token-uuid-1',
 };
 
-export const mockMcpWithDcr: McpResponse = {
+export const mockMcpWithDcr: Mcp = {
   ...mockMcp,
   id: 'mcp-uuid-4',
   slug: 'dcr-mcp',
@@ -115,7 +115,6 @@ export const mockAuthConfigHeader: McpAuthConfigResponse = {
   mcp_server_id: 'server-uuid-1',
   header_key: 'Authorization',
   has_header_value: true,
-  created_by: 'test-user',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   type: 'header',
@@ -132,7 +131,6 @@ export const mockAuthConfigOAuthPreReg: McpAuthConfigResponse = {
   scopes: 'mcp:tools mcp:read',
   has_client_secret: true,
   has_registration_access_token: false,
-  created_by: 'test-user',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   type: 'oauth',
@@ -152,7 +150,6 @@ export const mockAuthConfigOAuthDynamic: McpAuthConfigResponse = {
   token_endpoint_auth_method: null,
   has_client_secret: false,
   has_registration_access_token: true,
-  created_by: 'test-user',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   type: 'oauth',
@@ -162,19 +159,19 @@ export const mockAuthConfigOAuthDynamic: McpAuthConfigResponse = {
 // Handler Factories - MCP Instance CRUD
 // ============================================================================
 
-export function mockListMcps(mcps: McpResponse[] = [mockMcp]) {
+export function mockListMcps(mcps: Mcp[] = [mockMcp]) {
   return http.get(`${BODHI_API_BASE}/mcps`, () => HttpResponse.json({ mcps }));
 }
 
-export function mockGetMcp(mcp: McpResponse = mockMcp) {
+export function mockGetMcp(mcp: Mcp = mockMcp) {
   return http.get(`${BODHI_API_BASE}/mcps/:id`, () => HttpResponse.json(mcp));
 }
 
-export function mockCreateMcp(response: McpResponse = mockMcp) {
+export function mockCreateMcp(response: Mcp = mockMcp) {
   return http.post(`${BODHI_API_BASE}/mcps`, () => HttpResponse.json(response, { status: 201 }));
 }
 
-export function mockUpdateMcp(response: McpResponse = mockMcp) {
+export function mockUpdateMcp(response: Mcp = mockMcp) {
   return http.put(`${BODHI_API_BASE}/mcps/:id`, () => HttpResponse.json(response));
 }
 

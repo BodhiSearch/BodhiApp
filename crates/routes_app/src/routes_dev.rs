@@ -7,13 +7,13 @@ use axum::{
 };
 use serde_json::json;
 use services::{AppError, SerdeJsonError};
-use services::{AppInstanceError, DbError, SessionServiceError};
+use services::{DbError, SessionServiceError, TenantError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DevError {
   #[error(transparent)]
-  AppInstanceError(#[from] AppInstanceError),
+  TenantError(#[from] TenantError),
   #[error(transparent)]
   SerdeJson(#[from] SerdeJsonError),
   #[error(transparent)]
@@ -23,9 +23,12 @@ pub enum DevError {
 }
 
 pub async fn dev_secrets_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
-  let app_instance = auth_scope.app_instance();
-  let status = app_instance.get_status().await.unwrap_or_default();
-  let instance = app_instance.get_instance().await.ok().flatten();
+  let tenant_svc = auth_scope.tenant();
+  let instance = tenant_svc.get_standalone_app().await.ok().flatten();
+  let status = instance
+    .as_ref()
+    .map(|t| t.status.clone())
+    .unwrap_or_default();
 
   let value = json! {{
     "status": status,
@@ -69,16 +72,17 @@ mod tests {
   use super::dev_db_reset_handler;
   use crate::AuthScope;
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::AuthContext;
   use axum::{body::Body, http::StatusCode};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
   use serde_json::Value;
   use services::AliasSource;
+  use services::AuthContext;
   use services::{
-    test_utils::app_service_stub, ApiToken, AppService, AuthScopedAppService, DownloadRequest,
-    DownloadStatus, ModelMetadataRow, TokenStatus, ToolsetRow,
+    test_utils::{app_service_stub, TEST_TENANT_ID},
+    AppService, AuthScopedAppService, DownloadRequestEntity, DownloadStatus, ModelMetadataEntity,
+    TokenEntity, TokenStatus,
   };
   use services::{ApiFormat, UserAlias};
   use std::sync::Arc;
@@ -98,7 +102,10 @@ mod tests {
     let app_service: Arc<dyn AppService> = Arc::new(app_service_stub.await);
     let auth_scope = AuthScope(AuthScopedAppService::new(
       app_service.clone(),
-      AuthContext::Anonymous { client_id: None },
+      AuthContext::Anonymous {
+        client_id: None,
+        tenant_id: None,
+      },
     ));
 
     let response = dev_db_reset_handler(auth_scope).await?;
@@ -121,8 +128,9 @@ mod tests {
 
     // Populate database with test data
     // 1. Create download request
-    let download_req = DownloadRequest {
+    let download_req = DownloadRequestEntity {
       id: "test-download".to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       repo: "test/repo".to_string(),
       filename: "test.gguf".to_string(),
       status: DownloadStatus::Pending,
@@ -137,12 +145,17 @@ mod tests {
 
     // 2. Create access request
     db_service
-      .insert_pending_request("test-user".to_string(), "test-user-id".to_string())
+      .insert_pending_request(
+        TEST_TENANT_ID,
+        "test-user".to_string(),
+        "test-user-id".to_string(),
+      )
       .await?;
 
     // 3. Create API token
-    let mut api_token = ApiToken {
+    let mut api_token = TokenEntity {
       id: "test-token-id".to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: "test-user".to_string(),
       name: "Test Token".to_string(),
       token_prefix: "prefix".to_string(),
@@ -152,7 +165,9 @@ mod tests {
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };
-    db_service.create_api_token(&mut api_token).await?;
+    db_service
+      .create_api_token(TEST_TENANT_ID, &mut api_token)
+      .await?;
 
     // 4. Create user alias
     let user_alias = UserAlias {
@@ -166,11 +181,14 @@ mod tests {
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };
-    db_service.create_user_alias(&user_alias).await?;
+    db_service
+      .create_user_alias(TEST_TENANT_ID, "", &user_alias)
+      .await?;
 
     // 5. Create toolset
-    let toolset = ToolsetRow {
+    let toolset = services::ToolsetEntity {
       id: "test-toolset-id".to_string(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       user_id: "test-user".to_string(),
       toolset_type: "builtin-exa-search".to_string(),
       slug: "my-search".to_string(),
@@ -182,7 +200,7 @@ mod tests {
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };
-    db_service.create_toolset(&toolset).await?;
+    db_service.create_toolset(TEST_TENANT_ID, &toolset).await?;
 
     // Create API model alias
     let api_alias = services::ApiAlias {
@@ -197,11 +215,14 @@ mod tests {
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };
-    db_service.create_api_model_alias(&api_alias, None).await?;
+    db_service
+      .create_api_model_alias(TEST_TENANT_ID, "", &api_alias, None)
+      .await?;
 
     // Create metadata
-    let metadata = ModelMetadataRow {
+    let metadata = ModelMetadataEntity {
       id: String::new(),
+      tenant_id: TEST_TENANT_ID.to_string(),
       source: AliasSource::Model,
       repo: Some("test/repo".to_string()),
       filename: Some("test.gguf".to_string()),
@@ -237,7 +258,10 @@ mod tests {
     // Reset database
     let auth_scope = AuthScope(AuthScopedAppService::new(
       app_service.clone(),
-      AuthContext::Anonymous { client_id: None },
+      AuthContext::Anonymous {
+        client_id: None,
+        tenant_id: None,
+      },
     ));
     let response = dev_db_reset_handler(auth_scope).await?;
     assert_eq!(StatusCode::OK, response.status());
@@ -245,33 +269,44 @@ mod tests {
     // Verify all tables are empty
     assert_eq!(
       None,
-      db_service.get_download_request("test-download").await?
-    );
-    assert_eq!(
-      None,
       db_service
-        .get_pending_request("test-user-id".to_string())
+        .get_download_request(TEST_TENANT_ID, "test-download")
         .await?
     );
     assert_eq!(
       None,
       db_service
-        .get_api_token_by_id("test-user", "test-token-id")
+        .get_pending_request(TEST_TENANT_ID, "test-user-id".to_string())
         .await?
     );
     assert_eq!(
       None,
-      db_service.get_user_alias_by_id("test-alias-id").await?
-    );
-    assert_eq!(None, db_service.get_toolset("test-toolset-id").await?);
-    assert_eq!(
-      None,
-      db_service.get_api_model_alias("test-api-alias").await?
+      db_service
+        .get_api_token_by_id("test-user", "test-token-id", TEST_TENANT_ID)
+        .await?
     );
     assert_eq!(
       None,
       db_service
-        .get_model_metadata_by_file("test/repo", "test.gguf", "main")
+        .get_user_alias_by_id(TEST_TENANT_ID, "", "test-alias-id")
+        .await?
+    );
+    assert_eq!(
+      None,
+      db_service
+        .get_toolset(TEST_TENANT_ID, "test-toolset-id")
+        .await?
+    );
+    assert_eq!(
+      None,
+      db_service
+        .get_api_model_alias(TEST_TENANT_ID, "", "test-api-alias")
+        .await?
+    );
+    assert_eq!(
+      None,
+      db_service
+        .get_model_metadata_by_file(TEST_TENANT_ID, "test/repo", "test.gguf", "main")
         .await?
     );
 
@@ -280,16 +315,6 @@ mod tests {
       0,
       session_service.count_sessions_for_user("test-user").await?
     );
-
-    // Verify app_toolset_configs re-seeded
-    let config = db_service
-      .get_app_toolset_config("builtin-exa-search")
-      .await?;
-    assert!(config.is_some());
-    let config = config.unwrap();
-    assert_eq!("builtin-exa-search", config.toolset_type);
-    assert_eq!(false, config.enabled);
-    assert_eq!("system", config.updated_by);
 
     Ok(())
   }

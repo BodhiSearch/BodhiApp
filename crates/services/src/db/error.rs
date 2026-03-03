@@ -54,7 +54,7 @@ pub enum DbError {
   ItemNotFound { id: String, item_type: String },
   #[error("Multiple application instances found, expected at most one.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
-  MultipleAppInstance,
+  MultipleTenant,
   #[error("Data conversion error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   Conversion(String),

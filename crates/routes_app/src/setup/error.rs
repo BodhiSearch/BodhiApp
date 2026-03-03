@@ -1,4 +1,4 @@
-use services::{AppError, AppInstanceError, AuthServiceError, ErrorType};
+use services::{AppError, AuthServiceError, ErrorType, TenantError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -10,7 +10,7 @@ pub enum SetupRouteError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   ServerNameTooShort,
   #[error(transparent)]
-  AppInstanceError(#[from] AppInstanceError),
+  TenantError(#[from] TenantError),
   #[error(transparent)]
   AuthServiceError(#[from] AuthServiceError),
 }

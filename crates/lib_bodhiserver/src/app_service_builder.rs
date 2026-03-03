@@ -1,16 +1,19 @@
 use crate::BootstrapError;
+use server_core::{DefaultSharedContext, MultitenantInferenceService, StandaloneInferenceService};
 use services::EnvType;
 use services::IoError;
 use services::{
   db::{DbCore, DbService, DefaultDbService, DefaultTimeService, TimeService},
-  hash_key, AccessRequestService, AiApiService, AppInstance, AppInstanceService, AppService,
-  AuthService, BootstrapParts, CacheService, DataService, DefaultAccessRequestService,
-  DefaultAiApiService, DefaultAppInstanceService, DefaultAppService, DefaultExaService,
-  DefaultMcpService, DefaultNetworkService, DefaultSessionService, DefaultSettingService,
-  DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue, KeycloakAuthService,
-  KeyringStore, LocalConcurrencyService, LocalDataService, McpService, MokaCacheService,
-  NetworkService, QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService,
-  SystemKeyringStore, ToolService, BODHI_APP_DB_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
+  hash_key,
+  inference::InferenceService,
+  AccessRequestService, AiApiService, AppService, AuthService, BootstrapParts, CacheService,
+  DataService, DefaultAccessRequestService, DefaultAiApiService, DefaultAppService,
+  DefaultExaService, DefaultMcpService, DefaultNetworkService, DefaultSessionService,
+  DefaultSettingService, DefaultTenantService, DefaultToolService, ExaService, HfHubService,
+  HubService, InMemoryQueue, KeycloakAuthService, KeyringStore, LocalConcurrencyService,
+  LocalDataService, McpService, MokaCacheService, MultiTenantDataService, NetworkService,
+  QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService, SystemKeyringStore,
+  Tenant, TenantService, ToolService, BODHI_APP_DB_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
   HF_TOKEN, PROD_DB,
 };
 use std::sync::Arc;
@@ -109,9 +112,20 @@ impl AppServiceBuilder {
       Arc::new(DefaultSettingService::from_parts(parts, db_service.clone()));
 
     let hub_service = Self::build_hub_service(&setting_service).await?;
-    let app_instance_service: Arc<dyn AppInstanceService> =
-      Arc::new(DefaultAppInstanceService::new(db_service.clone()));
-    let data_service = Self::build_data_service(hub_service.clone(), db_service.clone());
+    let tenant_service: Arc<dyn TenantService> =
+      Arc::new(DefaultTenantService::new(db_service.clone()));
+
+    let is_multi_tenant = setting_service.is_multi_tenant().await;
+
+    let data_service: Arc<dyn DataService> = if is_multi_tenant {
+      Arc::new(MultiTenantDataService::new(db_service.clone()))
+    } else {
+      Arc::new(LocalDataService::new(
+        hub_service.clone(),
+        db_service.clone(),
+      ))
+    };
+
     let session_service = Self::build_session_service(&setting_service).await?;
     let cache_service = self.get_or_build_cache_service();
     let auth_service = Self::build_auth_service(&setting_service).await;
@@ -147,11 +161,34 @@ impl AppServiceBuilder {
     });
 
     // Build and return the complete app service
-    let token_service: Arc<dyn services::TokenService> =
-      Arc::new(services::DefaultTokenService::new(
+    let token_service: Arc<dyn services::TokenService> = Arc::new(
+      services::DefaultTokenService::new(db_service.clone(), time_service.clone()),
+    );
+
+    let inference_service: Arc<dyn InferenceService> = if is_multi_tenant {
+      Arc::new(MultitenantInferenceService::new(ai_api_service.clone()))
+    } else {
+      let ctx =
+        Arc::new(DefaultSharedContext::new(hub_service.clone(), setting_service.clone()).await);
+      let keep_alive_secs = setting_service.keep_alive().await;
+      Arc::new(StandaloneInferenceService::new(
+        ctx,
+        ai_api_service.clone(),
+        keep_alive_secs,
+      ))
+    };
+
+    let api_model_service: Arc<dyn services::ApiModelService> =
+      Arc::new(services::DefaultApiModelService::new(
         db_service.clone(),
         time_service.clone(),
+        ai_api_service.clone(),
       ));
+
+    let download_service: Arc<dyn services::DownloadService> = Arc::new(
+      services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
+    );
+
     let app_service = DefaultAppService::new(
       setting_service,
       hub_service,
@@ -159,7 +196,7 @@ impl AppServiceBuilder {
       auth_service,
       db_service,
       session_service,
-      app_instance_service,
+      tenant_service,
       cache_service,
       time_service,
       ai_api_service,
@@ -170,6 +207,9 @@ impl AppServiceBuilder {
       access_request_service,
       mcp_service,
       token_service,
+      inference_service,
+      api_model_service,
+      download_service,
     );
     Ok(app_service)
   }
@@ -183,14 +223,6 @@ impl AppServiceBuilder {
     let hub_service = HfHubService::new_from_hf_cache(hf_cache, hf_token, true)
       .map_err(|err| BootstrapError::Io(IoError::from(err)))?;
     Ok(Arc::new(hub_service))
-  }
-
-  /// Builds the data service.
-  fn build_data_service(
-    hub_service: Arc<dyn HubService>,
-    db_service: Arc<dyn DbService>,
-  ) -> Arc<dyn DataService> {
-    Arc::new(LocalDataService::new(hub_service, db_service))
   }
 
   /// Gets or builds the time service.
@@ -258,8 +290,8 @@ impl AppServiceBuilder {
   }
 
   /// Builds the AI API service.
-  fn build_ai_api_service(db_service: Arc<dyn DbService>) -> Arc<dyn AiApiService> {
-    Arc::new(DefaultAiApiService::with_db_service(db_service))
+  fn build_ai_api_service(_db_service: Arc<dyn DbService>) -> Arc<dyn AiApiService> {
+    Arc::new(DefaultAiApiService::new())
   }
 
   /// Builds the concurrency service.
@@ -341,12 +373,12 @@ pub async fn build_app_service(
 
 pub async fn update_with_option(
   service: &Arc<dyn AppService>,
-  instance: Option<&AppInstance>,
+  instance: Option<&Tenant>,
 ) -> Result<(), BootstrapError> {
   if let Some(instance) = instance {
     service
-      .app_instance_service()
-      .create_instance(
+      .tenant_service()
+      .create_tenant(
         &instance.client_id,
         &instance.client_secret,
         instance.status.clone(),

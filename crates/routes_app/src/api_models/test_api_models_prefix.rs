@@ -1,7 +1,6 @@
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_index,
-  api_models_show, api_models_sync, api_models_test, api_models_update, ApiKey, ApiKeyUpdateAction,
-  ApiModelResponse, CreateApiModelRequest, UpdateApiModelRequest, ENDPOINT_API_MODELS,
+  api_models_show, api_models_sync, api_models_test, api_models_update, ENDPOINT_API_MODELS,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -12,17 +11,15 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
-use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::{test_db_service, AppServiceStubBuilder, TestDbService};
-use services::ApiFormat::OpenAI;
+use services::AuthContext;
+use services::{ApiFormat::OpenAI, ResourceRole};
+use services::{ApiKeyUpdate, ApiModelOutput, ApiModelRequest};
 use std::sync::Arc;
 use tower::ServiceExt;
 
 fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
-  let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), app_service);
   Router::new()
     .route(ENDPOINT_API_MODELS, get(api_models_index))
     .route(ENDPOINT_API_MODELS, post(api_models_create))
@@ -50,16 +47,20 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
       &format!("{}/{{id}}/sync-models", ENDPOINT_API_MODELS),
       post(api_models_sync),
     )
-    .with_state(Arc::new(router_state))
+    .layer(axum::Extension(AuthContext::test_session(
+      "test-user",
+      "testuser",
+      ResourceRole::PowerUser,
+    )))
+    .with_state(app_service)
 }
 
 #[rstest]
 #[case::prefix_removal(
   json!({
-    "id": "test-prefix-removal",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-test-key-123",
+    "api_key": {"action": "set", "value": "sk-test-key-123"},
     "models": ["gpt-4"],
     "prefix": "azure/"
   }),
@@ -70,10 +71,10 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": null
   }),
   json!({
-    "id": "test-prefix-removal",
+    "id": "placeholder",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key_masked": "***",
+    "has_api_key": true,
     "models": ["gpt-4"],
     "prefix": null,
     "forward_all_with_prefix": false,
@@ -83,10 +84,9 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::prefix_addition(
   json!({
-    "id": "test-prefix-addition",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-test-key-123",
+    "api_key": {"action": "set", "value": "sk-test-key-123"},
     "models": ["gpt-4"],
     "prefix": null
   }),
@@ -97,10 +97,10 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": "azure/"
   }),
   json!({
-    "id": "test-prefix-addition",
+    "id": "placeholder",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key_masked": "***",
+    "has_api_key": true,
     "models": ["gpt-4"],
     "prefix": "azure/",
     "forward_all_with_prefix": false,
@@ -110,10 +110,9 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::prefix_empty_string_removal(
   json!({
-    "id": "test-empty-string-removal",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-test-key-123",
+    "api_key": {"action": "set", "value": "sk-test-key-123"},
     "models": ["gpt-4"],
     "prefix": "azure/"
   }),
@@ -124,10 +123,10 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": ""
   }),
   json!({
-    "id": "test-empty-string-removal",
+    "id": "placeholder",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key_masked": "***",
+    "has_api_key": true,
     "models": ["gpt-4"],
     "prefix": null,
     "forward_all_with_prefix": false,
@@ -137,10 +136,9 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::prefix_change(
   json!({
-    "id": "test-prefix-change",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-test-key-123",
+    "api_key": {"action": "set", "value": "sk-test-key-123"},
     "models": ["gpt-4"],
     "prefix": "azure/"
   }),
@@ -151,10 +149,10 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": "openai:"
   }),
   json!({
-    "id": "test-prefix-change",
+    "id": "placeholder",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key_masked": "***",
+    "has_api_key": true,
     "models": ["gpt-4"],
     "prefix": "openai:",
     "forward_all_with_prefix": false,
@@ -164,10 +162,9 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::no_prefix_no_change(
   json!({
-    "id": "test-no-prefix-no-change",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-test-key-123",
+    "api_key": {"action": "set", "value": "sk-test-key-123"},
     "models": ["gpt-4"],
     "prefix": null
   }),
@@ -178,10 +175,10 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": null
   }),
   json!({
-    "id": "test-no-prefix-no-change",
+    "id": "placeholder",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key_masked": "***",
+    "has_api_key": true,
     "models": ["gpt-4"],
     "prefix": null,
     "forward_all_with_prefix": false,
@@ -191,10 +188,9 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::models_and_url_update(
   json!({
-    "id": "test-models-url-update",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-old-key-123",
+    "api_key": {"action": "set", "value": "sk-old-key-123"},
     "models": ["gpt-3.5-turbo"],
     "prefix": null
   }),
@@ -205,10 +201,10 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": null
   }),
   json!({
-    "id": "test-models-url-update",
+    "id": "placeholder",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v2",
-    "api_key_masked": "***",
+    "has_api_key": true,
     "models": ["gpt-4", "gpt-3.5-turbo"],
     "prefix": null,
     "forward_all_with_prefix": false,
@@ -230,8 +226,8 @@ async fn test_api_model_prefix_lifecycle(
 ) -> anyhow::Result<()> {
   let _base_time = db_service.now();
 
-  // Parse create request
-  let create_request: CreateApiModelRequest = serde_json::from_value(create_json.clone())?;
+  // Parse create form
+  let create_form: ApiModelRequest = serde_json::from_value(create_json.clone())?;
 
   // Create app service
   let app_service = Arc::new(
@@ -243,19 +239,19 @@ async fn test_api_model_prefix_lifecycle(
 
   // Step 1: Create the API model
   let create_response = test_router(app_service.clone())
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?;
 
   assert_eq!(create_response.status(), StatusCode::CREATED);
 
   // Get the generated model ID from the response
-  let create_api_response: ApiModelResponse = create_response.json().await?;
+  let create_api_response: ApiModelOutput = create_response.json().await?;
   let model_id = create_api_response.id;
 
   // Step 2: Update the API model
-  let update_request: UpdateApiModelRequest = serde_json::from_value(update_json)?;
+  let update_form: ApiModelRequest = serde_json::from_value(update_json)?;
   let update_response = test_router(app_service.clone())
-    .oneshot(Request::put(format!("{}/{}", ENDPOINT_API_MODELS, model_id)).json(update_request)?)
+    .oneshot(Request::put(format!("{}/{}", ENDPOINT_API_MODELS, model_id)).json(update_form)?)
     .await?;
 
   assert_eq!(update_response.status(), StatusCode::OK);
@@ -270,10 +266,10 @@ async fn test_api_model_prefix_lifecycle(
 
   assert_eq!(get_response.status(), StatusCode::OK);
 
-  let api_response: ApiModelResponse = get_response.json().await?;
+  let api_response: ApiModelOutput = get_response.json().await?;
 
   // Build expected response with actual timestamps and generated ID
-  let mut expected_response: ApiModelResponse = serde_json::from_value(expected_get_json)?;
+  let mut expected_response: ApiModelOutput = serde_json::from_value(expected_get_json)?;
   expected_response.id = api_response.id.clone(); // Use the generated UUID
   expected_response.created_at = api_response.created_at;
   expected_response.updated_at = api_response.updated_at;
@@ -302,17 +298,17 @@ async fn test_create_api_model_forward_all_requires_prefix(
   );
 
   // Try to create API model with forward_all=true but no prefix
-  let create_request = CreateApiModelRequest {
+  let create_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::none(),
+    api_key: ApiKeyUpdate::Keep,
     models: vec!["gpt-4".to_string()],
     prefix: None,                  // No prefix provided
     forward_all_with_prefix: true, // But forward_all is enabled
   };
 
   let response = test_router(app_service)
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_form)?)
     .await?;
 
   // Should return 400 Bad Request
@@ -322,7 +318,7 @@ async fn test_create_api_model_forward_all_requires_prefix(
   let error_body: serde_json::Value = response.json().await?;
   assert_eq!(
     error_body["error"]["code"].as_str().unwrap(),
-    "obj_validation_error-forward_all_requires_prefix"
+    "api_model_service_error-validation"
   );
 
   Ok(())
@@ -346,33 +342,33 @@ async fn test_create_api_model_duplicate_prefix_error(
   );
 
   // Create first API model with prefix
-  let first_request = CreateApiModelRequest {
+  let first_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::none(),
+    api_key: ApiKeyUpdate::Keep,
     models: vec!["gpt-4".to_string()],
     prefix: Some("azure/".to_string()),
     forward_all_with_prefix: false,
   };
 
   let response = test_router(app_service.clone())
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(first_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(first_form)?)
     .await?;
 
   assert_eq!(response.status(), StatusCode::CREATED);
 
   // Try to create second API model with same prefix
-  let second_request = CreateApiModelRequest {
+  let second_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKey::none(),
+    api_key: ApiKeyUpdate::Keep,
     models: vec!["claude-3".to_string()],
     prefix: Some("azure/".to_string()), // Same prefix
     forward_all_with_prefix: false,
   };
 
   let response = test_router(app_service)
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(second_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(second_form)?)
     .await?;
 
   // Should return 400 Bad Request with prefix_exists error
@@ -402,44 +398,44 @@ async fn test_update_api_model_duplicate_prefix_error(
   );
 
   // Create first API model with prefix "azure/"
-  let first_request = CreateApiModelRequest {
+  let first_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::none(),
+    api_key: ApiKeyUpdate::Keep,
     models: vec!["gpt-4".to_string()],
     prefix: Some("azure/".to_string()),
     forward_all_with_prefix: false,
   };
 
   let response = test_router(app_service.clone())
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(first_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(first_form)?)
     .await?;
 
   assert_eq!(response.status(), StatusCode::CREATED);
 
   // Create second API model with different prefix "anthropic/"
-  let second_request = CreateApiModelRequest {
+  let second_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKey::none(),
+    api_key: ApiKeyUpdate::Keep,
     models: vec!["claude-3".to_string()],
     prefix: Some("anthropic/".to_string()),
     forward_all_with_prefix: false,
   };
 
   let response = test_router(app_service.clone())
-    .oneshot(Request::post(ENDPOINT_API_MODELS).json(second_request)?)
+    .oneshot(Request::post(ENDPOINT_API_MODELS).json(second_form)?)
     .await?;
 
   assert_eq!(response.status(), StatusCode::CREATED);
-  let second_model: ApiModelResponse = response.json().await?;
+  let second_model: ApiModelOutput = response.json().await?;
   let second_model_id = second_model.id;
 
   // Try to update second model to use first model's prefix
-  let update_request = UpdateApiModelRequest {
+  let update_form = ApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKeyUpdateAction::Keep,
+    api_key: ApiKeyUpdate::Keep,
     models: vec!["claude-3".to_string()],
     prefix: Some("azure/".to_string()), // Trying to use existing prefix
     forward_all_with_prefix: false,
@@ -447,7 +443,7 @@ async fn test_update_api_model_duplicate_prefix_error(
 
   let response = test_router(app_service)
     .oneshot(
-      Request::put(format!("{}/{}", ENDPOINT_API_MODELS, second_model_id)).json(update_request)?,
+      Request::put(format!("{}/{}", ENDPOINT_API_MODELS, second_model_id)).json(update_form)?,
     )
     .await?;
 

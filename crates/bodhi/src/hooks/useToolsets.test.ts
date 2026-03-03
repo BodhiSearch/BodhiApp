@@ -184,7 +184,7 @@ describe('useCreateToolset', () => {
         slug: 'my-new-toolset',
         description: 'New toolset',
         enabled: true,
-        api_key: 'test-api-key',
+        api_key: { action: 'set', value: 'test-api-key' },
       });
     });
 
@@ -206,7 +206,7 @@ describe('useCreateToolset', () => {
         toolset_type: 'builtin-exa-search',
         slug: 'my-exa-search',
         enabled: true,
-        api_key: 'test-api-key',
+        api_key: { action: 'set', value: 'test-api-key' },
       });
     });
 
@@ -232,7 +232,7 @@ describe('useCreateToolset', () => {
           toolset_type: 'builtin-exa-search',
           slug: 'duplicate-name',
           enabled: true,
-          api_key: 'test-api-key',
+          api_key: { action: 'set', value: 'test-api-key' },
         })
         .catch(() => {});
     });
@@ -261,7 +261,7 @@ describe('useUpdateToolset', () => {
         slug: 'my-exa-search',
         description: 'Updated description',
         enabled: true,
-        api_key: { action: 'Keep' },
+        api_key: { action: 'keep' },
       });
     });
 
@@ -282,7 +282,7 @@ describe('useUpdateToolset', () => {
         id: 'uuid-test-toolset',
         slug: 'my-exa-search',
         enabled: true,
-        api_key: { action: 'Keep' },
+        api_key: { action: 'keep' },
       });
     });
 
@@ -308,7 +308,7 @@ describe('useUpdateToolset', () => {
           id: 'uuid-test-toolset',
           slug: 'my-exa-search',
           enabled: true,
-          api_key: { action: 'Keep' },
+          api_key: { action: 'keep' },
         })
         .catch(() => {});
     });

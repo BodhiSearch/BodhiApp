@@ -1,6 +1,6 @@
+use crate::middleware::generate_random_string;
 use crate::{auth_callback, RedirectResponse};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::generate_random_string;
 use axum::body::to_bytes;
 use axum::{
   http::{status::StatusCode, Request},
@@ -13,7 +13,7 @@ use oauth2::PkceCodeVerifier;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
-use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedContext};
+use server_core::test_utils::RequestTestExt;
 use services::test_utils::temp_bodhi_home;
 use services::{
   test_utils::{
@@ -90,7 +90,8 @@ async fn setup_app_service_resource_admin(
     .setting_service(setting_service)
     .with_default_session_service(session_service);
   builder
-    .with_app_instance(services::AppInstance {
+    .with_tenant(services::Tenant {
+      id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
 
@@ -194,10 +195,7 @@ async fn execute_auth_callback(
   app_service: Arc<AppServiceStub>,
   request_state: &str,
 ) -> Result<Response, anyhow::Error> {
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    app_service.clone(),
-  ));
+  let state = app_service.clone();
   let router: Router = Router::new()
     .route("/auth/callback", post(auth_callback))
     .layer(app_service.session_service().session_layer())
@@ -220,8 +218,12 @@ async fn assert_login_callback_result_resource_admin(
   let body_bytes = to_bytes(response.into_body(), usize::MAX).await?;
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
   assert_eq!("http://frontend.localhost:3000/ui/chat", body.location);
-  let app_instance_service = app_service.app_instance_service();
-  let updated_status = app_instance_service.get_status().await?;
+  let tenant_service = app_service.tenant_service();
+  let updated_status = tenant_service
+    .get_standalone_app()
+    .await?
+    .map(|t| t.status)
+    .unwrap_or_default();
   assert_eq!(AppStatus::Ready, updated_status);
   Ok(())
 }

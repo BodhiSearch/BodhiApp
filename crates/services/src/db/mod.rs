@@ -4,6 +4,9 @@ pub mod encryption;
 mod error;
 pub mod sea_migrations;
 mod service;
+#[cfg(test)]
+#[path = "test_rls.rs"]
+mod test_rls;
 mod time_service;
 
 pub use db_core::*;

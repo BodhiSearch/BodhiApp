@@ -150,7 +150,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
       toolset_type: toolsetType.toolset_type,
       slug: data.slug,
       description: data.description || undefined,
-      api_key: data.api_key,
+      api_key: { action: 'set', value: data.api_key },
       enabled: data.enabled,
     });
   };

@@ -26,7 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { toast } from '@/hooks/use-toast';
-import { useDeleteMcp, useMcps, type McpResponse } from '@/hooks/useMcps';
+import { useDeleteMcp, useMcps, type Mcp } from '@/hooks/useMcps';
 
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
@@ -36,7 +36,7 @@ const columns = [
   { id: 'actions', name: '', sorted: false },
 ];
 
-function McpStatus({ mcp }: { mcp: McpResponse }) {
+function McpStatus({ mcp }: { mcp: Mcp }) {
   if (!mcp.enabled) {
     return <Badge variant="secondary">Disabled</Badge>;
   }
@@ -62,9 +62,9 @@ function McpsPageContent() {
   });
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [mcpToDelete, setMcpToDelete] = useState<McpResponse | null>(null);
+  const [mcpToDelete, setMcpToDelete] = useState<Mcp | null>(null);
 
-  const handleDeleteClick = (mcp: McpResponse) => {
+  const handleDeleteClick = (mcp: Mcp) => {
     setMcpToDelete(mcp);
     setDeleteDialogOpen(true);
   };
@@ -75,7 +75,7 @@ function McpsPageContent() {
     }
   };
 
-  const renderRow = (mcp: McpResponse) => {
+  const renderRow = (mcp: Mcp) => {
     const toolCount = mcp.tools_filter?.length ?? 0;
     const serverDisabled = !mcp.mcp_server.enabled;
 

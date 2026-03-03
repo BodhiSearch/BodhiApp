@@ -1,29 +1,80 @@
 use axum::{
-  body::Body,
-  extract::{FromRequest, Request},
+  extract::{rejection::JsonRejection, FromRequest, Request},
+  response::{IntoResponse, Response},
   Json,
 };
-use serde::de::DeserializeOwned;
-use crate::{ApiError, JsonRejectionError};
-use services::ObjValidationError;
+use services::AppError;
+use std::collections::HashMap;
 use validator::Validate;
 
 pub struct ValidatedJson<T>(pub T);
 
-impl<T, S> FromRequest<S> for ValidatedJson<T>
+#[derive(Debug)]
+pub enum ValidationRejection {
+  JsonRejection(JsonRejection),
+  Validation(validator::ValidationErrors),
+}
+
+impl<S, T> FromRequest<S> for ValidatedJson<T>
 where
-  T: DeserializeOwned + Validate,
+  T: serde::de::DeserializeOwned + Validate,
   S: Send + Sync,
 {
-  type Rejection = ApiError;
+  type Rejection = ValidationRejection;
 
-  async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+  async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
     let Json(value) = Json::<T>::from_request(req, state)
       .await
-      .map_err(|e| ApiError::from(JsonRejectionError::from(e)))?;
-    value
-      .validate()
-      .map_err(|e| ApiError::from(ObjValidationError::from(e)))?;
+      .map_err(ValidationRejection::JsonRejection)?;
+    value.validate().map_err(ValidationRejection::Validation)?;
     Ok(ValidatedJson(value))
   }
 }
+
+impl IntoResponse for ValidationRejection {
+  fn into_response(self) -> Response {
+    crate::ApiError::from(self).into_response()
+  }
+}
+
+impl From<ValidationRejection> for crate::ApiError {
+  fn from(value: ValidationRejection) -> Self {
+    match value {
+      ValidationRejection::JsonRejection(rejection) => {
+        use crate::JsonRejectionError;
+        let err = JsonRejectionError::from(rejection);
+        crate::ApiError {
+          name: err.to_string(),
+          error_type: err.error_type(),
+          status: err.status(),
+          code: err.code(),
+          args: err.args(),
+        }
+      }
+      ValidationRejection::Validation(errors) => {
+        let args: HashMap<String, String> = errors
+          .field_errors()
+          .into_iter()
+          .map(|(field, errs)| {
+            let msg = errs
+              .first()
+              .and_then(|e| e.message.as_ref().map(|m| m.to_string()))
+              .unwrap_or_else(|| errs.first().map(|e| format!("{}", e)).unwrap_or_default());
+            (field.to_string(), msg)
+          })
+          .collect();
+        crate::ApiError {
+          name: "Validation failed".to_string(),
+          error_type: "invalid_request_error".to_string(),
+          status: 400,
+          code: "validation_error".to_string(),
+          args,
+        }
+      }
+    }
+  }
+}
+
+#[cfg(test)]
+#[path = "test_validated_json.rs"]
+mod test_validated_json;

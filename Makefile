@@ -73,6 +73,9 @@ test.ui: ## Run frontend and UI integration tests
 	$(MAKE) test.ui.unit
 	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
 
+test.napi.sqlite: ## Run frontend and UI integration tests
+	$(MAKE) -C crates/lib_bodhiserver_napi test.napi.sqlite
+
 test.napi: ## Run NAPI bindings tests
 	cd crates/lib_bodhiserver_napi && npm install && npm run test:playwright
 

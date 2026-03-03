@@ -617,7 +617,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ApproveAccessRequestBody"
+                "$ref": "#/components/schemas/ApproveAccessRequest"
               }
             }
           },
@@ -1127,14 +1127,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedApiModelResponse"
+                  "$ref": "#/components/schemas/PaginatedApiModelOutput"
                 },
                 "example": {
                   "data": [
                     {
                       "api_format": "openai",
-                      "api_key": "sk-****",
                       "base_url": "https://api.openai.com/v1",
+                      "has_api_key": true,
                       "id": "openai-gpt4"
                     }
                   ],
@@ -1214,7 +1214,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateApiModelRequest"
+                "$ref": "#/components/schemas/ApiModelRequest"
               }
             }
           },
@@ -1226,7 +1226,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiModelResponse"
+                  "$ref": "#/components/schemas/ApiModelOutput"
                 }
               }
             }
@@ -1390,7 +1390,7 @@
         "tags": [
           "api-models"
         ],
-        "summary": "Fetch available models from the API",
+        "summary": "Fetch available models from the API.",
         "operationId": "fetchApiModels",
         "requestBody": {
           "content": {
@@ -1478,7 +1478,7 @@
         "tags": [
           "api-models"
         ],
-        "summary": "Test API connectivity with a prompt",
+        "summary": "Test API connectivity with a prompt.",
         "operationId": "testApiModel",
         "requestBody": {
           "content": {
@@ -1587,14 +1587,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiModelResponse"
+                  "$ref": "#/components/schemas/ApiModelOutput"
                 },
                 "example": {
                   "api_format": "openai",
-                  "api_key": "sk-****",
                   "base_url": "https://api.openai.com/v1",
+                  "has_api_key": true,
                   "id": "openai-gpt4",
-                  "model": "gpt-4"
+                  "models": [
+                    "gpt-4"
+                  ]
                 }
               }
             }
@@ -1696,7 +1698,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateApiModelRequest"
+                "$ref": "#/components/schemas/ApiModelRequest"
               }
             }
           },
@@ -1708,7 +1710,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiModelResponse"
+                  "$ref": "#/components/schemas/ApiModelOutput"
                 }
               }
             }
@@ -1899,14 +1901,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiModelResponse"
+                  "$ref": "#/components/schemas/ApiModelOutput"
                 },
                 "example": {
                   "api_format": "openai",
-                  "api_key_masked": "sk-****1234",
                   "base_url": "https://api.openai.com/v1",
                   "created_at": "2024-01-01T00:00:00Z",
                   "forward_all_with_prefix": false,
+                  "has_api_key": true,
                   "id": "openai-gpt4",
                   "models": [
                     "gpt-4",
@@ -2090,7 +2092,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateAccessRequestBody"
+                "$ref": "#/components/schemas/CreateAccessRequest"
               }
             }
           },
@@ -2559,7 +2561,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateMcpRequest"
+                "$ref": "#/components/schemas/McpRequest"
               }
             }
           },
@@ -2571,7 +2573,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/McpResponse"
+                  "$ref": "#/components/schemas/Mcp"
                 }
               }
             }
@@ -2709,7 +2711,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateAuthConfigBody"
+                "$ref": "#/components/schemas/CreateAuthConfig"
               }
             }
           },
@@ -3649,7 +3651,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateMcpServerRequest"
+                "$ref": "#/components/schemas/McpServerRequest"
               }
             }
           },
@@ -3817,7 +3819,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateMcpServerRequest"
+                "$ref": "#/components/schemas/McpServerRequest"
               }
             }
           },
@@ -3912,7 +3914,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/McpResponse"
+                  "$ref": "#/components/schemas/Mcp"
                 }
               }
             }
@@ -3988,7 +3990,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateMcpRequest"
+                "$ref": "#/components/schemas/McpRequest"
               }
             }
           },
@@ -4000,7 +4002,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/McpResponse"
+                  "$ref": "#/components/schemas/Mcp"
                 }
               }
             }
@@ -4979,7 +4981,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateAliasRequest"
+                "$ref": "#/components/schemas/UserAliasRequest"
               }
             }
           },
@@ -5279,7 +5281,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateAliasRequest"
+                "$ref": "#/components/schemas/UserAliasRequest"
               }
             }
           },
@@ -6080,7 +6082,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedApiTokenResponse"
+                  "$ref": "#/components/schemas/PaginatedTokenResponse"
                 },
                 "example": {
                   "data": [
@@ -6171,7 +6173,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateApiTokenRequest"
+                "$ref": "#/components/schemas/CreateTokenRequest"
               },
               "example": {
                 "name": "My Integration Token",
@@ -6189,7 +6191,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiTokenResponse"
+                  "$ref": "#/components/schemas/TokenCreated"
                 },
                 "example": {
                   "token": "bodhiapp_1234567890abcdef"
@@ -6272,7 +6274,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateApiTokenRequest"
+                "$ref": "#/components/schemas/UpdateTokenRequest"
               },
               "example": {
                 "name": "Updated Token Name",
@@ -6288,7 +6290,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiToken"
+                  "$ref": "#/components/schemas/TokenDetail"
                 },
                 "example": {
                   "created_at": "2024-11-10T04:52:06.786Z",
@@ -6668,7 +6670,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateToolsetRequest"
+                "$ref": "#/components/schemas/ToolsetRequest"
               }
             }
           },
@@ -6836,7 +6838,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateToolsetRequest"
+                "$ref": "#/components/schemas/ToolsetRequest"
               }
             }
           },
@@ -8547,7 +8549,7 @@
         ],
         "description": "Validated API key wrapper - validates length when Some, allows None for public APIs"
       },
-      "ApiKeyUpdateAction": {
+      "ApiKeyUpdate": {
         "oneOf": [
           {
             "type": "object",
@@ -8566,7 +8568,7 @@
           },
           {
             "type": "object",
-            "description": "Set a new API key (or add one if none exists) - can be None for public APIs",
+            "description": "Set a new API key (or add one if none exists) - ApiKey validates length",
             "required": [
               "value",
               "action"
@@ -8574,7 +8576,7 @@
             "properties": {
               "value": {
                 "$ref": "#/components/schemas/ApiKey",
-                "description": "Set a new API key (or add one if none exists) - can be None for public APIs"
+                "description": "Set a new API key (or add one if none exists) - ApiKey validates length"
               },
               "action": {
                 "type": "string",
@@ -8585,58 +8587,16 @@
             }
           }
         ],
-        "description": "Represents an API key update action for API model updates"
+        "description": "Represents an API key update operation for API model aliases and toolsets."
       },
-      "ApiKeyUpdateDto": {
-        "oneOf": [
-          {
-            "type": "object",
-            "description": "Keep the existing API key unchanged",
-            "required": [
-              "action"
-            ],
-            "properties": {
-              "action": {
-                "type": "string",
-                "enum": [
-                  "Keep"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "Set a new API key (or clear if None)",
-            "required": [
-              "value",
-              "action"
-            ],
-            "properties": {
-              "value": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "Set a new API key (or clear if None)"
-              },
-              "action": {
-                "type": "string",
-                "enum": [
-                  "Set"
-                ]
-              }
-            }
-          }
-        ],
-        "description": "API key update enum (mirrors services::ApiKeyUpdate)"
-      },
-      "ApiModelResponse": {
+      "ApiModelOutput": {
         "type": "object",
-        "description": "Response containing API model configuration",
+        "description": "Output type for API model configuration.",
         "required": [
           "id",
           "api_format",
           "base_url",
+          "has_api_key",
           "models",
           "forward_all_with_prefix",
           "created_at",
@@ -8652,11 +8612,8 @@
           "base_url": {
             "type": "string"
           },
-          "api_key_masked": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "has_api_key": {
+            "type": "boolean"
           },
           "models": {
             "type": "array",
@@ -8684,9 +8641,10 @@
         },
         "example": {
           "api_format": "openai",
-          "api_key_masked": "sk-...abc123",
           "base_url": "https://api.openai.com/v1",
           "created_at": "2024-01-01T00:00:00Z",
+          "forward_all_with_prefix": false,
+          "has_api_key": true,
           "id": "openai-gpt4",
           "models": [
             "gpt-4",
@@ -8696,67 +8654,58 @@
           "updated_at": "2024-01-01T00:00:00Z"
         }
       },
-      "ApiToken": {
+      "ApiModelRequest": {
         "type": "object",
+        "description": "Input request for creating or updating an API model configuration.",
         "required": [
-          "id",
-          "user_id",
-          "name",
-          "token_prefix",
-          "token_hash",
-          "scopes",
-          "status",
-          "created_at",
-          "updated_at"
+          "api_format",
+          "base_url",
+          "models"
         ],
         "properties": {
-          "id": {
-            "type": "string"
+          "api_format": {
+            "$ref": "#/components/schemas/ApiFormat",
+            "description": "API format/protocol (e.g., \"openai\")"
           },
-          "user_id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "token_prefix": {
-            "type": "string"
-          },
-          "token_hash": {
-            "type": "string"
-          },
-          "scopes": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/TokenStatus"
-          },
-          "created_at": {
+          "base_url": {
             "type": "string",
-            "format": "date-time",
-            "example": "2024-11-10T04:52:06.786Z"
+            "description": "API base URL"
           },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2024-11-10T04:52:06.786Z"
-          }
-        }
-      },
-      "ApiTokenResponse": {
-        "type": "object",
-        "required": [
-          "token"
-        ],
-        "properties": {
-          "token": {
-            "type": "string",
-            "description": "API token with bodhiapp_ prefix for programmatic access",
-            "example": "bodhiapp_1234567890abcdef"
+          "api_key": {
+            "$ref": "#/components/schemas/ApiKeyUpdate",
+            "description": "API key update action (Keep/Set with Some or None)"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of available models"
+          },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional prefix for model namespacing (e.g., \"azure/\" for \"azure/gpt-4\")"
+          },
+          "forward_all_with_prefix": {
+            "type": "boolean",
+            "description": "Whether to forward all requests with this prefix (true) or only selected models (false)"
           }
         },
         "example": {
-          "token": "bodhiapp_1234567890abcdef"
+          "api_format": "openai",
+          "api_key": {
+            "action": "set",
+            "value": "sk-..."
+          },
+          "base_url": "https://api.openai.com/v1",
+          "models": [
+            "gpt-4",
+            "gpt-3.5-turbo"
+          ],
+          "prefix": "openai"
         }
       },
       "AppAccessRequestStatus": {
@@ -8875,8 +8824,9 @@
           "denied"
         ]
       },
-      "ApproveAccessRequestBody": {
+      "ApproveAccessRequest": {
         "type": "object",
+        "description": "Request for approving an app access request",
         "required": [
           "approved_role",
           "approved"
@@ -9002,9 +8952,8 @@
         ],
         "properties": {
           "role": {
-            "type": "string",
-            "description": "Role to assign to the user",
-            "example": "resource_manager"
+            "$ref": "#/components/schemas/ResourceRole",
+            "description": "Role to assign to the user"
           }
         }
       },
@@ -10654,8 +10603,9 @@
           }
         }
       },
-      "CreateAccessRequestBody": {
+      "CreateAccessRequest": {
         "type": "object",
+        "description": "Request for creating an app access request",
         "required": [
           "app_client_id",
           "flow_type",
@@ -10734,129 +10684,7 @@
           "status": "draft"
         }
       },
-      "CreateAliasRequest": {
-        "type": "object",
-        "required": [
-          "alias",
-          "repo",
-          "filename"
-        ],
-        "properties": {
-          "alias": {
-            "type": "string"
-          },
-          "repo": {
-            "type": "string"
-          },
-          "filename": {
-            "type": "string"
-          },
-          "snapshot": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "request_params": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/OAIRequestParams"
-              }
-            ]
-          },
-          "context_params": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "CreateApiModelRequest": {
-        "type": "object",
-        "description": "Request to create a new API model configuration",
-        "required": [
-          "api_format",
-          "base_url",
-          "models"
-        ],
-        "properties": {
-          "api_format": {
-            "$ref": "#/components/schemas/ApiFormat",
-            "description": "API format/protocol (e.g., \"openai\")"
-          },
-          "base_url": {
-            "type": "string",
-            "description": "API base URL"
-          },
-          "api_key": {
-            "$ref": "#/components/schemas/ApiKey",
-            "description": "API key for authentication (null for public APIs)"
-          },
-          "models": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of available models"
-          },
-          "prefix": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Optional prefix for model namespacing (e.g., \"azure/\" for \"azure/gpt-4\", \"openai:\" for \"openai:gpt-4\")"
-          },
-          "forward_all_with_prefix": {
-            "type": "boolean",
-            "description": "Whether to forward all requests with this prefix (true) or only selected models (false)"
-          }
-        },
-        "example": {
-          "api_format": "openai",
-          "api_key": "sk-...",
-          "base_url": "https://api.openai.com/v1",
-          "models": [
-            "gpt-4",
-            "gpt-3.5-turbo"
-          ],
-          "prefix": "openai"
-        }
-      },
-      "CreateApiTokenRequest": {
-        "type": "object",
-        "description": "Request to create a new API token",
-        "required": [
-          "scope"
-        ],
-        "properties": {
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Descriptive name for the API token (minimum 3 characters)",
-            "example": "My Integration Token",
-            "maxLength": 100,
-            "minLength": 3
-          },
-          "scope": {
-            "$ref": "#/components/schemas/TokenScope",
-            "description": "Token scope defining access level"
-          }
-        },
-        "example": {
-          "name": "My Integration Token",
-          "scope": "scope_token_user"
-        }
-      },
-      "CreateAuthConfigBody": {
+      "CreateAuthConfig": {
         "allOf": [
           {
             "$ref": "#/components/schemas/CreateMcpAuthConfigRequest"
@@ -11520,129 +11348,30 @@
         ],
         "description": "Discriminated union for creating any type of MCP auth config.\nThe JSON `\"type\"` field determines the variant: `\"header\"` or `\"oauth\"`."
       },
-      "CreateMcpRequest": {
+      "CreateTokenRequest": {
         "type": "object",
         "required": [
-          "name",
-          "slug",
-          "mcp_server_id",
-          "enabled"
+          "scope"
         ],
         "properties": {
           "name": {
-            "type": "string"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "mcp_server_id": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "tools_cache": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/McpTool"
-            }
-          },
-          "tools_filter": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "auth_type": {
-            "$ref": "#/components/schemas/McpAuthType"
-          },
-          "auth_uuid": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "CreateMcpServerRequest": {
-        "type": "object",
-        "required": [
-          "url",
-          "name",
-          "enabled"
-        ],
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "auth_config": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/CreateMcpAuthConfigRequest"
-              }
-            ]
-          }
-        }
-      },
-      "CreateToolsetRequest": {
-        "type": "object",
-        "description": "Request to create a toolset",
-        "required": [
-          "toolset_type",
-          "slug",
-          "api_key"
-        ],
-        "properties": {
-          "toolset_type": {
-            "type": "string",
-            "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
-          },
-          "slug": {
-            "type": "string",
-            "description": "User-defined slug for this toolset (1-24 chars, alphanumeric + hyphens)"
-          },
-          "description": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Optional description for this toolset"
+            "description": "Descriptive name for the API token",
+            "example": "My Integration Token",
+            "maxLength": 100,
+            "minLength": 0
           },
-          "enabled": {
-            "type": "boolean",
-            "description": "Whether this toolset is enabled"
-          },
-          "api_key": {
-            "type": "string",
-            "description": "API key for the toolset"
+          "scope": {
+            "$ref": "#/components/schemas/TokenScope",
+            "description": "Token scope defining access level"
           }
+        },
+        "example": {
+          "name": "My Integration Token",
+          "scope": "scope_token_user"
         }
       },
       "CustomGrammarFormatParam": {
@@ -11771,9 +11500,9 @@
           "repo",
           "filename",
           "status",
+          "downloaded_bytes",
           "created_at",
-          "updated_at",
-          "started_at"
+          "updated_at"
         ],
         "properties": {
           "id": {
@@ -11794,16 +11523,6 @@
               "null"
             ]
           },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2024-11-10T04:52:06.786Z"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2024-11-10T04:52:06.786Z"
-          },
           "total_bytes": {
             "type": [
               "integer",
@@ -11816,9 +11535,19 @@
             "format": "int64"
           },
           "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
             "type": "string",
-            "format": "date-time",
-            "example": "2024-11-10T04:52:06.786Z"
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -12357,7 +12086,7 @@
           "mcps": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/McpResponse"
+              "$ref": "#/components/schemas/Mcp"
             }
           }
         }
@@ -12419,7 +12148,7 @@
       },
       "ListUsersParams": {
         "type": "object",
-        "description": "List users query parameters",
+        "description": "List users query parameters. Intentionally omits sort fields (unlike PaginationSortParams)\nbecause user listing is fetched from the auth service which handles its own ordering.",
         "properties": {
           "page": {
             "type": [
@@ -12648,7 +12377,6 @@
               "mcp_server_id",
               "header_key",
               "has_header_value",
-              "created_by",
               "created_at",
               "updated_at",
               "type"
@@ -12668,9 +12396,6 @@
               },
               "has_header_value": {
                 "type": "boolean"
-              },
-              "created_by": {
-                "type": "string"
               },
               "created_at": {
                 "type": "string",
@@ -12700,7 +12425,6 @@
               "token_endpoint",
               "has_client_secret",
               "has_registration_access_token",
-              "created_by",
               "created_at",
               "updated_at",
               "type"
@@ -12757,9 +12481,6 @@
               },
               "has_registration_access_token": {
                 "type": "boolean"
-              },
-              "created_by": {
-                "type": "string"
               },
               "created_at": {
                 "type": "string",
@@ -12835,39 +12556,40 @@
           }
         }
       },
-      "McpResponse": {
+      "McpRequest": {
         "type": "object",
+        "description": "Input for creating or updating an MCP instance.",
         "required": [
-          "id",
-          "mcp_server",
-          "slug",
           "name",
-          "enabled",
-          "auth_type",
-          "created_at",
-          "updated_at"
+          "slug",
+          "enabled"
         ],
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "mcp_server": {
-            "$ref": "#/components/schemas/McpServerInfo"
+          "name": {
+            "type": "string",
+            "description": "Human-readable name (required)"
           },
           "slug": {
-            "type": "string"
+            "type": "string",
+            "description": "User-defined slug for this instance (1-24 chars, alphanumeric + hyphens)"
           },
-          "name": {
-            "type": "string"
+          "mcp_server_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "MCP server ID (required for create, ignored for update)"
           },
           "description": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Optional description"
           },
           "enabled": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether this instance is enabled"
           },
           "tools_cache": {
             "type": [
@@ -12876,7 +12598,8 @@
             ],
             "items": {
               "$ref": "#/components/schemas/McpTool"
-            }
+            },
+            "description": "Cached tool schemas from the MCP server (JSON array)"
           },
           "tools_filter": {
             "type": [
@@ -12885,22 +12608,19 @@
             ],
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Whitelisted tool names"
           },
           "auth_type": {
-            "$ref": "#/components/schemas/McpAuthType"
+            "$ref": "#/components/schemas/McpAuthType",
+            "description": "Authentication type"
           },
           "auth_uuid": {
             "type": [
               "string",
               "null"
-            ]
-          },
-          "created_at": {
-            "type": "string"
-          },
-          "updated_at": {
-            "type": "string"
+            ],
+            "description": "Reference to auth config"
           }
         }
       },
@@ -12989,67 +12709,31 @@
       },
       "McpServerRequest": {
         "type": "object",
+        "description": "Input for creating or updating an MCP server.",
         "required": [
-          "url"
-        ],
-        "properties": {
-          "url": {
-            "type": "string"
-          }
-        }
-      },
-      "McpServerResponse": {
-        "type": "object",
-        "required": [
-          "id",
           "url",
           "name",
-          "enabled",
-          "created_by",
-          "updated_by",
-          "enabled_mcp_count",
-          "disabled_mcp_count",
-          "created_at",
-          "updated_at"
+          "enabled"
         ],
         "properties": {
-          "id": {
-            "type": "string"
-          },
           "url": {
-            "type": "string"
+            "type": "string",
+            "description": "MCP server endpoint URL (trimmed, case-insensitive unique)"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Human-readable display name"
           },
           "description": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Optional description"
           },
           "enabled": {
-            "type": "boolean"
-          },
-          "created_by": {
-            "type": "string"
-          },
-          "updated_by": {
-            "type": "string"
-          },
-          "enabled_mcp_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "disabled_mcp_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "created_at": {
-            "type": "string"
-          },
-          "updated_at": {
-            "type": "string"
+            "type": "boolean",
+            "description": "Whether this MCP server is enabled"
           },
           "auth_config": {
             "oneOf": [
@@ -13057,11 +12741,47 @@
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/McpAuthConfigResponse"
+                "$ref": "#/components/schemas/CreateMcpAuthConfigRequest",
+                "description": "Optional auth config to create alongside the server (create only)"
               }
             ]
           }
         }
+      },
+      "McpServerResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/McpServer"
+          },
+          {
+            "type": "object",
+            "required": [
+              "enabled_mcp_count",
+              "disabled_mcp_count"
+            ],
+            "properties": {
+              "enabled_mcp_count": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "disabled_mcp_count": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "auth_config": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/McpAuthConfigResponse"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "description": "MCP server response with computed mcp counts and optional auth config."
       },
       "McpServerReviewInfo": {
         "type": "object",
@@ -13380,7 +13100,7 @@
       },
       "NewDownloadRequest": {
         "type": "object",
-        "description": "Request to pull a model file from HuggingFace",
+        "description": "Request for creating a new download request",
         "required": [
           "repo",
           "filename"
@@ -13602,7 +13322,7 @@
           "mcp_oauth_config_id",
           "has_access_token",
           "has_refresh_token",
-          "created_by",
+          "user_id",
           "created_at",
           "updated_at"
         ],
@@ -13632,7 +13352,7 @@
           "has_refresh_token": {
             "type": "boolean"
           },
-          "created_by": {
+          "user_id": {
             "type": "string"
           },
           "created_at": {
@@ -13937,7 +13657,7 @@
           }
         }
       },
-      "PaginatedApiModelResponse": {
+      "PaginatedApiModelOutput": {
         "type": "object",
         "description": "Paginated response for API model listings",
         "required": [
@@ -13950,37 +13670,7 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ApiModelResponse"
-            }
-          },
-          "total": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "page": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "page_size": {
-            "type": "integer",
-            "minimum": 0
-          }
-        }
-      },
-      "PaginatedApiTokenResponse": {
-        "type": "object",
-        "description": "Paginated list of API tokens",
-        "required": [
-          "data",
-          "total",
-          "page",
-          "page_size"
-        ],
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ApiToken"
+              "$ref": "#/components/schemas/ApiModelOutput"
             }
           },
           "total": {
@@ -14057,6 +13747,35 @@
           }
         }
       },
+      "PaginatedTokenResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TokenDetail"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "PaginatedUserAccessResponse": {
         "type": "object",
         "description": "Paginated response for access requests",
@@ -14096,11 +13815,11 @@
           "requests": [
             {
               "created_at": "2024-01-01T12:00:00Z",
-              "email": "user@example.com",
-              "id": 1,
-              "reviewer": null,
+              "id": "01HXXXXXX",
               "status": "pending",
-              "updated_at": "2024-01-01T12:00:00Z"
+              "updated_at": "2024-01-01T12:00:00Z",
+              "user_id": "auth0|123",
+              "username": "user@example.com"
             }
           ],
           "total": 1
@@ -14380,6 +14099,17 @@
           "dynamic_registration"
         ]
       },
+      "RequestedMcpServer": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "RequestedResources": {
         "type": "object",
         "properties": {
@@ -14392,7 +14122,7 @@
           "mcp_servers": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/McpServerRequest"
+              "$ref": "#/components/schemas/RequestedMcpServer"
             }
           }
         }
@@ -14855,6 +14585,63 @@
           "success": true
         }
       },
+      "TokenCreated": {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "API token with bodhiapp_ prefix for programmatic access",
+            "example": "bodhiapp_1234567890abcdef"
+          }
+        },
+        "example": {
+          "token": "bodhiapp_1234567890abcdef"
+        }
+      },
+      "TokenDetail": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "name",
+          "token_prefix",
+          "scopes",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "token_prefix": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TokenStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "TokenInfo": {
         "type": "object",
         "description": "API Token information response",
@@ -15098,6 +14885,41 @@
           }
         }
       },
+      "ToolsetRequest": {
+        "type": "object",
+        "description": "Input for creating or updating a toolset instance.",
+        "required": [
+          "slug"
+        ],
+        "properties": {
+          "toolset_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Toolset type identifier (required for create, ignored for update)"
+          },
+          "slug": {
+            "type": "string",
+            "description": "User-defined slug for this instance (1-24 chars, alphanumeric + hyphens)"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional description for this instance"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this instance is enabled"
+          },
+          "api_key": {
+            "$ref": "#/components/schemas/ApiKeyUpdate",
+            "description": "API key update action (Keep or Set)"
+          }
+        }
+      },
       "ToolsetResponse": {
         "type": "object",
         "description": "Toolset response",
@@ -15199,208 +15021,6 @@
           }
         }
       },
-      "UpdateAliasRequest": {
-        "type": "object",
-        "required": [
-          "repo",
-          "filename"
-        ],
-        "properties": {
-          "repo": {
-            "type": "string"
-          },
-          "filename": {
-            "type": "string"
-          },
-          "snapshot": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "request_params": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/OAIRequestParams"
-              }
-            ]
-          },
-          "context_params": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "UpdateApiModelRequest": {
-        "type": "object",
-        "description": "Request to update an existing API model configuration",
-        "required": [
-          "api_format",
-          "base_url",
-          "models"
-        ],
-        "properties": {
-          "api_format": {
-            "$ref": "#/components/schemas/ApiFormat",
-            "description": "API format/protocol (required)"
-          },
-          "base_url": {
-            "type": "string",
-            "description": "API base URL (required)"
-          },
-          "api_key": {
-            "$ref": "#/components/schemas/ApiKeyUpdateAction",
-            "description": "API key update action (Keep/Set with Some or None)"
-          },
-          "models": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of available models (required)"
-          },
-          "prefix": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Optional prefix for model namespacing"
-          },
-          "forward_all_with_prefix": {
-            "type": "boolean",
-            "description": "Whether to forward all requests with this prefix (true) or only selected models (false)"
-          }
-        },
-        "example": {
-          "api_format": "openai",
-          "api_key": {
-            "action": "keep"
-          },
-          "base_url": "https://api.openai.com/v1",
-          "models": [
-            "gpt-4-turbo",
-            "gpt-3.5-turbo"
-          ],
-          "prefix": "openai"
-        }
-      },
-      "UpdateApiTokenRequest": {
-        "type": "object",
-        "description": "Request to update an existing API token",
-        "required": [
-          "name",
-          "status"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "New descriptive name for the token (minimum 3 characters)",
-            "example": "Updated Token Name",
-            "maxLength": 100,
-            "minLength": 3
-          },
-          "status": {
-            "$ref": "#/components/schemas/TokenStatus",
-            "description": "New status for the token (active/inactive)"
-          }
-        },
-        "example": {
-          "name": "Updated Token Name",
-          "status": "inactive"
-        }
-      },
-      "UpdateMcpRequest": {
-        "type": "object",
-        "required": [
-          "name",
-          "slug",
-          "enabled"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "tools_filter": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "tools_cache": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/McpTool"
-            }
-          },
-          "auth_type": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/McpAuthType"
-              }
-            ]
-          },
-          "auth_uuid": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "UpdateMcpServerRequest": {
-        "type": "object",
-        "required": [
-          "url",
-          "name",
-          "enabled"
-        ],
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enabled": {
-            "type": "boolean"
-          }
-        }
-      },
       "UpdateSettingRequest": {
         "type": "object",
         "description": "Request to update a setting value",
@@ -15416,33 +15036,28 @@
           "value": "debug"
         }
       },
-      "UpdateToolsetRequest": {
+      "UpdateTokenRequest": {
         "type": "object",
-        "description": "Request to update a toolset (full PUT - all fields required except api_key)",
         "required": [
-          "slug",
-          "enabled"
+          "name",
+          "status"
         ],
         "properties": {
-          "slug": {
+          "name": {
             "type": "string",
-            "description": "User-defined slug for this toolset"
+            "description": "New descriptive name for the token",
+            "example": "Updated Token Name",
+            "maxLength": 100,
+            "minLength": 3
           },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Optional description for this toolset"
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Whether this toolset is enabled"
-          },
-          "api_key": {
-            "$ref": "#/components/schemas/ApiKeyUpdateDto",
-            "description": "API key update action (Keep or Set)"
+          "status": {
+            "$ref": "#/components/schemas/TokenStatus",
+            "description": "New status for the token (active/inactive)"
           }
+        },
+        "example": {
+          "name": "Updated Token Name",
+          "status": "inactive"
         }
       },
       "UrlCitation": {
@@ -15478,6 +15093,7 @@
       },
       "UserAccessRequest": {
         "type": "object",
+        "description": "User access request output type for API responses",
         "required": [
           "id",
           "username",
@@ -15554,7 +15170,9 @@
         },
         "example": {
           "created_at": "2024-01-01T12:00:00Z",
-          "status": "pending"
+          "status": "pending",
+          "updated_at": "2024-01-01T12:00:00Z",
+          "username": "user@example.com"
         }
       },
       "UserAlias": {
@@ -15598,6 +15216,68 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "UserAliasRequest": {
+        "type": "object",
+        "description": "Input request for creating or updating a user model alias.",
+        "required": [
+          "alias",
+          "repo",
+          "filename"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string",
+            "description": "Alias name — unique per (tenant_id, user_id) scope"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository in format \"user/repo\""
+          },
+          "filename": {
+            "type": "string",
+            "description": "Filename of the GGUF model"
+          },
+          "snapshot": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Snapshot/commit identifier (optional — defaults to latest available)"
+          },
+          "request_params": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OAIRequestParams",
+                "description": "Request parameters for the model"
+              }
+            ]
+          },
+          "context_params": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Context parameters for the model"
+          }
+        },
+        "example": {
+          "alias": "llama3:instruct",
+          "context_params": [
+            "--ctx-size 4096"
+          ],
+          "filename": "Meta-Llama-3-8B-Instruct.Q4_K_M.gguf",
+          "repo": "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+          "request_params": {
+            "temperature": 0.7
           }
         }
       },

@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
-  #[sea_orm(unique)]
+  pub tenant_id: String,
+  pub user_id: String,
   pub alias: String,
   pub repo: String,
   pub filename: String,
@@ -25,6 +26,8 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+pub type UserAliasEntity = Model;
 
 impl TryFrom<Model> for crate::models::UserAlias {
   type Error = crate::models::ModelValidationError;

@@ -1,6 +1,6 @@
 use crate::{
-  test_utils::{sea_context, setup_env},
-  tokens::{ApiToken, TokenRepository, TokenStatus},
+  test_utils::{sea_context, setup_env, TEST_TENANT_ID},
+  tokens::{TokenEntity, TokenRepository, TokenStatus},
 };
 use anyhow_trace::anyhow_trace;
 use chrono::{DateTime, Utc};
@@ -8,9 +8,10 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-fn make_token(id: &str, user_id: &str, prefix: &str, now: DateTime<Utc>) -> ApiToken {
-  ApiToken {
+fn make_token(id: &str, user_id: &str, prefix: &str, now: DateTime<Utc>) -> TokenEntity {
+  TokenEntity {
     id: id.to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     user_id: user_id.to_string(),
     name: "".to_string(),
     token_prefix: prefix.to_string(),
@@ -39,9 +40,15 @@ async fn test_create_and_list_api_token(
     ctx.now,
   );
 
-  ctx.service.create_api_token(&mut token).await?;
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_ID, &mut token)
+    .await?;
 
-  let (tokens, total) = ctx.service.list_api_tokens(&user_id, 1, 10).await?;
+  let (tokens, total) = ctx
+    .service
+    .list_api_tokens(TEST_TENANT_ID, &user_id, 1, 10)
+    .await?;
   assert_eq!(1, total);
   assert_eq!(1, tokens.len());
   assert_eq!(token, tokens[0]);
@@ -62,15 +69,21 @@ async fn test_get_api_token_by_id(
   let token_id = ulid::Ulid::new().to_string();
   let mut token = make_token(&token_id, &user_id, "bodhiapp_t02", ctx.now);
 
-  ctx.service.create_api_token(&mut token).await?;
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_ID, &mut token)
+    .await?;
 
-  let fetched = ctx.service.get_api_token_by_id(&user_id, &token_id).await?;
+  let fetched = ctx
+    .service
+    .get_api_token_by_id(TEST_TENANT_ID, &user_id, &token_id)
+    .await?;
   assert!(fetched.is_some());
   assert_eq!(token, fetched.unwrap());
 
   let not_found = ctx
     .service
-    .get_api_token_by_id(&user_id, "nonexistent")
+    .get_api_token_by_id(TEST_TENANT_ID, &user_id, "nonexistent")
     .await?;
   assert!(not_found.is_none());
 
@@ -94,7 +107,10 @@ async fn test_get_api_token_by_prefix(
     ctx.now,
   );
 
-  ctx.service.create_api_token(&mut token).await?;
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_ID, &mut token)
+    .await?;
 
   let fetched = ctx.service.get_api_token_by_prefix("bodhiapp_t03").await?;
   assert!(fetched.is_some());
@@ -122,15 +138,21 @@ async fn test_update_api_token(
   let token_id = ulid::Ulid::new().to_string();
   let mut token = make_token(&token_id, &user_id, "bodhiapp_t04", ctx.now);
 
-  ctx.service.create_api_token(&mut token).await?;
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_ID, &mut token)
+    .await?;
 
   token.name = "Updated Name".to_string();
   token.status = TokenStatus::Inactive;
-  ctx.service.update_api_token(&user_id, &mut token).await?;
+  ctx
+    .service
+    .update_api_token(TEST_TENANT_ID, &user_id, &mut token)
+    .await?;
 
   let updated = ctx
     .service
-    .get_api_token_by_id(&user_id, &token_id)
+    .get_api_token_by_id(TEST_TENANT_ID, &user_id, &token_id)
     .await?
     .expect("Token should exist");
 
@@ -161,7 +183,10 @@ async fn test_list_api_tokens_user_scoped(
     ctx.now,
   );
   token1.name = "User1 Token".to_string();
-  ctx.service.create_api_token(&mut token1).await?;
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_ID, &mut token1)
+    .await?;
 
   let mut token2 = make_token(
     &ulid::Ulid::new().to_string(),
@@ -170,15 +195,24 @@ async fn test_list_api_tokens_user_scoped(
     ctx.now,
   );
   token2.name = "User2 Token".to_string();
-  ctx.service.create_api_token(&mut token2).await?;
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_ID, &mut token2)
+    .await?;
 
-  let (tokens, total) = ctx.service.list_api_tokens(&user1_id, 1, 10).await?;
+  let (tokens, total) = ctx
+    .service
+    .list_api_tokens(TEST_TENANT_ID, &user1_id, 1, 10)
+    .await?;
   assert_eq!(1, total);
   assert_eq!(1, tokens.len());
   assert_eq!(user1_id, tokens[0].user_id);
   assert_eq!("User1 Token", tokens[0].name);
 
-  let (tokens, total) = ctx.service.list_api_tokens(&user2_id, 1, 10).await?;
+  let (tokens, total) = ctx
+    .service
+    .list_api_tokens(TEST_TENANT_ID, &user2_id, 1, 10)
+    .await?;
   assert_eq!(1, total);
   assert_eq!(1, tokens.len());
   assert_eq!(user2_id, tokens[0].user_id);
@@ -206,25 +240,34 @@ async fn test_update_api_token_user_scoped(
     ctx.now,
   );
   token.name = "Initial Name".to_string();
-  ctx.service.create_api_token(&mut token).await?;
+  ctx
+    .service
+    .create_api_token(TEST_TENANT_ID, &mut token)
+    .await?;
 
   token.name = "Updated Name".to_string();
-  let result = ctx.service.update_api_token(&user2_id, &mut token).await;
+  let result = ctx
+    .service
+    .update_api_token(TEST_TENANT_ID, &user2_id, &mut token)
+    .await;
   assert!(result.is_err());
 
   let unchanged = ctx
     .service
-    .get_api_token_by_id(&user1_id, &token.id)
+    .get_api_token_by_id(TEST_TENANT_ID, &user1_id, &token.id)
     .await?
     .unwrap();
   assert_eq!("Initial Name", unchanged.name);
 
-  let result = ctx.service.update_api_token(&user1_id, &mut token).await;
+  let result = ctx
+    .service
+    .update_api_token(TEST_TENANT_ID, &user1_id, &mut token)
+    .await;
   assert!(result.is_ok());
 
   let updated = ctx
     .service
-    .get_api_token_by_id(&user1_id, &token.id)
+    .get_api_token_by_id(TEST_TENANT_ID, &user1_id, &token.id)
     .await?
     .unwrap();
   assert_eq!("Updated Name", updated.name);

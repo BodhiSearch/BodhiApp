@@ -1,14 +1,17 @@
-use crate::{ApproveUserAccessRequest, PaginatedUserAccessResponse, UserAccessStatusResponse};
 use pretty_assertions::assert_eq;
 use serde_json::json;
 use services::ResourceRole;
-use services::{UserAccessRequest, UserAccessRequestStatus};
+use services::{
+  test_utils::TEST_TENANT_ID, ApproveUserAccessRequest, PaginatedUserAccessResponse,
+  UserAccessRequestEntity, UserAccessRequestStatus, UserAccessStatusResponse,
+};
 
 #[test]
 fn test_user_access_status_response_from_user_access_request() {
   // Test DTO conversion
-  let request = UserAccessRequest {
+  let request = UserAccessRequestEntity {
     id: "01JNFG0000000000000000TEST".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     username: "test@example.com".to_string(),
     user_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
     reviewer: None,

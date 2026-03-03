@@ -1,5 +1,12 @@
 use crate::shared::api_error::ApiError;
-use axum::{body::{Body, to_bytes}, extract::Path, http::Request, response::Response, routing::get, Router};
+use axum::{
+  body::{to_bytes, Body},
+  extract::Path,
+  http::Request,
+  response::Response,
+  routing::get,
+  Router,
+};
 use errmeta_derive::ErrorMeta;
 use pretty_assertions::assert_eq;
 use rstest::rstest;

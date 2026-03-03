@@ -7,9 +7,11 @@ use serde::Serialize;
 pub enum AuthContext {
   Anonymous {
     client_id: Option<String>,
+    tenant_id: Option<String>,
   },
   Session {
     client_id: String,
+    tenant_id: String,
     user_id: String,
     username: String,
     role: Option<ResourceRole>,
@@ -17,12 +19,14 @@ pub enum AuthContext {
   },
   ApiToken {
     client_id: String,
+    tenant_id: String,
     user_id: String,
     role: TokenScope,
     token: String,
   },
   ExternalApp {
     client_id: String,
+    tenant_id: String,
     user_id: String,
     role: Option<UserScope>,
     token: String,
@@ -35,11 +39,24 @@ pub enum AuthContext {
 impl AuthContext {
   pub fn client_id(&self) -> Option<&str> {
     match self {
-      AuthContext::Anonymous { client_id } => client_id.as_deref(),
+      AuthContext::Anonymous { client_id, .. } => client_id.as_deref(),
       AuthContext::Session { client_id, .. } => Some(client_id),
       AuthContext::ApiToken { client_id, .. } => Some(client_id),
       AuthContext::ExternalApp { client_id, .. } => Some(client_id),
     }
+  }
+
+  pub fn tenant_id(&self) -> Option<&str> {
+    match self {
+      AuthContext::Anonymous { tenant_id, .. } => tenant_id.as_deref(),
+      AuthContext::Session { tenant_id, .. } => Some(tenant_id),
+      AuthContext::ApiToken { tenant_id, .. } => Some(tenant_id),
+      AuthContext::ExternalApp { tenant_id, .. } => Some(tenant_id),
+    }
+  }
+
+  pub fn require_tenant_id(&self) -> Result<&str, AuthContextError> {
+    self.tenant_id().ok_or(AuthContextError::MissingTenantId)
   }
 
   pub fn require_client_id(&self) -> Result<&str, AuthContextError> {
@@ -117,6 +134,10 @@ pub enum AuthContextError {
   #[error("Authentication token required to perform this operation.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingToken,
+
+  #[error("Tenant ID is required but not present in auth context.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  MissingTenantId,
 }
 
 #[cfg(test)]
@@ -129,6 +150,7 @@ mod tests {
   fn test_external_app_no_role_is_authenticated() {
     let ctx = AuthContext::ExternalApp {
       client_id: "test-client-id".to_string(),
+      tenant_id: "test-tenant".to_string(),
       user_id: "user1".to_string(),
       role: None,
       token: "test-external-token".to_string(),
@@ -144,7 +166,10 @@ mod tests {
 
   #[test]
   fn test_anonymous_user_id_is_none() {
-    let ctx = AuthContext::Anonymous { client_id: None };
+    let ctx = AuthContext::Anonymous {
+      client_id: None,
+      tenant_id: None,
+    };
     assert_eq!(None, ctx.user_id());
     assert_eq!(None, ctx.client_id());
     assert_eq!(false, ctx.is_authenticated());
@@ -154,6 +179,7 @@ mod tests {
   fn test_anonymous_with_client_id() {
     let ctx = AuthContext::Anonymous {
       client_id: Some("test-client".to_string()),
+      tenant_id: None,
     };
     assert_eq!(None, ctx.user_id());
     assert_eq!(Some("test-client"), ctx.client_id());
@@ -162,7 +188,10 @@ mod tests {
 
   #[test]
   fn test_require_user_id_anonymous_returns_403() {
-    let ctx = AuthContext::Anonymous { client_id: None };
+    let ctx = AuthContext::Anonymous {
+      client_id: None,
+      tenant_id: None,
+    };
     let result = ctx.require_user_id();
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -172,7 +201,10 @@ mod tests {
 
   #[test]
   fn test_require_client_id_anonymous_returns_403() {
-    let ctx = AuthContext::Anonymous { client_id: None };
+    let ctx = AuthContext::Anonymous {
+      client_id: None,
+      tenant_id: None,
+    };
     let result = ctx.require_client_id();
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -184,6 +216,7 @@ mod tests {
   fn test_require_user_id_session_returns_ok() {
     let ctx = AuthContext::Session {
       client_id: "test-client-id".to_string(),
+      tenant_id: "test-tenant".to_string(),
       user_id: "user1".to_string(),
       username: "testuser".to_string(),
       role: None,
@@ -198,6 +231,7 @@ mod tests {
   fn test_require_client_id_session_returns_ok() {
     let ctx = AuthContext::Session {
       client_id: "test-client-id".to_string(),
+      tenant_id: "test-tenant".to_string(),
       user_id: "user1".to_string(),
       username: "testuser".to_string(),
       role: None,
@@ -206,5 +240,54 @@ mod tests {
     let result = ctx.require_client_id();
     assert!(result.is_ok());
     assert_eq!("test-client-id", result.unwrap());
+  }
+
+  #[test]
+  fn test_tenant_id_returns_none_when_not_set() {
+    let ctx = AuthContext::Anonymous {
+      client_id: None,
+      tenant_id: None,
+    };
+    assert_eq!(None, ctx.tenant_id());
+  }
+
+  #[test]
+  fn test_tenant_id_returns_some_when_set() {
+    let ctx = AuthContext::Session {
+      client_id: "test-client".to_string(),
+      tenant_id: "test-tenant".to_string(),
+      user_id: "user1".to_string(),
+      username: "testuser".to_string(),
+      role: None,
+      token: "test-token".to_string(),
+    };
+    assert_eq!(Some("test-tenant"), ctx.tenant_id());
+  }
+
+  #[test]
+  fn test_require_tenant_id_missing_returns_500() {
+    let ctx = AuthContext::Anonymous {
+      client_id: None,
+      tenant_id: None,
+    };
+    let result = ctx.require_tenant_id();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(500, err.status());
+    assert_eq!("auth_context_error-missing_tenant_id", err.code());
+  }
+
+  #[test]
+  fn test_require_tenant_id_present_returns_ok() {
+    let ctx = AuthContext::ApiToken {
+      client_id: "test-client".to_string(),
+      tenant_id: "tenant-123".to_string(),
+      user_id: "user1".to_string(),
+      role: crate::TokenScope::User,
+      token: "test-token".to_string(),
+    };
+    let result = ctx.require_tenant_id();
+    assert!(result.is_ok());
+    assert_eq!("tenant-123", result.unwrap());
   }
 }

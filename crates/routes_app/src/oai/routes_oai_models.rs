@@ -1,14 +1,11 @@
 use super::ENDPOINT_OAI_MODELS;
+use crate::shared::AuthScope;
 use crate::API_TAG_OPENAI;
-use async_openai::types::models::{ListModelResponse, Model};
-use axum::{
-  extract::{Path, State},
-  Json,
-};
-use server_core::RouterState;
-use services::DataServiceError;
-use services::{Alias, ApiAlias, ModelAlias, UserAlias};
 use crate::{ApiError, OpenAIApiError};
+use async_openai::types::models::{ListModelResponse, Model};
+use axum::{extract::Path, Json};
+use services::DataServiceError;
+use services::{Alias, ApiAlias, ModelAlias, SettingService, TimeService, UserAlias};
 use std::{collections::HashSet, sync::Arc};
 
 /// List available models
@@ -47,12 +44,15 @@ use std::{collections::HashSet, sync::Arc};
     ),
 )]
 pub async fn oai_models_handler(
-  State(state): State<Arc<dyn RouterState>>,
+  auth_scope: AuthScope,
 ) -> Result<Json<ListModelResponse>, ApiError> {
-  // Get all aliases from unified DataService
-  let aliases = state
-    .app_service()
-    .data_service()
+  // tenant_id for cache refresh (optional for anonymous/unauthenticated contexts)
+  let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
+  let setting_service = auth_scope.setting_service();
+  let time_service = auth_scope.time_service();
+  // Get all aliases from auth-scoped DataService
+  let aliases = auth_scope
+    .data()
     .list_aliases()
     .await
     .map_err(ApiError::from)?;
@@ -66,12 +66,12 @@ pub async fn oai_models_handler(
     match alias {
       Alias::User(user_alias) => {
         if seen_models.insert(user_alias.alias.clone()) {
-          models.push(user_alias_to_oai_model(state.clone(), user_alias));
+          models.push(user_alias_to_oai_model(user_alias));
         }
       }
       Alias::Model(model_alias) => {
         if seen_models.insert(model_alias.alias.clone()) {
-          models.push(model_alias_to_oai_model(state.clone(), model_alias).await);
+          models.push(model_alias_to_oai_model(&setting_service, &time_service, model_alias).await);
         }
       }
       Alias::Api(api_alias) => {
@@ -84,21 +84,28 @@ pub async fn oai_models_handler(
 
         // If forward_all and cache is empty/stale, spawn async refresh
         if api_alias.forward_all_with_prefix
-          && (api_alias.is_cache_empty()
-            || api_alias.is_cache_stale(state.app_service().time_service().utc_now()))
+          && (api_alias.is_cache_empty() || api_alias.is_cache_stale(time_service.utc_now()))
         {
-          let app_service = state.app_service();
+          let db = auth_scope.db_service();
+          let ai_api = auth_scope.ai_api_service();
+          let time_svc = time_service.clone();
           let alias_id = api_alias.id.clone();
+          let refresh_tenant_id = tenant_id.clone();
           tokio::spawn(async move {
-            let db = app_service.db_service();
-            let ai_api = app_service.ai_api_service();
-            let time_service = app_service.time_service();
-
-            if let Ok(Some(alias)) = db.get_api_model_alias(&alias_id).await {
-              let api_key = db.get_api_key_for_alias(&alias_id).await.ok().flatten();
+            if let Ok(Some(alias)) = db
+              .get_api_model_alias(&refresh_tenant_id, "", &alias_id)
+              .await
+            {
+              let api_key = db
+                .get_api_key_for_alias(&refresh_tenant_id, "", &alias_id)
+                .await
+                .ok()
+                .flatten();
               if let Ok(models) = ai_api.fetch_models(api_key, &alias.base_url).await {
-                let now = time_service.utc_now();
-                let _ = db.update_api_model_cache(&alias_id, models, now).await;
+                let now = time_svc.utc_now();
+                let _ = db
+                  .update_api_model_cache(&refresh_tenant_id, &alias_id, models, now)
+                  .await;
               }
             }
           });
@@ -151,14 +158,18 @@ pub async fn oai_models_handler(
     ),
 )]
 pub async fn oai_model_handler(
-  State(state): State<Arc<dyn RouterState>>,
+  auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<Json<Model>, ApiError> {
-  // Use unified DataService.find_alias
-  if let Some(alias) = state.app_service().data_service().find_alias(&id).await {
+  let setting_service = auth_scope.setting_service();
+  let time_service = auth_scope.time_service();
+  // Use auth-scoped DataService.find_alias
+  if let Some(alias) = auth_scope.data().find_alias(&id).await {
     match alias {
-      Alias::User(user_alias) => Ok(Json(user_alias_to_oai_model(state, user_alias))),
-      Alias::Model(model_alias) => Ok(Json(model_alias_to_oai_model(state, model_alias).await)),
+      Alias::User(user_alias) => Ok(Json(user_alias_to_oai_model(user_alias))),
+      Alias::Model(model_alias) => Ok(Json(
+        model_alias_to_oai_model(&setting_service, &time_service, model_alias).await,
+      )),
       Alias::Api(api_alias) => {
         // DataService.find_alias() already verified model exists via matchable_models()
         Ok(Json(api_model_to_oai_model(id, &api_alias)))
@@ -169,7 +180,7 @@ pub async fn oai_model_handler(
   }
 }
 
-fn user_alias_to_oai_model(_state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
+fn user_alias_to_oai_model(alias: UserAlias) -> Model {
   Model {
     id: alias.alias,
     object: "model".to_string(),
@@ -178,16 +189,20 @@ fn user_alias_to_oai_model(_state: Arc<dyn RouterState>, alias: UserAlias) -> Mo
   }
 }
 
-async fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> Model {
+async fn model_alias_to_oai_model(
+  setting_service: &Arc<dyn SettingService>,
+  time_service: &Arc<dyn TimeService>,
+  alias: ModelAlias,
+) -> Model {
   // For auto-discovered models, construct path from HF cache structure
   // Path structure: hf_cache/models--owner--repo/snapshots/snapshot/filename
-  let hf_cache = state.app_service().setting_service().hf_cache().await;
+  let hf_cache = setting_service.hf_cache().await;
   let path = hf_cache
     .join(alias.repo.path())
     .join("snapshots")
     .join(&alias.snapshot)
     .join(&alias.filename);
-  let created = state.app_service().time_service().created_at(&path);
+  let created = time_service.created_at(&path);
   Model {
     id: alias.alias,
     object: "model".to_string(),

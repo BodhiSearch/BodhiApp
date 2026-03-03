@@ -1,5 +1,5 @@
 use services::{
-  db::DbError, AppError, AppInstanceError, ErrorType, IoError, KeyringError, SessionServiceError,
+  db::DbError, AppError, ErrorType, IoError, KeyringError, SessionServiceError, TenantError,
 };
 use std::io;
 
@@ -61,7 +61,7 @@ pub enum BootstrapError {
 
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
-  AppInstance(#[from] AppInstanceError),
+  Tenant(#[from] TenantError),
 
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]

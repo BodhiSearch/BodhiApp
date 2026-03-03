@@ -79,7 +79,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
       "slug": "exa-web-search",
       "description": "Exa web search toolset",
       "enabled": true,
-      "api_key": exa_api_key
+      "api_key": {"action": "set", "value": exa_api_key}
     }))
     .send()
     .await?;

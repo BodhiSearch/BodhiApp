@@ -37,10 +37,10 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
     ? [
-        ['github'], // GitHub Actions reporter for CI
-        ['html', { open: 'never' }], // HTML report without auto-opening
-        ['junit', { outputFile: 'test-results/junit.xml' }], // JUnit for test results
-      ]
+      ['github'], // GitHub Actions reporter for CI
+      ['html', { open: 'never' }], // HTML report without auto-opening
+      ['junit', { outputFile: 'test-results/junit.xml' }], // JUnit for test results
+    ]
     : 'list', // Use list reporter locally
   /* Global timeout for each test */
   timeout: process.env.PLAYWRIGHT_TIMEOUT ? Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT) : testTimeout, // Configurable timeout
@@ -124,12 +124,6 @@ export default defineConfig({
       command: 'node tests-js/scripts/start-shared-server.mjs --port 51135 --db-type sqlite',
       url: 'http://localhost:51135/ping',
       reuseExistingServer: false,  // Always start fresh
-      timeout: 60000,
-    },
-    {
-      command: 'node tests-js/scripts/start-shared-server.mjs --port 41135 --db-type postgres',
-      url: 'http://localhost:41135/ping',
-      reuseExistingServer: false,
       timeout: 60000,
     },
     {

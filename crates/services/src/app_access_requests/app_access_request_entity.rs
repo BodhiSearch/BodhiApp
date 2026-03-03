@@ -1,4 +1,4 @@
-use crate::app_access_requests::access_request_objs::AppAccessRequestRow;
+use crate::app_access_requests::access_request_objs::AppAccessRequest;
 use crate::{AppAccessRequestStatus, FlowType};
 use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
@@ -8,6 +8,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  pub tenant_id: String,
   pub app_client_id: String,
   pub app_name: Option<String>,
   pub app_description: Option<String>,
@@ -31,10 +32,11 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<Model> for AppAccessRequestRow {
+impl From<Model> for AppAccessRequest {
   fn from(m: Model) -> Self {
-    AppAccessRequestRow {
+    AppAccessRequest {
       id: m.id,
+      tenant_id: m.tenant_id,
       app_client_id: m.app_client_id,
       app_name: m.app_name,
       app_description: m.app_description,

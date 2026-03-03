@@ -1,4 +1,4 @@
-use crate::tokens::token_objs::{ApiTokenRow, TokenStatus};
+use crate::tokens::token_objs::TokenStatus;
 use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -10,6 +10,9 @@ use utoipa::ToSchema;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  #[serde(skip_serializing)]
+  #[schema(ignore = true)]
+  pub tenant_id: String,
   pub user_id: String,
   pub name: String,
   #[sea_orm(unique)]
@@ -23,25 +26,9 @@ pub struct Model {
   pub updated_at: DateTime<Utc>,
 }
 
-pub type ApiToken = Model;
+pub type TokenEntity = Model;
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
-
-impl From<Model> for ApiTokenRow {
-  fn from(m: Model) -> Self {
-    ApiTokenRow {
-      id: m.id,
-      user_id: m.user_id,
-      name: m.name,
-      token_prefix: m.token_prefix,
-      token_hash: m.token_hash,
-      scopes: m.scopes,
-      status: m.status,
-      created_at: m.created_at,
-      updated_at: m.updated_at,
-    }
-  }
-}

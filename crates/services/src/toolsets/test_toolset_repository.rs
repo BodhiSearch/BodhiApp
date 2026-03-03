@@ -1,8 +1,8 @@
 use crate::{
   db::encryption::encrypt_api_key,
-  test_utils::{sea_context, setup_env},
-  toolsets::{ToolsetRepository, ToolsetRow},
-  ApiKeyUpdate,
+  test_utils::{sea_context, setup_env, TEST_TENANT_ID},
+  toolsets::{ToolsetEntity, ToolsetRepository},
+  RawApiKeyUpdate,
 };
 use anyhow_trace::anyhow_trace;
 use chrono::{DateTime, Utc};
@@ -10,9 +10,10 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-fn make_toolset(id: &str, user_id: &str, slug: &str, now: DateTime<Utc>) -> ToolsetRow {
-  ToolsetRow {
+fn make_toolset(id: &str, user_id: &str, slug: &str, now: DateTime<Utc>) -> ToolsetEntity {
+  ToolsetEntity {
     id: id.to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
     user_id: user_id.to_string(),
     toolset_type: "builtin-exa-search".to_string(),
     slug: slug.to_string(),
@@ -38,10 +39,10 @@ async fn test_create_and_get_toolset(
   let id = ulid::Ulid::new().to_string();
   let row = make_toolset(&id, "user-001", "my-toolset", ctx.now);
 
-  let created = ctx.service.create_toolset(&row).await?;
+  let created = ctx.service.create_toolset(TEST_TENANT_ID, &row).await?;
   assert_eq!(row, created);
 
-  let fetched = ctx.service.get_toolset(&id).await?;
+  let fetched = ctx.service.get_toolset(TEST_TENANT_ID, &id).await?;
   assert!(fetched.is_some());
   assert_eq!(row, fetched.unwrap());
 
@@ -61,33 +62,42 @@ async fn test_list_toolsets(
 
   ctx
     .service
-    .create_toolset(&make_toolset(
-      &ulid::Ulid::new().to_string(),
-      user_id,
-      "toolset-1",
-      ctx.now,
-    ))
+    .create_toolset(
+      TEST_TENANT_ID,
+      &make_toolset(
+        &ulid::Ulid::new().to_string(),
+        user_id,
+        "toolset-1",
+        ctx.now,
+      ),
+    )
     .await?;
   ctx
     .service
-    .create_toolset(&make_toolset(
-      &ulid::Ulid::new().to_string(),
-      user_id,
-      "toolset-2",
-      ctx.now,
-    ))
+    .create_toolset(
+      TEST_TENANT_ID,
+      &make_toolset(
+        &ulid::Ulid::new().to_string(),
+        user_id,
+        "toolset-2",
+        ctx.now,
+      ),
+    )
     .await?;
   ctx
     .service
-    .create_toolset(&make_toolset(
-      &ulid::Ulid::new().to_string(),
-      "other-user",
-      "toolset-3",
-      ctx.now,
-    ))
+    .create_toolset(
+      TEST_TENANT_ID,
+      &make_toolset(
+        &ulid::Ulid::new().to_string(),
+        "other-user",
+        "toolset-3",
+        ctx.now,
+      ),
+    )
     .await?;
 
-  let toolsets = ctx.service.list_toolsets(user_id).await?;
+  let toolsets = ctx.service.list_toolsets(TEST_TENANT_ID, user_id).await?;
   assert_eq!(2, toolsets.len());
 
   Ok(())
@@ -105,12 +115,15 @@ async fn test_delete_toolset(
   let id = ulid::Ulid::new().to_string();
   ctx
     .service
-    .create_toolset(&make_toolset(&id, "user-001", "to-delete", ctx.now))
+    .create_toolset(
+      TEST_TENANT_ID,
+      &make_toolset(&id, "user-001", "to-delete", ctx.now),
+    )
     .await?;
 
-  ctx.service.delete_toolset(&id).await?;
+  ctx.service.delete_toolset(TEST_TENANT_ID, &id).await?;
 
-  let fetched = ctx.service.get_toolset(&id).await?;
+  let fetched = ctx.service.get_toolset(TEST_TENANT_ID, &id).await?;
   assert!(fetched.is_none());
 
   Ok(())
@@ -136,9 +149,9 @@ async fn test_toolset_encrypted_api_key(
   row.salt = Some(salt);
   row.nonce = Some(nonce);
 
-  ctx.service.create_toolset(&row).await?;
+  ctx.service.create_toolset(TEST_TENANT_ID, &row).await?;
 
-  let decrypted = ctx.service.get_toolset_api_key(&id).await?;
+  let decrypted = ctx.service.get_toolset_api_key(TEST_TENANT_ID, &id).await?;
   assert_eq!(Some(api_key.to_string()), decrypted);
 
   Ok(())
@@ -155,7 +168,7 @@ async fn test_update_toolset(
   let ctx = sea_context(db_type).await;
   let id = ulid::Ulid::new().to_string();
   let row = make_toolset(&id, "user-001", "original-slug", ctx.now);
-  ctx.service.create_toolset(&row).await?;
+  ctx.service.create_toolset(TEST_TENANT_ID, &row).await?;
 
   let mut updated_row = row.clone();
   updated_row.slug = "updated-slug".to_string();
@@ -164,10 +177,14 @@ async fn test_update_toolset(
 
   ctx
     .service
-    .update_toolset(&updated_row, ApiKeyUpdate::Keep)
+    .update_toolset(TEST_TENANT_ID, &updated_row, RawApiKeyUpdate::Keep)
     .await?;
 
-  let fetched = ctx.service.get_toolset(&id).await?.expect("should exist");
+  let fetched = ctx
+    .service
+    .get_toolset(TEST_TENANT_ID, &id)
+    .await?
+    .expect("should exist");
   assert_eq!("updated-slug", fetched.slug);
   assert_eq!(Some("Updated description".to_string()), fetched.description);
   assert!(!fetched.enabled);
@@ -187,7 +204,7 @@ async fn test_app_toolset_config_crud(
 
   let config = ctx
     .service
-    .set_app_toolset_enabled("builtin-exa-search", true, "admin")
+    .set_app_toolset_enabled(TEST_TENANT_ID, "builtin-exa-search", true, "admin")
     .await?;
 
   assert_eq!("builtin-exa-search", config.toolset_type);
@@ -196,25 +213,25 @@ async fn test_app_toolset_config_crud(
 
   let fetched = ctx
     .service
-    .get_app_toolset_config("builtin-exa-search")
+    .get_app_toolset_config(TEST_TENANT_ID, "builtin-exa-search")
     .await?;
   assert!(fetched.is_some());
   assert!(fetched.unwrap().enabled);
 
   ctx
     .service
-    .set_app_toolset_enabled("builtin-exa-search", false, "admin2")
+    .set_app_toolset_enabled(TEST_TENANT_ID, "builtin-exa-search", false, "admin2")
     .await?;
 
   let updated = ctx
     .service
-    .get_app_toolset_config("builtin-exa-search")
+    .get_app_toolset_config(TEST_TENANT_ID, "builtin-exa-search")
     .await?
     .unwrap();
   assert!(!updated.enabled);
   assert_eq!("admin2", updated.updated_by);
 
-  let all = ctx.service.list_app_toolset_configs().await?;
+  let all = ctx.service.list_app_toolset_configs(TEST_TENANT_ID).await?;
   assert_eq!(1, all.len());
 
   Ok(())

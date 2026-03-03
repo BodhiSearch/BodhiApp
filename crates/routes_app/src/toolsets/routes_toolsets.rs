@@ -1,27 +1,28 @@
-use crate::toolsets::error::ToolsetRouteError;
 use crate::toolsets::toolsets_api_schemas::{
-  ApiKeyUpdateDto, CreateToolsetRequest, ExecuteToolsetRequest, ListToolsetTypesResponse,
-  ListToolsetsResponse, ToolsetResponse, UpdateToolsetRequest,
+  ExecuteToolsetRequest, ListToolsetTypesResponse, ListToolsetsResponse, ToolsetResponse,
 };
-use crate::{AuthScope, API_TAG_TOOLSETS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES};
+use crate::ApiError;
+use crate::{
+  AuthScope, ValidatedJson, API_TAG_TOOLSETS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
+};
 use axum::{
   extract::Path,
   http::StatusCode,
   routing::{delete, get, post, put},
   Json, Router,
 };
-use server_core::RouterState;
-use crate::ApiError;
-use services::ApiKeyUpdate;
-use services::{AppToolsetConfig, Toolset, ToolsetExecutionResponse};
+use services::AppService;
+use services::{
+  AppToolsetConfig, ApprovalStatus, ApprovedResources, AuthContext, Toolset,
+  ToolsetExecutionResponse, ToolsetRequest,
+};
 use std::sync::Arc;
-use validator::Validate;
 
 // ============================================================================
 // Router Configuration
 // ============================================================================
 
-pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
+pub fn routes_toolsets(state: Arc<dyn AppService>) -> Router {
   Router::new()
     // Toolset CRUD
     .route("/toolsets", get(toolsets_index))
@@ -63,10 +64,41 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
   ),
   security(("bearer" = []))
 )]
-pub async fn toolsets_index(
-  auth_scope: AuthScope,
-) -> Result<Json<ListToolsetsResponse>, ApiError> {
-  let toolsets = auth_scope.tools().list().await?;
+pub async fn toolsets_index(auth_scope: AuthScope) -> Result<Json<ListToolsetsResponse>, ApiError> {
+  let entities = auth_scope.tools().list().await?;
+
+  // Convert entities to domain Toolset type
+  let toolsets: Vec<Toolset> = entities.into_iter().map(|e| e.into()).collect();
+
+  // Filter toolset list for ExternalApp tokens: only return toolsets approved in the access request
+  let toolsets = if let AuthContext::ExternalApp {
+    access_request_id: Some(ar_id),
+    ..
+  } = auth_scope.auth_context()
+  {
+    let request = auth_scope
+      .access_request_service()
+      .get_request(ar_id)
+      .await?;
+    let approved_ids: std::collections::HashSet<String> = request
+      .and_then(|r| r.approved)
+      .and_then(|json| serde_json::from_str::<ApprovedResources>(&json).ok())
+      .map(|res| {
+        res
+          .toolsets
+          .into_iter()
+          .filter(|a| a.status == ApprovalStatus::Approved)
+          .filter_map(|a| a.instance.map(|i| i.id))
+          .collect()
+      })
+      .unwrap_or_default();
+    toolsets
+      .into_iter()
+      .filter(|t| approved_ids.contains(&t.id))
+      .collect()
+  } else {
+    toolsets
+  };
 
   // Enrich each toolset with type information
   let tool_service = auth_scope.tool_service();
@@ -90,7 +122,7 @@ pub async fn toolsets_index(
   path = ENDPOINT_TOOLSETS,
   tag = API_TAG_TOOLSETS,
   operation_id = "createToolset",
-  request_body = CreateToolsetRequest,
+  request_body = ToolsetRequest,
   responses(
     (status = 201, description = "Toolset created", body = ToolsetResponse),
     (status = 400, description = "Validation error"),
@@ -100,22 +132,10 @@ pub async fn toolsets_index(
 )]
 pub async fn toolsets_create(
   auth_scope: AuthScope,
-  Json(request): Json<CreateToolsetRequest>,
+  ValidatedJson(request): ValidatedJson<ToolsetRequest>,
 ) -> Result<(StatusCode, Json<ToolsetResponse>), ApiError> {
-  request
-    .validate()
-    .map_err(|e| ToolsetRouteError::Validation(e.to_string()))?;
-
-  let toolset = auth_scope
-    .tools()
-    .create(
-      &request.toolset_type,
-      &request.slug,
-      request.description,
-      request.enabled,
-      request.api_key,
-    )
-    .await?;
+  let entity = auth_scope.tools().create(request).await?;
+  let toolset: Toolset = entity.into();
 
   let tool_service = auth_scope.tool_service();
   let response = toolset_to_response(toolset, &tool_service).await?;
@@ -141,11 +161,12 @@ pub async fn toolsets_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<Json<ToolsetResponse>, ApiError> {
-  let toolset = auth_scope
+  let entity = auth_scope
     .tools()
     .get(&id)
     .await?
     .ok_or_else(|| services::EntityError::NotFound("Toolset".to_string()))?;
+  let toolset: Toolset = entity.into();
 
   let tool_service = auth_scope.tool_service();
   let response = toolset_to_response(toolset, &tool_service).await?;
@@ -161,7 +182,7 @@ pub async fn toolsets_show(
   params(
     ("id" = String, Path, description = "Toolset instance UUID")
   ),
-  request_body = UpdateToolsetRequest,
+  request_body = ToolsetRequest,
   responses(
     (status = 200, description = "Toolset updated", body = ToolsetResponse),
     (status = 400, description = "Validation error"),
@@ -173,27 +194,10 @@ pub async fn toolsets_show(
 pub async fn toolsets_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-  Json(request): Json<UpdateToolsetRequest>,
+  ValidatedJson(request): ValidatedJson<ToolsetRequest>,
 ) -> Result<Json<ToolsetResponse>, ApiError> {
-  request
-    .validate()
-    .map_err(|e| ToolsetRouteError::Validation(e.to_string()))?;
-
-  let api_key_update = match request.api_key {
-    ApiKeyUpdateDto::Keep => ApiKeyUpdate::Keep,
-    ApiKeyUpdateDto::Set(value) => ApiKeyUpdate::Set(value),
-  };
-
-  let toolset = auth_scope
-    .tools()
-    .update(
-      &id,
-      &request.slug,
-      request.description,
-      request.enabled,
-      api_key_update,
-    )
-    .await?;
+  let entity = auth_scope.tools().update(&id, request).await?;
+  let toolset: Toolset = entity.into();
 
   let tool_service = auth_scope.tool_service();
   let response = toolset_to_response(toolset, &tool_service).await?;

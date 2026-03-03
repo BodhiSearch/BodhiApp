@@ -24,7 +24,7 @@
 - `src/auth/session_store.rs` — `SessionStoreBackend`, `InnerStoreShared`, `is_postgres_url()`
 - `src/auth/session_error.rs` — `SessionServiceError` enum
 - `src/auth/postgres.rs`, `src/auth/sqlite.rs` — backend-specific session store creation
-- `src/tokens/token_objs.rs` — `TokenStatus`, `ApiTokenRow`
+- `src/tokens/token_objs.rs` — `TokenStatus`, `TokenDetail`
 - `src/tokens/token_service.rs` — `TokenService` trait
 - `src/tokens/token_repository.rs` — `TokenRepository` trait
 - `src/tokens/error.rs` — `TokenServiceError`
@@ -66,7 +66,7 @@
 - `src/mcps/error.rs` — `McpError`
 
 ### Access Control (`app_access_requests/`)
-- `src/app_access_requests/access_request_objs.rs` — `AppAccessRequest`, `AppAccessResponse`, status enums
+- `src/app_access_requests/access_request_objs.rs` — `AppAccessRequest` (renamed from `AppAccessRequestRow`), `AppAccessResponse`, status enums
 - `src/app_access_requests/access_request_service.rs` — `AccessRequestService` trait
 - `src/app_access_requests/error.rs` — `AccessRequestError`
 
