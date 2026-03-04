@@ -1,361 +1,76 @@
 # PACKAGE.md - server_core Crate Implementation Index
 
-*For architectural documentation and design rationale, see [crates/server_core/CLAUDE.md](crates/server_core/CLAUDE.md)*
+*For architecture and critical rules, see [CLAUDE.md](CLAUDE.md)*
 
 ## Module Structure
 
-### Core HTTP Infrastructure
-- `src/lib.rs` - Crate root with module exports
-- `src/router_state.rs` - Dependency injection container for HTTP handlers
-- `src/shared_rw.rs` - SharedContext trait and LLM server management
-- `src/model_router.rs` - Model request routing between local and remote
-- `src/server_args_merge.rs` - LLM server argument merging logic
+### Core Files
+- `src/lib.rs` — module declarations and re-exports. Exports: `DirectEvent`, `DirectSse`, `RawSSE`, `fwd_sse`, `SharedContext`, `DefaultSharedContext`, `MockSharedContext`, `ServerFactory`, `DefaultServerFactory`, `ServerState`, `ServerStateListener`, `MockServerStateListener`, `ContextError`, `merge_server_args`, `StandaloneInferenceService`, `MultitenantInferenceService`, `LlmEndpoint`
+- `src/shared_rw.rs` — `SharedContext` trait (6 async methods), `DefaultSharedContext` (hub_service + setting_service + factory + RwLock server), `ServerFactory` trait, `DefaultServerFactory`, `ServerState` enum, `ServerStateListener` trait
+- `src/direct_sse.rs` — `DirectEvent` (BytesMut-based builder: `new()`, `data()`, `finalize()`), `DirectSse<S>` (wraps TryStream, optional KeepAlive)
+- `src/fwd_sse.rs` — `RawSSE<S>` (wraps String Stream), `fwd_sse(Receiver<String>) -> Response`
+- `src/server_args_merge.rs` — `merge_server_args()` function
+- `src/error.rs` — `ContextError` enum (7 variants, 2 with `impl_error_from!`)
+- `src/standalone_inference.rs` — `StandaloneInferenceService` implementing `InferenceService`. Has `SharedContext` + keep-alive timer (`RwLock<i64>` seconds, `RwLock<Option<JoinHandle>>`)
+- `src/multitenant_inference.rs` — `MultitenantInferenceService` implementing `InferenceService`. Remote-only; `forward_local()` returns `Unsupported`
 
-### Streaming Infrastructure
-- `src/direct_sse.rs` - Application-generated server-sent events
-- `src/fwd_sse.rs` - Forwarded SSE from external services
-- `src/middleware/mod.rs` - HTTP middleware components
-
-### Error Handling
-- `src/error.rs` - `ContextError` enum aggregating service errors (Hub, Data, Server, validation) for the LLM context layer; delegates to `ApiError` for HTTP response conversion
-
-### Test Utilities (`test-utils` feature)
-- `src/test_utils/mod.rs` - Test fixture exports
-- `src/test_utils/http.rs` - HTTP testing utilities
-- `src/test_utils/state.rs` - RouterState test fixtures and `ServerFactoryStub`
-- `src/test_utils/server.rs` - Mock LLM server implementations and `bin_path` fixture
+### Test Files
+- `src/test_shared_rw.rs` — unit tests for SharedContext (mock-based)
+- `src/test_utils/mod.rs` — re-exports http, server, state modules
+- `src/test_utils/http.rs` — `ResponseTestExt` trait (5 methods: json, json_obj, text, sse, direct_sse), `RequestTestExt` trait (json, json_str)
+- `src/test_utils/state.rs` — `router_state_stub` fixture, `ServerFactoryStub` (Mutex<Vec<Box<dyn Server>>>)
+- `src/test_utils/server.rs` — `mock_server` fixture (MockServer with start expectation), `bin_path` fixture (creates temp dir with llama binary path)
 
 ### Live Integration Tests
-- `tests/test_live_shared_rw.rs` - Live SharedContext tests with real llama.cpp binary
-- `tests/data/live/huggingface/hub/` - HuggingFace cache layout with GGUF model files (Llama-68M)
+- `tests/test_live_shared_rw.rs` — 3 test cases exercising real llama.cpp binary
+- `tests/data/live/huggingface/hub/` — HuggingFace cache layout (Llama-68M): `blobs/`, `snapshots/` (symlinks), `refs/main`
 
-## Key Implementation Examples
+## SharedContext Trait API
 
-### RouterState Dependency Injection
-```rust
-// src/router_state.rs
-#[derive(Clone)]
-pub struct RouterState {
-  app_service: Arc<dyn AppService>,
-  shared_context: Arc<dyn SharedContext>,
-}
-
-impl RouterState {
-  pub fn new(
-    app_service: Arc<dyn AppService>,
-    shared_context: Arc<dyn SharedContext>,
-  ) -> Self {
-    Self { app_service, shared_context }
-  }
-
-  pub fn app_service(&self) -> &Arc<dyn AppService> {
-    &self.app_service
-  }
-
-  pub fn shared_context(&self) -> &Arc<dyn SharedContext> {
-    &self.shared_context
-  }
+```
+trait SharedContext: Debug + Send + Sync {
+  async fn set_exec_variant(&self, variant: &str) -> Result<()>
+  async fn reload(&self, server_args: Option<LlamaServerArgs>) -> Result<()>
+  async fn stop(&self) -> Result<()>
+  async fn is_loaded(&self) -> bool
+  async fn forward_request(&self, endpoint: LlmEndpoint, request: Value, alias: Alias) -> Result<reqwest::Response>
+  async fn add_state_listener(&self, listener: Arc<dyn ServerStateListener>)
+  async fn notify_state_listeners(&self, state: ServerState)
 }
 ```
 
-### SharedContext LLM Server Management
-```rust
-// src/shared_rw.rs
-#[async_trait]
-pub trait SharedContext: Send + Sync + std::fmt::Debug {
-  async fn start_server(&self, args: Vec<String>) -> Result<(), Error>;
-  async fn stop_server(&self) -> Result<(), Error>;
-  async fn reload_server(&self, args: Vec<String>) -> Result<(), Error>;
-  async fn set_exec_variant(&self, variant: ExecVariant) -> Result<(), Error>;
-  async fn get_state(&self) -> ServerState;
-  async fn add_listener(&self, listener: StateListener);
-}
+Has `#[mockall::automock]` when test or test-utils feature enabled.
 
-pub enum ModelLoadStrategy {
-  Continue,        // Use current loaded model
-  DropAndLoad,     // Stop current and load new
-  Load,           // Load when no model active
-}
-```
+## ContextError Variants
 
-### Server-Sent Events Streaming
-```rust
-// src/direct_sse.rs
-pub struct DirectEvent {
-  event: Option<String>,
-  data: String,
-  id: Option<String>,
-  retry: Option<Duration>,
-}
+| Variant | Source | ErrorType |
+|---------|--------|-----------|
+| `HubService(HubServiceError)` | transparent | delegated |
+| `Builder(BuilderError)` | transparent | delegated |
+| `Server(ServerError)` | transparent | delegated |
+| `SerdeJson(SerdeJsonError)` | transparent + `impl_error_from!` | delegated |
+| `DataServiceError(DataServiceError)` | transparent | delegated |
+| `ObjValidationError(ObjValidationError)` | transparent + `impl_error_from!` | delegated |
+| `Unreachable(String)` | direct | InternalServer |
+| `ExecNotExists(String)` | direct | InternalServer |
 
-impl DirectEvent {
-  pub fn new(event: impl Into<String>, data: impl Into<String>) -> Self {
-    Self {
-      event: Some(event.into()),
-      data: data.into(),
-      id: None,
-      retry: None,
-    }
-  }
+## Live Test Details
 
-  pub fn to_bytes(&self) -> BytesMut {
-    let mut buf = BytesMut::new();
+Test cases in `tests/test_live_shared_rw.rs`:
+- `test_live_shared_rw_reload` — reload with no model args (stop-only path)
+- `test_live_shared_rw_reload_with_model_as_symlink` — load via symlinked snapshot path
+- `test_live_shared_rw_reload_with_actual_file` — load via direct blob path
 
-    if let Some(event) = &self.event {
-      buf.extend_from_slice(b"event: ");
-      buf.extend_from_slice(event.as_bytes());
-      buf.extend_from_slice(b"\n");
-    }
-
-    buf.extend_from_slice(b"data: ");
-    buf.extend_from_slice(self.data.as_bytes());
-    buf.extend_from_slice(b"\n\n");
-
-    buf
-  }
-}
-```
-
-### Model Request Routing
-```rust
-// src/model_router.rs
-#[async_trait]
-pub trait ModelRouter: Send + Sync + std::fmt::Debug {
-  async fn route_request(
-    &self,
-    model_id: &str,
-  ) -> Result<RouteDestination, ModelRouterError>;
-}
-
-pub enum RouteDestination {
-  LocalModel(Alias),      // Route to SharedContext
-  RemoteApi(ApiAlias),    // Route to AiApiService
-}
-
-impl DefaultModelRouter {
-  async fn route_request(&self, model_id: &str) -> Result<RouteDestination> {
-    // Check UserAlias first (highest priority)
-    if let Some(alias) = self.data_service.find_user_alias(model_id)? {
-      return Ok(RouteDestination::LocalModel(Alias::UserAlias(alias)));
-    }
-
-    // Check ModelAlias (medium priority)
-    if let Some(alias) = self.data_service.find_model_alias(model_id)? {
-      return Ok(RouteDestination::LocalModel(Alias::ModelAlias(alias)));
-    }
-
-    // Check ApiAlias (lowest priority)
-    if let Some(alias) = self.data_service.find_api_alias(model_id)? {
-      return Ok(RouteDestination::RemoteApi(alias));
-    }
-
-    Err(ModelRouterError::NotFound)
-  }
-}
-```
-
-### Server Arguments Merging
-```rust
-// src/server_args_merge.rs
-pub fn merge_server_args(
-  setting_args: &str,
-  variant_args: &str,
-  alias_args: &str,
-) -> Vec<String> {
-  let mut args_map = HashMap::new();
-
-  // Parse and merge in precedence order
-  parse_args_into_map(setting_args, &mut args_map);
-  parse_args_into_map(variant_args, &mut args_map);
-  parse_args_into_map(alias_args, &mut args_map);
-
-  // Convert back to argument list
-  args_map.into_iter()
-    .flat_map(|(key, values)| {
-      std::iter::once(key).chain(values)
-    })
-    .collect()
-}
-
-fn parse_args_into_map(args: &str, map: &mut HashMap<String, Vec<String>>) {
-  let mut current_flag = None;
-
-  for token in args.split_whitespace() {
-    if token.starts_with("--") {
-      current_flag = Some(token.to_string());
-      map.insert(token.to_string(), vec![]);
-    } else if let Some(flag) = current_flag.as_ref() {
-      map.get_mut(flag).unwrap().push(token.to_string());
-    }
-  }
-}
-```
-
-### Forwarded SSE Streaming
-```rust
-// src/fwd_sse.rs
-pub async fn forward_sse(response: reqwest::Response) -> axum::Response {
-  let stream = response.bytes_stream()
-    .map(|chunk| {
-      chunk.map(|bytes| Event::default().data(String::from_utf8_lossy(&bytes)))
-    })
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
-
-  axum::Response::builder()
-    .header("content-type", "text/event-stream")
-    .header("cache-control", "no-cache")
-    .body(Body::from_stream(stream))
-    .unwrap()
-}
-```
-
-## Live SharedContext Tests
-
-Integration tests in `tests/test_live_shared_rw.rs` exercise `DefaultSharedContext` with the real llama.cpp binary. They do not start an HTTP server -- they test server process lifecycle directly.
-
-### Test Cases
-- `test_live_shared_rw_reload` -- Reload with no model args (stop-only path)
-- `test_live_shared_rw_reload_with_model_as_symlink` -- Load model via symlinked snapshot path
-- `test_live_shared_rw_reload_with_actual_file` -- Load model via direct blob path
-
-### Test Setup Pattern
-```rust
-// Fixtures resolve paths relative to CARGO_MANIFEST_DIR
-let lookup_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-  .join("../llama_server_proc/bin");
-let tests_data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-  .join("tests/data");
-
-// OfflineHubService wraps HfHubService for local-only operation
-let hub_service = OfflineHubService::new(HfHubService::new(
-  tests_data.join("live/huggingface/hub"), false, None,
-));
-```
-
-### Test Data Structure
-```
-tests/data/live/huggingface/hub/
-  models--afrideva--Llama-68M-Chat-v1-GGUF/
-    blobs/cdd6bad...   # Actual GGUF binary
-    snapshots/4bcbc.../
-      llama-68m-chat-v1.q8_0.gguf -> ../../blobs/cdd6bad...
-    refs/main           # Snapshot hash reference
-```
-
-### Prerequisites
-- Pre-built llama.cpp binary at `crates/llama_server_proc/bin/`
-- Tests are excluded from `cargo test -p server_core` by default (no `#[ignore]` but require the binary to exist)
-
-## Crate Commands
-
-### Building
-```bash
-cargo build -p server_core
-cargo build -p server_core --features test-utils
-```
-
-### Testing
-```bash
-# Unit tests (mock-based, no external dependencies)
-cargo test -p server_core
-
-# All tests including live integration (requires llama.cpp binary)
-cargo test -p server_core
-
-# Run only live SharedContext tests
-cargo test -p server_core test_live_shared_rw
-```
-
-### Documentation
-```bash
-cargo doc -p server_core --open
-```
-
-## Usage Examples
-
-### RouterState in HTTP Handlers
-```rust
-use server_core::RouterState;
-use axum::extract::State;
-
-async fn handler(
-  State(state): State<RouterState>,
-  // other extractors
-) -> Result<Response> {
-  // Access services
-  let data_service = state.app_service().data_service();
-  let alias = data_service.find_alias("model-name")?;
-
-  // Access LLM context
-  let context = state.shared_context();
-  context.reload_server(args).await?;
-
-  Ok(Response::new())
-}
-```
-
-### SSE Streaming
-```rust
-use server_core::{DirectEvent, direct_sse};
-
-async fn progress_handler() -> Response {
-  let events = vec![
-    DirectEvent::new("progress", "0"),
-    DirectEvent::new("progress", "50"),
-    DirectEvent::new("progress", "100"),
-    DirectEvent::new("complete", "done"),
-  ];
-
-  direct_sse(events).into_response()
-}
-```
-
-### Model Routing
-```rust
-use server_core::{ModelRouter, RouteDestination};
-
-async fn route_model(router: &dyn ModelRouter, model: &str) -> Result<Response> {
-  match router.route_request(model).await? {
-    RouteDestination::LocalModel(alias) => {
-      // Handle local model with SharedContext
-      handle_local_model(alias).await
-    }
-    RouteDestination::RemoteApi(api_alias) => {
-      // Forward to external API
-      forward_to_api(api_alias).await
-    }
-  }
-}
-```
+Setup uses `OfflineHubService` from `services::test_utils` wrapping `HfHubService` for local-only operations.
 
 ## Feature Flags
 
-- `test-utils`: Enables test utilities and mock implementations
+- `test-utils` — enables: `llama_server_proc/test-utils`, `services/test-utils`, `anyhow`, `mockall`, `rstest`, `http-body-util`, `tempfile`
 
-## Dependencies
+## Commands
 
-### Core Dependencies
-- `async-trait`: Async trait support
-- `axum`: HTTP framework
-- `bytes`: Efficient byte buffers
-- `futures`: Async stream utilities
-- `reqwest`: HTTP client
-- `tokio`: Async runtime
-- `tower`: Middleware framework
-
-### From Workspace
-- `objs`: Domain objects and errors
-- `services`: Business service layer
-- `llama_server_proc`: LLM server process management
-
-## File References
-
-See individual module files for complete implementation details:
-- HTTP state: `src/router_state.rs`
-- LLM management: `src/shared_rw.rs`
-- SSE streaming: `src/direct_sse.rs`, `src/fwd_sse.rs`
-- Model routing: `src/model_router.rs`
-- Argument merging: `src/server_args_merge.rs`
-- Test utilities: `src/test_utils/*.rs`
-- Live integration tests: `tests/test_live_shared_rw.rs`
-- Live test data: `tests/data/live/huggingface/hub/`
+```bash
+cargo test -p server_core                    # All tests (mock-based)
+cargo test -p server_core test_live_shared_rw  # Live integration tests (requires binary)
+cargo build -p server_core --features test-utils  # Build with test utilities
+```

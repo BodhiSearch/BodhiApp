@@ -1,390 +1,61 @@
-# PACKAGE.md - crates/llama_server_proc
-
-See [crates/llama_server_proc/CLAUDE.md](crates/llama_server_proc/CLAUDE.md) for architectural guidance and design rationale.
-
-## Core Components
-
-### Server Trait and Implementation
-
-**Server Trait** (`src/server.rs`)
-```rust
-#[async_trait::async_trait]
-#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
-pub trait Server: std::fmt::Debug + Send + Sync {
-  async fn start(&self) -> Result<()>;
-  async fn stop(self: Box<Self>) -> Result<()>;
-  async fn stop_unboxed(self) -> Result<()>;
-  async fn chat_completions(&self, body: &Value) -> Result<Response>;
-  async fn embeddings(&self, body: &Value) -> Result<Response>;
-  // ...
-}
-```
-
-**LlamaServer Implementation** (`src/server.rs`)
-```rust
-#[derive(Debug)]
-pub struct LlamaServer {
-  process: Mutex<Option<Child>>,
-  client: reqwest::Client,
-  base_url: String,
-  executable_path: PathBuf,
-  server_args: LlamaServerArgs,
-}
-```
-
-### Configuration Management
-
-**LlamaServerArgs Builder** (`src/server.rs`)
-```rust
-#[derive(Debug, Clone, Builder)]
-#[builder(pattern = "owned", setter(into, strip_option))]
-pub struct LlamaServerArgs {
-  pub model: PathBuf,
-  pub alias: String,
-  api_key: Option<String>,
-  port: u16,
-  // ...
-}
-```
-
-**Command Line Arguments** (`src/server.rs`)
-```rust
-pub fn to_args(&self) -> Vec<String> {
-  let mut args = vec![
-    "--alias".to_string(),
-    self.alias.clone(),
-    "--model".to_string(),
-    self.model.to_string_lossy().to_string(),
-  ];
-  // Port, API key, and server args handling...
-}
-```
-
-### Process Lifecycle Management
-
-**Server Start with Health Check** (`src/server.rs`)
-```rust
-async fn start(&self) -> Result<()> {
-  let args = self.server_args.to_args();
-  let mut process = Command::new(&self.executable_path)
-    .args(args)
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped())
-    .spawn()?;
-
-  Self::monitor_output(stdout, stderr);
-  self.wait_for_server_ready().await?;
-}
-```
-
-**Health Check Loop** (`src/server.rs`)
-```rust
-async fn wait_for_server_ready(&self) -> Result<()> {
-  let max_attempts = 300;
-  for attempt in 0..max_attempts {
-    match self.client.get(format!("{}/health", self.base_url)).send().await {
-      Ok(response) if response.status().is_success() => return Ok(()),
-      // Retry logic with 1-second intervals...
-    }
-  }
-}
-```
-
-**Process Cleanup** (`src/server.rs`)
-```rust
-impl Drop for LlamaServer {
-  fn drop(&mut self) {
-    let mut lock = self.process.lock().unwrap();
-    if let Some(mut process) = lock.take() {
-      process.kill().ok();
-      process.wait().ok();
-    }
-  }
-}
-```
-
-### HTTP Proxy Operations
-
-**Request Proxying** (`src/server.rs`)
-```rust
-async fn proxy_request(&self, endpoint: &str, body: &Value) -> Result<Response> {
-  let url = format!("{}{}", self.base_url, endpoint);
-  let response = self.client.post(url).json(body).send().await?;
-  Ok(response)
-}
-```
-
-**OpenAI-Compatible Endpoints** (`src/server.rs`):
-- Chat completions: `/v1/chat/completions`
-- Embeddings: `/v1/embeddings`
-- Tokenize: `/v1/tokenize`
-- Detokenize: `/v1/detokenize`
-
-### Error Handling
-
-**ServerError Enum** (`src/error.rs`)
-```rust
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-pub enum ServerError {
-  ServerNotReady,
-  StartupError(String),
-  IoError(#[from] IoError),
-  ClientError(#[from] ReqwestError),
-  HealthCheckError(String),
-  TimeoutError(u64),
-}
-```
-
-**Error Messages** (defined via thiserror templates in `src/error.rs`):
-- ServerNotReady: "Model server is starting up. Please wait and try again."
-- StartupError: "Failed to start model server: {0}."
-- HealthCheckError: "Model server health check failed: {0}."
-- TimeoutError: "Model server did not respond within {0} seconds."
-
-### Build System Architecture
-
-**Build Environment Constants** (`src/build_envs.rs`)
-```rust
-pub static BUILD_TARGET: &str = env!("BUILD_TARGET");
-pub static ref BUILD_VARIANTS: Vec<String> = {
-  env!("BUILD_VARIANTS").split(',').map(String::from).collect()
-};
-pub static DEFAULT_VARIANT: &str = env!("DEFAULT_VARIANT");
-pub static EXEC_NAME: &str = env!("EXEC_NAME");
-```
-
-**Platform-Specific Build Configuration** (`build.rs`)
-```rust
-static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
-  let mut set = HashSet::new();
-  set.insert(LlamaServerBuild::new("aarch64-apple-darwin", "", vec!["metal", "cpu"]));
-  set.insert(LlamaServerBuild::new("aarch64-unknown-linux-gnu", "", vec!["cpu"]));
-  set.insert(LlamaServerBuild::new("x86_64-unknown-linux-gnu", "", vec!["cpu"]));
-  set.insert(LlamaServerBuild::new("x86_64-pc-windows-msvc", "exe", vec!["cpu"]));
-  set
-});
-```
-
-**GitHub Release Download** (`build.rs`):
-- Asset filtering by platform and variant
-- ZIP file extraction handling
-- Executable permissions management
-- File locking for concurrent builds (`build.rs`)
-
-### Test Utilities
-
-**Model Fixtures** (`src/test_utils/mod.rs`)
-```rust
-#[fixture]
-pub fn llama2_7b() -> PathBuf {
-  let model_path = dirs::home_dir().unwrap()
-    .join(".cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/...");
-  assert!(model_path.exists());
-  model_path.canonicalize().unwrap()
-}
-```
-
-**HTTP Response Mocking** (`src/test_utils/mod.rs`)
-```rust
-pub fn mock_response(body: impl Into<String>) -> Response {
-  let url = Url::parse("http://127.0.0.1:8080").unwrap();
-  let hyper_response = Builder::new().url(url).status(200).body(body).unwrap();
-  Response::from(hyper_response)
-}
-```
-
-## Core Implementation Files
-
-### Main Components
-- `src/lib.rs` - Library exports and module declarations
-- `src/server.rs` - Server trait definition and LlamaServer implementation
-- `src/error.rs` - ServerError enum with thiserror templates
-- `src/build_envs.rs` - Build environment constants and configuration
-- `src/test_utils/mod.rs` - Testing utilities and fixtures
-- `build.rs` - Build script for cross-platform binary management
-
-### Test Files
-- `tests/test_server_proc.rs` - Integration tests with real server processes (Qwen3-1.7B from HF cache)
-- `tests/test_live_server_proc.rs` - Live process lifecycle tests with bundled Llama-68M model
-
-### Test Data
-- `tests/data/live/huggingface/` - Mirrors HuggingFace cache structure for self-contained live tests
-- `tests/data/live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/` - Primary live test model (Q8_0 quantized, ~68M params)
-- `tests/data/live/huggingface/hub/models--TheBloke--TinyLlama-1.1B-Chat-v1.0-GGUF/` - Additional test model
-
-## Test Infrastructure
-
-### Live Tests (`tests/test_live_server_proc.rs`)
-
-Self-contained tests that validate LlamaServer process lifecycle using bundled model files.
-
-**Key fixtures:**
-```rust
-#[fixture]
-fn lookup_path() -> PathBuf {
-  PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("bin")
-}
-
-#[fixture]
-fn tests_data() -> PathBuf {
-  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-    .join("tests")
-    .join("data")
-}
-```
-
-**Test pattern** -- starts server, verifies readiness, stops explicitly:
-```rust
-#[rstest]
-#[tokio::test]
-async fn test_live_llama_server_load_exec_with_server(
-  tests_data: PathBuf,
-  lookup_path: PathBuf,
-) -> anyhow::Result<()> {
-  let server = LlamaServer::new(&exec_path, args)?;
-  let result = server.start().await;
-  server.stop_unboxed().await?;
-  assert!(result.is_ok());
-  Ok(())
-}
-```
-
-**Prerequisites:**
-- Real llama-server binary at `bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
-- Model file at `tests/data/live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/snapshots/.../llama-68m-chat-v1.q8_0.gguf`
-
-### Integration Tests (`tests/test_server_proc.rs`)
-
-Full inference validation tests using Qwen3-1.7B from the system HuggingFace cache.
-
-**Prerequisites:**
-- Real llama-server binary (same path as live tests)
-- Qwen3-1.7B model in `~/.cache/huggingface/hub/` (or `$HF_HOME/hub/`)
-
-**Test cases:**
-- `test_server_proc_chat_completions` -- Non-streaming chat completion, validates response content and model alias
-- `test_server_proc_chat_completions_streamed` -- Streaming SSE chat completion, validates chunk parsing and finish_reason
-
-## Usage Examples
-
-### Basic Server Creation and Lifecycle
-
-```rust
-use llama_server_proc::{LlamaServer, LlamaServerArgsBuilder, Server};
-use std::path::Path;
-
-// Create server configuration
-let args = LlamaServerArgsBuilder::default()
-  .model("/path/to/model.gguf")
-  .alias("my-model")
-  .server_args(vec!["--ctx-size 2048".to_string()])
-  .build()?;
-
-// Create server instance
-let server = LlamaServer::new(Path::new("/path/to/llama-server"), args)?;
-
-// Start server and wait for readiness
-server.start().await?;
-
-// Use server for inference
-let response = server.chat_completions(&chat_request).await?;
-
-// Server cleanup happens automatically via Drop trait
-```
-
-### Testing with Mocks
-
-```rust
-use llama_server_proc::MockServer;
-use mockall::predicate::*;
-
-let mut mock_server = MockServer::new();
-mock_server
-  .expect_start()
-  .times(1)
-  .returning(|| Ok(()));
-
-mock_server
-  .expect_chat_completions()
-  .with(eq(request_body))
-  .returning(|_| Ok(mock_response("chat response")));
-```
-
-## Build Commands
-
-### Development Build
-```bash
-# Build default variant for current platform
-cargo build -p llama_server_proc
-
-# Run unit tests only
-cargo test -p llama_server_proc
-
-# Run live tests (requires llama-server binary + bundled Llama-68M model)
-cargo test -p llama_server_proc --test test_live_server_proc
-
-# Run integration tests (requires llama-server binary + Qwen3-1.7B in HF cache)
-cargo test -p llama_server_proc --test test_server_proc
-
-# Run with test-utils feature
-cargo test -p llama_server_proc --features test-utils
-```
-
-### Release Build with Binary Download
-```bash
-# Set CI environment for binary download
-export CI_RELEASE=true
-export GH_PAT=your_github_token
-export CI_BUILD_TARGET=aarch64-apple-darwin
-export CI_BUILD_VARIANTS=metal,cpu
-export CI_DEFAULT_VARIANT=metal
-
-cargo build -p llama_server_proc --release
-```
-
-### Cross-Platform Build
-```bash
-# Build for specific target
-make build-aarch64-apple-darwin-metal
-
-# Clean build artifacts
-make clean
-```
-
-## Configuration Options
-
-### Server Arguments
-- `--ctx-size N`: Context window size
-- `--parallel N`: Number of parallel requests
-- `--batch-size N`: Batch size for processing
-- `--threads N`: Number of CPU threads
-- `--gpu-layers N`: Number of GPU layers (for GPU variants)
-
-### Environment Variables
-- `CI_RELEASE`: Enable release build with binary download
-- `GH_PAT`: GitHub personal access token for release downloads
-- `CI_BUILD_TARGET`: Target platform for CI builds
-- `CI_BUILD_VARIANTS`: Comma-separated list of acceleration variants
-- `CI_DEFAULT_VARIANT`: Default acceleration variant to use
-
-### Build Variants
-- `cpu`: CPU-only inference
-- `metal`: Apple Metal GPU acceleration (macOS only)
-- `cuda`: NVIDIA CUDA acceleration (Linux only)
-
-## Integration Points
-
-### With objs Crate
-- Error handling via `ServerError` implementing `AppError`
-- Builder pattern validation using `BuilderError`
-- User-friendly error messages via thiserror templates
-
-### With Higher-Level Services
-- Trait-based abstraction enables dependency injection
-- Async interface supports tokio-based service architecture
-- HTTP response streaming for real-time inference
-
-### With Build System
-- Makefile integration for cross-platform builds
-- GitHub release coordination for binary distribution
-- File locking prevents concurrent build conflicts
+# llama_server_proc -- PACKAGE.md
+
+## Module Structure
+
+- `src/lib.rs` -- Module declarations, re-exports, `test-utils` feature gate
+- `src/server.rs` -- `Server` trait (async_trait + mockall), `LlamaServer` struct, `LlamaServerArgs` (derive_builder), `LlamaServerArgsBuilder`, process lifecycle, health check, HTTP proxy, Drop impl
+- `src/error.rs` -- `ServerError` enum (7 variants), local `ReqwestError` wrapper, `impl_error_from!` bridges, `Result<T>` type alias
+- `src/build_envs.rs` -- Compile-time constants: `BUILD_TARGET`, `BUILD_VARIANTS` (lazy_static), `DEFAULT_VARIANT`, `EXEC_NAME`
+- `src/test_utils/mod.rs` -- `llama2_7b` fixture, `llama2_7b_str` fixture, `mock_response` helper
+- `build.rs` -- Build script: platform detection, GitHub release download, ZIP extraction, file locking
+
+## ServerError Variants
+
+| Variant | ErrorType | Description |
+|---|---|---|
+| `ServerNotReady` | ServiceUnavailable (503) | Server still starting |
+| `StartupError(String)` | InternalServer (500) | Failed to spawn process |
+| `IoError(IoError)` | transparent | Filesystem errors |
+| `ClientError(ReqwestError)` | transparent | HTTP client errors |
+| `HealthCheckError(String)` | InternalServer (500) | Health check failure |
+| `TimeoutError(u64)` | InternalServer (500) | Startup timeout |
+| `ModelNotFound(String)` | InternalServer (500) | Model file missing |
+
+## Server Trait Methods
+
+- `start(&self)` -- Spawn process, monitor stdout/stderr, wait for health
+- `stop(self: Box<Self>)` -- For `Box<dyn Server>` consumers
+- `stop_unboxed(self)` -- For direct struct usage
+- `get_server_args(&self)` -- Return clone of LlamaServerArgs
+- `chat_completions(&self, body)` -- Proxy to `/v1/chat/completions`
+- `embeddings(&self, body)` -- Proxy to `/v1/embeddings`
+- `tokenize(&self, body)` -- Proxy to `/v1/tokenize`
+- `detokenize(&self, body)` -- Proxy to `/v1/detokenize`
+
+## Test Files
+
+- `tests/test_live_server_proc.rs` -- Process lifecycle with bundled Llama-68M
+- `tests/test_server_proc.rs` -- Full inference with Qwen3-1.7B from HF cache
+
+## Test Data Layout
+
+`tests/data/live/huggingface/` mirrors HF cache structure:
+- `hub/models--afrideva--Llama-68M-Chat-v1-GGUF/` -- Primary live test model (Q8_0)
+- `hub/models--TheBloke--TinyLlama-1.1B-Chat-v1.0-GGUF/` -- Additional test model
+- Snapshots use symlinks to blobs (same as HF CLI downloads)
+
+## Build System
+
+Platform configurations (from `build.rs`):
+- `aarch64-apple-darwin` -- variants: metal, cpu
+- `aarch64-unknown-linux-gnu` -- variants: cpu
+- `x86_64-unknown-linux-gnu` -- variants: cpu
+- `x86_64-pc-windows-msvc` -- variants: cpu (exe extension)
+
+CI env vars: `CI_RELEASE`, `GH_PAT`, `CI_BUILD_TARGET`, `CI_BUILD_VARIANTS`, `CI_DEFAULT_VARIANT`
+
+Uses `fs2` file locking (`bodhi-build.lock`) to prevent concurrent build conflicts.
+
+## Features
+
+- `test-utils` -- Enables `MockServer` (mockall), rstest fixtures, mock_response helper
