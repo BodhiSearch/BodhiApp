@@ -5,8 +5,8 @@ use crate::{
   AccessRequestService, AiApiService, AppService, AuthContext, AuthScopedApiModelService,
   AuthScopedDataService, AuthScopedDownloadService, AuthScopedMcpService, AuthScopedTokenService,
   AuthScopedToolService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
-  CacheService, ConcurrencyService, DataService, HubService, McpService, NetworkService,
-  QueueProducer, SessionService, SettingService, TenantService, TokenService, ToolService,
+  CacheService, ConcurrencyService, DataService, HubService, NetworkService, QueueProducer,
+  SessionService, SettingService, TenantService,
 };
 use std::sync::Arc;
 
@@ -186,24 +186,15 @@ impl AuthScopedAppService {
     self.app_service.tenant_service()
   }
 
+  /// Non-auth-scoped passthrough. See [`AccessRequestService`] doc comment for rationale.
+  /// All methods on this service manage their own tenant/user context — they are not
+  /// filtered by AuthContext's tenant_id/user_id.
   pub fn access_request_service(&self) -> Arc<dyn AccessRequestService> {
     self.app_service.access_request_service()
   }
 
   pub fn cache_service(&self) -> Arc<dyn CacheService> {
     self.app_service.cache_service()
-  }
-
-  pub fn mcp_service(&self) -> Arc<dyn McpService> {
-    self.app_service.mcp_service()
-  }
-
-  pub fn tool_service(&self) -> Arc<dyn ToolService> {
-    self.app_service.tool_service()
-  }
-
-  pub fn token_service(&self) -> Arc<dyn TokenService> {
-    self.app_service.token_service()
   }
 
   pub fn auth_service(&self) -> Arc<dyn AuthService> {

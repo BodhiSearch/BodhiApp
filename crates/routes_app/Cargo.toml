@@ -45,6 +45,7 @@ uuid = { workspace = true, features = ["v4"] }
 
 # Optional deps for test-utils feature
 anyhow = { workspace = true, optional = true }
+dotenv = { workspace = true, optional = true }
 maplit = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 time = { workspace = true, optional = true }
@@ -78,6 +79,7 @@ tower = { workspace = true, features = ["util"] }
 test-utils = [
   "rstest",
   "anyhow",
+  "dotenv",
   "maplit",
   "tempfile",
   "time",

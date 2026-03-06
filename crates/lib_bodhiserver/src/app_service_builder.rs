@@ -6,15 +6,14 @@ use services::{
   db::{DbCore, DbService, DefaultDbService, DefaultTimeService, TimeService},
   hash_key,
   inference::InferenceService,
-  AccessRequestService, AiApiService, AppService, AuthService, BootstrapParts, CacheService,
-  DataService, DefaultAccessRequestService, DefaultAiApiService, DefaultAppService,
-  DefaultExaService, DefaultMcpService, DefaultNetworkService, DefaultSessionService,
-  DefaultSettingService, DefaultTenantService, DefaultToolService, ExaService, HfHubService,
-  HubService, InMemoryQueue, KeycloakAuthService, KeyringStore, LocalConcurrencyService,
-  LocalDataService, McpService, MokaCacheService, MultiTenantDataService, NetworkService,
-  QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService, SystemKeyringStore,
-  Tenant, TenantService, ToolService, BODHI_APP_DB_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
-  HF_TOKEN, PROD_DB,
+  AccessRequestService, AiApiService, AuthService, BootstrapParts, CacheService, DataService,
+  DefaultAccessRequestService, DefaultAiApiService, DefaultAppService, DefaultExaService,
+  DefaultMcpService, DefaultNetworkService, DefaultSessionService, DefaultSettingService,
+  DefaultTenantService, DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue,
+  KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService, McpService,
+  MokaCacheService, MultiTenantDataService, NetworkService, QueueConsumer, QueueProducer,
+  RefreshWorker, SessionService, SettingService, SystemKeyringStore, TenantService, ToolService,
+  BODHI_APP_DB_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
 };
 use std::sync::Arc;
 
@@ -369,23 +368,6 @@ pub async fn build_app_service(
   bootstrap_parts: BootstrapParts,
 ) -> Result<DefaultAppService, BootstrapError> {
   AppServiceBuilder::new(bootstrap_parts).build().await
-}
-
-pub async fn update_with_option(
-  service: &Arc<dyn AppService>,
-  instance: Option<&Tenant>,
-) -> Result<(), BootstrapError> {
-  if let Some(instance) = instance {
-    service
-      .tenant_service()
-      .create_tenant(
-        &instance.client_id,
-        &instance.client_secret,
-        instance.status.clone(),
-      )
-      .await?;
-  }
-  Ok(())
 }
 
 #[cfg(test)]

@@ -395,10 +395,17 @@ impl AppServiceStubBuilder {
     self
   }
 
-  /// Creates DefaultTenantService and persists the given Tenant to DB
+  /// Creates DefaultTenantService and persists the given Tenant to DB.
+  /// Reuses existing tenant service if already set (additive: multiple tenants share one service).
   pub async fn with_tenant(&mut self, instance: Tenant) -> &mut Self {
-    let db_service = self.get_db_service().await;
-    let svc = DefaultTenantService::new(db_service);
+    let svc = if let Some(Some(existing)) = &self.tenant_service {
+      existing.clone()
+    } else {
+      let db_service = self.get_db_service().await;
+      let new_svc: Arc<dyn TenantService> = Arc::new(DefaultTenantService::new(db_service));
+      self.tenant_service = Some(Some(new_svc.clone()));
+      new_svc
+    };
     svc
       .create_tenant(
         &instance.client_id,
@@ -407,7 +414,6 @@ impl AppServiceStubBuilder {
       )
       .await
       .unwrap();
-    self.tenant_service = Some(Some(Arc::new(svc)));
     self
   }
 

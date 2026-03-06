@@ -1707,3 +1707,7 @@ impl McpService for DefaultMcpService {
 #[cfg(test)]
 #[path = "test_mcp_service.rs"]
 mod test_mcp_service;
+
+#[cfg(test)]
+#[path = "test_mcp_repository_isolation.rs"]
+mod test_mcp_repository_isolation;

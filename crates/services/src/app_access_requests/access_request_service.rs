@@ -9,6 +9,16 @@ use crate::db::{DbService, TimeService};
 use crate::AuthService;
 use crate::UserScope;
 
+/// App access request lifecycle service.
+///
+/// NOTE: This service is intentionally NOT auth-scoped. Unlike other domain services where
+/// tenant_id/user_id scope which records are visible, app access requests have a different
+/// lifecycle:
+/// - create_draft: Anonymous (no authenticated user), tenant_id from DB lookup
+/// - get_request: Used by both anonymous status polling and authenticated review
+/// - approve/deny: reviewer's user_id is recorded as actor, not used as scope filter
+///
+/// Exposed on AuthScopedAppService as a non-auth-scoped passthrough for convenience.
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AccessRequestService: Send + Sync + std::fmt::Debug {

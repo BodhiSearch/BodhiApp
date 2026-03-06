@@ -28,7 +28,7 @@ use services::{
     TEST_CLIENT_SECRET, TEST_TENANT_ID,
   },
   AppService, AppStatus, AuthServiceError, DefaultSessionService, MockAuthService, SessionService,
-  Tenant, BODHI_HOST, BODHI_PORT, BODHI_SCHEME, {TokenEntity, TokenStatus},
+  Tenant, {TokenEntity, TokenStatus},
 };
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -140,25 +140,18 @@ async fn assert_optional_auth_passthrough(router: &Router) -> anyhow::Result<()>
 }
 
 #[rstest]
-#[case::authz_setup(AppStatus::Setup)]
-#[case::authz_missing(AppStatus::Setup)]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_auth_middleware_returns_app_status_invalid_for_app_status_setup_or_missing(
-  #[case] status: AppStatus,
+async fn test_auth_middleware_returns_invalid_access_when_no_auth(
+  temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
+  let dbfile = temp_bodhi_home.path().join("test.db");
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   let app_service = AppServiceStubBuilder::default()
-    .with_tenant(Tenant::test_with_status(status))
+    .with_tenant(Tenant::test_with_status(AppStatus::Setup))
     .await
-    .with_session_service()
-    .await
+    .session_service(session_service)
     .with_db_service()
-    .await
-    .with_settings(maplit::hashmap! {
-      BODHI_SCHEME => "https",
-      BODHI_HOST => "bodhi.app",
-      BODHI_PORT => "443",
-    })
     .await
     .build()
     .await?;
@@ -167,17 +160,14 @@ async fn test_auth_middleware_returns_app_status_invalid_for_app_status_setup_or
   let req = Request::get("/with_auth").body(Body::empty())?;
   let router = test_router(state);
   let response = router.clone().oneshot(req).await?;
-  assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   let body: Value = response.json().await?;
   assert_eq!(
     json! {{
       "error": {
-        "code": "auth_error-app_status_invalid",
-        "type": "invalid_app_state",
-        "message": "Application is not ready. Current status: setup.",
-        "param": {
-          "var_0": "setup"
-        }
+        "code": "auth_error-invalid_access",
+        "type": "authentication_error",
+        "message": "Access denied."
       }
     }},
     body
@@ -478,8 +468,8 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
   mock_auth_service
     .expect_refresh_token()
     .with(
-      eq("test_client_id"),
-      eq("test_client_secret"),
+      eq(TEST_CLIENT_ID),
+      eq(TEST_CLIENT_SECRET),
       eq("refresh_token"),
     )
     .times(1)
@@ -489,16 +479,8 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
       )))
     });
 
-  let instance = Tenant {
-    id: "01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string(),
-    client_id: "test_client_id".to_string(),
-    client_secret: "test_client_secret".to_string(),
-    status: AppStatus::Ready,
-    created_at: chrono::Utc::now(),
-    updated_at: chrono::Utc::now(),
-  };
   let app_service = AppServiceStubBuilder::default()
-    .with_tenant(instance)
+    .with_tenant(Tenant::test_default())
     .await
     .time_service(Arc::new(services::DefaultTimeService))
     .auth_service(Arc::new(mock_auth_service))

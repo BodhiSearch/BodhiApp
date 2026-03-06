@@ -9,5 +9,9 @@ mod test_api_models_auth;
 #[cfg(test)]
 mod test_types;
 
+#[cfg(test)]
+#[path = "test_api_models_isolation.rs"]
+mod test_api_models_isolation;
+
 pub use error::*;
 pub use routes_api_models::*;

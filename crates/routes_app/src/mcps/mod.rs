@@ -21,3 +21,11 @@ pub use routes_mcps::*;
 pub use routes_mcps_auth::*;
 pub use routes_mcps_oauth::*;
 pub use routes_mcps_servers::*;
+
+#[cfg(test)]
+#[path = "test_mcps_isolation.rs"]
+mod test_mcps_isolation;
+
+#[cfg(test)]
+#[path = "test_mcp_servers_isolation.rs"]
+mod test_mcp_servers_isolation;

@@ -10,7 +10,7 @@ use axum::{
 
 use services::AppService;
 use services::AuthContext;
-use services::{extract_claims, AppStatus, TenantError, UserIdClaims};
+use services::{extract_claims, Claims, TenantError, UserIdClaims};
 use std::sync::Arc;
 use tower_sessions::Session;
 use tracing::debug;
@@ -99,19 +99,6 @@ pub async fn auth_middleware(
     app_service.time_service(),
   );
 
-  // Single get_standalone_app() call: extract both status and client_id
-  let tenant = tenant_service.get_standalone_app().await?;
-  let status = tenant
-    .as_ref()
-    .map(|t| t.status.clone())
-    .unwrap_or_default();
-  if status == AppStatus::Setup {
-    return Err(AuthError::AppStatusInvalid(AppStatus::Setup).into());
-  }
-  let tenant = tenant.ok_or(TenantError::NotFound)?;
-  let instance_client_id = tenant.client_id.clone();
-  let instance_tenant_id = tenant.id.clone();
-
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
     let header = header
       .to_str()
@@ -120,29 +107,30 @@ pub async fn auth_middleware(
     req.extensions_mut().insert(auth_context);
     Ok(next.run(req).await)
   } else if is_same_origin(req.headers()) {
-    // Check for token in session
     if let Some(access_token) = session
       .get::<String>(SESSION_KEY_ACCESS_TOKEN)
       .await
       .map_err(AuthError::from)?
     {
       debug!("auth_middleware: found access token in session, validating");
+      // Resolve tenant from JWT azp claim
+      let claims = extract_claims::<Claims>(&access_token)?;
+      let tenant = tenant_service
+        .get_tenant_by_client_id(&claims.azp)
+        .await?
+        .ok_or(TenantError::NotFound)?;
+
       let (access_token, role) = token_service
-        .get_valid_session_token(session, access_token)
+        .get_valid_session_token(session, access_token, &tenant)
         .await?;
       let role = role.ok_or(AuthError::MissingRoles)?;
-      let claims = extract_claims::<UserIdClaims>(&access_token)?;
-      let user_id = claims.sub.clone();
-      debug!(
-        "auth_middleware: session token validated successfully for user: {}",
-        user_id
-      );
+      let user_claims = extract_claims::<UserIdClaims>(&access_token)?;
 
       let auth_context = AuthContext::Session {
-        client_id: instance_client_id,
-        tenant_id: instance_tenant_id,
-        user_id,
-        username: claims.preferred_username,
+        client_id: tenant.client_id,
+        tenant_id: tenant.id,
+        user_id: user_claims.sub.clone(),
+        username: user_claims.preferred_username,
         role: Some(role),
         token: access_token,
       };
@@ -177,28 +165,9 @@ pub async fn optional_auth_middleware(
     app_service.time_service(),
   );
 
-  // Single get_standalone_app() call: extract both status and client_id
-  let tenant = tenant_service.get_standalone_app().await.ok().flatten();
-  let status = tenant
-    .as_ref()
-    .map(|t| t.status.clone())
-    .unwrap_or_default();
-  if status == AppStatus::Setup {
-    req.extensions_mut().insert(AuthContext::Anonymous {
-      client_id: None,
-      tenant_id: None,
-    });
-    return Ok(next.run(req).await);
-  }
-
-  let (instance_client_id, instance_tenant_id): (Option<String>, Option<String>) = tenant
-    .map(|t| (Some(t.client_id), Some(t.id)))
-    .unwrap_or((None, None));
-
-  // Fall back to Anonymous when instance lookup fails
   let anon = || AuthContext::Anonymous {
-    client_id: instance_client_id.clone(),
-    tenant_id: instance_tenant_id.clone(),
+    client_id: None,
+    tenant_id: None,
   };
 
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
@@ -222,36 +191,34 @@ pub async fn optional_auth_middleware(
       req.extensions_mut().insert(anon());
     }
   } else if is_same_origin(req.headers()) {
-    // session token
     match session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await {
       Ok(Some(access_token)) => {
-        match token_service
-          .get_valid_session_token(session.clone(), access_token.clone())
-          .await
-        {
-          Ok((validated_token, role)) => {
-            debug!("optional_auth_middleware: session token validated successfully");
-            if let Some(client_id) = instance_client_id.clone() {
-              let claims = extract_claims::<UserIdClaims>(&validated_token)?;
-              let auth_context = AuthContext::Session {
-                client_id,
-                tenant_id: instance_tenant_id.clone().ok_or(AuthError::InvalidAccess)?,
-                user_id: claims.sub.clone(),
-                username: claims.preferred_username,
-                role,
-                token: validated_token,
-              };
-              req.extensions_mut().insert(auth_context);
-            } else {
-              debug!("optional_auth_middleware: no instance client_id, falling back to Anonymous");
-              req.extensions_mut().insert(anon());
-            }
+        let result: Result<AuthContext, AuthError> = async {
+          let claims = extract_claims::<Claims>(&access_token)?;
+          let tenant = tenant_service
+            .get_tenant_by_client_id(&claims.azp)
+            .await?
+            .ok_or(TenantError::NotFound)?;
+          let (validated_token, role) = token_service
+            .get_valid_session_token(session.clone(), access_token, &tenant)
+            .await?;
+          let user_claims = extract_claims::<UserIdClaims>(&validated_token)?;
+          Ok(AuthContext::Session {
+            client_id: tenant.client_id,
+            tenant_id: tenant.id,
+            user_id: user_claims.sub.clone(),
+            username: user_claims.preferred_username,
+            role,
+            token: validated_token,
+          })
+        }
+        .await;
+
+        match result {
+          Ok(auth_context) => {
+            req.extensions_mut().insert(auth_context);
           }
           Err(err) => {
-            debug!(
-              ?err,
-              "optional_auth_middleware: token validation/refresh failed"
-            );
             if should_clear_session(&err) {
               clear_session_auth_data(&session).await;
             }
@@ -295,3 +262,7 @@ fn remove_app_headers(req: &mut axum::http::Request<axum::body::Body>) {
 #[cfg(test)]
 #[path = "test_auth_middleware.rs"]
 mod test_auth_middleware;
+
+#[cfg(test)]
+#[path = "test_auth_middleware_isolation.rs"]
+mod test_auth_middleware_isolation;

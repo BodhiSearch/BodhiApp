@@ -1,6 +1,6 @@
 use services::{
-  db::DbError, AppError, AppStatus, AuthServiceError, ErrorType, RoleError, TenantError,
-  TokenError, TokenScopeError, UserScopeError,
+  db::DbError, AppError, AuthServiceError, ErrorType, RoleError, TenantError, TokenError,
+  TokenScopeError, UserScopeError,
 };
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -44,7 +44,4 @@ pub enum AuthError {
   #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidToken(String),
-  #[error("Application is not ready. Current status: {0}.")]
-  #[error_meta(error_type = ErrorType::InvalidAppState)]
-  AppStatusInvalid(AppStatus),
 }

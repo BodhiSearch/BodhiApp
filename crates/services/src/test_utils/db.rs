@@ -4,7 +4,9 @@ use crate::db::{sea_migrations::Migrator, DbCore, DbError, DefaultDbService, Tim
 use crate::tenants::{TenantRepository, TenantRow};
 
 pub const TEST_TENANT_ID: &str = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+pub const TEST_TENANT_B_ID: &str = "01ARZ3NDEKTSV4RRFFQ69G5FBB";
 pub const TEST_USER_ID: &str = "test-user";
+pub const TEST_TENANT_A_USER_B_ID: &str = "test-tenant-a-user-b";
 
 use crate::mcps::{
   McpAuthHeaderRow, McpAuthRepository, McpInstanceRepository, McpOAuthConfigRow, McpOAuthTokenRow,
@@ -1161,6 +1163,14 @@ impl TenantRepository for TestDbService {
       .await
       .tap(|_| self.notify("delete_tenant"))
   }
+
+  async fn create_tenant_test(&self, tenant: &crate::Tenant) -> Result<TenantRow, DbError> {
+    self
+      .inner
+      .create_tenant_test(tenant)
+      .await
+      .tap(|_| self.notify("create_tenant_test"))
+  }
 }
 
 #[async_trait::async_trait]
@@ -1337,6 +1347,7 @@ mockall::mock! {
       status: &crate::AppStatus,
     ) -> Result<(), DbError>;
     async fn delete_tenant(&self, client_id: &str) -> Result<(), DbError>;
+    async fn create_tenant_test(&self, tenant: &crate::Tenant) -> Result<TenantRow, DbError>;
   }
 
   #[async_trait::async_trait]

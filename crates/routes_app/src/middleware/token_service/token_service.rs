@@ -4,7 +4,7 @@ use services::AuthContext;
 use services::{
   db::{DbService, TimeService},
   extract_claims, AuthService, CacheService, Claims, ConcurrencyService, ExpClaims, ScopeClaims,
-  SettingService, TenantError, TenantService, TokenError, TokenStatus,
+  SettingService, Tenant, TenantError, TenantService, TokenError, TokenStatus,
 };
 use services::{ResourceRole, TokenScope, UserScope};
 use sha2::{Digest, Sha256};
@@ -199,12 +199,6 @@ impl DefaultTokenService {
     &self,
     external_token: &str,
   ) -> Result<(AuthContext, CachedExchangeResult), AuthError> {
-    let instance = self
-      .tenant_service
-      .get_standalone_app()
-      .await?
-      .ok_or(TenantError::NotFound)?;
-
     let claims = extract_claims::<ScopeClaims>(external_token)?;
     let original_azp = claims.azp.clone();
 
@@ -212,15 +206,15 @@ impl DefaultTokenService {
       return Err(TokenError::InvalidIssuer(claims.iss))?;
     }
 
-    if let Some(aud) = &claims.aud {
-      if aud != &instance.client_id {
-        return Err(TokenError::InvalidAudience(aud.clone()))?;
-      }
-    } else {
-      return Err(TokenError::InvalidToken(
-        "missing audience field".to_string(),
-      ))?;
-    }
+    let aud = claims
+      .aud
+      .as_ref()
+      .ok_or_else(|| TokenError::InvalidAudience("missing audience".to_string()))?;
+    let instance = self
+      .tenant_service
+      .get_tenant_by_client_id(aud)
+      .await?
+      .ok_or_else(|| TokenError::InvalidAudience(aud.clone()))?;
 
     let access_request_scopes: Vec<&str> = claims
       .scope
@@ -413,18 +407,13 @@ impl DefaultTokenService {
     &self,
     session: Session,
     access_token: String,
+    tenant: &Tenant,
   ) -> Result<(String, Option<ResourceRole>), AuthError> {
     // Validate session token
     let claims = extract_claims::<Claims>(&access_token)?;
 
-    // Fetch tenant once upfront to get client_id (avoid redundant DB calls)
-    let instance = self
-      .tenant_service
-      .get_standalone_app()
-      .await?
-      .ok_or(TenantError::NotFound)?;
-    let instance_client_id = instance.client_id.clone();
-    let instance_client_secret = instance.client_secret.clone();
+    let instance_client_id = tenant.client_id.clone();
+    let instance_client_secret = tenant.client_secret.clone();
 
     // Check if token is expired
     let now = self.time_service.utc_now().timestamp();

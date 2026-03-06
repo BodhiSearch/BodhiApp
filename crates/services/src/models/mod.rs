@@ -1,6 +1,9 @@
 mod api_alias_repository;
 pub(crate) mod api_model_alias_entity;
 mod api_model_service;
+mod auth_scoped_api_models;
+mod auth_scoped_data;
+mod auth_scoped_downloads;
 mod data_service;
 mod download_repository;
 pub(crate) mod download_request_entity;
@@ -16,19 +19,34 @@ mod progress_tracking;
 #[path = "test_api_alias_repository.rs"]
 mod test_api_alias_repository;
 #[cfg(test)]
+#[path = "test_api_alias_repository_isolation.rs"]
+mod test_api_alias_repository_isolation;
+#[cfg(test)]
 #[path = "test_download_repository.rs"]
 mod test_download_repository;
+#[cfg(test)]
+#[path = "test_download_repository_isolation.rs"]
+mod test_download_repository_isolation;
+#[cfg(test)]
+#[path = "test_model_metadata_global.rs"]
+mod test_model_metadata_global;
 #[cfg(test)]
 #[path = "test_model_metadata_repository.rs"]
 mod test_model_metadata_repository;
 #[cfg(test)]
 #[path = "test_user_alias_repository.rs"]
 mod test_user_alias_repository;
+#[cfg(test)]
+#[path = "test_user_alias_repository_isolation.rs"]
+mod test_user_alias_repository_isolation;
 pub(crate) mod user_alias_entity;
 mod user_alias_repository;
 
 pub use api_alias_repository::ApiAliasRepository;
 pub use api_model_service::*;
+pub use auth_scoped_api_models::*;
+pub use auth_scoped_data::*;
+pub use auth_scoped_downloads::*;
 pub use data_service::*;
 pub use download_repository::DownloadRepository;
 pub use download_service::*;

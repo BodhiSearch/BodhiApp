@@ -1,6 +1,6 @@
 use crate::{
   db::DbCore,
-  test_utils::{sea_context, setup_env, TEST_TENANT_ID},
+  test_utils::{sea_context, setup_env, TEST_TENANT_B_ID, TEST_TENANT_ID},
   tokens::{TokenEntity, TokenRepository, TokenStatus},
 };
 use anyhow_trace::anyhow_trace;
@@ -9,8 +9,6 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait};
 use serial_test::serial;
-
-const TENANT_B_ID: &str = "01ARZ3NDEKTSV4RRFFQ69G5FBB";
 const TEST_APP_ROLE: &str = "bodhi_app_test_role";
 
 fn make_token(id: &str, user_id: &str, prefix: &str, tenant_id: &str) -> TokenEntity {
@@ -48,7 +46,7 @@ async fn test_sqlite_tenant_isolation_app_layer(_setup_env: ()) -> anyhow::Resul
     &ulid::Ulid::new().to_string(),
     &user_id,
     "rls_t01b",
-    TENANT_B_ID,
+    TEST_TENANT_B_ID,
   );
 
   ctx
@@ -57,7 +55,7 @@ async fn test_sqlite_tenant_isolation_app_layer(_setup_env: ()) -> anyhow::Resul
     .await?;
   ctx
     .service
-    .create_api_token(TENANT_B_ID, &mut token_b)
+    .create_api_token(TEST_TENANT_B_ID, &mut token_b)
     .await?;
 
   // Tenant A only sees its own token via application-layer filter
@@ -72,11 +70,11 @@ async fn test_sqlite_tenant_isolation_app_layer(_setup_env: ()) -> anyhow::Resul
   // Tenant B only sees its own token via application-layer filter
   let (tokens_b, total_b) = ctx
     .service
-    .list_api_tokens(TENANT_B_ID, &user_id, 1, 10)
+    .list_api_tokens(TEST_TENANT_B_ID, &user_id, 1, 10)
     .await?;
   assert_eq!(1, total_b);
   assert_eq!(1, tokens_b.len());
-  assert_eq!(TENANT_B_ID, tokens_b[0].tenant_id);
+  assert_eq!(TEST_TENANT_B_ID, tokens_b[0].tenant_id);
 
   Ok(())
 }
@@ -259,7 +257,7 @@ async fn test_postgres_rls_enforcement_with_app_role(_setup_env: ()) -> anyhow::
     &ulid::Ulid::new().to_string(),
     &user_id,
     "rls_enf_t01b",
-    TENANT_B_ID,
+    TEST_TENANT_B_ID,
   );
   ctx
     .service
@@ -267,7 +265,7 @@ async fn test_postgres_rls_enforcement_with_app_role(_setup_env: ()) -> anyhow::
     .await?;
   ctx
     .service
-    .create_api_token(TENANT_B_ID, &mut token_b)
+    .create_api_token(TEST_TENANT_B_ID, &mut token_b)
     .await?;
 
   // Create a non-superuser role for RLS testing (if it doesn't exist)
@@ -332,7 +330,7 @@ async fn test_postgres_rls_enforcement_with_app_role(_setup_env: ()) -> anyhow::
       .await?;
     txn
       .execute_unprepared(&format!(
-        "SET LOCAL app.current_tenant_id = '{TENANT_B_ID}'"
+        "SET LOCAL app.current_tenant_id = '{TEST_TENANT_B_ID}'"
       ))
       .await?;
     let row = txn

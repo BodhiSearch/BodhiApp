@@ -27,7 +27,7 @@ Test utilities are in `crates/routes_app/src/test_utils/` (not in this module):
 All use `errmeta_derive::ErrorMeta` with `AppError` trait.
 
 ### AuthError (`auth/auth_middleware.rs`)
-Token, Role, TokenScope, UserScope, MissingRoles, InvalidAccess, TokenInactive, TokenNotFound, AuthService, Tenant, DbError, RefreshTokenNotFound, TowerSession, InvalidToken, AppStatusInvalid
+Token, Role, TokenScope, UserScope, MissingRoles, InvalidAccess, TokenInactive, TokenNotFound, AuthService, Tenant, DbError, RefreshTokenNotFound, TowerSession, InvalidToken
 
 ### ApiAuthError (`apis/api_middleware.rs`)
 Forbidden, MissingAuth, InvalidRole, InvalidScope, InvalidUserScope

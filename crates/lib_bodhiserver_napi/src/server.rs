@@ -3,9 +3,9 @@ use crate::{
   BODHI_HOST, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_SCHEME,
 };
 use lib_bodhiserver::{
-  build_app_service, setup_app_dirs, setup_bootstrap_service, update_with_option, AppCommand,
-  AppService, BootstrapService, ServeCommand, ServerShutdownHandle, DEFAULT_HOST, DEFAULT_PORT,
-  DEFAULT_SCHEME, EMBEDDED_UI_ASSETS,
+  build_app_service, setup_app_dirs, setup_bootstrap_service, AppCommand, AppService,
+  BootstrapError, BootstrapService, ServeCommand, ServerShutdownHandle, Tenant, DEFAULT_HOST,
+  DEFAULT_PORT, DEFAULT_SCHEME, EMBEDDED_UI_ASSETS,
 };
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -176,7 +176,7 @@ impl BodhiServer {
       )
     })?;
     let app_service: Arc<dyn AppService> = Arc::new(app_service_inner);
-    update_with_option(&app_service, app_options.tenant.as_ref())
+    ensure_tenant(&app_service, app_options.tenant.as_ref())
       .await
       .map_err(|err| Error::new(Status::GenericFailure, err.to_string()))?;
     if app_options.tenant.is_some() {
@@ -343,6 +343,16 @@ fn setup_logs(
     }
   }
   Ok(guard)
+}
+
+async fn ensure_tenant(
+  service: &Arc<dyn AppService>,
+  instance: Option<&Tenant>,
+) -> std::result::Result<(), BootstrapError> {
+  if let Some(instance) = instance {
+    service.db_service().create_tenant_test(instance).await?;
+  }
+  Ok(())
 }
 
 impl Drop for BodhiServer {

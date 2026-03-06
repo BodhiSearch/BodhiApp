@@ -100,4 +100,113 @@ impl AuthContext {
       access_request_id: access_request_id.map(|s| s.to_string()),
     }
   }
+
+  pub fn with_tenant_id(self, tenant_id: &str) -> Self {
+    match self {
+      AuthContext::Anonymous { client_id, .. } => AuthContext::Anonymous {
+        client_id,
+        tenant_id: Some(tenant_id.to_string()),
+      },
+      AuthContext::Session {
+        client_id,
+        user_id,
+        username,
+        role,
+        token,
+        ..
+      } => AuthContext::Session {
+        client_id,
+        tenant_id: tenant_id.to_string(),
+        user_id,
+        username,
+        role,
+        token,
+      },
+      AuthContext::ApiToken {
+        client_id,
+        user_id,
+        role,
+        token,
+        ..
+      } => AuthContext::ApiToken {
+        client_id,
+        tenant_id: tenant_id.to_string(),
+        user_id,
+        role,
+        token,
+      },
+      AuthContext::ExternalApp {
+        client_id,
+        user_id,
+        role,
+        token,
+        external_app_token,
+        app_client_id,
+        access_request_id,
+        ..
+      } => AuthContext::ExternalApp {
+        client_id,
+        tenant_id: tenant_id.to_string(),
+        user_id,
+        role,
+        token,
+        external_app_token,
+        app_client_id,
+        access_request_id,
+      },
+    }
+  }
+
+  pub fn with_user_id(self, user_id: &str) -> Self {
+    match self {
+      AuthContext::Anonymous { .. } => self,
+      AuthContext::Session {
+        client_id,
+        tenant_id,
+        username,
+        role,
+        token,
+        ..
+      } => AuthContext::Session {
+        client_id,
+        tenant_id,
+        user_id: user_id.to_string(),
+        username,
+        role,
+        token,
+      },
+      AuthContext::ApiToken {
+        client_id,
+        tenant_id,
+        role,
+        token,
+        ..
+      } => AuthContext::ApiToken {
+        client_id,
+        tenant_id,
+        user_id: user_id.to_string(),
+        role,
+        token,
+      },
+      AuthContext::ExternalApp {
+        client_id,
+        tenant_id,
+        role,
+        token,
+        external_app_token,
+        app_client_id,
+        access_request_id,
+        ..
+      } => AuthContext::ExternalApp {
+        client_id,
+        tenant_id,
+        user_id: user_id.to_string(),
+        role,
+        token,
+        external_app_token,
+        app_client_id,
+        access_request_id,
+      },
+    }
+  }
 }

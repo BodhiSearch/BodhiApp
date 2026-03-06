@@ -6,6 +6,9 @@ mod error;
 #[cfg(test)]
 #[path = "test_access_request_repository.rs"]
 mod test_access_request_repository;
+#[cfg(test)]
+#[path = "test_access_request_repository_isolation.rs"]
+mod test_access_request_repository_isolation;
 
 pub use access_request_objs::*;
 pub use access_request_repository::AccessRequestRepository;

@@ -33,6 +33,18 @@ impl Tenant {
       ..Self::test_default()
     }
   }
+
+  pub fn test_tenant_b() -> Self {
+    let now = fixed_dt();
+    Self {
+      id: super::TEST_TENANT_B_ID.to_string(),
+      client_id: "test-client-b".to_string(),
+      client_secret: "test-client-secret-b".to_string(),
+      status: AppStatus::Ready,
+      created_at: now,
+      updated_at: now,
+    }
+  }
 }
 
 #[fixture]

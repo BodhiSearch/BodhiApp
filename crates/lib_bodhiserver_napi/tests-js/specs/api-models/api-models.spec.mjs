@@ -5,7 +5,6 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('API Models Integration', () => {
   let loginPage;

@@ -7,6 +7,9 @@ mod setting_objs;
 mod setting_service;
 pub(crate) mod settings_repository;
 #[cfg(test)]
+#[path = "test_settings_global.rs"]
+mod test_settings_global;
+#[cfg(test)]
 #[path = "test_settings_repository.rs"]
 mod test_settings_repository;
 

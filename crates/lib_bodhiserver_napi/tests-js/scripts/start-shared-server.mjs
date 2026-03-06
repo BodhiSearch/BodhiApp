@@ -1,6 +1,7 @@
 import { config } from 'dotenv';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createConnection } from 'node:net';
 import { createTestServer, waitForServer } from '../test-helpers.mjs';
 import {
   getAuthServerConfig,
@@ -21,6 +22,34 @@ function getArg(name) {
 const port = parseInt(getArg('port') || '51135', 10);
 const dbType = getArg('db-type') || 'sqlite';
 
+function checkTcpPort(host, port, label) {
+  return new Promise((resolve, reject) => {
+    const socket = createConnection({ host, port }, () => {
+      socket.destroy();
+      console.log(`${label} reachable at ${host}:${port}`);
+      resolve();
+    });
+    socket.setTimeout(5000);
+    socket.on('timeout', () => {
+      socket.destroy();
+      reject(
+        new Error(
+          `${label} not reachable at ${host}:${port}. ` +
+            `Start containers with: docker compose -f docker/docker-compose.test.yml up -d`
+        )
+      );
+    });
+    socket.on('error', (err) => {
+      reject(
+        new Error(
+          `${label} not reachable at ${host}:${port} (${err.message}). ` +
+            `Start containers with: docker compose -f docker/docker-compose.test.yml up -d`
+        )
+      );
+    });
+  });
+}
+
 async function main() {
   // Load .env.test defensively (won't exist in CI)
   const envPath = join(__dirname, '..', '.env.test');
@@ -35,6 +64,12 @@ async function main() {
   console.log('Loading configuration from environment...');
   const authServerConfig = getAuthServerConfig();
   const resourceClient = getPreConfiguredResourceClient();
+
+  // Verify PostgreSQL containers are reachable before attempting to start
+  if (dbType === 'postgres') {
+    await checkTcpPort('localhost', 64320, 'PostgreSQL App DB');
+    await checkTcpPort('localhost', 54320, 'PostgreSQL Session DB');
+  }
 
   console.log(`Creating ${dbType} server with configuration...`);
   const serverOptions = {

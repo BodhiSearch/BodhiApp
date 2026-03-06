@@ -12,14 +12,14 @@ Test infrastructure for the services layer. Provides mock services, database tes
 - **TestDbService** (`db.rs`): Wraps `DefaultDbService` with event broadcasting (`subscribe()`) and `FrozenTimeService`. In-memory SQLite with fresh migrations.
 - **FrozenTimeService** (`db.rs`): Fixed time at 2025-01-01T00:00:00Z. All tests using `test_db_service` fixture get this.
 - **SeaTestContext** (`sea.rs`): Dual SQLite/PG fixture via `sea_context("sqlite")` or `sea_context("postgres")`.
-- **TEST_TENANT_ID / TEST_USER_ID** (`db.rs`): Standard test constants.
+- **TEST_TENANT_ID / TEST_TENANT_B_ID / TEST_USER_ID / TEST_TENANT_A_USER_B_ID** (`db.rs`): Standard test constants for multi-tenant isolation tests.
 
 ### Service Composition
 - **AppServiceStub** (`app.rs`): Builder-based full service composition. Default fixture: `app_service_stub` creates one with hub, db, data, and session services. Builder methods like `with_hub_service()`, `with_data_service()`, `with_session_service()`.
 - **AppServiceStubBuilder** (`app.rs`): Provides default mocks for auth, cache, time, settings, hub, network, concurrency, tool, inference services.
 
 ### Auth Testing
-- **AuthContext test factories** (`auth_context.rs`): `test_anonymous()`, `test_session(user_id, username, role)`, `test_api_token(user_id, role)`, `test_external_app(user_id, role, app_client_id, access_request_id)`.
+- **AuthContext test factories** (`auth_context.rs`): `test_anonymous()`, `test_session(user_id, username, role)`, `test_api_token(user_id, role)`, `test_external_app(user_id, role, app_client_id, access_request_id)`. Chain with `.with_tenant_id()` / `.with_user_id()` for multi-tenant tests.
 - **test_auth_service** (`auth.rs`): AuthService with embedded RSA keys for JWT signing. Configurable base URL for mockito.
 
 ### Hub/Data Testing

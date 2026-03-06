@@ -42,12 +42,14 @@ All return `Result<Response, MiddlewareError>`.
 ### `auth_middleware` (strict)
 1. Strips `X-BodhiApp-*` headers (defense-in-depth)
 2. Checks bearer token -> `AuthContext::ApiToken` or `AuthContext::ExternalApp`
-3. Falls back to session token (same-origin only) -> `AuthContext::Session`
+3. Falls back to session token (same-origin only) -> resolves tenant from JWT `azp` claim via `get_tenant_by_client_id()` -> `AuthContext::Session`
 4. Returns `AuthError::InvalidAccess` if no valid auth
 5. Inserts `AuthContext` into `req.extensions_mut()`
 
+**No setup check**: Middleware does authentication only. Setup routes gate via `app_status_or_default()`.
+
 ### `optional_auth_middleware` (permissive)
-Same logic but inserts `AuthContext::Anonymous` on any auth failure. Cleans up invalid session data on token validation failure.
+Same logic but inserts `AuthContext::Anonymous { client_id: None, tenant_id: None }` on any auth failure. Cleans up invalid session data on token validation failure.
 
 ### `api_auth_middleware` (authorization)
 Reads `AuthContext` from extensions, pattern-matches to enforce role hierarchy:
@@ -78,8 +80,14 @@ Dependencies: `AuthService`, `TenantService`, `CacheService`, `DbService`, `Sett
 
 Key methods:
 - `validate_bearer_token()` -- routes to API token (`bodhiapp_*` prefix) or external token path
-- `get_valid_session_token()` -- validates with auto-refresh, distributed lock via `ConcurrencyService`
-- `handle_external_client_token()` -- validates issuer/audience, looks up access request, performs RFC 8693 exchange, derives `role` from DB `approved_role`
+- `get_valid_session_token(session, access_token, &Tenant)` -- validates with auto-refresh, distributed lock via `ConcurrencyService`. Caller resolves tenant from JWT `azp` and passes it in.
+- `handle_external_client_token()` -- resolves tenant from JWT `aud` claim via `get_tenant_by_client_id()`, validates issuer, looks up access request, performs RFC 8693 exchange, derives `role` from DB `approved_role`
+
+### Tenant Resolution Strategy
+- **Session tokens**: Middleware extracts `azp` from JWT, calls `get_tenant_by_client_id(azp)` to resolve tenant
+- **External tokens**: `handle_external_client_token` extracts `aud` from JWT, calls `get_tenant_by_client_id(aud)` to resolve tenant
+- **API tokens**: `validate_bearer_token` extracts `client_id` suffix from token format `bodhiapp_<random>.<client_id>`
+- No `get_standalone_app()` calls in middleware — works identically for standalone and multi-tenant deployments
 
 ### CachedExchangeResult
 Fields: `token`, `client_id`, `tenant_id`, `app_client_id`, `role: Option<String>`, `access_request_id: Option<String>`.

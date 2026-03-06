@@ -176,11 +176,13 @@ impl McpAuthRepository for DefaultDbService {
     id: &str,
   ) -> Result<Option<McpAuthHeader>, DbError> {
     let id_owned = id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
           let result = mcp_auth_header_entity::Entity::find_by_id(&id_owned)
+            .filter(mcp_auth_header_entity::Column::TenantId.eq(&tenant_id_owned))
             .into_partial_model::<McpAuthHeaderView>()
             .one(txn)
             .await
@@ -263,12 +265,14 @@ impl McpAuthRepository for DefaultDbService {
     id: &str,
   ) -> Result<Option<(String, String)>, DbError> {
     let id_owned = id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
     let encryption_key = self.encryption_key.clone();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
           let result = mcp_auth_header_entity::Entity::find_by_id(&id_owned)
+            .filter(mcp_auth_header_entity::Column::TenantId.eq(&tenant_id_owned))
             .one(txn)
             .await
             .map_err(DbError::from)?;
@@ -338,11 +342,13 @@ impl McpAuthRepository for DefaultDbService {
     id: &str,
   ) -> Result<Option<McpOAuthConfig>, DbError> {
     let id_owned = id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
           let result = mcp_oauth_config_entity::Entity::find_by_id(&id_owned)
+            .filter(mcp_oauth_config_entity::Column::TenantId.eq(&tenant_id_owned))
             .into_partial_model::<McpOAuthConfigView>()
             .one(txn)
             .await
@@ -425,12 +431,14 @@ impl McpAuthRepository for DefaultDbService {
     id: &str,
   ) -> Result<Option<(String, String)>, DbError> {
     let id_owned = id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
     let encryption_key = self.encryption_key.clone();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
           let result = mcp_oauth_config_entity::Entity::find_by_id(&id_owned)
+            .filter(mcp_oauth_config_entity::Column::TenantId.eq(&tenant_id_owned))
             .one(txn)
             .await
             .map_err(DbError::from)?;
@@ -500,11 +508,13 @@ impl McpAuthRepository for DefaultDbService {
   ) -> Result<Option<McpOAuthToken>, DbError> {
     let user_id_owned = user_id.to_string();
     let id_owned = id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
           let result = mcp_oauth_token_entity::Entity::find_by_id(&id_owned)
+            .filter(mcp_oauth_token_entity::Column::TenantId.eq(&tenant_id_owned))
             .filter(mcp_oauth_token_entity::Column::UserId.eq(&user_id_owned))
             .into_partial_model::<McpOAuthTokenView>()
             .one(txn)
@@ -522,11 +532,13 @@ impl McpAuthRepository for DefaultDbService {
     config_id: &str,
   ) -> Result<Option<McpOAuthToken>, DbError> {
     let config_id_owned = config_id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
           let result = mcp_oauth_token_entity::Entity::find()
+            .filter(mcp_oauth_token_entity::Column::TenantId.eq(&tenant_id_owned))
             .filter(mcp_oauth_token_entity::Column::McpOauthConfigId.eq(&config_id_owned))
             .order_by(mcp_oauth_token_entity::Column::CreatedAt, Order::Desc)
             .into_partial_model::<McpOAuthTokenView>()
@@ -644,12 +656,14 @@ impl McpAuthRepository for DefaultDbService {
     id: &str,
   ) -> Result<Option<(String, String)>, DbError> {
     let id_owned = id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
     let encryption_key = self.encryption_key.clone();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
           let result = mcp_oauth_token_entity::Entity::find_by_id(&id_owned)
+            .filter(mcp_oauth_token_entity::Column::TenantId.eq(&tenant_id_owned))
             .one(txn)
             .await
             .map_err(DbError::from)?;
@@ -681,12 +695,14 @@ impl McpAuthRepository for DefaultDbService {
     token_id: &str,
   ) -> Result<Option<String>, DbError> {
     let token_id_owned = token_id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
     let encryption_key = self.encryption_key.clone();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
           let result = mcp_oauth_token_entity::Entity::find_by_id(&token_id_owned)
+            .filter(mcp_oauth_token_entity::Column::TenantId.eq(&tenant_id_owned))
             .one(txn)
             .await
             .map_err(DbError::from)?;

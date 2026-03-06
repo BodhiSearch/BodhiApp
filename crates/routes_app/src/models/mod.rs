@@ -8,6 +8,10 @@ mod routes_models_pull;
 #[path = "test_aliases_auth.rs"]
 mod test_aliases_auth;
 
+#[cfg(test)]
+#[path = "test_downloads_isolation.rs"]
+mod test_downloads_isolation;
+
 pub use error::*;
 pub use models_api_schemas::*;
 pub use routes_models::*;

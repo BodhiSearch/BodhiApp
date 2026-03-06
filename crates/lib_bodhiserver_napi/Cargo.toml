@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-lib_bodhiserver = { workspace = true }
+lib_bodhiserver = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, optional = true }
 
 chrono = { workspace = true }

@@ -101,10 +101,10 @@ pub async fn toolsets_index(auth_scope: AuthScope) -> Result<Json<ListToolsetsRe
   };
 
   // Enrich each toolset with type information
-  let tool_service = auth_scope.tool_service();
+  let tools = auth_scope.tools();
   let mut responses = Vec::new();
   for toolset in toolsets {
-    responses.push(toolset_to_response(toolset, &tool_service).await?);
+    responses.push(toolset_to_response(toolset, &tools).await?);
   }
 
   // Populate toolset_types from database
@@ -134,11 +134,11 @@ pub async fn toolsets_create(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<ToolsetRequest>,
 ) -> Result<(StatusCode, Json<ToolsetResponse>), ApiError> {
-  let entity = auth_scope.tools().create(request).await?;
+  let tools = auth_scope.tools();
+  let entity = tools.create(request).await?;
   let toolset: Toolset = entity.into();
 
-  let tool_service = auth_scope.tool_service();
-  let response = toolset_to_response(toolset, &tool_service).await?;
+  let response = toolset_to_response(toolset, &tools).await?;
   Ok((StatusCode::CREATED, Json(response)))
 }
 
@@ -161,15 +161,14 @@ pub async fn toolsets_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<Json<ToolsetResponse>, ApiError> {
-  let entity = auth_scope
-    .tools()
+  let tools = auth_scope.tools();
+  let entity = tools
     .get(&id)
     .await?
     .ok_or_else(|| services::EntityError::NotFound("Toolset".to_string()))?;
   let toolset: Toolset = entity.into();
 
-  let tool_service = auth_scope.tool_service();
-  let response = toolset_to_response(toolset, &tool_service).await?;
+  let response = toolset_to_response(toolset, &tools).await?;
   Ok(Json(response))
 }
 
@@ -196,11 +195,11 @@ pub async fn toolsets_update(
   Path(id): Path<String>,
   ValidatedJson(request): ValidatedJson<ToolsetRequest>,
 ) -> Result<Json<ToolsetResponse>, ApiError> {
-  let entity = auth_scope.tools().update(&id, request).await?;
+  let tools = auth_scope.tools();
+  let entity = tools.update(&id, request).await?;
   let toolset: Toolset = entity.into();
 
-  let tool_service = auth_scope.tool_service();
-  let response = toolset_to_response(toolset, &tool_service).await?;
+  let response = toolset_to_response(toolset, &tools).await?;
   Ok(Json(response))
 }
 
@@ -345,10 +344,10 @@ pub async fn toolset_types_disable(
 
 async fn toolset_to_response(
   toolset: Toolset,
-  tool_service: &Arc<dyn services::ToolService>,
+  tools: &services::AuthScopedToolService,
 ) -> Result<ToolsetResponse, ApiError> {
   // Get type information for enrichment
-  let type_def = tool_service
+  let type_def = tools
     .get_type(&toolset.toolset_type)
     .ok_or_else(|| services::ToolsetError::InvalidToolsetType(toolset.toolset_type.clone()))?;
 

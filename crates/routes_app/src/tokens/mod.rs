@@ -14,6 +14,10 @@ mod test_tokens_security;
 #[path = "test_tokens_auth.rs"]
 mod test_tokens_auth;
 
+#[cfg(test)]
+#[path = "test_tokens_isolation.rs"]
+mod test_tokens_isolation;
+
 pub use error::*;
 pub use routes_tokens::*;
 pub use tokens_api_schemas::*;

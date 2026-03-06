@@ -55,15 +55,40 @@ All API route handlers use `AuthScope` -> `AuthScopedAppService`:
 1. Middleware populates `AuthContext` in request extensions
 2. `AuthScope` extracts `AuthContext` + `Arc<dyn AppService>`
 3. Creates `AuthScopedAppService` wrapping both
-4. Handlers access sub-services: `.tokens()`, `.mcps()`, `.tools()`, `.users()`, `.data()`
+4. Handlers access auth-scoped sub-services: `.tokens()`, `.mcps()`, `.tools()`, `.users()`, `.data()`, `.api_models()`, `.downloads()`, `.user_access_requests()`
+5. Auth-scoped files co-located with their domains (e.g., `tokens/auth_scoped.rs`, `mcps/auth_scoped.rs`)
 
 **Rule**: Route handlers use `AuthScopedAppService`. Infrastructure (bootstrap, middleware) uses `AppService` directly.
+**Rule**: Never call raw `.token_service()`, `.mcp_service()`, `.tool_service()`, `.data_service()` on `AuthScopedAppService` — use the auth-scoped sub-services instead.
+**Exception**: `access_request_service()` is a documented non-auth-scoped passthrough (see `AccessRequestService` doc comment).
 
 ### CRUD Conventions
 Uniform architecture across all domains. Full reference (Entity Alias Index, Request/Response types, Service/Route handler patterns) in `crates/services/CLAUDE.md`.
 
 ### Multi-Tenant Transactions
 All mutating `DbService` operations use `begin_tenant_txn(tenant_id)` from `DbCore` trait. PostgreSQL sets RLS via `SET LOCAL app.current_tenant_id`. SQLite returns plain transaction.
+
+### Multi-Tenant Isolation Test Pattern
+When adding new tenant-scoped or user-scoped tables, add isolation tests in the domain module:
+```rust
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_cross_tenant_<domain>_isolation(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  // 1. Create resource in TEST_TENANT_ID
+  // 2. Create resource in TEST_TENANT_B_ID (same user)
+  // 3. List/Get per tenant -> only that tenant's resources
+  // 4. Cross-tenant Get by ID -> None
+  Ok(())
+}
+```
+Constants: `TEST_TENANT_ID`, `TEST_TENANT_B_ID`, `TEST_USER_ID`, `TEST_TENANT_A_USER_B_ID` in `test_utils/db.rs`.
+Existing isolation tests: `tokens/`, `mcps/`, `toolsets/`, `models/`, `users/`, `app_access_requests/`, `settings/`.
 
 ### Time Handling
 Never use `Utc::now()` directly. All timestamps through `TimeService`. Tests use `FrozenTimeService`.

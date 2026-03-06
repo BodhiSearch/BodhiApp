@@ -55,16 +55,21 @@ Central service registry with 18 service accessors. Defined in `src/app_service/
 
 Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_scoped.rs`.
 
-**Auth-aware sub-services** (inject user context):
-- `tokens()` → `AuthScopedTokenService` (in `auth_scoped_tokens.rs`)
-- `mcps()` → `AuthScopedMcpService` (in `auth_scoped_mcps.rs`)
-- `tools()` → `AuthScopedToolService` (in `auth_scoped_tools.rs`)
-- `users()` → `AuthScopedUserService` (in `auth_scoped_users.rs`)
-- `data()` → `AuthScopedDataService` (in `auth_scoped_data.rs`)
+**Auth-aware sub-services** (co-located with their domains):
+- `tokens()` → `AuthScopedTokenService` (in `tokens/auth_scoped.rs`)
+- `mcps()` → `AuthScopedMcpService` (in `mcps/auth_scoped.rs`)
+- `tools()` → `AuthScopedToolService` (in `toolsets/auth_scoped.rs`)
+- `users()` → `AuthScopedUserService` (in `users/auth_scoped.rs`)
+- `user_access_requests()` → `AuthScopedUserAccessRequestService` (in `users/auth_scoped_access_requests.rs`)
+- `data()` → `AuthScopedDataService` (in `models/auth_scoped_data.rs`)
+- `api_models()` → `AuthScopedApiModelService` (in `models/auth_scoped_api_models.rs`)
+- `downloads()` → `AuthScopedDownloadService` (in `models/auth_scoped_downloads.rs`)
 
 **Short-name passthrough accessors** (D1-D10): `settings()`, `tenant()`, `auth_flow()`, `network()`, `sessions()`, `db()`, `hub()`, `ai_api()`, `time()`, `inference()`.
 
-**Legacy passthrough accessors**: `data_service()`, `hub_service()`, etc. — kept for backward compatibility.
+**Non-auth-scoped passthrough**: `access_request_service()` — intentionally not auth-scoped (see `AccessRequestService` doc comment).
+
+**Removed passthroughs**: `token_service()`, `mcp_service()`, `tool_service()`, `data_service()` — use auth-scoped sub-services instead.
 
 **Architecture rule**: Route handlers use `AuthScopedAppService`. Infrastructure (bootstrap, middleware) uses `AppService` directly.
 

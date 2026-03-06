@@ -4,6 +4,8 @@ use crate::db::{
   DbError, DefaultDbService,
 };
 use crate::AppStatus;
+#[cfg(any(test, feature = "test-utils"))]
+use crate::Tenant;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set};
 
 impl DefaultDbService {
@@ -44,6 +46,10 @@ pub trait TenantRepository: Send + Sync {
   ) -> Result<TenantRow, DbError>;
   async fn update_tenant_status(&self, client_id: &str, status: &AppStatus) -> Result<(), DbError>;
   async fn delete_tenant(&self, client_id: &str) -> Result<(), DbError>;
+
+  /// Test-only: insert a tenant with a caller-specified ID (bypasses ULID auto-generation).
+  #[cfg(any(test, feature = "test-utils"))]
+  async fn create_tenant_test(&self, tenant: &Tenant) -> Result<TenantRow, DbError>;
 }
 
 #[async_trait::async_trait]
@@ -170,5 +176,42 @@ impl TenantRepository for DefaultDbService {
       });
     }
     Ok(())
+  }
+
+  #[cfg(any(test, feature = "test-utils"))]
+  async fn create_tenant_test(&self, tenant: &Tenant) -> Result<TenantRow, DbError> {
+    // Upsert: return existing tenant if client_id already exists
+    if let Some(existing) = self.get_tenant_by_client_id(&tenant.client_id).await? {
+      return Ok(existing);
+    }
+    let now = self.time_service.utc_now();
+    let (encrypted_secret, salt_secret, nonce_secret) =
+      encrypt_api_key(&self.encryption_key, &tenant.client_secret)
+        .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+
+    let active = tenant_entity::ActiveModel {
+      id: Set(tenant.id.clone()),
+      client_id: Set(tenant.client_id.clone()),
+      encrypted_client_secret: Set(Some(encrypted_secret)),
+      salt_client_secret: Set(Some(salt_secret)),
+      nonce_client_secret: Set(Some(nonce_secret)),
+      app_status: Set(tenant.status.clone()),
+      created_at: Set(now),
+      updated_at: Set(now),
+    };
+
+    tenant_entity::Entity::insert(active)
+      .exec(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    Ok(TenantRow {
+      id: tenant.id.clone(),
+      client_id: tenant.client_id.clone(),
+      client_secret: tenant.client_secret.clone(),
+      app_status: tenant.status.clone(),
+      created_at: now,
+      updated_at: now,
+    })
   }
 }

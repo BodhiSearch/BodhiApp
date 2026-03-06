@@ -127,6 +127,12 @@ export default defineConfig({
       timeout: 60000,
     },
     {
+      command: 'node tests-js/scripts/start-shared-server.mjs --port 41135 --db-type postgres',
+      url: 'http://localhost:41135/ping',
+      reuseExistingServer: false,
+      timeout: 60000,
+    },
+    {
       command: 'cd test-oauth-app && npm run build && npx serve dist -s -l 55173',
       url: 'http://localhost:55173/',
       reuseExistingServer: false,
