@@ -36,7 +36,7 @@ setupMswV2();
 beforeEach(() => {
   server.use(
     ...mockUserLoggedOut(),
-    ...mockAppInfo({ status: 'ready' }),
+    ...mockAppInfo({ status: 'ready', client_id: 'test_client_id' }),
     ...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' })
   );
 });

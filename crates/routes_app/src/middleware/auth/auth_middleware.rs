@@ -8,28 +8,38 @@ use axum::{
   response::Response,
 };
 
-use services::AppService;
-use services::AuthContext;
+use services::{
+  access_token_key, refresh_token_key, AppService, AuthContext, SESSION_KEY_ACTIVE_CLIENT_ID,
+  SESSION_KEY_USER_ID,
+};
 use services::{extract_claims, Claims, TenantError, UserIdClaims};
 use std::sync::Arc;
 use tower_sessions::Session;
 use tracing::debug;
-
-pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
-pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
-pub const SESSION_KEY_USER_ID: &str = "user_id";
 
 pub const KEY_PREFIX_HEADER_BODHIAPP: &str = "X-BodhiApp-";
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
 /// Clears authentication data from the session.
+/// Removes the active client's namespaced tokens and the active_client_id marker.
 async fn clear_session_auth_data(session: &Session) {
-  if let Err(e) = session.remove::<String>(SESSION_KEY_ACCESS_TOKEN).await {
-    debug!(?e, "Failed to clear access token from session");
+  if let Ok(Some(client_id)) = session.get::<String>(SESSION_KEY_ACTIVE_CLIENT_ID).await {
+    if let Err(e) = session
+      .remove::<String>(&access_token_key(&client_id))
+      .await
+    {
+      debug!(?e, "Failed to clear access token from session");
+    }
+    if let Err(e) = session
+      .remove::<String>(&refresh_token_key(&client_id))
+      .await
+    {
+      debug!(?e, "Failed to clear refresh token from session");
+    }
   }
-  if let Err(e) = session.remove::<String>(SESSION_KEY_REFRESH_TOKEN).await {
-    debug!(?e, "Failed to clear refresh token from session");
+  if let Err(e) = session.remove::<String>(SESSION_KEY_ACTIVE_CLIENT_ID).await {
+    debug!(?e, "Failed to clear active_client_id from session");
   }
   if let Err(e) = session.remove::<String>(SESSION_KEY_USER_ID).await {
     debug!(?e, "Failed to clear user_id from session");
@@ -107,11 +117,20 @@ pub async fn auth_middleware(
     req.extensions_mut().insert(auth_context);
     Ok(next.run(req).await)
   } else if is_same_origin(req.headers()) {
-    if let Some(access_token) = session
-      .get::<String>(SESSION_KEY_ACCESS_TOKEN)
+    // Two-step lookup: read active_client_id, then namespaced access token
+    let active_client_id = session
+      .get::<String>(SESSION_KEY_ACTIVE_CLIENT_ID)
       .await
-      .map_err(AuthError::from)?
-    {
+      .map_err(AuthError::from)?;
+    let access_token = if let Some(ref cid) = active_client_id {
+      session
+        .get::<String>(&access_token_key(cid))
+        .await
+        .map_err(AuthError::from)?
+    } else {
+      None
+    };
+    if let Some(access_token) = access_token {
       debug!("auth_middleware: found access token in session, validating");
       // Resolve tenant from JWT azp claim
       let claims = extract_claims::<Claims>(&access_token)?;
@@ -191,8 +210,21 @@ pub async fn optional_auth_middleware(
       req.extensions_mut().insert(anon());
     }
   } else if is_same_origin(req.headers()) {
-    match session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await {
-      Ok(Some(access_token)) => {
+    // Two-step lookup: read active_client_id, then namespaced access token
+    let active_client_id = session
+      .get::<String>(SESSION_KEY_ACTIVE_CLIENT_ID)
+      .await
+      .unwrap_or(None);
+    let access_token = if let Some(ref cid) = active_client_id {
+      session
+        .get::<String>(&access_token_key(cid))
+        .await
+        .unwrap_or(None)
+    } else {
+      None
+    };
+    match access_token {
+      Some(access_token) => {
         let result: Result<AuthContext, AuthError> = async {
           let claims = extract_claims::<Claims>(&access_token)?;
           let tenant = tenant_service
@@ -226,11 +258,7 @@ pub async fn optional_auth_middleware(
           }
         }
       }
-      Ok(None) => {
-        req.extensions_mut().insert(anon());
-      }
-      Err(err) => {
-        debug!(?err, "optional_auth_middleware: error reading session");
+      None => {
         req.extensions_mut().insert(anon());
       }
     }

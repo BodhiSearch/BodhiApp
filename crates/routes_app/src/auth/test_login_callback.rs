@@ -93,6 +93,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
       client_secret: "test_client_secret".to_string(),
 
       status: AppStatus::Ready,
+      created_by: None,
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -113,7 +114,10 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   client.save_cookies();
 
   // Perform login request
-  let login_resp = client.post("/auth/initiate").await;
+  let login_resp = client
+    .post("/auth/initiate")
+    .json(&json! {{"client_id": "test_client_id"}})
+    .await;
   login_resp.assert_status(StatusCode::CREATED);
   let body: RedirectResponse = login_resp.json();
   let url = Url::parse(&body.location)?;
@@ -138,17 +142,25 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   );
   let session_id = resp.cookie("bodhiapp_session_id");
   let access_token = session_service
-    .get_session_value(session_id.value(), "access_token")
+    .get_session_value(session_id.value(), "test_client_id:access_token")
     .await
     .expect("access_token not found in session");
   let access_token = access_token.as_str().expect("access_token not a string");
   assert_eq!(token, access_token);
   let refresh_token = session_service
-    .get_session_value(session_id.value(), "refresh_token")
+    .get_session_value(session_id.value(), "test_client_id:refresh_token")
     .await
     .expect("refresh_token not found in session");
   let refresh_token = refresh_token.as_str().expect("refresh_token not a string");
   assert_eq!("test_refresh_token", refresh_token);
+  let active_client_id = session_service
+    .get_session_value(session_id.value(), "active_client_id")
+    .await
+    .expect("active_client_id not found in session");
+  let active_client_id = active_client_id
+    .as_str()
+    .expect("active_client_id not a string");
+  assert_eq!("test_client_id", active_client_id);
   Ok(())
 }
 
@@ -169,6 +181,7 @@ async fn test_auth_callback_handler_state_not_in_session(
       client_secret: "test_client_secret".to_string(),
 
       status: AppStatus::Ready,
+      created_by: None,
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -256,6 +269,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
       client_secret: "test_client_secret".to_string(),
 
       status: AppStatus::Ready,
+      created_by: None,
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -279,6 +293,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let login_resp = client
     .post("/auth/initiate")
     .add_header("Host", "localhost:1135")
+    .json(&json! {{"client_id": "test_client_id"}})
     .await;
   login_resp.assert_status(StatusCode::CREATED);
   let body: RedirectResponse = login_resp.json();
@@ -311,7 +326,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   // Verify session contains access token
   let session_id = resp.cookie("bodhiapp_session_id");
   let access_token = session_service
-    .get_session_value(session_id.value(), "access_token")
+    .get_session_value(session_id.value(), "test_client_id:access_token")
     .await
     .expect("access_token not found in session");
   let access_token = access_token.as_str().expect("access_token not a string");
@@ -335,6 +350,7 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
       client_secret: "test_client_secret".to_string(),
 
       status: AppStatus::Ready,
+      created_by: None,
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -352,7 +368,10 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
   let mut client = TestServer::new(router)?;
   client.save_cookies();
 
-  let login_resp = client.post("/auth/initiate").await;
+  let login_resp = client
+    .post("/auth/initiate")
+    .json(&json! {{"client_id": "test_client_id"}})
+    .await;
   login_resp.assert_status(StatusCode::CREATED);
   let body: RedirectResponse = login_resp.json();
   let url = Url::parse(&body.location)?;
@@ -407,6 +426,7 @@ async fn test_auth_callback_handler_auth_service_error(
       client_secret: "test_client_secret".to_string(),
 
       status: AppStatus::Ready,
+      created_by: None,
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -425,7 +445,10 @@ async fn test_auth_callback_handler_auth_service_error(
   client.save_cookies();
 
   // Simulate login to set up session
-  let login_resp = client.post("/auth/initiate").await;
+  let login_resp = client
+    .post("/auth/initiate")
+    .json(&json! {{"client_id": "test_client_id"}})
+    .await;
   login_resp.assert_status(StatusCode::CREATED);
   let body: RedirectResponse = login_resp.json();
   let url = Url::parse(&body.location)?;

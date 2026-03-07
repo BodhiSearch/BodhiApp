@@ -12,6 +12,7 @@ pub struct Model {
   pub salt_client_secret: Option<String>,
   pub nonce_client_secret: Option<String>,
   pub app_status: AppStatus,
+  pub created_by: Option<String>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -27,6 +28,7 @@ pub struct TenantRow {
   pub client_id: String,
   pub client_secret: String,
   pub app_status: AppStatus,
+  pub created_by: Option<String>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }

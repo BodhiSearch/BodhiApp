@@ -1160,7 +1160,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
 
   // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready)
+    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready, None)
     .await?;
   let actual_tenant_id = tenant_row.id.clone();
 
@@ -1275,7 +1275,7 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
 
   // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready)
+    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready, None)
     .await?;
   let actual_tenant_id = tenant_row.id.clone();
 
@@ -1480,7 +1480,7 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
 
   // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready)
+    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready, None)
     .await?;
   let actual_tenant_id = tenant_row.id.clone();
 

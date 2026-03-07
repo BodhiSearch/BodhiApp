@@ -2,6 +2,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use utoipa::ToSchema;
 
+/// Request body for initiating OAuth authentication
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[schema(example = json!({"client_id": "my-client-id"}))]
+pub struct AuthInitiateRequest {
+  /// The OAuth client_id of the tenant to authenticate with
+  #[schema(example = "my-client-id")]
+  pub client_id: String,
+}
+
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 #[schema(example = json!({
     "code": "auth_code_123",

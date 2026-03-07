@@ -26,7 +26,7 @@ async fn test_create_and_get_roundtrip(
 
   let created = ctx
     .service
-    .create_tenant("test-client-id", secret, &AppStatus::Ready)
+    .create_tenant("test-client-id", secret, &AppStatus::Ready, None)
     .await?;
   assert!(!created.id.is_empty());
   assert_eq!("test-client-id", created.client_id);
@@ -78,7 +78,7 @@ async fn test_get_tenant_by_id(
 
   let created = ctx
     .service
-    .create_tenant("client-1", "secret-1", &AppStatus::Ready)
+    .create_tenant("client-1", "secret-1", &AppStatus::Ready, None)
     .await?;
 
   let row = ctx
@@ -114,7 +114,7 @@ async fn test_update_tenant_status(
 
   ctx
     .service
-    .create_tenant("client-1", "secret-1", &AppStatus::Setup)
+    .create_tenant("client-1", "secret-1", &AppStatus::Setup, None)
     .await?;
 
   ctx
@@ -169,7 +169,7 @@ async fn test_delete_tenant(
 
   ctx
     .service
-    .create_tenant("client-1", "secret-1", &AppStatus::Ready)
+    .create_tenant("client-1", "secret-1", &AppStatus::Ready, None)
     .await?;
 
   ctx.service.delete_tenant("client-1").await?;
@@ -196,7 +196,7 @@ async fn test_get_tenant_by_client_id(
 
   let created = ctx
     .service
-    .create_tenant("client-1", "secret-1", &AppStatus::Ready)
+    .create_tenant("client-1", "secret-1", &AppStatus::Ready, None)
     .await?;
 
   let row = ctx

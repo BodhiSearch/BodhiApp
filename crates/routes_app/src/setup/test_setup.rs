@@ -1,6 +1,6 @@
 use crate::setup::routes_setup::{setup_create, setup_show};
 use crate::setup::setup_api_schemas::{AppInfo, SetupRequest};
-use crate::test_utils::TEST_ENDPOINT_APP_INFO;
+use crate::test_utils::{RequestAuthContextExt, TEST_ENDPOINT_APP_INFO};
 use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
@@ -29,6 +29,8 @@ use tower::ServiceExt;
     version: "0.0.0".to_string(),
     commit_sha: "test-sha".to_string(),
     status: AppStatus::Setup,
+    deployment: "standalone".to_string(),
+    client_id: None,
   }
 )]
 #[tokio::test]
@@ -36,14 +38,15 @@ async fn test_app_info_handler(
   #[case] status: AppStatus,
   #[case] expected: AppInfo,
 ) -> anyhow::Result<()> {
-  let app_service = AppServiceStubBuilder::default()
-    .with_tenant(Tenant::test_with_status(status))
-    .await
-    .build()
-    .await?;
-  let state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_tenant(Tenant::test_with_status(status)).await;
+  builder.with_session_service().await;
+  let app_service = builder.build().await?;
+  let app_service = Arc::new(app_service);
+  let state: Arc<dyn services::AppService> = app_service.clone();
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
+    .layer(app_service.session_service().session_layer())
     .with_state(state);
   let resp = router
     .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)
@@ -51,6 +54,57 @@ async fn test_app_info_handler(
   assert_eq!(StatusCode::OK, resp.status());
   let value = resp.json::<AppInfo>().await?;
   assert_eq!(expected, value);
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_app_info_handler_with_client_id() -> anyhow::Result<()> {
+  use services::test_utils::TEST_TENANT_ID;
+  use services::AuthContext;
+
+  let mut builder = AppServiceStubBuilder::default();
+  builder
+    .with_tenant(Tenant::test_with_status(AppStatus::Ready))
+    .await;
+  builder.with_session_service().await;
+  let app_service = builder.build().await?;
+  let app_service = Arc::new(app_service);
+  let state: Arc<dyn services::AppService> = app_service.clone();
+  let router = Router::new()
+    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
+    .layer(app_service.session_service().session_layer())
+    .with_state(state);
+
+  let auth_context = AuthContext::Session {
+    client_id: "my-test-client-id".to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    user_id: "test-user".to_string(),
+    username: "testuser".to_string(),
+    role: None,
+    token: "dummy-token".to_string(),
+  };
+
+  let resp = router
+    .oneshot(
+      Request::get(TEST_ENDPOINT_APP_INFO)
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  let value = resp.json::<AppInfo>().await?;
+  assert_eq!(
+    AppInfo {
+      version: "0.0.0".to_string(),
+      commit_sha: "test-sha".to_string(),
+      status: AppStatus::Ready,
+      deployment: "standalone".to_string(),
+      client_id: Some("my-test-client-id".to_string()),
+    },
+    value
+  );
   Ok(())
 }
 

@@ -15,15 +15,14 @@ use rstest::rstest;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use serial_test::serial;
-use server_core::test_utils::{RequestTestExt, ResponseTestExt};
+use server_core::test_utils::ResponseTestExt;
 use services::{
   db::DbService,
   test_utils::{
     access_token_claims, build_token, sea_context, AppServiceStubBuilder, SeaTestContext,
     TEST_CLIENT_ID, TEST_TENANT_B_ID, TEST_TENANT_ID,
   },
-  AppService, AuthContext, DefaultSessionService, DefaultTenantService, SessionService, Tenant,
-  TenantRepository,
+  AppService, AuthContext, DefaultSessionService, SessionService, Tenant,
 };
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -127,7 +126,7 @@ async fn isolation_app_service(
     .create_tenant_test(&Tenant::test_default())
     .await?;
   // Multi-tenant adds tenant B
-  if mode == "multi-tenant" {
+  if mode == "multi_tenant" {
     app_service
       .db_service()
       .create_tenant_test(&Tenant::test_tenant_b())
@@ -156,7 +155,7 @@ fn session_token_for_tenant(client_id: &str, roles: &[&str]) -> anyhow::Result<S
 async fn test_session_resolves_tenant_a_from_azp(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
-  #[values("standalone", "multi-tenant")] mode: &str,
+  #[values("standalone", "multi_tenant")] mode: &str,
 ) -> anyhow::Result<()> {
   let tmp = TempDir::new()?;
   let dbfile = tmp.path().join("session.db");
@@ -169,7 +168,8 @@ async fn test_session_resolves_tenant_a_from_azp(
   let mut record = Record {
     id,
     data: maplit::hashmap! {
-      "access_token".to_string() => Value::String(token.clone()),
+      format!("{}:access_token", TEST_CLIENT_ID) => Value::String(token.clone()),
+      "active_client_id".to_string() => Value::String(TEST_CLIENT_ID.to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
@@ -205,14 +205,15 @@ async fn test_session_resolves_tenant_b_from_azp(
   let session_service: Arc<dyn SessionService> =
     Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   let (app_service, _ctx) =
-    isolation_app_service(db_type, "multi-tenant", session_service.clone()).await?;
+    isolation_app_service(db_type, "multi_tenant", session_service.clone()).await?;
 
   let token = session_token_for_tenant("test-client-b", &["resource_admin"])?;
   let id = Id::default();
   let mut record = Record {
     id,
     data: maplit::hashmap! {
-      "access_token".to_string() => Value::String(token.clone()),
+      "test-client-b:access_token".to_string() => Value::String(token.clone()),
+      "active_client_id".to_string() => Value::String("test-client-b".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
@@ -246,7 +247,7 @@ async fn test_session_resolves_tenant_b_from_azp(
 async fn test_session_rejects_unknown_azp(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
-  #[values("standalone", "multi-tenant")] mode: &str,
+  #[values("standalone", "multi_tenant")] mode: &str,
 ) -> anyhow::Result<()> {
   let tmp = TempDir::new()?;
   let dbfile = tmp.path().join("session.db");
@@ -259,7 +260,8 @@ async fn test_session_rejects_unknown_azp(
   let mut record = Record {
     id,
     data: maplit::hashmap! {
-      "access_token".to_string() => Value::String(token.clone()),
+      "nonexistent-client:access_token".to_string() => Value::String(token.clone()),
+      "active_client_id".to_string() => Value::String("nonexistent-client".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };

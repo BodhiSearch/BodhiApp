@@ -5,6 +5,7 @@ import { createConnection } from 'node:net';
 import { createTestServer, waitForServer } from '../test-helpers.mjs';
 import {
   getAuthServerConfig,
+  getMultiTenantConfig,
   getPreConfiguredResourceClient,
 } from '../utils/auth-server-client.mjs';
 import { getDbConfig } from '../utils/db-config.mjs';
@@ -21,6 +22,7 @@ function getArg(name) {
 
 const port = parseInt(getArg('port') || '51135', 10);
 const dbType = getArg('db-type') || 'sqlite';
+const deployment = getArg('deployment') || 'standalone';
 
 function checkTcpPort(host, port, label) {
   return new Promise((resolve, reject) => {
@@ -63,7 +65,6 @@ async function main() {
 
   console.log('Loading configuration from environment...');
   const authServerConfig = getAuthServerConfig();
-  const resourceClient = getPreConfiguredResourceClient();
 
   // Verify PostgreSQL containers are reachable before attempting to start
   if (dbType === 'postgres') {
@@ -71,20 +72,40 @@ async function main() {
     await checkTcpPort('localhost', 54320, 'PostgreSQL Session DB');
   }
 
-  console.log(`Creating ${dbType} server with configuration...`);
+  // Configure client credentials and env vars based on deployment mode
+  let clientId, clientSecret;
+  const envVars = {};
+
+  if (deployment === 'multi_tenant') {
+    const mtConfig = getMultiTenantConfig();
+    // Use tenant credentials for seeding via ensure_tenant
+    clientId = mtConfig.tenantId;
+    clientSecret = mtConfig.tenantSecret;
+    // Set multi-tenant settings as env vars (SettingService reads these via get_setting/get_env)
+    envVars[bindings.BODHI_DEPLOYMENT] = 'multi_tenant';
+    envVars[bindings.BODHI_MULTITENANT_CLIENT_ID] = mtConfig.dashboardClientId;
+    envVars[bindings.BODHI_MULTITENANT_CLIENT_SECRET] = mtConfig.dashboardClientSecret;
+  } else {
+    const resourceClient = getPreConfiguredResourceClient();
+    clientId = resourceClient.clientId;
+    clientSecret = resourceClient.clientSecret;
+  }
+
+  console.log(`Creating ${dbType} server (${deployment}) with configuration...`);
   const serverOptions = {
     port,
     host: 'localhost',
     appStatus: 'ready',
     authUrl: authServerConfig.authUrl,
     authRealm: authServerConfig.authRealm,
-    clientId: resourceClient.clientId,
-    clientSecret: resourceClient.clientSecret,
+    clientId,
+    clientSecret,
+    envVars,
   };
 
   // Add DB URLs for postgres (uses db-config.mjs as single source of truth)
   if (dbType === 'postgres') {
-    const dbConfig = getDbConfig('postgres');
+    const dbConfig = getDbConfig('multi_tenant');
     serverOptions.envVars = {
       ...serverOptions.envVars,
       [bindings.BODHI_APP_DB_URL]: dbConfig.appDbUrl,
@@ -94,7 +115,7 @@ async function main() {
 
   const server = createTestServer(bindings, serverOptions);
 
-  console.log(`Starting ${dbType} server on port ${port}...`);
+  console.log(`Starting ${dbType} (${deployment}) server on port ${port}...`);
   await server.start();
 
   console.log('Waiting for server to be ready...');
@@ -103,7 +124,7 @@ async function main() {
     throw new Error('Server failed to become ready within timeout');
   }
 
-  console.log(`Shared ${dbType} server ready on http://localhost:${port}`);
+  console.log(`Shared ${dbType} (${deployment}) server ready on http://localhost:${port}`);
 
   // Setup signal handlers for graceful shutdown
   const shutdown = async () => {
@@ -123,6 +144,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`Failed to start shared ${dbType} server:`, error);
+  console.error(`Failed to start shared ${dbType} (${deployment}) server:`, error);
   process.exit(1);
 });

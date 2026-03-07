@@ -110,7 +110,7 @@ When implementing a feature spanning multiple crates, always work upstream-to-do
 - **AuthScope extractor**: All route handlers use `AuthScopedAppService` via `AuthScope`. Infrastructure uses `AppService` directly. See `crates/CLAUDE.md` for details.
 - **Imports**: Avoid `use super::*` in `#[cfg(test)]` modules — use explicit imports
 - **Multi-tenant**: Mutating DB ops use `begin_tenant_txn(tenant_id)` for RLS on PostgreSQL
-- **CRUD conventions**: See `crates/CLAUDE.md` "CRUD Convention Reference" for entity aliases, Request types, ValidatedJson, route handler patterns
+- **CRUD conventions**: See `crates/services/CLAUDE.md` "CRUD Conventions" for entity aliases, Request types, ValidatedJson, route handler patterns
 
 ### Testing Practices
 - **rstest for all Rust tests**: `#[case]` for parameterized, `#[values]` for combinatorial, `#[fixture]` for shared setup

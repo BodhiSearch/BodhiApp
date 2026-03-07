@@ -44,6 +44,7 @@ pub const DEFAULT_CANONICAL_REDIRECT: bool = true;
 pub const SETTINGS_YAML: &str = "settings.yaml";
 
 pub const LOGIN_CALLBACK_PATH: &str = "/ui/auth/callback";
+pub const LOGIN_DASHBOARD_CALLBACK_PATH: &str = "/ui/auth/dashboard/callback";
 pub const CHAT_PATH: &str = "/ui/chat";
 
 pub const PROD_DB: &str = "bodhi.sqlite";
@@ -59,6 +60,7 @@ pub const BODHI_SESSION_DB_URL: &str = "BODHI_SESSION_DB_URL";
 pub const BODHI_APP_DB_URL: &str = "BODHI_APP_DB_URL";
 pub const BODHI_DEPLOYMENT: &str = "BODHI_DEPLOYMENT";
 pub const BODHI_MULTITENANT_CLIENT_ID: &str = "BODHI_MULTITENANT_CLIENT_ID";
+pub const BODHI_MULTITENANT_CLIENT_SECRET: &str = "BODHI_MULTITENANT_CLIENT_SECRET";
 
 // RunPod settings
 pub const BODHI_ON_RUNPOD: &str = "BODHI_ON_RUNPOD";

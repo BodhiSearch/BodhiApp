@@ -1,7 +1,7 @@
 // External imports
 import { useEffect } from 'react';
 
-import { UserInfo, UserResponse, UserListResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { UserInfo, UserInfoEnvelope, UserResponse, UserListResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useRouter } from 'next/navigation';
 
@@ -22,7 +22,7 @@ type ErrorResponse = OpenAiApiError;
 
 // Basic user info hook
 export function useUser(options?: { enabled?: boolean }) {
-  return useQuery<UserResponse | null>('user', ENDPOINT_USER_INFO, undefined, {
+  return useQuery<UserInfoEnvelope | null>('user', ENDPOINT_USER_INFO, undefined, {
     retry: false,
     enabled: options?.enabled ?? true,
   });

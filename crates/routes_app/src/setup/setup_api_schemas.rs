@@ -12,7 +12,9 @@ use utoipa::ToSchema;
 #[schema(example = json!({
     "version": "0.1.0",
     "commit_sha": "abc1234",
-    "status": "ready"
+    "status": "ready",
+    "deployment": "standalone",
+    "client_id": "my-client-id"
 }))]
 pub struct AppInfo {
   /// Application version number (semantic versioning)
@@ -24,6 +26,13 @@ pub struct AppInfo {
   /// Current application setup and operational status
   #[schema(example = "ready")]
   pub status: AppStatus,
+  /// Deployment mode: "standalone" or "multi_tenant"
+  #[schema(example = "standalone")]
+  pub deployment: String,
+  /// Active tenant's OAuth client_id (present when authenticated with an active tenant)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[schema(example = "my-client-id", nullable)]
+  pub client_id: Option<String>,
 }
 
 /// Request to setup the application in authenticated mode

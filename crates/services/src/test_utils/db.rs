@@ -135,6 +135,14 @@ impl DbCore for TestDbService {
   ) -> Result<sea_orm::DatabaseTransaction, DbError> {
     self.inner.begin_tenant_txn(tenant_id).await
   }
+
+  async fn reset_tenants(&self) -> Result<(), DbError> {
+    self
+      .inner
+      .reset_tenants()
+      .await
+      .tap(|_| self.notify("reset_tenants"))
+  }
 }
 
 #[async_trait::async_trait]
@@ -1136,10 +1144,11 @@ impl TenantRepository for TestDbService {
     client_id: &str,
     client_secret: &str,
     status: &crate::AppStatus,
+    created_by: Option<String>,
   ) -> Result<TenantRow, DbError> {
     self
       .inner
-      .create_tenant(client_id, client_secret, status)
+      .create_tenant(client_id, client_secret, status, created_by)
       .await
       .tap(|_| self.notify("create_tenant"))
   }
@@ -1154,6 +1163,18 @@ impl TenantRepository for TestDbService {
       .update_tenant_status(client_id, status)
       .await
       .tap(|_| self.notify("update_tenant_status"))
+  }
+
+  async fn update_tenant_created_by(
+    &self,
+    client_id: &str,
+    created_by: &str,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .update_tenant_created_by(client_id, created_by)
+      .await
+      .tap(|_| self.notify("update_tenant_created_by"))
   }
 
   async fn delete_tenant(&self, client_id: &str) -> Result<(), DbError> {
@@ -1289,6 +1310,7 @@ mockall::mock! {
     fn encryption_key(&self) -> &[u8];
     async fn reset_all_tables(&self) -> Result<(), DbError>;
     async fn begin_tenant_txn(&self, tenant_id: &str) -> Result<sea_orm::DatabaseTransaction, DbError>;
+    async fn reset_tenants(&self) -> Result<(), DbError>;
   }
 
   #[async_trait::async_trait]
@@ -1340,12 +1362,14 @@ mockall::mock! {
       client_id: &str,
       client_secret: &str,
       status: &crate::AppStatus,
+      created_by: Option<String>,
     ) -> Result<TenantRow, DbError>;
     async fn update_tenant_status(
       &self,
       client_id: &str,
       status: &crate::AppStatus,
     ) -> Result<(), DbError>;
+    async fn update_tenant_created_by(&self, client_id: &str, created_by: &str) -> Result<(), DbError>;
     async fn delete_tenant(&self, client_id: &str) -> Result<(), DbError>;
     async fn create_tenant_test(&self, tenant: &crate::Tenant) -> Result<TenantRow, DbError>;
   }

@@ -1,5 +1,5 @@
 use crate::test_utils::RequestAuthContextExt;
-use crate::{users_info, TokenInfo, UserResponse};
+use crate::{users_info, TokenInfo, UserInfoEnvelope, UserResponse};
 use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
@@ -20,8 +20,10 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 fn test_router(app_service: Arc<dyn AppService>) -> Router {
+  let session_layer = app_service.session_service().session_layer();
   Router::new()
     .route("/app/user", get(users_info))
+    .layer(session_layer)
     .with_state(app_service)
 }
 
@@ -44,8 +46,14 @@ async fn test_user_info_handler_anonymous() -> anyhow::Result<()> {
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let response_json = response.json::<UserResponse>().await?;
-  assert_eq!(UserResponse::LoggedOut, response_json);
+  let response_json = response.json::<UserInfoEnvelope>().await?;
+  assert_eq!(
+    UserInfoEnvelope {
+      user: UserResponse::LoggedOut,
+      has_dashboard_session: false,
+    },
+    response_json
+  );
   Ok(())
 }
 
@@ -78,16 +86,19 @@ async fn test_user_info_handler_session_token_with_role(
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let response_json = response.json::<UserResponse>().await?;
+  let response_json = response.json::<UserInfoEnvelope>().await?;
 
   assert_eq!(
-    UserResponse::LoggedIn(UserInfo {
-      user_id: claims.sub,
-      username: "testuser@email.com".to_string(),
-      first_name: Some("Test".to_string()),
-      last_name: Some("User".to_string()),
-      role: Some(AppRole::Session(role)),
-    }),
+    UserInfoEnvelope {
+      user: UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
+        role: Some(AppRole::Session(role)),
+      }),
+      has_dashboard_session: false,
+    },
     response_json
   );
   Ok(())
@@ -114,11 +125,14 @@ async fn test_user_info_handler_api_token_with_token_scope(
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let response_json = response.json::<UserResponse>().await?;
+  let response_json = response.json::<UserInfoEnvelope>().await?;
 
   // API tokens should return TokenInfo, not UserInfo
   assert_eq!(
-    UserResponse::Token(TokenInfo { role: token_scope }),
+    UserInfoEnvelope {
+      user: UserResponse::Token(TokenInfo { role: token_scope }),
+      has_dashboard_session: false,
+    },
     response_json
   );
   Ok(())
@@ -159,16 +173,19 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let response_json = response.json::<UserResponse>().await?;
+  let response_json = response.json::<UserInfoEnvelope>().await?;
 
   assert_eq!(
-    UserResponse::LoggedIn(UserInfo {
-      user_id: claims.sub,
-      username: "testuser@email.com".to_string(),
-      first_name: Some("Test".to_string()),
-      last_name: Some("User".to_string()),
-      role: Some(AppRole::ExchangedToken(user_scope)),
-    }),
+    UserInfoEnvelope {
+      user: UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
+        role: Some(AppRole::ExchangedToken(user_scope)),
+      }),
+      has_dashboard_session: false,
+    },
     response_json
   );
   Ok(())
@@ -204,16 +221,19 @@ async fn test_user_info_handler_session_without_role(
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let response_json = response.json::<UserResponse>().await?;
+  let response_json = response.json::<UserInfoEnvelope>().await?;
 
   assert_eq!(
-    UserResponse::LoggedIn(UserInfo {
-      user_id: claims.sub,
-      username: "testuser@email.com".to_string(),
-      first_name: Some("Test".to_string()),
-      last_name: Some("User".to_string()),
-      role: None,
-    }),
+    UserInfoEnvelope {
+      user: UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
+        role: None,
+      }),
+      has_dashboard_session: false,
+    },
     response_json
   );
   Ok(())
@@ -298,17 +318,82 @@ async fn test_user_info_handler_external_app_without_scope(
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let response_json = response.json::<UserResponse>().await?;
+  let response_json = response.json::<UserInfoEnvelope>().await?;
 
   assert_eq!(
-    UserResponse::LoggedIn(UserInfo {
-      user_id: claims.sub,
-      username: "testuser@email.com".to_string(),
-      first_name: Some("Test".to_string()),
-      last_name: Some("User".to_string()),
-      role: None,
-    }),
+    UserInfoEnvelope {
+      user: UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
+        role: None,
+      }),
+      has_dashboard_session: false,
+    },
     response_json
   );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_user_info_handler_with_dashboard_session() -> anyhow::Result<()> {
+  use crate::tenants::DASHBOARD_ACCESS_TOKEN_KEY;
+  use crate::test_utils::{build_test_router, session_request};
+  use services::test_utils::TEST_CLIENT_ID;
+  use std::collections::HashMap;
+  use time::OffsetDateTime;
+  use tower_sessions::{session::Id, session::Record, SessionStore};
+
+  let (router, app_service, _temp) = build_test_router().await?;
+
+  // Build JWT claims with roles
+  let mut claims = services::test_utils::access_token_claims();
+  claims["resource_access"][TEST_CLIENT_ID]["roles"] = serde_json::json!(["resource_admin"]);
+  let (token, _public_key) = services::test_utils::build_token(claims)?;
+
+  // Create a session record with access_token, active_client_id, AND dashboard token
+  let session_id = Id::default();
+  let mut data = HashMap::new();
+  let access_key = format!("{}:access_token", TEST_CLIENT_ID);
+  data.insert(access_key, serde_json::Value::String(token));
+  data.insert(
+    "active_client_id".to_string(),
+    serde_json::Value::String(TEST_CLIENT_ID.to_string()),
+  );
+  data.insert(
+    DASHBOARD_ACCESS_TOKEN_KEY.to_string(),
+    serde_json::Value::String("dashboard-token-value".to_string()),
+  );
+
+  let record = Record {
+    id: session_id,
+    data,
+    expiry_date: OffsetDateTime::now_utc() + time::Duration::hours(1),
+  };
+
+  let session_svc = app_service.session_service();
+  let store = session_svc.get_session_store();
+  store.save(&record).await?;
+  let cookie = format!("bodhiapp_session_id={}", session_id);
+
+  let response = router
+    .oneshot(session_request("GET", "/bodhi/v1/user", &cookie))
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let response_json = response.json::<UserInfoEnvelope>().await?;
+
+  // Verify has_dashboard_session is true
+  assert_eq!(true, response_json.has_dashboard_session);
+  // Verify we got a logged_in user
+  match &response_json.user {
+    UserResponse::LoggedIn(info) => {
+      assert_eq!("testuser@email.com", info.username);
+    }
+    other => panic!("Expected LoggedIn, got {:?}", other),
+  }
   Ok(())
 }

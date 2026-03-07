@@ -95,6 +95,7 @@ async fn create_test_state(config: &AuthServerConfig) -> anyhow::Result<Arc<dyn 
       &config.resource_client_id,
       &config.resource_client_secret,
       AppStatus::Ready,
+      None,
     )
     .await?;
 

@@ -1,17 +1,17 @@
 /**
- * Database configuration mapping for dual-DB E2E testing.
+ * Database configuration mapping for dual-project E2E testing.
  *
  * Maps Playwright project names to server ports and database URLs.
- * SQLite is the default (no DB URLs needed), PostgreSQL requires
- * the test dependency containers from docker/docker-compose.test.yml.
+ * standalone (SQLite) is the default (no DB URLs needed), multi_tenant (PostgreSQL)
+ * requires the test dependency containers from docker/docker-compose.test.yml.
  */
 
 const DB_CONFIGS = {
-  sqlite: {
+  standalone: {
     port: 51135,
     // No DB URLs needed - SQLite is the default
   },
-  postgres: {
+  multi_tenant: {
     port: 41135,
     appDbUrl:
       process.env.E2E_PG_APP_DB_URL || 'postgres://bodhi_test:bodhi_test@localhost:64320/bodhi_app',
@@ -23,13 +23,13 @@ const DB_CONFIGS = {
 
 /**
  * Get database configuration for a Playwright project.
- * Strips browser suffix if present (e.g., "sqlite-chromium" -> "sqlite").
+ * Strips browser suffix if present (e.g., "standalone-chromium" -> "standalone").
  * @param {string} projectName - Playwright project name
  * @returns {Object} Database configuration with port and optional DB URLs
  */
 export function getDbConfig(projectName) {
-  const dbType = projectName?.split('-')[0] || 'sqlite';
-  return DB_CONFIGS[dbType] || DB_CONFIGS.sqlite;
+  const dbType = projectName?.split('-')[0] || 'standalone';
+  return DB_CONFIGS[dbType] || DB_CONFIGS.standalone;
 }
 
 /**

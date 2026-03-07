@@ -1,10 +1,13 @@
 use crate::middleware::{
-  app_status_or_default, generate_random_string, SESSION_KEY_ACCESS_TOKEN,
-  SESSION_KEY_REFRESH_TOKEN, SESSION_KEY_USER_ID,
+  access_token_key, app_status_or_default, generate_random_string, refresh_token_key,
+  SESSION_KEY_ACTIVE_CLIENT_ID, SESSION_KEY_USER_ID,
 };
 use crate::shared::{utils::extract_request_host, AuthScope};
 use crate::{ApiError, OpenAIApiError};
-use crate::{AuthCallbackRequest, AuthRouteError, RedirectResponse, API_TAG_AUTH, ENDPOINT_LOGOUT};
+use crate::{
+  AuthCallbackRequest, AuthInitiateRequest, AuthRouteError, RedirectResponse, API_TAG_AUTH,
+  ENDPOINT_LOGOUT,
+};
 use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
 use axum::{
   http::{
@@ -28,7 +31,7 @@ use tower_sessions::Session;
     operation_id = "initiateOAuthFlow",
     summary = "Initiate OAuth Authentication",
     description = "Initiates OAuth authentication flow. Returns OAuth authorization URL for unauthenticated users or home page URL for already authenticated users.",
-    request_body = (),
+    request_body(content = AuthInitiateRequest, description = "OAuth initiate parameters"),
     responses(
         (status = 201, description = "User not authenticated, OAuth authorization URL provided", body = RedirectResponse,
          example = json!({
@@ -50,6 +53,7 @@ pub async fn auth_initiate(
   auth_scope: AuthScope,
   headers: HeaderMap,
   session: Session,
+  Json(request): Json<AuthInitiateRequest>,
 ) -> Result<impl axum::response::IntoResponse, ApiError> {
   let auth_context = auth_scope.auth_context();
   let settings = auth_scope.settings();
@@ -68,9 +72,14 @@ pub async fn auth_initiate(
   // User not authenticated, generate auth URL
   let tenant_svc = auth_scope.tenant();
   let instance = tenant_svc
-    .get_standalone_app()
+    .get_tenant_by_client_id(&request.client_id)
     .await?
     .ok_or(AuthRouteError::TenantNotFound)?;
+  // Store client_id in session for callback retrieval
+  session
+    .insert("auth_client_id", &request.client_id)
+    .await
+    .map_err(AuthRouteError::from)?;
   // Determine callback URL based on whether public host is explicitly configured
   let callback_url = if settings.get_public_host_explicit().await.is_some() {
     // Explicit configuration (including RunPod) - use configured callback URL
@@ -218,8 +227,13 @@ pub async fn auth_callback(
     .map_err(AuthRouteError::from)?
     .ok_or(AuthRouteError::SessionInfoNotFound)?;
 
+  let auth_client_id = session
+    .get::<String>("auth_client_id")
+    .await
+    .map_err(AuthRouteError::from)?
+    .ok_or(AuthRouteError::SessionInfoNotFound)?;
   let instance = tenant_svc
-    .get_standalone_app()
+    .get_tenant_by_client_id(&auth_client_id)
     .await?
     .ok_or(AuthRouteError::TenantNotFound)?;
 
@@ -256,7 +270,9 @@ pub async fn auth_callback(
     auth_flow
       .make_resource_admin(&instance.client_id, &instance.client_secret, &user_id)
       .await?;
-    tenant_svc.update_status(&AppStatus::Ready).await?;
+    tenant_svc
+      .set_client_ready(&instance.client_id, &user_id)
+      .await?;
     let (new_access_token, new_refresh_token) = auth_flow
       .refresh_token(&instance.client_id, &instance.client_secret, &refresh_token)
       .await?;
@@ -265,17 +281,21 @@ pub async fn auth_callback(
       new_refresh_token.expect("refresh token is missing when refreshing an existing token");
   }
 
-  // Store user_id and tokens in session
+  // Store user_id and tokens in session (namespaced by client_id)
   session
     .insert(SESSION_KEY_USER_ID, &user_id)
     .await
     .map_err(AuthRouteError::from)?;
   session
-    .insert(SESSION_KEY_ACCESS_TOKEN, access_token)
+    .insert(SESSION_KEY_ACTIVE_CLIENT_ID, &instance.client_id)
     .await
     .map_err(AuthRouteError::from)?;
   session
-    .insert(SESSION_KEY_REFRESH_TOKEN, refresh_token)
+    .insert(&access_token_key(&instance.client_id), access_token)
+    .await
+    .map_err(AuthRouteError::from)?;
+  session
+    .insert(&refresh_token_key(&instance.client_id), refresh_token)
     .await
     .map_err(AuthRouteError::from)?;
 
@@ -289,9 +309,13 @@ pub async fn auth_callback(
     settings.frontend_default_url().await
   };
 
-  // Clean up callback URL from session
+  // Clean up callback URL and auth_client_id from session
   session
     .remove::<String>("callback_url")
+    .await
+    .map_err(AuthRouteError::from)?;
+  session
+    .remove::<String>("auth_client_id")
     .await
     .map_err(AuthRouteError::from)?;
 

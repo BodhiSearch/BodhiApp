@@ -7,13 +7,12 @@ use hyper::StatusCode;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
-use server_core::test_utils::{RequestTestExt, ResponseTestExt};
+use server_core::test_utils::ResponseTestExt;
 use services::AuthContext;
 use services::{
   db::DbService,
   test_utils::{sea_context, AppServiceStubBuilder, SeaTestContext, TEST_TENANT_B_ID},
-  AppService, DownloadRepository, DownloadRequestEntity, PaginatedDownloadResponse, ResourceRole,
-  Tenant, TenantRepository,
+  AppService, DownloadRequestEntity, PaginatedDownloadResponse, ResourceRole, Tenant,
 };
 use std::sync::Arc;
 use tower::ServiceExt;

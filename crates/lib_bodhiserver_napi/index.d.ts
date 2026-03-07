@@ -53,6 +53,8 @@ export const BODHI_PUBLIC_PORT: string
 export const BODHI_SESSION_DB_URL: string
 export const BODHI_APP_DB_URL: string
 export const BODHI_DEPLOYMENT: string
+export const BODHI_MULTITENANT_CLIENT_ID: string
+export const BODHI_MULTITENANT_CLIENT_SECRET: string
 export const HF_HOME: string
 export const DEFAULT_HOST: string
 export const DEFAULT_PORT: number

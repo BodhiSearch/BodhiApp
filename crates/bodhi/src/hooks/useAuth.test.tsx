@@ -73,7 +73,7 @@ describe('useOAuthInitiate', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate();
+    result.current.mutate({ client_id: 'test-client' });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -102,7 +102,7 @@ describe('useOAuthInitiate', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate();
+    result.current.mutate({ client_id: 'test-client' });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -127,7 +127,7 @@ describe('useOAuthInitiate', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate();
+    result.current.mutate({ client_id: 'test-client' });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -147,7 +147,7 @@ describe('useOAuthInitiate', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate();
+    result.current.mutate({ client_id: 'test-client' });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -167,7 +167,7 @@ describe('useOAuthInitiate', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate();
+    result.current.mutate({ client_id: 'test-client' });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -192,7 +192,7 @@ describe('useOAuthInitiate', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate();
+    result.current.mutate({ client_id: 'test-client' });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);

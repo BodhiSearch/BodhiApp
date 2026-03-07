@@ -49,7 +49,7 @@ mod tests {
   ) -> anyhow::Result<()> {
     let svc = DefaultTenantService::new(Arc::new(test_db_service));
     svc
-      .create_tenant("test-client", "test-secret", expected.clone())
+      .create_tenant("test-client", "test-secret", expected.clone(), None)
       .await?;
     let svc: Arc<dyn TenantService> = Arc::new(svc);
     assert_eq!(expected, app_status_or_default(&svc).await);

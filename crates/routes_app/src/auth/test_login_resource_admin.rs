@@ -65,6 +65,7 @@ async fn setup_app_service_resource_admin(
       "oauth_state".to_string() => Value::String(state.to_string()),
       "pkce_verifier".to_string() => Value::String("test_pkce_verifier".to_string()),
       "callback_url".to_string() => Value::String("http://frontend.localhost:3000/ui/auth/callback".to_string()),
+      "auth_client_id".to_string() => Value::String("test_client_id".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
@@ -96,6 +97,7 @@ async fn setup_app_service_resource_admin(
       client_secret: "test_client_secret".to_string(),
 
       status: AppStatus::ResourceAdmin,
+      created_by: None,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
     })
@@ -219,11 +221,14 @@ async fn assert_login_callback_result_resource_admin(
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
   assert_eq!("http://frontend.localhost:3000/ui/chat", body.location);
   let tenant_service = app_service.tenant_service();
-  let updated_status = tenant_service
+  let tenant = tenant_service
     .get_standalone_app()
     .await?
-    .map(|t| t.status)
-    .unwrap_or_default();
-  assert_eq!(AppStatus::Ready, updated_status);
+    .expect("tenant should exist");
+  assert_eq!(AppStatus::Ready, tenant.status);
+  assert!(
+    tenant.created_by.is_some(),
+    "created_by should be set after set_client_ready"
+  );
   Ok(())
 }

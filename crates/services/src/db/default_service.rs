@@ -1,4 +1,5 @@
 use crate::db::{DbCore, DbError, TimeService};
+use crate::EnvType;
 use chrono::{DateTime, Utc};
 use sea_orm::{
   ConnectionTrait, DatabaseConnection, DatabaseTransaction, Statement, TransactionTrait,
@@ -13,6 +14,7 @@ pub struct DefaultDbService {
   pub(crate) db: DatabaseConnection,
   pub(crate) time_service: Arc<dyn TimeService>,
   pub(crate) encryption_key: Vec<u8>,
+  pub(crate) env_type: EnvType,
 }
 
 impl DefaultDbService {
@@ -25,7 +27,13 @@ impl DefaultDbService {
       db,
       time_service,
       encryption_key,
+      env_type: EnvType::Development,
     }
+  }
+
+  pub fn with_env_type(mut self, env_type: EnvType) -> Self {
+    self.env_type = env_type;
+    self
   }
 
   pub fn db(&self) -> &DatabaseConnection {
@@ -80,6 +88,9 @@ impl DbCore for DefaultDbService {
   }
 
   async fn reset_all_tables(&self) -> Result<(), DbError> {
+    if self.env_type == EnvType::Production {
+      return Err(DbError::ProductionGuard("reset_all_tables".to_string()));
+    }
     let backend = self.db.get_database_backend();
     match backend {
       sea_orm::DatabaseBackend::Postgres => {
@@ -131,6 +142,23 @@ impl DbCore for DefaultDbService {
       }
     }
 
+    Ok(())
+  }
+
+  async fn reset_tenants(&self) -> Result<(), DbError> {
+    if self.env_type == EnvType::Production {
+      return Err(DbError::ProductionGuard("reset_tenants".to_string()));
+    }
+    let backend = self.db.get_database_backend();
+    match backend {
+      sea_orm::DatabaseBackend::Postgres => {
+        sea_orm::ConnectionTrait::execute_unprepared(&self.db, "TRUNCATE TABLE tenants CASCADE")
+          .await?;
+      }
+      _ => {
+        sea_orm::ConnectionTrait::execute_unprepared(&self.db, "DELETE FROM tenants").await?;
+      }
+    }
     Ok(())
   }
 }

@@ -47,7 +47,12 @@ async fn test_create_tenant_get_tenant_roundtrip(
 ) -> anyhow::Result<()> {
   let svc = make_service(db);
   let tenant = svc
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, AppStatus::ResourceAdmin)
+    .create_tenant(
+      TEST_CLIENT_ID,
+      TEST_CLIENT_SECRET,
+      AppStatus::ResourceAdmin,
+      None,
+    )
     .await?;
   assert_eq!(TEST_CLIENT_ID, tenant.client_id);
   assert_eq!(TEST_CLIENT_SECRET, tenant.client_secret);
@@ -100,7 +105,12 @@ async fn test_get_status_after_create(
 ) -> anyhow::Result<()> {
   let svc = make_service(db);
   svc
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, AppStatus::ResourceAdmin)
+    .create_tenant(
+      TEST_CLIENT_ID,
+      TEST_CLIENT_SECRET,
+      AppStatus::ResourceAdmin,
+      None,
+    )
     .await?;
   let tenant = svc
     .get_standalone_app()
@@ -112,49 +122,34 @@ async fn test_get_status_after_create(
 }
 
 // =========================================================================
-// update_status: updates from ResourceAdmin -> Ready
+// set_client_ready: sets status to Ready and created_by
 // =========================================================================
 
 #[rstest]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_update_status_changes_status(
+async fn test_set_client_ready_changes_status_and_created_by(
   #[future]
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
   let svc = make_service(db);
   svc
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, AppStatus::ResourceAdmin)
+    .create_tenant(
+      TEST_CLIENT_ID,
+      TEST_CLIENT_SECRET,
+      AppStatus::ResourceAdmin,
+      None,
+    )
     .await?;
-  svc.update_status(&AppStatus::Ready).await?;
+  svc.set_client_ready(TEST_CLIENT_ID, "test-user-id").await?;
   let tenant = svc
     .get_standalone_app()
     .await?
     .expect("tenant should exist");
-  let status = svc.get_status(&tenant.id).await?;
-  assert_eq!(AppStatus::Ready, status);
-  Ok(())
-}
-
-// =========================================================================
-// update_status: error when no tenant exists
-// =========================================================================
-
-#[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_update_status_no_tenant_returns_not_found(
-  #[future]
-  #[from(test_db_service)]
-  db: TestDbService,
-) -> anyhow::Result<()> {
-  let svc = make_service(db);
-  let result = svc.update_status(&AppStatus::Ready).await;
-  let err = result.unwrap_err();
-  assert_eq!("tenant_error-not_found", err.code());
+  assert_eq!(AppStatus::Ready, tenant.status);
+  assert_eq!(Some("test-user-id".to_string()), tenant.created_by);
   Ok(())
 }
 
@@ -171,9 +166,9 @@ async fn test_create_two_tenants_triggers_multiple_error(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  db.create_tenant("client-one", "secret-one", &AppStatus::Setup)
+  db.create_tenant("client-one", "secret-one", &AppStatus::Setup, None)
     .await?;
-  db.create_tenant("client-two", "secret-two", &AppStatus::Setup)
+  db.create_tenant("client-two", "secret-two", &AppStatus::Setup, None)
     .await?;
 
   let svc = make_service(db);
@@ -197,7 +192,7 @@ async fn test_repository_encryption_roundtrip(
   db: TestDbService,
 ) -> anyhow::Result<()> {
   let secret = "super-secret-value-123";
-  db.create_tenant(TEST_CLIENT_ID, secret, &AppStatus::Ready)
+  db.create_tenant(TEST_CLIENT_ID, secret, &AppStatus::Ready, None)
     .await?;
 
   let row = db.get_tenant().await?.expect("row should exist");
@@ -241,7 +236,7 @@ async fn test_delete_tenant(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  db.create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready)
+  db.create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready, None)
     .await?;
   db.delete_tenant(TEST_CLIENT_ID).await?;
   let row = db.get_tenant().await?;

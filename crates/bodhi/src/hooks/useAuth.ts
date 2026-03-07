@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 
 // Type imports
-import { AuthCallbackRequest, RedirectResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { AuthCallbackRequest, AuthInitiateRequest, RedirectResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseMutationResult } from '@/hooks/useQuery';
@@ -14,6 +14,8 @@ import { useMutationQuery, useQueryClient } from './useQuery';
 export const ENDPOINT_UI_LOGIN = '/ui/login';
 export const ENDPOINT_AUTH_INITIATE = '/bodhi/v1/auth/initiate';
 export const ENDPOINT_AUTH_CALLBACK = '/bodhi/v1/auth/callback';
+export const ENDPOINT_DASHBOARD_AUTH_INITIATE = '/bodhi/v1/auth/dashboard/initiate';
+export const ENDPOINT_DASHBOARD_AUTH_CALLBACK = '/bodhi/v1/auth/dashboard/callback';
 export const ENDPOINT_LOGOUT = '/bodhi/v1/logout';
 
 // Type alias
@@ -27,7 +29,7 @@ interface UseOAuthInitiateOptions {
 
 export function useOAuthInitiate(
   options?: UseOAuthInitiateOptions
-): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, void> {
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, AuthInitiateRequest> {
   const handleSuccess = useCallback(
     (response: AxiosResponse<RedirectResponse>) => {
       options?.onSuccess?.(response);
@@ -43,7 +45,7 @@ export function useOAuthInitiate(
     [options]
   );
 
-  return useMutationQuery<RedirectResponse, void>(
+  return useMutationQuery<RedirectResponse, AuthInitiateRequest>(
     ENDPOINT_AUTH_INITIATE,
     'post',
     {
@@ -135,6 +137,86 @@ export function useLogout(
       }
     },
   });
+}
+
+// Dashboard OAuth Initiate Hook
+interface UseDashboardOAuthInitiateOptions {
+  onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
+  onError?: (message: string) => void;
+}
+
+export function useDashboardOAuthInitiate(
+  options?: UseDashboardOAuthInitiateOptions
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, void> {
+  const handleSuccess = useCallback(
+    (response: AxiosResponse<RedirectResponse>) => {
+      options?.onSuccess?.(response);
+    },
+    [options]
+  );
+
+  const handleError = useCallback(
+    (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to initiate dashboard authentication';
+      options?.onError?.(message);
+    },
+    [options]
+  );
+
+  return useMutationQuery<RedirectResponse, void>(
+    ENDPOINT_DASHBOARD_AUTH_INITIATE,
+    'post',
+    {
+      onSuccess: handleSuccess,
+      onError: handleError,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+      skipCacheInvalidation: true,
+    }
+  );
+}
+
+// Dashboard OAuth Callback Hook
+interface UseDashboardOAuthCallbackOptions {
+  onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
+  onError?: (message: string) => void;
+}
+
+export function useDashboardOAuthCallback(
+  options?: UseDashboardOAuthCallbackOptions
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, AuthCallbackRequest> {
+  const handleSuccess = useCallback(
+    (response: AxiosResponse<RedirectResponse>) => {
+      options?.onSuccess?.(response);
+    },
+    [options]
+  );
+
+  const handleError = useCallback(
+    (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to complete dashboard authentication';
+      options?.onError?.(message);
+    },
+    [options]
+  );
+
+  return useMutationQuery<RedirectResponse, AuthCallbackRequest>(
+    ENDPOINT_DASHBOARD_AUTH_CALLBACK,
+    'post',
+    {
+      onSuccess: handleSuccess,
+      onError: handleError,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+      skipCacheInvalidation: true,
+    }
+  );
 }
 
 // Logout Handler Hook (from useLogoutHandler.ts)

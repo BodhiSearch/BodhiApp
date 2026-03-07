@@ -8,10 +8,6 @@
 
 Domain types + business logic hub. All domain objects live here co-located with services that use them. Re-exports `errmeta` types so downstream crates import from `services::` only.
 
-**Multi-Tenant Transaction Pattern**: All mutating DbService operations that create/update tenant-scoped rows use `begin_tenant_txn(tenant_id)` from `DbCore` trait (`src/db/db_core.rs`). This returns a `DatabaseTransaction`. On PostgreSQL it issues `SET LOCAL app.current_tenant_id = '<tenant_id>'` before the operation, activating the RLS policies from migration `m20250101_000014_rls.rs`. On SQLite it returns a plain transaction (no RLS; app-layer `WHERE tenant_id = ?` clauses provide the isolation). Callers are responsible for calling `.commit().await?` on the returned transaction. **Settings are global** (no tenant_id column) — use `DefaultDbService` directly for settings operations.
-
-**API Token Format**: `bodhiapp_<base64url_random>.<client_id>` where `client_id` is the tenant's OAuth client ID. The token prefix for DB lookup is `bodhiapp_` + first 8 chars of the random part. The SHA-256 hash covers the full token string including `.<client_id>`. Token lookup via prefix is cross-tenant by design; the tenant is resolved from the `client_id` suffix after a successful hash verification.
-
 ## Architecture Position
 
 ```
@@ -81,7 +77,8 @@ Each domain module follows `*_objs.rs` pattern for types and `error.rs` for erro
 - `tokens/token_objs.rs` — `TokenStatus`, `TokenDetail`, `CreateTokenRequest`, `UpdateTokenRequest`
 - `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `JsonVec`, `DownloadStatus`, `ApiModelRequest`, `UserAliasRequest`
 - `settings/setting_objs.rs` — `Setting`, `EnvType`, `AppType`, `LogLevel`
-- `tenants/tenant_objs.rs` — `AppStatus`, tenant types
+- `tenants/tenant_objs.rs` — `AppStatus` (Setup/Ready/ResourceAdmin/TenantSelection), `Tenant` (includes `created_by: Option<String>`)
+- `tenants/spi_types.rs` — `SpiTenant`, `SpiTenantListResponse`, `SpiCreateTenantRequest`, `SpiCreateTenantResponse`
 - `mcps/mcp_objs.rs` — MCP types, `McpRequest`, `McpServerRequest` (both derive `Validate`)
 - `toolsets/toolset_objs.rs` — `Toolset`, `ToolsetRequest` (derives `Validate`)
 - `app_access_requests/access_request_objs.rs` — `AppAccessRequest` (renamed from `AppAccessRequestRow`)
@@ -122,17 +119,6 @@ All entities follow `pub type <Domain>Entity = Model;` pattern. Standard fields:
 
 **Response types** (in `*_objs.rs`): Separate struct from entity. Exclude `tenant_id`, `user_id`. Secret fields → `has_<secret>: bool`. `impl From<Entity> for ResponseType` defined in services.
 
-## Service Return Types
-
-Services return Entity types. Route handlers convert Entity→Response via `.into()`:
-- Service methods return Entity types (e.g., `McpWithServerEntity`, `McpServerEntity`, `ToolsetEntity`)
-- Entity types are `pub` re-exported so routes_app can import and use `From<Entity> for Response`
-- `impl From<Entity> for ResponseType` conversions defined in services `*_objs.rs` files
-- Services do NOT call `form.validate()` — input assumed validated by routes layer
-- Business invariants requiring service deps stay in services (e.g., UserAlias file existence check)
-- DB constraints handle uniqueness/FK violations → mapped to domain errors
-- Exception: Token domain returns Response types (`TokenDetail`), ApiModel returns `ApiModelOutput` (complex repository)
-
 ## Error Handling
 
 ### IoError Pattern
@@ -162,6 +148,20 @@ Blanket `From<T: AppError> for ApiError` auto-converts in route handlers.
 - Auth header preservation: switching auth type away from `Header` does NOT delete auth headers (admin-managed). OAuth tokens ARE cleaned up.
 - OAuth token refresh has per-key concurrency guard (keyed by `oauth_refresh:{config_id}`)
 - CASCADE FK constraints on MCP tables
+
+### AuthService SPI Proxy
+- `list_tenants(bearer_token)` — proxy to Keycloak Bodhi SPI `GET /realms/{realm}/bodhi/tenants`
+- `create_tenant(bearer_token, name, description, redirect_uris)` — proxy to SPI `POST /realms/{realm}/bodhi/tenants`
+- `TenantService.create_tenant()` takes `created_by: Option<String>` parameter
+- `TenantService.set_client_ready(client_id, user_id)` — sets status to Ready AND created_by in one call (replaces separate `update_status` + `update_created_by`)
+- `SettingService.multitenant_client_secret()` — reads `BODHI_MULTITENANT_CLIENT_SECRET` env var
+
+### Session Keys Module
+`session_keys` module (`src/session_keys.rs`) defines session key constants and namespaced key format functions, re-exported from `services` crate:
+- `SESSION_KEY_ACTIVE_CLIENT_ID`, `SESSION_KEY_USER_ID` — global session keys
+- `DASHBOARD_ACCESS_TOKEN_KEY`, `DASHBOARD_REFRESH_TOKEN_KEY` — dashboard session keys
+- `access_token_key(client_id)` -> `"{client_id}:access_token"`
+- `refresh_token_key(client_id)` -> `"{client_id}:refresh_token"`
 
 ### Access Request Workflow
 All requests start as drafts. Status: `draft` → `approved` | `denied` | `failed`. `requested_role` vs `approved_role` fields.

@@ -7,12 +7,12 @@ use crate::ollama::{
 };
 use crate::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
-  AuthCallbackRequest, CreateAccessRequestResponse, LocalModelResponse, PaginationSortParams,
-  PingResponse,
+  AuthCallbackRequest, AuthInitiateRequest, CreateAccessRequestResponse, LocalModelResponse,
+  PaginationSortParams, PingResponse,
 };
 use crate::{
   AppInfo, ListUsersParams, PaginatedLocalModelResponse, QueueStatusResponse, RedirectResponse,
-  UserResponse, __path_api_models_create, __path_api_models_destroy,
+  UserInfoEnvelope, UserResponse, __path_api_models_create, __path_api_models_destroy,
   __path_api_models_fetch_models, __path_api_models_formats, __path_api_models_index,
   __path_api_models_show, __path_api_models_sync, __path_api_models_test, __path_api_models_update,
   __path_apps_approve_access_request, __path_apps_create_access_request,
@@ -56,9 +56,16 @@ use crate::{
   SetupRequest, SetupResponse, __path_settings_destroy, __path_settings_index,
   __path_settings_update, __path_setup_create, __path_setup_show,
 };
+// Tenant DTOs and handlers
+use crate::{
+  CreateTenantRequest, CreateTenantResponse, TenantListItem, TenantListResponse,
+  __path_dashboard_auth_callback, __path_dashboard_auth_initiate, __path_tenants_activate,
+  __path_tenants_create, __path_tenants_index,
+};
 use crate::{
   API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA,
-  API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
+  API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TENANTS,
+  API_TAG_TOOLSETS,
 };
 use async_openai::types::{
   chat::{
@@ -115,6 +122,8 @@ make_ui_endpoint!(ENDPOINT_ACCESS_REQUESTS_ALL, "access-requests");
 make_ui_endpoint!(ENDPOINT_USERS, "users");
 make_ui_endpoint!(ENDPOINT_AUTH_INITIATE, "auth/initiate");
 make_ui_endpoint!(ENDPOINT_AUTH_CALLBACK, "auth/callback");
+make_ui_endpoint!(ENDPOINT_DASHBOARD_AUTH_INITIATE, "auth/dashboard/initiate");
+make_ui_endpoint!(ENDPOINT_DASHBOARD_AUTH_CALLBACK, "auth/dashboard/callback");
 
 make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
 make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
@@ -130,12 +139,15 @@ make_ui_endpoint!(ENDPOINT_API_MODELS_API_FORMATS, "api-models/api-formats");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
 make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
+make_ui_endpoint!(ENDPOINT_TENANTS, "tenants");
 // MCP endpoint constants are defined in mcps/mod.rs
 
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
 pub const ENDPOINT_DEV_ENVS: &str = "/dev/envs";
 pub const ENDPOINT_DEV_DB_RESET: &str = "/dev/db-reset";
+pub const ENDPOINT_DEV_CLIENTS_DAG: &str = "/dev/clients/{client_id}/dag";
+pub const ENDPOINT_DEV_TENANTS_CLEANUP: &str = "/dev/tenants/cleanup";
 
 /// API documentation configuration
 #[derive(OpenApi)]
@@ -266,6 +278,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         (name = API_TAG_MCPS, description = "MCP server management and tool execution"),
         (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
         (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
+        (name = API_TAG_TENANTS, description = "Tenant management endpoints"),
     ),
     components(
         schemas(
@@ -280,8 +293,10 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             SetupRequest,
             SetupResponse,
             // auth
+            AuthInitiateRequest,
             AuthCallbackRequest,
             UserResponse,
+            UserInfoEnvelope,
             AppRole,
             ResourceRole,
             TokenScope,
@@ -410,6 +425,11 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             OAuthDiscoverMcpResponse,
             DynamicRegisterRequest,
             DynamicRegisterResponse,
+            // tenants
+            TenantListItem,
+            TenantListResponse,
+            CreateTenantRequest,
+            CreateTenantResponse,
         ),
         responses( ),
     ),
@@ -533,7 +553,16 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         mcp_oauth_dynamic_register,
         // OAuth token endpoints
         mcp_oauth_tokens_show,
-        mcp_oauth_tokens_destroy
+        mcp_oauth_tokens_destroy,
+
+        // Tenant management endpoints
+        tenants_index,
+        tenants_create,
+        tenants_activate,
+
+        // Dashboard auth endpoints
+        dashboard_auth_initiate,
+        dashboard_auth_callback
     )
 )]
 pub struct BodhiOpenAPIDoc;

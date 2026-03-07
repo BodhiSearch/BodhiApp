@@ -80,10 +80,15 @@ pub async fn create_authenticated_session(
   // Build the signed JWT token
   let (token, _public_key) = build_token(claims)?;
 
-  // Create a session record with the access_token
+  // Create a session record with namespaced access_token and active_client_id
   let session_id = Id::default();
   let mut data = HashMap::new();
-  data.insert("access_token".to_string(), serde_json::Value::String(token));
+  let access_key = format!("{}:access_token", TEST_CLIENT_ID);
+  data.insert(access_key, serde_json::Value::String(token));
+  data.insert(
+    "active_client_id".to_string(),
+    serde_json::Value::String(TEST_CLIENT_ID.to_string()),
+  );
 
   let record = Record {
     id: session_id,

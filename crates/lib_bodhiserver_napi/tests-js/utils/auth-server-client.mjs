@@ -582,6 +582,24 @@ export class AuthServerTestClient {
 }
 
 /**
+ * Get multi-tenant test client credentials from environment variables.
+ * Returns dashboard client and tenant client credentials for multi-tenant E2E tests.
+ * @returns {Object} Multi-tenant config with dashboardClientId, dashboardClientSecret, tenantId, tenantSecret
+ */
+export function getMultiTenantConfig() {
+  const config = {
+    dashboardClientId: process.env.INTEG_TEST_MT_DASHBOARD_CLIENT_ID,
+    dashboardClientSecret: process.env.INTEG_TEST_MT_DASHBOARD_CLIENT_SECRET,
+    tenantId: process.env.INTEG_TEST_MT_TENANT_ID,
+    tenantSecret: process.env.INTEG_TEST_MT_TENANT_SECRET,
+  };
+  for (const [key, value] of Object.entries(config)) {
+    if (!value) throw new Error(`Required env var missing for multi-tenant: ${key}`);
+  }
+  return config;
+}
+
+/**
  * Get pre-configured resource client credentials from environment variables.
  * These credentials are for a resource client with Direct Access Grants enabled,
  * pre-configured in .env.test with the test user already set as resource admin.

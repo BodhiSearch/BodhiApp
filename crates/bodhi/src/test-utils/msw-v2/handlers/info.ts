@@ -16,7 +16,12 @@ import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
  * Uses openapi-msw for full type safety with OpenAPI schema enforcement
  */
 export function mockAppInfo(
-  { status = 'ready', version = '0.1.0', ...rest }: Partial<components['schemas']['AppInfo']> = {},
+  {
+    status = 'ready',
+    version = '0.1.0',
+    deployment = 'standalone',
+    ...rest
+  }: Partial<components['schemas']['AppInfo']> = {},
   { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -34,6 +39,7 @@ export function mockAppInfo(
         commit_sha: 'not-set',
         status,
         version,
+        deployment,
         ...rest,
       };
 

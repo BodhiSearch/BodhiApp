@@ -12,6 +12,7 @@ enum Tenants {
   SaltClientSecret,
   NonceClientSecret,
   AppStatus,
+  CreatedBy,
   CreatedAt,
   UpdatedAt,
 }
@@ -29,6 +30,7 @@ impl MigrationTrait for Migration {
           .col(string_null(Tenants::SaltClientSecret))
           .col(string_null(Tenants::NonceClientSecret))
           .col(string(Tenants::AppStatus).default("setup"))
+          .col(string_null(Tenants::CreatedBy))
           .col(timestamp_with_time_zone(Tenants::CreatedAt))
           .col(timestamp_with_time_zone(Tenants::UpdatedAt))
           .to_owned(),

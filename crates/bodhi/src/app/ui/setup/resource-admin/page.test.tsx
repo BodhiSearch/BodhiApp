@@ -6,7 +6,12 @@ import {
   mockAuthInitiateUnauthenticated,
   mockAuthInitiateAlreadyAuthenticated,
 } from '@/test-utils/msw-v2/handlers/auth';
-import { mockAppInfoReady, mockAppInfoResourceAdmin, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import {
+  mockAppInfo,
+  mockAppInfoReady,
+  mockAppInfoResourceAdmin,
+  mockAppInfoSetup,
+} from '@/test-utils/msw-v2/handlers/info';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -90,7 +95,7 @@ describe('ResourceAdminPage', () => {
   it('sets sessionStorage return URL before OAuth initiation', async () => {
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
     server.use(
-      ...mockAppInfoResourceAdmin(),
+      ...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }),
       ...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
@@ -105,7 +110,7 @@ describe('ResourceAdminPage', () => {
 
   it('handles OAuth initiation with external OAuth provider URL', async () => {
     server.use(
-      ...mockAppInfoResourceAdmin(),
+      ...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }),
       ...mockAuthInitiateUnauthenticated({ location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
@@ -127,7 +132,7 @@ describe('ResourceAdminPage', () => {
 
   it('handles OAuth initiation with same-origin redirect URL', async () => {
     server.use(
-      ...mockAppInfoResourceAdmin(),
+      ...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }),
       ...mockAuthInitiateAlreadyAuthenticated({ location: 'http://localhost:3000/ui/chat' })
     );
 
@@ -149,7 +154,7 @@ describe('ResourceAdminPage', () => {
 
   it('handles OAuth initiation successfully', async () => {
     server.use(
-      ...mockAppInfoResourceAdmin(),
+      ...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }),
       ...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
@@ -165,7 +170,7 @@ describe('ResourceAdminPage', () => {
 
   it('displays error message when OAuth initiation fails and re-enables button', async () => {
     server.use(
-      ...mockAppInfoResourceAdmin(),
+      ...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }),
       ...mockAuthInitiateError({ status: 500, code: 'oauth_config_error', message: 'OAuth configuration error' })
     );
 
@@ -186,7 +191,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateError());
+    server.use(...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }), ...mockAuthInitiateError());
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
@@ -199,7 +204,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('handles default auth initiate response', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate());
+    server.use(...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }), ...mockAuthInitiate());
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
@@ -212,7 +217,10 @@ describe('ResourceAdminPage', () => {
   });
 
   it('handles custom URL in response by treating as external and keeping button disabled', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate({ location: 'invalid-url-format' }));
+    server.use(
+      ...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }),
+      ...mockAuthInitiate({ location: 'invalid-url-format' })
+    );
 
     renderWithSetupProvider(<ResourceAdminPage />);
 

@@ -108,6 +108,7 @@ function createFullTestConfig(bindings, options = {}) {
     clientId = null,
     clientSecret = null,
     appStatus = 'ready',
+    systemSettings = {},
   } = options;
 
   let config = bindings.createNapiAppOptions();
@@ -135,6 +136,11 @@ function createFullTestConfig(bindings, options = {}) {
 
   if (appStatus) {
     config = bindings.setAppStatus(config, appStatus);
+  }
+
+  // Set caller-provided system settings
+  for (const [key, value] of Object.entries(systemSettings)) {
+    config = bindings.setSystemSetting(config, key, value);
   }
 
   // Set client credentials if provided

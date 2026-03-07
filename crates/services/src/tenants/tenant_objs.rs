@@ -29,6 +29,9 @@ pub enum AppStatus {
   /// Admin setup required
   #[schema(rename = "resource_admin")]
   ResourceAdmin,
+  /// User must select a tenant
+  #[schema(rename = "tenant_selection")]
+  TenantSelection,
 }
 
 /// Tenant represents an OAuth2 client registration (the "app instance") for this deployment.
@@ -39,6 +42,7 @@ pub struct Tenant {
   pub client_id: String,
   pub client_secret: String,
   pub status: AppStatus,
+  pub created_by: Option<String>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -50,6 +54,7 @@ impl From<super::tenant_entity::TenantRow> for Tenant {
       client_id: row.client_id,
       client_secret: row.client_secret,
       status: row.app_status,
+      created_by: row.created_by,
       created_at: row.created_at,
       updated_at: row.updated_at,
     }

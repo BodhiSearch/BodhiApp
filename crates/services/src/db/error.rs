@@ -64,6 +64,9 @@ pub enum DbError {
   #[error("Access request '{id}' has status '{status}' and cannot be updated.")]
   #[error_meta(error_type = ErrorType::Conflict)]
   AccessRequestNotDraft { id: String, status: String },
+  #[error("Operation forbidden in production: {0}.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  ProductionGuard(String),
 }
 
 impl_error_from!(

@@ -18,6 +18,10 @@ import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { expect, test } from '@playwright/test';
 
 test.describe('Network IP Authentication Setup Flow', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name.startsWith('multi_tenant'), 'standalone only');
+  });
+
   let authServerConfig;
   let testCredentials;
   let authClient;

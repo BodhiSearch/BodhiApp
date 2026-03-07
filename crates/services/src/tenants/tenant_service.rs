@@ -19,10 +19,12 @@ pub trait TenantService: Send + Sync + std::fmt::Debug {
     client_id: &str,
     client_secret: &str,
     status: AppStatus,
+    created_by: Option<String>,
   ) -> Result<Tenant>;
-  async fn update_status(&self, status: &AppStatus) -> Result<()>;
   /// Update the status of a specific tenant by its ID.
   async fn update_status_by_id(&self, tenant_id: &str, status: &AppStatus) -> Result<()>;
+  /// Atomically set the tenant status to Ready and set created_by for the given client_id.
+  async fn set_client_ready(&self, client_id: &str, user_id: &str) -> Result<()>;
 }
 
 #[derive(Debug, derive_new::new)]
@@ -60,24 +62,13 @@ impl TenantService for DefaultTenantService {
     client_id: &str,
     client_secret: &str,
     status: AppStatus,
+    created_by: Option<String>,
   ) -> Result<Tenant> {
     let row = self
       .db_service
-      .create_tenant(client_id, client_secret, &status)
+      .create_tenant(client_id, client_secret, &status, created_by)
       .await?;
     Ok(Tenant::from(row))
-  }
-
-  async fn update_status(&self, status: &AppStatus) -> Result<()> {
-    let tenant = self
-      .get_standalone_app()
-      .await?
-      .ok_or(TenantError::NotFound)?;
-    self
-      .db_service
-      .update_tenant_status(&tenant.client_id, status)
-      .await?;
-    Ok(())
   }
 
   async fn update_status_by_id(&self, tenant_id: &str, status: &AppStatus) -> Result<()> {
@@ -88,6 +79,18 @@ impl TenantService for DefaultTenantService {
     self
       .db_service
       .update_tenant_status(&tenant.client_id, status)
+      .await?;
+    Ok(())
+  }
+
+  async fn set_client_ready(&self, client_id: &str, user_id: &str) -> Result<()> {
+    self
+      .db_service
+      .update_tenant_status(client_id, &AppStatus::Ready)
+      .await?;
+    self
+      .db_service
+      .update_tenant_created_by(client_id, user_id)
       .await?;
     Ok(())
   }

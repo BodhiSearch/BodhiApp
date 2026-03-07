@@ -60,6 +60,7 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
       client_secret: "test_client_secret".to_string(),
 
       status: services::AppStatus::Ready,
+      created_by: None,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
     })
@@ -75,7 +76,7 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let resp = router
     .oneshot(
       Request::post("/auth/initiate")
-        .json(json! {{}})?
+        .json(json! {{"client_id": "test_client_id"}})?
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
@@ -150,6 +151,7 @@ async fn test_auth_initiate_handler_loopback_host_detection(
       client_secret: "test_client_secret".to_string(),
 
       status: services::AppStatus::Ready,
+      created_by: None,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
     })
@@ -167,7 +169,7 @@ async fn test_auth_initiate_handler_loopback_host_detection(
     .oneshot(
       Request::post("/auth/initiate")
         .header("Host", "localhost:1135")
-        .json(json! {{}})?
+        .json(json! {{"client_id": "test_client_id"}})?
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
@@ -222,6 +224,7 @@ async fn test_auth_initiate_handler_network_host_usage(
       client_secret: "test_client_secret".to_string(),
 
       status: services::AppStatus::Ready,
+      created_by: None,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
     })
@@ -239,7 +242,7 @@ async fn test_auth_initiate_handler_network_host_usage(
     .oneshot(
       Request::post("/auth/initiate")
         .header("Host", "192.168.1.100:1135")
-        .json(json! {{}})?
+        .json(json! {{"client_id": "test_client_id"}})?
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
@@ -335,7 +338,7 @@ async fn auth_initiate_handler_with_token_response(
       Request::post("/auth/initiate")
         .header("Cookie", format!("bodhiapp_session_id={}", record.id))
         .header("Sec-Fetch-Site", "same-origin")
-        .json(json! {{}})?,
+        .json(json! {{"client_id": "test-client"}})?,
     )
     .await?;
   let status = resp.status();
@@ -352,7 +355,8 @@ async fn set_token_in_session(
   let mut record = Record {
     id,
     data: maplit::hashmap! {
-      "access_token".to_string() => Value::String(token.to_string()),
+      "test-client:access_token".to_string() => Value::String(token.to_string()),
+      "active_client_id".to_string() => Value::String("test-client".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + time::Duration::days(1),
   };

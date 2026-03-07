@@ -56,7 +56,7 @@ describe('LoginContent with user not Logged In', () => {
     pushMock.mockClear();
     server.use(
       ...mockUserLoggedOut(),
-      ...mockAppInfo({ status: 'ready' }),
+      ...mockAppInfo({ status: 'ready', client_id: 'test_client_id' }),
       ...mockAuthInitiateConfigError(),
       ...mockLogout({ location: 'http://localhost:1135/ui/login' })
     );

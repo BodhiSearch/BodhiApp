@@ -10,10 +10,12 @@ import { itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { useOAuthInitiate } from '@/hooks/useAuth';
+import { useAppInfo } from '@/hooks/useInfo';
 import { ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 
 function ResourceAdminContent() {
+  const { data: appInfo } = useAppInfo();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
@@ -44,7 +46,9 @@ function ResourceAdminContent() {
   const handleOAuthInitiate = () => {
     setError(null); // Clear any previous errors
     sessionStorage.setItem('bodhi-return-url', ROUTE_SETUP_DOWNLOAD_MODELS);
-    initiateOAuth();
+    if (appInfo?.client_id) {
+      initiateOAuth({ client_id: appInfo.client_id });
+    }
   };
 
   const isButtonDisabled = isLoading || redirecting;

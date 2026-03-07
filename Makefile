@@ -63,8 +63,8 @@ dev.deps.clear: ## Stop dev PostgreSQL databases and remove volumes
 	docker compose -f docker/docker-compose.dev.yml down -v
 
 test.backend: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
-	cargo test
-	cargo test -p bodhi --features native
+	cargo test --no-fail-fast
+	cargo test -p bodhi --features native --no-fail-fast
 
 test.ui.unit: ## Run frontend unit tests
 	cd crates/bodhi && npm install && npm test
@@ -73,8 +73,11 @@ test.ui: ## Run frontend and UI integration tests
 	$(MAKE) test.ui.unit
 	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
 
-test.napi.sqlite: ## Run frontend and UI integration tests
-	$(MAKE) -C crates/lib_bodhiserver_napi test.napi.sqlite
+test.napi.standalone: ## Run frontend and UI integration tests
+	$(MAKE) -C crates/lib_bodhiserver_napi test.napi.standalone
+
+test.napi.multi_tenant: ## Run frontend and UI integration tests
+	$(MAKE) -C crates/lib_bodhiserver_napi test.napi.multi_tenant
 
 test.napi: ## Run NAPI bindings tests
 	cd crates/lib_bodhiserver_napi && npm install && npm run test:playwright

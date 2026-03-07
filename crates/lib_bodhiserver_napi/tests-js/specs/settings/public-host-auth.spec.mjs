@@ -6,6 +6,10 @@ import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { expect, test } from '@playwright/test';
 
 test.describe('Public Host Configuration Authentication Tests', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name.startsWith('multi_tenant'), 'standalone only');
+  });
+
   let authServerConfig;
   let testCredentials;
   let port;

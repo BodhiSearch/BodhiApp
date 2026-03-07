@@ -64,8 +64,12 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
       serde_json::Value::String(user_id.to_string()),
     );
     data.insert(
-      "access_token".to_string(),
+      "test-client:access_token".to_string(),
       serde_json::Value::String(format!("token_{}", i)),
+    );
+    data.insert(
+      "active_client_id".to_string(),
+      serde_json::Value::String("test-client".to_string()),
     );
     data.insert(
       "device".to_string(),
@@ -107,6 +111,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
       client_secret: "test_secret".to_string(),
 
       status: services::AppStatus::Ready,
+      created_by: None,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
     })

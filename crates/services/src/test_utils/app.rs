@@ -411,6 +411,7 @@ impl AppServiceStubBuilder {
         &instance.client_id,
         &instance.client_secret,
         instance.status,
+        None,
       )
       .await
       .unwrap();

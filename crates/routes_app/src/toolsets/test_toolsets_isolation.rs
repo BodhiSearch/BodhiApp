@@ -5,7 +5,7 @@ use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
   http::{Method, Request},
-  routing::{delete, get, post, put},
+  routing::get,
   Router,
 };
 use hyper::StatusCode;
@@ -19,7 +19,7 @@ use services::{
   test_utils::{
     sea_context, AppServiceStubBuilder, SeaTestContext, TEST_TENANT_B_ID, TEST_TENANT_ID,
   },
-  AppService, ResourceRole, Tenant, TenantRepository, ToolsetRequest,
+  AppService, ResourceRole, Tenant, ToolsetRequest,
 };
 use std::sync::Arc;
 use tower::ServiceExt;

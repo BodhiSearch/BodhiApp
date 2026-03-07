@@ -26,6 +26,7 @@ impl DefaultDbService {
       client_id: model.client_id,
       client_secret,
       app_status: model.app_status,
+      created_by: model.created_by,
       created_at: model.created_at,
       updated_at: model.updated_at,
     })
@@ -43,8 +44,14 @@ pub trait TenantRepository: Send + Sync {
     client_id: &str,
     client_secret: &str,
     status: &AppStatus,
+    created_by: Option<String>,
   ) -> Result<TenantRow, DbError>;
   async fn update_tenant_status(&self, client_id: &str, status: &AppStatus) -> Result<(), DbError>;
+  async fn update_tenant_created_by(
+    &self,
+    client_id: &str,
+    created_by: &str,
+  ) -> Result<(), DbError>;
   async fn delete_tenant(&self, client_id: &str) -> Result<(), DbError>;
 
   /// Test-only: insert a tenant with a caller-specified ID (bypasses ULID auto-generation).
@@ -100,6 +107,7 @@ impl TenantRepository for DefaultDbService {
     client_id: &str,
     client_secret: &str,
     status: &AppStatus,
+    created_by: Option<String>,
   ) -> Result<TenantRow, DbError> {
     let id = ulid::Ulid::new().to_string();
     let now = self.time_service.utc_now();
@@ -114,6 +122,7 @@ impl TenantRepository for DefaultDbService {
       salt_client_secret: Set(Some(salt_secret)),
       nonce_client_secret: Set(Some(nonce_secret)),
       app_status: Set(status.clone()),
+      created_by: Set(created_by.clone()),
       created_at: Set(now),
       updated_at: Set(now),
     };
@@ -128,6 +137,7 @@ impl TenantRepository for DefaultDbService {
       client_id: client_id.to_string(),
       client_secret: client_secret.to_string(),
       app_status: status.clone(),
+      created_by,
       created_at: now,
       updated_at: now,
     })
@@ -150,6 +160,39 @@ impl TenantRepository for DefaultDbService {
     let active = tenant_entity::ActiveModel {
       id: Set(existing.id),
       app_status: Set(status.clone()),
+      updated_at: Set(now),
+      ..Default::default()
+    };
+
+    tenant_entity::Entity::update(active)
+      .exec(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    Ok(())
+  }
+
+  async fn update_tenant_created_by(
+    &self,
+    client_id: &str,
+    created_by: &str,
+  ) -> Result<(), DbError> {
+    let now = self.time_service.utc_now();
+
+    let existing = tenant_entity::Entity::find()
+      .filter(tenant_entity::Column::ClientId.eq(client_id))
+      .one(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    let existing = existing.ok_or_else(|| DbError::ItemNotFound {
+      id: client_id.to_string(),
+      item_type: "tenant".to_string(),
+    })?;
+
+    let active = tenant_entity::ActiveModel {
+      id: Set(existing.id),
+      created_by: Set(Some(created_by.to_string())),
       updated_at: Set(now),
       ..Default::default()
     };
@@ -196,6 +239,7 @@ impl TenantRepository for DefaultDbService {
       salt_client_secret: Set(Some(salt_secret)),
       nonce_client_secret: Set(Some(nonce_secret)),
       app_status: Set(tenant.status.clone()),
+      created_by: Set(tenant.created_by.clone()),
       created_at: Set(now),
       updated_at: Set(now),
     };
@@ -210,6 +254,7 @@ impl TenantRepository for DefaultDbService {
       client_id: tenant.client_id.clone(),
       client_secret: tenant.client_secret.clone(),
       app_status: tenant.status.clone(),
+      created_by: tenant.created_by.clone(),
       created_at: now,
       updated_at: now,
     })

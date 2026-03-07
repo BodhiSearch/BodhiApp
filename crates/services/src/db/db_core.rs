@@ -24,4 +24,6 @@ pub trait DbCore: Send + Sync {
     &self,
     tenant_id: &str,
   ) -> Result<sea_orm::DatabaseTransaction, DbError>;
+
+  async fn reset_tenants(&self) -> Result<(), DbError>;
 }

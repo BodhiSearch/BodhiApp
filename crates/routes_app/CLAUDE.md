@@ -68,6 +68,7 @@ Flat naming (no `routes_` prefix in module names). Each module has:
 | `mcps/` | `McpRouteError` | MCP CRUD, tools, servers, OAuth |
 | `oai/` | `OAIRouteError` | OpenAI-compatible endpoints |
 | `ollama/` | `OllamaRouteError` | Ollama-compatible endpoints |
+| `tenants/` | `DashboardAuthRouteError` | Dashboard auth, tenant CRUD, multi-tenant management |
 
 Standalone files: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`
 
@@ -126,6 +127,8 @@ Every new route must:
 **Network host detection**: Setup/login flows extract `Host` header for callback URLs when `BODHI_PUBLIC_HOST` is not configured.
 
 **MCP OAuth CSRF**: Token exchange validates `state` parameter from session.
+
+**Multi-tenant endpoints**: Dashboard auth (`/auth/dashboard/initiate`, `/auth/dashboard/callback`) and tenant management (`/tenants`, `/tenants/{client_id}/activate`) in `tenants/` module. Dashboard tokens stored under `dashboard:*` session keys. `/info` returns `deployment` and `client_id`. `/user/info` returns `has_dashboard_session`.
 
 ## Commands
 

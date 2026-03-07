@@ -9,7 +9,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loading } from '@/components/ui/Loading';
 import { useAppInfo } from '@/hooks/useInfo';
 import { useUser } from '@/hooks/useUsers';
-import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN, ROUTE_SETUP, ROUTE_REQUEST_ACCESS, ROUTE_LOGIN } from '@/lib/constants';
+import {
+  ROUTE_DEFAULT,
+  ROUTE_RESOURCE_ADMIN,
+  ROUTE_SETUP,
+  ROUTE_SETUP_TENANTS,
+  ROUTE_REQUEST_ACCESS,
+  ROUTE_LOGIN,
+} from '@/lib/constants';
 import { Role, meetsMinRole } from '@/lib/roles';
 
 // For backward compatibility, allow passing clean role names (admin, manager, etc.)
@@ -17,7 +24,7 @@ type MinRole = 'user' | 'power_user' | 'manager' | 'admin';
 
 interface AppInitializerProps {
   children?: ReactNode;
-  allowedStatus?: AppStatus;
+  allowedStatus?: AppStatus | AppStatus[];
   authenticated?: boolean;
   minRole?: MinRole;
 }
@@ -42,16 +49,24 @@ export default function AppInitializer({
   useEffect(() => {
     if (!appLoading && appInfo) {
       const { status } = appInfo;
-      if (!allowedStatus || status !== allowedStatus) {
+      const statusAllowed = Array.isArray(allowedStatus) ? allowedStatus.includes(status) : status === allowedStatus;
+      if (!allowedStatus || !statusAllowed) {
         switch (status) {
           case 'setup':
-            router.push(ROUTE_SETUP);
+            if (appInfo.deployment === 'multi_tenant') {
+              router.push(ROUTE_SETUP_TENANTS);
+            } else {
+              router.push(ROUTE_SETUP);
+            }
             break;
           case 'ready':
             router.push(ROUTE_DEFAULT);
             break;
           case 'resource_admin':
             router.push(ROUTE_RESOURCE_ADMIN);
+            break;
+          case 'tenant_selection':
+            router.push(ROUTE_LOGIN);
             break;
         }
       }
@@ -118,7 +133,7 @@ export default function AppInitializer({
   }
 
   if (appInfo?.status) {
-    if (!['setup', 'ready', 'resource_admin'].includes(appInfo.status)) {
+    if (!['setup', 'ready', 'resource_admin', 'tenant_selection'].includes(appInfo.status)) {
       return (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
@@ -127,7 +142,10 @@ export default function AppInitializer({
       );
     }
 
-    if (!allowedStatus || appInfo.status !== allowedStatus) {
+    const isStatusAllowed = Array.isArray(allowedStatus)
+      ? allowedStatus.includes(appInfo.status)
+      : appInfo.status === allowedStatus;
+    if (!allowedStatus || !isStatusAllowed) {
       return <Loading message="Redirecting..." />;
     }
   }

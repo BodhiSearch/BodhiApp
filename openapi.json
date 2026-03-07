@@ -2274,6 +2274,185 @@
         ]
       }
     },
+    "/bodhi/v1/auth/dashboard/callback": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Complete Dashboard OAuth Authentication",
+        "description": "Completes the dashboard OAuth authentication flow by exchanging authorization code for tokens.",
+        "operationId": "completeDashboardOAuthFlow",
+        "requestBody": {
+          "description": "OAuth callback parameters from authorization server",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthCallbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Dashboard OAuth flow completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/auth/dashboard/initiate": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Initiate Dashboard OAuth Authentication",
+        "description": "Initiates the dashboard OAuth authentication flow using the multi-tenant client. Only available in multi-tenant mode.",
+        "operationId": "initiateDashboardOAuthFlow",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "default": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "User already has a valid dashboard token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "OAuth authorization URL provided for dashboard login",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
     "/bodhi/v1/auth/initiate": {
       "post": {
         "tags": [
@@ -2283,10 +2462,11 @@
         "description": "Initiates OAuth authentication flow. Returns OAuth authorization URL for unauthenticated users or home page URL for already authenticated users.",
         "operationId": "initiateOAuthFlow",
         "requestBody": {
+          "description": "OAuth initiate parameters",
           "content": {
             "application/json": {
               "schema": {
-                "default": null
+                "$ref": "#/components/schemas/AuthInitiateRequest"
               }
             }
           },
@@ -2391,7 +2571,9 @@
                   "$ref": "#/components/schemas/AppInfo"
                 },
                 "example": {
+                  "client_id": "my-client-id",
                   "commit_sha": "abc1234",
+                  "deployment": "standalone",
                   "status": "ready",
                   "version": "0.1.0"
                 }
@@ -6028,6 +6210,241 @@
         }
       }
     },
+    "/bodhi/v1/tenants": {
+      "get": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "List Tenants",
+        "description": "Lists all tenants visible to the authenticated dashboard user. Each tenant includes whether it is currently active and whether the user has a valid session for it.",
+        "operationId": "tenantsList",
+        "responses": {
+          "200": {
+            "description": "List of tenants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Create Tenant",
+        "description": "Creates a new tenant (Keycloak client) via the Bodhi SPI and registers it locally.",
+        "operationId": "tenantsCreate",
+        "requestBody": {
+          "description": "Tenant creation parameters",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Tenant created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTenantResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/tenants/{client_id}/activate": {
+      "post": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Activate Tenant",
+        "description": "Sets the given tenant as the active tenant for the current session. The user must already be logged into this tenant.",
+        "operationId": "tenantsActivate",
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "description": "The client_id of the tenant to activate",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant activated successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
     "/bodhi/v1/tokens": {
       "get": {
         "tags": [
@@ -7085,7 +7502,7 @@
           "auth"
         ],
         "summary": "Get Current User Information",
-        "description": "Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange).",
+        "description": "Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange). Includes `has_dashboard_session` when the user has an active dashboard session.",
         "operationId": "getCurrentUser",
         "responses": {
           "200": {
@@ -7093,13 +7510,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
+                  "$ref": "#/components/schemas/UserInfoEnvelope"
                 },
                 "examples": {
                   "authenticated": {
                     "summary": "Authenticated user",
                     "value": {
                       "auth_status": "logged_in",
+                      "has_dashboard_session": true,
                       "role": "resource_admin",
                       "user_id": "550e8400-e29b-41d4-a716-446655440000",
                       "username": "user@example.com"
@@ -8724,7 +9142,8 @@
         "required": [
           "version",
           "commit_sha",
-          "status"
+          "status",
+          "deployment"
         ],
         "properties": {
           "version": {
@@ -8740,10 +9159,25 @@
           "status": {
             "$ref": "#/components/schemas/AppStatus",
             "description": "Current application setup and operational status"
+          },
+          "deployment": {
+            "type": "string",
+            "description": "Deployment mode: \"standalone\" or \"multi_tenant\"",
+            "example": "standalone"
+          },
+          "client_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Active tenant's OAuth client_id (present when authenticated with an active tenant)",
+            "example": "my-client-id"
           }
         },
         "example": {
+          "client_id": "my-client-id",
           "commit_sha": "abc1234",
+          "deployment": "standalone",
           "status": "ready",
           "version": "0.1.0"
         }
@@ -8766,7 +9200,8 @@
         "enum": [
           "setup",
           "ready",
-          "resource_admin"
+          "resource_admin",
+          "tenant_selection"
         ],
         "example": "ready"
       },
@@ -8942,6 +9377,23 @@
         "example": {
           "code": "auth_code_123",
           "state": "random_state_456"
+        }
+      },
+      "AuthInitiateRequest": {
+        "type": "object",
+        "description": "Request body for initiating OAuth authentication",
+        "required": [
+          "client_id"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "description": "The OAuth client_id of the tenant to authenticate with",
+            "example": "my-client-id"
+          }
+        },
+        "example": {
+          "client_id": "my-client-id"
         }
       },
       "ChangeRoleRequest": {
@@ -11347,6 +11799,34 @@
           }
         ],
         "description": "Discriminated union for creating any type of MCP auth config.\nThe JSON `\"type\"` field determines the variant: `\"header\"` or `\"oauth\"`."
+      },
+      "CreateTenantRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateTenantResponse": {
+        "type": "object",
+        "required": [
+          "client_id"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        }
       },
       "CreateTokenRequest": {
         "type": "object",
@@ -14467,6 +14947,49 @@
           }
         ]
       },
+      "TenantListItem": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "name",
+          "is_active",
+          "logged_in"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "logged_in": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TenantListResponse": {
+        "type": "object",
+        "required": [
+          "tenants"
+        ],
+        "properties": {
+          "tenants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantListItem"
+            }
+          }
+        }
+      },
       "TestCreds": {
         "oneOf": [
           {
@@ -15394,6 +15917,24 @@
           }
         }
       },
+      "UserInfoEnvelope": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/UserResponse",
+            "description": "Core user authentication response"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "has_dashboard_session": {
+                "type": "boolean",
+                "description": "Whether the user has an active dashboard session (only present when true)"
+              }
+            }
+          }
+        ],
+        "description": "Envelope wrapping UserResponse with additional session info"
+      },
       "UserListResponse": {
         "type": "object",
         "required": [
@@ -15707,6 +16248,10 @@
     {
       "name": "ollama",
       "description": "Ollama-compatible API endpoints"
+    },
+    {
+      "name": "tenants",
+      "description": "Tenant management endpoints"
     }
   ],
   "externalDocs": {

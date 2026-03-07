@@ -1,3 +1,4 @@
+use crate::{ClientRegistrationResponseBuilder, KeycloakAuthService};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -10,8 +11,6 @@ use rsa::{
 use rstest::fixture;
 use serde_json::{json, Value};
 use uuid::Uuid;
-
-use crate::{ClientRegistrationResponseBuilder, KeycloakAuthService};
 
 pub const TEST_CLIENT_ID: &str = "test-client";
 pub const TEST_CLIENT_SECRET: &str = "test-client-secret";

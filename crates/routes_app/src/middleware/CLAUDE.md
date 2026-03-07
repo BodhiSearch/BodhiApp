@@ -42,11 +42,24 @@ All return `Result<Response, MiddlewareError>`.
 ### `auth_middleware` (strict)
 1. Strips `X-BodhiApp-*` headers (defense-in-depth)
 2. Checks bearer token -> `AuthContext::ApiToken` or `AuthContext::ExternalApp`
-3. Falls back to session token (same-origin only) -> resolves tenant from JWT `azp` claim via `get_tenant_by_client_id()` -> `AuthContext::Session`
+3. Falls back to session token (same-origin only) via **two-step lookup**:
+   a. Read `active_client_id` from session
+   b. Read `access_token:{client_id}` using namespaced key
+   c. Resolve tenant from JWT `azp` claim via `get_tenant_by_client_id()`
+   d. Call `get_valid_session_token()` for validation/refresh -> `AuthContext::Session`
 4. Returns `AuthError::InvalidAccess` if no valid auth
 5. Inserts `AuthContext` into `req.extensions_mut()`
 
 **No setup check**: Middleware does authentication only. Setup routes gate via `app_status_or_default()`.
+
+### Session Key Format (Multi-Tenant)
+Session keys are namespaced by `client_id` to support multiple tenants per session. Constants and helper functions are defined in `services::session_keys` and re-exported from the `services` crate:
+- `access_token_key(client_id)` -> `"{client_id}:access_token"` (helper function)
+- `refresh_token_key(client_id)` -> `"{client_id}:refresh_token"`
+- `SESSION_KEY_ACTIVE_CLIENT_ID` = `"active_client_id"` (marks which tenant is active)
+- `DASHBOARD_ACCESS_TOKEN_KEY` = `"dashboard:access_token"`
+- `DASHBOARD_REFRESH_TOKEN_KEY` = `"dashboard:refresh_token"`
+- Token refresh lock: `{client_id}:{session_id}:refresh_token` (per-tenant per-session)
 
 ### `optional_auth_middleware` (permissive)
 Same logic but inserts `AuthContext::Anonymous { client_id: None, tenant_id: None }` on any auth failure. Cleans up invalid session data on token validation failure.

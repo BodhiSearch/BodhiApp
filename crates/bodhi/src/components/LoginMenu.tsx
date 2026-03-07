@@ -7,11 +7,13 @@ import { redirect, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLogoutHandler, useOAuthInitiate } from '@/hooks/useAuth';
+import { useAppInfo } from '@/hooks/useInfo';
 import { useUser } from '@/hooks/useUsers';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 
 export function LoginMenu() {
+  const { data: appInfo } = useAppInfo();
   const { data: userInfo, isLoading: userLoading } = useUser();
   const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +73,9 @@ export function LoginMenu() {
 
   const handleOAuthInitiate = () => {
     setError(null); // Clear any previous errors
-    initiateOAuth();
+    if (appInfo?.client_id) {
+      initiateOAuth({ client_id: appInfo.client_id });
+    }
   };
 
   const isLoginButtonDisabled = isLoading || redirecting;

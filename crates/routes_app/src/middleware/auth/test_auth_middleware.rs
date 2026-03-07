@@ -206,7 +206,8 @@ async fn test_auth_middleware_with_valid_session_token(
   let mut record = Record {
     id,
     data: maplit::hashmap! {
-      "access_token".to_string() => Value::String(token.clone()),
+      "test-client:access_token".to_string() => Value::String(token.clone()),
+      "active_client_id".to_string() => Value::String("test-client".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
@@ -275,8 +276,9 @@ async fn test_auth_middleware_with_expired_session_token(
   let mut record = Record {
     id,
     data: maplit::hashmap! {
-        "access_token".to_string() => Value::String(expired_token.clone()),
-        "refresh_token".to_string() => Value::String("valid_refresh_token".to_string()),
+        "test-client:access_token".to_string() => Value::String(expired_token.clone()),
+        "test-client:refresh_token".to_string() => Value::String("valid_refresh_token".to_string()),
+        "active_client_id".to_string() => Value::String("test-client".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
@@ -334,7 +336,7 @@ async fn test_auth_middleware_with_expired_session_token(
     exchanged_token,
     updated_record
       .data
-      .get("access_token")
+      .get("test-client:access_token")
       .unwrap()
       .as_str()
       .unwrap()
@@ -343,7 +345,7 @@ async fn test_auth_middleware_with_expired_session_token(
     "new_refresh_token",
     updated_record
       .data
-      .get("refresh_token")
+      .get("test-client:refresh_token")
       .unwrap()
       .as_str()
       .unwrap()
@@ -371,8 +373,9 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
   let mut record = Record {
     id,
     data: maplit::hashmap! {
-        "access_token".to_string() => Value::String(expired_token.clone()),
-        "refresh_token".to_string() => Value::String("valid_refresh_token".to_string()),
+        "test-client:access_token".to_string() => Value::String(expired_token.clone()),
+        "test-client:refresh_token".to_string() => Value::String("valid_refresh_token".to_string()),
+        "active_client_id".to_string() => Value::String("test-client".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
@@ -426,7 +429,7 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
     new_access_token,
     updated_record
       .data
-      .get("access_token")
+      .get("test-client:access_token")
       .unwrap()
       .as_str()
       .unwrap()
@@ -435,7 +438,7 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
     "new_refresh_token",
     updated_record
       .data
-      .get("refresh_token")
+      .get("test-client:refresh_token")
       .unwrap()
       .as_str()
       .unwrap()
@@ -494,8 +497,9 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
   let mut record = Record {
     id,
     data: maplit::hashmap! {
-        "access_token".to_string() => Value::String(expired_token.clone()),
-        "refresh_token".to_string() => Value::String("refresh_token".to_string()),
+        "test-client:access_token".to_string() => Value::String(expired_token.clone()),
+        "test-client:refresh_token".to_string() => Value::String("refresh_token".to_string()),
+        "active_client_id".to_string() => Value::String("test-client".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
@@ -536,7 +540,7 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
     expired_token,
     updated_record
       .data
-      .get("access_token")
+      .get("test-client:access_token")
       .unwrap()
       .as_str()
       .unwrap()
@@ -545,7 +549,7 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
     "refresh_token",
     updated_record
       .data
-      .get("refresh_token")
+      .get("test-client:refresh_token")
       .unwrap()
       .as_str()
       .unwrap()
@@ -633,7 +637,8 @@ async fn test_session_ignored_when_cross_site(temp_bodhi_home: TempDir) -> anyho
   let mut record = tower_sessions::session::Record {
     id,
     data: maplit::hashmap! {
-      "access_token".to_string() => serde_json::Value::String("dummy".to_string()),
+      "test-client:access_token".to_string() => serde_json::Value::String("dummy".to_string()),
+      "active_client_id".to_string() => serde_json::Value::String("test-client".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };

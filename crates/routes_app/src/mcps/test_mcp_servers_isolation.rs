@@ -5,7 +5,7 @@ use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
   http::{Method, Request},
-  routing::{get, post, put},
+  routing::get,
   Router,
 };
 use hyper::StatusCode;
@@ -17,7 +17,7 @@ use services::AuthContext;
 use services::{
   db::DbService,
   test_utils::{sea_context, AppServiceStubBuilder, SeaTestContext, TEST_TENANT_B_ID},
-  AppService, McpServerRequest, ResourceRole, Tenant, TenantRepository,
+  AppService, McpServerRequest, ResourceRole, Tenant,
 };
 use std::sync::Arc;
 use tower::ServiceExt;

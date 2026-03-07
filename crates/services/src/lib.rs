@@ -5,6 +5,7 @@ pub mod test_utils;
 pub mod test_utils;
 
 // -- Cross-cutting types
+mod session_keys;
 pub mod shared_objs;
 
 // -- Core service infrastructure
@@ -41,6 +42,7 @@ mod settings;
 mod utils;
 
 // -- Re-exports: cross-cutting types
+pub use session_keys::*;
 pub use shared_objs::*;
 
 // -- Re-exports: core service infrastructure

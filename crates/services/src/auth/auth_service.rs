@@ -1,4 +1,5 @@
 use crate::shared_objs::log;
+use crate::tenants::{CreateTenantRequest, KcCreateTenantResponse, KcTenantListResponse};
 use crate::ReqwestError;
 use crate::{AppRole, ResourceRole, UserInfo};
 use async_trait::async_trait;
@@ -115,6 +116,31 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     app_client_id: &str,
     user_token: &str,
   ) -> Result<AppClientInfo>;
+
+  /// Forward an arbitrary HTTP request to the Keycloak Bodhi SPI.
+  /// Builds URL: `{auth_url}/realms/{realm}/bodhi/{endpoint}`
+  /// mostly used by tests to call cleanup
+  async fn forward_request(
+    &self,
+    method: String,
+    endpoint: String,
+    authorization: Option<String>,
+    body: Option<serde_json::Value>,
+  ) -> Result<(u16, serde_json::Value)>;
+
+  /// List tenants available for the authenticated user via the Bodhi SPI.
+  /// SPI endpoint: GET /realms/{realm}/bodhi/tenants
+  async fn list_tenants(&self, dashboard_token: &str) -> Result<KcTenantListResponse>;
+
+  /// Create a new tenant (Keycloak client) via the Bodhi SPI.
+  /// SPI endpoint: POST /realms/{realm}/bodhi/tenants
+  async fn create_tenant(
+    &self,
+    dashboard_token: &str,
+    name: &str,
+    description: &str,
+    redirect_uris: Vec<String>,
+  ) -> Result<KcCreateTenantResponse>;
 }
 
 #[derive(Debug)]
@@ -801,6 +827,116 @@ impl AuthService for KeycloakAuthService {
     } else {
       let error_text = response.text().await?;
       log::log_http_error("GET", &endpoint, "auth_service", &error_text);
+      Err(AuthServiceError::AuthServiceApiError {
+        status: status.as_u16(),
+        body: error_text,
+      })
+    }
+  }
+
+  async fn forward_request(
+    &self,
+    method: String,
+    endpoint: String,
+    authorization: Option<String>,
+    body: Option<serde_json::Value>,
+  ) -> Result<(u16, serde_json::Value)> {
+    let url = format!("{}/{}", self.auth_api_url(), endpoint);
+    println!("SPI request: {} {}", method, url);
+    log::log_http_request(&method, &url, "auth_service", None);
+
+    let mut request = match method.to_uppercase().as_str() {
+      "GET" => self.client.get(&url),
+      "POST" => self.client.post(&url),
+      "PUT" => self.client.put(&url),
+      "DELETE" => self.client.delete(&url),
+      "PATCH" => self.client.patch(&url),
+      _ => self.client.get(&url),
+    };
+
+    if let Some(ref token) = authorization {
+      request = request.bearer_auth(token);
+    }
+    if let Some(json_body) = body {
+      request = request.json(&json_body);
+    }
+    request = request.header(HEADER_BODHI_APP_VERSION, &self.app_version);
+
+    let response = request.send().await?;
+    let status = response.status().as_u16();
+    let body_text = response.text().await?;
+    let json_body =
+      serde_json::from_str(&body_text).unwrap_or_else(|_| serde_json::json!({"raw": body_text}));
+
+    if status >= 400 {
+      tracing::error!(
+        "SPI request failed: {} {} -> {} {}",
+        method,
+        endpoint,
+        status,
+        body_text
+      );
+    }
+
+    Ok((status, json_body))
+  }
+
+  async fn list_tenants(&self, dashboard_token: &str) -> Result<KcTenantListResponse> {
+    let endpoint = format!("{}/tenants", self.auth_api_url());
+    log::log_http_request("GET", &endpoint, "auth_service", None);
+
+    let response = self
+      .client
+      .get(&endpoint)
+      .bearer_auth(dashboard_token)
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    let status = response.status();
+    if status.is_success() {
+      Ok(response.json::<KcTenantListResponse>().await?)
+    } else {
+      let error_text = response.text().await?;
+      log::log_http_error("GET", &endpoint, "auth_service", &error_text);
+      Err(AuthServiceError::AuthServiceApiError {
+        status: status.as_u16(),
+        body: error_text,
+      })
+    }
+  }
+
+  async fn create_tenant(
+    &self,
+    bearer_token: &str,
+    name: &str,
+    description: &str,
+    redirect_uris: Vec<String>,
+  ) -> Result<KcCreateTenantResponse> {
+    let endpoint = format!("{}/tenants", self.auth_api_url());
+    log::log_http_request("POST", &endpoint, "auth_service", None);
+
+    let request_body = CreateTenantRequest {
+      name: name.to_string(),
+      description: description.to_string(),
+      redirect_uris,
+    };
+
+    let response = self
+      .client
+      .post(&endpoint)
+      .json(&request_body)
+      .bearer_auth(bearer_token)
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    let status = response.status();
+    if status.is_success() {
+      Ok(response.json::<KcCreateTenantResponse>().await?)
+    } else {
+      let error_text = response.text().await?;
+      log::log_http_error("POST", &endpoint, "auth_service", &error_text);
       Err(AuthServiceError::AuthServiceApiError {
         status: status.as_u16(),
         body: error_text,

@@ -4,10 +4,10 @@ use super::{
   BODHI_CANONICAL_REDIRECT, BODHI_COMMIT_SHA, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY,
   BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME, BODHI_EXEC_TARGET, BODHI_EXEC_VARIANT,
   BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS, BODHI_LLAMACPP_ARGS,
-  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_MULTITENANT_CLIENT_ID, BODHI_ON_RUNPOD, BODHI_PORT,
-  BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_SCHEME, BODHI_SESSION_DB_URL,
-  BODHI_VERSION, DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT, HF_HOME, LOGIN_CALLBACK_PATH, PROD_DB,
-  RUNPOD_POD_ID,
+  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_MULTITENANT_CLIENT_ID, BODHI_MULTITENANT_CLIENT_SECRET,
+  BODHI_ON_RUNPOD, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME,
+  BODHI_SCHEME, BODHI_SESSION_DB_URL, BODHI_VERSION, DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT,
+  HF_HOME, LOGIN_CALLBACK_PATH, LOGIN_DASHBOARD_CALLBACK_PATH, PROD_DB, RUNPOD_POD_ID,
 };
 use serde_yaml::Value;
 use std::{path::Path, path::PathBuf, sync::Arc};
@@ -143,8 +143,7 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     self
       .get_setting(BODHI_COMMIT_SHA)
       .await
-      .expect("BODHI_COMMIT_SHA should be set")
-      .to_string()
+      .unwrap_or_else(|| "not-set".to_string())
   }
 
   async fn auth_url(&self) -> String {
@@ -251,11 +250,15 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
   }
 
   async fn is_multi_tenant(&self) -> bool {
-    self.deployment_mode().await == "multi-tenant"
+    self.deployment_mode().await == "multi_tenant"
   }
 
   async fn multitenant_client_id(&self) -> Option<String> {
     self.get_setting(BODHI_MULTITENANT_CLIENT_ID).await
+  }
+
+  async fn multitenant_client_secret(&self) -> Option<String> {
+    SettingService::get_env(self, BODHI_MULTITENANT_CLIENT_SECRET).await
   }
 
   async fn log_level(&self) -> LogLevel {
@@ -418,6 +421,14 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   async fn login_callback_url(&self) -> String {
     format!("{}{}", self.public_server_url().await, LOGIN_CALLBACK_PATH)
+  }
+
+  async fn dashboard_callback_url(&self) -> String {
+    format!(
+      "{}{}",
+      self.public_server_url().await,
+      LOGIN_DASHBOARD_CALLBACK_PATH
+    )
   }
 
   async fn encryption_key(&self) -> Option<String> {

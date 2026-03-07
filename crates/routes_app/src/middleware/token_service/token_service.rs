@@ -1,6 +1,7 @@
-use crate::middleware::auth::{AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
+use crate::middleware::auth::AuthError;
 use serde::{Deserialize, Serialize};
 use services::AuthContext;
+use services::{access_token_key, refresh_token_key};
 use services::{
   db::{DbService, TimeService},
   extract_claims, AuthService, CacheService, Claims, ConcurrencyService, ExpClaims, ScopeClaims,
@@ -432,7 +433,7 @@ impl DefaultTokenService {
     let session_id = session
       .id()
       .ok_or_else(|| AuthError::RefreshTokenNotFound)?;
-    let lock_key = format!("refresh_token:{}", session_id);
+    let lock_key = format!("{}:{}:refresh_token", instance_client_id, session_id);
 
     // Extract user_id from expired token for logging
     let user_id = claims.sub.clone();
@@ -459,7 +460,7 @@ impl DefaultTokenService {
               // Double-checked locking: re-fetch token from session
               // (another request might have already refreshed it)
               let current_access_token = session_clone
-                .get::<String>(SESSION_KEY_ACCESS_TOKEN)
+                .get::<String>(&access_token_key(&client_id))
                 .await?;
 
               let Some(current_access_token) = current_access_token else {
@@ -490,7 +491,7 @@ impl DefaultTokenService {
 
               // Token still expired, we need to refresh it
               let refresh_token = session_clone
-                .get::<String>(SESSION_KEY_REFRESH_TOKEN)
+                .get::<String>(&refresh_token_key(&client_id))
                 .await?;
 
               let Some(refresh_token) = refresh_token else {
@@ -521,14 +522,14 @@ impl DefaultTokenService {
               // Extract claims from new token first to validate and get role
               let new_claims = extract_claims::<Claims>(&new_access_token)?;
 
-              // Store new tokens in session
+              // Store new tokens in session (namespaced by client_id)
               session_clone
-                .insert(SESSION_KEY_ACCESS_TOKEN, &new_access_token)
+                .insert(&access_token_key(&client_id), &new_access_token)
                 .await?;
 
               if let Some(new_refresh_token) = new_refresh_token.as_ref() {
                 session_clone
-                  .insert(SESSION_KEY_REFRESH_TOKEN, new_refresh_token)
+                  .insert(&refresh_token_key(&client_id), new_refresh_token)
                   .await?;
                 tracing::debug!(
                   "Updated access and refresh tokens in session for user: {}",

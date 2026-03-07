@@ -52,6 +52,21 @@ pub enum UserResponse {
   Token(TokenInfo),
 }
 
+/// Envelope wrapping UserResponse with additional session info
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+pub struct UserInfoEnvelope {
+  /// Core user authentication response
+  #[serde(flatten)]
+  pub user: UserResponse,
+  /// Whether the user has an active dashboard session (only present when true)
+  #[serde(default, skip_serializing_if = "is_false")]
+  pub has_dashboard_session: bool,
+}
+
+fn is_false(v: &bool) -> bool {
+  !v
+}
+
 // === From routes_users_list.rs ===
 
 /// List users query parameters. Intentionally omits sort fields (unlike PaginationSortParams)

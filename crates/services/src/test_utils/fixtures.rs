@@ -22,6 +22,7 @@ impl Tenant {
       client_id: TEST_CLIENT_ID.to_string(),
       client_secret: TEST_CLIENT_SECRET.to_string(),
       status: AppStatus::Ready,
+      created_by: None,
       created_at: now,
       updated_at: now,
     }
@@ -41,6 +42,7 @@ impl Tenant {
       client_id: "test-client-b".to_string(),
       client_secret: "test-client-secret-b".to_string(),
       status: AppStatus::Ready,
+      created_by: None,
       created_at: now,
       updated_at: now,
     }

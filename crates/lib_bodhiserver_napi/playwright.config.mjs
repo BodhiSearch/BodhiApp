@@ -15,8 +15,8 @@ const actionTimeout = 30000;
 // Check if running scheduled tests via --grep flag
 const isScheduledRun = process.argv.includes('--grep') && process.argv.some(arg => arg.includes('@scheduled'));
 
-// Dual-DB support: SQLite (port 51135) and PostgreSQL (port 51136)
-// PostgreSQL requires docker/docker-compose.test.yml containers running
+// Dual-project support: standalone (SQLite, port 51135) and multi_tenant (PostgreSQL, port 41135)
+// multi_tenant requires docker/docker-compose.test.yml containers running
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -76,7 +76,7 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'sqlite',
+      name: 'standalone',
       use: {
         ...devices['Desktop Chrome'],
         // Use headless mode in CI or when explicitly set
@@ -84,7 +84,14 @@ export default defineConfig({
       },
     },
     {
-      name: 'postgres',
+      name: 'multi_tenant',
+      testIgnore: [
+        '**/setup/**',       // Setup flow is standalone-only
+        '**/chat/chat.spec.mjs',         // Requires local GGUF model (selectModelQwen)
+        '**/chat/chat-agentic.spec.mjs', // Requires local GGUF model (selectModelQwen)
+        '**/models/**',      // Local model alias + metadata require GGUF files
+        '**/tokens/**',      // api-tokens uses selectModelQwen for chat integration
+      ],
       use: {
         ...devices['Desktop Chrome'],
         headless: !!process.env.CI || process.env.HEADLESS === 'true' || process.env.PLAYWRIGHT_HEADLESS === 'true',
@@ -127,7 +134,7 @@ export default defineConfig({
       timeout: 60000,
     },
     {
-      command: 'node tests-js/scripts/start-shared-server.mjs --port 41135 --db-type postgres',
+      command: 'node tests-js/scripts/start-shared-server.mjs --port 41135 --db-type postgres --deployment multi_tenant',
       url: 'http://localhost:41135/ping',
       reuseExistingServer: false,
       timeout: 60000,

@@ -9,23 +9,26 @@ use crate::{
   api_models_index, api_models_show, api_models_sync, api_models_test, api_models_update,
   apps_approve_access_request, apps_create_access_request, apps_deny_access_request,
   apps_get_access_request_review, apps_get_access_request_status, auth_callback, auth_initiate,
-  auth_logout, dev_db_reset_handler, dev_secrets_handler, envs_handler, health_handler,
-  modelfiles_index, models_copy, models_create, models_destroy, models_index, models_pull_create,
-  models_pull_index, models_pull_show, models_show, models_update, ping_handler,
-  queue_status_handler, refresh_metadata_handler, tokens_create, tokens_index, tokens_update,
-  users_access_request_approve, users_access_request_reject, users_access_requests_index,
-  users_access_requests_pending, users_change_role, users_destroy, users_index, users_info,
-  users_request_access, users_request_status, BodhiOpenAPIDoc, GlobalErrorResponses,
-  OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE,
-  ENDPOINT_ACCESS_REQUESTS_DENY, ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW,
-  ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS,
-  ENDPOINT_API_MODELS_TEST, ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS,
-  ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
-  ENDPOINT_DEV_DB_RESET, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT,
-  ENDPOINT_MODELS, ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL,
-  ENDPOINT_PING, ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS,
-  ENDPOINT_TOOLSET_TYPES, ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS,
-  ENDPOINT_USER_REQUEST_STATUS,
+  auth_logout, dashboard_auth_callback, dashboard_auth_initiate, dev_clients_dag_handler,
+  dev_db_reset_handler, dev_secrets_handler, dev_tenants_cleanup_handler, envs_handler,
+  health_handler, modelfiles_index, models_copy, models_create, models_destroy, models_index,
+  models_pull_create, models_pull_index, models_pull_show, models_show, models_update,
+  ping_handler, queue_status_handler, refresh_metadata_handler, tenants_activate, tenants_create,
+  tenants_index, tokens_create, tokens_index, tokens_update, users_access_request_approve,
+  users_access_request_reject, users_access_requests_index, users_access_requests_pending,
+  users_change_role, users_destroy, users_index, users_info, users_request_access,
+  users_request_status, BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier,
+  ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
+  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW, ENDPOINT_API_MODELS,
+  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
+  ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
+  ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
+  ENDPOINT_DASHBOARD_AUTH_CALLBACK, ENDPOINT_DASHBOARD_AUTH_INITIATE, ENDPOINT_DEV_CLIENTS_DAG,
+  ENDPOINT_DEV_DB_RESET, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_DEV_TENANTS_CLEANUP,
+  ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES,
+  ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TENANTS,
+  ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES, ENDPOINT_USERS, ENDPOINT_USER_INFO,
+  ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use crate::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
@@ -74,7 +77,6 @@ pub async fn build_routes(
   let public_apis = Router::new()
     .route(ENDPOINT_PING, get(ping_handler))
     .route(ENDPOINT_HEALTH, get(health_handler))
-    .route(ENDPOINT_APP_INFO, get(setup_show))
     .route(ENDPOINT_APP_SETUP, post(setup_create))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
     .route(ENDPOINT_LOGOUT, post(auth_logout))
@@ -89,18 +91,42 @@ pub async fn build_routes(
     );
 
   let mut optional_auth = Router::new()
+    .route(ENDPOINT_APP_INFO, get(setup_show))
     .route(ENDPOINT_USER_INFO, get(users_info))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate))
     .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback))
     .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
-    .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status));
+    .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status))
+    .route(
+      ENDPOINT_DASHBOARD_AUTH_INITIATE,
+      post(dashboard_auth_initiate),
+    )
+    .route(
+      ENDPOINT_DASHBOARD_AUTH_CALLBACK,
+      post(dashboard_auth_callback),
+    )
+    .route(ENDPOINT_TENANTS, get(tenants_index))
+    .route(ENDPOINT_TENANTS, post(tenants_create))
+    .route(
+      &format!("{ENDPOINT_TENANTS}/{{client_id}}/activate"),
+      post(tenants_activate),
+    );
 
   // Dev-only routes with optional auth
   if !app_service.setting_service().is_production().await {
     let dev_apis = Router::new()
       .route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler))
       .route(ENDPOINT_DEV_ENVS, get(envs_handler))
-      .route(ENDPOINT_DEV_DB_RESET, post(dev_db_reset_handler));
+      .route(ENDPOINT_DEV_DB_RESET, post(dev_db_reset_handler))
+      .route(ENDPOINT_DEV_CLIENTS_DAG, post(dev_clients_dag_handler))
+      .route(
+        ENDPOINT_DEV_TENANTS_CLEANUP,
+        get(dev_tenants_cleanup_handler),
+      )
+      .route(
+        ENDPOINT_DEV_TENANTS_CLEANUP,
+        delete(dev_tenants_cleanup_handler),
+      );
     optional_auth = optional_auth.merge(dev_apis);
   }
 

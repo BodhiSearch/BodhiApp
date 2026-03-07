@@ -104,8 +104,18 @@ impl AppServiceBuilder {
       })
       .unwrap_or_else(|| format!("sqlite:{}", parts.bodhi_home.join(PROD_DB).display()));
 
-    let db_service =
-      Self::build_db_service(&app_db_url, time_service.clone(), encryption_key.clone()).await?;
+    let env_type = if is_production {
+      services::EnvType::Production
+    } else {
+      services::EnvType::Development
+    };
+    let db_service = Self::build_db_service(
+      &app_db_url,
+      time_service.clone(),
+      encryption_key.clone(),
+      env_type,
+    )
+    .await?;
 
     let setting_service: Arc<dyn SettingService> =
       Arc::new(DefaultSettingService::from_parts(parts, db_service.clone()));
@@ -239,6 +249,7 @@ impl AppServiceBuilder {
     db_url: &str,
     time_service: Arc<dyn TimeService>,
     encryption_key: Vec<u8>,
+    env_type: services::EnvType,
   ) -> Result<Arc<dyn DbService>, BootstrapError> {
     // For SQLite URLs, append ?mode=rwc to create the file if missing
     let connect_url = if db_url.starts_with("sqlite:") && !db_url.contains("mode=") {
@@ -253,7 +264,8 @@ impl AppServiceBuilder {
     let db = sea_orm::Database::connect(&connect_url)
       .await
       .map_err(|e| BootstrapError::Db(e.into()))?;
-    let db_service = DefaultDbService::new(db, time_service, encryption_key);
+    let db_service =
+      DefaultDbService::new(db, time_service, encryption_key).with_env_type(env_type);
     db_service.migrate().await?;
     Ok(Arc::new(db_service))
   }

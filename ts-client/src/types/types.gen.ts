@@ -223,11 +223,19 @@ export type AppInfo = {
      * Current application setup and operational status
      */
     status: AppStatus;
+    /**
+     * Deployment mode: "standalone" or "multi_tenant"
+     */
+    deployment: string;
+    /**
+     * Active tenant's OAuth client_id (present when authenticated with an active tenant)
+     */
+    client_id?: string | null;
 };
 
 export type AppRole = ResourceRole | TokenScope | UserScope;
 
-export type AppStatus = 'setup' | 'ready' | 'resource_admin';
+export type AppStatus = 'setup' | 'ready' | 'resource_admin' | 'tenant_selection';
 
 /**
  * Application-level toolset configuration
@@ -312,6 +320,16 @@ export type AuthCallbackRequest = {
      */
     error_description?: string | null;
     [key: string]: string | (string | null) | (string | null) | (string | null) | (string | null) | undefined;
+};
+
+/**
+ * Request body for initiating OAuth authentication
+ */
+export type AuthInitiateRequest = {
+    /**
+     * The OAuth client_id of the tenant to authenticate with
+     */
+    client_id: string;
 };
 
 /**
@@ -1205,6 +1223,15 @@ export type CreateMcpAuthConfigRequest = {
     token_endpoint_auth_method?: string | null;
     client_id_issued_at?: number | null;
     type: 'oauth';
+};
+
+export type CreateTenantRequest = {
+    name: string;
+    description?: string | null;
+};
+
+export type CreateTenantResponse = {
+    client_id: string;
 };
 
 export type CreateTokenRequest = {
@@ -2395,6 +2422,18 @@ export type ShowResponse = {
 
 export type StopConfiguration = string | Array<string>;
 
+export type TenantListItem = {
+    client_id: string;
+    name: string;
+    description?: string | null;
+    is_active: boolean;
+    logged_in: boolean;
+};
+
+export type TenantListResponse = {
+    tenants: Array<TenantListItem>;
+};
+
 /**
  * Credentials for test/fetch operations
  */
@@ -2827,6 +2866,16 @@ export type UserInfo = {
     first_name?: string | null;
     last_name?: string | null;
     role?: null | AppRole;
+};
+
+/**
+ * Envelope wrapping UserResponse with additional session info
+ */
+export type UserInfoEnvelope = UserResponse & {
+    /**
+     * Whether the user has an active dashboard session (only present when true)
+     */
+    has_dashboard_session?: boolean;
 };
 
 export type UserListResponse = {
@@ -3904,8 +3953,92 @@ export type CompleteOAuthFlowResponses = {
 
 export type CompleteOAuthFlowResponse = CompleteOAuthFlowResponses[keyof CompleteOAuthFlowResponses];
 
-export type InitiateOAuthFlowData = {
+export type CompleteDashboardOAuthFlowData = {
+    /**
+     * OAuth callback parameters from authorization server
+     */
+    body: AuthCallbackRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/auth/dashboard/callback';
+};
+
+export type CompleteDashboardOAuthFlowErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CompleteDashboardOAuthFlowError = CompleteDashboardOAuthFlowErrors[keyof CompleteDashboardOAuthFlowErrors];
+
+export type CompleteDashboardOAuthFlowResponses = {
+    /**
+     * Dashboard OAuth flow completed successfully
+     */
+    200: RedirectResponse;
+};
+
+export type CompleteDashboardOAuthFlowResponse = CompleteDashboardOAuthFlowResponses[keyof CompleteDashboardOAuthFlowResponses];
+
+export type InitiateDashboardOAuthFlowData = {
     body: unknown;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/auth/dashboard/initiate';
+};
+
+export type InitiateDashboardOAuthFlowErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type InitiateDashboardOAuthFlowError = InitiateDashboardOAuthFlowErrors[keyof InitiateDashboardOAuthFlowErrors];
+
+export type InitiateDashboardOAuthFlowResponses = {
+    /**
+     * User already has a valid dashboard token
+     */
+    200: RedirectResponse;
+    /**
+     * OAuth authorization URL provided for dashboard login
+     */
+    201: RedirectResponse;
+};
+
+export type InitiateDashboardOAuthFlowResponse = InitiateDashboardOAuthFlowResponses[keyof InitiateDashboardOAuthFlowResponses];
+
+export type InitiateOAuthFlowData = {
+    /**
+     * OAuth initiate parameters
+     */
+    body: AuthInitiateRequest;
     path?: never;
     query?: never;
     url: '/bodhi/v1/auth/initiate';
@@ -5723,6 +5856,123 @@ export type SetupAppResponses = {
 
 export type SetupAppResponse = SetupAppResponses[keyof SetupAppResponses];
 
+export type TenantsListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/tenants';
+};
+
+export type TenantsListErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type TenantsListError = TenantsListErrors[keyof TenantsListErrors];
+
+export type TenantsListResponses = {
+    /**
+     * List of tenants
+     */
+    200: TenantListResponse;
+};
+
+export type TenantsListResponse = TenantsListResponses[keyof TenantsListResponses];
+
+export type TenantsCreateData = {
+    /**
+     * Tenant creation parameters
+     */
+    body: CreateTenantRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/tenants';
+};
+
+export type TenantsCreateErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type TenantsCreateError = TenantsCreateErrors[keyof TenantsCreateErrors];
+
+export type TenantsCreateResponses = {
+    /**
+     * Tenant created successfully
+     */
+    201: CreateTenantResponse;
+};
+
+export type TenantsCreateResponse = TenantsCreateResponses[keyof TenantsCreateResponses];
+
+export type TenantsActivateData = {
+    body?: never;
+    path: {
+        /**
+         * The client_id of the tenant to activate
+         */
+        client_id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/tenants/{client_id}/activate';
+};
+
+export type TenantsActivateErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type TenantsActivateError = TenantsActivateErrors[keyof TenantsActivateErrors];
+
+export type TenantsActivateResponses = {
+    /**
+     * Tenant activated successfully
+     */
+    200: unknown;
+};
+
 export type ListApiTokensData = {
     body?: never;
     path?: never;
@@ -6297,7 +6547,7 @@ export type GetCurrentUserResponses = {
     /**
      * User information (authenticated or not)
      */
-    200: UserResponse;
+    200: UserInfoEnvelope;
 };
 
 export type GetCurrentUserResponse = GetCurrentUserResponses[keyof GetCurrentUserResponses];

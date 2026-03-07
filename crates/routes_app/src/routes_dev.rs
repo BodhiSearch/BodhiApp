@@ -1,13 +1,15 @@
-use crate::{ApiError, AuthScope};
+use crate::{ensure_valid_dashboard_token, ApiError, AuthScope, DashboardAuthRouteError};
 use axum::{
   body::Body,
+  extract::Path,
   http::StatusCode,
   response::{IntoResponse, Response},
   Json,
 };
 use serde_json::json;
-use services::{AppError, SerdeJsonError};
+use services::{AppError, AuthServiceError, ErrorType, SerdeJsonError};
 use services::{DbError, SessionServiceError, TenantError};
+use tower_sessions::Session;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -20,6 +22,19 @@ pub enum DevError {
   DbError(#[from] DbError),
   #[error(transparent)]
   SessionServiceError(#[from] SessionServiceError),
+  #[error(transparent)]
+  AuthServiceError(#[from] AuthServiceError),
+  #[error(transparent)]
+  DashboardAuthRouteError(#[from] DashboardAuthRouteError),
+  #[error("Not in multi-tenant mode.")]
+  #[error_meta(error_type = ErrorType::InvalidAppState)]
+  NotMultiTenant,
+  #[error("Tenant '{0}' not found in local database.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  TenantNotFoundLocal(String),
+  #[error("KC SPI request failed (status {status}): {body}.")]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  SpiRequestFailed { status: u16, body: String },
 }
 
 pub async fn dev_secrets_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
@@ -65,6 +80,107 @@ pub async fn dev_db_reset_handler(auth_scope: AuthScope) -> Result<Response, Api
     .await
     .map_err(DevError::from)?;
   Ok((StatusCode::OK, Json(json!({"status": "ok"}))).into_response())
+}
+
+pub async fn dev_clients_dag_handler(
+  auth_scope: AuthScope,
+  session: Session,
+  Path(client_id): Path<String>,
+) -> Result<Response, ApiError> {
+  if !auth_scope.settings().is_multi_tenant().await {
+    return Err(DevError::NotMultiTenant)?;
+  }
+
+  let dashboard_token: String = ensure_valid_dashboard_token(
+    &session,
+    auth_scope.auth_service().as_ref(),
+    auth_scope.settings().as_ref(),
+    auth_scope.time().as_ref(),
+  )
+  .await
+  .map_err(DevError::from)?;
+
+  let (status, body) = auth_scope
+    .auth_service()
+    .forward_request(
+      "POST".to_string(),
+      format!("test/clients/{}/dag", client_id),
+      Some(dashboard_token.clone()),
+      None,
+    )
+    .await
+    .map_err(DevError::from)?;
+
+  if status >= 400 {
+    return Err(DevError::SpiRequestFailed {
+      status,
+      body: body.to_string(),
+    })?;
+  }
+
+  // Look up local tenant to get client_secret
+  let tenant = auth_scope
+    .tenant()
+    .get_tenant_by_client_id(&client_id)
+    .await
+    .map_err(DevError::from)?
+    .ok_or_else(|| DevError::TenantNotFoundLocal(client_id.clone()))?;
+
+  Ok(
+    (
+      StatusCode::OK,
+      Json(json!({
+        "client_id": tenant.client_id,
+        "client_secret": tenant.client_secret,
+      })),
+    )
+      .into_response(),
+  )
+}
+
+pub async fn dev_tenants_cleanup_handler(
+  auth_scope: AuthScope,
+  session: Session,
+) -> Result<Response, ApiError> {
+  if !auth_scope.settings().is_multi_tenant().await {
+    return Err(DevError::NotMultiTenant)?;
+  }
+
+  let dashboard_token: String = ensure_valid_dashboard_token(
+    &session,
+    auth_scope.auth_service().as_ref(),
+    auth_scope.settings().as_ref(),
+    auth_scope.time().as_ref(),
+  )
+  .await
+  .map_err(DevError::from)?;
+
+  let (status, body) = auth_scope
+    .auth_service()
+    .forward_request(
+      "DELETE".to_string(),
+      "test/tenants/cleanup".to_string(),
+      Some(dashboard_token),
+      None,
+    )
+    .await
+    .map_err(DevError::from)?;
+
+  if status >= 400 {
+    return Err(DevError::SpiRequestFailed {
+      status,
+      body: body.to_string(),
+    })?;
+  }
+
+  // Truncate local tenants table
+  auth_scope
+    .db()
+    .reset_tenants()
+    .await
+    .map_err(DevError::from)?;
+
+  Ok((StatusCode::OK, Json(body)).into_response())
 }
 
 #[cfg(test)]

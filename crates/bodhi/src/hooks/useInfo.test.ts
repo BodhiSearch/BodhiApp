@@ -16,6 +16,7 @@ const mockAppInfoData: AppInfo = {
   commit_sha: 'not-set',
   version: '0.1.0',
   status: 'ready',
+  deployment: 'standalone',
 };
 
 const mockUserInfoData = {

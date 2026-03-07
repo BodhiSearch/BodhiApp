@@ -123,6 +123,7 @@ pub fn try_build_app_options_internal(
       client_id,
       client_secret,
       status,
+      created_by: None,
       created_at: now,
       updated_at: now,
     };
@@ -200,6 +201,12 @@ pub const BODHI_APP_DB_URL: &str = "BODHI_APP_DB_URL";
 
 #[napi]
 pub const BODHI_DEPLOYMENT: &str = "BODHI_DEPLOYMENT";
+
+#[napi]
+pub const BODHI_MULTITENANT_CLIENT_ID: &str = "BODHI_MULTITENANT_CLIENT_ID";
+
+#[napi]
+pub const BODHI_MULTITENANT_CLIENT_SECRET: &str = "BODHI_MULTITENANT_CLIENT_SECRET";
 
 #[napi]
 pub const HF_HOME: &str = "HF_HOME";

@@ -21,6 +21,10 @@ export const ROUTE_ACCESS_REQUESTS_ALL = '/ui/users/access-requests';
 export const ROUTE_USERS = '/ui/users';
 export const ROUTE_UNAUTHORIZED = '/ui/unauthorized';
 
+// Tenant routes
+export const ROUTE_SETUP_TENANTS = '/ui/setup/tenants';
+export const ROUTE_DASHBOARD_CALLBACK = '/ui/auth/dashboard/callback';
+
 // MCP routes
 export const ROUTE_MCPS = '/ui/mcps';
 export const ROUTE_MCP_SERVERS = '/ui/mcp-servers';

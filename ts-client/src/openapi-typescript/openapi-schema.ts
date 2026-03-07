@@ -365,6 +365,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/auth/dashboard/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Dashboard OAuth Authentication
+         * @description Completes the dashboard OAuth authentication flow by exchanging authorization code for tokens.
+         */
+        post: operations["completeDashboardOAuthFlow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/auth/dashboard/initiate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Initiate Dashboard OAuth Authentication
+         * @description Initiates the dashboard OAuth authentication flow using the multi-tenant client. Only available in multi-tenant mode.
+         */
+        post: operations["initiateDashboardOAuthFlow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/auth/initiate": {
         parameters: {
             query?: never;
@@ -928,6 +968,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tenants
+         * @description Lists all tenants visible to the authenticated dashboard user. Each tenant includes whether it is currently active and whether the user has a valid session for it.
+         */
+        get: operations["tenantsList"];
+        put?: never;
+        /**
+         * Create Tenant
+         * @description Creates a new tenant (Keycloak client) via the Bodhi SPI and registers it locally.
+         */
+        post: operations["tenantsCreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/tenants/{client_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activate Tenant
+         * @description Sets the given tenant as the active tenant for the current session. The user must already be logged into this tenant.
+         */
+        post: operations["tenantsActivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/tokens": {
         parameters: {
             query?: never;
@@ -1076,7 +1160,7 @@ export interface paths {
         };
         /**
          * Get Current User Information
-         * @description Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange).
+         * @description Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange). Includes `has_dashboard_session` when the user has an active dashboard session.
          */
         get: operations["getCurrentUser"];
         put?: never;
@@ -1498,7 +1582,9 @@ export interface components {
         /**
          * @description Application information and status
          * @example {
+         *       "client_id": "my-client-id",
          *       "commit_sha": "abc1234",
+         *       "deployment": "standalone",
          *       "status": "ready",
          *       "version": "0.1.0"
          *     }
@@ -1516,13 +1602,23 @@ export interface components {
             commit_sha: string;
             /** @description Current application setup and operational status */
             status: components["schemas"]["AppStatus"];
+            /**
+             * @description Deployment mode: "standalone" or "multi_tenant"
+             * @example standalone
+             */
+            deployment: string;
+            /**
+             * @description Active tenant's OAuth client_id (present when authenticated with an active tenant)
+             * @example my-client-id
+             */
+            client_id?: string | null;
         };
         AppRole: components["schemas"]["ResourceRole"] | components["schemas"]["TokenScope"] | components["schemas"]["UserScope"];
         /**
          * @example ready
          * @enum {string}
          */
-        AppStatus: "setup" | "ready" | "resource_admin";
+        AppStatus: "setup" | "ready" | "resource_admin" | "tenant_selection";
         /** @description Application-level toolset configuration */
         AppToolsetConfig: {
             /** @description Toolset type identifier (e.g., "builtin-exa-search") */
@@ -1623,6 +1719,19 @@ export interface components {
             error_description?: string | null;
         } & {
             [key: string]: string;
+        };
+        /**
+         * @description Request body for initiating OAuth authentication
+         * @example {
+         *       "client_id": "my-client-id"
+         *     }
+         */
+        AuthInitiateRequest: {
+            /**
+             * @description The OAuth client_id of the tenant to authenticate with
+             * @example my-client-id
+             */
+            client_id: string;
         };
         /** @description Change user role request */
         ChangeRoleRequest: {
@@ -2343,6 +2452,13 @@ export interface components {
             client_id_issued_at?: number | null;
             /** @enum {string} */
             type: "oauth";
+        };
+        CreateTenantRequest: {
+            name: string;
+            description?: string | null;
+        };
+        CreateTenantResponse: {
+            client_id: string;
         };
         /** @example {
          *       "name": "My Integration Token",
@@ -3375,6 +3491,16 @@ export interface components {
             template: string;
         };
         StopConfiguration: string | string[];
+        TenantListItem: {
+            client_id: string;
+            name: string;
+            description?: string | null;
+            is_active: boolean;
+            logged_in: boolean;
+        };
+        TenantListResponse: {
+            tenants: components["schemas"]["TenantListItem"][];
+        };
         /** @description Credentials for test/fetch operations */
         TestCreds: {
             /** @description Look up credentials from stored API model */
@@ -3734,6 +3860,11 @@ export interface components {
             /** @example Doe */
             last_name?: string | null;
             role?: null | components["schemas"]["AppRole"];
+        };
+        /** @description Envelope wrapping UserResponse with additional session info */
+        UserInfoEnvelope: components["schemas"]["UserResponse"] & {
+            /** @description Whether the user has an active dashboard session (only present when true) */
+            has_dashboard_session?: boolean;
         };
         UserListResponse: {
             /** @example resource-abc123def456 */
@@ -5465,7 +5596,68 @@ export interface operations {
             };
         };
     };
-    initiateOAuthFlow: {
+    completeDashboardOAuthFlow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description OAuth callback parameters from authorization server */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Dashboard OAuth flow completed successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedirectResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    initiateDashboardOAuthFlow: {
         parameters: {
             query?: never;
             header?: never;
@@ -5475,6 +5667,76 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description User already has a valid dashboard token */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedirectResponse"];
+                };
+            };
+            /** @description OAuth authorization URL provided for dashboard login */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedirectResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    initiateOAuthFlow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description OAuth initiate parameters */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthInitiateRequest"];
             };
         };
         responses: {
@@ -5556,7 +5818,9 @@ export interface operations {
                 };
                 content: {
                     /** @example {
+                     *       "client_id": "my-client-id",
                      *       "commit_sha": "abc1234",
+                     *       "deployment": "standalone",
                      *       "status": "ready",
                      *       "version": "0.1.0"
                      *     } */
@@ -8379,6 +8643,180 @@ export interface operations {
             };
         };
     };
+    tenantsList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of tenants */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantListResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    tenantsCreate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Tenant creation parameters */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTenantRequest"];
+            };
+        };
+        responses: {
+            /** @description Tenant created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTenantResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    tenantsActivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The client_id of the tenant to activate */
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant activated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
     listApiTokens: {
         parameters: {
             query?: {
@@ -9240,7 +9678,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponse"];
+                    "application/json": components["schemas"]["UserInfoEnvelope"];
                 };
             };
             /** @description Invalid request parameters */

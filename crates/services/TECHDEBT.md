@@ -11,3 +11,27 @@
 **Proposed fix**: Read from `BODHI_SCHEME` setting (or equivalent deployment context flag) and set `with_secure(true)` when the scheme is `https`.
 
 **Deferred because**: The setting is not currently exposed via `SettingService`, and the deployment context detection needs design. Tracked for when HTTPS support is formalized.
+
+## ConcurrencyService: Cluster-Wide Distributed Locking
+
+**Location**: `crates/services/src/db/concurrency_service.rs`
+
+**Issue**: `ConcurrencyService` uses in-memory `tokio::sync::Mutex` for distributed locking (e.g., token refresh locks keyed by `refresh_token:{session_id}:{client_id}`). This works for single-process deployments but does NOT provide cluster-wide mutual exclusion in multi-deployment scenarios.
+
+**Impact**: In a multi-tenant deployment with multiple backend instances behind a load balancer, two instances could simultaneously attempt to refresh the same token, causing race conditions or token invalidation.
+
+**Proposed fix**: When the database backend is PostgreSQL, use PostgreSQL advisory locks (`pg_advisory_lock` / `pg_try_advisory_lock`) for cluster-wide distributed locking. The lock key can be derived from a hash of the string key. Fall back to in-memory locks for SQLite (single-process only).
+
+**Deferred because**: Single-process deployments are the current target. Multi-instance deployments need broader infrastructure design (session store sharing, load balancer affinity, etc.).
+
+## Session Token Lifecycle Encapsulation
+
+**Location**: `crates/routes_app/src/tenants/dashboard_helpers.rs`, `crates/routes_app/src/middleware/token_service/token_service.rs`
+
+**Issue**: Token refresh logic is duplicated across two code paths: `get_valid_session_token()` for resource tokens (with distributed locking, auto-refresh, session update) and `ensure_valid_dashboard_token()` for dashboard tokens (simpler, no locking). As more token types are added (e.g., per-tenant tokens in multi-tenant mode), each requires its own ad-hoc refresh helper.
+
+**Impact**: Inconsistent token lifecycle handling, duplicated expiry/refresh logic, risk of subtle bugs when one path is updated but not the other.
+
+**Proposed fix**: Encapsulate the token refresh lifecycle into a unified session token manager that: (1) auto-refreshes on access, (2) applies distributed locking when configured, (3) handles retryable errors on refresh failure. Replace both `get_valid_session_token()` and `ensure_valid_dashboard_token()` with calls to this unified manager parameterized by token type/prefix and client credentials.
+
+**Deferred because**: The current two-path approach works correctly for the immediate multi-tenant implementation. Unification requires careful design of the locking strategy and error handling semantics across token types.
