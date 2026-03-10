@@ -1,6 +1,7 @@
 use crate::{
   app_access_requests::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus},
   db::DbError,
+  new_ulid,
   test_utils::{sea_context, setup_env, TEST_TENANT_ID},
   FlowType,
 };
@@ -14,7 +15,7 @@ use serial_test::serial;
 fn make_request(id: &str, now: chrono::DateTime<chrono::Utc>) -> AppAccessRequest {
   AppAccessRequest {
     id: id.to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "test-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: Some("A test application".to_string()),
@@ -43,7 +44,7 @@ async fn test_create_and_get_access_request(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_request(&id, ctx.now);
 
   let created = ctx.service.create(&row).await?;
@@ -68,7 +69,7 @@ async fn test_create_access_request_popup_flow(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let mut row = make_request(&id, ctx.now);
   row.flow_type = FlowType::Popup;
   row.redirect_uri = None;
@@ -89,7 +90,7 @@ async fn test_update_approval(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_request(&id, ctx.now);
   ctx.service.create(&row).await?;
 
@@ -99,6 +100,7 @@ async fn test_update_approval(
     .update_approval(
       &id,
       "approver-user",
+      TEST_TENANT_ID,
       approved_json,
       "scope_user_user",
       &format!("scope_access_request:{}", id),
@@ -126,7 +128,7 @@ async fn test_update_denial(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_request(&id, ctx.now);
   ctx.service.create(&row).await?;
 
@@ -147,7 +149,7 @@ async fn test_update_failure(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_request(&id, ctx.now);
   ctx.service.create(&row).await?;
 
@@ -174,14 +176,21 @@ async fn test_get_by_access_request_scope(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_request(&id, ctx.now);
   ctx.service.create(&row).await?;
 
   let scope = format!("scope_access_request:{}", id);
   ctx
     .service
-    .update_approval(&id, "user-1", "{}", "scope_user_user", &scope)
+    .update_approval(
+      &id,
+      "user-1",
+      TEST_TENANT_ID,
+      "{}",
+      "scope_user_user",
+      &scope,
+    )
     .await?;
 
   let found = ctx
@@ -209,7 +218,7 @@ async fn test_get_marks_expired_draft(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let mut row = make_request(&id, ctx.now);
   // Set expires_at in the past
   row.expires_at = ctx.now - Duration::minutes(5);
@@ -232,7 +241,7 @@ async fn test_get_returns_draft_when_not_expired(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_request(&id, ctx.now);
   ctx.service.create(&row).await?;
 
@@ -259,7 +268,14 @@ async fn perform_update(
   match op {
     UpdateOp::Approval => {
       service
-        .update_approval(id, "user-1", "{}", "scope_user_user", "scope")
+        .update_approval(
+          id,
+          "user-1",
+          TEST_TENANT_ID,
+          "{}",
+          "scope_user_user",
+          "scope",
+        )
         .await
     }
     UpdateOp::Denial => service.update_denial(id, "user-1").await,
@@ -276,7 +292,14 @@ async fn transition_to_non_draft(
   match op {
     UpdateOp::Approval => {
       service
-        .update_approval(id, "user-1", "{}", "scope_user_user", "scope")
+        .update_approval(
+          id,
+          "user-1",
+          TEST_TENANT_ID,
+          "{}",
+          "scope_user_user",
+          "scope",
+        )
         .await?;
     }
     UpdateOp::Denial => {
@@ -302,7 +325,7 @@ async fn test_update_rejects_expired_draft(
   #[case] op: UpdateOp,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let mut row = make_request(&id, ctx.now);
   row.expires_at = ctx.now - Duration::minutes(5);
   ctx.service.create(&row).await?;
@@ -328,7 +351,7 @@ async fn test_update_rejects_non_draft(
   #[case] op: UpdateOp,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_request(&id, ctx.now);
   ctx.service.create(&row).await?;
   transition_to_non_draft(&ctx.service, &id, &op).await?;

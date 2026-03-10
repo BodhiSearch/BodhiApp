@@ -12,7 +12,6 @@ import {
 import { mockUserLoggedOut, mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { redirect } from 'next/navigation';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -21,7 +20,6 @@ vi.mock('next/navigation', () => ({
     refresh: vi.fn(),
   }),
   usePathname: () => '/',
-  redirect: vi.fn(),
 }));
 
 const mockToast = vi.fn();
@@ -187,7 +185,7 @@ describe('LoginMenu Component', () => {
     expect(screen.getByRole('button', { name: /logging out/i })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('http://localhost:1135/ui/login');
+      expect(window.location.href).toBe('http://localhost:1135/ui/login');
     });
   });
 
@@ -221,7 +219,7 @@ describe('LoginMenu Component', () => {
 
     // Should redirect to login page on error
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('/ui/login');
+      expect(mockPush).toHaveBeenCalledWith('/ui/login');
     });
   });
 
@@ -234,7 +232,7 @@ describe('LoginMenu Component', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('http://localhost:1135/ui/login');
+      expect(window.location.href).toBe('http://localhost:1135/ui/login');
     });
   });
 

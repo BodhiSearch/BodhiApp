@@ -6,11 +6,11 @@ use super::toolset_objs::{
 };
 use super::ToolsetError;
 use crate::db::{encryption::encrypt_api_key, DbError, DbService, TimeService};
+use crate::new_ulid;
 use crate::RawApiKeyUpdate;
 use serde_json::json;
 use std::fmt::Debug;
 use std::sync::Arc;
-use ulid::Ulid;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
@@ -344,7 +344,7 @@ impl ToolService for DefaultToolService {
     // Create entity
     let now = self.time_service.utc_now();
     let entity = ToolsetEntity {
-      id: Ulid::new().to_string(),
+      id: new_ulid(),
       tenant_id: tenant_id.to_string(),
       user_id: user_id.to_string(),
       toolset_type: toolset_type.to_string(),

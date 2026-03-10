@@ -2,6 +2,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DeploymentMode {
+  #[default]
+  Standalone,
+  MultiTenant,
+}
+
 #[derive(
   Debug,
   Serialize,
@@ -41,6 +49,8 @@ pub struct Tenant {
   pub id: String,
   pub client_id: String,
   pub client_secret: String,
+  pub name: String,
+  pub description: Option<String>,
   pub status: AppStatus,
   pub created_by: Option<String>,
   pub created_at: DateTime<Utc>,
@@ -53,6 +63,8 @@ impl From<super::tenant_entity::TenantRow> for Tenant {
       id: row.id,
       client_id: row.client_id,
       client_secret: row.client_secret,
+      name: row.name,
+      description: row.description,
       status: row.app_status,
       created_by: row.created_by,
       created_at: row.created_at,

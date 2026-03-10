@@ -171,7 +171,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
     let baseUrl;
 
     test.beforeEach(async () => {
-      const errorConfig = OAuth2Fixtures.getErrorTestConfig(authServerConfig, 41135);
+      const errorConfig = OAuth2Fixtures.getErrorTestConfig(authServerConfig, 31135);
       serverManager = createServerManager(errorConfig);
       baseUrl = await serverManager.startServer();
     });

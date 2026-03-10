@@ -11,7 +11,6 @@ import { server } from '@/test-utils/msw-v2/setup';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { redirect } from 'next/navigation';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the hooks
@@ -20,7 +19,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
-  redirect: vi.fn(),
 }));
 
 beforeAll(() => {
@@ -266,7 +264,7 @@ describe('LoginContent with user Logged In', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('http://localhost:1135/ui/test/login');
+      expect(window.location.href).toBe('http://localhost:1135/ui/test/login');
     });
   });
 

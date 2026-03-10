@@ -1602,11 +1602,8 @@ export interface components {
             commit_sha: string;
             /** @description Current application setup and operational status */
             status: components["schemas"]["AppStatus"];
-            /**
-             * @description Deployment mode: "standalone" or "multi_tenant"
-             * @example standalone
-             */
-            deployment: string;
+            /** @description Deployment mode: "standalone" or "multi_tenant" */
+            deployment: components["schemas"]["DeploymentMode"];
             /**
              * @description Active tenant's OAuth client_id (present when authenticated with an active tenant)
              * @example my-client-id
@@ -2508,6 +2505,8 @@ export interface components {
             /** @enum {string} */
             type: "grammar";
         };
+        /** @enum {string} */
+        DeploymentMode: "standalone" | "multi_tenant";
         DownloadRequest: {
             id: string;
             repo: string;

@@ -178,8 +178,10 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     .create_tenant(
       &resource_client_id,
       &resource_client_secret,
-      AppStatus::Ready,
+      "Integration Test App",
       None,
+      AppStatus::Ready,
+      Some("integration-test-user".to_string()),
     )
     .await?;
 
@@ -569,8 +571,10 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     .create_tenant(
       "test-resource-client",
       "test-resource-secret",
-      AppStatus::Ready,
+      "Test App",
       None,
+      AppStatus::Ready,
+      Some("test-user".to_string()),
     )
     .await?;
 

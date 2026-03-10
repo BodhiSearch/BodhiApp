@@ -2,7 +2,7 @@ use crate::auth::AuthContextError;
 use crate::models::{Alias, BuilderError, ModelValidationError, Repo, UserAlias, UserAliasRequest};
 use crate::{
   db::{DbError, DbService},
-  HubService, HubServiceError, SNAPSHOT_MAIN,
+  new_ulid, HubService, HubServiceError, SNAPSHOT_MAIN,
 };
 use async_trait::async_trait;
 use errmeta::{AppError, ErrorType};
@@ -215,7 +215,7 @@ impl DataService for LocalDataService {
 
     let now = self.db_service.now();
     let new_user_alias = UserAlias {
-      id: ulid::Ulid::new().to_string(),
+      id: new_ulid(),
       alias: new_alias.to_string(),
       repo: user_alias.repo.clone(),
       filename: user_alias.filename.clone(),

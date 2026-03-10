@@ -1,11 +1,11 @@
 use crate::db::{encryption::decrypt_api_key, DbError, DefaultDbService};
-use crate::toolsets::AppToolsetConfigRow;
 use crate::RawApiKeyUpdate;
 use sea_orm::prelude::*;
 use sea_orm::sea_query::Alias;
 use sea_orm::{Condition, Set};
 
 use super::app_toolset_config_entity as app_toolset_config;
+use super::app_toolset_config_entity::AppToolsetConfigEntity;
 use super::toolset_entity as toolset;
 use super::toolset_entity::ToolsetEntity;
 
@@ -59,18 +59,18 @@ pub trait ToolsetRepository: Send + Sync {
     toolset_type: &str,
     enabled: bool,
     updated_by: &str,
-  ) -> Result<AppToolsetConfigRow, DbError>;
+  ) -> Result<AppToolsetConfigEntity, DbError>;
 
   async fn list_app_toolset_configs(
     &self,
     tenant_id: &str,
-  ) -> Result<Vec<AppToolsetConfigRow>, DbError>;
+  ) -> Result<Vec<AppToolsetConfigEntity>, DbError>;
 
   async fn get_app_toolset_config(
     &self,
     tenant_id: &str,
     toolset_type: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError>;
+  ) -> Result<Option<AppToolsetConfigEntity>, DbError>;
 }
 
 #[async_trait::async_trait]
@@ -294,7 +294,7 @@ impl ToolsetRepository for DefaultDbService {
     toolset_type: &str,
     enabled: bool,
     updated_by: &str,
-  ) -> Result<AppToolsetConfigRow, DbError> {
+  ) -> Result<AppToolsetConfigEntity, DbError> {
     let now = self.time_service.utc_now();
     let tenant_id_owned = tenant_id.to_string();
     let toolset_type = toolset_type.to_string();
@@ -324,7 +324,7 @@ impl ToolsetRepository for DefaultDbService {
                 .await
                 .map_err(DbError::from)?;
 
-              Ok(AppToolsetConfigRow {
+              Ok(AppToolsetConfigEntity {
                 id: existing_model.id,
                 tenant_id: tenant_id_owned.clone(),
                 toolset_type: toolset_type.clone(),
@@ -335,7 +335,7 @@ impl ToolsetRepository for DefaultDbService {
               })
             }
             None => {
-              let id = ulid::Ulid::new().to_string();
+              let id = crate::new_ulid();
               let model = app_toolset_config::ActiveModel {
                 id: Set(id.clone()),
                 tenant_id: Set(tenant_id_owned.clone()),
@@ -351,7 +351,7 @@ impl ToolsetRepository for DefaultDbService {
                 .await
                 .map_err(DbError::from)?;
 
-              Ok(AppToolsetConfigRow {
+              Ok(AppToolsetConfigEntity {
                 id,
                 tenant_id: tenant_id_owned,
                 toolset_type,
@@ -370,7 +370,7 @@ impl ToolsetRepository for DefaultDbService {
   async fn list_app_toolset_configs(
     &self,
     tenant_id: &str,
-  ) -> Result<Vec<AppToolsetConfigRow>, DbError> {
+  ) -> Result<Vec<AppToolsetConfigEntity>, DbError> {
     let tenant_id_owned = tenant_id.to_string();
     self
       .with_tenant_txn(tenant_id, |txn| {
@@ -380,7 +380,7 @@ impl ToolsetRepository for DefaultDbService {
             .all(txn)
             .await
             .map_err(DbError::from)?;
-          Ok(results.into_iter().map(AppToolsetConfigRow::from).collect())
+          Ok(results)
         })
       })
       .await
@@ -390,7 +390,7 @@ impl ToolsetRepository for DefaultDbService {
     &self,
     tenant_id: &str,
     toolset_type: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
+  ) -> Result<Option<AppToolsetConfigEntity>, DbError> {
     let tenant_id_owned = tenant_id.to_string();
     let toolset_type = toolset_type.to_string();
     self
@@ -402,7 +402,7 @@ impl ToolsetRepository for DefaultDbService {
             .one(txn)
             .await
             .map_err(DbError::from)?;
-          Ok(result.map(AppToolsetConfigRow::from))
+          Ok(result)
         })
       })
       .await

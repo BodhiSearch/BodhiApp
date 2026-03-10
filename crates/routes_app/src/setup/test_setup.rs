@@ -29,8 +29,8 @@ use tower::ServiceExt;
     version: "0.0.0".to_string(),
     commit_sha: "test-sha".to_string(),
     status: AppStatus::Setup,
-    deployment: "standalone".to_string(),
-    client_id: None,
+    deployment: services::DeploymentMode::Standalone,
+    client_id: Some("test-client".to_string()),
   }
 )]
 #[tokio::test]
@@ -100,7 +100,7 @@ async fn test_app_info_handler_with_client_id() -> anyhow::Result<()> {
       version: "0.0.0".to_string(),
       commit_sha: "test-sha".to_string(),
       status: AppStatus::Ready,
-      deployment: "standalone".to_string(),
+      deployment: services::DeploymentMode::Standalone,
       client_id: Some("my-test-client-id".to_string()),
     },
     value

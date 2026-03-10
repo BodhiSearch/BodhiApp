@@ -1,4 +1,6 @@
-use crate::mcps::{McpAuthType, McpInstanceRepository, McpRow, McpServerRepository, McpServerRow};
+use crate::mcps::{
+  McpAuthType, McpEntity, McpInstanceRepository, McpServerEntity, McpServerRepository,
+};
 use crate::test_utils::{
   sea_context, setup_env, TEST_TENANT_A_USER_B_ID, TEST_TENANT_B_ID, TEST_TENANT_ID, TEST_USER_ID,
 };
@@ -8,8 +10,8 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-fn make_server_for(tenant_id: &str, id: &str, url: &str, now: DateTime<Utc>) -> McpServerRow {
-  McpServerRow {
+fn make_server_for(tenant_id: &str, id: &str, url: &str, now: DateTime<Utc>) -> McpServerEntity {
+  McpServerEntity {
     id: id.to_string(),
     tenant_id: tenant_id.to_string(),
     url: url.to_string(),
@@ -30,8 +32,8 @@ fn make_mcp_for(
   slug: &str,
   user_id: &str,
   now: DateTime<Utc>,
-) -> McpRow {
-  McpRow {
+) -> McpEntity {
+  McpEntity {
     id: id.to_string(),
     tenant_id: tenant_id.to_string(),
     user_id: user_id.to_string(),

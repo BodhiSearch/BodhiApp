@@ -39,7 +39,12 @@
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "check": "biome check .",
-    "check:fix": "biome check --write ."
+    "check:fix": "biome check --write .",
+    "e2e:server:standalone": "node tests-js/scripts/start-shared-server.mjs --port 51135 --db-type sqlite",
+    "e2e:server:multi_tenant": "node tests-js/scripts/start-shared-server.mjs --port 41135 --db-type postgres --deployment multi_tenant",
+    "e2e:server:test-app-oauth": "cd test-oauth-app && npm run build && npx serve dist -s -l 55173",
+    "e2e:server:test-app-mcp": "cd test-mcp-oauth-server && npm run build && npm start",
+    "e2e:server:test-app-mcp-dcr": "cd test-mcp-oauth-server && npm run build && node dist/index.js --dcr"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

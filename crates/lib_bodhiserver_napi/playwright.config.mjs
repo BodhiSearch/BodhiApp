@@ -91,6 +91,7 @@ export default defineConfig({
         '**/chat/chat-agentic.spec.mjs', // Requires local GGUF model (selectModelQwen)
         '**/models/**',      // Local model alias + metadata require GGUF files
         '**/tokens/**',      // api-tokens uses selectModelQwen for chat integration
+        '**/oauth/oauth-chat-streaming.spec.mjs', // Multi-tenant has no filesystem model discovery; /v1/models returns empty
       ],
       use: {
         ...devices['Desktop Chrome'],
@@ -128,31 +129,31 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: [
     {
-      command: 'node tests-js/scripts/start-shared-server.mjs --port 51135 --db-type sqlite',
+      command: 'npm run e2e:server:standalone',
       url: 'http://localhost:51135/ping',
       reuseExistingServer: false,  // Always start fresh
       timeout: 60000,
     },
     {
-      command: 'node tests-js/scripts/start-shared-server.mjs --port 41135 --db-type postgres --deployment multi_tenant',
+      command: 'npm run e2e:server:multi_tenant',
       url: 'http://localhost:41135/ping',
       reuseExistingServer: false,
       timeout: 60000,
     },
     {
-      command: 'cd test-oauth-app && npm run build && npx serve dist -s -l 55173',
+      command: 'npm run e2e:server:test-app-oauth',
       url: 'http://localhost:55173/',
       reuseExistingServer: false,
       timeout: 30000,
     },
     {
-      command: 'cd test-mcp-oauth-server && npm run build && npm start',
+      command: 'npm run e2e:server:test-app-mcp',
       url: 'http://localhost:55174/ping',
       reuseExistingServer: false,
       timeout: 30000,
     },
     {
-      command: 'cd test-mcp-oauth-server && npm run build && node dist/index.js --dcr',
+      command: 'npm run e2e:server:test-app-mcp-dcr',
       url: 'http://localhost:55175/ping',
       reuseExistingServer: false,
       timeout: 30000,

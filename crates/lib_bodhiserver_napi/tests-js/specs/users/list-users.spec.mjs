@@ -86,6 +86,7 @@ test.describe('Enhanced Users Management Flow', () => {
       authRealm: authServerConfig.authRealm,
       clientId: resourceClient.clientId,
       clientSecret: resourceClient.clientSecret,
+      createdBy: testUsers.admin.userId,
       port,
       host: 'localhost',
       envVars: {},

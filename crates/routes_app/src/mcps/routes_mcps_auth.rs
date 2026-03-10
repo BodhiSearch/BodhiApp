@@ -10,7 +10,7 @@ use axum::{
   Json,
 };
 use base64::{engine::general_purpose, Engine};
-use services::{McpAuthConfigResponse, McpAuthConfigsListResponse};
+use services::{new_ulid, McpAuthConfigResponse, McpAuthConfigsListResponse};
 use sha2::{Digest, Sha256};
 use tower_sessions::Session;
 
@@ -154,7 +154,7 @@ pub async fn mcp_oauth_login(
   let code_verifier = generate_random_string(43);
   let code_challenge =
     general_purpose::URL_SAFE_NO_PAD.encode(Sha256::digest(code_verifier.as_bytes()));
-  let oauth_state = ulid::Ulid::new().to_string();
+  let oauth_state = new_ulid();
 
   let created_at = auth_scope.time_service().utc_now().timestamp();
   let session_key = format!("mcp_oauth_{}", config_id);

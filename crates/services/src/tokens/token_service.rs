@@ -3,7 +3,8 @@ use base64::{engine::general_purpose, Engine};
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
-use ulid::Ulid;
+
+use crate::new_ulid;
 
 use super::TokenEntity;
 use crate::db::{DbService, TimeService};
@@ -119,7 +120,7 @@ impl TokenService for DefaultTokenService {
     let now = self.time_service.utc_now();
 
     let mut api_token = TokenEntity {
-      id: Ulid::new().to_string(),
+      id: new_ulid(),
       tenant_id: tenant_id.to_string(),
       user_id: user_id.to_string(),
       name: request.name.unwrap_or_default(),

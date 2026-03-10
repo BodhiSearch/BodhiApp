@@ -413,6 +413,7 @@ async fn test_create_token_handler_missing_auth(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;

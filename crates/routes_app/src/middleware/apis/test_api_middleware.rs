@@ -167,6 +167,7 @@ async fn test_api_auth_middleware_missing_role() -> anyhow::Result<()> {
   let ctx = AuthContext::Anonymous {
     client_id: None,
     tenant_id: None,
+    deployment: services::DeploymentMode::Standalone,
   };
   let router = test_router_with_auth_context(ResourceRole::User, None, ctx).await;
   let req = Request::builder().uri("/test").body(Body::empty())?;
@@ -248,6 +249,7 @@ async fn test_api_auth_middleware_user_scope_missing_auth() -> anyhow::Result<()
   let ctx = AuthContext::Anonymous {
     client_id: None,
     tenant_id: None,
+    deployment: services::DeploymentMode::Standalone,
   };
   let router =
     test_router_user_scope_with_auth_context(ResourceRole::User, Some(UserScope::User), ctx).await;

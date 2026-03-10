@@ -1,5 +1,5 @@
 use crate::mcps::{
-  McpAuthRepository, McpAuthType, McpInstanceRepository, McpRow, McpServerRepository,
+  McpAuthRepository, McpAuthType, McpEntity, McpInstanceRepository, McpServerRepository,
 };
 use crate::test_utils::{sea_context, setup_env};
 use anyhow_trace::anyhow_trace;
@@ -126,7 +126,7 @@ async fn test_update_mcp(
   ctx.service.create_mcp("", &mcp).await?;
 
   let updated_at = ctx.now + chrono::Duration::seconds(30);
-  let updated = McpRow {
+  let updated = McpEntity {
     name: "Updated MCP".to_string(),
     slug: "updated-mcp".to_string(),
     description: Some("Now with description".to_string()),
@@ -258,7 +258,7 @@ async fn test_list_mcps_with_server_with_auth(
     .create_mcp_auth_header(&make_auth_header_row("ah-1", "s1", ctx.now))
     .await?;
 
-  let mcp = McpRow {
+  let mcp = McpEntity {
     auth_type: McpAuthType::Header,
     auth_uuid: Some("ah-1".to_string()),
     ..make_mcp("m1", "s1", "mcp-with-auth", "user-1", ctx.now)

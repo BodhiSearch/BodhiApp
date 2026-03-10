@@ -3,10 +3,10 @@ use crate::{
   db::{DbService, TimeService},
   inference::InferenceService,
   AccessRequestService, AiApiService, AppService, AuthContext, AuthScopedApiModelService,
-  AuthScopedDataService, AuthScopedDownloadService, AuthScopedMcpService, AuthScopedTokenService,
-  AuthScopedToolService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
-  CacheService, ConcurrencyService, DataService, HubService, NetworkService, QueueProducer,
-  SessionService, SettingService, TenantService,
+  AuthScopedDataService, AuthScopedDownloadService, AuthScopedMcpService, AuthScopedTenantService,
+  AuthScopedTokenService, AuthScopedToolService, AuthScopedUserAccessRequestService,
+  AuthScopedUserService, AuthService, CacheService, ConcurrencyService, DataService, HubService,
+  NetworkService, QueueProducer, SessionService, SettingService, TenantService,
 };
 use std::sync::Arc;
 
@@ -99,9 +99,9 @@ impl AuthScopedAppService {
     self.app_service.setting_service()
   }
 
-  /// D2: Tenant domain
-  pub fn tenant(&self) -> Arc<dyn TenantService> {
-    self.app_service.tenant_service()
+  /// D2: Tenant domain (auth-scoped)
+  pub fn tenants(&self) -> AuthScopedTenantService {
+    AuthScopedTenantService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
   /// D3: Auth flow domain (OAuth registration, token exchange, etc.)

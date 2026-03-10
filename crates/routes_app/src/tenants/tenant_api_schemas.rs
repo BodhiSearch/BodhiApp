@@ -8,6 +8,7 @@ pub struct TenantListItem {
   pub name: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
+  pub status: services::AppStatus,
   pub is_active: bool,
   pub logged_in: bool,
 }

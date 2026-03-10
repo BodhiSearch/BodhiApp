@@ -1,5 +1,5 @@
 use oauth2::url::ParseError;
-use services::{AppError, AuthServiceError, ErrorType, TokenError};
+use services::{AppError, AuthServiceError, ErrorType, SettingServiceError, TokenError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -7,9 +7,8 @@ pub enum DashboardAuthRouteError {
   #[error("Dashboard auth is only available in multi-tenant mode.")]
   #[error_meta(error_type = ErrorType::InvalidAppState)]
   NotMultiTenant,
-  #[error("Multi-tenant client configuration is missing.")]
-  #[error_meta(error_type = ErrorType::InvalidAppState)]
-  MissingClientConfig,
+  #[error(transparent)]
+  SettingServiceError(#[from] SettingServiceError),
   #[error("{0}")]
   #[error_meta(error_type = ErrorType::Authentication, args_delegate = false)]
   SessionError(#[from] tower_sessions::session::Error),

@@ -64,6 +64,3 @@ impl From<McpAuthHeaderView> for crate::mcps::McpAuthHeader {
 
 /// Type alias — McpAuthHeaderEntity is the entity Model.
 pub type McpAuthHeaderEntity = Model;
-
-/// Backward-compatible alias (deprecated — use McpAuthHeaderEntity).
-pub type McpAuthHeaderRow = Model;

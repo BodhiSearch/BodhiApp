@@ -104,18 +104,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
   // 8. Build complete app service
   let mut builder = AppServiceStubBuilder::default();
   builder.db_service(db_arc);
-  builder
-    .with_tenant(services::Tenant {
-      id: String::new(),
-      client_id: "test_client_id".to_string(),
-      client_secret: "test_secret".to_string(),
-
-      status: services::AppStatus::Ready,
-      created_by: None,
-      created_at: chrono::Utc::now(),
-      updated_at: chrono::Utc::now(),
-    })
-    .await;
+  builder.with_tenant(services::Tenant::test_default()).await;
   let app_service = builder
     .with_default_session_service(session_service.clone())
     .auth_service(Arc::new(mock_auth))

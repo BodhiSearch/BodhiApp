@@ -647,7 +647,7 @@ async fn test_validate_bearer_token_scope_not_approved(
   // Create access request with status=draft
   let row = AppAccessRequest {
     id: "ar-draft".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -728,7 +728,7 @@ async fn test_validate_bearer_token_app_client_mismatch(
   // Create approved access request with app_client_id=app2
   let row = AppAccessRequest {
     id: "ar-mismatch".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "app2".to_string(), // Different from token azp
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -806,7 +806,7 @@ async fn test_validate_bearer_token_user_mismatch(
   // Create approved access request with user_id=user2
   let row = AppAccessRequest {
     id: "ar-user-mismatch".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -893,7 +893,7 @@ async fn test_validate_bearer_token_invalid_status(
   // Create access request with non-approved status
   let row = AppAccessRequest {
     id: format!("ar-{}", status_label),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -975,7 +975,7 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
   // Create approved access request
   let row = AppAccessRequest {
     id: record_id.to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -1071,7 +1071,7 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
   // Create approved access request
   let row = AppAccessRequest {
     id: "ar-missing-claim".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -1160,7 +1160,14 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
 
   // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready, None)
+    .create_tenant(
+      TEST_CLIENT_ID,
+      TEST_CLIENT_SECRET,
+      "Test App",
+      None,
+      &AppStatus::Ready,
+      Some("test-user".to_string()),
+    )
     .await?;
   let actual_tenant_id = tenant_row.id.clone();
 
@@ -1172,7 +1179,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
   let record_id = "ar-success";
   let row = AppAccessRequest {
     id: record_id.to_string(),
-    tenant_id: actual_tenant_id.clone(),
+    tenant_id: Some(actual_tenant_id.clone()),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -1275,7 +1282,14 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
 
   // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready, None)
+    .create_tenant(
+      TEST_CLIENT_ID,
+      TEST_CLIENT_SECRET,
+      "Test App",
+      None,
+      &AppStatus::Ready,
+      Some("test-user".to_string()),
+    )
     .await?;
   let actual_tenant_id = tenant_row.id.clone();
 
@@ -1287,7 +1301,7 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
   let record_id = "ar-cache-role";
   let row = AppAccessRequest {
     id: record_id.to_string(),
-    tenant_id: actual_tenant_id.clone(),
+    tenant_id: Some(actual_tenant_id.clone()),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
@@ -1480,7 +1494,14 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
 
   // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
-    .create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready, None)
+    .create_tenant(
+      TEST_CLIENT_ID,
+      TEST_CLIENT_SECRET,
+      "Test App",
+      None,
+      &AppStatus::Ready,
+      Some("test-user".to_string()),
+    )
     .await?;
   let actual_tenant_id = tenant_row.id.clone();
 
@@ -1493,7 +1514,7 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
   // DB record has approved_role = scope_user_power_user (tampered or misconfigured)
   let row = AppAccessRequest {
     id: record_id.to_string(),
-    tenant_id: actual_tenant_id.clone(),
+    tenant_id: Some(actual_tenant_id.clone()),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,

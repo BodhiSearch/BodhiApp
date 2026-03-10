@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { AxiosResponse } from 'axios';
 import { RedirectResponse, TenantListItem } from '@bodhiapp/ts-client';
-import { useRouter, redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
@@ -23,6 +23,7 @@ function MultiTenantLoginContent() {
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const [autoLoginFailed, setAutoLoginFailed] = useState(false);
   const router = useRouter();
 
   // Dashboard OAuth (platform login)
@@ -60,6 +61,7 @@ function MultiTenantLoginContent() {
     onError: (message) => {
       setError(message);
       setRedirecting(false);
+      setAutoLoginFailed(true);
     },
   });
 
@@ -73,24 +75,21 @@ function MultiTenantLoginContent() {
     },
     onError: (message: string) => {
       setError(message);
+      setAutoLoginFailed(true);
     },
   });
 
   // Fetch tenants when user has dashboard session
-  const isDashboardLoggedIn = !!userInfo?.has_dashboard_session && !appInfo?.client_id;
+  const needsTenantSelection = !!userInfo?.has_dashboard_session && !appInfo?.client_id;
   const { data: tenantsData, isLoading: tenantsLoading } = useTenants({
-    enabled: isDashboardLoggedIn,
+    enabled: needsTenantSelection,
   });
 
   // Logout
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-      if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
-        redirect(redirectUrl);
-      } else {
-        router.push(redirectUrl);
-      }
+      handleSmartRedirect(redirectUrl, router);
     },
     onError: (message) => {
       localStorage.clear();
@@ -101,13 +100,16 @@ function MultiTenantLoginContent() {
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
-      router.push(ROUTE_LOGIN);
+      handleSmartRedirect(ROUTE_LOGIN, router);
     },
   });
 
-  // Auto-login if only one tenant
+  // Auto-login if only one tenant (useRef guard prevents double-firing in StrictMode)
+  const hasAutoLoginTriggered = useRef(false);
   useEffect(() => {
-    if (isDashboardLoggedIn && tenantsData?.tenants && tenantsData.tenants.length === 1) {
+    if (hasAutoLoginTriggered.current) return;
+    if (needsTenantSelection && tenantsData?.tenants && tenantsData.tenants.length === 1) {
+      hasAutoLoginTriggered.current = true;
       const tenant = tenantsData.tenants[0];
       setSelectedTenantId(tenant.client_id);
       if (tenant.logged_in) {
@@ -118,7 +120,7 @@ function MultiTenantLoginContent() {
         initiateOAuth({ client_id: tenant.client_id });
       }
     }
-  }, [isDashboardLoggedIn, tenantsData, activateTenant, initiateOAuth]);
+  }, [needsTenantSelection, tenantsData, activateTenant, initiateOAuth]);
 
   if (userLoading || tenantsLoading) {
     return <AuthCard title="Loading..." isLoading={true} />;
@@ -174,8 +176,39 @@ function MultiTenantLoginContent() {
     );
   }
 
-  // State B: Dashboard session, not resource-authenticated - show tenant selector
-  if (isDashboardLoggedIn && tenantsData?.tenants && tenantsData.tenants.length > 1) {
+  // State B1: Single tenant, auto-login failed - show manual connect
+  if (needsTenantSelection && autoLoginFailed && tenantsData?.tenants && tenantsData.tenants.length === 1) {
+    const tenant = tenantsData.tenants[0];
+    return (
+      <AuthCard
+        title="Connect to Workspace"
+        description={
+          <div className="space-y-4">
+            <p>Auto-login failed. Connect manually to continue.</p>
+            {error && <p className="text-destructive text-sm">{error}</p>}
+          </div>
+        }
+        actions={[
+          {
+            label: isOAuthLoading || isActivating ? 'Connecting...' : `Connect to ${tenant.name}`,
+            onClick: () => {
+              setError(null);
+              setSelectedTenantId(tenant.client_id);
+              if (tenant.logged_in) {
+                activateTenant({ client_id: tenant.client_id });
+              } else {
+                initiateOAuth({ client_id: tenant.client_id });
+              }
+            },
+            disabled: isOAuthLoading || isActivating || redirecting,
+          },
+        ]}
+      />
+    );
+  }
+
+  // State B2: Dashboard session, not resource-authenticated - show tenant selector
+  if (needsTenantSelection && tenantsData?.tenants && tenantsData.tenants.length > 1) {
     return (
       <AuthCard
         title="Select Workspace"
@@ -237,11 +270,7 @@ export function LoginContent() {
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-      if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
-        redirect(redirectUrl);
-      } else {
-        router.push(redirectUrl);
-      }
+      handleSmartRedirect(redirectUrl, router);
     },
     onError: (message) => {
       // Reset local storage and cookies on logout failure
@@ -254,8 +283,7 @@ export function LoginContent() {
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
-      // Redirect to login page
-      router.push(ROUTE_LOGIN);
+      handleSmartRedirect(ROUTE_LOGIN, router);
     },
   });
 
@@ -283,10 +311,12 @@ export function LoginContent() {
   });
 
   const handleOAuthInitiate = () => {
-    setError(null); // Clear any previous errors
-    if (appInfo?.client_id) {
-      initiateOAuth({ client_id: appInfo.client_id });
+    setError(null);
+    if (!appInfo?.client_id) {
+      setError('Client ID is not set. Please check your configuration.');
+      return;
     }
+    initiateOAuth({ client_id: appInfo.client_id });
   };
 
   const isLoginButtonDisabled = isLoading || redirecting;

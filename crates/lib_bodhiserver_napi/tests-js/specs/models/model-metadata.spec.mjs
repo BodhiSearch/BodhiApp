@@ -135,6 +135,7 @@ test.describe('Model Metadata Refresh and Preview', () => {
       authRealm: authServerConfig.authRealm,
       clientId: resourceClient.clientId,
       clientSecret: resourceClient.clientSecret,
+      createdBy: testCredentials.userId,
       port,
       host: 'localhost',
       hfHomePath: testHfHome,

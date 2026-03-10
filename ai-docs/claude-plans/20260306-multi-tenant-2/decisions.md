@@ -1,7 +1,7 @@
 # Multi-Tenant Decisions
 
 > **Created**: 2026-03-06
-> **Updated**: 2026-03-08
+> **Updated**: 2026-03-10
 > **Context**: Interviews during middleware refactor (D21-D28), multi-tenant login flow (D52-D91), SPI implementation reconciliation (D92-D97), and M4 integration test infrastructure (D103-D106)
 > **Prior work**: `ai-docs/claude-plans/20260303-multi-tenant/decisions.md` (D1-D20)
 
@@ -9,11 +9,7 @@
 
 ## D21: JWT-only tenant resolution (defer cookie-based switching)
 
-**Question**: D13 said "active tenant stored in cookie". Should middleware support tenant-switching via session cookie now?
-
 **Decision**: JWT-only for now. Tenant resolved purely from JWT `azp` claim. No separate tenant cookie. Tenant switching deferred to future milestone when UI supports it.
-
-**Rationale**: The JWT `azp` already identifies which tenant's OAuth client the user authenticated with. Adding a session-based override adds complexity without current need. Multi-tenant tenant-switching is a UI/UX feature that can be layered on later.
 
 ---
 
@@ -73,7 +69,7 @@
 
 **Question**: What should `AuthContext::Anonymous` contain when no auth token is present?
 
-**Decision**: `Anonymous { client_id: None, tenant_id: None }`. The optional auth middleware:
+**Decision**: `Anonymous { client_id: None, tenant_id: None, deployment }`. The optional auth middleware:
 - If session/JWT bearer/API token is present -> parse and inject as AuthContext (same resolution as mandatory)
 - If none present -> inject `Anonymous { client_id: None, tenant_id: None }`
 - Never fails/blocks the request (unlike mandatory middleware)
@@ -102,9 +98,7 @@ Routes using optional_auth_middleware must handle Anonymous with no tenant conte
 
 **Question**: If `POST /bodhi/v1/tenants` succeeds at the SPI (Keycloak client created) but fails when creating the local BodhiApp tenant row, how should the orphaned Keycloak client be handled?
 
-**Decision**: Accept orphans. Log the error at critical/warning level for manual cleanup via Keycloak admin console. No compensating delete or retry logic.
-
-**Rationale**: Simplest implementation. Orphan Keycloak clients are harmless (no data, no access). Manual cleanup is rare and low-priority.
+**Decision**: Accept orphans. Log the error at critical/warning level for manual cleanup via Keycloak admin console. No compensating delete or retry logic. Orphan clients are harmless.
 
 ---
 
@@ -112,19 +106,13 @@ Routes using optional_auth_middleware must handle Anonymous with no tenant conte
 
 **Question**: Dashboard tokens expire. When `GET /bodhi/v1/tenants` (or any SPI proxy call) encounters an expired dashboard token, what should happen?
 
-**Decision**: Transparent refresh. Before proxying to SPI, check dashboard token expiry. If expired, use `dashboard:refresh_token` to get a new dashboard token from Keycloak. Update session. If refresh fails, redirect to dashboard re-login.
-
-**Rationale**: Same pattern as resource-client token refresh. Dashboard tokens have the same lifecycle. Poor UX if users are forced to re-login when a refresh token exists.
+**Decision**: Transparent refresh. Before proxying to SPI, check dashboard token expiry. If expired, use `dashboard:refresh_token` to get a new token. Update session. If refresh fails, redirect to dashboard re-login. Same pattern as resource-client token refresh.
 
 ---
 
-## D54: `/info` endpoint behind `optional_auth_middleware` — NOT IMPLEMENTED AS DECIDED
+## D54: `/info` endpoint behind `optional_auth_middleware` — IMPLEMENTED
 
-**Question**: `/info` currently runs without auth middleware. In multi-tenant mode, it needs session access to determine status (dashboard token, active_client_id). How should it access session state?
-
-**Decision**: Move `/info` behind `optional_auth_middleware`. The middleware already handles the no-auth case gracefully (Anonymous). The handler checks AuthContext + reads session directly for dashboard token state.
-
-**Actual implementation**: `/info` remains in `public_apis` (no auth middleware). `AuthScope` falls back to `Anonymous` without middleware. Session access works because the session layer is global. This means `client_id` in the response is always `None` in standalone mode (no AuthContext populated). Multi-tenant mode works correctly by reading session keys directly. See TECHDEBT.
+**Decision**: `/info` is behind `optional_auth_middleware` (routes.rs:94 in optional_auth router, middleware applied at line 134). The middleware handles the no-auth case gracefully (Anonymous with deployment mode). The handler checks AuthContext + reads session for multi-tenant status resolution.
 
 ---
 
@@ -140,9 +128,7 @@ Routes using optional_auth_middleware must handle Anonymous with no tenant conte
 
 **Question**: Standalone currently uses flat session keys (`access_token`, `refresh_token`). Migration to namespaced keys (`{client_id}:access_token`) — should existing sessions be gracefully migrated?
 
-**Decision**: Breaking change. Switch to namespaced keys immediately. Existing sessions won't have `active_client_id`, so middleware treats them as unauthenticated. Users re-login once. Clean cut, no legacy code paths.
-
-**Rationale**: No production multi-tenant deployments exist. Standalone users do a one-time re-login. Avoids temporary compatibility layer code.
+**Decision**: Breaking change. Switch to namespaced keys immediately. Existing sessions won't have `active_client_id`, so middleware treats them as unauthenticated. Users re-login once. No legacy compatibility layer.
 
 ---
 
@@ -370,9 +356,7 @@ Routes using optional_auth_middleware must handle Anonymous with no tenant conte
 
 **Question**: Should the SPI migrate away from Keycloak group-based role assignment?
 
-**Decision**: Keep both. Groups remain for Keycloak-native token claims (`resource_access` in JWT). `bodhi_client_roles` table added for fast querying of user's client memberships (the `GET /tenants` listing use case). Centralized role assignment function writes to both.
-
-**Rationale**: The table is specifically to enable fast `GET /tenants` queries. Querying Keycloak's group membership tables directly has unclear performance characteristics, and this endpoint will be called frequently.
+**Decision**: Keep both. Groups remain for Keycloak-native token claims (`resource_access` in JWT). `bodhi_clients_users` table for fast `GET /tenants` query. Centralized role assignment writes to both.
 
 ---
 
@@ -493,9 +477,9 @@ Routes using optional_auth_middleware must handle Anonymous with no tenant conte
 
 **Decision**: `multitenant_client_secret()` reads from environment variable only (via `get_env()`), never from database. Client ID is a regular setting (can be in DB or env), but secrets must only come from env for security.
 
-### D99: Dashboard token expiry check via SystemTime
+### D99: ~~Dashboard token expiry check via SystemTime~~ — SUPERSEDED by D105
 
-**Decision**: `ensure_valid_dashboard_token()` in `dashboard_helpers.rs` checks JWT `exp` claim against `SystemTime::now()` (not `TimeService`). This is a pragmatic choice — dashboard token refresh is a convenience helper, not a domain operation requiring deterministic time. TECHDEBT notes this should be unified with resource token lifecycle.
+~~Used `SystemTime::now()`. Superseded by D105 which switched to `TimeService` for deterministic testing.~~
 
 ### D100: UserInfoEnvelope with serde flatten
 
@@ -517,15 +501,11 @@ Routes using optional_auth_middleware must handle Anonymous with no tenant conte
 
 ### D103: `forward_spi_request` uses owned String params
 
-**Decision**: `AuthService::forward_spi_request()` takes owned `String` parameters (`method: String, endpoint: String, authorization: Option<String>`) instead of `&str` references.
-
-**Rationale**: mockall's `#[automock]` has lifetime incompatibilities with `&str` parameters in async trait methods. Owned params avoid the issue with no meaningful performance impact (called infrequently in test infrastructure).
+**Decision**: `AuthService::forward_spi_request()` takes owned `String` parameters instead of `&str` references. Required for mockall `#[automock]` compatibility with async trait methods.
 
 ### D104: DefaultDbService uses builder pattern for env_type
 
-**Decision**: `DefaultDbService` adds `env_type: EnvType` field with a default of `EnvType::Development` and a `.with_env_type()` builder method, rather than changing the constructor signature.
-
-**Rationale**: Avoids breaking all existing callers of `DefaultDbService::new()`. Only `AppServiceBuilder` (production path) needs to set it explicitly via the builder.
+**Decision**: `DefaultDbService` adds `env_type: EnvType` field with `.with_env_type()` builder method, avoiding constructor signature changes that would break existing callers.
 
 ### D105: D99 superseded — `ensure_valid_dashboard_token` uses TimeService
 

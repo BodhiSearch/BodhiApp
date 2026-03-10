@@ -62,6 +62,7 @@ test.describe('Multi-User Request and Approval Flow', () => {
       authRealm: authServerConfig.authRealm,
       clientId: resourceClient.clientId,
       clientSecret: resourceClient.clientSecret,
+      createdBy: adminCredentials.userId,
       port,
       host: 'localhost',
       envVars: {},

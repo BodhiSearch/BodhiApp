@@ -1,4 +1,4 @@
-use super::error::{Result, TenantError};
+use super::error::Result;
 use super::{AppStatus, Tenant};
 use crate::db::DbService;
 use std::sync::Arc;
@@ -18,13 +18,21 @@ pub trait TenantService: Send + Sync + std::fmt::Debug {
     &self,
     client_id: &str,
     client_secret: &str,
+    name: &str,
+    description: Option<String>,
     status: AppStatus,
     created_by: Option<String>,
   ) -> Result<Tenant>;
-  /// Update the status of a specific tenant by its ID.
-  async fn update_status_by_id(&self, tenant_id: &str, status: &AppStatus) -> Result<()>;
-  /// Atomically set the tenant status to Ready and set created_by for the given client_id.
-  async fn set_client_ready(&self, client_id: &str, user_id: &str) -> Result<()>;
+  /// Atomically set tenant status to Ready, set created_by, and upsert tenant-user membership.
+  async fn set_tenant_ready(&self, tenant_id: &str, user_id: &str) -> Result<()>;
+  /// Upsert a tenant-user membership (idempotent).
+  async fn upsert_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<()>;
+  /// Delete a tenant-user membership (idempotent).
+  async fn delete_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<()>;
+  /// List all tenants a user has membership in, regardless of status.
+  async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<Tenant>>;
+  /// Check if a user has any tenant memberships.
+  async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool>;
 }
 
 #[derive(Debug, derive_new::new)]
@@ -61,38 +69,53 @@ impl TenantService for DefaultTenantService {
     &self,
     client_id: &str,
     client_secret: &str,
+    name: &str,
+    description: Option<String>,
     status: AppStatus,
     created_by: Option<String>,
   ) -> Result<Tenant> {
     let row = self
       .db_service
-      .create_tenant(client_id, client_secret, &status, created_by)
+      .create_tenant(
+        client_id,
+        client_secret,
+        name,
+        description,
+        &status,
+        created_by,
+      )
       .await?;
     Ok(Tenant::from(row))
   }
 
-  async fn update_status_by_id(&self, tenant_id: &str, status: &AppStatus) -> Result<()> {
-    let tenant = self
-      .get_tenant(tenant_id)
-      .await?
-      .ok_or(TenantError::NotFound)?;
+  async fn set_tenant_ready(&self, tenant_id: &str, user_id: &str) -> Result<()> {
+    self.db_service.set_tenant_ready(tenant_id, user_id).await?;
+    Ok(())
+  }
+
+  async fn upsert_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<()> {
     self
       .db_service
-      .update_tenant_status(&tenant.client_id, status)
+      .upsert_tenant_user(tenant_id, user_id)
       .await?;
     Ok(())
   }
 
-  async fn set_client_ready(&self, client_id: &str, user_id: &str) -> Result<()> {
+  async fn delete_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<()> {
     self
       .db_service
-      .update_tenant_status(client_id, &AppStatus::Ready)
-      .await?;
-    self
-      .db_service
-      .update_tenant_created_by(client_id, user_id)
+      .delete_tenant_user(tenant_id, user_id)
       .await?;
     Ok(())
+  }
+
+  async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<Tenant>> {
+    let rows = self.db_service.list_user_tenants(user_id).await?;
+    Ok(rows.into_iter().map(Tenant::from).collect())
+  }
+
+  async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool> {
+    Ok(self.db_service.has_tenant_memberships(user_id).await?)
   }
 }
 

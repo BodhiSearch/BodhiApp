@@ -23,6 +23,7 @@ export class PublicHostFixtures {
       authRealm: authServerConfig.authRealm,
       clientId: resourceClient.clientId,
       clientSecret: resourceClient.clientSecret,
+      createdBy: process.env.INTEG_TEST_USERNAME_ID,
       ...PublicHostFixtures.getPublicHostConfig(port),
     };
   }

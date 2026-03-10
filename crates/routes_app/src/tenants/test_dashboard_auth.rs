@@ -111,6 +111,7 @@ async fn test_dashboard_auth_initiate_returns_error_when_not_multi_tenant(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;
@@ -143,6 +144,7 @@ async fn test_dashboard_auth_callback_returns_error_when_not_multi_tenant(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;
@@ -194,6 +196,7 @@ async fn test_dashboard_auth_initiate_returns_error_when_client_config_missing(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::MultiTenant,
         }),
     )
     .await?;
@@ -203,7 +206,7 @@ async fn test_dashboard_auth_initiate_returns_error_when_client_config_missing(
   let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
   let body: Value = serde_json::from_slice(&body_bytes)?;
   assert_eq!(
-    "dashboard_auth_route_error-missing_client_config",
+    "setting_service_error-missing_config",
     body["error"]["code"].as_str().unwrap()
   );
 
@@ -226,6 +229,7 @@ async fn test_dashboard_auth_initiate_returns_redirect_url_in_multi_tenant(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::MultiTenant,
         }),
     )
     .await?;
@@ -308,6 +312,7 @@ async fn test_dashboard_auth_callback_validates_state_mismatch(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::MultiTenant,
         }),
     )
     .await?;

@@ -115,12 +115,40 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
+    if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      let conn = manager.get_connection();
+      conn
+        .execute_unprepared("ALTER TABLE model_metadata ENABLE ROW LEVEL SECURITY;")
+        .await?;
+      conn
+        .execute_unprepared("ALTER TABLE model_metadata FORCE ROW LEVEL SECURITY;")
+        .await?;
+      conn
+        .execute_unprepared(
+          "CREATE POLICY tenant_isolation ON model_metadata
+             FOR ALL
+             USING (tenant_id = (SELECT current_tenant_id()))
+             WITH CHECK (tenant_id = (SELECT current_tenant_id()));",
+        )
+        .await?;
+    }
+
     Ok(())
   }
 
   async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+    if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      let conn = manager.get_connection();
+      conn
+        .execute_unprepared("DROP POLICY IF EXISTS tenant_isolation ON model_metadata;")
+        .await?;
+      conn
+        .execute_unprepared("ALTER TABLE model_metadata DISABLE ROW LEVEL SECURITY;")
+        .await?;
+    }
     manager
       .drop_table(Table::drop().table(ModelMetadata::Table).to_owned())
-      .await
+      .await?;
+    Ok(())
   }
 }

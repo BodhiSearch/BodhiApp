@@ -12,7 +12,6 @@ services = { workspace = true, optional = true }
 
 chrono = { workspace = true }
 dirs = { workspace = true }
-ulid = { workspace = true }
 log = { workspace = true }
 napi = { workspace = true, features = ["async", "serde-json"] }
 napi-derive = { workspace = true }

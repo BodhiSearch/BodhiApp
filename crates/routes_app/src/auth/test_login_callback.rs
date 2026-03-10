@@ -91,9 +91,10 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: AppStatus::Ready,
-      created_by: None,
+      created_by: Some("test-user".to_string()),
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -179,9 +180,10 @@ async fn test_auth_callback_handler_state_not_in_session(
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: AppStatus::Ready,
-      created_by: None,
+      created_by: Some("test-user".to_string()),
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -267,9 +269,10 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: AppStatus::Ready,
-      created_by: None,
+      created_by: Some("test-user".to_string()),
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -348,9 +351,10 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: AppStatus::Ready,
-      created_by: None,
+      created_by: Some("test-user".to_string()),
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -424,9 +428,10 @@ async fn test_auth_callback_handler_auth_service_error(
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: AppStatus::Ready,
-      created_by: None,
+      created_by: Some("test-user".to_string()),
       created_at: Utc::now(),
       updated_at: Utc::now(),
     })
@@ -470,6 +475,76 @@ async fn test_auth_callback_handler_auth_service_error(
   let error = resp.json::<Value>();
   assert_eq!(
     "auth_service_error-auth_service_api_error",
+    error["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+/// auth_callback should reject tenants with Setup status, even in multi-tenant mode.
+/// Previously auth_callback used app_status_or_default() which calls get_standalone_app()
+/// and returns Setup in multi-tenant mode (no standalone app). Now it uses tenant's own status.
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_auth_callback_handler_rejects_setup_status_tenant(
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
+  let dbfile = temp_bodhi_home.path().join("test.db");
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_default_session_service(session_service.clone());
+  // Tenant with Setup status should be rejected
+  builder
+    .with_tenant(services::Tenant {
+      id: String::new(),
+      client_id: "test_client_id".to_string(),
+      client_secret: "test_client_secret".to_string(),
+      name: "Test App".to_string(),
+      description: None,
+      status: AppStatus::Setup,
+      created_by: None,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    })
+    .await;
+  let app_service: AppServiceStub = builder.build().await?;
+  let app_service = Arc::new(app_service);
+  let state: Arc<dyn AppService> = app_service.clone();
+  let router = Router::new()
+    .route("/auth/initiate", post(auth_initiate))
+    .route("/auth/callback", post(auth_callback))
+    .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
+    .with_state(state)
+    .layer(app_service.session_service().session_layer());
+
+  let mut client = TestServer::new(router)?;
+  client.save_cookies();
+
+  let login_resp = client
+    .post("/auth/initiate")
+    .json(&json! {{"client_id": "test_client_id"}})
+    .await;
+  login_resp.assert_status(StatusCode::CREATED);
+  let body: RedirectResponse = login_resp.json();
+  let url = Url::parse(&body.location)?;
+  let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
+  let state = query_params
+    .get("state")
+    .expect("state param missing")
+    .to_string();
+
+  let resp = client
+    .post("/auth/callback")
+    .json(&json! {{
+      "code": "test_code",
+      "state": state,
+    }})
+    .await;
+
+  resp.assert_status(StatusCode::INTERNAL_SERVER_ERROR);
+  let error = resp.json::<Value>();
+  assert_eq!(
+    "auth_route_error-app_status_invalid",
     error["error"]["code"].as_str().unwrap()
   );
   Ok(())

@@ -49,6 +49,3 @@ impl ActiveModelBehavior for ActiveModel {}
 
 /// Type alias — McpServerEntity is the entity Model.
 pub type McpServerEntity = Model;
-
-/// Backward-compatible alias (deprecated — use McpServerEntity).
-pub type McpServerRow = Model;

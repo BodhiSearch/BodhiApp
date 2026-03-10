@@ -11,6 +11,8 @@ pub struct Model {
   pub encrypted_client_secret: Option<String>,
   pub salt_client_secret: Option<String>,
   pub nonce_client_secret: Option<String>,
+  pub name: String,
+  pub description: Option<String>,
   pub app_status: AppStatus,
   pub created_by: Option<String>,
   pub created_at: DateTime<Utc>,
@@ -18,7 +20,16 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+  #[sea_orm(has_many = "super::tenant_user_entity::Entity")]
+  TenantsUsers,
+}
+
+impl Related<super::tenant_user_entity::Entity> for Entity {
+  fn to() -> RelationDef {
+    Relation::TenantsUsers.def()
+  }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 
@@ -27,6 +38,8 @@ pub struct TenantRow {
   pub id: String,
   pub client_id: String,
   pub client_secret: String,
+  pub name: String,
+  pub description: Option<String>,
   pub app_status: AppStatus,
   pub created_by: Option<String>,
   pub created_at: DateTime<Utc>,

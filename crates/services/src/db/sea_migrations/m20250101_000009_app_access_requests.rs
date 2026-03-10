@@ -34,7 +34,7 @@ impl MigrationTrait for Migration {
         Table::create()
           .table(AppAccessRequests::Table)
           .col(string(AppAccessRequests::Id).primary_key())
-          .col(string(AppAccessRequests::TenantId))
+          .col(string_null(AppAccessRequests::TenantId))
           .col(string(AppAccessRequests::AppClientId))
           .col(string_null(AppAccessRequests::AppName))
           .col(string_null(AppAccessRequests::AppDescription))
@@ -93,10 +93,62 @@ impl MigrationTrait for Migration {
     )
     .await?;
 
+    if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      let conn = manager.get_connection();
+      conn
+        .execute_unprepared("ALTER TABLE app_access_requests ENABLE ROW LEVEL SECURITY;")
+        .await?;
+      conn
+        .execute_unprepared("ALTER TABLE app_access_requests FORCE ROW LEVEL SECURITY;")
+        .await?;
+      conn
+        .execute_unprepared(
+          "CREATE POLICY app_access_requests_read ON app_access_requests
+             FOR SELECT USING (true);",
+        )
+        .await?;
+      conn
+        .execute_unprepared(
+          "CREATE POLICY app_access_requests_insert ON app_access_requests
+             FOR INSERT
+             WITH CHECK (tenant_id IS NULL OR tenant_id = (SELECT current_tenant_id()));",
+        )
+        .await?;
+      conn
+        .execute_unprepared(
+          "CREATE POLICY app_access_requests_update ON app_access_requests
+             FOR UPDATE
+             USING (tenant_id IS NULL OR tenant_id = (SELECT current_tenant_id()))
+             WITH CHECK (tenant_id IS NULL OR tenant_id = (SELECT current_tenant_id()));",
+        )
+        .await?;
+    }
+
     Ok(())
   }
 
   async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+    if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      let conn = manager.get_connection();
+      conn
+        .execute_unprepared(
+          "DROP POLICY IF EXISTS app_access_requests_update ON app_access_requests;",
+        )
+        .await?;
+      conn
+        .execute_unprepared(
+          "DROP POLICY IF EXISTS app_access_requests_insert ON app_access_requests;",
+        )
+        .await?;
+      conn
+        .execute_unprepared(
+          "DROP POLICY IF EXISTS app_access_requests_read ON app_access_requests;",
+        )
+        .await?;
+      conn
+        .execute_unprepared("ALTER TABLE app_access_requests DISABLE ROW LEVEL SECURITY;")
+        .await?;
+    }
     manager
       .drop_table(Table::drop().table(AppAccessRequests::Table).to_owned())
       .await

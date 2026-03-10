@@ -79,6 +79,7 @@ test.describe('Token Refresh Integration', { tag: '@scheduled' }, () => {
       authRealm: authServerConfig.authRealm,
       clientId: resourceClient.clientId,
       clientSecret: resourceClient.clientSecret,
+      createdBy: testCredentials.userId,
       port,
       host: 'localhost',
     });

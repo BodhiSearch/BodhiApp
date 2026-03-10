@@ -1,4 +1,4 @@
-use crate::mcps::{McpInstanceRepository, McpRow, McpServerRepository, McpServerRow};
+use crate::mcps::{McpEntity, McpInstanceRepository, McpServerEntity, McpServerRepository};
 use crate::test_utils::{sea_context, setup_env, TEST_TENANT_ID};
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
@@ -20,7 +20,7 @@ async fn test_create_and_get_mcp_server(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let row = McpServerRow {
+  let row = McpServerEntity {
     id: "s1".to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     url: "https://mcp.example.com".to_string(),
@@ -74,7 +74,7 @@ async fn test_update_mcp_server(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let row = McpServerRow {
+  let row = McpServerEntity {
     id: "s1".to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     url: "https://mcp.example.com".to_string(),
@@ -89,7 +89,7 @@ async fn test_update_mcp_server(
   ctx.service.create_mcp_server(TEST_TENANT_ID, &row).await?;
 
   let updated_at = ctx.now + chrono::Duration::seconds(60);
-  let updated_row = McpServerRow {
+  let updated_row = McpServerEntity {
     url: "https://mcp-updated.example.com".to_string(),
     name: "Updated Server".to_string(),
     description: Some("Updated description".to_string()),
@@ -126,7 +126,7 @@ async fn test_get_mcp_server_by_url(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let row = McpServerRow {
+  let row = McpServerEntity {
     id: "s1".to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     url: "https://mcp.example.com/api".to_string(),
@@ -168,7 +168,7 @@ async fn test_list_mcp_servers(
     .service
     .create_mcp_server(
       TEST_TENANT_ID,
-      &McpServerRow {
+      &McpServerEntity {
         id: "s1".to_string(),
         tenant_id: TEST_TENANT_ID.to_string(),
         url: "https://one.example.com".to_string(),
@@ -186,7 +186,7 @@ async fn test_list_mcp_servers(
     .service
     .create_mcp_server(
       TEST_TENANT_ID,
-      &McpServerRow {
+      &McpServerEntity {
         id: "s2".to_string(),
         tenant_id: TEST_TENANT_ID.to_string(),
         url: "https://two.example.com".to_string(),
@@ -257,7 +257,7 @@ async fn test_count_mcps_by_server_id(
     .service
     .create_mcp(
       TEST_TENANT_ID,
-      &McpRow {
+      &McpEntity {
         enabled: false,
         auth_type: McpAuthType::Public,
         ..make_mcp("m3", "s1", "mcp-three", "user-1", ctx.now)
@@ -311,7 +311,7 @@ async fn test_clear_mcp_tools_by_server_id(
     .service
     .create_mcp(
       TEST_TENANT_ID,
-      &McpRow {
+      &McpEntity {
         tools_cache: Some("{\"tools\":[]}".to_string()),
         tools_filter: Some("[\"tool1\"]".to_string()),
         ..make_mcp("m1", "s1", "mcp-one", "user-1", ctx.now)
@@ -322,7 +322,7 @@ async fn test_clear_mcp_tools_by_server_id(
     .service
     .create_mcp(
       TEST_TENANT_ID,
-      &McpRow {
+      &McpEntity {
         tools_cache: Some("{\"tools\":[\"t2\"]}".to_string()),
         ..make_mcp("m2", "s1", "mcp-two", "user-1", ctx.now)
       },
@@ -332,7 +332,7 @@ async fn test_clear_mcp_tools_by_server_id(
     .service
     .create_mcp(
       TEST_TENANT_ID,
-      &McpRow {
+      &McpEntity {
         tools_cache: Some("{\"other\":[]}".to_string()),
         ..make_mcp("m3", "s2", "mcp-three", "user-1", ctx.now)
       },

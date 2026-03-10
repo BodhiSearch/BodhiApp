@@ -95,7 +95,8 @@ async fn setup_app_service_resource_admin(
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: AppStatus::ResourceAdmin,
       created_by: None,
       created_at: chrono::Utc::now(),
@@ -228,7 +229,7 @@ async fn assert_login_callback_result_resource_admin(
   assert_eq!(AppStatus::Ready, tenant.status);
   assert!(
     tenant.created_by.is_some(),
-    "created_by should be set after set_client_ready"
+    "created_by should be set after set_tenant_ready"
   );
   Ok(())
 }

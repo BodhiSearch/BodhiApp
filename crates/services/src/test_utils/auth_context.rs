@@ -1,5 +1,5 @@
 use super::db::TEST_TENANT_ID;
-use crate::{AuthContext, ResourceRole, TokenScope, UserScope};
+use crate::{AuthContext, DeploymentMode, ResourceRole, TokenScope, UserScope};
 
 const DEFAULT_CLIENT_ID: &str = "test-client-id";
 
@@ -8,6 +8,7 @@ impl AuthContext {
     AuthContext::Anonymous {
       client_id: Some(DEFAULT_CLIENT_ID.to_string()),
       tenant_id: Some(TEST_TENANT_ID.to_string()),
+      deployment: DeploymentMode::Standalone,
     }
   }
 
@@ -15,6 +16,7 @@ impl AuthContext {
     AuthContext::Anonymous {
       client_id: Some(client_id.to_string()),
       tenant_id: Some(TEST_TENANT_ID.to_string()),
+      deployment: DeploymentMode::Standalone,
     }
   }
 
@@ -53,6 +55,37 @@ impl AuthContext {
       username: username.to_string(),
       role: Some(role),
       token: token.to_string(),
+    }
+  }
+
+  pub fn test_multi_tenant_session(user_id: &str, username: &str) -> Self {
+    AuthContext::MultiTenantSession {
+      client_id: None,
+      tenant_id: None,
+      user_id: user_id.to_string(),
+      username: username.to_string(),
+      role: None,
+      token: None,
+      dashboard_token: "test-dashboard-token".to_string(),
+    }
+  }
+
+  pub fn test_multi_tenant_session_full(
+    user_id: &str,
+    username: &str,
+    client_id: &str,
+    tenant_id: &str,
+    role: ResourceRole,
+    token: &str,
+  ) -> Self {
+    AuthContext::MultiTenantSession {
+      client_id: Some(client_id.to_string()),
+      tenant_id: Some(tenant_id.to_string()),
+      user_id: user_id.to_string(),
+      username: username.to_string(),
+      role: Some(role),
+      token: Some(token.to_string()),
+      dashboard_token: "test-dashboard-token".to_string(),
     }
   }
 
@@ -101,11 +134,54 @@ impl AuthContext {
     }
   }
 
+  pub fn with_deployment(self, deployment: DeploymentMode) -> Self {
+    match self {
+      AuthContext::Anonymous {
+        client_id,
+        tenant_id,
+        ..
+      } => AuthContext::Anonymous {
+        client_id,
+        tenant_id,
+        deployment,
+      },
+      other => other,
+    }
+  }
+
+  pub fn with_dashboard_token(self, dashboard_token: &str) -> Self {
+    match self {
+      AuthContext::MultiTenantSession {
+        client_id,
+        tenant_id,
+        user_id,
+        username,
+        role,
+        token,
+        ..
+      } => AuthContext::MultiTenantSession {
+        client_id,
+        tenant_id,
+        user_id,
+        username,
+        role,
+        token,
+        dashboard_token: dashboard_token.to_string(),
+      },
+      other => other,
+    }
+  }
+
   pub fn with_tenant_id(self, tenant_id: &str) -> Self {
     match self {
-      AuthContext::Anonymous { client_id, .. } => AuthContext::Anonymous {
+      AuthContext::Anonymous {
+        client_id,
+        deployment,
+        ..
+      } => AuthContext::Anonymous {
         client_id,
         tenant_id: Some(tenant_id.to_string()),
+        deployment,
       },
       AuthContext::Session {
         client_id,
@@ -121,6 +197,23 @@ impl AuthContext {
         username,
         role,
         token,
+      },
+      AuthContext::MultiTenantSession {
+        client_id,
+        user_id,
+        username,
+        role,
+        token,
+        dashboard_token,
+        ..
+      } => AuthContext::MultiTenantSession {
+        client_id,
+        tenant_id: Some(tenant_id.to_string()),
+        user_id,
+        username,
+        role,
+        token,
+        dashboard_token,
       },
       AuthContext::ApiToken {
         client_id,
@@ -174,6 +267,23 @@ impl AuthContext {
         username,
         role,
         token,
+      },
+      AuthContext::MultiTenantSession {
+        client_id,
+        tenant_id,
+        username,
+        role,
+        token,
+        dashboard_token,
+        ..
+      } => AuthContext::MultiTenantSession {
+        client_id,
+        tenant_id,
+        user_id: user_id.to_string(),
+        username,
+        role,
+        token,
+        dashboard_token,
       },
       AuthContext::ApiToken {
         client_id,

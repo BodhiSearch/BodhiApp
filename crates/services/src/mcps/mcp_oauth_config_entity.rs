@@ -102,6 +102,3 @@ impl From<McpOAuthConfigView> for crate::mcps::McpOAuthConfig {
 
 /// Type alias — McpOAuthConfigEntity is the entity Model.
 pub type McpOAuthConfigEntity = Model;
-
-/// Backward-compatible alias (deprecated — use McpOAuthConfigEntity).
-pub type McpOAuthConfigRow = Model;

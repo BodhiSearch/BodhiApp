@@ -9161,9 +9161,8 @@
             "description": "Current application setup and operational status"
           },
           "deployment": {
-            "type": "string",
-            "description": "Deployment mode: \"standalone\" or \"multi_tenant\"",
-            "example": "standalone"
+            "$ref": "#/components/schemas/DeploymentMode",
+            "description": "Deployment mode: \"standalone\" or \"multi_tenant\""
           },
           "client_id": {
             "type": [
@@ -11971,6 +11970,13 @@
               }
             }
           }
+        ]
+      },
+      "DeploymentMode": {
+        "type": "string",
+        "enum": [
+          "standalone",
+          "multi_tenant"
         ]
       },
       "DownloadRequest": {

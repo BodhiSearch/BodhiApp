@@ -2,12 +2,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use ulid::Ulid;
 use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::db::{DbError, DbService, TimeService};
 use crate::models::{DownloadRequestEntity, DownloadStatus};
+use crate::new_ulid;
 use errmeta::{AppError, EntityError, ErrorType};
 
 // =============================================================================
@@ -154,7 +154,7 @@ impl DownloadService for DefaultDownloadService {
     form: &NewDownloadRequest,
   ) -> Result<DownloadRequestEntity, DownloadServiceError> {
     let now = self.time_service.utc_now();
-    let id = Ulid::new().to_string();
+    let id = new_ulid();
 
     let model = DownloadRequestEntity {
       id,

@@ -40,18 +40,15 @@ pub async fn dashboard_auth_initiate(
   _headers: HeaderMap,
   session: Session,
 ) -> Result<impl axum::response::IntoResponse, ApiError> {
-  let settings = auth_scope.settings();
-
   // Must be in multi-tenant mode
-  if !settings.is_multi_tenant().await {
+  if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
 
+  let settings = auth_scope.settings();
+
   // Get multi-tenant client ID (secret is only needed at callback time)
-  let client_id = settings
-    .multitenant_client_id()
-    .await
-    .ok_or(DashboardAuthRouteError::MissingClientConfig)?;
+  let client_id = settings.multitenant_client_id().await?;
 
   // If user already has a valid dashboard token, return 200
   if let Some(existing_token) = session
@@ -133,13 +130,13 @@ pub async fn dashboard_auth_callback(
   session: Session,
   Json(request): Json<AuthCallbackRequest>,
 ) -> Result<Json<RedirectResponse>, ApiError> {
-  let settings = auth_scope.settings();
-  let auth_flow = auth_scope.auth_flow();
-
   // Must be in multi-tenant mode
-  if !settings.is_multi_tenant().await {
+  if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
+
+  let settings = auth_scope.settings();
+  let auth_flow = auth_scope.auth_flow();
 
   // Handle OAuth errors from the auth server
   if let Some(error) = &request.error {
@@ -188,14 +185,8 @@ pub async fn dashboard_auth_callback(
     .ok_or(DashboardAuthRouteError::SessionInfoNotFound)?;
 
   // Get multi-tenant client credentials
-  let client_id = settings
-    .multitenant_client_id()
-    .await
-    .ok_or(DashboardAuthRouteError::MissingClientConfig)?;
-  let client_secret = settings
-    .multitenant_client_secret()
-    .await
-    .ok_or(DashboardAuthRouteError::MissingClientConfig)?;
+  let client_id = settings.multitenant_client_id().await?;
+  let client_secret = settings.multitenant_client_secret().await?;
 
   // Exchange code for tokens
   let token_response = auth_flow

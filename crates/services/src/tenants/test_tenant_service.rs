@@ -50,6 +50,8 @@ async fn test_create_tenant_get_tenant_roundtrip(
     .create_tenant(
       TEST_CLIENT_ID,
       TEST_CLIENT_SECRET,
+      "Test App",
+      None,
       AppStatus::ResourceAdmin,
       None,
     )
@@ -108,6 +110,8 @@ async fn test_get_status_after_create(
     .create_tenant(
       TEST_CLIENT_ID,
       TEST_CLIENT_SECRET,
+      "Test App",
+      None,
       AppStatus::ResourceAdmin,
       None,
     )
@@ -122,34 +126,39 @@ async fn test_get_status_after_create(
 }
 
 // =========================================================================
-// set_client_ready: sets status to Ready and created_by
+// set_tenant_ready: atomically sets status to Ready, created_by, and membership
 // =========================================================================
 
 #[rstest]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_set_client_ready_changes_status_and_created_by(
+async fn test_set_tenant_ready_changes_status_created_by_and_membership(
   #[future]
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
   let svc = make_service(db);
-  svc
+  let tenant = svc
     .create_tenant(
       TEST_CLIENT_ID,
       TEST_CLIENT_SECRET,
+      "Test App",
+      None,
       AppStatus::ResourceAdmin,
       None,
     )
     .await?;
-  svc.set_client_ready(TEST_CLIENT_ID, "test-user-id").await?;
-  let tenant = svc
+  svc.set_tenant_ready(&tenant.id, "test-user-id").await?;
+  let retrieved = svc
     .get_standalone_app()
     .await?
     .expect("tenant should exist");
-  assert_eq!(AppStatus::Ready, tenant.status);
-  assert_eq!(Some("test-user-id".to_string()), tenant.created_by);
+  assert_eq!(AppStatus::Ready, retrieved.status);
+  assert_eq!(Some("test-user-id".to_string()), retrieved.created_by);
+  // Membership should also have been created
+  let has = svc.has_tenant_memberships("test-user-id").await?;
+  assert_eq!(true, has);
   Ok(())
 }
 
@@ -166,10 +175,24 @@ async fn test_create_two_tenants_triggers_multiple_error(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  db.create_tenant("client-one", "secret-one", &AppStatus::Setup, None)
-    .await?;
-  db.create_tenant("client-two", "secret-two", &AppStatus::Setup, None)
-    .await?;
+  db.create_tenant(
+    "client-one",
+    "secret-one",
+    "Client One",
+    None,
+    &AppStatus::Setup,
+    None,
+  )
+  .await?;
+  db.create_tenant(
+    "client-two",
+    "secret-two",
+    "Client Two",
+    None,
+    &AppStatus::Setup,
+    None,
+  )
+  .await?;
 
   let svc = make_service(db);
   let result = svc.get_standalone_app().await;
@@ -192,34 +215,20 @@ async fn test_repository_encryption_roundtrip(
   db: TestDbService,
 ) -> anyhow::Result<()> {
   let secret = "super-secret-value-123";
-  db.create_tenant(TEST_CLIENT_ID, secret, &AppStatus::Ready, None)
-    .await?;
+  db.create_tenant(
+    TEST_CLIENT_ID,
+    secret,
+    "Test App",
+    None,
+    &AppStatus::ResourceAdmin,
+    None,
+  )
+  .await?;
 
   let row = db.get_tenant().await?.expect("row should exist");
   assert_eq!(secret, row.client_secret);
   assert_eq!(TEST_CLIENT_ID, row.client_id);
-  assert_eq!(AppStatus::Ready, row.app_status);
-  Ok(())
-}
-
-// =========================================================================
-// repository: update_tenant_status on non-existent row returns error
-// =========================================================================
-
-#[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_update_status_nonexistent_client_id_returns_not_found(
-  #[future]
-  #[from(test_db_service)]
-  db: TestDbService,
-) -> anyhow::Result<()> {
-  let result = db
-    .update_tenant_status("nonexistent-client", &AppStatus::Ready)
-    .await;
-  let err = result.unwrap_err();
-  assert_eq!("db_error-item_not_found", err.code());
+  assert_eq!(AppStatus::ResourceAdmin, row.app_status);
   Ok(())
 }
 
@@ -236,8 +245,15 @@ async fn test_delete_tenant(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  db.create_tenant(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready, None)
-    .await?;
+  db.create_tenant(
+    TEST_CLIENT_ID,
+    TEST_CLIENT_SECRET,
+    "Test App",
+    None,
+    &AppStatus::ResourceAdmin,
+    None,
+  )
+  .await?;
   db.delete_tenant(TEST_CLIENT_ID).await?;
   let row = db.get_tenant().await?;
   assert!(row.is_none());

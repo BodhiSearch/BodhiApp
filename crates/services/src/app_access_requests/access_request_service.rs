@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use chrono::Duration;
 use std::sync::Arc;
-use ulid::Ulid;
 
 use super::error::{AccessRequestError, Result};
 use super::{AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, FlowType};
 use crate::db::{DbService, TimeService};
+use crate::new_ulid;
 use crate::AuthService;
 use crate::UserScope;
 
@@ -14,19 +14,18 @@ use crate::UserScope;
 /// NOTE: This service is intentionally NOT auth-scoped. Unlike other domain services where
 /// tenant_id/user_id scope which records are visible, app access requests have a different
 /// lifecycle:
-/// - create_draft: Anonymous (no authenticated user), tenant_id from DB lookup
+/// - create_draft: Anonymous (no authenticated user), tenant_id is NULL
 /// - get_request: Used by both anonymous status polling and authenticated review
-/// - approve/deny: reviewer's user_id is recorded as actor, not used as scope filter
+/// - approve/deny: reviewer's user_id is recorded as actor, tenant_id bound at approval
 ///
 /// Exposed on AuthScopedAppService as a non-auth-scoped passthrough for convenience.
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
-  /// Create a draft access request
+  /// Create a draft access request (tenant_id is NULL — bound at approval time)
   #[allow(clippy::too_many_arguments)]
   async fn create_draft(
     &self,
-    tenant_id: &str,
     app_client_id: String,
     flow_type: FlowType,
     redirect_uri: Option<String>,
@@ -38,11 +37,14 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
   /// Get access request by ID
   async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequest>>;
 
-  /// Approve access request and register with KC
+  /// Approve access request and register with KC.
+  /// `tenant_id` binds the draft to the approver's active tenant.
+  #[allow(clippy::too_many_arguments)]
   async fn approve_request(
     &self,
     id: &str,
     user_id: &str,
+    tenant_id: &str,
     user_token: &str,
     tool_approvals: Vec<super::ToolsetApproval>,
     mcp_approvals: Vec<super::McpApproval>,
@@ -107,7 +109,6 @@ impl DefaultAccessRequestService {
 impl AccessRequestService for DefaultAccessRequestService {
   async fn create_draft(
     &self,
-    tenant_id: &str,
     app_client_id: String,
     flow_type: FlowType,
     redirect_uri: Option<String>,
@@ -119,7 +120,7 @@ impl AccessRequestService for DefaultAccessRequestService {
       return Err(AccessRequestError::MissingRedirectUri);
     }
 
-    let access_request_id = Ulid::new().to_string();
+    let access_request_id = new_ulid();
 
     let now = self.time_service.utc_now();
     let expires_at = now + Duration::minutes(10);
@@ -140,7 +141,7 @@ impl AccessRequestService for DefaultAccessRequestService {
 
     let row = AppAccessRequest {
       id: access_request_id,
-      tenant_id: tenant_id.to_string(),
+      tenant_id: None,
       app_client_id,
       app_name: None,
       app_description: None,
@@ -172,6 +173,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     &self,
     id: &str,
     user_id: &str,
+    tenant_id: &str,
     user_token: &str,
     tool_approvals: Vec<super::ToolsetApproval>,
     mcp_approvals: Vec<super::McpApproval>,
@@ -224,6 +226,7 @@ impl AccessRequestService for DefaultAccessRequestService {
       .update_approval(
         id,
         user_id,
+        tenant_id,
         &approved_json,
         &approved_role.to_string(),
         &kc_response.access_request_scope,

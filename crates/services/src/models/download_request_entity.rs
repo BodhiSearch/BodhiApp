@@ -39,7 +39,7 @@ impl ActiveModelBehavior for ActiveModel {}
 impl Model {
   pub fn new_pending(tenant_id: &str, repo: &str, filename: &str, now: DateTime<Utc>) -> Self {
     Model {
-      id: ulid::Ulid::new().to_string(),
+      id: crate::new_ulid(),
       tenant_id: tenant_id.to_string(),
       repo: repo.to_string(),
       filename: filename.to_string(),

@@ -1,5 +1,5 @@
 use crate::db::{DbService, TimeService};
-use crate::mcps::{DefaultMcpService, McpRequest, McpServerRow, McpService};
+use crate::mcps::{DefaultMcpService, McpRequest, McpServerEntity, McpService};
 use crate::mcps::{McpAuthType, McpExecutionRequest, RegistrationType};
 use crate::test_utils::{test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID};
 use anyhow_trace::anyhow_trace;
@@ -11,9 +11,9 @@ use rstest::rstest;
 use serde_json::json;
 use std::sync::Arc;
 
-async fn setup_server(db: &dyn DbService) -> McpServerRow {
+async fn setup_server(db: &dyn DbService) -> McpServerEntity {
   let now = db.now();
-  let row = McpServerRow {
+  let row = McpServerEntity {
     id: "server-1".to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     url: "https://mcp.example.com/mcp".to_string(),

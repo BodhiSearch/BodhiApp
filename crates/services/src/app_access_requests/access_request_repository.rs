@@ -15,6 +15,7 @@ pub trait AccessRequestRepository: Send + Sync {
     &self,
     id: &str,
     user_id: &str,
+    tenant_id: &str,
     approved: &str, // JSON string
     approved_role: &str,
     access_request_scope: &str,
@@ -58,7 +59,7 @@ impl AccessRequestRepository for DefaultDbService {
       created_at: Set(row.created_at),
       updated_at: Set(row.updated_at),
     };
-    let tenant_id = row.tenant_id.clone();
+    let tenant_id = row.tenant_id.clone().unwrap_or_default();
 
     self
       .with_tenant_txn(&tenant_id, |txn| {
@@ -111,6 +112,7 @@ impl AccessRequestRepository for DefaultDbService {
     &self,
     id: &str,
     user_id: &str,
+    tenant_id: &str,
     approved: &str,
     approved_role: &str,
     access_request_scope: &str,
@@ -118,12 +120,13 @@ impl AccessRequestRepository for DefaultDbService {
     let now = self.time_service.utc_now();
     let id_owned = id.to_string();
     let user_id_owned = user_id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
     let approved_owned = approved.to_string();
     let approved_role_owned = approved_role.to_string();
     let access_request_scope_owned = access_request_scope.to_string();
 
-    // Look up tenant_id from the record first
-    let row = app_access_request_entity::Entity::find_by_id(&id_owned)
+    // Look up the record directly (bypasses RLS) to confirm it exists
+    app_access_request_entity::Entity::find_by_id(&id_owned)
       .one(&self.db)
       .await
       .map_err(DbError::from)?
@@ -131,12 +134,12 @@ impl AccessRequestRepository for DefaultDbService {
         id: id_owned.clone(),
         item_type: "app_access_request".to_string(),
       })?;
-    let tenant_id = row.tenant_id.clone();
 
+    // Use the provided tenant_id for RLS context (binds draft to tenant)
     self
-      .with_tenant_txn(&tenant_id, |txn| {
+      .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // validate_draft_for_update inline
+          // Re-read within transaction — RLS allows NULL tenant_id rows
           let row = app_access_request_entity::Entity::find_by_id(&id_owned)
             .one(txn)
             .await
@@ -166,6 +169,7 @@ impl AccessRequestRepository for DefaultDbService {
 
           let active = app_access_request_entity::ActiveModel {
             id: Set(row.id.clone()),
+            tenant_id: Set(Some(tenant_id_owned)),
             status: Set(AppAccessRequestStatus::Approved),
             user_id: Set(Some(user_id_owned)),
             approved: Set(Some(approved_owned)),
@@ -186,7 +190,7 @@ impl AccessRequestRepository for DefaultDbService {
     let id_owned = id.to_string();
     let user_id_owned = user_id.to_string();
 
-    // Look up tenant_id from the record first
+    // Look up tenant_id from the record first (bypasses RLS)
     let row = app_access_request_entity::Entity::find_by_id(&id_owned)
       .one(&self.db)
       .await
@@ -195,7 +199,7 @@ impl AccessRequestRepository for DefaultDbService {
         id: id_owned.clone(),
         item_type: "app_access_request".to_string(),
       })?;
-    let tenant_id = row.tenant_id.clone();
+    let tenant_id = row.tenant_id.clone().unwrap_or_default();
 
     self
       .with_tenant_txn(&tenant_id, |txn| {
@@ -251,7 +255,7 @@ impl AccessRequestRepository for DefaultDbService {
     let id_owned = id.to_string();
     let error_message_owned = error_message.to_string();
 
-    // Look up tenant_id from the record first
+    // Look up tenant_id from the record first (bypasses RLS)
     let row = app_access_request_entity::Entity::find_by_id(&id_owned)
       .one(&self.db)
       .await
@@ -260,7 +264,7 @@ impl AccessRequestRepository for DefaultDbService {
         id: id_owned.clone(),
         item_type: "app_access_request".to_string(),
       })?;
-    let tenant_id = row.tenant_id.clone();
+    let tenant_id = row.tenant_id.clone().unwrap_or_default();
 
     self
       .with_tenant_txn(&tenant_id, |txn| {

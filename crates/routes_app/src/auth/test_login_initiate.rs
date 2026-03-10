@@ -58,9 +58,10 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: services::AppStatus::Ready,
-      created_by: None,
+      created_by: Some("test-user".to_string()),
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
     })
@@ -80,6 +81,7 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;
@@ -149,9 +151,10 @@ async fn test_auth_initiate_handler_loopback_host_detection(
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: services::AppStatus::Ready,
-      created_by: None,
+      created_by: Some("test-user".to_string()),
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
     })
@@ -173,6 +176,7 @@ async fn test_auth_initiate_handler_loopback_host_detection(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;
@@ -222,9 +226,10 @@ async fn test_auth_initiate_handler_network_host_usage(
       id: String::new(),
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-
+      name: "Test App".to_string(),
+      description: None,
       status: services::AppStatus::Ready,
-      created_by: None,
+      created_by: Some("test-user".to_string()),
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
     })
@@ -246,6 +251,7 @@ async fn test_auth_initiate_handler_network_host_usage(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;
@@ -345,6 +351,132 @@ async fn auth_initiate_handler_with_token_response(
   let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
   Ok((status, body))
+}
+
+/// Dashboard-only MultiTenantSession (no resource token) should proceed with tenant OAuth,
+/// not short-circuit to home page. This is the fix for multi-tenant login flow where
+/// auth_initiate previously returned 200 (already authenticated) instead of 201 (OAuth URL).
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_auth_initiate_dashboard_only_session_initiates_tenant_oauth(
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
+  let setting_service = SettingServiceStub::with_settings(HashMap::from([
+    (BODHI_SCHEME.to_string(), "http".to_string()),
+    (BODHI_HOST.to_string(), "localhost".to_string()),
+    (BODHI_PORT.to_string(), "3000".to_string()),
+    (
+      BODHI_AUTH_URL.to_string(),
+      "http://test-id.getbodhi.app".to_string(),
+    ),
+    (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
+  ]));
+  let dbfile = temp_bodhi_home.path().join("test.db");
+  let mut builder = AppServiceStubBuilder::default();
+  builder
+    .setting_service(Arc::new(setting_service))
+    .build_session_service(dbfile)
+    .await;
+  builder.with_tenant(services::Tenant::test_default()).await;
+  let app_service = builder.build().await?;
+  let app_service = Arc::new(app_service);
+  let state = app_service.clone();
+  let router = Router::new()
+    .route("/auth/initiate", post(auth_initiate))
+    .layer(app_service.session_service().session_layer())
+    .with_state(state);
+
+  // Dashboard-only MultiTenantSession: authenticated at platform level but no resource token
+  let resp = router
+    .oneshot(
+      Request::post("/auth/initiate")
+        .json(json! {{"client_id": "test-client"}})?
+        .with_auth_context(AuthContext::MultiTenantSession {
+          client_id: None,
+          tenant_id: None,
+          user_id: "test-user-id".to_string(),
+          username: "test@example.com".to_string(),
+          role: None,
+          token: None,
+          dashboard_token: "test-dashboard-token".to_string(),
+        }),
+    )
+    .await?;
+
+  // Should get 201 with OAuth URL, not 200 with home page
+  assert_eq!(StatusCode::CREATED, resp.status());
+  let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
+  let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
+  assert!(
+    body
+      .location
+      .starts_with("http://test-id.getbodhi.app/realms/test-realm/protocol/openid-connect/auth"),
+    "Expected OAuth URL but got: {}",
+    body.location
+  );
+  Ok(())
+}
+
+/// Full MultiTenantSession (with resource token) should short-circuit to home page.
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_auth_initiate_full_multi_tenant_session_redirects_to_home(
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
+  let setting_service = SettingServiceStub::with_settings(HashMap::from([
+    (BODHI_SCHEME.to_string(), "http".to_string()),
+    (BODHI_HOST.to_string(), "localhost".to_string()),
+    (BODHI_PORT.to_string(), "3000".to_string()),
+    (
+      BODHI_AUTH_URL.to_string(),
+      "http://test-id.getbodhi.app".to_string(),
+    ),
+    (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
+  ]));
+  let dbfile = temp_bodhi_home.path().join("test.db");
+  let mut builder = AppServiceStubBuilder::default();
+  builder
+    .setting_service(Arc::new(setting_service))
+    .build_session_service(dbfile)
+    .await;
+  builder.with_tenant(services::Tenant::test_default()).await;
+  let app_service = builder.build().await?;
+  let app_service = Arc::new(app_service);
+  let state = app_service.clone();
+  let router = Router::new()
+    .route("/auth/initiate", post(auth_initiate))
+    .layer(app_service.session_service().session_layer())
+    .with_state(state);
+
+  // Full MultiTenantSession: has resource token
+  let resp = router
+    .oneshot(
+      Request::post("/auth/initiate")
+        .json(json! {{"client_id": "test-client"}})?
+        .with_auth_context(AuthContext::MultiTenantSession {
+          client_id: Some("test-client".to_string()),
+          tenant_id: Some("test-tenant".to_string()),
+          user_id: "test-user-id".to_string(),
+          username: "test@example.com".to_string(),
+          role: Some(services::ResourceRole::User),
+          token: Some("some-resource-token".to_string()),
+          dashboard_token: "test-dashboard-token".to_string(),
+        }),
+    )
+    .await?;
+
+  // Should get 200 with home page URL (already authenticated with tenant)
+  assert_eq!(StatusCode::OK, resp.status());
+  let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
+  let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
+  assert!(
+    body.location.contains("/ui/chat"),
+    "Expected home URL but got: {}",
+    body.location
+  );
+  Ok(())
 }
 
 async fn set_token_in_session(

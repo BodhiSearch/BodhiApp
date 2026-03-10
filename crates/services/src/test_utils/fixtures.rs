@@ -21,8 +21,10 @@ impl Tenant {
       id: "01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string(),
       client_id: TEST_CLIENT_ID.to_string(),
       client_secret: TEST_CLIENT_SECRET.to_string(),
+      name: "Test App".to_string(),
+      description: None,
       status: AppStatus::Ready,
-      created_by: None,
+      created_by: Some(TEST_USER_ID.to_string()),
       created_at: now,
       updated_at: now,
     }
@@ -41,8 +43,10 @@ impl Tenant {
       id: super::TEST_TENANT_B_ID.to_string(),
       client_id: "test-client-b".to_string(),
       client_secret: "test-client-secret-b".to_string(),
+      name: "Test App B".to_string(),
+      description: None,
       status: AppStatus::Ready,
-      created_by: None,
+      created_by: Some(TEST_USER_ID.to_string()),
       created_at: now,
       updated_at: now,
     }

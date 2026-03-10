@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use std::sync::Arc;
-use ulid::Ulid;
 
 use crate::db::{DbError, DbService, TimeService};
 use crate::models::{
   ApiAlias, ApiKeyUpdate, ApiModelOutput, ApiModelRequest, PaginatedApiModelOutput,
 };
+use crate::new_ulid;
 use crate::AiApiService;
 use errmeta::{AppError, EntityError, ErrorType};
 
@@ -117,7 +117,7 @@ impl ApiModelService for DefaultApiModelService {
     validate_forward_all(&form)?;
 
     let now = self.time_service.utc_now();
-    let id = Ulid::new().to_string();
+    let id = new_ulid();
 
     // Reset models to empty if forward_all_with_prefix is true
     let models = if form.forward_all_with_prefix {

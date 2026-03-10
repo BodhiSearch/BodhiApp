@@ -1,7 +1,7 @@
 use crate::db::encryption::encrypt_api_key;
 use crate::mcps::{
-  McpAuthHeaderRow, McpAuthRepository, McpOAuthConfigRow, McpOAuthTokenRow, McpServerRepository,
-  RegistrationType,
+  McpAuthHeaderEntity, McpAuthRepository, McpOAuthConfigEntity, McpOAuthTokenEntity,
+  McpServerRepository, RegistrationType,
 };
 use crate::test_utils::{sea_context, setup_env, TEST_TENANT_ID};
 use anyhow_trace::anyhow_trace;
@@ -16,10 +16,10 @@ fn make_oauth_config_row(
   id: &str,
   server_id: &str,
   now: chrono::DateTime<chrono::Utc>,
-) -> McpOAuthConfigRow {
+) -> McpOAuthConfigEntity {
   let (encrypted, salt, nonce) =
     encrypt_api_key(ENCRYPTION_KEY, "my-client-secret-123").expect("encryption failed");
-  McpOAuthConfigRow {
+  McpOAuthConfigEntity {
     id: id.to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     name: "OAuth".to_string(),
@@ -47,12 +47,12 @@ fn make_oauth_token_row(
   config_id: &str,
   id: &str,
   now: chrono::DateTime<chrono::Utc>,
-) -> McpOAuthTokenRow {
+) -> McpOAuthTokenEntity {
   let (enc_access, salt_access, nonce_access) =
     encrypt_api_key(ENCRYPTION_KEY, "access-token-abc").expect("encryption failed");
   let (enc_refresh, salt_refresh, nonce_refresh) =
     encrypt_api_key(ENCRYPTION_KEY, "refresh-token-xyz").expect("encryption failed");
-  McpOAuthTokenRow {
+  McpOAuthTokenEntity {
     id: id.to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     mcp_oauth_config_id: config_id.to_string(),
@@ -149,7 +149,7 @@ async fn test_update_mcp_auth_header(
 
   let (enc2, salt2, nonce2) = encrypt_api_key(ENCRYPTION_KEY, "new-secret")?;
   let updated_at = ctx.now + chrono::Duration::seconds(30);
-  let updated_row = McpAuthHeaderRow {
+  let updated_row = McpAuthHeaderEntity {
     header_key: "X-Api-Key".to_string(),
     encrypted_header_value: enc2,
     header_value_salt: salt2,
@@ -232,7 +232,7 @@ async fn test_list_mcp_auth_headers_by_server(
   let later = ctx.now + chrono::Duration::seconds(10);
   ctx
     .service
-    .create_mcp_auth_header(&McpAuthHeaderRow {
+    .create_mcp_auth_header(&McpAuthHeaderEntity {
       id: "ah-2".to_string(),
       name: "Header 2".to_string(),
       created_at: later,
@@ -401,7 +401,7 @@ async fn test_list_mcp_oauth_configs_by_server(
   let later = ctx.now + chrono::Duration::seconds(10);
   ctx
     .service
-    .create_mcp_oauth_config(&McpOAuthConfigRow {
+    .create_mcp_oauth_config(&McpOAuthConfigEntity {
       id: "oc-2".to_string(),
       name: "OAuth 2".to_string(),
       client_id: "other-client".to_string(),
@@ -676,7 +676,7 @@ async fn test_get_latest_oauth_token_by_config(
   ctx.service.create_mcp_oauth_token(&older).await?;
 
   let later = ctx.now + chrono::Duration::seconds(100);
-  let newer = McpOAuthTokenRow {
+  let newer = McpOAuthTokenEntity {
     id: "ot-2".to_string(),
     created_at: later,
     updated_at: later,
@@ -728,7 +728,7 @@ async fn test_update_mcp_oauth_token(
   let (new_enc_rt, new_salt_rt, new_nonce_rt) =
     encrypt_api_key(ENCRYPTION_KEY, "new-refresh-token-uvw")?;
   let updated_at = ctx.now + chrono::Duration::seconds(100);
-  let updated_row = McpOAuthTokenRow {
+  let updated_row = McpOAuthTokenEntity {
     encrypted_access_token: new_enc_at,
     access_token_salt: new_salt_at,
     access_token_nonce: new_nonce_at,
@@ -925,7 +925,7 @@ async fn test_delete_oauth_tokens_by_config_and_user(
   // user-2 token
   ctx
     .service
-    .create_mcp_oauth_token(&McpOAuthTokenRow {
+    .create_mcp_oauth_token(&McpOAuthTokenEntity {
       id: "ot-2".to_string(),
       user_id: "user-2".to_string(),
       ..make_oauth_token_row("oc-1", "ot-2", ctx.now)

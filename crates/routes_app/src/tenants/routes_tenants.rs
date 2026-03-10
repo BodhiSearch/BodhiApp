@@ -1,6 +1,5 @@
 use crate::middleware::{access_token_key, SESSION_KEY_ACTIVE_CLIENT_ID};
 use crate::shared::AuthScope;
-use crate::tenants::dashboard_helpers::ensure_valid_dashboard_token;
 use crate::{
   ApiError, CreateTenantRequest, CreateTenantResponse, DashboardAuthRouteError, TenantListItem,
   TenantListResponse, ValidatedJson, API_TAG_TENANTS, ENDPOINT_TENANTS,
@@ -8,7 +7,7 @@ use crate::{
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::Json;
-use services::{extract_claims, AppStatus, Claims, LOGIN_CALLBACK_PATH};
+use services::{AppStatus, LOGIN_CALLBACK_PATH};
 use tower_sessions::Session;
 
 /// List all tenants visible to the authenticated dashboard user
@@ -33,45 +32,41 @@ pub async fn tenants_index(
   auth_scope: AuthScope,
   session: Session,
 ) -> Result<Json<TenantListResponse>, ApiError> {
-  let settings = auth_scope.settings();
-
-  if !settings.is_multi_tenant().await {
+  if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
 
-  let auth_service = auth_scope.auth_service();
-  let dashboard_token = ensure_valid_dashboard_token(
-    &session,
-    auth_service.as_ref(),
-    settings.as_ref(),
-    auth_scope.time().as_ref(),
-  )
-  .await?;
+  let user_id = auth_scope.auth_context().require_user_id()?;
 
-  let spi_response = auth_service.list_tenants(&dashboard_token).await?;
+  // Query local DB for user's tenant memberships
+  let user_tenants = auth_scope
+    .tenant_service()
+    .list_user_tenants(user_id)
+    .await?;
 
   let active_client_id = session
     .get::<String>(SESSION_KEY_ACTIVE_CLIENT_ID)
     .await
     .unwrap_or(None);
 
-  let mut tenants = Vec::with_capacity(spi_response.tenants.len());
-  for spi_tenant in spi_response.tenants {
+  let mut tenants = Vec::with_capacity(user_tenants.len());
+  for t in user_tenants {
     let is_active = active_client_id
       .as_ref()
-      .map(|active| active == &spi_tenant.client_id)
+      .map(|active| active == &t.client_id)
       .unwrap_or(false);
 
     let logged_in = session
-      .get::<String>(&access_token_key(&spi_tenant.client_id))
+      .get::<String>(&access_token_key(&t.client_id))
       .await
       .unwrap_or(None)
       .is_some();
 
     tenants.push(TenantListItem {
-      client_id: spi_tenant.client_id,
-      name: spi_tenant.name,
-      description: spi_tenant.description,
+      client_id: t.client_id,
+      name: t.name,
+      description: t.description,
+      status: t.status,
       is_active,
       logged_in,
     });
@@ -104,58 +99,52 @@ pub async fn tenants_index(
 )]
 pub async fn tenants_create(
   auth_scope: AuthScope,
-  session: Session,
+  _session: Session,
   ValidatedJson(form): ValidatedJson<CreateTenantRequest>,
 ) -> Result<(StatusCode, Json<CreateTenantResponse>), ApiError> {
-  let settings = auth_scope.settings();
-
-  if !settings.is_multi_tenant().await {
+  if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
 
+  let dashboard_token = auth_scope.auth_context().require_dashboard_token()?;
   let auth_service = auth_scope.auth_service();
-  let dashboard_token = ensure_valid_dashboard_token(
-    &session,
-    auth_service.as_ref(),
-    settings.as_ref(),
-    auth_scope.time().as_ref(),
-  )
-  .await?;
 
-  let public_url = settings.public_server_url().await;
+  let public_url = auth_scope.settings().public_server_url().await;
   let redirect_uris = vec![format!("{}{}", public_url, LOGIN_CALLBACK_PATH)];
 
+  let tenant_name = form.name;
+  let tenant_description = form.description;
   let spi_response = auth_service
     .create_tenant(
-      &dashboard_token,
-      &form.name,
-      &form.description.unwrap_or_default(),
+      dashboard_token,
+      &tenant_name,
+      &tenant_description.clone().unwrap_or_default(),
       redirect_uris,
     )
     .await?;
 
-  // Extract user_id from dashboard JWT sub claim
-  let user_id = extract_claims::<Claims>(&dashboard_token)
-    .ok()
-    .map(|claims| claims.sub);
+  let user_id = auth_scope.auth_context().user_id().map(|s| s.to_string());
 
-  // Create local tenant row
-  let tenant_service = auth_scope.tenant();
-  let local_result = tenant_service
+  // Create local tenant row + tenant-user membership (atomic)
+  let tenant_service = auth_scope.tenants();
+  if let Err(e) = tenant_service
     .create_tenant(
       &spi_response.client_id,
       &spi_response.client_secret,
+      &tenant_name,
+      tenant_description,
       AppStatus::Ready,
-      user_id,
+      user_id.clone(),
     )
-    .await;
-
-  if let Err(e) = local_result {
+    .await
+  {
     tracing::error!(
       client_id = %spi_response.client_id,
       error = %e,
-      "Failed to create local tenant row after SPI creation — orphan accepted (D52)"
+      "D52: local DB failed after SPI creation — Keycloak orphan at client_id={}",
+      spi_response.client_id,
     );
+    return Err(e.into());
   }
 
   Ok((
@@ -192,9 +181,7 @@ pub async fn tenants_activate(
   session: Session,
   Path(client_id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-  let settings = auth_scope.settings();
-
-  if !settings.is_multi_tenant().await {
+  if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
 

@@ -1,4 +1,5 @@
 use crate::models::{JsonVec, OAIRequestParams, Repo, UserAlias, UserAliasRepository};
+use crate::new_ulid;
 use crate::test_utils::{
   sea_context, setup_env, TEST_TENANT_A_USER_B_ID, TEST_TENANT_B_ID, TEST_TENANT_ID, TEST_USER_ID,
 };
@@ -30,8 +31,8 @@ async fn test_cross_tenant_user_alias_isolation(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let alias_a = make_alias(&ulid::Ulid::new().to_string(), "alias:tenant-a", ctx.now);
-  let alias_b = make_alias(&ulid::Ulid::new().to_string(), "alias:tenant-b", ctx.now);
+  let alias_a = make_alias(&new_ulid(), "alias:tenant-a", ctx.now);
+  let alias_b = make_alias(&new_ulid(), "alias:tenant-b", ctx.now);
 
   ctx
     .service
@@ -77,8 +78,8 @@ async fn test_intra_tenant_user_alias_isolation(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let alias_user_a = make_alias(&ulid::Ulid::new().to_string(), "alias:user-a", ctx.now);
-  let alias_user_b = make_alias(&ulid::Ulid::new().to_string(), "alias:user-b", ctx.now);
+  let alias_user_a = make_alias(&new_ulid(), "alias:user-a", ctx.now);
+  let alias_user_b = make_alias(&new_ulid(), "alias:user-b", ctx.now);
 
   ctx
     .service

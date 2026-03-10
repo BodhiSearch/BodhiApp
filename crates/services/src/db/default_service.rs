@@ -156,7 +156,11 @@ impl DbCore for DefaultDbService {
           .await?;
       }
       _ => {
-        sea_orm::ConnectionTrait::execute_unprepared(&self.db, "DELETE FROM tenants").await?;
+        sea_orm::ConnectionTrait::execute_unprepared(
+          &self.db,
+          "DELETE FROM tenants_users; DELETE FROM tenants",
+        )
+        .await?;
       }
     }
     Ok(())

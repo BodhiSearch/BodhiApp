@@ -58,7 +58,7 @@ impl AccessRepository for DefaultDbService {
     user_id: String,
   ) -> Result<UserAccessRequestEntity, DbError> {
     let now = self.time_service.utc_now();
-    let id = ulid::Ulid::new().to_string();
+    let id = crate::new_ulid();
 
     let model = access_request_entity::ActiveModel {
       id: Set(id.clone()),

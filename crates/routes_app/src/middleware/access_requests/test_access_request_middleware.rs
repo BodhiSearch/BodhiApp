@@ -137,6 +137,7 @@ async fn test_missing_auth(toolset_validator: Arc<dyn AccessRequestValidator>) {
   let ctx = AuthContext::Anonymous {
     client_id: None,
     tenant_id: None,
+    deployment: services::DeploymentMode::Standalone,
   };
   let app = test_router(toolset_validator, ctx).await;
 
@@ -184,7 +185,7 @@ async fn test_oauth_access_request_validation(
 
   let access_request_row = services::AppAccessRequest {
     id: "ar-uuid".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
@@ -234,7 +235,7 @@ async fn test_oauth_app_client_mismatch(toolset_validator: Arc<dyn AccessRequest
 
   let access_request_row = services::AppAccessRequest {
     id: "ar-uuid".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
@@ -287,7 +288,7 @@ async fn test_oauth_user_mismatch(toolset_validator: Arc<dyn AccessRequestValida
 
   let access_request_row = services::AppAccessRequest {
     id: "ar-uuid".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
@@ -340,7 +341,7 @@ async fn test_oauth_auto_approved_no_toolsets(toolset_validator: Arc<dyn AccessR
 
   let access_request_row = services::AppAccessRequest {
     id: "ar-uuid".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
@@ -407,6 +408,36 @@ async fn test_oauth_access_request_not_found(toolset_validator: Arc<dyn AccessRe
     .unwrap();
 
   assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+// Multi-tenant session: passthrough (same as session)
+#[rstest]
+#[tokio::test]
+async fn test_multi_tenant_session_passes_through(
+  toolset_validator: Arc<dyn AccessRequestValidator>,
+) {
+  let ctx = AuthContext::test_multi_tenant_session_full(
+    "user123",
+    "user@test.com",
+    "client1",
+    "tenant1",
+    ResourceRole::User,
+    "test-token",
+  );
+  let app = test_router(toolset_validator, ctx).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/toolsets/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute/search")
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  assert_eq!(response.status(), StatusCode::OK);
 }
 
 // ============================================================================
@@ -508,6 +539,35 @@ async fn test_mcp_session_auth_passes_through(mcp_validator: Arc<dyn AccessReque
 }
 
 #[rstest]
+#[tokio::test]
+async fn test_mcp_multi_tenant_session_passes_through(
+  mcp_validator: Arc<dyn AccessRequestValidator>,
+) {
+  let ctx = AuthContext::test_multi_tenant_session_full(
+    "user123",
+    "user@test.com",
+    "client1",
+    "tenant1",
+    ResourceRole::User,
+    "test-token",
+  );
+  let app = test_mcp_router(mcp_validator, ctx).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/mcps/01ARZ3NDEKTSV4RRFFQ69G5FAV/tools/read/execute")
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[rstest]
 #[case::mcp_approved_instance_in_list(
   AppAccessRequestStatus::Approved,
   Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#.to_string()),
@@ -535,7 +595,7 @@ async fn test_mcp_oauth_access_request_validation(
 
   let access_request_row = services::AppAccessRequest {
     id: "ar-uuid".to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,

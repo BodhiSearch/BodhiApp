@@ -93,10 +93,37 @@ impl MigrationTrait for Migration {
       _ => {}
     }
 
+    if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      let conn = manager.get_connection();
+      conn
+        .execute_unprepared("ALTER TABLE mcp_auth_headers ENABLE ROW LEVEL SECURITY;")
+        .await?;
+      conn
+        .execute_unprepared("ALTER TABLE mcp_auth_headers FORCE ROW LEVEL SECURITY;")
+        .await?;
+      conn
+        .execute_unprepared(
+          "CREATE POLICY tenant_isolation ON mcp_auth_headers
+             FOR ALL
+             USING (tenant_id = (SELECT current_tenant_id()))
+             WITH CHECK (tenant_id = (SELECT current_tenant_id()));",
+        )
+        .await?;
+    }
+
     Ok(())
   }
 
   async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+    if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      let conn = manager.get_connection();
+      conn
+        .execute_unprepared("DROP POLICY IF EXISTS tenant_isolation ON mcp_auth_headers;")
+        .await?;
+      conn
+        .execute_unprepared("ALTER TABLE mcp_auth_headers DISABLE ROW LEVEL SECURITY;")
+        .await?;
+    }
     manager
       .drop_table(Table::drop().table(McpAuthHeaders::Table).to_owned())
       .await

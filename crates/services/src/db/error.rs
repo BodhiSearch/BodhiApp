@@ -67,6 +67,9 @@ pub enum DbError {
   #[error("Operation forbidden in production: {0}.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
   ProductionGuard(String),
+  #[error("Validation error: {0}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ValidationError(String),
 }
 
 impl_error_from!(

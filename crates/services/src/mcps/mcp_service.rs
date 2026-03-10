@@ -4,18 +4,18 @@ use super::{
   McpServerRequest, RegistrationType,
 };
 use super::{
-  McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow, McpRow, McpServerEntity, McpServerRow,
+  McpAuthHeaderEntity, McpEntity, McpOAuthConfigEntity, McpOAuthTokenEntity, McpServerEntity,
   McpWithServerEntity,
 };
 use super::{McpError, McpServerError};
 use crate::db::{encryption::encrypt_api_key, DbService, TimeService};
+use crate::new_ulid;
 use mcp_client::{McpClient, McpTool};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, info, warn};
-use ulid::Ulid;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
@@ -329,7 +329,11 @@ impl DefaultMcpService {
     lock
   }
 
-  fn mcp_row_to_with_server(&self, row: McpRow, server: &McpServerRow) -> McpWithServerEntity {
+  fn mcp_row_to_with_server(
+    &self,
+    row: McpEntity,
+    server: &McpServerEntity,
+  ) -> McpWithServerEntity {
     McpWithServerEntity {
       id: row.id,
       user_id: row.user_id,
@@ -355,7 +359,7 @@ impl DefaultMcpService {
     tenant_id: &str,
     user_id: &str,
     id: &str,
-  ) -> Result<Option<(McpRow, McpServerRow)>, McpError> {
+  ) -> Result<Option<(McpEntity, McpServerEntity)>, McpError> {
     let row = self.db_service.get_mcp(tenant_id, user_id, id).await?;
     match row {
       Some(mcp_row) => {
@@ -503,7 +507,7 @@ impl DefaultMcpService {
 
       let new_expires_at = new_expires_in.map(|ei| now + chrono::Duration::seconds(ei));
 
-      let updated_row = McpOAuthTokenRow {
+      let updated_row = McpOAuthTokenEntity {
         id: token.id,
         tenant_id: tenant_id.to_string(),
         mcp_oauth_config_id: token.mcp_oauth_config_id,
@@ -541,7 +545,7 @@ impl DefaultMcpService {
   async fn resolve_auth_header_for_mcp(
     &self,
     tenant_id: &str,
-    mcp_row: &McpRow,
+    mcp_row: &McpEntity,
   ) -> Result<Option<(String, String)>, McpError> {
     let user_id = &mcp_row.user_id;
 
@@ -590,8 +594,8 @@ impl McpService for DefaultMcpService {
     }
 
     let now = self.time_service.utc_now();
-    let row = McpServerRow {
-      id: Ulid::new().to_string(),
+    let row = McpServerEntity {
+      id: new_ulid(),
       tenant_id: tenant_id.to_string(),
       url: trimmed_url.to_string(),
       name: request.name,
@@ -635,7 +639,7 @@ impl McpService for DefaultMcpService {
     let url_changed = existing.url.to_lowercase() != trimmed_url.to_lowercase();
 
     let now = self.time_service.utc_now();
-    let row = McpServerRow {
+    let row = McpServerEntity {
       id: existing.id,
       tenant_id: tenant_id.to_string(),
       url: trimmed_url.to_string(),
@@ -754,8 +758,8 @@ impl McpService for DefaultMcpService {
       .map(|tf| serde_json::to_string(tf).expect("Vec<String> serialization cannot fail"));
 
     let now = self.time_service.utc_now();
-    let row = McpRow {
-      id: Ulid::new().to_string(),
+    let row = McpEntity {
+      id: new_ulid(),
       tenant_id: tenant_id.to_string(),
       user_id: user_id.to_string(),
       mcp_server_id: mcp_server.id.clone(),
@@ -833,7 +837,7 @@ impl McpService for DefaultMcpService {
     };
 
     let now = self.time_service.utc_now();
-    let row = McpRow {
+    let row = McpEntity {
       id: id.to_string(),
       tenant_id: tenant_id.to_string(),
       user_id: user_id.to_string(),
@@ -912,7 +916,7 @@ impl McpService for DefaultMcpService {
     };
 
     let now = self.time_service.utc_now();
-    let updated_row = McpRow {
+    let updated_row = McpEntity {
       tools_cache: Some(tools_cache_json),
       tools_filter: tools_filter_json,
       updated_at: now,
@@ -1031,8 +1035,8 @@ impl McpService for DefaultMcpService {
     let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), header_value)?;
 
     let now = self.time_service.utc_now();
-    let row = McpAuthHeaderRow {
-      id: Ulid::new().to_string(),
+    let row = McpAuthHeaderEntity {
+      id: new_ulid(),
       tenant_id: tenant_id.to_string(),
       name: name.to_string(),
       mcp_server_id: mcp_server_id.to_string(),
@@ -1094,7 +1098,7 @@ impl McpService for DefaultMcpService {
     let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), header_value)?;
 
     let now = self.time_service.utc_now();
-    let row = McpAuthHeaderRow {
+    let row = McpAuthHeaderEntity {
       id: existing.id,
       tenant_id: tenant_id.to_string(),
       name: name.to_string(),
@@ -1160,8 +1164,8 @@ impl McpService for DefaultMcpService {
     };
 
     let now = self.time_service.utc_now();
-    let row = McpOAuthConfigRow {
-      id: Ulid::new().to_string(),
+    let row = McpOAuthConfigEntity {
+      id: new_ulid(),
       tenant_id: tenant_id.to_string(),
       name: name.to_string(),
       mcp_server_id: mcp_server_id.to_string(),
@@ -1258,8 +1262,8 @@ impl McpService for DefaultMcpService {
     let now = self.time_service.utc_now();
     let expires_at = expires_in.map(|ei| now + chrono::Duration::seconds(ei));
 
-    let row = McpOAuthTokenRow {
-      id: Ulid::new().to_string(),
+    let row = McpOAuthTokenEntity {
+      id: new_ulid(),
       tenant_id: tenant_id.to_string(),
       mcp_oauth_config_id: config_id.to_string(),
       encrypted_access_token: enc_at,

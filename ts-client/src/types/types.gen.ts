@@ -226,7 +226,7 @@ export type AppInfo = {
     /**
      * Deployment mode: "standalone" or "multi_tenant"
      */
-    deployment: string;
+    deployment: DeploymentMode;
     /**
      * Active tenant's OAuth client_id (present when authenticated with an active tenant)
      */
@@ -1299,6 +1299,8 @@ export type CustomToolPropertiesFormat = {
     grammar: CustomGrammarFormatParam;
     type: 'grammar';
 };
+
+export type DeploymentMode = 'standalone' | 'multi_tenant';
 
 export type DownloadRequest = {
     id: string;

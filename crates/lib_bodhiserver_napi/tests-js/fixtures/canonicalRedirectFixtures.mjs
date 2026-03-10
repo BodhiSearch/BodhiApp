@@ -21,6 +21,7 @@ export class CanonicalRedirectFixtures {
       authRealm: authServerConfig.authRealm,
       clientId: 'dummy-client-id', // Dummy credentials since no auth needed
       clientSecret: 'dummy-client-secret',
+      createdBy: process.env.INTEG_TEST_USERNAME_ID,
       ...CanonicalRedirectFixtures.getCanonicalRedirectConfig(port, canonicalRedirectEnabled),
     };
   }

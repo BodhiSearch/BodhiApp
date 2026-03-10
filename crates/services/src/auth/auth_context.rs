@@ -1,4 +1,4 @@
-use crate::{AppRole, ErrorType, ResourceRole, TokenScope, UserScope};
+use crate::{AppRole, DeploymentMode, ErrorType, ResourceRole, TokenScope, UserScope};
 use errmeta::AppError;
 use serde::Serialize;
 
@@ -8,6 +8,7 @@ pub enum AuthContext {
   Anonymous {
     client_id: Option<String>,
     tenant_id: Option<String>,
+    deployment: DeploymentMode,
   },
   Session {
     client_id: String,
@@ -16,6 +17,15 @@ pub enum AuthContext {
     username: String,
     role: Option<ResourceRole>,
     token: String,
+  },
+  MultiTenantSession {
+    client_id: Option<String>,
+    tenant_id: Option<String>,
+    user_id: String,
+    username: String,
+    role: Option<ResourceRole>,
+    token: Option<String>,
+    dashboard_token: String,
   },
   ApiToken {
     client_id: String,
@@ -37,10 +47,19 @@ pub enum AuthContext {
 }
 
 impl AuthContext {
+  pub fn is_multi_tenant(&self) -> bool {
+    match self {
+      AuthContext::MultiTenantSession { .. } => true,
+      AuthContext::Anonymous { deployment, .. } => *deployment == DeploymentMode::MultiTenant,
+      _ => false,
+    }
+  }
+
   pub fn client_id(&self) -> Option<&str> {
     match self {
       AuthContext::Anonymous { client_id, .. } => client_id.as_deref(),
       AuthContext::Session { client_id, .. } => Some(client_id),
+      AuthContext::MultiTenantSession { client_id, .. } => client_id.as_deref(),
       AuthContext::ApiToken { client_id, .. } => Some(client_id),
       AuthContext::ExternalApp { client_id, .. } => Some(client_id),
     }
@@ -50,6 +69,7 @@ impl AuthContext {
     match self {
       AuthContext::Anonymous { tenant_id, .. } => tenant_id.as_deref(),
       AuthContext::Session { tenant_id, .. } => Some(tenant_id),
+      AuthContext::MultiTenantSession { tenant_id, .. } => tenant_id.as_deref(),
       AuthContext::ApiToken { tenant_id, .. } => Some(tenant_id),
       AuthContext::ExternalApp { tenant_id, .. } => Some(tenant_id),
     }
@@ -70,6 +90,7 @@ impl AuthContext {
     match self {
       AuthContext::Anonymous { .. } => None,
       AuthContext::Session { user_id, .. } => Some(user_id),
+      AuthContext::MultiTenantSession { user_id, .. } => Some(user_id),
       AuthContext::ApiToken { user_id, .. } => Some(user_id),
       AuthContext::ExternalApp { user_id, .. } => Some(user_id),
     }
@@ -86,6 +107,7 @@ impl AuthContext {
     match self {
       AuthContext::Anonymous { .. } => None,
       AuthContext::Session { token, .. } => Some(token),
+      AuthContext::MultiTenantSession { token, .. } => token.as_deref(),
       AuthContext::ApiToken { token, .. } => Some(token),
       AuthContext::ExternalApp { token, .. } => Some(token), // Returns exchanged token
     }
@@ -100,6 +122,29 @@ impl AuthContext {
     }
   }
 
+  pub fn resource_role(&self) -> Option<&ResourceRole> {
+    match self {
+      AuthContext::Session { role, .. } => role.as_ref(),
+      AuthContext::MultiTenantSession { role, .. } => role.as_ref(),
+      _ => None,
+    }
+  }
+
+  pub fn dashboard_token(&self) -> Option<&str> {
+    match self {
+      AuthContext::MultiTenantSession {
+        dashboard_token, ..
+      } => Some(dashboard_token),
+      _ => None,
+    }
+  }
+
+  pub fn require_dashboard_token(&self) -> Result<&str, AuthContextError> {
+    self
+      .dashboard_token()
+      .ok_or(AuthContextError::MissingDashboardToken)
+  }
+
   pub fn app_role(&self) -> Option<AppRole> {
     match self {
       AuthContext::Anonymous { .. } => None,
@@ -107,6 +152,10 @@ impl AuthContext {
         role: Some(role), ..
       } => Some(AppRole::Session(*role)),
       AuthContext::Session { role: None, .. } => None,
+      AuthContext::MultiTenantSession {
+        role: Some(role), ..
+      } => Some(AppRole::Session(*role)),
+      AuthContext::MultiTenantSession { role: None, .. } => None,
       AuthContext::ApiToken { role, .. } => Some(AppRole::ApiToken(*role)),
       AuthContext::ExternalApp {
         role: Some(role), ..
@@ -138,6 +187,10 @@ pub enum AuthContextError {
   #[error("Tenant ID is required but not present in auth context.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   MissingTenantId,
+
+  #[error("Dashboard token is required but not present in auth context.")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  MissingDashboardToken,
 }
 
 #[cfg(test)]
@@ -169,10 +222,12 @@ mod tests {
     let ctx = AuthContext::Anonymous {
       client_id: None,
       tenant_id: None,
+      deployment: DeploymentMode::Standalone,
     };
     assert_eq!(None, ctx.user_id());
     assert_eq!(None, ctx.client_id());
     assert_eq!(false, ctx.is_authenticated());
+    assert_eq!(false, ctx.is_multi_tenant());
   }
 
   #[test]
@@ -180,9 +235,21 @@ mod tests {
     let ctx = AuthContext::Anonymous {
       client_id: Some("test-client".to_string()),
       tenant_id: None,
+      deployment: DeploymentMode::Standalone,
     };
     assert_eq!(None, ctx.user_id());
     assert_eq!(Some("test-client"), ctx.client_id());
+    assert_eq!(false, ctx.is_authenticated());
+  }
+
+  #[test]
+  fn test_anonymous_multi_tenant() {
+    let ctx = AuthContext::Anonymous {
+      client_id: None,
+      tenant_id: None,
+      deployment: DeploymentMode::MultiTenant,
+    };
+    assert_eq!(true, ctx.is_multi_tenant());
     assert_eq!(false, ctx.is_authenticated());
   }
 
@@ -191,6 +258,7 @@ mod tests {
     let ctx = AuthContext::Anonymous {
       client_id: None,
       tenant_id: None,
+      deployment: DeploymentMode::Standalone,
     };
     let result = ctx.require_user_id();
     assert!(result.is_err());
@@ -204,6 +272,7 @@ mod tests {
     let ctx = AuthContext::Anonymous {
       client_id: None,
       tenant_id: None,
+      deployment: DeploymentMode::Standalone,
     };
     let result = ctx.require_client_id();
     assert!(result.is_err());
@@ -247,6 +316,7 @@ mod tests {
     let ctx = AuthContext::Anonymous {
       client_id: None,
       tenant_id: None,
+      deployment: DeploymentMode::Standalone,
     };
     assert_eq!(None, ctx.tenant_id());
   }
@@ -269,6 +339,7 @@ mod tests {
     let ctx = AuthContext::Anonymous {
       client_id: None,
       tenant_id: None,
+      deployment: DeploymentMode::Standalone,
     };
     let result = ctx.require_tenant_id();
     assert!(result.is_err());
@@ -289,5 +360,73 @@ mod tests {
     let result = ctx.require_tenant_id();
     assert!(result.is_ok());
     assert_eq!("tenant-123", result.unwrap());
+  }
+
+  #[test]
+  fn test_multi_tenant_session_dashboard_only() {
+    let ctx = AuthContext::MultiTenantSession {
+      client_id: None,
+      tenant_id: None,
+      user_id: "user1".to_string(),
+      username: "testuser".to_string(),
+      role: None,
+      token: None,
+      dashboard_token: "dashboard-tok".to_string(),
+    };
+    assert_eq!(true, ctx.is_authenticated());
+    assert_eq!(true, ctx.is_multi_tenant());
+    assert_eq!(Some("user1"), ctx.user_id());
+    assert_eq!(None, ctx.client_id());
+    assert_eq!(None, ctx.tenant_id());
+    assert_eq!(None, ctx.token());
+    assert_eq!(Some("dashboard-tok"), ctx.dashboard_token());
+  }
+
+  #[test]
+  fn test_multi_tenant_session_full() {
+    let ctx = AuthContext::MultiTenantSession {
+      client_id: Some("client1".to_string()),
+      tenant_id: Some("tenant1".to_string()),
+      user_id: "user1".to_string(),
+      username: "testuser".to_string(),
+      role: Some(crate::ResourceRole::Admin),
+      token: Some("resource-tok".to_string()),
+      dashboard_token: "dashboard-tok".to_string(),
+    };
+    assert_eq!(true, ctx.is_authenticated());
+    assert_eq!(true, ctx.is_multi_tenant());
+    assert_eq!(Some("client1"), ctx.client_id());
+    assert_eq!(Some("tenant1"), ctx.tenant_id());
+    assert_eq!(Some("resource-tok"), ctx.token());
+    assert_eq!(Some(&crate::ResourceRole::Admin), ctx.resource_role());
+    assert_eq!(Some("dashboard-tok"), ctx.dashboard_token());
+  }
+
+  #[test]
+  fn test_require_dashboard_token_missing() {
+    let ctx = AuthContext::Session {
+      client_id: "c".to_string(),
+      tenant_id: "t".to_string(),
+      user_id: "u".to_string(),
+      username: "n".to_string(),
+      role: None,
+      token: "tok".to_string(),
+    };
+    let err = ctx.require_dashboard_token().unwrap_err();
+    assert_eq!(401, err.status());
+    assert_eq!("auth_context_error-missing_dashboard_token", err.code());
+  }
+
+  #[test]
+  fn test_session_is_not_multi_tenant() {
+    let ctx = AuthContext::Session {
+      client_id: "c".to_string(),
+      tenant_id: "t".to_string(),
+      user_id: "u".to_string(),
+      username: "n".to_string(),
+      role: None,
+      token: "tok".to_string(),
+    };
+    assert_eq!(false, ctx.is_multi_tenant());
   }
 }

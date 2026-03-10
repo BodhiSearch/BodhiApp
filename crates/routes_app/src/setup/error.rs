@@ -6,6 +6,9 @@ pub enum SetupRouteError {
   #[error("Application is already set up.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   AlreadySetup,
+  #[error("Setup is only available in standalone deployment mode.")]
+  #[error_meta(error_type = ErrorType::InvalidAppState)]
+  NotStandalone,
   #[error("Server name must be at least 10 characters long.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   ServerNameTooShort,

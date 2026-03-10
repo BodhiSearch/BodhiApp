@@ -1,6 +1,23 @@
 # Multi-Tenant TECHDEBT
 
-Items deferred from the multi-tenant backend (M2) and frontend (M3) implementation.
+Items deferred from multi-tenant stage 2 implementation (M1-M6).
+
+---
+
+## `get_standalone_app()` Usages (Architecturally Wrong for Multi-Tenant)
+
+Production code calling `get_standalone_app()` will error with `DbError::MultipleTenant` if >1 tenant exists. Must be replaced with tenant-aware lookups.
+
+| File | Line | Risk | Issue |
+|------|------|------|-------|
+| `routes_app/src/setup/routes_setup.rs` | 66 | HIGH | `setup_show` uses `get_standalone_app().ok().flatten()` — returns wrong status if >1 tenant |
+| `routes_app/src/routes_dev.rs` | 41 | MEDIUM | `dev_secrets_handler` — dev-only but silently fails |
+| `routes_app/src/middleware/utils.rs` | 28 | MEDIUM | `standalone_app_status_or_default()` — `.ok().flatten()` silently returns wrong status |
+| `services/src/tenants/auth_scoped.rs` | 74 | LOW | Auth-scoped passthrough — only called from above routes |
+
+**Test code**: 6+ usages in `routes_app/src/setup/test_setup.rs` and `server_app/tests/utils/live_server_utils.rs` — will fail with >1 tenant in test context.
+
+---
 
 ## Navigation Item Visibility (F7)
 
@@ -18,7 +35,7 @@ Conditional route registration and listener skipping for multi-tenant mode:
 
 ## Shared Code Exchange Utility (D80)
 
-Code exchange logic is duplicated between `routes_auth.rs` (resource callback) and `routes_dashboard_auth.rs` (dashboard callback). Should be extracted into a shared parameterized function. Low priority — no functional impact.
+Code exchange logic is duplicated between `routes_auth.rs` (resource callback, line ~243) and `routes_dashboard_auth.rs` (dashboard callback, line ~191). Both call `auth_flow.exchange_auth_code()` with different client credentials. Should be extracted into a shared parameterized function. Low priority — no functional impact.
 
 ## Multi-Tenant-Aware Logout (D63)
 
@@ -28,37 +45,47 @@ Currently `session.delete()` clears ALL tokens (dashboard + all resource-client 
 
 ## Integration Test CI Pipeline
 
-M4 integration tests (server_app Phase 4) are compile-verified but not run in CI yet. The 3 tests in `crates/server_app/tests/test_live_multi_tenant.rs` require a real Keycloak instance and `.env.test` credentials (`INTEG_TEST_MULTI_TENANT_CLIENT_ID`, `INTEG_TEST_MULTI_TENANT_CLIENT_SECRET`). CI pipeline needs to be configured with network access to the dev Keycloak and these credentials.
+M4 integration tests (server_app) are compile-verified but not run in CI yet. The 3 tests in `crates/server_app/tests/test_live_multi_tenant.rs` require:
+- Network access to `main-id.getbodhi.app` Keycloak
+- `.env.test` credentials (`INTEG_TEST_MT_*` vars)
 
 ## E2E/Playwright Tests for Multi-Tenant Flows
 
-Backend integration tests exist (M4: 7 routes_app oneshot + 3 server_app live TCP), but no Playwright E2E tests for multi-tenant flows yet. Needed:
-- Dashboard login flow (dashboard OAuth -> tenant selection -> resource OAuth)
-- Tenant registration flow (0 clients -> /ui/setup/tenants/ -> register -> auto-login)
-- Tenant switching flow (N clients -> switch -> instant or re-login)
-- Standalone regression (existing flows still work)
+**Status**: Dedicated task — see `kickoff-e2e-multi-tenant-coverage.md` for comprehensive plan.
 
-Dashboard test client available: `INTEG_TEST_MULTI_TENANT_CLIENT_ID=test-client-bodhi-multi-tenant` in `server_app/tests/resources/.env.test`
+Backend integration tests exist (M4: 7 routes_app oneshot + 3 server_app live TCP), 30 shared Playwright tests pass on multi_tenant project, but no multi-tenant-specific E2E scenarios yet.
 
-## `get_standalone_app()` Usages (Architecturally Wrong for Multi-Tenant)
+## Tenant Name Length Mismatch
 
-Production code that calls `get_standalone_app()` will error with `DbError::MultipleTenant` if >1 tenant exists. These must be replaced with tenant-aware lookups.
-
-| File | Line | Risk | Issue |
-|------|------|------|-------|
-| `routes_app/src/apps/routes_apps.rs` | 95 | HIGH | `apps_create_access_request` breaks if >1 tenant. Use `get_tenant_by_id()` |
-| `routes_app/src/middleware/utils.rs` | 24 | MEDIUM | `.ok().flatten()` silently returns wrong status. Propagate error or add mode check |
-| `routes_app/src/routes_dev.rs` | 42 | MEDIUM | Dev endpoint silently fails. Add deployment mode check |
-| `server_app/tests/utils/live_server_utils.rs` | 342,398,720 | HIGH | Test helpers fail with >1 tenant. Use `get_tenant_by_client_id()` |
-
-## Tenant Description Field Optionality Mismatch
-
-`POST /bodhi/v1/tenants` accepts `description` as `Option<String>` (optional). However, the frontend registration form at `/ui/setup/tenants/` requires it with `min: 1, max: 1000` validation. The frontend should be updated to make description optional, matching the API contract. Low priority — cosmetic UX discrepancy.
+Backend `CreateTenantRequest` validates name with `min = 1, max = 255`. Frontend registration form (`/ui/setup/tenants/page.tsx`) requires `minLength={3}`. The frontend is stricter than the API — cosmetic inconsistency.
 
 ## Frontend Unit Tests
 
-Some new frontend components lack comprehensive unit tests:
+New multi-tenant frontend components lack unit tests:
 - Dashboard callback page (`/ui/auth/dashboard/callback`)
 - Tenant registration page (`/ui/setup/tenants`)
-- Login page multi-tenant sub-states
+- `MultiTenantLoginContent` sub-states (A, B1, B2, C)
 - New hooks: `useTenants`, `useCreateTenant`, `useTenantActivate`, `useDashboardOAuthInitiate`, `useDashboardOAuthCallback`
+
+## Access-Request E2E Under Multi-Tenant Project
+
+`multi-user-request-approval-flow.spec.mjs` uses `createServerManager()` (standalone-specific dedicated server). Not yet excluded from multi_tenant testIgnore — may fail. Should be added to testIgnore as part of E2E Phase A.
+
+---
+
+## Summary Table
+
+| Item | Severity | Status |
+|------|----------|--------|
+| `get_standalone_app()` production usages | HIGH | 4 files identified |
+| Navigation visibility (F7) | Medium | Deferred |
+| Service construction (F8) | Medium | Deferred |
+| Code exchange duplication (D80) | Low | Deferred |
+| MT-aware logout (D63) | Medium | Deferred |
+| Integration test CI | Medium | Needs Keycloak in CI |
+| E2E multi-tenant scenarios | Medium | Kickoff written |
+| Tenant name length mismatch | Low | Cosmetic |
+| Frontend unit tests | Medium | Missing for MT components |
+| Access-request E2E testIgnore | Medium | Add to testIgnore |
+| SPI orphan tenant (D52) | Low | Documented — KC orphan if local DB insert fails |
+| Test infra duplication in live_server_utils.rs | Low | ~200 lines duplicated across setup functions |

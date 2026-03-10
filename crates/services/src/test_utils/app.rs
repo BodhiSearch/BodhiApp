@@ -292,6 +292,19 @@ impl AppServiceStubBuilder {
     }
   }
 
+  /// Sets deployment mode to `multi_tenant` and configures a dashboard client ID.
+  /// Uses the default settings (scheme, host, port, auth_url, auth_realm, etc.)
+  /// already provided by `SettingServiceStub::default()`.
+  pub async fn with_multitenant_settings(&mut self) -> &mut Self {
+    use crate::{BODHI_DEPLOYMENT, BODHI_MULTITENANT_CLIENT_ID};
+    self
+      .with_settings(HashMap::from([
+        (BODHI_DEPLOYMENT, "multi_tenant"),
+        (BODHI_MULTITENANT_CLIENT_ID, "dashboard-client-id"),
+      ]))
+      .await
+  }
+
   pub async fn with_settings(&mut self, settings: HashMap<&str, &str>) -> &mut Self {
     if let Some(Some(setting_service)) = &self.setting_service {
       for (key, value) in settings {
@@ -396,25 +409,16 @@ impl AppServiceStubBuilder {
   }
 
   /// Creates DefaultTenantService and persists the given Tenant to DB.
+  /// Uses `create_tenant_test` to preserve the caller-specified tenant ID.
   /// Reuses existing tenant service if already set (additive: multiple tenants share one service).
   pub async fn with_tenant(&mut self, instance: Tenant) -> &mut Self {
-    let svc = if let Some(Some(existing)) = &self.tenant_service {
-      existing.clone()
-    } else {
+    if self.tenant_service.is_none() || !matches!(&self.tenant_service, Some(Some(_))) {
       let db_service = self.get_db_service().await;
       let new_svc: Arc<dyn TenantService> = Arc::new(DefaultTenantService::new(db_service));
-      self.tenant_service = Some(Some(new_svc.clone()));
-      new_svc
-    };
-    svc
-      .create_tenant(
-        &instance.client_id,
-        &instance.client_secret,
-        instance.status,
-        None,
-      )
-      .await
-      .unwrap();
+      self.tenant_service = Some(Some(new_svc));
+    }
+    let db_service = self.get_db_service().await;
+    db_service.create_tenant_test(&instance).await.unwrap();
     self
   }
 

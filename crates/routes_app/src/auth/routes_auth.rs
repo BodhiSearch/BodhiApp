@@ -1,6 +1,6 @@
 use crate::middleware::{
-  access_token_key, app_status_or_default, generate_random_string, refresh_token_key,
-  SESSION_KEY_ACTIVE_CLIENT_ID, SESSION_KEY_USER_ID,
+  access_token_key, generate_random_string, refresh_token_key, SESSION_KEY_ACTIVE_CLIENT_ID,
+  SESSION_KEY_USER_ID,
 };
 use crate::shared::{utils::extract_request_host, AuthScope};
 use crate::{ApiError, OpenAIApiError};
@@ -58,8 +58,9 @@ pub async fn auth_initiate(
   let auth_context = auth_scope.auth_context();
   let settings = auth_scope.settings();
 
-  // Early return if user is already authenticated
-  if auth_context.is_authenticated() {
+  // Early return if user is already authenticated with a resource tenant.
+  // Dashboard-only MultiTenantSession (token: None) must still initiate tenant OAuth.
+  if auth_context.is_authenticated() && auth_context.token().is_some() {
     return Ok((
       StatusCode::OK,
       [(CACHE_CONTROL, "no-cache, no-store, must-revalidate")],
@@ -70,7 +71,7 @@ pub async fn auth_initiate(
   }
 
   // User not authenticated, generate auth URL
-  let tenant_svc = auth_scope.tenant();
+  let tenant_svc = auth_scope.tenants();
   let instance = tenant_svc
     .get_tenant_by_client_id(&request.client_id)
     .await?
@@ -180,13 +181,8 @@ pub async fn auth_callback(
   Json(request): Json<AuthCallbackRequest>,
 ) -> Result<Json<RedirectResponse>, ApiError> {
   let settings = auth_scope.settings();
-  let tenant_svc = auth_scope.tenant();
+  let tenant_svc = auth_scope.tenants();
   let auth_flow = auth_scope.auth_flow();
-
-  let app_status = app_status_or_default(&tenant_svc).await;
-  if app_status == AppStatus::Setup {
-    return Err(AuthRouteError::AppStatusInvalid(app_status))?;
-  }
 
   // Handle OAuth errors from the auth server
   if let Some(error) = &request.error {
@@ -237,6 +233,13 @@ pub async fn auth_callback(
     .await?
     .ok_or(AuthRouteError::TenantNotFound)?;
 
+  // Use the specific tenant's status — app_status_or_default() checks standalone app only
+  // and returns Setup in multi-tenant mode where no standalone app exists.
+  let app_status = instance.status.clone();
+  if app_status == AppStatus::Setup {
+    return Err(AuthRouteError::AppStatusInvalid(app_status))?;
+  }
+
   // Exchange code for tokens
   let token_response = auth_flow
     .exchange_auth_code(
@@ -270,15 +273,12 @@ pub async fn auth_callback(
     auth_flow
       .make_resource_admin(&instance.client_id, &instance.client_secret, &user_id)
       .await?;
-    tenant_svc
-      .set_client_ready(&instance.client_id, &user_id)
-      .await?;
+    tenant_svc.set_tenant_ready(&instance.id, &user_id).await?;
     let (new_access_token, new_refresh_token) = auth_flow
       .refresh_token(&instance.client_id, &instance.client_secret, &refresh_token)
       .await?;
     access_token = new_access_token;
-    refresh_token =
-      new_refresh_token.expect("refresh token is missing when refreshing an existing token");
+    refresh_token = new_refresh_token.ok_or(AuthRouteError::SessionInfoNotFound)?;
   }
 
   // Store user_id and tokens in session (namespaced by client_id)

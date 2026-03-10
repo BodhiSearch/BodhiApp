@@ -1,5 +1,6 @@
 use crate::{
   db::encryption::encrypt_api_key,
+  new_ulid,
   test_utils::{sea_context, setup_env, TEST_TENANT_ID},
   toolsets::{ToolsetEntity, ToolsetRepository},
   RawApiKeyUpdate,
@@ -36,7 +37,7 @@ async fn test_create_and_get_toolset(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_toolset(&id, "user-001", "my-toolset", ctx.now);
 
   let created = ctx.service.create_toolset(TEST_TENANT_ID, &row).await?;
@@ -64,36 +65,21 @@ async fn test_list_toolsets(
     .service
     .create_toolset(
       TEST_TENANT_ID,
-      &make_toolset(
-        &ulid::Ulid::new().to_string(),
-        user_id,
-        "toolset-1",
-        ctx.now,
-      ),
+      &make_toolset(&new_ulid(), user_id, "toolset-1", ctx.now),
     )
     .await?;
   ctx
     .service
     .create_toolset(
       TEST_TENANT_ID,
-      &make_toolset(
-        &ulid::Ulid::new().to_string(),
-        user_id,
-        "toolset-2",
-        ctx.now,
-      ),
+      &make_toolset(&new_ulid(), user_id, "toolset-2", ctx.now),
     )
     .await?;
   ctx
     .service
     .create_toolset(
       TEST_TENANT_ID,
-      &make_toolset(
-        &ulid::Ulid::new().to_string(),
-        "other-user",
-        "toolset-3",
-        ctx.now,
-      ),
+      &make_toolset(&new_ulid(), "other-user", "toolset-3", ctx.now),
     )
     .await?;
 
@@ -112,7 +98,7 @@ async fn test_delete_toolset(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   ctx
     .service
     .create_toolset(
@@ -138,7 +124,7 @@ async fn test_toolset_encrypted_api_key(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let api_key = "test-api-key-12345";
 
   let (encrypted, salt, nonce) =
@@ -166,7 +152,7 @@ async fn test_update_toolset(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let row = make_toolset(&id, "user-001", "original-slug", ctx.now);
   ctx.service.create_toolset(TEST_TENANT_ID, &row).await?;
 
@@ -233,6 +219,101 @@ async fn test_app_toolset_config_crud(
 
   let all = ctx.service.list_app_toolset_configs(TEST_TENANT_ID).await?;
   assert_eq!(1, all.len());
+
+  Ok(())
+}
+
+// =========================================================================
+// get_toolset_by_slug
+// =========================================================================
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_get_toolset_by_slug(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let id = new_ulid();
+  let row = make_toolset(&id, "user-001", "my-unique-slug", ctx.now);
+  ctx.service.create_toolset(TEST_TENANT_ID, &row).await?;
+
+  // Find by slug
+  let found = ctx
+    .service
+    .get_toolset_by_slug(TEST_TENANT_ID, "user-001", "my-unique-slug")
+    .await?;
+  assert!(found.is_some());
+  assert_eq!(id, found.unwrap().id);
+
+  // Non-existent slug returns None
+  let missing = ctx
+    .service
+    .get_toolset_by_slug(TEST_TENANT_ID, "user-001", "no-such-slug")
+    .await?;
+  assert!(missing.is_none());
+
+  // Different user returns None
+  let wrong_user = ctx
+    .service
+    .get_toolset_by_slug(TEST_TENANT_ID, "other-user", "my-unique-slug")
+    .await?;
+  assert!(wrong_user.is_none());
+
+  Ok(())
+}
+
+// =========================================================================
+// list_toolsets_by_toolset_type
+// =========================================================================
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_list_toolsets_by_toolset_type(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let user_id = "user-001";
+
+  // Create two toolsets of same type and one of different type
+  let mut ts1 = make_toolset(&new_ulid(), user_id, "exa-1", ctx.now);
+  ts1.toolset_type = "builtin-exa-search".to_string();
+
+  let mut ts2 = make_toolset(&new_ulid(), user_id, "exa-2", ctx.now);
+  ts2.toolset_type = "builtin-exa-search".to_string();
+
+  let mut ts3 = make_toolset(&new_ulid(), user_id, "brave-1", ctx.now);
+  ts3.toolset_type = "builtin-brave-search".to_string();
+
+  ctx.service.create_toolset(TEST_TENANT_ID, &ts1).await?;
+  ctx.service.create_toolset(TEST_TENANT_ID, &ts2).await?;
+  ctx.service.create_toolset(TEST_TENANT_ID, &ts3).await?;
+
+  // Filter by exa-search type
+  let exa = ctx
+    .service
+    .list_toolsets_by_toolset_type(TEST_TENANT_ID, user_id, "builtin-exa-search")
+    .await?;
+  assert_eq!(2, exa.len());
+
+  // Filter by brave-search type
+  let brave = ctx
+    .service
+    .list_toolsets_by_toolset_type(TEST_TENANT_ID, user_id, "builtin-brave-search")
+    .await?;
+  assert_eq!(1, brave.len());
+
+  // Non-existent type returns empty
+  let none = ctx
+    .service
+    .list_toolsets_by_toolset_type(TEST_TENANT_ID, user_id, "nonexistent")
+    .await?;
+  assert_eq!(0, none.len());
 
   Ok(())
 }

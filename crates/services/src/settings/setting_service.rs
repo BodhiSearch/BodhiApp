@@ -242,23 +242,40 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .expect("BODHI_APP_DB_URL should have a default")
   }
 
-  async fn deployment_mode(&self) -> String {
-    self
-      .get_setting(BODHI_DEPLOYMENT)
-      .await
-      .expect("BODHI_DEPLOYMENT should have a default")
+  async fn deployment_mode(&self) -> crate::DeploymentMode {
+    match self.get_setting(BODHI_DEPLOYMENT).await.as_deref() {
+      Some("multi_tenant") => crate::DeploymentMode::MultiTenant,
+      _ => crate::DeploymentMode::Standalone,
+    }
   }
 
   async fn is_multi_tenant(&self) -> bool {
-    self.deployment_mode().await == "multi_tenant"
+    self.deployment_mode().await == crate::DeploymentMode::MultiTenant
   }
 
-  async fn multitenant_client_id(&self) -> Option<String> {
-    self.get_setting(BODHI_MULTITENANT_CLIENT_ID).await
+  async fn multitenant_client_id(&self) -> Result<String> {
+    if !self.is_multi_tenant().await {
+      return Err(SettingServiceError::InvalidDeploymentMode(
+        "standalone".to_string(),
+      ));
+    }
+    self
+      .get_setting(BODHI_MULTITENANT_CLIENT_ID)
+      .await
+      .ok_or_else(|| SettingServiceError::MissingConfig(BODHI_MULTITENANT_CLIENT_ID.to_string()))
   }
 
-  async fn multitenant_client_secret(&self) -> Option<String> {
-    SettingService::get_env(self, BODHI_MULTITENANT_CLIENT_SECRET).await
+  async fn multitenant_client_secret(&self) -> Result<String> {
+    if !self.is_multi_tenant().await {
+      return Err(SettingServiceError::InvalidDeploymentMode(
+        "standalone".to_string(),
+      ));
+    }
+    SettingService::get_env(self, BODHI_MULTITENANT_CLIENT_SECRET)
+      .await
+      .ok_or_else(|| {
+        SettingServiceError::MissingConfig(BODHI_MULTITENANT_CLIENT_SECRET.to_string())
+      })
   }
 
   async fn log_level(&self) -> LogLevel {

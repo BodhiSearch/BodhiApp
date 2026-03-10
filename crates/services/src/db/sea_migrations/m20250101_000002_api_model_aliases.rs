@@ -149,12 +149,40 @@ impl MigrationTrait for Migration {
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_api_model_aliases_prefix_unique ON api_model_aliases(tenant_id, user_id, prefix) WHERE prefix IS NOT NULL AND prefix != ''"
     ).await?;
 
+    if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      let conn = manager.get_connection();
+      conn
+        .execute_unprepared("ALTER TABLE api_model_aliases ENABLE ROW LEVEL SECURITY;")
+        .await?;
+      conn
+        .execute_unprepared("ALTER TABLE api_model_aliases FORCE ROW LEVEL SECURITY;")
+        .await?;
+      conn
+        .execute_unprepared(
+          "CREATE POLICY tenant_isolation ON api_model_aliases
+             FOR ALL
+             USING (tenant_id = (SELECT current_tenant_id()))
+             WITH CHECK (tenant_id = (SELECT current_tenant_id()));",
+        )
+        .await?;
+    }
+
     Ok(())
   }
 
   async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+    if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
+      let conn = manager.get_connection();
+      conn
+        .execute_unprepared("DROP POLICY IF EXISTS tenant_isolation ON api_model_aliases;")
+        .await?;
+      conn
+        .execute_unprepared("ALTER TABLE api_model_aliases DISABLE ROW LEVEL SECURITY;")
+        .await?;
+    }
     manager
       .drop_table(Table::drop().table(ApiModelAliases::Table).to_owned())
-      .await
+      .await?;
+    Ok(())
   }
 }

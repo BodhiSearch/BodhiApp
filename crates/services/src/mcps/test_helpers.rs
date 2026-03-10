@@ -1,14 +1,14 @@
 //! Shared test helper factories for MCP repository tests.
 use crate::db::encryption::encrypt_api_key;
-use crate::mcps::{McpAuthHeaderRow, McpAuthType, McpRow, McpServerRow};
+use crate::mcps::{McpAuthHeaderEntity, McpAuthType, McpEntity, McpServerEntity};
 use crate::test_utils::TEST_TENANT_ID;
 use chrono::DateTime;
 use chrono::Utc;
 
 pub(crate) const ENCRYPTION_KEY: &[u8] = b"01234567890123456789012345678901";
 
-pub(crate) fn make_server(id: &str, url: &str, now: DateTime<Utc>) -> McpServerRow {
-  McpServerRow {
+pub(crate) fn make_server(id: &str, url: &str, now: DateTime<Utc>) -> McpServerEntity {
+  McpServerEntity {
     id: id.to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     url: url.to_string(),
@@ -28,8 +28,8 @@ pub(crate) fn make_mcp(
   slug: &str,
   user_id: &str,
   now: DateTime<Utc>,
-) -> McpRow {
-  McpRow {
+) -> McpEntity {
+  McpEntity {
     id: id.to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     user_id: user_id.to_string(),
@@ -51,10 +51,10 @@ pub(crate) fn make_auth_header_row(
   id: &str,
   server_id: &str,
   now: DateTime<Utc>,
-) -> McpAuthHeaderRow {
+) -> McpAuthHeaderEntity {
   let (encrypted, salt, nonce) =
     encrypt_api_key(ENCRYPTION_KEY, "Bearer sk-secret-token-123").expect("encryption failed");
-  McpAuthHeaderRow {
+  McpAuthHeaderEntity {
     id: id.to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
     name: "Header".to_string(),

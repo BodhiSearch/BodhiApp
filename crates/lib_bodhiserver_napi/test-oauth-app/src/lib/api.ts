@@ -15,7 +15,7 @@ export async function requestAccess(
   });
   const data = await response.json();
   if (!response.ok)
-    throw new Error(data.message || data.error || `Request failed: ${response.status}`);
+    throw new Error(data?.error?.message || data?.message || `Request failed: ${response.status}`);
   return data;
 }
 
@@ -25,6 +25,6 @@ export async function getAccessRequestStatus(bodhiServerUrl: string, id: string,
   );
   const data = await response.json();
   if (!response.ok)
-    throw new Error(data.message || data.error || `Status check failed: ${response.status}`);
+    throw new Error(data?.error?.message || data?.message || `Status check failed: ${response.status}`);
   return data;
 }

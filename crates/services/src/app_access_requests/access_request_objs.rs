@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppAccessRequest {
   pub id: String,
-  pub tenant_id: String,
+  pub tenant_id: Option<String>,
   pub app_client_id: String,
   pub app_name: Option<String>,
   pub app_description: Option<String>,

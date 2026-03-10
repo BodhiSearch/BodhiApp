@@ -1,4 +1,5 @@
 use crate::{
+  new_ulid,
   test_utils::{sea_context, setup_env, TEST_TENANT_ID},
   tokens::{TokenEntity, TokenRepository, TokenStatus},
 };
@@ -32,13 +33,8 @@ async fn test_create_and_list_api_token(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let user_id = ulid::Ulid::new().to_string();
-  let mut token = make_token(
-    &ulid::Ulid::new().to_string(),
-    &user_id,
-    "bodhiapp_t01",
-    ctx.now,
-  );
+  let user_id = new_ulid();
+  let mut token = make_token(&new_ulid(), &user_id, "bodhiapp_t01", ctx.now);
 
   ctx
     .service
@@ -65,8 +61,8 @@ async fn test_get_api_token_by_id(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let user_id = ulid::Ulid::new().to_string();
-  let token_id = ulid::Ulid::new().to_string();
+  let user_id = new_ulid();
+  let token_id = new_ulid();
   let mut token = make_token(&token_id, &user_id, "bodhiapp_t02", ctx.now);
 
   ctx
@@ -99,13 +95,8 @@ async fn test_get_api_token_by_prefix(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let user_id = ulid::Ulid::new().to_string();
-  let mut token = make_token(
-    &ulid::Ulid::new().to_string(),
-    &user_id,
-    "bodhiapp_t03",
-    ctx.now,
-  );
+  let user_id = new_ulid();
+  let mut token = make_token(&new_ulid(), &user_id, "bodhiapp_t03", ctx.now);
 
   ctx
     .service
@@ -134,8 +125,8 @@ async fn test_update_api_token(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let user_id = ulid::Ulid::new().to_string();
-  let token_id = ulid::Ulid::new().to_string();
+  let user_id = new_ulid();
+  let token_id = new_ulid();
   let mut token = make_token(&token_id, &user_id, "bodhiapp_t04", ctx.now);
 
   ctx
@@ -173,27 +164,17 @@ async fn test_list_api_tokens_user_scoped(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let user1_id = ulid::Ulid::new().to_string();
-  let user2_id = ulid::Ulid::new().to_string();
+  let user1_id = new_ulid();
+  let user2_id = new_ulid();
 
-  let mut token1 = make_token(
-    &ulid::Ulid::new().to_string(),
-    &user1_id,
-    "bodhiapp_t05",
-    ctx.now,
-  );
+  let mut token1 = make_token(&new_ulid(), &user1_id, "bodhiapp_t05", ctx.now);
   token1.name = "User1 Token".to_string();
   ctx
     .service
     .create_api_token(TEST_TENANT_ID, &mut token1)
     .await?;
 
-  let mut token2 = make_token(
-    &ulid::Ulid::new().to_string(),
-    &user2_id,
-    "bodhiapp_t06",
-    ctx.now,
-  );
+  let mut token2 = make_token(&new_ulid(), &user2_id, "bodhiapp_t06", ctx.now);
   token2.name = "User2 Token".to_string();
   ctx
     .service
@@ -230,15 +211,10 @@ async fn test_update_api_token_user_scoped(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let user1_id = ulid::Ulid::new().to_string();
-  let user2_id = ulid::Ulid::new().to_string();
+  let user1_id = new_ulid();
+  let user2_id = new_ulid();
 
-  let mut token = make_token(
-    &ulid::Ulid::new().to_string(),
-    &user1_id,
-    "bodhiapp_t07",
-    ctx.now,
-  );
+  let mut token = make_token(&new_ulid(), &user1_id, "bodhiapp_t07", ctx.now);
   token.name = "Initial Name".to_string();
   ctx
     .service

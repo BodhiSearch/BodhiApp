@@ -26,12 +26,12 @@
 
 ## Session Token Lifecycle Encapsulation
 
-**Location**: `crates/routes_app/src/tenants/dashboard_helpers.rs`, `crates/routes_app/src/middleware/token_service/token_service.rs`
+**Location**: `crates/routes_app/src/middleware/token_service/token_service.rs`
 
-**Issue**: Token refresh logic is duplicated across two code paths: `get_valid_session_token()` for resource tokens (with distributed locking, auto-refresh, session update) and `ensure_valid_dashboard_token()` for dashboard tokens (simpler, no locking). As more token types are added (e.g., per-tenant tokens in multi-tenant mode), each requires its own ad-hoc refresh helper.
+**Issue**: Token refresh logic exists in two similar methods: `get_valid_session_token()` for resource tokens and `get_valid_dashboard_token()` for dashboard tokens. Both use distributed locking and auto-refresh, but have separate implementations with duplicated expiry/refresh logic.
 
-**Impact**: Inconsistent token lifecycle handling, duplicated expiry/refresh logic, risk of subtle bugs when one path is updated but not the other.
+**Impact**: Duplicated token lifecycle handling, risk of subtle bugs when one path is updated but not the other.
 
-**Proposed fix**: Encapsulate the token refresh lifecycle into a unified session token manager that: (1) auto-refreshes on access, (2) applies distributed locking when configured, (3) handles retryable errors on refresh failure. Replace both `get_valid_session_token()` and `ensure_valid_dashboard_token()` with calls to this unified manager parameterized by token type/prefix and client credentials.
+**Proposed fix**: Encapsulate the token refresh lifecycle into a unified session token manager parameterized by token type/prefix and client credentials.
 
-**Deferred because**: The current two-path approach works correctly for the immediate multi-tenant implementation. Unification requires careful design of the locking strategy and error handling semantics across token types.
+**Deferred because**: Both methods now use distributed locking and work correctly. Unification requires careful design of the locking strategy and error handling semantics across token types.

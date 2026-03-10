@@ -249,7 +249,7 @@ async fn test_info_multi_tenant_no_session(
 
   let body: AppInfo = response.json().await?;
   assert_eq!(AppStatus::TenantSelection, body.status);
-  assert_eq!("multi_tenant", body.deployment);
+  assert_eq!(services::DeploymentMode::MultiTenant, body.deployment);
   assert_eq!(None, body.client_id);
 
   Ok(())
@@ -275,6 +275,19 @@ async fn test_info_multi_tenant_with_dashboard_and_active_tenant(
   .await?;
 
   let active_client_id = auth_server_config.resource_client_id.clone();
+
+  // Register the resource client as a local tenant so the middleware can resolve it
+  state
+    .tenant_service()
+    .create_tenant(
+      &active_client_id,
+      &auth_server_config.resource_client_secret,
+      "Test Resource Tenant",
+      None,
+      services::AppStatus::Ready,
+      Some("integration-test-user".to_string()),
+    )
+    .await?;
 
   // Inject session with dashboard token + active tenant + resource token
   let session_id = inject_session(
@@ -302,7 +315,7 @@ async fn test_info_multi_tenant_with_dashboard_and_active_tenant(
 
   let body: AppInfo = response.json().await?;
   assert_eq!(AppStatus::Ready, body.status);
-  assert_eq!("multi_tenant", body.deployment);
+  assert_eq!(services::DeploymentMode::MultiTenant, body.deployment);
   assert_eq!(Some(active_client_id), body.client_id);
 
   Ok(())

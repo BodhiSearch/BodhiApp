@@ -17,7 +17,7 @@ use services::test_utils::temp_bodhi_home;
 use services::AuthContext;
 use services::{
   test_utils::{build_token_with_exp, AppServiceStubBuilder},
-  MockAuthService, MockSessionService, UserListResponse,
+  MockAuthService, MockSessionService, Tenant, UserListResponse,
 };
 use services::{AppRole, ResourceRole, UserInfo};
 use std::sync::Arc;
@@ -248,10 +248,12 @@ async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> any
     .with(eq("user-123"))
     .return_once(|_| Ok(3)); // Return that 3 sessions were cleared
 
-  // Build app service with mocks
+  // Build app service with mocks + real tenant in DB
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .session_service(Arc::new(mock_session))
+    .with_tenant(Tenant::test_default())
+    .await
     .build()
     .await?;
 
@@ -456,6 +458,8 @@ async fn test_change_user_role_session_clear_failure_still_succeeds(
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .session_service(Arc::new(mock_session))
+    .with_tenant(Tenant::test_default())
+    .await
     .build()
     .await?;
 
@@ -562,6 +566,8 @@ async fn test_change_user_role_allowed_when_caller_has_sufficient_role(
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .session_service(Arc::new(mock_session))
+    .with_tenant(Tenant::test_default())
+    .await
     .build()
     .await?;
   let state: Arc<dyn services::AppService> = Arc::new(app_service);

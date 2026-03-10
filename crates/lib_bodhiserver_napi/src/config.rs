@@ -1,4 +1,4 @@
-use lib_bodhiserver::{AppOptionsBuilder, AppStatus, BootstrapError, Tenant};
+use lib_bodhiserver::{services::new_ulid, AppOptionsBuilder, AppStatus, BootstrapError, Tenant};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -19,6 +19,8 @@ pub struct NapiAppOptions {
   pub client_secret: Option<String>,
   /// App status as string (optional)
   pub app_status: Option<String>,
+  /// User ID of the tenant creator (optional)
+  pub created_by: Option<String>,
 }
 
 /// Create a new NapiAppOptions with empty configuration
@@ -31,6 +33,7 @@ pub fn create_napi_app_options() -> NapiAppOptions {
     client_id: None,
     client_secret: None,
     app_status: None,
+    created_by: None,
   }
 }
 
@@ -68,6 +71,13 @@ pub fn set_client_credentials(
 ) -> NapiAppOptions {
   config.client_id = Some(client_id);
   config.client_secret = Some(client_secret);
+  config
+}
+
+/// Set the user ID of the tenant creator
+#[napi]
+pub fn set_created_by(mut config: NapiAppOptions, user_id: String) -> NapiAppOptions {
+  config.created_by = Some(user_id);
   config
 }
 
@@ -119,11 +129,13 @@ pub fn try_build_app_options_internal(
     };
     let now = chrono::Utc::now();
     let instance = Tenant {
-      id: ulid::Ulid::new().to_string(),
+      id: new_ulid(),
       client_id,
       client_secret,
+      name: "BodhiApp".to_string(),
+      description: None,
       status,
-      created_by: None,
+      created_by: config.created_by,
       created_at: now,
       updated_at: now,
     };
@@ -348,6 +360,7 @@ mod tests {
     config = set_system_setting(config, BODHI_AUTH_REALM.to_string(), "bodhi".to_string());
     config = set_client_credentials(config, "client123".to_string(), "secret456".to_string());
     config = set_app_status(config, "ready".to_string()).unwrap();
+    config = set_created_by(config, "test-user-id".to_string());
 
     let result = try_build_app_options_internal(config)?.build();
     assert!(result.is_ok());
@@ -356,7 +369,13 @@ mod tests {
     assert_eq!(app_options.app_version, "1.0.0");
     assert_eq!(app_options.auth_url, "http://localhost:8080");
     assert_eq!(app_options.auth_realm, "bodhi");
-    assert!(app_options.tenant.is_some());
+    let tenant = app_options
+      .tenant
+      .as_ref()
+      .expect("tenant should be present");
+    assert_eq!(Some("test-user-id".to_string()), tenant.created_by);
+    assert_eq!("BodhiApp", tenant.name);
+    assert_eq!(None, tenant.description);
     Ok(())
   }
 }

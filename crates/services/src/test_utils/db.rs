@@ -9,8 +9,8 @@ pub const TEST_USER_ID: &str = "test-user";
 pub const TEST_TENANT_A_USER_B_ID: &str = "test-tenant-a-user-b";
 
 use crate::mcps::{
-  McpAuthHeaderRow, McpAuthRepository, McpInstanceRepository, McpOAuthConfigRow, McpOAuthTokenRow,
-  McpRow, McpServerRepository, McpServerRow, McpWithServerRow,
+  McpAuthHeaderEntity, McpAuthRepository, McpEntity, McpInstanceRepository, McpOAuthConfigEntity,
+  McpOAuthTokenEntity, McpServerEntity, McpServerRepository, McpWithServerEntity,
 };
 use crate::models::{
   ApiAlias, ApiAliasRepository, DownloadRepository, DownloadRequestEntity, ModelMetadataEntity,
@@ -18,7 +18,7 @@ use crate::models::{
 };
 use crate::settings::{DbSetting, SettingsRepository};
 use crate::tokens::{TokenEntity, TokenRepository};
-use crate::toolsets::{AppToolsetConfigRow, ToolsetEntity, ToolsetRepository};
+use crate::toolsets::{AppToolsetConfigEntity, ToolsetEntity, ToolsetRepository};
 use crate::users::{AccessRepository, UserAccessRequestEntity};
 use crate::RawApiKeyUpdate;
 use crate::UserAccessRequestStatus;
@@ -603,7 +603,7 @@ impl ToolsetRepository for TestDbService {
     toolset_type: &str,
     enabled: bool,
     updated_by: &str,
-  ) -> Result<AppToolsetConfigRow, DbError> {
+  ) -> Result<AppToolsetConfigEntity, DbError> {
     self
       .inner
       .set_app_toolset_enabled(tenant_id, toolset_type, enabled, updated_by)
@@ -614,7 +614,7 @@ impl ToolsetRepository for TestDbService {
   async fn list_app_toolset_configs(
     &self,
     tenant_id: &str,
-  ) -> Result<Vec<AppToolsetConfigRow>, DbError> {
+  ) -> Result<Vec<AppToolsetConfigEntity>, DbError> {
     self
       .inner
       .list_app_toolset_configs(tenant_id)
@@ -626,7 +626,7 @@ impl ToolsetRepository for TestDbService {
     &self,
     tenant_id: &str,
     toolset_type: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
+  ) -> Result<Option<AppToolsetConfigEntity>, DbError> {
     self
       .inner
       .get_app_toolset_config(tenant_id, toolset_type)
@@ -640,8 +640,8 @@ impl McpServerRepository for TestDbService {
   async fn create_mcp_server(
     &self,
     tenant_id: &str,
-    row: &McpServerRow,
-  ) -> Result<McpServerRow, DbError> {
+    row: &McpServerEntity,
+  ) -> Result<McpServerEntity, DbError> {
     self
       .inner
       .create_mcp_server(tenant_id, row)
@@ -652,8 +652,8 @@ impl McpServerRepository for TestDbService {
   async fn update_mcp_server(
     &self,
     tenant_id: &str,
-    row: &McpServerRow,
-  ) -> Result<McpServerRow, DbError> {
+    row: &McpServerEntity,
+  ) -> Result<McpServerEntity, DbError> {
     self
       .inner
       .update_mcp_server(tenant_id, row)
@@ -665,7 +665,7 @@ impl McpServerRepository for TestDbService {
     &self,
     tenant_id: &str,
     id: &str,
-  ) -> Result<Option<McpServerRow>, DbError> {
+  ) -> Result<Option<McpServerEntity>, DbError> {
     self
       .inner
       .get_mcp_server(tenant_id, id)
@@ -677,7 +677,7 @@ impl McpServerRepository for TestDbService {
     &self,
     tenant_id: &str,
     url: &str,
-  ) -> Result<Option<McpServerRow>, DbError> {
+  ) -> Result<Option<McpServerEntity>, DbError> {
     self
       .inner
       .get_mcp_server_by_url(tenant_id, url)
@@ -689,7 +689,7 @@ impl McpServerRepository for TestDbService {
     &self,
     tenant_id: &str,
     enabled: Option<bool>,
-  ) -> Result<Vec<McpServerRow>, DbError> {
+  ) -> Result<Vec<McpServerEntity>, DbError> {
     self
       .inner
       .list_mcp_servers(tenant_id, enabled)
@@ -724,7 +724,7 @@ impl McpServerRepository for TestDbService {
 
 #[async_trait::async_trait]
 impl McpInstanceRepository for TestDbService {
-  async fn create_mcp(&self, tenant_id: &str, row: &McpRow) -> Result<McpRow, DbError> {
+  async fn create_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError> {
     self
       .inner
       .create_mcp(tenant_id, row)
@@ -737,7 +737,7 @@ impl McpInstanceRepository for TestDbService {
     tenant_id: &str,
     user_id: &str,
     id: &str,
-  ) -> Result<Option<McpRow>, DbError> {
+  ) -> Result<Option<McpEntity>, DbError> {
     self
       .inner
       .get_mcp(tenant_id, user_id, id)
@@ -750,7 +750,7 @@ impl McpInstanceRepository for TestDbService {
     tenant_id: &str,
     user_id: &str,
     slug: &str,
-  ) -> Result<Option<McpRow>, DbError> {
+  ) -> Result<Option<McpEntity>, DbError> {
     self
       .inner
       .get_mcp_by_slug(tenant_id, user_id, slug)
@@ -762,7 +762,7 @@ impl McpInstanceRepository for TestDbService {
     &self,
     tenant_id: &str,
     user_id: &str,
-  ) -> Result<Vec<McpWithServerRow>, DbError> {
+  ) -> Result<Vec<McpWithServerEntity>, DbError> {
     self
       .inner
       .list_mcps_with_server(tenant_id, user_id)
@@ -770,7 +770,7 @@ impl McpInstanceRepository for TestDbService {
       .tap(|_| self.notify("list_mcps_with_server"))
   }
 
-  async fn update_mcp(&self, tenant_id: &str, row: &McpRow) -> Result<McpRow, DbError> {
+  async fn update_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError> {
     self
       .inner
       .update_mcp(tenant_id, row)
@@ -803,8 +803,8 @@ impl McpAuthRepository for TestDbService {
 
   async fn create_mcp_auth_header(
     &self,
-    row: &McpAuthHeaderRow,
-  ) -> Result<McpAuthHeaderRow, DbError> {
+    row: &McpAuthHeaderEntity,
+  ) -> Result<McpAuthHeaderEntity, DbError> {
     self
       .inner
       .create_mcp_auth_header(row)
@@ -814,8 +814,8 @@ impl McpAuthRepository for TestDbService {
 
   async fn update_mcp_auth_header(
     &self,
-    row: &McpAuthHeaderRow,
-  ) -> Result<McpAuthHeaderRow, DbError> {
+    row: &McpAuthHeaderEntity,
+  ) -> Result<McpAuthHeaderEntity, DbError> {
     self
       .inner
       .update_mcp_auth_header(row)
@@ -857,8 +857,8 @@ impl McpAuthRepository for TestDbService {
 
   async fn create_mcp_oauth_config(
     &self,
-    row: &McpOAuthConfigRow,
-  ) -> Result<McpOAuthConfigRow, DbError> {
+    row: &McpOAuthConfigEntity,
+  ) -> Result<McpOAuthConfigEntity, DbError> {
     self
       .inner
       .create_mcp_oauth_config(row)
@@ -924,8 +924,8 @@ impl McpAuthRepository for TestDbService {
 
   async fn create_mcp_oauth_token(
     &self,
-    row: &McpOAuthTokenRow,
-  ) -> Result<McpOAuthTokenRow, DbError> {
+    row: &McpOAuthTokenEntity,
+  ) -> Result<McpOAuthTokenEntity, DbError> {
     self
       .inner
       .create_mcp_oauth_token(row)
@@ -960,8 +960,8 @@ impl McpAuthRepository for TestDbService {
 
   async fn update_mcp_oauth_token(
     &self,
-    row: &McpOAuthTokenRow,
-  ) -> Result<McpOAuthTokenRow, DbError> {
+    row: &McpOAuthTokenEntity,
+  ) -> Result<McpOAuthTokenEntity, DbError> {
     self
       .inner
       .update_mcp_oauth_token(row)
@@ -1143,38 +1143,31 @@ impl TenantRepository for TestDbService {
     &self,
     client_id: &str,
     client_secret: &str,
+    name: &str,
+    description: Option<String>,
     status: &crate::AppStatus,
     created_by: Option<String>,
   ) -> Result<TenantRow, DbError> {
     self
       .inner
-      .create_tenant(client_id, client_secret, status, created_by)
+      .create_tenant(
+        client_id,
+        client_secret,
+        name,
+        description,
+        status,
+        created_by,
+      )
       .await
       .tap(|_| self.notify("create_tenant"))
   }
 
-  async fn update_tenant_status(
-    &self,
-    client_id: &str,
-    status: &crate::AppStatus,
-  ) -> Result<(), DbError> {
+  async fn set_tenant_ready(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError> {
     self
       .inner
-      .update_tenant_status(client_id, status)
+      .set_tenant_ready(tenant_id, user_id)
       .await
-      .tap(|_| self.notify("update_tenant_status"))
-  }
-
-  async fn update_tenant_created_by(
-    &self,
-    client_id: &str,
-    created_by: &str,
-  ) -> Result<(), DbError> {
-    self
-      .inner
-      .update_tenant_created_by(client_id, created_by)
-      .await
-      .tap(|_| self.notify("update_tenant_created_by"))
+      .tap(|_| self.notify("set_tenant_ready"))
   }
 
   async fn delete_tenant(&self, client_id: &str) -> Result<(), DbError> {
@@ -1191,6 +1184,38 @@ impl TenantRepository for TestDbService {
       .create_tenant_test(tenant)
       .await
       .tap(|_| self.notify("create_tenant_test"))
+  }
+
+  async fn upsert_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .upsert_tenant_user(tenant_id, user_id)
+      .await
+      .tap(|_| self.notify("upsert_tenant_user"))
+  }
+
+  async fn delete_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_tenant_user(tenant_id, user_id)
+      .await
+      .tap(|_| self.notify("delete_tenant_user"))
+  }
+
+  async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<TenantRow>, DbError> {
+    self
+      .inner
+      .list_user_tenants(user_id)
+      .await
+      .tap(|_| self.notify("list_user_tenants"))
+  }
+
+  async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool, DbError> {
+    self
+      .inner
+      .has_tenant_memberships(user_id)
+      .await
+      .tap(|_| self.notify("has_tenant_memberships"))
   }
 }
 
@@ -1251,13 +1276,21 @@ impl AccessRequestRepository for TestDbService {
     &self,
     id: &str,
     user_id: &str,
+    tenant_id: &str,
     approved: &str,
     approved_role: &str,
     access_request_scope: &str,
   ) -> Result<AppAccessRequest, DbError> {
     self
       .inner
-      .update_approval(id, user_id, approved, approved_role, access_request_scope)
+      .update_approval(
+        id,
+        user_id,
+        tenant_id,
+        approved,
+        approved_role,
+        access_request_scope,
+      )
       .await
       .tap(|_| self.notify("access_request_update_approval"))
   }
@@ -1361,16 +1394,17 @@ mockall::mock! {
       &self,
       client_id: &str,
       client_secret: &str,
+      name: &str,
+      description: Option<String>,
       status: &crate::AppStatus,
       created_by: Option<String>,
     ) -> Result<TenantRow, DbError>;
-    async fn update_tenant_status(
-      &self,
-      client_id: &str,
-      status: &crate::AppStatus,
-    ) -> Result<(), DbError>;
-    async fn update_tenant_created_by(&self, client_id: &str, created_by: &str) -> Result<(), DbError>;
+    async fn set_tenant_ready(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError>;
     async fn delete_tenant(&self, client_id: &str) -> Result<(), DbError>;
+    async fn upsert_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError>;
+    async fn delete_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError>;
+    async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<TenantRow>, DbError>;
+    async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool, DbError>;
     async fn create_tenant_test(&self, tenant: &crate::Tenant) -> Result<TenantRow, DbError>;
   }
 
@@ -1403,50 +1437,50 @@ mockall::mock! {
     async fn list_toolsets_by_toolset_type(&self, tenant_id: &str, user_id: &str, toolset_type: &str) -> Result<Vec<ToolsetEntity>, DbError>;
     async fn delete_toolset(&self, tenant_id: &str, id: &str) -> Result<(), DbError>;
     async fn get_toolset_api_key(&self, tenant_id: &str, id: &str) -> Result<Option<String>, DbError>;
-    async fn set_app_toolset_enabled(&self, tenant_id: &str, toolset_type: &str, enabled: bool, updated_by: &str) -> Result<AppToolsetConfigRow, DbError>;
-    async fn list_app_toolset_configs(&self, tenant_id: &str) -> Result<Vec<AppToolsetConfigRow>, DbError>;
-    async fn get_app_toolset_config(&self, tenant_id: &str, toolset_type: &str) -> Result<Option<AppToolsetConfigRow>, DbError>;
+    async fn set_app_toolset_enabled(&self, tenant_id: &str, toolset_type: &str, enabled: bool, updated_by: &str) -> Result<AppToolsetConfigEntity, DbError>;
+    async fn list_app_toolset_configs(&self, tenant_id: &str) -> Result<Vec<AppToolsetConfigEntity>, DbError>;
+    async fn get_app_toolset_config(&self, tenant_id: &str, toolset_type: &str) -> Result<Option<AppToolsetConfigEntity>, DbError>;
   }
 
   #[async_trait::async_trait]
   impl McpServerRepository for DbService {
-    async fn create_mcp_server(&self, tenant_id: &str, row: &McpServerRow) -> Result<McpServerRow, DbError>;
-    async fn update_mcp_server(&self, tenant_id: &str, row: &McpServerRow) -> Result<McpServerRow, DbError>;
-    async fn get_mcp_server(&self, tenant_id: &str, id: &str) -> Result<Option<McpServerRow>, DbError>;
-    async fn get_mcp_server_by_url(&self, tenant_id: &str, url: &str) -> Result<Option<McpServerRow>, DbError>;
-    async fn list_mcp_servers(&self, tenant_id: &str, enabled: Option<bool>) -> Result<Vec<McpServerRow>, DbError>;
+    async fn create_mcp_server(&self, tenant_id: &str, row: &McpServerEntity) -> Result<McpServerEntity, DbError>;
+    async fn update_mcp_server(&self, tenant_id: &str, row: &McpServerEntity) -> Result<McpServerEntity, DbError>;
+    async fn get_mcp_server(&self, tenant_id: &str, id: &str) -> Result<Option<McpServerEntity>, DbError>;
+    async fn get_mcp_server_by_url(&self, tenant_id: &str, url: &str) -> Result<Option<McpServerEntity>, DbError>;
+    async fn list_mcp_servers(&self, tenant_id: &str, enabled: Option<bool>) -> Result<Vec<McpServerEntity>, DbError>;
     async fn count_mcps_by_server_id(&self, tenant_id: &str, server_id: &str) -> Result<(i64, i64), DbError>;
     async fn clear_mcp_tools_by_server_id(&self, tenant_id: &str, server_id: &str) -> Result<u64, DbError>;
   }
 
   #[async_trait::async_trait]
   impl McpInstanceRepository for DbService {
-    async fn create_mcp(&self, tenant_id: &str, row: &McpRow) -> Result<McpRow, DbError>;
-    async fn get_mcp(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<McpRow>, DbError>;
-    async fn get_mcp_by_slug(&self, tenant_id: &str, user_id: &str, slug: &str) -> Result<Option<McpRow>, DbError>;
-    async fn list_mcps_with_server(&self, tenant_id: &str, user_id: &str) -> Result<Vec<McpWithServerRow>, DbError>;
-    async fn update_mcp(&self, tenant_id: &str, row: &McpRow) -> Result<McpRow, DbError>;
+    async fn create_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError>;
+    async fn get_mcp(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<McpEntity>, DbError>;
+    async fn get_mcp_by_slug(&self, tenant_id: &str, user_id: &str, slug: &str) -> Result<Option<McpEntity>, DbError>;
+    async fn list_mcps_with_server(&self, tenant_id: &str, user_id: &str) -> Result<Vec<McpWithServerEntity>, DbError>;
+    async fn update_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError>;
     async fn delete_mcp(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
   }
 
   #[async_trait::async_trait]
   impl McpAuthRepository for DbService {
-    async fn create_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
+    async fn create_mcp_auth_header(&self, row: &McpAuthHeaderEntity) -> Result<McpAuthHeaderEntity, DbError>;
     async fn get_mcp_auth_header(&self, tenant_id: &str, id: &str) -> Result<Option<crate::mcps::McpAuthHeader>, DbError>;
-    async fn update_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
+    async fn update_mcp_auth_header(&self, row: &McpAuthHeaderEntity) -> Result<McpAuthHeaderEntity, DbError>;
     async fn delete_mcp_auth_header(&self, tenant_id: &str, id: &str) -> Result<(), DbError>;
     async fn list_mcp_auth_headers_by_server(&self, tenant_id: &str, mcp_server_id: &str) -> Result<Vec<crate::mcps::McpAuthHeader>, DbError>;
     async fn get_decrypted_auth_header(&self, tenant_id: &str, id: &str) -> Result<Option<(String, String)>, DbError>;
-    async fn create_mcp_oauth_config(&self, row: &McpOAuthConfigRow) -> Result<McpOAuthConfigRow, DbError>;
+    async fn create_mcp_oauth_config(&self, row: &McpOAuthConfigEntity) -> Result<McpOAuthConfigEntity, DbError>;
     async fn get_mcp_oauth_config(&self, tenant_id: &str, id: &str) -> Result<Option<crate::mcps::McpOAuthConfig>, DbError>;
     async fn list_mcp_oauth_configs_by_server(&self, tenant_id: &str, mcp_server_id: &str) -> Result<Vec<crate::mcps::McpOAuthConfig>, DbError>;
     async fn delete_mcp_oauth_config(&self, tenant_id: &str, id: &str) -> Result<(), DbError>;
     async fn delete_oauth_config_cascade(&self, tenant_id: &str, config_id: &str) -> Result<(), DbError>;
     async fn get_decrypted_client_secret(&self, tenant_id: &str, id: &str) -> Result<Option<(String, String)>, DbError>;
-    async fn create_mcp_oauth_token(&self, row: &McpOAuthTokenRow) -> Result<McpOAuthTokenRow, DbError>;
+    async fn create_mcp_oauth_token(&self, row: &McpOAuthTokenEntity) -> Result<McpOAuthTokenEntity, DbError>;
     async fn get_mcp_oauth_token(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<crate::mcps::McpOAuthToken>, DbError>;
     async fn get_latest_oauth_token_by_config(&self, tenant_id: &str, config_id: &str) -> Result<Option<crate::mcps::McpOAuthToken>, DbError>;
-    async fn update_mcp_oauth_token(&self, row: &McpOAuthTokenRow) -> Result<McpOAuthTokenRow, DbError>;
+    async fn update_mcp_oauth_token(&self, row: &McpOAuthTokenEntity) -> Result<McpOAuthTokenEntity, DbError>;
     async fn delete_mcp_oauth_token(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
     async fn delete_oauth_tokens_by_config(&self, tenant_id: &str, config_id: &str) -> Result<(), DbError>;
     async fn delete_oauth_tokens_by_config_and_user(&self, tenant_id: &str, config_id: &str, user_id: &str) -> Result<(), DbError>;
@@ -1470,6 +1504,7 @@ mockall::mock! {
       &self,
       id: &str,
       user_id: &str,
+      tenant_id: &str,
       approved: &str,
       approved_role: &str,
       access_request_scope: &str,

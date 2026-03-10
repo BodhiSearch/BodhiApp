@@ -1,10 +1,8 @@
-mod dashboard_helpers;
 mod error;
 mod routes_dashboard_auth;
 mod routes_tenants;
 mod tenant_api_schemas;
 
-pub use dashboard_helpers::*;
 pub use error::*;
 pub use routes_dashboard_auth::*;
 pub use routes_tenants::*;

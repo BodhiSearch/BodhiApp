@@ -14,6 +14,7 @@ export class RESTPage {
     responseStatus: '[data-testid="rest-response-status"]',
     response: '[data-testid="rest-response"]',
     error: '[data-testid="rest-error"]',
+    loading: '[data-testid="section-rest-client"][data-test-state="loading"]',
     terminal:
       '[data-testid="section-rest-client"][data-test-state="success"], [data-testid="section-rest-client"][data-test-state="error"]',
     navLink: '[data-testid="nav-rest"]',
@@ -36,7 +37,7 @@ export class RESTPage {
     return await this.page.locator(this.selectors.serverUrl).textContent();
   }
 
-  async sendRequest({ method, url, headers, body, useAuth = true, json = true }) {
+  async sendRequest({ method, url, headers, body, useAuth = true, json = true } = {}) {
     if (method) {
       await this.page.selectOption(this.selectors.methodSelect, method);
     }
@@ -61,6 +62,11 @@ export class RESTPage {
       await jsonCheckbox.click();
     }
     await this.page.click(this.selectors.sendButton);
+    // Wait for loading state to confirm request started (prevents stale state race condition)
+    await this.page
+      .locator(this.selectors.loading)
+      .waitFor({ timeout: 5000 })
+      .catch(() => {});
     await this.page.locator(this.selectors.terminal).waitFor();
   }
 

@@ -19,31 +19,5 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-// ============================================================================
-// AppToolsetConfigRow - Database row for app-level toolset type configuration
-// ============================================================================
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct AppToolsetConfigRow {
-  pub id: String,
-  pub tenant_id: String,
-  pub toolset_type: String,
-  pub enabled: bool,
-  pub updated_by: String,
-  pub created_at: DateTime<Utc>,
-  pub updated_at: DateTime<Utc>,
-}
-
-impl From<Model> for AppToolsetConfigRow {
-  fn from(m: Model) -> Self {
-    AppToolsetConfigRow {
-      id: m.id,
-      tenant_id: m.tenant_id,
-      toolset_type: m.toolset_type,
-      enabled: m.enabled,
-      updated_by: m.updated_by,
-      created_at: m.created_at,
-      updated_at: m.updated_at,
-    }
-  }
-}
+/// Type alias — AppToolsetConfigEntity is the entity Model.
+pub type AppToolsetConfigEntity = Model;

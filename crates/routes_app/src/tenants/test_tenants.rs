@@ -10,16 +10,12 @@ use axum::{
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
-use server_core::test_utils::RequestTestExt;
-use services::test_utils::temp_bodhi_home;
+use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::AuthContext;
 use services::{
-  test_utils::{AppServiceStubBuilder, SettingServiceStub},
-  AppService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_DEPLOYMENT, BODHI_HOST, BODHI_PORT,
-  BODHI_SCHEME,
+  test_utils::AppServiceStubBuilder, AppService, AppStatus, KcCreateTenantResponse, MockAuthService,
 };
-use std::{collections::HashMap, sync::Arc};
-use tempfile::TempDir;
+use std::sync::Arc;
 use tower::ServiceExt;
 
 async fn build_tenants_router(app_service: Arc<dyn AppService>) -> Router {
@@ -35,37 +31,13 @@ async fn build_tenants_router(app_service: Arc<dyn AppService>) -> Router {
     .with_state(state)
 }
 
-async fn build_standalone_app_service(
-  temp_bodhi_home: &TempDir,
-) -> anyhow::Result<Arc<dyn AppService>> {
-  let setting_service = SettingServiceStub::with_settings(HashMap::from([
-    (BODHI_SCHEME.to_string(), "http".to_string()),
-    (BODHI_HOST.to_string(), "localhost".to_string()),
-    (BODHI_PORT.to_string(), "3000".to_string()),
-    (
-      BODHI_AUTH_URL.to_string(),
-      "http://test-id.getbodhi.app".to_string(),
-    ),
-    (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
-    (BODHI_DEPLOYMENT.to_string(), "standalone".to_string()),
-  ]));
-  let dbfile = temp_bodhi_home.path().join("test.db");
-  let mut builder = AppServiceStubBuilder::default();
-  builder
-    .setting_service(Arc::new(setting_service))
-    .build_session_service(dbfile)
-    .await;
-  let app_service = builder.build().await?;
-  Ok(Arc::new(app_service))
-}
+// --- Standalone error tests ---
 
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_tenants_index_returns_error_when_not_multi_tenant(
-  temp_bodhi_home: TempDir,
-) -> anyhow::Result<()> {
-  let app_service = build_standalone_app_service(&temp_bodhi_home).await?;
+async fn test_tenants_index_returns_error_when_not_multi_tenant() -> anyhow::Result<()> {
+  let app_service = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = build_tenants_router(app_service).await;
 
   let resp = router
@@ -75,6 +47,7 @@ async fn test_tenants_index_returns_error_when_not_multi_tenant(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;
@@ -94,10 +67,8 @@ async fn test_tenants_index_returns_error_when_not_multi_tenant(
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_tenants_create_returns_error_when_not_multi_tenant(
-  temp_bodhi_home: TempDir,
-) -> anyhow::Result<()> {
-  let app_service = build_standalone_app_service(&temp_bodhi_home).await?;
+async fn test_tenants_create_returns_error_when_not_multi_tenant() -> anyhow::Result<()> {
+  let app_service = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = build_tenants_router(app_service).await;
 
   let resp = router
@@ -107,6 +78,7 @@ async fn test_tenants_create_returns_error_when_not_multi_tenant(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;
@@ -126,10 +98,8 @@ async fn test_tenants_create_returns_error_when_not_multi_tenant(
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_tenants_activate_returns_error_when_not_multi_tenant(
-  temp_bodhi_home: TempDir,
-) -> anyhow::Result<()> {
-  let app_service = build_standalone_app_service(&temp_bodhi_home).await?;
+async fn test_tenants_activate_returns_error_when_not_multi_tenant() -> anyhow::Result<()> {
+  let app_service = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = build_tenants_router(app_service).await;
 
   let resp = router
@@ -139,6 +109,7 @@ async fn test_tenants_activate_returns_error_when_not_multi_tenant(
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;
@@ -149,6 +120,199 @@ async fn test_tenants_activate_returns_error_when_not_multi_tenant(
   let body: Value = serde_json::from_slice(&body_bytes)?;
   assert_eq!(
     "dashboard_auth_route_error-not_multi_tenant",
+    body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+// --- Multi-tenant happy-path tests ---
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_tenants_index_returns_user_tenants_for_multi_tenant_session() -> anyhow::Result<()> {
+  let app_service = Arc::new(
+    AppServiceStubBuilder::default()
+      .with_multitenant_settings()
+      .await
+      .build()
+      .await?,
+  );
+
+  // Create a tenant with status Ready
+  let tenant = app_service
+    .tenant_service()
+    .create_tenant(
+      "test-client-id",
+      "test-client-secret",
+      "Test Tenant",
+      Some("A test tenant".to_string()),
+      AppStatus::Ready,
+      Some("test-user".to_string()),
+    )
+    .await?;
+
+  // Create tenant-user membership
+  app_service
+    .tenant_service()
+    .upsert_tenant_user(&tenant.id, "test-user")
+    .await?;
+
+  let router = build_tenants_router(app_service).await;
+
+  let auth_context = AuthContext::test_multi_tenant_session("test-user", "test@example.com");
+
+  let resp = router
+    .oneshot(
+      Request::get(ENDPOINT_TENANTS)
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, resp.status());
+  let body: Value = resp.json().await?;
+  let tenants = body["tenants"].as_array().unwrap();
+  assert_eq!(1, tenants.len());
+  assert_eq!("test-client-id", tenants[0]["client_id"].as_str().unwrap());
+  assert_eq!("Test Tenant", tenants[0]["name"].as_str().unwrap());
+  assert_eq!("ready", tenants[0]["status"].as_str().unwrap());
+  assert_eq!(false, tenants[0]["is_active"].as_bool().unwrap());
+  assert_eq!(false, tenants[0]["logged_in"].as_bool().unwrap());
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_tenants_index_with_client_id_some_returns_tenants() -> anyhow::Result<()> {
+  let app_service = Arc::new(
+    AppServiceStubBuilder::default()
+      .with_multitenant_settings()
+      .await
+      .build()
+      .await?,
+  );
+
+  // Create a tenant with status Ready
+  let tenant = app_service
+    .tenant_service()
+    .create_tenant(
+      "test-client-id",
+      "test-client-secret",
+      "Test Tenant",
+      Some("A test tenant".to_string()),
+      AppStatus::Ready,
+      Some("test-user".to_string()),
+    )
+    .await?;
+
+  // Create tenant-user membership
+  app_service
+    .tenant_service()
+    .upsert_tenant_user(&tenant.id, "test-user")
+    .await?;
+
+  let router = build_tenants_router(app_service).await;
+
+  let auth_context = AuthContext::test_multi_tenant_session_full(
+    "test-user",
+    "test@example.com",
+    "some-client",
+    "some-tenant",
+    services::ResourceRole::Admin,
+    "some-token",
+  );
+
+  let resp = router
+    .oneshot(
+      Request::get(ENDPOINT_TENANTS)
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, resp.status());
+  let body: Value = resp.json().await?;
+  let tenants = body["tenants"].as_array().unwrap();
+  assert_eq!(1, tenants.len());
+  assert_eq!("test-client-id", tenants[0]["client_id"].as_str().unwrap());
+  assert_eq!("Test Tenant", tenants[0]["name"].as_str().unwrap());
+  assert_eq!("ready", tenants[0]["status"].as_str().unwrap());
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_tenants_create_succeeds_for_multi_tenant_session() -> anyhow::Result<()> {
+  let mut mock_auth = MockAuthService::default();
+  mock_auth.expect_create_tenant().returning(|_, _, _, _| {
+    Ok(KcCreateTenantResponse {
+      client_id: "new-tenant-client-id".to_string(),
+      client_secret: "new-tenant-client-secret".to_string(),
+    })
+  });
+
+  let app_service = Arc::new(
+    AppServiceStubBuilder::default()
+      .with_multitenant_settings()
+      .await
+      .auth_service(Arc::new(mock_auth))
+      .build()
+      .await?,
+  );
+  let router = build_tenants_router(app_service).await;
+
+  let auth_context = AuthContext::test_multi_tenant_session("test-user", "test@example.com");
+
+  let resp = router
+    .oneshot(
+      Request::post(ENDPOINT_TENANTS)
+        .json(json! {{"name": "New Tenant", "description": "A new tenant"}})?
+        .with_auth_context(auth_context),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::CREATED, resp.status());
+  let body: Value = resp.json().await?;
+  assert_eq!("new-tenant-client-id", body["client_id"].as_str().unwrap());
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_tenants_activate_returns_tenant_not_logged_in_for_multi_tenant_session(
+) -> anyhow::Result<()> {
+  let app_service = Arc::new(
+    AppServiceStubBuilder::default()
+      .with_multitenant_settings()
+      .await
+      .build()
+      .await?,
+  );
+  let router = build_tenants_router(app_service).await;
+
+  let auth_context = AuthContext::test_multi_tenant_session("test-user", "test@example.com");
+
+  let resp = router
+    .oneshot(
+      Request::post(&format!("{ENDPOINT_TENANTS}/some-client-id/activate"))
+        .json(json! {{}})?
+        .with_auth_context(auth_context),
+    )
+    .await?;
+
+  let status = resp.status();
+  assert_eq!(StatusCode::BAD_REQUEST, status);
+  let body: Value = resp.json().await?;
+  assert_eq!(
+    "dashboard_auth_route_error-tenant_not_logged_in",
     body["error"]["code"].as_str().unwrap()
   );
 

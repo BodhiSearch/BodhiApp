@@ -1,4 +1,4 @@
-use crate::{ensure_valid_dashboard_token, ApiError, AuthScope, DashboardAuthRouteError};
+use crate::{ApiError, AuthScope, DashboardAuthRouteError};
 use axum::{
   body::Body,
   extract::Path,
@@ -9,7 +9,6 @@ use axum::{
 use serde_json::json;
 use services::{AppError, AuthServiceError, ErrorType, SerdeJsonError};
 use services::{DbError, SessionServiceError, TenantError};
-use tower_sessions::Session;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -38,7 +37,7 @@ pub enum DevError {
 }
 
 pub async fn dev_secrets_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
-  let tenant_svc = auth_scope.tenant();
+  let tenant_svc = auth_scope.tenants();
   let instance = tenant_svc.get_standalone_app().await.ok().flatten();
   let status = instance
     .as_ref()
@@ -84,28 +83,20 @@ pub async fn dev_db_reset_handler(auth_scope: AuthScope) -> Result<Response, Api
 
 pub async fn dev_clients_dag_handler(
   auth_scope: AuthScope,
-  session: Session,
   Path(client_id): Path<String>,
 ) -> Result<Response, ApiError> {
-  if !auth_scope.settings().is_multi_tenant().await {
+  if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DevError::NotMultiTenant)?;
   }
 
-  let dashboard_token: String = ensure_valid_dashboard_token(
-    &session,
-    auth_scope.auth_service().as_ref(),
-    auth_scope.settings().as_ref(),
-    auth_scope.time().as_ref(),
-  )
-  .await
-  .map_err(DevError::from)?;
+  let dashboard_token = auth_scope.auth_context().require_dashboard_token()?;
 
   let (status, body) = auth_scope
     .auth_service()
     .forward_request(
       "POST".to_string(),
       format!("test/clients/{}/dag", client_id),
-      Some(dashboard_token.clone()),
+      Some(dashboard_token.to_string()),
       None,
     )
     .await
@@ -120,7 +111,7 @@ pub async fn dev_clients_dag_handler(
 
   // Look up local tenant to get client_secret
   let tenant = auth_scope
-    .tenant()
+    .tenants()
     .get_tenant_by_client_id(&client_id)
     .await
     .map_err(DevError::from)?
@@ -138,29 +129,19 @@ pub async fn dev_clients_dag_handler(
   )
 }
 
-pub async fn dev_tenants_cleanup_handler(
-  auth_scope: AuthScope,
-  session: Session,
-) -> Result<Response, ApiError> {
-  if !auth_scope.settings().is_multi_tenant().await {
+pub async fn dev_tenants_cleanup_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
+  if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DevError::NotMultiTenant)?;
   }
 
-  let dashboard_token: String = ensure_valid_dashboard_token(
-    &session,
-    auth_scope.auth_service().as_ref(),
-    auth_scope.settings().as_ref(),
-    auth_scope.time().as_ref(),
-  )
-  .await
-  .map_err(DevError::from)?;
+  let dashboard_token = auth_scope.auth_context().require_dashboard_token()?;
 
   let (status, body) = auth_scope
     .auth_service()
     .forward_request(
       "DELETE".to_string(),
       "test/tenants/cleanup".to_string(),
-      Some(dashboard_token),
+      Some(dashboard_token.to_string()),
       None,
     )
     .await
@@ -221,6 +202,7 @@ mod tests {
       AuthContext::Anonymous {
         client_id: None,
         tenant_id: None,
+        deployment: services::DeploymentMode::Standalone,
       },
     ));
 
@@ -377,6 +359,7 @@ mod tests {
       AuthContext::Anonymous {
         client_id: None,
         tenant_id: None,
+        deployment: services::DeploymentMode::Standalone,
       },
     ));
     let response = dev_db_reset_handler(auth_scope).await?;

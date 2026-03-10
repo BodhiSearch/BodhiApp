@@ -1,6 +1,7 @@
 use crate::models::{
   JsonVec, OAIRequestParams, OAIRequestParamsBuilder, Repo, UserAlias, UserAliasRepository,
 };
+use crate::new_ulid;
 use crate::test_utils::{sea_context, setup_env};
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
@@ -30,7 +31,7 @@ async fn test_create_and_get_user_alias_by_id(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let alias = make_alias(&id, "test:model", ctx.now);
 
   ctx.service.create_user_alias("", "", &alias).await?;
@@ -57,7 +58,7 @@ async fn test_get_user_alias_by_name(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let alias = make_alias(&id, "lookup:model", ctx.now);
 
   ctx.service.create_user_alias("", "", &alias).await?;
@@ -87,7 +88,7 @@ async fn test_update_user_alias(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let alias = make_alias(&id, "update:model", ctx.now);
 
   ctx.service.create_user_alias("", "", &alias).await?;
@@ -127,7 +128,7 @@ async fn test_delete_user_alias(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let alias = make_alias(&id, "delete:model", ctx.now);
 
   ctx.service.create_user_alias("", "", &alias).await?;
@@ -156,8 +157,8 @@ async fn test_list_user_aliases_ordered(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let a2 = make_alias(&ulid::Ulid::new().to_string(), "b:model", ctx.now);
-  let a1 = make_alias(&ulid::Ulid::new().to_string(), "a:model", ctx.now);
+  let a2 = make_alias(&new_ulid(), "b:model", ctx.now);
+  let a1 = make_alias(&new_ulid(), "a:model", ctx.now);
 
   ctx.service.create_user_alias("", "", &a2).await?;
   ctx.service.create_user_alias("", "", &a1).await?;
@@ -179,7 +180,7 @@ async fn test_user_alias_with_json_fields(
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
-  let id = ulid::Ulid::new().to_string();
+  let id = new_ulid();
   let alias = UserAlias {
     id: id.clone(),
     alias: "json:model".to_string(),

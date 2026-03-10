@@ -45,12 +45,16 @@ async fn authorize_request(
   match auth_context {
     AuthContext::Session {
       role: Some(role), ..
+    }
+    | AuthContext::MultiTenantSession {
+      role: Some(role), ..
     } => {
       if !role.has_access_to(&required_role) {
         return Err(ApiAuthError::Forbidden);
       }
     }
-    AuthContext::Session { role: None, .. } => {
+    AuthContext::Session { role: None, .. }
+    | AuthContext::MultiTenantSession { role: None, .. } => {
       return Err(ApiAuthError::MissingAuth);
     }
     AuthContext::ApiToken { role, .. } => {

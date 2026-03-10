@@ -9,8 +9,8 @@ use axum::{
 };
 
 use services::{
-  access_token_key, refresh_token_key, AppService, AuthContext, SESSION_KEY_ACTIVE_CLIENT_ID,
-  SESSION_KEY_USER_ID,
+  access_token_key, refresh_token_key, AppService, AuthContext, DeploymentMode,
+  SESSION_KEY_ACTIVE_CLIENT_ID, SESSION_KEY_USER_ID,
 };
 use services::{extract_claims, Claims, TenantError, UserIdClaims};
 use std::sync::Arc;
@@ -91,6 +91,30 @@ fn evaluate_same_origin(_host: Option<&str>, sec_fetch_site: Option<&str>) -> bo
   }
 }
 
+/// Try to read and validate/refresh the dashboard token from the session.
+/// Returns `Some(valid_dashboard_token)` on success, `None` if no dashboard token or refresh fails.
+async fn try_resolve_dashboard_token(
+  session: &Session,
+  token_service: &DefaultTokenService,
+) -> Option<String> {
+  let dashboard_token = session
+    .get::<String>(services::DASHBOARD_ACCESS_TOKEN_KEY)
+    .await
+    .ok()
+    .flatten()?;
+
+  match token_service
+    .get_valid_dashboard_token(session.clone(), dashboard_token)
+    .await
+  {
+    Ok(token) => Some(token),
+    Err(e) => {
+      debug!(?e, "Dashboard token validation/refresh failed");
+      None
+    }
+  }
+}
+
 pub async fn auth_middleware(
   session: Session,
   State(app_service): State<Arc<dyn AppService>>,
@@ -99,6 +123,8 @@ pub async fn auth_middleware(
 ) -> Result<Response, MiddlewareError> {
   remove_app_headers(&mut req);
   let tenant_service = app_service.tenant_service();
+  let deployment = app_service.setting_service().deployment_mode().await;
+  let is_multi_tenant = deployment == DeploymentMode::MultiTenant;
   let token_service = DefaultTokenService::new(
     app_service.auth_service(),
     tenant_service.clone(),
@@ -140,18 +166,34 @@ pub async fn auth_middleware(
         .ok_or(TenantError::NotFound)?;
 
       let (access_token, role) = token_service
-        .get_valid_session_token(session, access_token, &tenant)
+        .get_valid_session_token(session.clone(), access_token, &tenant)
         .await?;
       let role = role.ok_or(AuthError::MissingRoles)?;
       let user_claims = extract_claims::<UserIdClaims>(&access_token)?;
 
-      let auth_context = AuthContext::Session {
-        client_id: tenant.client_id,
-        tenant_id: tenant.id,
-        user_id: user_claims.sub.clone(),
-        username: user_claims.preferred_username,
-        role: Some(role),
-        token: access_token,
+      let auth_context = if is_multi_tenant {
+        // Multi-tenant: also resolve dashboard token
+        let dashboard_token = try_resolve_dashboard_token(&session, &token_service)
+          .await
+          .ok_or(AuthError::RefreshTokenNotFound)?;
+        AuthContext::MultiTenantSession {
+          client_id: Some(tenant.client_id),
+          tenant_id: Some(tenant.id),
+          user_id: user_claims.sub.clone(),
+          username: user_claims.preferred_username,
+          role: Some(role),
+          token: Some(access_token),
+          dashboard_token,
+        }
+      } else {
+        AuthContext::Session {
+          client_id: tenant.client_id,
+          tenant_id: tenant.id,
+          user_id: user_claims.sub.clone(),
+          username: user_claims.preferred_username,
+          role: Some(role),
+          token: access_token,
+        }
       };
 
       req.extensions_mut().insert(auth_context);
@@ -174,6 +216,8 @@ pub async fn optional_auth_middleware(
 ) -> Result<Response, MiddlewareError> {
   remove_app_headers(&mut req);
   let tenant_service = app_service.tenant_service();
+  let deployment = app_service.setting_service().deployment_mode().await;
+  let is_multi_tenant = deployment == DeploymentMode::MultiTenant;
   let token_service = DefaultTokenService::new(
     app_service.auth_service(),
     tenant_service.clone(),
@@ -187,6 +231,7 @@ pub async fn optional_auth_middleware(
   let anon = || AuthContext::Anonymous {
     client_id: None,
     tenant_id: None,
+    deployment: deployment.clone(),
   };
 
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
@@ -235,14 +280,30 @@ pub async fn optional_auth_middleware(
             .get_valid_session_token(session.clone(), access_token, &tenant)
             .await?;
           let user_claims = extract_claims::<UserIdClaims>(&validated_token)?;
-          Ok(AuthContext::Session {
-            client_id: tenant.client_id,
-            tenant_id: tenant.id,
-            user_id: user_claims.sub.clone(),
-            username: user_claims.preferred_username,
-            role,
-            token: validated_token,
-          })
+
+          if is_multi_tenant {
+            let dashboard_token = try_resolve_dashboard_token(&session, &token_service)
+              .await
+              .ok_or(AuthError::RefreshTokenNotFound)?;
+            Ok(AuthContext::MultiTenantSession {
+              client_id: Some(tenant.client_id),
+              tenant_id: Some(tenant.id),
+              user_id: user_claims.sub.clone(),
+              username: user_claims.preferred_username,
+              role,
+              token: Some(validated_token),
+              dashboard_token,
+            })
+          } else {
+            Ok(AuthContext::Session {
+              client_id: tenant.client_id,
+              tenant_id: tenant.id,
+              user_id: user_claims.sub.clone(),
+              username: user_claims.preferred_username,
+              role,
+              token: validated_token,
+            })
+          }
         }
         .await;
 
@@ -254,6 +315,35 @@ pub async fn optional_auth_middleware(
             if should_clear_session(&err) {
               clear_session_auth_data(&session).await;
             }
+            req.extensions_mut().insert(anon());
+          }
+        }
+      }
+      None if is_multi_tenant => {
+        // No resource token, but might have dashboard token (dashboard-only session)
+        match try_resolve_dashboard_token(&session, &token_service).await {
+          Some(dashboard_token) => {
+            // Extract user info from dashboard JWT
+            match extract_claims::<UserIdClaims>(&dashboard_token) {
+              Ok(user_claims) => {
+                req
+                  .extensions_mut()
+                  .insert(AuthContext::MultiTenantSession {
+                    client_id: None,
+                    tenant_id: None,
+                    user_id: user_claims.sub.clone(),
+                    username: user_claims.preferred_username,
+                    role: None,
+                    token: None,
+                    dashboard_token,
+                  });
+              }
+              Err(_) => {
+                req.extensions_mut().insert(anon());
+              }
+            }
+          }
+          None => {
             req.extensions_mut().insert(anon());
           }
         }

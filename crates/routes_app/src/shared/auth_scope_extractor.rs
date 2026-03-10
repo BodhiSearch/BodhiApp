@@ -45,6 +45,7 @@ where
         .unwrap_or(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         });
 
     // Extract the app service using FromRef (same mechanism as State<T> extractor)

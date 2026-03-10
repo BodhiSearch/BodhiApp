@@ -1,5 +1,5 @@
 use crate::shared_objs::log;
-use crate::tenants::{CreateTenantRequest, KcCreateTenantResponse, KcTenantListResponse};
+use crate::tenants::{CreateTenantRequest, KcCreateTenantResponse};
 use crate::ReqwestError;
 use crate::{AppRole, ResourceRole, UserInfo};
 use async_trait::async_trait;
@@ -127,10 +127,6 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     authorization: Option<String>,
     body: Option<serde_json::Value>,
   ) -> Result<(u16, serde_json::Value)>;
-
-  /// List tenants available for the authenticated user via the Bodhi SPI.
-  /// SPI endpoint: GET /realms/{realm}/bodhi/tenants
-  async fn list_tenants(&self, dashboard_token: &str) -> Result<KcTenantListResponse>;
 
   /// Create a new tenant (Keycloak client) via the Bodhi SPI.
   /// SPI endpoint: POST /realms/{realm}/bodhi/tenants
@@ -842,7 +838,6 @@ impl AuthService for KeycloakAuthService {
     body: Option<serde_json::Value>,
   ) -> Result<(u16, serde_json::Value)> {
     let url = format!("{}/{}", self.auth_api_url(), endpoint);
-    println!("SPI request: {} {}", method, url);
     log::log_http_request(&method, &url, "auth_service", None);
 
     let mut request = match method.to_uppercase().as_str() {
@@ -879,31 +874,6 @@ impl AuthService for KeycloakAuthService {
     }
 
     Ok((status, json_body))
-  }
-
-  async fn list_tenants(&self, dashboard_token: &str) -> Result<KcTenantListResponse> {
-    let endpoint = format!("{}/tenants", self.auth_api_url());
-    log::log_http_request("GET", &endpoint, "auth_service", None);
-
-    let response = self
-      .client
-      .get(&endpoint)
-      .bearer_auth(dashboard_token)
-      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
-      .send()
-      .await?;
-
-    let status = response.status();
-    if status.is_success() {
-      Ok(response.json::<KcTenantListResponse>().await?)
-    } else {
-      let error_text = response.text().await?;
-      log::log_http_error("GET", &endpoint, "auth_service", &error_text);
-      Err(AuthServiceError::AuthServiceApiError {
-        status: status.as_u16(),
-        body: error_text,
-      })
-    }
   }
 
   async fn create_tenant(

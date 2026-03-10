@@ -69,6 +69,33 @@ pub async fn users_info(
         role: role.map(AppRole::Session),
       })
     }
+    AuthContext::MultiTenantSession {
+      ref token,
+      ref role,
+      ref user_id,
+      ref username,
+      ..
+    } => {
+      debug!("multi-tenant session auth");
+      if let Some(ref token) = token {
+        let claims: Claims = extract_claims::<Claims>(token)?;
+        UserResponse::LoggedIn(services::UserInfo {
+          user_id: claims.sub,
+          username: claims.preferred_username,
+          first_name: claims.given_name,
+          last_name: claims.family_name,
+          role: role.map(AppRole::Session),
+        })
+      } else {
+        UserResponse::LoggedIn(services::UserInfo {
+          user_id: user_id.clone(),
+          username: username.clone(),
+          first_name: None,
+          last_name: None,
+          role: None,
+        })
+      }
+    }
     AuthContext::ApiToken { ref role, .. } => {
       debug!("api token auth");
       UserResponse::Token(TokenInfo { role: *role })

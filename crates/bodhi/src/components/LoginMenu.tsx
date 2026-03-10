@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { redirect, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { useToastMessages } from '@/hooks/use-toast-messages';
@@ -23,14 +23,7 @@ export function LoginMenu() {
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-
-      // Check if URL is internal (starts with '/') or same origin
-      if (redirectUrl.startsWith('/')) {
-        router.push(redirectUrl);
-      } else {
-        // For external URLs, use redirect
-        redirect(redirectUrl);
-      }
+      handleSmartRedirect(redirectUrl, router);
     },
     onError: (message) => {
       // Reset local storage and cookies on logout failure
@@ -43,8 +36,7 @@ export function LoginMenu() {
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
-      // Redirect to login page
-      redirect(ROUTE_LOGIN);
+      handleSmartRedirect(ROUTE_LOGIN, router);
     },
   });
 
@@ -72,10 +64,12 @@ export function LoginMenu() {
   });
 
   const handleOAuthInitiate = () => {
-    setError(null); // Clear any previous errors
-    if (appInfo?.client_id) {
-      initiateOAuth({ client_id: appInfo.client_id });
+    setError(null);
+    if (!appInfo?.client_id) {
+      setError('Client ID is not set. Please check your configuration.');
+      return;
     }
+    initiateOAuth({ client_id: appInfo.client_id });
   };
 
   const isLoginButtonDisabled = isLoading || redirecting;

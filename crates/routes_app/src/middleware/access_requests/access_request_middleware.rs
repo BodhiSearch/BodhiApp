@@ -81,7 +81,9 @@ pub async fn access_request_auth_middleware(
     .clone();
 
   let auth_flow = match &auth_context {
-    AuthContext::Session { .. } => AccessRequestAuthFlow::Session,
+    AuthContext::Session { .. } | AuthContext::MultiTenantSession { .. } => {
+      AccessRequestAuthFlow::Session
+    }
     AuthContext::ExternalApp {
       tenant_id,
       user_id,

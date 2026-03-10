@@ -43,9 +43,6 @@ impl ActiveModelBehavior for ActiveModel {}
 /// Type alias — McpEntity is the entity Model.
 pub type McpEntity = Model;
 
-/// Backward-compatible alias (deprecated — use McpEntity).
-pub type McpRow = Model;
-
 /// Joined MCP instance + server info from SQL JOIN query
 #[derive(Debug, Clone, PartialEq)]
 pub struct McpWithServerEntity {

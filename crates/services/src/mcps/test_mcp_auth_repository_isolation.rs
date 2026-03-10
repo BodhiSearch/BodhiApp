@@ -1,8 +1,8 @@
 use crate::db::encryption::encrypt_api_key;
 use crate::mcps::test_helpers::ENCRYPTION_KEY;
 use crate::mcps::{
-  McpAuthHeaderRow, McpAuthRepository, McpOAuthConfigRow, McpOAuthTokenRow, McpServerRepository,
-  McpServerRow, RegistrationType,
+  McpAuthHeaderEntity, McpAuthRepository, McpOAuthConfigEntity, McpOAuthTokenEntity,
+  McpServerEntity, McpServerRepository, RegistrationType,
 };
 use crate::test_utils::{sea_context, setup_env, TEST_TENANT_B_ID, TEST_TENANT_ID, TEST_USER_ID};
 use anyhow_trace::anyhow_trace;
@@ -11,8 +11,8 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-fn make_server_for(tenant_id: &str, id: &str, url: &str, now: DateTime<Utc>) -> McpServerRow {
-  McpServerRow {
+fn make_server_for(tenant_id: &str, id: &str, url: &str, now: DateTime<Utc>) -> McpServerEntity {
+  McpServerEntity {
     id: id.to_string(),
     tenant_id: tenant_id.to_string(),
     url: url.to_string(),
@@ -31,10 +31,10 @@ fn make_auth_header_for(
   id: &str,
   server_id: &str,
   now: DateTime<Utc>,
-) -> McpAuthHeaderRow {
+) -> McpAuthHeaderEntity {
   let (encrypted, salt, nonce) =
     encrypt_api_key(ENCRYPTION_KEY, "Bearer sk-secret-token-123").expect("encryption failed");
-  McpAuthHeaderRow {
+  McpAuthHeaderEntity {
     id: id.to_string(),
     tenant_id: tenant_id.to_string(),
     name: "Header".to_string(),
@@ -53,10 +53,10 @@ fn make_oauth_config_for(
   id: &str,
   server_id: &str,
   now: DateTime<Utc>,
-) -> McpOAuthConfigRow {
+) -> McpOAuthConfigEntity {
   let (encrypted, salt, nonce) =
     encrypt_api_key(ENCRYPTION_KEY, "my-client-secret").expect("encryption failed");
-  McpOAuthConfigRow {
+  McpOAuthConfigEntity {
     id: id.to_string(),
     tenant_id: tenant_id.to_string(),
     name: format!("OAuth Config {}", id),
@@ -86,10 +86,10 @@ fn make_oauth_token_for(
   config_id: &str,
   id: &str,
   now: DateTime<Utc>,
-) -> McpOAuthTokenRow {
+) -> McpOAuthTokenEntity {
   let (encrypted, salt, nonce) =
     encrypt_api_key(ENCRYPTION_KEY, "access-token-secret").expect("encryption failed");
-  McpOAuthTokenRow {
+  McpOAuthTokenEntity {
     id: id.to_string(),
     tenant_id: tenant_id.to_string(),
     mcp_oauth_config_id: config_id.to_string(),

@@ -34,6 +34,12 @@ pub enum SettingServiceError {
   #[error("Setting key '{0}' cannot be updated via database.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidKey(String),
+  #[error("Operation not valid in {0} deployment mode.")]
+  #[error_meta(error_type = ErrorType::InvalidAppState)]
+  InvalidDeploymentMode(String),
+  #[error("Required config key '{0}' not found.")]
+  #[error_meta(error_type = ErrorType::InvalidAppState)]
+  MissingConfig(String),
 }
 
 impl_error_from!(

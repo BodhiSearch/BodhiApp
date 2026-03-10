@@ -404,6 +404,108 @@ impl DefaultTokenService {
     Ok((auth_context, cached_result))
   }
 
+  /// Validates and optionally refreshes the dashboard access token stored in the session.
+  /// Uses distributed locking to prevent concurrent dashboard token refreshes.
+  /// Returns the valid dashboard access token string on success.
+  pub async fn get_valid_dashboard_token(
+    &self,
+    session: Session,
+    dashboard_token: String,
+  ) -> Result<String, AuthError> {
+    let claims = extract_claims::<Claims>(&dashboard_token)?;
+    let now = self.time_service.utc_now().timestamp();
+    if now < (claims.exp as i64 - 30) {
+      return Ok(dashboard_token);
+    }
+
+    // Token expired, refresh with lock
+    let session_id = session
+      .id()
+      .ok_or_else(|| AuthError::RefreshTokenNotFound)?;
+    let lock_key = format!("dashboard:{}:refresh", session_id);
+
+    let auth_service = Arc::clone(&self.auth_service);
+    let setting_service = Arc::clone(&self.setting_service);
+    let time_service = Arc::clone(&self.time_service);
+    let session_clone = session.clone();
+
+    let result = self
+      .concurrency_service
+      .with_lock_str(
+        &lock_key,
+        Box::new(move || {
+          Box::pin(async move {
+            let inner_result: Result<String, AuthError> = async move {
+              // Double-check: re-read from session (another request may have refreshed)
+              let current = session_clone
+                .get::<String>(services::DASHBOARD_ACCESS_TOKEN_KEY)
+                .await?;
+
+              let Some(current) = current else {
+                return Err(AuthError::RefreshTokenNotFound);
+              };
+
+              let current_claims = extract_claims::<Claims>(&current)?;
+              let now = time_service.utc_now().timestamp();
+              if now < current_claims.exp as i64 {
+                return Ok(current);
+              }
+
+              // Still expired, refresh
+              let refresh_token = session_clone
+                .get::<String>(services::DASHBOARD_REFRESH_TOKEN_KEY)
+                .await?;
+              let Some(refresh_token) = refresh_token else {
+                return Err(AuthError::RefreshTokenNotFound);
+              };
+
+              let client_id = setting_service.multitenant_client_id().await.map_err(|_| {
+                AuthError::InvalidToken("Missing multi-tenant client config".to_string())
+              })?;
+              let client_secret =
+                setting_service
+                  .multitenant_client_secret()
+                  .await
+                  .map_err(|_| {
+                    AuthError::InvalidToken("Missing multi-tenant client secret".to_string())
+                  })?;
+
+              let (new_access_token, new_refresh_token) = auth_service
+                .refresh_token(&client_id, &client_secret, &refresh_token)
+                .await?;
+
+              session_clone
+                .insert(services::DASHBOARD_ACCESS_TOKEN_KEY, &new_access_token)
+                .await?;
+              if let Some(ref new_refresh) = new_refresh_token {
+                session_clone
+                  .insert(services::DASHBOARD_REFRESH_TOKEN_KEY, new_refresh)
+                  .await?;
+              }
+              session_clone
+                .save()
+                .await
+                .map_err(AuthError::TowerSession)?;
+
+              Ok(new_access_token)
+            }
+            .await;
+
+            inner_result.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+          })
+        }),
+      )
+      .await;
+
+    result.map_err(|e| {
+      e.downcast::<AuthError>()
+        .map(|boxed| *boxed)
+        .unwrap_or_else(|e| {
+          AuthError::InvalidToken(format!("Dashboard token refresh error: {}", e))
+        })
+    })
+  }
+
   pub async fn get_valid_session_token(
     &self,
     session: Session,

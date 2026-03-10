@@ -25,15 +25,20 @@ State type: `State<Arc<dyn AppService>>`.
 
 Defined in `services::auth::auth_context`.
 
-**Variants** (all non-Anonymous variants have `client_id: String`, `tenant_id: String`):
-- `Anonymous { client_id: Option<String>, tenant_id: Option<String> }`
-- `Session { client_id, tenant_id, user_id, username, role: Option<ResourceRole>, token }`
+**Variants**:
+- `Anonymous { client_id: Option<String>, tenant_id: Option<String>, deployment: DeploymentMode }`
+- `Session { client_id, tenant_id, user_id, username, role: Option<ResourceRole>, token }` — single-tenant session
+- `MultiTenantSession { client_id: Option<String>, tenant_id: Option<String>, user_id, username, role: Option<ResourceRole>, token: Option<String>, dashboard_token: String }` — multi-tenant session (with or without active resource tenant)
 - `ApiToken { client_id, tenant_id, user_id, role: TokenScope, token }`
 - `ExternalApp { client_id, tenant_id, user_id, role: Option<UserScope>, token, external_app_token, app_client_id, access_request_id: Option<String> }`
 
-**Convenience methods**: `user_id()`, `require_user_id()`, `client_id()`, `require_client_id()`, `tenant_id()`, `require_tenant_id()`, `token()`, `external_app_token()`, `app_role()`, `is_authenticated()`.
+`Session`, `ApiToken`, `ExternalApp` have required `client_id: String`, `tenant_id: String`. `MultiTenantSession` has both as `Option` (dashboard-only sessions have no active tenant).
+
+**Convenience methods**: `user_id()`, `require_user_id()`, `client_id()`, `require_client_id()`, `tenant_id()`, `require_tenant_id()`, `token()`, `external_app_token()`, `app_role()`, `is_authenticated()`, `is_multi_tenant()`, `dashboard_token()`, `require_dashboard_token()`.
 
 `require_user_id()` returns `Result<&str, AuthContextError>` (not `ApiError`).
+
+**Multi-tenant helpers**: `is_multi_tenant()` returns `true` for `MultiTenantSession` and `Anonymous { deployment: MultiTenant }`. `require_dashboard_token()` returns `Result<&str, AuthContextError>` -- only `MultiTenantSession` carries a dashboard token. Route handlers use these instead of querying `SettingService`.
 
 ## Middleware Functions
 
@@ -41,14 +46,17 @@ All return `Result<Response, MiddlewareError>`.
 
 ### `auth_middleware` (strict)
 1. Strips `X-BodhiApp-*` headers (defense-in-depth)
-2. Checks bearer token -> `AuthContext::ApiToken` or `AuthContext::ExternalApp`
-3. Falls back to session token (same-origin only) via **two-step lookup**:
+2. Resolves `deployment_mode` from `SettingService`
+3. Checks bearer token -> `AuthContext::ApiToken` or `AuthContext::ExternalApp`
+4. Falls back to session token (same-origin only) via **two-step lookup**:
    a. Read `active_client_id` from session
    b. Read `access_token:{client_id}` using namespaced key
    c. Resolve tenant from JWT `azp` claim via `get_tenant_by_client_id()`
-   d. Call `get_valid_session_token()` for validation/refresh -> `AuthContext::Session`
-4. Returns `AuthError::InvalidAccess` if no valid auth
-5. Inserts `AuthContext` into `req.extensions_mut()`
+   d. Call `get_valid_session_token()` for validation/refresh
+   e. **Multi-tenant mode**: also resolves dashboard token via `try_resolve_dashboard_token()` -> `AuthContext::MultiTenantSession`
+   f. **Standalone mode**: -> `AuthContext::Session`
+5. Returns `AuthError::InvalidAccess` if no valid auth
+6. Inserts `AuthContext` into `req.extensions_mut()`
 
 **No setup check**: Middleware does authentication only. Setup routes gate via `app_status_or_default()`.
 
@@ -62,14 +70,19 @@ Session keys are namespaced by `client_id` to support multiple tenants per sessi
 - Token refresh lock: `{client_id}:{session_id}:refresh_token` (per-tenant per-session)
 
 ### `optional_auth_middleware` (permissive)
-Same logic but inserts `AuthContext::Anonymous { client_id: None, tenant_id: None }` on any auth failure. Cleans up invalid session data on token validation failure.
+Same logic but inserts `AuthContext::Anonymous { client_id: None, tenant_id: None, deployment }` on any auth failure. Cleans up invalid session data on token validation failure.
+
+**Dashboard-only sessions** (multi-tenant, no resource token): If no active resource token exists but a valid dashboard token is found in session, constructs `AuthContext::MultiTenantSession { client_id: None, token: None, dashboard_token, ... }` with user info extracted from the dashboard JWT. This enables routes like `/tenants` and `/user/info` that need only dashboard-level auth.
+
+### `try_resolve_dashboard_token()` (helper)
+Reads `DASHBOARD_ACCESS_TOKEN_KEY` from session, validates/refreshes via `DefaultTokenService::get_valid_dashboard_token()`. Returns `Option<String>` -- `None` if no dashboard token in session or refresh fails. Used by both `auth_middleware` and `optional_auth_middleware` in multi-tenant mode.
 
 ### `api_auth_middleware` (authorization)
 Reads `AuthContext` from extensions, pattern-matches to enforce role hierarchy:
-- `Session { role: Some(role) }` -> checks `role.has_access_to(&required_role)`
+- `Session { role: Some(role) }` / `MultiTenantSession { role: Some(role) }` -> checks `role.has_access_to(&required_role)`
 - `ApiToken { role }` -> checks against `required_token_scope`
 - `ExternalApp { role: Some(role) }` -> checks against `required_user_scope`
-- `Anonymous`, `Session { role: None }`, `ExternalApp { role: None }` -> `MissingAuth`
+- `Anonymous`, `Session { role: None }`, `MultiTenantSession { role: None }`, `ExternalApp { role: None }` -> `MissingAuth`
 
 Role hierarchy: Admin > Manager > PowerUser > User
 
@@ -94,6 +107,7 @@ Dependencies: `AuthService`, `TenantService`, `CacheService`, `DbService`, `Sett
 Key methods:
 - `validate_bearer_token()` -- routes to API token (`bodhiapp_*` prefix) or external token path
 - `get_valid_session_token(session, access_token, &Tenant)` -- validates with auto-refresh, distributed lock via `ConcurrencyService`. Caller resolves tenant from JWT `azp` and passes it in.
+- `get_valid_dashboard_token(session, dashboard_token) -> Result<String, AuthError>` -- validates JWT expiry, refreshes with distributed lock if expired. Dashboard token refresh uses `DASHBOARD_REFRESH_TOKEN_KEY` from session. Previously, dashboard token validation was done in route handlers via a now-deleted `ensure_valid_dashboard_token()` function; it now lives in the middleware layer via `try_resolve_dashboard_token()`.
 - `handle_external_client_token()` -- resolves tenant from JWT `aud` claim via `get_tenant_by_client_id()`, validates issuer, looks up access request, performs RFC 8693 exchange, derives `role` from DB `approved_role`
 
 ### Tenant Resolution Strategy

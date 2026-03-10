@@ -44,11 +44,13 @@ function ResourceAdminContent() {
   });
 
   const handleOAuthInitiate = () => {
-    setError(null); // Clear any previous errors
+    setError(null);
     sessionStorage.setItem('bodhi-return-url', ROUTE_SETUP_DOWNLOAD_MODELS);
-    if (appInfo?.client_id) {
-      initiateOAuth({ client_id: appInfo.client_id });
+    if (!appInfo?.client_id) {
+      setError('Client ID is not set. Please check your configuration.');
+      return;
     }
+    initiateOAuth({ client_id: appInfo.client_id });
   };
 
   const isButtonDisabled = isLoading || redirecting;

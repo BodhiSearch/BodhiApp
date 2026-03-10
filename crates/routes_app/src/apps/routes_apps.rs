@@ -88,16 +88,8 @@ pub async fn apps_create_access_request(
   }
 
   let access_request_service = auth_scope.access_request_service();
-  // Look up the standalone app's tenant_id to ensure access requests are created
-  // with the correct tenant_id (auth context may be anonymous/"" for this unauthenticated endpoint)
-  let tenant = auth_scope
-    .tenant_service()
-    .get_standalone_app()
-    .await?
-    .ok_or(AppsRouteError::NotFound)?;
   let created = access_request_service
     .create_draft(
-      &tenant.id,
       request.app_client_id,
       request.flow_type,
       request.redirect_url,
@@ -294,13 +286,17 @@ pub async fn apps_approve_access_request(
     .auth_context()
     .token()
     .ok_or(AppsRouteError::InsufficientPrivileges)?;
+  let tenant_id = auth_scope.require_tenant_id()?;
 
   // Extract approver's role from session and compute max grantable scope
-  let approver_role = if let services::AuthContext::Session { role, .. } = auth_scope.auth_context()
-  {
-    role.ok_or(AppsRouteError::InsufficientPrivileges)?
-  } else {
-    return Err(AppsRouteError::InsufficientPrivileges)?;
+  let approver_role = match auth_scope.auth_context() {
+    services::AuthContext::Session { role, .. } => {
+      role.ok_or(AppsRouteError::InsufficientPrivileges)?
+    }
+    services::AuthContext::MultiTenantSession { role, .. } => {
+      role.ok_or(AppsRouteError::InsufficientPrivileges)?
+    }
+    _ => return Err(AppsRouteError::InsufficientPrivileges)?,
   };
   let max_grantable = if approver_role >= ResourceRole::PowerUser {
     UserScope::PowerUser
@@ -409,6 +405,7 @@ pub async fn apps_approve_access_request(
     .approve_request(
       &id,
       user_id,
+      tenant_id,
       token,
       approval_input.approved.toolsets,
       approval_input.approved.mcps,

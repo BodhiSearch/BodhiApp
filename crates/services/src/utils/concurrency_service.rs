@@ -17,6 +17,9 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// The error is boxed to avoid circular dependencies between crates.
 pub type AuthTokenResult = Result<(String, Option<ResourceRole>), Box<dyn StdError + Send + Sync>>;
 
+/// Result type for string-returning lock operations (e.g., dashboard token refresh).
+pub type StringLockResult = Result<String, Box<dyn StdError + Send + Sync>>;
+
 /// Service for managing distributed locks and concurrency control.
 ///
 /// This trait provides a foundation for implementing both local and distributed
@@ -50,6 +53,14 @@ pub trait ConcurrencyService: Send + Sync + std::fmt::Debug {
     key: &str,
     f: Box<dyn FnOnce() -> BoxFuture<'static, AuthTokenResult> + Send + 'static>,
   ) -> AuthTokenResult;
+
+  /// Execute a string-returning operation while holding a lock for the given key.
+  /// Used for dashboard token refresh where the return type is a single string.
+  async fn with_lock_str(
+    &self,
+    key: &str,
+    f: Box<dyn FnOnce() -> BoxFuture<'static, StringLockResult> + Send + 'static>,
+  ) -> StringLockResult;
 }
 
 /// Local implementation of ConcurrencyService using in-process locks.
@@ -111,13 +122,18 @@ impl ConcurrencyService for LocalConcurrencyService {
     key: &str,
     f: Box<dyn FnOnce() -> BoxFuture<'static, AuthTokenResult> + Send + 'static>,
   ) -> AuthTokenResult {
-    // Get or create the lock for this key
     let lock = self.get_lock(key).await;
-
-    // Acquire the lock (blocks if another task holds it)
     let _guard = lock.lock().await;
+    f().await
+  }
 
-    // Execute the closure while holding the lock
+  async fn with_lock_str(
+    &self,
+    key: &str,
+    f: Box<dyn FnOnce() -> BoxFuture<'static, StringLockResult> + Send + 'static>,
+  ) -> StringLockResult {
+    let lock = self.get_lock(key).await;
+    let _guard = lock.lock().await;
     f().await
   }
 }

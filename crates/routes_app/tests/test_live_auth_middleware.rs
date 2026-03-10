@@ -94,8 +94,10 @@ async fn create_test_state(config: &AuthServerConfig) -> anyhow::Result<Arc<dyn 
     .create_tenant(
       &config.resource_client_id,
       &config.resource_client_secret,
-      AppStatus::Ready,
+      "Test App",
       None,
+      AppStatus::Ready,
+      Some("integration-test-user".to_string()),
     )
     .await?;
 
@@ -154,9 +156,9 @@ async fn test_cross_client_token_exchange_success(
 ) -> anyhow::Result<()> {
   let state = create_test_state(auth_server_config).await?;
 
-  // Create a draft access request in DB
+  // Create a draft access request in DB (tenant_id is NULL for drafts)
   let db_service = state.db_service();
-  // Get actual tenant_id from the registered standalone tenant
+  // Get actual tenant_id for approval step
   let actual_tenant_id = state
     .tenant_service()
     .get_standalone_app()
@@ -168,7 +170,7 @@ async fn test_cross_client_token_exchange_success(
   let expires_at = now + chrono::Duration::seconds(600);
   let row = services::AppAccessRequest {
     id: access_request_id.clone(),
-    tenant_id: actual_tenant_id.clone(),
+    tenant_id: None,
     app_client_id: auth_server_config.app_client_id.clone(),
     app_name: None,
     app_description: None,
@@ -217,6 +219,7 @@ async fn test_cross_client_token_exchange_success(
     .update_approval(
       &access_request_id,
       &test_user.user_id,
+      &actual_tenant_id,
       approved_json,
       "scope_user_user",
       &access_request_scope,

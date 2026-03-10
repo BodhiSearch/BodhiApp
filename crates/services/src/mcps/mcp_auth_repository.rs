@@ -1,7 +1,7 @@
 use crate::db::{encryption::decrypt_api_key, DbError, DefaultDbService};
 use crate::mcps::{
-  McpAuthHeader, McpAuthHeaderRow, McpOAuthConfig, McpOAuthConfigRow, McpOAuthToken,
-  McpOAuthTokenRow,
+  McpAuthHeader, McpAuthHeaderEntity, McpOAuthConfig, McpOAuthConfigEntity, McpOAuthToken,
+  McpOAuthTokenEntity,
 };
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder, Set};
 
@@ -14,8 +14,8 @@ pub trait McpAuthRepository: Send + Sync {
   // MCP auth header configs
   async fn create_mcp_auth_header(
     &self,
-    row: &McpAuthHeaderRow,
-  ) -> Result<McpAuthHeaderRow, DbError>;
+    row: &McpAuthHeaderEntity,
+  ) -> Result<McpAuthHeaderEntity, DbError>;
 
   async fn get_mcp_auth_header(
     &self,
@@ -25,8 +25,8 @@ pub trait McpAuthRepository: Send + Sync {
 
   async fn update_mcp_auth_header(
     &self,
-    row: &McpAuthHeaderRow,
-  ) -> Result<McpAuthHeaderRow, DbError>;
+    row: &McpAuthHeaderEntity,
+  ) -> Result<McpAuthHeaderEntity, DbError>;
 
   async fn delete_mcp_auth_header(&self, tenant_id: &str, id: &str) -> Result<(), DbError>;
 
@@ -46,8 +46,8 @@ pub trait McpAuthRepository: Send + Sync {
   // MCP OAuth config operations
   async fn create_mcp_oauth_config(
     &self,
-    row: &McpOAuthConfigRow,
-  ) -> Result<McpOAuthConfigRow, DbError>;
+    row: &McpOAuthConfigEntity,
+  ) -> Result<McpOAuthConfigEntity, DbError>;
 
   async fn get_mcp_oauth_config(
     &self,
@@ -80,8 +80,8 @@ pub trait McpAuthRepository: Send + Sync {
   // MCP OAuth token operations
   async fn create_mcp_oauth_token(
     &self,
-    row: &McpOAuthTokenRow,
-  ) -> Result<McpOAuthTokenRow, DbError>;
+    row: &McpOAuthTokenEntity,
+  ) -> Result<McpOAuthTokenEntity, DbError>;
 
   async fn get_mcp_oauth_token(
     &self,
@@ -98,8 +98,8 @@ pub trait McpAuthRepository: Send + Sync {
 
   async fn update_mcp_oauth_token(
     &self,
-    row: &McpOAuthTokenRow,
-  ) -> Result<McpOAuthTokenRow, DbError>;
+    row: &McpOAuthTokenEntity,
+  ) -> Result<McpOAuthTokenEntity, DbError>;
 
   async fn delete_mcp_oauth_token(
     &self,
@@ -143,8 +143,8 @@ pub trait McpAuthRepository: Send + Sync {
 impl McpAuthRepository for DefaultDbService {
   async fn create_mcp_auth_header(
     &self,
-    row: &McpAuthHeaderRow,
-  ) -> Result<McpAuthHeaderRow, DbError> {
+    row: &McpAuthHeaderEntity,
+  ) -> Result<McpAuthHeaderEntity, DbError> {
     let row = row.clone();
     let tenant_id = row.tenant_id.clone();
 
@@ -164,7 +164,7 @@ impl McpAuthRepository for DefaultDbService {
             updated_at: Set(row.updated_at),
           };
           let model = active.insert(txn).await.map_err(DbError::from)?;
-          Ok(McpAuthHeaderRow::from(model))
+          Ok(McpAuthHeaderEntity::from(model))
         })
       })
       .await
@@ -195,8 +195,8 @@ impl McpAuthRepository for DefaultDbService {
 
   async fn update_mcp_auth_header(
     &self,
-    row: &McpAuthHeaderRow,
-  ) -> Result<McpAuthHeaderRow, DbError> {
+    row: &McpAuthHeaderEntity,
+  ) -> Result<McpAuthHeaderEntity, DbError> {
     let row = row.clone();
     let tenant_id = row.tenant_id.clone();
 
@@ -214,7 +214,7 @@ impl McpAuthRepository for DefaultDbService {
             ..Default::default()
           };
           let model = active.update(txn).await.map_err(DbError::from)?;
-          Ok(McpAuthHeaderRow::from(model))
+          Ok(McpAuthHeaderEntity::from(model))
         })
       })
       .await
@@ -297,8 +297,8 @@ impl McpAuthRepository for DefaultDbService {
 
   async fn create_mcp_oauth_config(
     &self,
-    row: &McpOAuthConfigRow,
-  ) -> Result<McpOAuthConfigRow, DbError> {
+    row: &McpOAuthConfigEntity,
+  ) -> Result<McpOAuthConfigEntity, DbError> {
     let row = row.clone();
     let tenant_id = row.tenant_id.clone();
 
@@ -330,7 +330,7 @@ impl McpAuthRepository for DefaultDbService {
             updated_at: Set(row.updated_at),
           };
           let model = active.insert(txn).await.map_err(DbError::from)?;
-          Ok(McpOAuthConfigRow::from(model))
+          Ok(McpOAuthConfigEntity::from(model))
         })
       })
       .await
@@ -469,8 +469,8 @@ impl McpAuthRepository for DefaultDbService {
 
   async fn create_mcp_oauth_token(
     &self,
-    row: &McpOAuthTokenRow,
-  ) -> Result<McpOAuthTokenRow, DbError> {
+    row: &McpOAuthTokenEntity,
+  ) -> Result<McpOAuthTokenEntity, DbError> {
     let row = row.clone();
     let tenant_id = row.tenant_id.clone();
 
@@ -494,7 +494,7 @@ impl McpAuthRepository for DefaultDbService {
             updated_at: Set(row.updated_at),
           };
           let model = active.insert(txn).await.map_err(DbError::from)?;
-          Ok(McpOAuthTokenRow::from(model))
+          Ok(McpOAuthTokenEntity::from(model))
         })
       })
       .await
@@ -553,8 +553,8 @@ impl McpAuthRepository for DefaultDbService {
 
   async fn update_mcp_oauth_token(
     &self,
-    row: &McpOAuthTokenRow,
-  ) -> Result<McpOAuthTokenRow, DbError> {
+    row: &McpOAuthTokenEntity,
+  ) -> Result<McpOAuthTokenEntity, DbError> {
     let row = row.clone();
     let tenant_id = row.tenant_id.clone();
 
@@ -575,7 +575,7 @@ impl McpAuthRepository for DefaultDbService {
             ..Default::default()
           };
           let model = active.update(txn).await.map_err(DbError::from)?;
-          Ok(McpOAuthTokenRow::from(model))
+          Ok(McpOAuthTokenEntity::from(model))
         })
       })
       .await

@@ -41,6 +41,7 @@ async fn test_user_info_handler_anonymous() -> anyhow::Result<()> {
         .with_auth_context(AuthContext::Anonymous {
           client_id: None,
           tenant_id: None,
+          deployment: services::DeploymentMode::Standalone,
         }),
     )
     .await?;

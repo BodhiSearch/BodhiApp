@@ -51,6 +51,7 @@ export function useTenantActivate(options?: {
       onSuccess: () => {
         queryClient.invalidateQueries('tenants');
         queryClient.invalidateQueries('appInfo');
+        queryClient.invalidateQueries('user');
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<ErrorResponse>) => {

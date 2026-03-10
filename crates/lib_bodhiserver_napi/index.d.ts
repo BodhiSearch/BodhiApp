@@ -17,6 +17,8 @@ export interface NapiAppOptions {
   clientSecret?: string
   /** App status as string (optional) */
   appStatus?: string
+  /** User ID of the tenant creator (optional) */
+  createdBy?: string
 }
 /** Create a new NapiAppOptions with empty configuration */
 export declare function createNapiAppOptions(): NapiAppOptions
@@ -28,6 +30,8 @@ export declare function setAppSetting(config: NapiAppOptions, key: string, value
 export declare function setSystemSetting(config: NapiAppOptions, key: string, value: string): NapiAppOptions
 /** Set OAuth client credentials */
 export declare function setClientCredentials(config: NapiAppOptions, clientId: string, clientSecret: string): NapiAppOptions
+/** Set the user ID of the tenant creator */
+export declare function setCreatedBy(config: NapiAppOptions, userId: string): NapiAppOptions
 /** Set app status */
 export declare function setAppStatus(config: NapiAppOptions, status: string): NapiAppOptions
 export const BODHI_HOME: string

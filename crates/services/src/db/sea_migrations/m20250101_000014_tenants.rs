@@ -11,6 +11,8 @@ enum Tenants {
   EncryptedClientSecret,
   SaltClientSecret,
   NonceClientSecret,
+  Name,
+  Description,
   AppStatus,
   CreatedBy,
   CreatedAt,
@@ -29,21 +31,12 @@ impl MigrationTrait for Migration {
           .col(string_null(Tenants::EncryptedClientSecret))
           .col(string_null(Tenants::SaltClientSecret))
           .col(string_null(Tenants::NonceClientSecret))
+          .col(string(Tenants::Name).default(""))
+          .col(string_null(Tenants::Description))
           .col(string(Tenants::AppStatus).default("setup"))
           .col(string_null(Tenants::CreatedBy))
           .col(timestamp_with_time_zone(Tenants::CreatedAt))
           .col(timestamp_with_time_zone(Tenants::UpdatedAt))
-          .to_owned(),
-      )
-      .await?;
-
-    manager
-      .create_index(
-        Index::create()
-          .name("idx_tenants_client_id")
-          .table(Tenants::Table)
-          .col(Tenants::ClientId)
-          .unique()
           .to_owned(),
       )
       .await?;

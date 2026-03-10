@@ -1,3 +1,4 @@
+use crate::auth::AuthContextError;
 use crate::db::DbError;
 use errmeta::{AppError, ErrorType};
 
@@ -9,6 +10,8 @@ pub enum TenantError {
   NotFound,
   #[error(transparent)]
   Db(#[from] DbError),
+  #[error(transparent)]
+  AuthContext(#[from] AuthContextError),
 }
 
 pub(crate) type Result<T> = std::result::Result<T, TenantError>;

@@ -1,5 +1,5 @@
 use crate::db::{DbError, DefaultDbService};
-use crate::mcps::McpServerRow;
+use crate::mcps::McpServerEntity;
 use sea_orm::{
   sea_query::Expr, ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set,
 };
@@ -13,32 +13,32 @@ pub trait McpServerRepository: Send + Sync {
   async fn create_mcp_server(
     &self,
     tenant_id: &str,
-    row: &McpServerRow,
-  ) -> Result<McpServerRow, DbError>;
+    row: &McpServerEntity,
+  ) -> Result<McpServerEntity, DbError>;
 
   async fn update_mcp_server(
     &self,
     tenant_id: &str,
-    row: &McpServerRow,
-  ) -> Result<McpServerRow, DbError>;
+    row: &McpServerEntity,
+  ) -> Result<McpServerEntity, DbError>;
 
   async fn get_mcp_server(
     &self,
     tenant_id: &str,
     id: &str,
-  ) -> Result<Option<McpServerRow>, DbError>;
+  ) -> Result<Option<McpServerEntity>, DbError>;
 
   async fn get_mcp_server_by_url(
     &self,
     tenant_id: &str,
     url: &str,
-  ) -> Result<Option<McpServerRow>, DbError>;
+  ) -> Result<Option<McpServerEntity>, DbError>;
 
   async fn list_mcp_servers(
     &self,
     tenant_id: &str,
     enabled: Option<bool>,
-  ) -> Result<Vec<McpServerRow>, DbError>;
+  ) -> Result<Vec<McpServerEntity>, DbError>;
 
   /// Returns (enabled_count, disabled_count) for MCPs referencing this server
   async fn count_mcps_by_server_id(
@@ -60,8 +60,8 @@ impl McpServerRepository for DefaultDbService {
   async fn create_mcp_server(
     &self,
     tenant_id: &str,
-    row: &McpServerRow,
-  ) -> Result<McpServerRow, DbError> {
+    row: &McpServerEntity,
+  ) -> Result<McpServerEntity, DbError> {
     let tenant_id_owned = tenant_id.to_string();
     let row = row.clone();
 
@@ -81,7 +81,7 @@ impl McpServerRepository for DefaultDbService {
             updated_at: Set(row.updated_at),
           };
           let model = active.insert(txn).await.map_err(DbError::from)?;
-          Ok(McpServerRow::from(model))
+          Ok(McpServerEntity::from(model))
         })
       })
       .await
@@ -90,8 +90,8 @@ impl McpServerRepository for DefaultDbService {
   async fn update_mcp_server(
     &self,
     tenant_id: &str,
-    row: &McpServerRow,
-  ) -> Result<McpServerRow, DbError> {
+    row: &McpServerEntity,
+  ) -> Result<McpServerEntity, DbError> {
     let tenant_id_owned = tenant_id.to_string();
     let row = row.clone();
 
@@ -121,7 +121,7 @@ impl McpServerRepository for DefaultDbService {
             ..Default::default()
           };
           let model = active.update(txn).await.map_err(DbError::from)?;
-          Ok(McpServerRow::from(model))
+          Ok(McpServerEntity::from(model))
         })
       })
       .await
@@ -131,7 +131,7 @@ impl McpServerRepository for DefaultDbService {
     &self,
     tenant_id: &str,
     id: &str,
-  ) -> Result<Option<McpServerRow>, DbError> {
+  ) -> Result<Option<McpServerEntity>, DbError> {
     let tenant_id_owned = tenant_id.to_string();
     let id_owned = id.to_string();
 
@@ -153,7 +153,7 @@ impl McpServerRepository for DefaultDbService {
     &self,
     tenant_id: &str,
     url: &str,
-  ) -> Result<Option<McpServerRow>, DbError> {
+  ) -> Result<Option<McpServerEntity>, DbError> {
     let tenant_id_owned = tenant_id.to_string();
     let url_owned = url.to_string();
 
@@ -176,7 +176,7 @@ impl McpServerRepository for DefaultDbService {
     &self,
     tenant_id: &str,
     enabled: Option<bool>,
-  ) -> Result<Vec<McpServerRow>, DbError> {
+  ) -> Result<Vec<McpServerEntity>, DbError> {
     let tenant_id_owned = tenant_id.to_string();
 
     self

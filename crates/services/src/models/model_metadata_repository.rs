@@ -32,7 +32,7 @@ impl ModelMetadataRepository for DefaultDbService {
   async fn upsert_model_metadata(&self, metadata: &ModelMetadataEntity) -> Result<(), DbError> {
     let now = self.time_service.utc_now();
     let id = if metadata.id.is_empty() {
-      ulid::Ulid::new().to_string()
+      crate::new_ulid()
     } else {
       metadata.id.clone()
     };

@@ -109,6 +109,7 @@ function createFullTestConfig(bindings, options = {}) {
     clientSecret = null,
     appStatus = 'ready',
     systemSettings = {},
+    createdBy = null,
   } = options;
 
   let config = bindings.createNapiAppOptions();
@@ -146,6 +147,10 @@ function createFullTestConfig(bindings, options = {}) {
   // Set client credentials if provided
   if (clientId && clientSecret) {
     config = bindings.setClientCredentials(config, clientId, clientSecret);
+  }
+
+  if (createdBy) {
+    config = bindings.setCreatedBy(config, createdBy);
   }
 
   return config;

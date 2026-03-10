@@ -73,7 +73,7 @@ async function main() {
   }
 
   // Configure client credentials and env vars based on deployment mode
-  let clientId, clientSecret;
+  let clientId, clientSecret, createdBy;
   const envVars = {};
 
   if (deployment === 'multi_tenant') {
@@ -81,6 +81,7 @@ async function main() {
     // Use tenant credentials for seeding via ensure_tenant
     clientId = mtConfig.tenantId;
     clientSecret = mtConfig.tenantSecret;
+    createdBy = process.env.INTEG_TEST_USERNAME_ID;
     // Set multi-tenant settings as env vars (SettingService reads these via get_setting/get_env)
     envVars[bindings.BODHI_DEPLOYMENT] = 'multi_tenant';
     envVars[bindings.BODHI_MULTITENANT_CLIENT_ID] = mtConfig.dashboardClientId;
@@ -89,6 +90,7 @@ async function main() {
     const resourceClient = getPreConfiguredResourceClient();
     clientId = resourceClient.clientId;
     clientSecret = resourceClient.clientSecret;
+    createdBy = process.env.INTEG_TEST_USERNAME_ID;
   }
 
   console.log(`Creating ${dbType} server (${deployment}) with configuration...`);
@@ -100,6 +102,7 @@ async function main() {
     authRealm: authServerConfig.authRealm,
     clientId,
     clientSecret,
+    createdBy,
     envVars,
   };
 

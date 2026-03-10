@@ -554,7 +554,7 @@ impl UserAliasBuilder {
     now: chrono::DateTime<chrono::Utc>,
   ) -> Result<UserAlias, BuilderError> {
     Ok(UserAlias {
-      id: ulid::Ulid::new().to_string(),
+      id: crate::new_ulid(),
       alias: self
         .alias
         .clone()

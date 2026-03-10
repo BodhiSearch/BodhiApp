@@ -1,14 +1,12 @@
-use crate::middleware::{access_token_key, app_status_or_default, SESSION_KEY_ACTIVE_CLIENT_ID};
+use crate::middleware::standalone_app_status_or_default;
 use crate::setup::error::SetupRouteError;
 use crate::setup::setup_api_schemas::{AppInfo, SetupRequest, SetupResponse};
 use crate::shared::{utils::extract_request_host, AuthScope};
-use crate::tenants::{ensure_valid_dashboard_token, DASHBOARD_ACCESS_TOKEN_KEY};
 use crate::{ApiError, JsonRejectionError};
 use crate::{API_TAG_SETUP, API_TAG_SYSTEM, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use services::{AppStatus, LOGIN_CALLBACK_PATH};
-use tower_sessions::Session;
+use services::{AppStatus, AuthContext, DeploymentMode, LOGIN_CALLBACK_PATH};
 
 pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
 
@@ -30,20 +28,53 @@ pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
          })),
     )
 )]
-pub async fn setup_show(
-  auth_scope: AuthScope,
-  session: Session,
-) -> Result<Json<AppInfo>, ApiError> {
+pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, ApiError> {
   let settings = auth_scope.settings();
   let deployment = settings.deployment_mode().await;
 
-  let (status, client_id) = if settings.is_multi_tenant().await {
-    resolve_multi_tenant_status(&auth_scope, &session).await?
-  } else {
-    let tenant_svc = auth_scope.tenant();
-    let status = app_status_or_default(&tenant_svc).await;
-    let client_id = auth_scope.auth_context().client_id().map(|s| s.to_string());
-    (status, client_id)
+  let (status, client_id) = match auth_scope.auth_context() {
+    // Standalone: authenticated session
+    AuthContext::Session { client_id, .. } => (AppStatus::Ready, Some(client_id.clone())),
+    // Multi-tenant: fully authenticated with a tenant
+    AuthContext::MultiTenantSession {
+      client_id: Some(cid),
+      ..
+    } => (AppStatus::Ready, Some(cid.clone())),
+    // Multi-tenant: dashboard-only, check local memberships
+    AuthContext::MultiTenantSession {
+      client_id: None, ..
+    } => {
+      let has_memberships = auth_scope
+        .tenants()
+        .has_memberships()
+        .await
+        .unwrap_or(false);
+      if has_memberships {
+        (AppStatus::TenantSelection, None)
+      } else {
+        (AppStatus::Setup, None)
+      }
+    }
+    // Anonymous multi-tenant
+    AuthContext::Anonymous {
+      deployment: DeploymentMode::MultiTenant,
+      ..
+    } => (AppStatus::TenantSelection, None),
+    // Anonymous standalone
+    AuthContext::Anonymous { .. } => {
+      let tenant_svc = auth_scope.tenants();
+      let standalone_app = tenant_svc.get_standalone_app().await.ok().flatten();
+      let status = standalone_app
+        .as_ref()
+        .map(|t| t.status.clone())
+        .unwrap_or_default();
+      let cid = standalone_app.map(|t| t.client_id);
+      (status, cid)
+    }
+    // API token / external app — always ready
+    AuthContext::ApiToken { client_id, .. } | AuthContext::ExternalApp { client_id, .. } => {
+      (AppStatus::Ready, Some(client_id.clone()))
+    }
   };
 
   Ok(Json(AppInfo {
@@ -53,64 +84,6 @@ pub async fn setup_show(
     deployment,
     client_id,
   }))
-}
-
-async fn resolve_multi_tenant_status(
-  auth_scope: &AuthScope,
-  session: &Session,
-) -> Result<(AppStatus, Option<String>), ApiError> {
-  let settings = auth_scope.settings();
-
-  // 1. Has active_client_id with valid resource token?
-  if let Ok(Some(active_client_id)) = session.get::<String>(SESSION_KEY_ACTIVE_CLIENT_ID).await {
-    if let Ok(Some(_token)) = session
-      .get::<String>(&access_token_key(&active_client_id))
-      .await
-    {
-      return Ok((AppStatus::Ready, Some(active_client_id)));
-    }
-  }
-
-  // 2. Has dashboard token?
-  if session
-    .get::<String>(DASHBOARD_ACCESS_TOKEN_KEY)
-    .await
-    .unwrap_or(None)
-    .is_some()
-  {
-    let auth_service = auth_scope.auth_service();
-    match ensure_valid_dashboard_token(
-      session,
-      auth_service.as_ref(),
-      settings.as_ref(),
-      auth_scope.time().as_ref(),
-    )
-    .await
-    {
-      Ok(dashboard_token) => {
-        match auth_service.list_tenants(&dashboard_token).await {
-          Ok(spi_response) => {
-            if spi_response.tenants.is_empty() {
-              return Ok((AppStatus::Setup, None));
-            } else {
-              return Ok((AppStatus::TenantSelection, None));
-            }
-          }
-          Err(_) => {
-            // SPI call failed, treat as tenant_selection (user can retry)
-            return Ok((AppStatus::TenantSelection, None));
-          }
-        }
-      }
-      Err(_) => {
-        // Dashboard token invalid/expired and refresh failed
-        return Ok((AppStatus::TenantSelection, None));
-      }
-    }
-  }
-
-  // 3. No dashboard token
-  Ok((AppStatus::TenantSelection, None))
 }
 
 #[utoipa::path(
@@ -140,9 +113,13 @@ pub async fn setup_create(
   headers: axum::http::HeaderMap,
   WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, JsonRejectionError>,
 ) -> Result<SetupResponse, ApiError> {
-  let tenant_svc = auth_scope.tenant();
+  let settings = auth_scope.settings();
+  if settings.is_multi_tenant().await {
+    return Err(SetupRouteError::NotStandalone)?;
+  }
+  let tenant_svc = auth_scope.tenants();
   let auth_flow = auth_scope.auth_flow();
-  let status = app_status_or_default(&tenant_svc).await;
+  let status = standalone_app_status_or_default(&tenant_svc).await;
   if status != AppStatus::Setup {
     return Err(SetupRouteError::AlreadySetup)?;
   }
@@ -190,6 +167,8 @@ pub async fn setup_create(
 
     redirect_uris
   };
+  let request_name = request.name.clone();
+  let request_description = request.description.clone();
   let client_reg = auth_flow
     .register_client(
       request.name,
@@ -201,6 +180,8 @@ pub async fn setup_create(
     .create_tenant(
       &client_reg.client_id,
       &client_reg.client_secret,
+      &request_name,
+      request_description,
       AppStatus::ResourceAdmin,
       None,
     )

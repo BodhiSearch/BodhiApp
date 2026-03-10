@@ -1,187 +1,422 @@
-# Multi-Tenant E2E Tests — Coverage (Phase 3)
+# Multi-Tenant E2E Tests — Comprehensive Kickoff
 
-> **Created**: 2026-03-09
+> **Created**: 2026-03-10
 > **Status**: TODO
-> **Scope**: New Playwright E2E tests for multi-tenant-specific flows
-> **Depends on**: `kickoff-e2e-multi-tenant.md` (Phase 1+2 — **COMPLETED**)
-> **Context doc**: `multi-tenant-flow-ctx.md`
+> **Scope**: New Playwright E2E tests for multi-tenant flows + existing test adaptations
+> **Context**: `SUMMARY.md` (architecture), `decisions.md` (D21-D106)
 
 ---
 
 ## Context
 
-Phase 1+2 (completed) configured the multi-tenant server and verified existing shared tests pass. This phase adds **new** E2E tests for multi-tenant-specific flows that don't exist in standalone mode.
+Multi-tenant stage 2 is implemented at HEAD. The multi-tenant shared server runs on port 41135 (PostgreSQL) with 30 shared tests passing. This kickoff covers all remaining E2E test work, ordered by lowest-hanging fruit first:
+1. **testIgnore fixes** — config-only, immediate wins
+2. **Existing test adaptations** — unlock more tests on multi_tenant project
+3. **New multi-tenant test scenarios** — page objects and fixtures created inline as needed
 
-### What's already working
+### Current E2E State
 
-The multi-tenant shared server on port 41135 is configured with:
-- `BODHI_DEPLOYMENT=multi_tenant` (env var)
-- Dashboard client credentials (`BODHI_MULTITENANT_CLIENT_ID`, `BODHI_MULTITENANT_CLIENT_SECRET`)
-- Pre-seeded tenant for `user@email.com` via `ensure_tenant()`
-- Login flow working: dashboard OAuth → auto-login (single tenant) → resource OAuth → `/ui/chat/`
-- 30 shared tests passing on multi_tenant project
+- **Standalone project**: Port 51135, SQLite, all tests passing
+- **Multi-tenant project**: Port 41135, PostgreSQL, 30 shared tests passing
+- **testIgnore (multi_tenant)**: `setup/**`, `chat/chat.spec.mjs`, `chat/chat-agentic.spec.mjs`, `models/**`, `tokens/**`, `oauth/oauth-chat-streaming.spec.mjs`
+- **Pre-seeded tenant**: `user@email.com` with `INTEG_TEST_MT_TENANT_ID` via `ensure_tenant()` in server startup
 
-### What's NOT tested yet
+### Test User Separation
 
-- Dashboard login flow (explicit button click → Keycloak → callback)
-- Tenant registration flow (0 tenants → setup wizard → register → auto-login)
-- Tenant switching flow (N tenants → select → switch)
-- Multi-tenant info endpoint behavior at each state
-
----
-
-## Task
-
-Add Playwright E2E tests in `specs/multi-tenant-setup/` that exercise multi-tenant-specific UI flows using `manager@email.com` (separate from `user@email.com` used by shared tests).
+| User | Purpose | Env Vars |
+|------|---------|----------|
+| `user@email.com` | Shared feature tests (pre-seeded tenant) | `INTEG_TEST_USERNAME`, `_ID`, `_PASSWORD` |
+| `manager@email.com` | Multi-tenant setup tests (tenants cleaned between tests) | `INTEG_TEST_USER_MANAGER`, `_ID`, `_PASSWORD` |
 
 ---
 
-## Test User Separation
+## testIgnore Updates (Phase 1-2)
 
-- **`user@email.com`**: Used by shared feature tests. Has a pre-seeded tenant on the shared server. Do NOT modify this user's tenants.
-- **`manager@email.com`**: Used by setup flow tests below. Tenants are cleaned up before each test so the setup flow can be exercised from scratch.
+Target state after Phases 1-2:
 
----
+```javascript
+// multi_tenant project:
+testIgnore: [
+  '**/setup/**',                              // Setup wizard is standalone-only
+  '**/chat/chat.spec.mjs',                   // Local GGUF model only
+  '**/chat/chat-agentic.spec.mjs',           // Local GGUF model only
+  '**/models/**',                             // Local model operations
+  '**/oauth/oauth-chat-streaming.spec.mjs',  // Covered separately
+  '**/request-access/**',                     // Uses createServerManager() — standalone-specific (Phase 1)
+  // REMOVED: '**/tokens/**' — adapted to use API models (Phase 2)
+],
 
-## Cleanup Mechanism
-
-E2E tests are **black-box** — all interactions go through the browser UI. The cleanup mechanism:
-
-1. **Login as `manager@email.com`**: Navigate to `/ui/login`, click dashboard login button, authenticate via Keycloak OAuth flow. After login, the browser has a dashboard session cookie.
-
-2. **Navigate to cleanup URL**: Go to `GET /dev/tenants/cleanup` via `page.goto()`. This endpoint is registered for both GET and DELETE — GET for browser-based E2E tests. The dashboard session cookie authenticates the request. Returns JSON of deleted tenants.
-
-3. **Navigate to login page**: Go to `/ui/login`. Since manager has no tenants, the app redirects to `/ui/setup/tenants/` — the tenant registration form.
-
-4. **Test proceeds**: Exercise tenant creation, auto-login, etc. from a clean state.
-
----
-
-## Critical Test Scenarios
-
-### 1. Dashboard login flow
-
-```
-State: No session (fresh browser context)
-1. Navigate to /ui/login → see "Login to Bodhi Platform" button
-2. Click login → redirect to Keycloak → authenticate as manager@email.com
-3. Dashboard callback processes code → redirects based on tenant state:
-   - 0 tenants: → /ui/setup/tenants/ (registration form)
-   - 1 tenant: → auto-login via resource OAuth → /ui/chat/
-   - N tenants: → /ui/login (tenant selector)
-```
-
-### 2. Tenant registration flow
-
-```
-State: Dashboard session, 0 tenants (after cleanup)
-1. On /ui/setup/tenants/ — see registration form
-2. Fill in name (required), description (optional) → submit
-3. Auto-initiates resource OAuth → Keycloak SSO → redirect back
-4. Now authenticated with active tenant → redirected to /ui/chat/
-5. Verify /info shows: deployment: "multi_tenant", client_id: <new_tenant_id>
-```
-
-### 3. Tenant switching (requires 2+ tenants)
-
-```
-State: Dashboard session, N tenants, currently on tenant A
-1. Navigate to /ui/login → see tenant selector
-2. Select tenant B (logged_in) → instant switch via activate
-3. Verify /info shows: client_id: <tenant_B_id>
-4. Select tenant C (not logged_in) → OAuth flow → Keycloak SSO → redirect
-5. Verify /info shows: client_id: <tenant_C_id>
-```
-
-### 4. Info endpoint behavior at each state
-
-```
-1. No session → { auth_status: "logged_out", deployment: "multi_tenant" }
-2. Dashboard session only → { auth_status: "logged_out", has_dashboard_session: true }
-3. Dashboard + active tenant → { auth_status: "logged_in", deployment: "multi_tenant", client_id: "..." }
+// standalone project (add):
+testIgnore: [
+  '**/multi-tenant-setup/**',                // MT-specific scenarios (Phase 1)
+],
 ```
 
 ---
 
-## Page Objects Needed
+## Existing Test Adaptations (Phases 2-3)
 
-Explore existing page objects and extend or create new ones:
+### Adapt api-tokens.spec.mjs for multi_tenant (Phase 2)
 
-### Existing (may need extension)
-- `LoginPage.mjs` — needs methods for:
-  - `performDashboardLogin()` — click "Login to Bodhi Platform", fill Keycloak creds, wait for callback
-  - `performTenantSelection(tenantName)` — select a specific tenant from the list
-  - `waitForAutoLogin()` — wait for single-tenant auto-login redirect chain
+**File**: `tests-js/specs/tokens/api-tokens.spec.mjs`
 
-### New page objects
-- `TenantRegistrationPage.mjs` — for `/ui/setup/tenants/`:
-  - `fillTenantName(name)`, `fillDescription(desc)`, `submitRegistration()`
-  - `waitForRegistrationComplete()` — wait for OAuth redirect chain to complete
-- `TenantSelectorPage.mjs` — for the multi-tenant login page tenant list:
-  - `selectTenant(name)`, `waitForTenantSwitch()`
-  - `getTenantList()` — returns visible tenant names
+Current state: Excluded from multi_tenant via `**/tokens/**` in testIgnore. Uses `selectModelQwen()` for chat integration tests (GGUF-dependent).
 
-### Frontend references (for page object design)
-- `crates/bodhi/src/app/ui/login/page.tsx` — `MultiTenantLoginContent` component
-- `crates/bodhi/src/app/ui/setup/tenants/page.tsx` — tenant registration form
-- `crates/bodhi/src/app/ui/auth/dashboard/callback/page.tsx` — dashboard OAuth callback
-- `crates/bodhi/src/components/AppInitializer.tsx` — deployment-aware routing
+Adaptation:
+1. In `beforeAll`: Register an API model via UI (same pattern as `api-models.spec.mjs`)
+2. Replace 4x `chatSettings.selectModelQwen()` with `chatSettings.selectModel(registeredModelName)`
+3. Add cleanup in final test step (delete registered API model)
+4. Remove `**/tokens/**` from multi_tenant testIgnore
+
+Verify: `cd crates/lib_bodhiserver_napi && npx playwright test --project multi_tenant tests-js/specs/tokens/`
+
+### Enhance api-models chat testing (Phase 3)
+
+**File**: `tests-js/specs/api-models/api-models.spec.mjs`
+
+Current state: Has basic chat (send Q&A, verify response). Runs on both projects.
+
+Enhancement:
+- Add multi-chat management tests (create/switch/delete conversations)
+- Add edge cases: empty message handling, long messages, network error recovery
+- Same depth as `chat.spec.mjs:67-115` but using API models instead of local GGUF
+- This covers "same chat test for API models" requirement
+- `chat.spec.mjs` stays standalone-only (uses `selectModelQwen`)
+
+### Access-request tests — defer (Phase 7)
+
+**File**: `tests-js/specs/request-access/multi-user-request-approval-flow.spec.mjs`
+
+Uses `createServerManager()` (standalone-specific). Added to multi_tenant testIgnore in Phase 1. Full rework to use shared MT server is a separate task (Phase 7).
+
+### oauth-chat-streaming.spec.mjs — keep excluded
+
+Already excluded. Both OAuth token exchange and API model chat are tested separately. Low incremental value for combined test.
+
+---
+
+## New Multi-Tenant Test Scenarios (Phases 4-8)
+
+All tests use `manager@email.com` with cleanup via browser-based `GET /dev/tenants/cleanup`.
+
+### Cleanup Mechanism
+
+The cleanup endpoint requires a `MultiTenantSession` AuthContext (populated by `optional_auth_middleware` from dashboard session cookie). Flow:
+
+1. Dashboard login as `manager@email.com` (browser OAuth flow → session cookie)
+2. Navigate to `GET /dev/tenants/cleanup` via `page.goto()` — session cookie authenticates
+3. Handler calls SPI `DELETE /test/tenants/cleanup` with dashboard token + truncates local tenants table
+4. Returns JSON of deleted tenants
+5. Navigate to `/ui/login` — 0 tenants → redirect to `/ui/setup/tenants/`
+
+**Registration endpoint**: `routes_app/src/routes.rs:122-129` registers both GET and DELETE methods, in `optional_auth` router (line 130).
+
+### Scenario 1 (HIGH): Dashboard Login + Tenant Registration — Phase 4
+
+```
+Fresh browser context (no session)
+1. Navigate to /ui/login
+2. Verify State A: "Login to Bodhi Platform" button visible
+   - AuthCard title: "Login"
+   - Button text: "Login to Bodhi Platform"
+3. Click login → redirect to Keycloak
+4. Fill credentials (manager@email.com) → submit
+5. Dashboard callback processes → redirects to /ui/login
+6. 0 tenants → redirect to /ui/setup/tenants/
+7. Fill tenant name (data-testid="tenant-name-input")
+8. Optionally fill description (data-testid="tenant-description-input")
+9. Click "Create Workspace" (data-testid="create-tenant-button")
+10. Auto-initiates resource OAuth → Keycloak SSO (instant) → /ui/chat/
+11. Verify: GET /bodhi/v1/info returns deployment: "multi_tenant", client_id: <new>
+```
+
+### Scenario 2 (HIGH): Tenant Switching — Phase 5
+
+```
+Prerequisite: 2 tenants registered for manager@email.com
+1. Login, land on /ui/chat/ with Tenant A active
+2. Navigate to /ui/login
+3. Verify State C: "Welcome" card with active workspace name
+4. Verify "Switch to <Tenant B>" button visible
+5. Click switch → OAuth or activate → /ui/chat/
+6. Verify /info shows client_id changed to Tenant B
+7. Navigate to /ui/login → verify Tenant B is now active
+```
+
+### Scenario 3 (MEDIUM): Auto-Login with Single Tenant — Phase 5
+
+```
+Prerequisite: 1 tenant registered for manager@email.com
+1. Logout (or fresh context with dashboard session)
+2. Dashboard login → /ui/login
+3. Verify auto-redirect (useRef guard): single tenant → resource OAuth → /ui/chat/
+4. No tenant selector shown
+```
+
+### Scenario 4 (MEDIUM): Cross-Tenant Data Isolation — Phase 6
+
+```
+Prerequisite: 2 tenants
+1. Login to Tenant A
+2. Create API model (via UI) + API token
+3. Switch to Tenant B
+4. Verify: API model NOT visible, API token NOT visible
+5. Switch back to Tenant A
+6. Verify: API model and token ARE visible
+```
+
+### Scenario 5 (LOW): Multi-Tenant Logout — Phase 8
+
+```
+1. Login (fully authenticated with tenant)
+2. Click "Log Out" on /ui/login State C
+3. Verify: returns to State A ("Login to Bodhi Platform" button, NOT tenant selector)
+```
+
+### Scenario 6 (LOW): Resource Admin Flow — Phase 8
+
+```
+1. Create tenant → login
+2. Verify admin role (users page accessible, can manage settings)
+```
+
+---
+
+## Page Objects and Fixtures Reference
+
+Created inline during Phases 4-5. Reference for all page object methods and selectors.
+
+### LoginPage.mjs extensions (Phase 4-5)
+
+**File**: `tests-js/pages/LoginPage.mjs`
+
+```javascript
+// Phase 4: Dashboard login + logout
+async performDashboardLogin(username, password) {
+  // Click "Login to Bodhi Platform" → Keycloak → fill creds → callback → /ui/login
+}
+async clickLogout() {
+  // Click "Log Out" button on State C
+}
+
+// Phase 5: Tenant selection
+async waitForTenantSelector() {
+  // Wait for AuthCard with title "Select Workspace"
+}
+async selectTenant(tenantName) {
+  // Click button with tenant name text
+}
+async waitForAutoLogin() {
+  // Wait for redirect chain: /ui/login → Keycloak SSO → /auth/callback → /ui/chat/
+}
+```
+
+**Frontend selectors** (from `crates/bodhi/src/app/ui/login/page.tsx`):
+- Login page container: `data-testid="login-page"`
+- State A: AuthCard title "Login", button text "Login to Bodhi Platform"
+- State B1: AuthCard title "Connect to Workspace"
+- State B2: AuthCard title "Select Workspace", buttons with tenant names
+- State C: AuthCard title "Welcome", "Go to Home", "Switch to <name>", "Log Out"
+
+### TenantRegistrationPage.mjs (Phase 4)
+
+**File**: `tests-js/pages/TenantRegistrationPage.mjs`
+
+**Frontend selectors** (from `crates/bodhi/src/app/ui/setup/tenants/page.tsx`):
+- Name input: `data-testid="tenant-name-input"`
+- Description textarea: `data-testid="tenant-description-input"`
+- Submit button: `data-testid="create-tenant-button"` (text: "Create Workspace" / "Creating...")
+
+```javascript
+export class TenantRegistrationPage extends BasePage {
+  async fillTenantName(name) { await this.page.getByTestId('tenant-name-input').fill(name); }
+  async fillDescription(desc) { await this.page.getByTestId('tenant-description-input').fill(desc); }
+  async submitRegistration() { await this.page.getByTestId('create-tenant-button').click(); }
+  async waitForRegistrationComplete() {
+    await this.page.waitForURL(url => url.origin === this.baseUrl && url.pathname === '/ui/chat/');
+  }
+}
+```
+
+### multiTenantFixtures.mjs (Phase 4)
+
+**File**: `tests-js/fixtures/multiTenantFixtures.mjs`
+
+```javascript
+export class MultiTenantFixtures {
+  static getManagerCredentials() {
+    return {
+      username: process.env.INTEG_TEST_USER_MANAGER,
+      userId: process.env.INTEG_TEST_USER_MANAGER_ID,
+      password: process.env.INTEG_TEST_PASSWORD,
+    };
+  }
+  static createTenantData(index = 1) {
+    return { name: `Test Workspace ${index}`, description: `Test workspace ${index} for E2E` };
+  }
+}
+```
+
+---
+
+## Test Infrastructure
+
+### Environment Requirements
+
+- Real Keycloak at `main-id.getbodhi.app` (dev env)
+- PostgreSQL containers: `docker compose -f docker/docker-compose.test.yml up -d`
+- Real API keys (`INTEG_TEST_OPENAI_API_KEY`) for API model tests
+- `.env.test` with all `INTEG_TEST_*` vars
+
+### Key Env Vars for Multi-Tenant Tests
+
+```
+INTEG_TEST_MT_DASHBOARD_CLIENT_ID    # Dashboard client ID
+INTEG_TEST_MT_DASHBOARD_CLIENT_SECRET # Dashboard client secret
+INTEG_TEST_MT_TENANT_ID              # Pre-seeded tenant client ID
+INTEG_TEST_MT_TENANT_SECRET          # Pre-seeded tenant client secret
+INTEG_TEST_USER_MANAGER              # manager@email.com
+INTEG_TEST_USER_MANAGER_ID           # Keycloak user ID for manager
+INTEG_TEST_PASSWORD                  # Shared password
+```
+
+### Server Configuration
+
+Multi-tenant server started by `start-shared-server.mjs` with:
+- `--deployment multi_tenant --db-type postgres --port 41135`
+- Sets `BODHI_DEPLOYMENT=multi_tenant`, `BODHI_MULTITENANT_CLIENT_ID`, `BODHI_MULTITENANT_CLIENT_SECRET`
+- Pre-seeds tenant for `user@email.com` (shared tests)
+- `manager@email.com` tenants: created/cleaned by E2E tests themselves
+
+---
+
+## Implementation Phases
+
+Ordered by lowest-hanging fruit first. Page objects and fixtures are created inline in the phase that first needs them.
+
+### Phase 1 — testIgnore Config Fixes (config-only, zero test changes)
+
+1. Update `playwright.config.mjs` multi_tenant testIgnore:
+   - Add `'**/request-access/**'` (uses `createServerManager()` — standalone-specific)
+   - Add `'**/multi-tenant-setup/**'` to standalone testIgnore (prep for future MT specs)
+2. Verify: `npx playwright test --project multi_tenant` (30 shared tests still pass, request-access no longer attempted)
+3. Verify: `npx playwright test --project standalone` (all standalone tests still pass)
+
+### Phase 2 — Adapt api-tokens for multi_tenant (unlocks tokens/* on MT)
+
+1. Modify `api-tokens.spec.mjs`:
+   - In `beforeAll`: Register an API model via UI (same pattern as `api-models.spec.mjs`)
+   - Replace 4x `chatSettings.selectModelQwen()` with `chatSettings.selectModel(registeredModelName)`
+   - Add cleanup in final test step (delete registered API model)
+2. Remove `'**/tokens/**'` from multi_tenant testIgnore
+3. Verify: `npx playwright test --project multi_tenant tests-js/specs/tokens/`
+
+### Phase 3 — Enhance api-models chat depth (both projects)
+
+1. Add multi-chat management tests to `api-models.spec.mjs` (or new `api-models-chat.spec.mjs`)
+2. Port edge cases from `chat.spec.mjs:67-115` pattern: multi-chat management, network error recovery
+3. `chat.spec.mjs` stays standalone-only (uses `selectModelQwen`)
+4. Verify: `npx playwright test --project multi_tenant tests-js/specs/api-models/`
+
+### Phase 4 — Dashboard Login + Tenant Registration (Scenario 1)
+
+Creates page objects and fixtures inline as this is the first MT-specific test.
+
+1. Create `multiTenantFixtures.mjs` with `getManagerCredentials()`, `createTenantData()`
+2. Extend `LoginPage.mjs` with `performDashboardLogin()`, `clickLogout()`
+3. Create `TenantRegistrationPage.mjs` with `fillTenantName()`, `fillDescription()`, `submitRegistration()`, `waitForRegistrationComplete()`
+4. Write `specs/multi-tenant-setup/tenant-registration.spec.mjs` (Scenario 1)
+5. Verify: `npx playwright test --project multi_tenant tests-js/specs/multi-tenant-setup/tenant-registration.spec.mjs`
+
+### Phase 5 — Auto-Login + Tenant Switching (Scenarios 2, 3)
+
+Page objects from Phase 4 already available.
+
+1. Extend `LoginPage.mjs` with `waitForAutoLogin()`, `waitForTenantSelector()`, `selectTenant()`
+2. Write `specs/multi-tenant-setup/auto-login.spec.mjs` (Scenario 3 — single tenant auto-redirect)
+3. Write `specs/multi-tenant-setup/tenant-switching.spec.mjs` (Scenario 2 — multi-tenant switch)
+4. Verify: `npx playwright test --project multi_tenant tests-js/specs/multi-tenant-setup/`
+
+### Phase 6 — Cross-Tenant Data Isolation (Scenario 4)
+
+1. Write `specs/multi-tenant-setup/cross-tenant-isolation.spec.mjs`
+   - Login Tenant A → create API model + API token → switch Tenant B → verify not visible → switch back → verify present
+2. Verify: `npx playwright test --project multi_tenant tests-js/specs/multi-tenant-setup/cross-tenant-isolation.spec.mjs`
+
+### Phase 7 — Access Request Adaptation (separate task)
+
+1. Rework `multi-user-request-approval-flow.spec.mjs` for shared multi-tenant server
+2. Remove `'**/request-access/**'` from multi_tenant testIgnore
+3. Verify: `npx playwright test --project multi_tenant tests-js/specs/request-access/`
+
+### Phase 8 — Low Priority
+
+1. `specs/multi-tenant-setup/mt-logout.spec.mjs` (Scenario 5)
+2. `specs/multi-tenant-setup/mt-resource-admin.spec.mjs` (Scenario 6)
 
 ---
 
 ## Test Structure
 
 ```
-tests-js/specs/multi-tenant-setup/
-├── tenant-registration.spec.mjs     # Scenario 2: register tenant from scratch
-├── dashboard-login.spec.mjs         # Scenario 1: dashboard login states
-└── tenant-switching.spec.mjs        # Scenario 3: switch between tenants
-```
+tests-js/specs/multi-tenant-setup/        # NEW directory
+├── tenant-registration.spec.mjs          # Scenario 1: register + login
+├── auto-login.spec.mjs                   # Scenario 3: single-tenant auto
+├── tenant-switching.spec.mjs             # Scenario 2: switch between tenants
+├── cross-tenant-isolation.spec.mjs       # Scenario 4: data isolation
+├── mt-logout.spec.mjs                    # Scenario 5: logout
+└── mt-resource-admin.spec.mjs            # Scenario 6: admin flow
 
-Add to `playwright.config.mjs`:
-- `standalone` project: `testIgnore` should include `'**/multi-tenant-setup/**'`
-- `multi_tenant` project: these specs run normally
+tests-js/pages/
+├── LoginPage.mjs                         # EXTENDED with dashboard methods
+└── TenantRegistrationPage.mjs            # NEW
+
+tests-js/fixtures/
+└── multiTenantFixtures.mjs               # NEW
+```
 
 ---
 
 ## Build & Run
 
 ```bash
-# Build UI first
-make build.ui-rebuild
+# Prerequisites
+docker compose -f docker/docker-compose.test.yml up -d  # PostgreSQL containers
+make build.ui-rebuild                                     # Rebuild embedded UI
 
-# Run only multi-tenant coverage tests
-cd crates/lib_bodhiserver_napi && npx playwright test --project multi_tenant specs/multi-tenant-setup/
+# Run all multi-tenant tests
+cd crates/lib_bodhiserver_napi && npx playwright test --project multi_tenant
 
-# Run one at a time during development
-cd crates/lib_bodhiserver_napi && npx playwright test --project multi_tenant specs/multi-tenant-setup/tenant-registration.spec.mjs
+# Run specific phase
+cd crates/lib_bodhiserver_napi && npx playwright test --project multi_tenant tests-js/specs/multi-tenant-setup/
+cd crates/lib_bodhiserver_napi && npx playwright test --project multi_tenant tests-js/specs/tokens/
+
+# Debug single test
+cd crates/lib_bodhiserver_napi && npx playwright test --project multi_tenant --headed tests-js/specs/multi-tenant-setup/tenant-registration.spec.mjs
 ```
 
 ---
 
-## Files to Explore
+## Key Reference Files
 
-### E2E infrastructure (existing — read-only reference)
-- `playwright.config.mjs` — project definitions, web servers
+### E2E Infrastructure
+- `playwright.config.mjs` — project config, testIgnore, webServer
+- `tests-js/fixtures.mjs` — autoResetDb fixture, sharedServerUrl
 - `tests-js/scripts/start-shared-server.mjs` — multi-tenant server startup
-- `tests-js/fixtures.mjs` — test fixtures (autoResetDb, sharedServerUrl)
 - `tests-js/utils/auth-server-client.mjs` — `getMultiTenantConfig()`, Keycloak helpers
+- `tests-js/utils/db-config.mjs` — port mapping (standalone=51135, multi_tenant=41135)
 
-### Page objects (extend)
-- `tests-js/pages/LoginPage.mjs` — login page interactions
-- `tests-js/pages/BasePage.mjs` — common methods, OAuth helpers
-
-### Frontend (the UI being tested)
-- `crates/bodhi/src/app/ui/login/page.tsx` — `MultiTenantLoginContent` component
-- `crates/bodhi/src/app/ui/setup/tenants/page.tsx` — tenant registration form
+### Frontend (UI being tested)
+- `crates/bodhi/src/app/ui/login/page.tsx` — `MultiTenantLoginContent` (4 states)
+- `crates/bodhi/src/app/ui/setup/tenants/page.tsx` — registration form (3 data-testid selectors)
 - `crates/bodhi/src/app/ui/auth/dashboard/callback/page.tsx` — dashboard OAuth callback
 - `crates/bodhi/src/components/AppInitializer.tsx` — deployment-aware routing
 
-### Existing test patterns (reference)
-- `tests-js/specs/setup/setup-flow.spec.mjs` — setup wizard E2E (standalone reference)
-- `tests-js/specs/auth/token-refresh-integration.spec.mjs` — complex auth flow reference
-- `tests-js/specs/oauth/oauth2-token-exchange.spec.mjs` — OAuth flow reference
+### Backend (cleanup + dev endpoints)
+- `crates/routes_app/src/routes_dev.rs` — `dev_tenants_cleanup_handler`, `dev_clients_dag_handler`
+- `crates/routes_app/src/routes.rs:115-131` — dev route registration (optional_auth, non-production)
 
-### Rust integration tests (reference for flow patterns)
-- `crates/server_app/tests/test_live_multi_tenant.rs` — full flow, state progression
-- `crates/server_app/tests/utils/live_server_utils.rs` — session helpers
+### Existing Test Patterns
+- `tests-js/specs/api-models/api-models.spec.mjs` — API model chat pattern
+- `tests-js/specs/chat/chat.spec.mjs` — chat depth reference (standalone-only)
+- `tests-js/specs/setup/setup-flow.spec.mjs` — setup wizard E2E reference

@@ -4,7 +4,7 @@ use axum::{
   Json,
 };
 use serde::{Deserialize, Serialize};
-use services::AppStatus;
+use services::{AppStatus, DeploymentMode};
 use utoipa::ToSchema;
 
 /// Application information and status
@@ -28,7 +28,7 @@ pub struct AppInfo {
   pub status: AppStatus,
   /// Deployment mode: "standalone" or "multi_tenant"
   #[schema(example = "standalone")]
-  pub deployment: String,
+  pub deployment: DeploymentMode,
   /// Active tenant's OAuth client_id (present when authenticated with an active tenant)
   #[serde(skip_serializing_if = "Option::is_none")]
   #[schema(example = "my-client-id", nullable)]

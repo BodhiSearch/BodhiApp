@@ -81,7 +81,7 @@ async fn seed_draft_request(
   let now = chrono::Utc::now();
   let row = AppAccessRequest {
     id: request_id.to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
     app_client_id: "test-app-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,

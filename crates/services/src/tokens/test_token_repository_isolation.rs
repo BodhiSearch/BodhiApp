@@ -40,14 +40,14 @@ async fn test_cross_tenant_token_isolation(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
   let mut token_a = make_token(
-    &ulid::Ulid::new().to_string(),
+    &crate::new_ulid(),
     TEST_USER_ID,
     "bodhiapp_xa",
     TEST_TENANT_ID,
     ctx.now,
   );
   let mut token_b = make_token(
-    &ulid::Ulid::new().to_string(),
+    &crate::new_ulid(),
     TEST_USER_ID,
     "bodhiapp_xb",
     TEST_TENANT_B_ID,
@@ -101,14 +101,14 @@ async fn test_intra_tenant_user_token_isolation(
 ) -> anyhow::Result<()> {
   let ctx = sea_context(db_type).await;
   let mut token_user_a = make_token(
-    &ulid::Ulid::new().to_string(),
+    &crate::new_ulid(),
     TEST_USER_ID,
     "bodhiapp_ua",
     TEST_TENANT_ID,
     ctx.now,
   );
   let mut token_user_b = make_token(
-    &ulid::Ulid::new().to_string(),
+    &crate::new_ulid(),
     TEST_TENANT_A_USER_B_ID,
     "bodhiapp_ub",
     TEST_TENANT_ID,

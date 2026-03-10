@@ -9,6 +9,7 @@ export class OAuth2Fixtures {
       authRealm: authServerConfig.authRealm,
       clientId: resourceClient.clientId,
       clientSecret: resourceClient.clientSecret,
+      createdBy: process.env.INTEG_TEST_USERNAME_ID,
       port,
       logLevel: 'debug',
     };
@@ -30,6 +31,7 @@ export class OAuth2Fixtures {
       authRealm: authServerConfig.authRealm,
       clientId: 'invalid-client-id',
       clientSecret: 'invalid-client-secret',
+      createdBy: process.env.INTEG_TEST_USERNAME_ID,
       port,
     };
   }
