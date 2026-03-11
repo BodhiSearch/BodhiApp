@@ -6,8 +6,7 @@ use axum::{
   http::StatusCode,
   Json,
 };
-use services::ChangeRoleRequest;
-use services::UserListResponse;
+use services::{ChangeRoleRequest, UserListResponse};
 use tracing::{error, info, warn};
 
 /// List users
@@ -72,12 +71,10 @@ pub async fn users_change_role(
   ValidatedJson(request): ValidatedJson<ChangeRoleRequest>,
 ) -> Result<StatusCode, ApiError> {
   // Validate role hierarchy: caller's role must be >= target role
-  let caller_role = match auth_scope.auth_context() {
-    services::AuthContext::Session {
-      role: Some(role), ..
-    } => role,
-    _ => return Err(UsersRouteError::InsufficientPrivileges)?,
-  };
+  let caller_role = auth_scope
+    .auth_context()
+    .resource_role()
+    .ok_or(UsersRouteError::InsufficientPrivileges)?;
   if !caller_role.has_access_to(&request.role) {
     warn!(
       "Role hierarchy violation: caller role {:?} cannot assign {:?}",

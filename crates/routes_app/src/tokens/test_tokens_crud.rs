@@ -1,4 +1,4 @@
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{make_auth_no_role, make_auth_with_role, RequestAuthContextExt};
 use crate::tokens::tokens_api_schemas::{
   CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail, UpdateTokenRequest,
 };
@@ -199,6 +199,7 @@ async fn test_create_token_handler_role_scope_mapping(
   #[case] role: ResourceRole,
   #[case] requested_scope: TokenScope,
   #[case] expected_scope: &str,
+  #[values("session", "multi_tenant")] auth_variant: &str,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let claims = access_token_claims();
@@ -223,7 +224,8 @@ async fn test_create_token_handler_role_scope_mapping(
           name: Some(format!("Test Token for {:?}", role)),
           scope: requested_scope,
         })?
-        .with_auth_context(AuthContext::test_session_with_token(
+        .with_auth_context(make_auth_with_role(
+          auth_variant,
           &user_id,
           "user@test.com",
           role,
@@ -259,6 +261,7 @@ async fn test_create_token_handler_role_scope_mapping(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_token_handler_success(
+  #[values("session", "multi_tenant")] auth_variant: &str,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let claims = access_token_claims();
@@ -284,7 +287,8 @@ async fn test_create_token_handler_success(
           name: Some(token_name.to_string()),
           scope: TokenScope::User,
         })?
-        .with_auth_context(AuthContext::test_session_with_token(
+        .with_auth_context(make_auth_with_role(
+          auth_variant,
           &user_id,
           "user@test.com",
           ResourceRole::User,
@@ -336,6 +340,7 @@ async fn test_create_token_handler_success(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_token_handler_without_name(
+  #[values("session", "multi_tenant")] auth_variant: &str,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let claims = access_token_claims();
@@ -360,7 +365,8 @@ async fn test_create_token_handler_without_name(
           name: None,
           scope: TokenScope::User,
         })?
-        .with_auth_context(AuthContext::test_session_with_token(
+        .with_auth_context(make_auth_with_role(
+          auth_variant,
           &user_id,
           "user@test.com",
           ResourceRole::User,
@@ -464,6 +470,7 @@ async fn test_create_token_handler_invalid_role(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_token_handler_missing_role(
+  #[values("session", "multi_tenant")] auth_variant: &str,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let user_id = Uuid::new_v4().to_string();
@@ -486,7 +493,7 @@ async fn test_create_token_handler_missing_role(
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
         })?
-        .with_auth_context(AuthContext::test_session_no_role(&user_id, "user@test.com")),
+        .with_auth_context(make_auth_no_role(auth_variant, &user_id, "user@test.com")),
     )
     .await?;
 

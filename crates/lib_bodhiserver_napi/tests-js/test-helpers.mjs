@@ -110,6 +110,7 @@ function createFullTestConfig(bindings, options = {}) {
     appStatus = 'ready',
     systemSettings = {},
     createdBy = null,
+    tenantName = null,
   } = options;
 
   let config = bindings.createNapiAppOptions();
@@ -151,6 +152,10 @@ function createFullTestConfig(bindings, options = {}) {
 
   if (createdBy) {
     config = bindings.setCreatedBy(config, createdBy);
+  }
+
+  if (tenantName) {
+    config = bindings.setTenantName(config, tenantName);
   }
 
   return config;

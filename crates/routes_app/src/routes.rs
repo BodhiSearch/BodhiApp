@@ -118,6 +118,7 @@ pub async fn build_routes(
       .route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler))
       .route(ENDPOINT_DEV_ENVS, get(envs_handler))
       .route(ENDPOINT_DEV_DB_RESET, post(dev_db_reset_handler))
+      .route(ENDPOINT_DEV_DB_RESET, get(dev_db_reset_handler))
       .route(ENDPOINT_DEV_CLIENTS_DAG, post(dev_clients_dag_handler))
       .route(
         ENDPOINT_DEV_TENANTS_CLEANUP,

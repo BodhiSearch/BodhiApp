@@ -1,11 +1,15 @@
+import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
+import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import {
   getAuthServerConfig,
   getPreConfiguredAppClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
+import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
@@ -35,8 +39,12 @@ test.describe('OAuth Chat Streaming', () => {
     const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
     const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
-    await test.step('Login to Bodhi server', async () => {
+    await test.step('Login to Bodhi server and register API model', async () => {
       await loginPage.performOAuthLogin('/ui/chat/');
+      const modelsPage = new ModelsListPage(page, sharedServerUrl);
+      const formPage = new ApiModelFormPage(page, sharedServerUrl);
+      const { apiKey } = ApiModelFixtures.getRequiredEnvVars();
+      await registerApiModelViaUI(modelsPage, formPage, apiKey);
     });
 
     await test.step('Complete OAuth flow (draft → review → approve)', async () => {
@@ -78,6 +86,7 @@ test.describe('OAuth Chat Streaming', () => {
       await app.chat.waitForModelsLoaded();
       const models = await app.chat.getModels();
       expect(models.length).toBeGreaterThan(0);
+      await app.chat.selectModel(ApiModelFixtures.OPENAI_MODEL);
     });
 
     await test.step('Send message and verify streaming response', async () => {

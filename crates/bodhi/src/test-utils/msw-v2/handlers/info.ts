@@ -40,6 +40,7 @@ export function mockAppInfo(
         status,
         version,
         deployment,
+        url: 'http://localhost:1135',
         ...rest,
       };
 

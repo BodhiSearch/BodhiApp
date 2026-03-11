@@ -231,6 +231,10 @@ export type AppInfo = {
      * Active tenant's OAuth client_id (present when authenticated with an active tenant)
      */
     client_id?: string | null;
+    /**
+     * Public URL of the server
+     */
+    url: string;
 };
 
 export type AppRole = ResourceRole | TokenScope | UserScope;
@@ -2428,6 +2432,7 @@ export type TenantListItem = {
     client_id: string;
     name: string;
     description?: string | null;
+    status: AppStatus;
     is_active: boolean;
     logged_in: boolean;
 };

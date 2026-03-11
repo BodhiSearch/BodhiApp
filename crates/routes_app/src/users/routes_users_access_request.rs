@@ -39,14 +39,20 @@ use tracing::{debug, error, info};
 )]
 pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, ApiError> {
   // Session auth: extract username, user_id, and role
-  let AuthContext::Session {
-    ref user_id,
-    ref username,
-    ref role,
-    ..
-  } = auth_scope.auth_context()
-  else {
-    return Err(UsersRouteError::AlreadyHasAccess)?;
+  let (user_id, username, role) = match auth_scope.auth_context() {
+    AuthContext::Session {
+      user_id,
+      username,
+      role,
+      ..
+    }
+    | AuthContext::MultiTenantSession {
+      user_id,
+      username,
+      role,
+      ..
+    } => (user_id, username, role),
+    _ => return Err(UsersRouteError::AlreadyHasAccess)?,
   };
 
   // Check if user already has a role
@@ -212,16 +218,19 @@ pub async fn users_access_request_approve(
   Path(id): Path<String>,
   Json(request): Json<ApproveUserAccessRequest>,
 ) -> Result<StatusCode, ApiError> {
-  let AuthContext::Session {
-    ref username,
-    role: Some(ref approver_role),
-    token: _,
-    ..
-  } = auth_scope.auth_context()
-  else {
-    return Err(UsersRouteError::InsufficientPrivileges)?;
+  let (approver_username, approver_role) = match auth_scope.auth_context() {
+    AuthContext::Session {
+      username,
+      role: Some(role),
+      ..
+    }
+    | AuthContext::MultiTenantSession {
+      username,
+      role: Some(role),
+      ..
+    } => (username, role),
+    _ => return Err(UsersRouteError::InsufficientPrivileges)?,
   };
-  let approver_username = username;
 
   info!(
     "User {} with role {:?} approving request {} with role {:?}",

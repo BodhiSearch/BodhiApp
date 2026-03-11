@@ -1,4 +1,6 @@
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{
+  make_auth_no_role, make_auth_with_role_default_token, RequestAuthContextExt,
+};
 use crate::{
   users_request_access, users_request_status, ENDPOINT_USER_REQUEST_ACCESS,
   ENDPOINT_USER_REQUEST_STATUS,
@@ -32,7 +34,10 @@ use tower::ServiceExt;
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_user_request_access_success(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+async fn test_user_request_access_success(
+  #[values("session", "multi_tenant")] auth_variant: &str,
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
@@ -49,7 +54,8 @@ async fn test_user_request_access_success(temp_bodhi_home: TempDir) -> anyhow::R
     .oneshot(
       Request::post(ENDPOINT_USER_REQUEST_ACCESS)
         .body(Body::empty())?
-        .with_auth_context(AuthContext::test_session_no_role(
+        .with_auth_context(make_auth_no_role(
+          auth_variant,
           "new-user-id-123",
           "newuser@example.com",
         )),
@@ -63,7 +69,10 @@ async fn test_user_request_access_success(temp_bodhi_home: TempDir) -> anyhow::R
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_user_request_access_already_has_role(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+async fn test_user_request_access_already_has_role(
+  #[values("session", "multi_tenant")] auth_variant: &str,
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
@@ -80,7 +89,8 @@ async fn test_user_request_access_already_has_role(temp_bodhi_home: TempDir) -> 
     .oneshot(
       Request::post(ENDPOINT_USER_REQUEST_ACCESS)
         .body(Body::empty())?
-        .with_auth_context(AuthContext::test_session(
+        .with_auth_context(make_auth_with_role_default_token(
+          auth_variant,
           "existing-user-id",
           "existing@example.com",
           ResourceRole::User,
@@ -103,7 +113,10 @@ async fn test_user_request_access_already_has_role(temp_bodhi_home: TempDir) -> 
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+async fn test_user_request_access_already_pending(
+  #[values("session", "multi_tenant")] auth_variant: &str,
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
 
   // Insert a pending request first
@@ -130,7 +143,8 @@ async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> a
     .oneshot(
       Request::post(ENDPOINT_USER_REQUEST_ACCESS)
         .body(Body::empty())?
-        .with_auth_context(AuthContext::test_session_no_role(
+        .with_auth_context(make_auth_no_role(
+          auth_variant,
           "dup-user-id",
           "duplicate@example.com",
         )),

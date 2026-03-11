@@ -310,7 +310,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { createNapiAppOptions, setEnvVar, setAppSetting, setSystemSetting, setClientCredentials, setCreatedBy, setAppStatus, BODHI_HOME, BODHI_HOST, BODHI_PORT, BODHI_SCHEME, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_LOGS, BODHI_ENV_TYPE, BODHI_APP_TYPE, BODHI_VERSION, BODHI_COMMIT_SHA, BODHI_AUTH_URL, BODHI_AUTH_REALM, BODHI_ENCRYPTION_KEY, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_VARIANT, BODHI_KEEP_ALIVE_SECS, BODHI_PUBLIC_SCHEME, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_SESSION_DB_URL, BODHI_APP_DB_URL, BODHI_DEPLOYMENT, BODHI_MULTITENANT_CLIENT_ID, BODHI_MULTITENANT_CLIENT_SECRET, HF_HOME, DEFAULT_HOST, DEFAULT_PORT, BodhiServer } = nativeBinding
+const { createNapiAppOptions, setEnvVar, setAppSetting, setSystemSetting, setClientCredentials, setCreatedBy, setTenantName, setAppStatus, BODHI_HOME, BODHI_HOST, BODHI_PORT, BODHI_SCHEME, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_LOGS, BODHI_ENV_TYPE, BODHI_APP_TYPE, BODHI_VERSION, BODHI_COMMIT_SHA, BODHI_AUTH_URL, BODHI_AUTH_REALM, BODHI_ENCRYPTION_KEY, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_VARIANT, BODHI_KEEP_ALIVE_SECS, BODHI_PUBLIC_SCHEME, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_SESSION_DB_URL, BODHI_APP_DB_URL, BODHI_DEPLOYMENT, BODHI_MULTITENANT_CLIENT_ID, BODHI_MULTITENANT_CLIENT_SECRET, HF_HOME, DEFAULT_HOST, DEFAULT_PORT, BodhiServer } = nativeBinding
 
 module.exports.createNapiAppOptions = createNapiAppOptions
 module.exports.setEnvVar = setEnvVar
@@ -318,6 +318,7 @@ module.exports.setAppSetting = setAppSetting
 module.exports.setSystemSetting = setSystemSetting
 module.exports.setClientCredentials = setClientCredentials
 module.exports.setCreatedBy = setCreatedBy
+module.exports.setTenantName = setTenantName
 module.exports.setAppStatus = setAppStatus
 module.exports.BODHI_HOME = BODHI_HOME
 module.exports.BODHI_HOST = BODHI_HOST

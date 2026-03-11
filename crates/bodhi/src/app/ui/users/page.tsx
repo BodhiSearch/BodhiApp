@@ -2,14 +2,17 @@
 
 import React, { useState } from 'react';
 
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Check, Copy } from 'lucide-react';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { UsersTable } from '@/components/users/UsersTable';
+import { useAppInfo } from '@/hooks/useInfo';
 import { useAllUsers, useAuthenticatedUser } from '@/hooks/useUsers';
 
 function UsersContent() {
@@ -70,11 +73,51 @@ function UsersContent() {
   );
 }
 
+function InviteLinkSection() {
+  const { data: appInfo } = useAppInfo();
+  const [copied, setCopied] = useState(false);
+
+  if (appInfo?.deployment !== 'multi_tenant') {
+    return null;
+  }
+
+  const inviteUrl = `${appInfo.url}/ui/login/?invite=${appInfo.client_id}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input readOnly value={inviteUrl} data-testid="invite-url-input" className="w-80 text-sm" />
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={handleCopy}
+        data-testid="invite-copy-button"
+        title="Copy invite link"
+      >
+        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+      </Button>
+      <span className="text-sm text-muted-foreground">Share this link to invite users to your workspace</span>
+    </div>
+  );
+}
+
 export default function UsersPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true} minRole="manager">
       <div className="container mx-auto p-4" data-testid="users-page">
-        <UserManagementTabs />
+        <div className="flex justify-between items-center mb-4">
+          <UserManagementTabs />
+          <InviteLinkSection />
+        </div>
         <UsersContent />
       </div>
     </AppInitializer>

@@ -25,6 +25,8 @@ export async function getAccessRequestStatus(bodhiServerUrl: string, id: string,
   );
   const data = await response.json();
   if (!response.ok)
-    throw new Error(data?.error?.message || data?.message || `Status check failed: ${response.status}`);
+    throw new Error(
+      data?.error?.message || data?.message || `Status check failed: ${response.status}`
+    );
   return data;
 }

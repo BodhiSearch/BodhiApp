@@ -2,6 +2,7 @@ import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-cli
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
+import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { ChatFixtures } from '@/fixtures/ChatFixtures.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatHistoryPage } from '@/pages/ChatHistoryPage.mjs';
@@ -9,6 +10,7 @@ import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 
 test.describe('Chat Interface - Core Functionality', () => {
   let authServerConfig;
@@ -23,7 +25,7 @@ test.describe('Chat Interface - Core Functionality', () => {
 
   test.beforeAll(async () => {
     // Environment setup
-    testApiKey = ChatFixtures.getEnvironmentData().getApiKey();
+    testApiKey = ApiModelFixtures.getRequiredEnvVars().apiKey;
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
 
@@ -41,14 +43,16 @@ test.describe('Chat Interface - Core Functionality', () => {
   });
 
   test('basic chat functionality with simple Q&A @smoke @integration', async ({ page }) => {
-    // Complete flow: login -> select model -> simple questions -> verify responses
+    // Complete flow: login -> register API model -> select model -> simple questions -> verify responses
 
     await loginPage.performOAuthLogin();
+    await registerApiModelViaUI(modelsPage, apiModelFormPage, testApiKey);
+
     await chatPage.navigateToChat();
     await chatPage.verifyChatEmpty();
 
     // Select model and ask two simple, direct questions
-    await chatSettingsPage.selectModelQwen();
+    await chatSettingsPage.selectModel(ApiModelFixtures.OPENAI_MODEL);
 
     // Question 1: Simple factual question
     await chatPage.sendMessage('What is 2+2?');
@@ -59,6 +63,7 @@ test.describe('Chat Interface - Core Functionality', () => {
 
     // Question 2: Another simple factual question
     await chatPage.sendMessage('What day comes after Monday?');
+    await chatPage.waitForResponseComplete();
     await chatPage.waitForResponse('Tuesday');
     await chatPage.verifyMessageInHistory('user', 'What day comes after Monday?');
     await chatPage.verifyMessageInHistory('assistant', 'Tuesday');
@@ -66,8 +71,10 @@ test.describe('Chat Interface - Core Functionality', () => {
 
   test('multi-chat management and error handling @integration', async ({ page }) => {
     await loginPage.performOAuthLogin();
+    await registerApiModelViaUI(modelsPage, apiModelFormPage, testApiKey);
+
     await chatPage.navigateToChat();
-    await chatSettingsPage.selectModelQwen();
+    await chatSettingsPage.selectModel(ApiModelFixtures.OPENAI_MODEL);
 
     // Create multiple chats with simple conversations
     const testMessages = ['Hello first chat', 'Hello second chat', 'Hello third chat'];

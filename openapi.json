@@ -2575,6 +2575,7 @@
                   "commit_sha": "abc1234",
                   "deployment": "standalone",
                   "status": "ready",
+                  "url": "https://example.com",
                   "version": "0.1.0"
                 }
               }
@@ -9143,7 +9144,8 @@
           "version",
           "commit_sha",
           "status",
-          "deployment"
+          "deployment",
+          "url"
         ],
         "properties": {
           "version": {
@@ -9171,6 +9173,11 @@
             ],
             "description": "Active tenant's OAuth client_id (present when authenticated with an active tenant)",
             "example": "my-client-id"
+          },
+          "url": {
+            "type": "string",
+            "description": "Public URL of the server",
+            "example": "https://example.com"
           }
         },
         "example": {
@@ -9178,6 +9185,7 @@
           "commit_sha": "abc1234",
           "deployment": "standalone",
           "status": "ready",
+          "url": "https://example.com",
           "version": "0.1.0"
         }
       },
@@ -14958,6 +14966,7 @@
         "required": [
           "client_id",
           "name",
+          "status",
           "is_active",
           "logged_in"
         ],
@@ -14973,6 +14982,9 @@
               "string",
               "null"
             ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppStatus"
           },
           "is_active": {
             "type": "boolean"

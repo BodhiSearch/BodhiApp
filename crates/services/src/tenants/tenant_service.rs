@@ -33,6 +33,11 @@ pub trait TenantService: Send + Sync + std::fmt::Debug {
   async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<Tenant>>;
   /// Check if a user has any tenant memberships.
   async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool>;
+  /// Delete a tenant by its client_id, including associated tenant_users records.
+  /// Idempotent: returns Ok if tenant does not exist.
+  async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<()>;
+  /// List all tenants created by a specific user (by `created_by` field).
+  async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<Tenant>>;
 }
 
 #[derive(Debug, derive_new::new)]
@@ -116,6 +121,19 @@ impl TenantService for DefaultTenantService {
 
   async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool> {
     Ok(self.db_service.has_tenant_memberships(user_id).await?)
+  }
+
+  async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<()> {
+    self
+      .db_service
+      .delete_tenant_by_client_id(client_id)
+      .await?;
+    Ok(())
+  }
+
+  async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<Tenant>> {
+    let rows = self.db_service.list_tenants_by_creator(created_by).await?;
+    Ok(rows.into_iter().map(Tenant::from).collect())
   }
 }
 

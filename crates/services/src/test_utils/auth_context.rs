@@ -70,6 +70,18 @@ impl AuthContext {
     }
   }
 
+  pub fn test_multi_tenant_session_no_role(user_id: &str, username: &str) -> Self {
+    AuthContext::MultiTenantSession {
+      client_id: Some(DEFAULT_CLIENT_ID.to_string()),
+      tenant_id: Some(TEST_TENANT_ID.to_string()),
+      user_id: user_id.to_string(),
+      username: username.to_string(),
+      role: None,
+      token: None,
+      dashboard_token: "test-dashboard-token".to_string(),
+    }
+  }
+
   pub fn test_multi_tenant_session_full(
     user_id: &str,
     username: &str,

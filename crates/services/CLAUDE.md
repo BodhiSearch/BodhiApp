@@ -150,7 +150,6 @@ Blanket `From<T: AppError> for ApiError` auto-converts in route handlers.
 - CASCADE FK constraints on MCP tables
 
 ### AuthService SPI Proxy
-- `list_tenants(bearer_token)` — proxy to Keycloak Bodhi SPI `GET /realms/{realm}/bodhi/tenants`
 - `create_tenant(bearer_token, name, description, redirect_uris)` — proxy to SPI `POST /realms/{realm}/bodhi/tenants`
 - `TenantService.create_tenant()` takes `created_by: Option<String>` parameter
 - `TenantService.set_client_ready(client_id, user_id)` — sets status to Ready AND created_by in one call (replaces separate `update_status` + `update_created_by`)

@@ -135,14 +135,39 @@ pub async fn dev_tenants_cleanup_handler(auth_scope: AuthScope) -> Result<Respon
   }
 
   let dashboard_token = auth_scope.auth_context().require_dashboard_token()?;
+  let user_id = auth_scope.auth_context().require_user_id()?;
 
+  // Look up tenants created by this user, excluding [do-not-delete] protected tenants
+  let tenants = auth_scope
+    .tenants()
+    .list_tenants_by_creator(user_id)
+    .await
+    .map_err(DevError::from)?;
+
+  let client_ids: Vec<String> = tenants
+    .iter()
+    .filter(|t| !t.name.starts_with("[do-not-delete]"))
+    .map(|t| t.client_id.clone())
+    .collect();
+
+  if client_ids.is_empty() {
+    return Ok(
+      (
+        StatusCode::OK,
+        Json(json!({ "deleted": [], "skipped": [], "errors": [] })),
+      )
+        .into_response(),
+    );
+  }
+
+  // Send explicit client_ids to SPI for deletion
   let (status, body) = auth_scope
     .auth_service()
     .forward_request(
       "DELETE".to_string(),
       "test/tenants/cleanup".to_string(),
       Some(dashboard_token.to_string()),
-      None,
+      Some(json!({ "client_ids": client_ids })),
     )
     .await
     .map_err(DevError::from)?;
@@ -154,12 +179,14 @@ pub async fn dev_tenants_cleanup_handler(auth_scope: AuthScope) -> Result<Respon
     })?;
   }
 
-  // Truncate local tenants table
-  auth_scope
-    .db()
-    .reset_tenants()
-    .await
-    .map_err(DevError::from)?;
+  // Optimistically delete all sent client_ids from local DB
+  for client_id in &client_ids {
+    auth_scope
+      .tenants()
+      .delete_tenant_by_client_id(client_id)
+      .await
+      .map_err(DevError::from)?;
+  }
 
   Ok((StatusCode::OK, Json(body)).into_response())
 }

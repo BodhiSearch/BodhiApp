@@ -9,7 +9,6 @@ use axum::{
   http::StatusCode,
   Json,
 };
-use services::AuthContext;
 use services::{ResourceRole, TokenScope};
 
 /// Create a new API token
@@ -47,13 +46,10 @@ pub async fn tokens_create(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<CreateTokenRequest>,
 ) -> Result<(StatusCode, Json<TokenCreated>), ApiError> {
-  let AuthContext::Session {
-    role: Some(user_role),
-    ..
-  } = auth_scope.auth_context()
-  else {
-    return Err(TokenRouteError::AccessTokenMissing.into());
-  };
+  let user_role = auth_scope
+    .auth_context()
+    .resource_role()
+    .ok_or(TokenRouteError::AccessTokenMissing)?;
 
   // Validate privilege escalation - users cannot create tokens with higher privileges than their role
   let token_scope = match (user_role, &request.scope) {

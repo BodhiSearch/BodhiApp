@@ -58,9 +58,13 @@ pub async fn auth_initiate(
   let auth_context = auth_scope.auth_context();
   let settings = auth_scope.settings();
 
-  // Early return if user is already authenticated with a resource tenant.
+  // Early return if user is already authenticated with the SAME resource tenant.
   // Dashboard-only MultiTenantSession (token: None) must still initiate tenant OAuth.
-  if auth_context.is_authenticated() && auth_context.token().is_some() {
+  // When requesting OAuth for a different tenant (invite flow), proceed even if authenticated.
+  if auth_context.is_authenticated()
+    && auth_context.token().is_some()
+    && auth_context.client_id() == Some(request.client_id.as_str())
+  {
     return Ok((
       StatusCode::OK,
       [(CACHE_CONTROL, "no-cache, no-store, must-revalidate")],

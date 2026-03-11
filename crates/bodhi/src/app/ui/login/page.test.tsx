@@ -15,10 +15,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 // Mock the hooks
 const pushMock = vi.fn();
+const replaceMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
+    replace: replaceMock,
   }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 beforeAll(() => {
@@ -31,6 +34,8 @@ beforeEach(() => {
   mockWindowLocation('http://localhost:3000/ui/login');
   server.resetHandlers();
   pushMock.mockClear();
+  replaceMock.mockClear();
+  sessionStorage.clear();
   vi.clearAllMocks();
 });
 

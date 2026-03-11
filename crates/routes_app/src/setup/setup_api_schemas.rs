@@ -14,7 +14,8 @@ use utoipa::ToSchema;
     "commit_sha": "abc1234",
     "status": "ready",
     "deployment": "standalone",
-    "client_id": "my-client-id"
+    "client_id": "my-client-id",
+    "url": "https://example.com"
 }))]
 pub struct AppInfo {
   /// Application version number (semantic versioning)
@@ -33,6 +34,9 @@ pub struct AppInfo {
   #[serde(skip_serializing_if = "Option::is_none")]
   #[schema(example = "my-client-id", nullable)]
   pub client_id: Option<String>,
+  /// Public URL of the server
+  #[schema(example = "https://example.com")]
+  pub url: String,
 }
 
 /// Request to setup the application in authenticated mode

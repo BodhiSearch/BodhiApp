@@ -77,6 +77,9 @@ export default defineConfig({
   projects: [
     {
       name: 'standalone',
+      testIgnore: [
+        '**/multi-tenant/**',               // Multi-tenant tests are multi_tenant-only
+      ],
       use: {
         ...devices['Desktop Chrome'],
         // Use headless mode in CI or when explicitly set
@@ -86,12 +89,10 @@ export default defineConfig({
     {
       name: 'multi_tenant',
       testIgnore: [
-        '**/setup/**',       // Setup flow is standalone-only
-        '**/chat/chat.spec.mjs',         // Requires local GGUF model (selectModelQwen)
-        '**/chat/chat-agentic.spec.mjs', // Requires local GGUF model (selectModelQwen)
-        '**/models/**',      // Local model alias + metadata require GGUF files
-        '**/tokens/**',      // api-tokens uses selectModelQwen for chat integration
-        '**/oauth/oauth-chat-streaming.spec.mjs', // Multi-tenant has no filesystem model discovery; /v1/models returns empty
+        '**/setup/**',                    // Setup flow is standalone-only
+        '**/models/**',                   // Local model alias + metadata require GGUF files
+        '**/request-access/**',           // Uses createServerManager() — standalone-specific
+        '**/chat/local-models.spec.mjs',  // Standalone-only GGUF testing
       ],
       use: {
         ...devices['Desktop Chrome'],

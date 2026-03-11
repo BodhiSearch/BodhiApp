@@ -2,10 +2,14 @@ import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-cli
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
+import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
+import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
+import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
+import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 
 /**
  * Agentic Chat E2E Tests
@@ -18,7 +22,7 @@ import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
  *
  * Requires:
  * - INTEG_TEST_EXA_API_KEY environment variable
- * - Qwen3 model with tool calling support (configured via selectModelQwen)
+ * - INTEG_TEST_OPENAI_API_KEY environment variable
  */
 
 const TOOLSET_TYPE = 'builtin-exa-search';
@@ -28,14 +32,18 @@ test.describe('Chat Interface - Agentic Flow', () => {
   let authServerConfig;
   let testCredentials;
   let loginPage;
+  let modelsPage;
+  let apiModelFormPage;
   let chatPage;
   let chatSettingsPage;
   let toolsetsPage;
+  let testApiKey;
 
   test.beforeAll(async () => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
 
+    testApiKey = ApiModelFixtures.getRequiredEnvVars().apiKey;
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
 
@@ -44,6 +52,8 @@ test.describe('Chat Interface - Agentic Flow', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
     chatSettingsPage = new ChatSettingsPage(page, sharedServerUrl);
     toolsetsPage = new ToolsetsPage(page, sharedServerUrl);
@@ -57,12 +67,13 @@ test.describe('Chat Interface - Agentic Flow', () => {
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
 
     await loginPage.performOAuthLogin();
+    await registerApiModelViaUI(modelsPage, apiModelFormPage, testApiKey);
 
     await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey);
 
     await chatPage.navigateToChat();
     await chatPage.waitForChatPageLoad();
-    await chatSettingsPage.selectModelQwen();
+    await chatSettingsPage.selectModel(ApiModelFixtures.OPENAI_MODEL);
 
     await chatPage.openToolsetsPopover();
     await chatPage.waitForToolsetsToLoad();

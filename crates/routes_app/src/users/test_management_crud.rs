@@ -1,4 +1,4 @@
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{make_auth_with_role, RequestAuthContextExt};
 use crate::{users_change_role, users_destroy, users_index};
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -228,7 +228,10 @@ async fn test_list_users_handler_pagination_parameters(
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+async fn test_change_user_role_clears_sessions(
+  #[values("session", "multi_tenant")] auth_variant: &str,
+  _temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
   // Create a valid JWT token for testing
   let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
 
@@ -268,7 +271,8 @@ async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> any
   let request = Request::put("/bodhi/v1/users/user-123/role")
     .header("Content-Type", "application/json")
     .body(Body::from(r#"{"role": "resource_power_user"}"#))?
-    .with_auth_context(AuthContext::test_session_with_token(
+    .with_auth_context(make_auth_with_role(
+      auth_variant,
       "test-user-id",
       "admin@example.com",
       ResourceRole::Admin,
@@ -498,6 +502,7 @@ async fn test_change_user_role_session_clear_failure_still_succeeds(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_change_user_role_privilege_escalation_rejected(
+  #[values("session", "multi_tenant")] auth_variant: &str,
   _temp_bodhi_home: TempDir,
   #[case] caller_role: ResourceRole,
   #[case] target_role: ResourceRole,
@@ -516,7 +521,8 @@ async fn test_change_user_role_privilege_escalation_rejected(
   let request = Request::put("/bodhi/v1/users/user-123/role")
     .header("Content-Type", "application/json")
     .body(Body::from(body.to_string()))?
-    .with_auth_context(AuthContext::test_session_with_token(
+    .with_auth_context(make_auth_with_role(
+      auth_variant,
       "caller-user-id",
       "caller@example.com",
       caller_role,
@@ -543,6 +549,7 @@ async fn test_change_user_role_privilege_escalation_rejected(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_change_user_role_allowed_when_caller_has_sufficient_role(
+  #[values("session", "multi_tenant")] auth_variant: &str,
   _temp_bodhi_home: TempDir,
   #[case] caller_role: ResourceRole,
   #[case] target_role: ResourceRole,
@@ -580,7 +587,8 @@ async fn test_change_user_role_allowed_when_caller_has_sufficient_role(
   let request = Request::put("/bodhi/v1/users/user-123/role")
     .header("Content-Type", "application/json")
     .body(Body::from(body.to_string()))?
-    .with_auth_context(AuthContext::test_session_with_token(
+    .with_auth_context(make_auth_with_role(
+      auth_variant,
       "caller-user-id",
       "caller@example.com",
       caller_role,

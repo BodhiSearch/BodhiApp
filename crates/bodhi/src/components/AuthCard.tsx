@@ -18,6 +18,7 @@ interface AuthCardProps {
   actions?: AuthAction[];
   disabled?: boolean;
   isLoading?: boolean;
+  'data-test-state'?: string;
 }
 
 function LoadingState() {
@@ -29,9 +30,16 @@ function LoadingState() {
   );
 }
 
-export function AuthCard({ title, description, actions = [], disabled = false, isLoading = false }: AuthCardProps) {
+export function AuthCard({
+  title,
+  description,
+  actions = [],
+  disabled = false,
+  isLoading = false,
+  'data-test-state': dataTestState,
+}: AuthCardProps) {
   return (
-    <div className="w-full max-w-xl mx-auto px-4" data-testid="auth-card-container">
+    <div className="w-full max-w-xl mx-auto px-4" data-testid="auth-card-container" data-test-state={dataTestState}>
       <Card data-testid="auth-card" className="card-elevated bg-card">
         <CardHeader className="header-section" data-testid="auth-card-header">
           <CardTitle className="text-3xl text-center">{title}</CardTitle>
@@ -58,6 +66,7 @@ export function AuthCard({ title, description, actions = [], disabled = false, i
                         variant={action.variant || 'default'}
                         disabled={action.disabled}
                         data-testid={`auth-card-action-${index}`}
+                        data-test-action={action.label}
                       >
                         {action.loading ? 'Loading...' : action.label}
                       </Button>
@@ -70,6 +79,7 @@ export function AuthCard({ title, description, actions = [], disabled = false, i
                       onClick={action.onClick}
                       disabled={action.disabled}
                       data-testid={`auth-card-action-${index}`}
+                      data-test-action={action.label}
                     >
                       {action.loading ? 'Loading...' : action.label}
                     </Button>

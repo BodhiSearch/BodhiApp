@@ -1586,6 +1586,7 @@ export interface components {
          *       "commit_sha": "abc1234",
          *       "deployment": "standalone",
          *       "status": "ready",
+         *       "url": "https://example.com",
          *       "version": "0.1.0"
          *     }
          */
@@ -1609,6 +1610,11 @@ export interface components {
              * @example my-client-id
              */
             client_id?: string | null;
+            /**
+             * @description Public URL of the server
+             * @example https://example.com
+             */
+            url: string;
         };
         AppRole: components["schemas"]["ResourceRole"] | components["schemas"]["TokenScope"] | components["schemas"]["UserScope"];
         /**
@@ -3494,6 +3500,7 @@ export interface components {
             client_id: string;
             name: string;
             description?: string | null;
+            status: components["schemas"]["AppStatus"];
             is_active: boolean;
             logged_in: boolean;
         };
@@ -5821,6 +5828,7 @@ export interface operations {
                      *       "commit_sha": "abc1234",
                      *       "deployment": "standalone",
                      *       "status": "ready",
+                     *       "url": "https://example.com",
                      *       "version": "0.1.0"
                      *     } */
                     "application/json": components["schemas"]["AppInfo"];

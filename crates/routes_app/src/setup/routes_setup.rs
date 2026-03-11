@@ -24,7 +24,8 @@ pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
              "commit_sha": "abc1234",
              "status": "ready",
              "deployment": "standalone",
-             "client_id": "my-client-id"
+             "client_id": "my-client-id",
+             "url": "https://example.com"
          })),
     )
 )]
@@ -83,6 +84,7 @@ pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, ApiError
     status,
     deployment,
     client_id,
+    url: settings.public_server_url().await,
   }))
 }
 

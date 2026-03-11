@@ -119,4 +119,25 @@ impl AuthScopedTenantService {
       .upsert_tenant_user(tenant_id, user_id)
       .await
   }
+
+  /// Delete a tenant by client_id, including associated tenant_users.
+  pub async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<(), TenantError> {
+    self
+      .app_service
+      .tenant_service()
+      .delete_tenant_by_client_id(client_id)
+      .await
+  }
+
+  /// List all tenants created by a specific user.
+  pub async fn list_tenants_by_creator(
+    &self,
+    created_by: &str,
+  ) -> Result<Vec<Tenant>, TenantError> {
+    self
+      .app_service
+      .tenant_service()
+      .list_tenants_by_creator(created_by)
+      .await
+  }
 }

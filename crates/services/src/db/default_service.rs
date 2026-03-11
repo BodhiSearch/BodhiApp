@@ -116,6 +116,16 @@ impl DbCore for DefaultDbService {
            CASCADE",
         )
         .await?;
+        // Remove non-creator tenant memberships (preserves creator's membership)
+        sea_orm::ConnectionTrait::execute_unprepared(
+          &self.db,
+          "DELETE FROM tenants_users tu
+           WHERE NOT EXISTS (
+             SELECT 1 FROM tenants t
+             WHERE t.id = tu.tenant_id AND t.created_by = tu.user_id
+           )",
+        )
+        .await?;
       }
       _ => {
         // Use DELETE FROM for SQLite
@@ -136,7 +146,12 @@ impl DbCore for DefaultDbService {
            DELETE FROM api_model_aliases;
            DELETE FROM api_tokens;
            DELETE FROM user_access_requests;
-           DELETE FROM download_requests;",
+           DELETE FROM download_requests;
+           DELETE FROM tenants_users
+             WHERE NOT EXISTS (
+               SELECT 1 FROM tenants t
+               WHERE t.id = tenants_users.tenant_id AND t.created_by = tenants_users.user_id
+             );",
         )
         .await?;
       }

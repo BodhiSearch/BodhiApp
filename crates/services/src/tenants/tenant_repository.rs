@@ -166,6 +166,13 @@ pub trait TenantRepository: Send + Sync {
   /// Check if a user has any tenant memberships.
   async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool, DbError>;
 
+  /// Delete a tenant by its client_id, including associated tenant_users records.
+  /// Idempotent: returns Ok if tenant does not exist.
+  async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<(), DbError>;
+
+  /// List all tenants created by a specific user (by `created_by` field).
+  async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<TenantRow>, DbError>;
+
   /// Test-only: insert a tenant with a caller-specified ID (bypasses ULID auto-generation).
   /// Upsert-safe: returns existing tenant if client_id already exists.
   #[cfg(any(test, feature = "test-utils"))]
@@ -224,6 +231,17 @@ impl TenantRepository for DefaultDbService {
     status: &AppStatus,
     created_by: Option<String>,
   ) -> Result<TenantRow, DbError> {
+    // One-per-user enforcement: in multi-tenant mode (created_by is Some),
+    // check if the user already owns a tenant.
+    if let Some(ref user_id) = created_by {
+      let existing = self.list_tenants_by_creator(user_id).await?;
+      if !existing.is_empty() {
+        return Err(DbError::ValidationError(
+          "user_already_has_tenant".to_string(),
+        ));
+      }
+    }
+
     let id = crate::new_ulid();
     self
       .create_tenant_impl(
@@ -356,6 +374,48 @@ impl TenantRepository for DefaultDbService {
       .await
       .map_err(DbError::from)?;
     Ok(result.is_some())
+  }
+
+  async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<(), DbError> {
+    let tenant = tenant_entity::Entity::find()
+      .filter(tenant_entity::Column::ClientId.eq(client_id))
+      .one(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    let tenant = match tenant {
+      Some(t) => t,
+      None => return Ok(()), // Idempotent: no tenant means nothing to delete
+    };
+
+    // Delete associated tenant_users first
+    tenant_user_entity::Entity::delete_many()
+      .filter(tenant_user_entity::Column::TenantId.eq(&tenant.id))
+      .exec(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    // Delete the tenant
+    tenant_entity::Entity::delete_many()
+      .filter(tenant_entity::Column::ClientId.eq(client_id))
+      .exec(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    Ok(())
+  }
+
+  async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<TenantRow>, DbError> {
+    let models = tenant_entity::Entity::find()
+      .filter(tenant_entity::Column::CreatedBy.eq(created_by))
+      .all(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    models
+      .into_iter()
+      .map(|m| self.decrypt_tenant_row(m))
+      .collect()
   }
 
   #[cfg(any(test, feature = "test-utils"))]

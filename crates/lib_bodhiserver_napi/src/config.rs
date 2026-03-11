@@ -21,6 +21,8 @@ pub struct NapiAppOptions {
   pub app_status: Option<String>,
   /// User ID of the tenant creator (optional)
   pub created_by: Option<String>,
+  /// Custom tenant name (optional, defaults to "BodhiApp")
+  pub tenant_name: Option<String>,
 }
 
 /// Create a new NapiAppOptions with empty configuration
@@ -34,6 +36,7 @@ pub fn create_napi_app_options() -> NapiAppOptions {
     client_secret: None,
     app_status: None,
     created_by: None,
+    tenant_name: None,
   }
 }
 
@@ -78,6 +81,13 @@ pub fn set_client_credentials(
 #[napi]
 pub fn set_created_by(mut config: NapiAppOptions, user_id: String) -> NapiAppOptions {
   config.created_by = Some(user_id);
+  config
+}
+
+/// Set the tenant name (defaults to "BodhiApp" if not set)
+#[napi]
+pub fn set_tenant_name(mut config: NapiAppOptions, name: String) -> NapiAppOptions {
+  config.tenant_name = Some(name);
   config
 }
 
@@ -128,11 +138,12 @@ pub fn try_build_app_options_internal(
       AppStatus::Ready
     };
     let now = chrono::Utc::now();
+    let tenant_name = config.tenant_name.unwrap_or_else(|| "BodhiApp".to_string());
     let instance = Tenant {
       id: new_ulid(),
       client_id,
       client_secret,
-      name: "BodhiApp".to_string(),
+      name: tenant_name,
       description: None,
       status,
       created_by: config.created_by,
@@ -242,6 +253,7 @@ mod tests {
     assert!(config.client_id.is_none());
     assert!(config.client_secret.is_none());
     assert!(config.app_status.is_none());
+    assert!(config.tenant_name.is_none());
   }
 
   #[test]

@@ -93,6 +93,12 @@ async function main() {
     createdBy = process.env.INTEG_TEST_USERNAME_ID;
   }
 
+  // Set tenant name for multi_tenant deployment (with [do-not-delete] prefix for cleanup protection)
+  const tenantName =
+    deployment === 'multi_tenant'
+      ? `[do-not-delete] Test ${process.env.INTEG_TEST_USERNAME || 'user@email.com'} tenant`
+      : null;
+
   console.log(`Creating ${dbType} server (${deployment}) with configuration...`);
   const serverOptions = {
     port,
@@ -103,6 +109,7 @@ async function main() {
     clientId,
     clientSecret,
     createdBy,
+    tenantName,
     envVars,
   };
 

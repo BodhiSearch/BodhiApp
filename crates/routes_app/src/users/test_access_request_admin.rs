@@ -1,4 +1,4 @@
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{make_auth_with_role, RequestAuthContextExt};
 use crate::{
   users_access_request_approve, users_access_request_reject, users_access_requests_index,
   users_access_requests_pending, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING,
@@ -36,7 +36,10 @@ use tower_sessions::{
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+async fn test_approve_request_clears_user_sessions(
+  #[values("session", "multi_tenant")] auth_variant: &str,
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
   // 1. Setup: Create real databases for both app and session
   let session_db = temp_bodhi_home.path().join("session.sqlite");
 
@@ -130,7 +133,8 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
   .body(Body::from(serde_json::to_string(
     &json!({ "role": "resource_user" }),
   )?))?
-  .with_auth_context(AuthContext::test_session_with_token(
+  .with_auth_context(make_auth_with_role(
+    auth_variant,
     "admin-user-id",
     "admin@example.com",
     ResourceRole::Manager,
@@ -352,6 +356,7 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
 #[tokio::test]
 #[anyhow_trace]
 async fn test_approve_request_insufficient_privileges(
+  #[values("session", "multi_tenant")] auth_variant: &str,
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
@@ -388,7 +393,8 @@ async fn test_approve_request_insufficient_privileges(
       .body(Body::from(serde_json::to_string(
         &json!({ "role": "resource_admin" }),
       )?))?
-      .with_auth_context(AuthContext::test_session_with_token(
+      .with_auth_context(make_auth_with_role(
+        auth_variant,
         "lowpriv-user-id",
         "lowpriv@example.com",
         ResourceRole::User,

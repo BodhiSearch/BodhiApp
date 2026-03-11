@@ -15,7 +15,6 @@ export const ENDPOINT_USER_INFO = `${BODHI_API_BASE}/user`;
 export const ENDPOINT_USERS = `${BODHI_API_BASE}/users`;
 export const ENDPOINT_USER_ROLE = `${BODHI_API_BASE}/users/{user_id}/role`;
 export const ENDPOINT_USER_ID = `${BODHI_API_BASE}/users/{user_id}`;
-
 // Types
 export type AuthenticatedUser = UserInfo & { auth_status: 'logged_in' };
 type ErrorResponse = OpenAiApiError;

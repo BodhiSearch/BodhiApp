@@ -8,6 +8,9 @@ pub enum TenantError {
   #[error("Tenant not found.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   NotFound,
+  #[error("User already has a tenant.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  UserAlreadyHasTenant,
   #[error(transparent)]
   Db(#[from] DbError),
   #[error(transparent)]

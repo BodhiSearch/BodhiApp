@@ -1217,6 +1217,22 @@ impl TenantRepository for TestDbService {
       .await
       .tap(|_| self.notify("has_tenant_memberships"))
   }
+
+  async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_tenant_by_client_id(client_id)
+      .await
+      .tap(|_| self.notify("delete_tenant_by_client_id"))
+  }
+
+  async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<TenantRow>, DbError> {
+    self
+      .inner
+      .list_tenants_by_creator(created_by)
+      .await
+      .tap(|_| self.notify("list_tenants_by_creator"))
+  }
 }
 
 #[async_trait::async_trait]
@@ -1405,6 +1421,8 @@ mockall::mock! {
     async fn delete_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<(), DbError>;
     async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<TenantRow>, DbError>;
     async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool, DbError>;
+    async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<(), DbError>;
+    async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<TenantRow>, DbError>;
     async fn create_tenant_test(&self, tenant: &crate::Tenant) -> Result<TenantRow, DbError>;
   }
 

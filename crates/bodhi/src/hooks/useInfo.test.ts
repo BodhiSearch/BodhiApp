@@ -17,6 +17,7 @@ const mockAppInfoData: AppInfo = {
   version: '0.1.0',
   status: 'ready',
   deployment: 'standalone',
+  url: 'http://localhost:1135',
 };
 
 const mockUserInfoData = {

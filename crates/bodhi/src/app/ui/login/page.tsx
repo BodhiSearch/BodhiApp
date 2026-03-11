@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { AxiosResponse } from 'axios';
-import { RedirectResponse, TenantListItem } from '@bodhiapp/ts-client';
-import { useRouter } from 'next/navigation';
+import { AppStatus, RedirectResponse, TenantListItem } from '@bodhiapp/ts-client';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
@@ -13,18 +13,31 @@ import { useLogoutHandler, useOAuthInitiate, useDashboardOAuthInitiate } from '@
 import { useAppInfo } from '@/hooks/useInfo';
 import { useTenants, useTenantActivate } from '@/hooks/useTenants';
 import { useUser } from '@/hooks/useUsers';
-import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
+import { ROUTE_DEFAULT, ROUTE_LOGIN, ROUTE_REQUEST_ACCESS, ROUTE_SETUP_TENANTS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 
 function MultiTenantLoginContent() {
   const { data: appInfo } = useAppInfo();
   const { data: userInfo, isLoading: userLoading } = useUser();
-  const { showError } = useToastMessages();
+  const { showError, showSuccess } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // 5a. Read invite parameter on mount and store in sessionStorage
+  const hasInviteProcessed = useRef(false);
+  useEffect(() => {
+    if (hasInviteProcessed.current) return;
+    const inviteClientId = searchParams?.get('invite');
+    if (inviteClientId) {
+      hasInviteProcessed.current = true;
+      sessionStorage.setItem('login_to_tenant', inviteClientId);
+      router.replace('/ui/login/');
+    }
+  }, [searchParams, router]);
 
   // Dashboard OAuth (platform login)
   const { mutate: initiateDashboardOAuth, isLoading: isDashboardLoading } = useDashboardOAuthInitiate({
@@ -104,10 +117,59 @@ function MultiTenantLoginContent() {
     },
   });
 
+  // 5b/5c. Process invite flow (takes priority over auto-login)
+  const hasInviteFlowTriggered = useRef(false);
+  useEffect(() => {
+    if (hasInviteFlowTriggered.current) return;
+    const loginToTenant = sessionStorage.getItem('login_to_tenant');
+    if (!loginToTenant) return;
+
+    // No dashboard session — keep in sessionStorage (survive OAuth redirect), trigger dashboard login
+    if (!userInfo?.has_dashboard_session) {
+      if (!userLoading) {
+        hasInviteFlowTriggered.current = true;
+        initiateDashboardOAuth();
+      }
+      return;
+    }
+
+    // Dashboard session exists — wait for tenants to finish loading (if query is active)
+    if (needsTenantSelection && (tenantsLoading || !tenantsData)) return;
+
+    hasInviteFlowTriggered.current = true;
+    sessionStorage.removeItem('login_to_tenant');
+
+    // Check if target tenant is in the tenants list
+    const targetTenant = tenantsData?.tenants?.find((t: TenantListItem) => t.client_id === loginToTenant);
+
+    if (targetTenant?.logged_in) {
+      // Already a member and logged in — activate and show toast
+      activateTenant({ client_id: targetTenant.client_id });
+      showSuccess('Workspace', 'Already a member of this workspace');
+    } else {
+      // Not logged in to target tenant or tenant not in list — initiate OAuth
+      sessionStorage.setItem('bodhi-return-url', '/ui/login/');
+      initiateOAuth({ client_id: loginToTenant });
+    }
+  }, [
+    userInfo,
+    userLoading,
+    needsTenantSelection,
+    tenantsData,
+    tenantsLoading,
+    activateTenant,
+    initiateOAuth,
+    initiateDashboardOAuth,
+    showSuccess,
+  ]);
+
   // Auto-login if only one tenant (useRef guard prevents double-firing in StrictMode)
+  // Suppressed when invite flow is active
   const hasAutoLoginTriggered = useRef(false);
   useEffect(() => {
     if (hasAutoLoginTriggered.current) return;
+    // Suppress auto-login when invite flow is active
+    if (sessionStorage.getItem('login_to_tenant')) return;
     if (needsTenantSelection && tenantsData?.tenants && tenantsData.tenants.length === 1) {
       hasAutoLoginTriggered.current = true;
       const tenant = tenantsData.tenants[0];
@@ -126,6 +188,18 @@ function MultiTenantLoginContent() {
     return <AuthCard title="Loading..." isLoading={true} />;
   }
 
+  // If status is 'setup' and no invite flow active, redirect to tenant creation
+  if (appInfo?.status === 'setup' && !sessionStorage.getItem('login_to_tenant')) {
+    router.push(ROUTE_SETUP_TENANTS);
+    return null;
+  }
+
+  // 5d. Role: None guard — redirect to request-access if logged in with no role
+  if (userInfo?.auth_status === 'logged_in' && appInfo?.client_id && !userInfo.role) {
+    router.push(ROUTE_REQUEST_ACCESS);
+    return null;
+  }
+
   // State C: Fully authenticated with a tenant
   if (userInfo?.auth_status === 'logged_in' && appInfo?.client_id) {
     const activeTenant = tenantsData?.tenants?.find((t: TenantListItem) => t.client_id === appInfo.client_id);
@@ -133,6 +207,7 @@ function MultiTenantLoginContent() {
 
     return (
       <AuthCard
+        data-test-state="welcome"
         title="Welcome"
         description={
           <div className="space-y-2">
@@ -181,6 +256,7 @@ function MultiTenantLoginContent() {
     const tenant = tenantsData.tenants[0];
     return (
       <AuthCard
+        data-test-state="connect"
         title="Connect to Workspace"
         description={
           <div className="space-y-4">
@@ -211,6 +287,7 @@ function MultiTenantLoginContent() {
   if (needsTenantSelection && tenantsData?.tenants && tenantsData.tenants.length > 1) {
     return (
       <AuthCard
+        data-test-state="select"
         title="Select Workspace"
         description={
           <div className="space-y-4">
@@ -238,6 +315,7 @@ function MultiTenantLoginContent() {
   // State A: No dashboard session - show platform login button
   return (
     <AuthCard
+      data-test-state="login"
       title="Login"
       description={
         <div className="space-y-4">
@@ -371,8 +449,14 @@ export default function LoginPage() {
   const { data: appInfo } = useAppInfo();
   const isMultiTenant = appInfo?.deployment === 'multi_tenant';
 
+  // Allow 'setup' status when multi-tenant invite flow is active,
+  // so the login page can process the invite before redirecting
+  const hasInviteFlow = typeof window !== 'undefined' && sessionStorage.getItem('login_to_tenant');
+  const allowedStatuses: AppStatus[] =
+    isMultiTenant && hasInviteFlow ? ['ready', 'tenant_selection', 'setup'] : ['ready', 'tenant_selection'];
+
   return (
-    <AppInitializer allowedStatus={['ready', 'tenant_selection']} authenticated={false}>
+    <AppInitializer allowedStatus={allowedStatuses} authenticated={false}>
       <div className="pt-12 sm:pt-16" data-testid="login-page">
         {isMultiTenant ? <MultiTenantLoginContent /> : <LoginContent />}
       </div>
