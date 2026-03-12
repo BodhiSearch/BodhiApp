@@ -24,6 +24,6 @@ runs:
       shell: bash
       run: |
         python -m pip install -U pip
-        python -m pip install -r crates/objs/tests/scripts/requirements.txt
+        python -m pip install -r crates/services/tests/scripts/requirements.txt
         pip install -U huggingface_hub
         echo "$HOME/.local/bin" >> $GITHUB_PATH
