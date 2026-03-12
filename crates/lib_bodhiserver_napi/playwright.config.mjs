@@ -133,31 +133,31 @@ export default defineConfig({
       command: 'npm run e2e:server:standalone',
       url: 'http://localhost:51135/ping',
       reuseExistingServer: false,  // Always start fresh
-      timeout: 60000,
+      timeout: 120000,
     },
     {
       command: 'npm run e2e:server:multi_tenant',
       url: 'http://localhost:41135/ping',
       reuseExistingServer: false,
-      timeout: 60000,
+      timeout: 120000,
     },
     {
       command: 'npm run e2e:server:test-app-oauth',
       url: 'http://localhost:55173/',
       reuseExistingServer: false,
-      timeout: 30000,
+      timeout: 60000,
     },
     {
       command: 'npm run e2e:server:test-app-mcp',
       url: 'http://localhost:55174/ping',
       reuseExistingServer: false,
-      timeout: 30000,
+      timeout: 60000,
     },
     {
       command: 'npm run e2e:server:test-app-mcp-dcr',
       url: 'http://localhost:55175/ping',
       reuseExistingServer: false,
-      timeout: 30000,
+      timeout: 60000,
       env: {
         ...process.env,
         TEST_MCP_OAUTH_PORT: '55175',

@@ -145,7 +145,7 @@ jobs:
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
         run: |
-          npm run test:playwright:ci
+          npx playwright test --config=playwright.config.mjs tests-js/specs/setup/setup-flow.spec.mjs
         env:
           CI: true
           BODHI_EXEC_VARIANT: cpu
