@@ -17,18 +17,6 @@ const isScheduledRun = process.argv.includes('--grep') && process.argv.some(arg 
 
 // Dual-project support: standalone (SQLite, port 51135) and multi_tenant (PostgreSQL, port 41135)
 // multi_tenant requires docker/docker-compose.test.yml containers running
-// and INTEG_TEST_MT_* environment variables configured
-
-// Check if multi-tenant credentials are available
-const hasMultiTenantConfig = !!(
-  process.env.INTEG_TEST_MT_DASHBOARD_CLIENT_ID &&
-  process.env.INTEG_TEST_MT_DASHBOARD_CLIENT_SECRET &&
-  process.env.INTEG_TEST_MT_TENANT_ID &&
-  process.env.INTEG_TEST_MT_TENANT_SECRET
-);
-if (!hasMultiTenantConfig) {
-  console.log('⚠ Multi-tenant tests skipped: INTEG_TEST_MT_* env vars not configured');
-}
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -98,7 +86,7 @@ export default defineConfig({
         headless: !!process.env.CI || process.env.HEADLESS === 'true' || process.env.PLAYWRIGHT_HEADLESS === 'true',
       },
     },
-    ...(hasMultiTenantConfig ? [{
+    {
       name: 'multi_tenant',
       testIgnore: [
         '**/setup/**',                    // Setup flow is standalone-only
@@ -110,7 +98,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         headless: !!process.env.CI || process.env.HEADLESS === 'true' || process.env.PLAYWRIGHT_HEADLESS === 'true',
       },
-    }] : []),
+    },
 
     // Disable WebKit for now due to bus errors on this system
     // {
@@ -147,12 +135,12 @@ export default defineConfig({
       reuseExistingServer: false,  // Always start fresh
       timeout: 60000,
     },
-    ...(hasMultiTenantConfig ? [{
+    {
       command: 'npm run e2e:server:multi_tenant',
       url: 'http://localhost:41135/ping',
       reuseExistingServer: false,
       timeout: 60000,
-    }] : []),
+    },
     {
       command: 'npm run e2e:server:test-app-oauth',
       url: 'http://localhost:55173/',
