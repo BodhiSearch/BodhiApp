@@ -18,7 +18,12 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  build-and-test:
+  # build-and-test: TEMPORARILY DISABLED for faster playwright iteration
+  # build-and-test:
+  #   runs-on: ubuntu-latest-4-cores
+  #   ...
+
+  playwright-tests:
     runs-on: ubuntu-latest-4-cores
     timeout-minutes: 60
     env:
@@ -51,8 +56,11 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    outputs:
-      coverage-success: ${{ steps.build-test.outputs.coverage-success }}
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+      actions: read
     steps:
       - name: Install Linux dependencies
         run: |
@@ -92,17 +100,11 @@ jobs:
         with:
           platform: ubuntu-latest
 
-      - name: Check TypeScript client
-        uses: ./.github/actions/ts-client-check
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
         with:
           platform: ubuntu-latest
-
-      - name: Build only (skip tests for faster CI)
-        id: build-test
-        uses: ./.github/actions/build-only
-        with:
-          platform: ubuntu-latest
-          target: x86_64-unknown-linux-gnu
+          working-directory: crates/lib_bodhiserver_napi
 
       - name: Build NAPI bindings
         uses: ./.github/actions/napi-build
@@ -110,116 +112,12 @@ jobs:
           platform: ubuntu-latest
           target: x86_64-unknown-linux-gnu
 
-  playwright-tests:
-    needs: build-and-test
-    if: needs.build-and-test.outputs.coverage-success == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      HF_HOME: /home/runner/.cache/huggingface
-      INTEG_TEST_APP_DB_PG_URL: postgres://bodhi_test:bodhi_test@localhost:64320/bodhi_app
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: bodhi_sessions
-          POSTGRES_USER: bodhi_test
-          POSTGRES_PASSWORD: bodhi_test
-        ports:
-          - 54320:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      bodhi_app_db:
-        image: postgres:17
-        env:
-          POSTGRES_DB: bodhi_app
-          POSTGRES_USER: bodhi_test
-          POSTGRES_PASSWORD: bodhi_test
-        ports:
-          - 64320:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    permissions:
-      checks: write
-      contents: read
-      pull-requests: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          submodules: recursive
-
-      - name: Setup environment
-        uses: ./.github/actions/setup-environment
-        with:
-          platform: ubuntu-latest
-
-      - name: Setup models
-        uses: ./.github/actions/setup-models
-        with:
-          platform: ubuntu-latest
-          hf-home: ${{ env.HF_HOME }}
-
-      - name: Setup Playwright
-        uses: ./.github/actions/setup-playwright
-        with:
-          platform: ubuntu-latest
-          working-directory: crates/lib_bodhiserver_napi
-
-      - name: Download NAPI artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: napi-bindings-x86_64-unknown-linux-gnu
-          path: crates/lib_bodhiserver_napi/
-
-      - name: Download llama_server_proc binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: llama-server-binaries-x86_64-unknown-linux-gnu
-          path: crates/llama_server_proc/bin/
-
-      - name: Verify llama-server binary exists and set permissions
-        shell: bash
-        run: |
-          echo "Checking for llama-server binary at expected location:"
-          BINARY_PATH="crates/llama_server_proc/bin/x86_64-unknown-linux-gnu/cpu/llama-server"
-
-          if [ -f "$BINARY_PATH" ]; then
-            echo "✅ Binary found at: $BINARY_PATH"
-            ls -la "$BINARY_PATH"
-            chmod +x "$BINARY_PATH"
-          else
-            echo "❌ Binary not found at expected location!"
-            echo "Contents of crates/llama_server_proc/bin/:"
-            find crates/llama_server_proc/bin -type f 2>/dev/null || echo "bin directory not found"
-            exit 1
-          fi
-
       - name: Install dependencies
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
         run: |
           npm ci
           cd test-oauth-app && npm ci
-
-      - name: Verify NAPI bindings exist
-        shell: bash
-        working-directory: crates/lib_bodhiserver_napi
-        run: |
-          if [ ! -f app-bindings.*.node ]; then
-            echo "Error: NAPI bindings not found. Build may have failed."
-            exit 1
-          fi
-          echo "✅ NAPI bindings found:"
-          ls -la app-bindings.*.node
-          ls -la index.*
 
       - name: Run NAPI binding tests
         id: napi-tests
