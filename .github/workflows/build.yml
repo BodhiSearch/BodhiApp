@@ -117,7 +117,8 @@ jobs:
         working-directory: crates/lib_bodhiserver_napi
         run: |
           npm ci
-          cd test-oauth-app && npm ci
+          cd test-oauth-app && npm ci && cd ..
+          cd test-mcp-oauth-server && npm ci && cd ..
 
       - name: Run NAPI binding tests
         id: napi-tests
