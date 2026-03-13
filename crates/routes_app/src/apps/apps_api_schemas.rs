@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use services::Toolset;
-use services::{AppAccessRequestStatus, FlowType, RequestedResources};
+use services::{AppAccessRequestStatus, FlowType, RequestedResources, UserScope};
 use utoipa::ToSchema;
 
 // Response for POST /apps/request-access
@@ -34,9 +34,9 @@ pub struct AccessRequestStatusResponse {
   /// Current status: "draft", "approved", "denied", "failed"
   pub status: AppAccessRequestStatus,
   /// Role requested by the app
-  pub requested_role: String,
+  pub requested_role: UserScope,
   /// Role approved (present when approved)
-  pub approved_role: Option<String>,
+  pub approved_role: Option<UserScope>,
   /// Access request scope (present when user-approved with tools)
   pub access_request_scope: Option<String>,
 }

@@ -150,11 +150,17 @@ pub async fn apps_get_access_request_status(
     return Err(AppsRouteError::NotFound)?;
   }
 
+  let requested_role: UserScope = request.requested_role.parse()?;
+  let approved_role: Option<UserScope> = request
+    .approved_role
+    .map(|r| r.parse())
+    .transpose()?;
+
   Ok(Json(AccessRequestStatusResponse {
     id: request.id,
     status: request.status,
-    requested_role: request.requested_role,
-    approved_role: request.approved_role,
+    requested_role,
+    approved_role,
     access_request_scope: request.access_request_scope,
   }))
 }

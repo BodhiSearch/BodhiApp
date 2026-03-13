@@ -70,11 +70,8 @@ export type AccessRequestStatusResponse = {
     /**
      * Role requested by the app
      */
-    requested_role: string;
-    /**
-     * Role approved (present when approved)
-     */
-    approved_role?: string | null;
+    requested_role: UserScope;
+    approved_role?: null | UserScope;
     /**
      * Access request scope (present when user-approved with tools)
      */

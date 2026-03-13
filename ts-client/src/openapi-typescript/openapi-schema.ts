@@ -1438,9 +1438,8 @@ export interface components {
             /** @description Current status: "draft", "approved", "denied", "failed" */
             status: components["schemas"]["AppAccessRequestStatus"];
             /** @description Role requested by the app */
-            requested_role: string;
-            /** @description Role approved (present when approved) */
-            approved_role?: string | null;
+            requested_role: components["schemas"]["UserScope"];
+            approved_role?: null | components["schemas"]["UserScope"];
             /** @description Access request scope (present when user-approved with tools) */
             access_request_scope?: string | null;
         };

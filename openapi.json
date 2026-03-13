@@ -8712,15 +8712,19 @@
             "description": "Current status: \"draft\", \"approved\", \"denied\", \"failed\""
           },
           "requested_role": {
-            "type": "string",
+            "$ref": "#/components/schemas/UserScope",
             "description": "Role requested by the app"
           },
           "approved_role": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Role approved (present when approved)"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserScope",
+                "description": "Role approved (present when approved)"
+              }
+            ]
           },
           "access_request_scope": {
             "type": [
