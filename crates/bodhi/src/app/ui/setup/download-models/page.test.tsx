@@ -118,8 +118,8 @@ describe('ModelDownloadPage Integration Tests', () => {
     server.use(...mockModelPullDownloadsEmpty());
     server.use(
       ...mockModelPull({
-        repo: 'ggml-org/Nemotron-Nano-3-30B-A3B-GGUF',
-        filename: 'Nemotron-Nano-3-30B-A3B-Q4_K_M.gguf',
+        repo: 'unsloth/Qwen3.5-35B-A3B-GGUF',
+        filename: 'Qwen3.5-35B-A3B-Q4_K_M.gguf',
       })
     );
 
@@ -129,9 +129,9 @@ describe('ModelDownloadPage Integration Tests', () => {
       expect(screen.getByText('Chat Models')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Nemotron Nano 3 30B')).toBeInTheDocument();
+    expect(screen.getByText('Qwen3.5 35B-A3B')).toBeInTheDocument();
     expect(screen.getByText('Phi-4 Reasoning')).toBeInTheDocument();
-    expect(screen.getByText('GPT-OSS 20B')).toBeInTheDocument();
+    expect(screen.getByText('Qwen3.5 9B')).toBeInTheDocument();
 
     expect(screen.getByText('Embedding Models')).toBeInTheDocument();
     expect(screen.getByText('Qwen3 Embedding 8B')).toBeInTheDocument();
@@ -153,9 +153,9 @@ describe('ModelDownloadPage Integration Tests', () => {
       ...mockModelPullDownloads({
         data: [
           {
-            id: 'nemotron-pending',
-            repo: 'ggml-org/Nemotron-Nano-3-30B-A3B-GGUF',
-            filename: 'Nemotron-Nano-3-30B-A3B-Q4_K_M.gguf',
+            id: 'qwen35-35b-pending',
+            repo: 'unsloth/Qwen3.5-35B-A3B-GGUF',
+            filename: 'Qwen3.5-35B-A3B-Q4_K_M.gguf',
             status: 'pending',
             error: null,
             created_at: '2024-01-01T00:00:00Z',
@@ -235,8 +235,8 @@ describe('ModelDownloadPage Error Handling', () => {
 
     server.use(
       ...mockModelPull({
-        repo: 'ggml-org/Nemotron-Nano-3-30B-A3B-GGUF',
-        filename: 'Nemotron-Nano-3-30B-A3B-Q4_K_M.gguf',
+        repo: 'unsloth/Qwen3.5-35B-A3B-GGUF',
+        filename: 'Qwen3.5-35B-A3B-Q4_K_M.gguf',
       })
     );
 
