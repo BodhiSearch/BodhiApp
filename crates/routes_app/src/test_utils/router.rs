@@ -291,6 +291,40 @@ pub async fn create_test_api_token(db_service: &dyn DbService) -> anyhow::Result
   Ok(token_str)
 }
 
+/// Builds a CORS preflight (OPTIONS) request for testing CORS behavior.
+///
+/// Sets:
+/// - Method: OPTIONS
+/// - `Origin` header with the provided origin
+/// - `Access-Control-Request-Method` header with the provided method
+/// - `Host: localhost:1135` header
+pub fn cors_preflight_request(path: &str, method: &str, origin: &str) -> Request<Body> {
+  Request::builder()
+    .method("OPTIONS")
+    .uri(path)
+    .header("Origin", origin)
+    .header("Access-Control-Request-Method", method)
+    .header("Host", "localhost:1135")
+    .body(Body::empty())
+    .unwrap()
+}
+
+/// Builds an HTTP request with an `Origin` header for testing CORS on non-preflight requests.
+///
+/// Sets:
+/// - The specified HTTP method
+/// - `Origin` header with the provided origin
+/// - `Host: localhost:1135` header
+pub fn request_with_origin(method: &str, path: &str, origin: &str) -> Request<Body> {
+  Request::builder()
+    .method(method)
+    .uri(path)
+    .header("Origin", origin)
+    .header("Host", "localhost:1135")
+    .body(Body::empty())
+    .unwrap()
+}
+
 /// Builds an HTTP request with an API token in the `Authorization: Bearer` header.
 ///
 /// Sets:

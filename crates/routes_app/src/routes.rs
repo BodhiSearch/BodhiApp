@@ -67,6 +67,21 @@ use tracing::{debug, info, Level};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
+fn permissive_cors() -> CorsLayer {
+  CorsLayer::new()
+    .allow_origin(Any)
+    .allow_methods(Any)
+    .allow_headers(Any)
+    .allow_private_network(true)
+    .allow_credentials(false)
+}
+
+fn restrictive_cors() -> CorsLayer {
+  // Defaults: no origins, no methods, no headers, no private network
+  // OPTIONS gets 200 but no Access-Control-Allow-Origin → browser blocks
+  CorsLayer::new()
+}
+
 pub async fn build_routes(
   app_service: Arc<dyn AppService>,
   static_router: Option<Router>,
@@ -169,11 +184,26 @@ pub async fn build_routes(
       },
     ));
 
+  // Overlapping session APIs — session-only auth but permissive CORS
+  // These paths have both session methods and non-session methods on the same URL,
+  // so they can't be in the restrictive CORS group (would conflict with Axum merge).
+  // See TECHDEBT.md "Overlapping CORS path structure" for details.
+  let overlapping_session_apis = Router::new()
+    .route(ENDPOINT_TOOLSETS, post(toolsets_create))
+    .route(ENDPOINT_MCPS, post(mcps_create))
+    .route(
+      &format!("{ENDPOINT_MCPS}/{{id}}"),
+      put(mcps_update).delete(mcps_destroy),
+    )
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| api_auth_middleware(ResourceRole::User, None, None, state, req, next),
+    ));
+
   // Toolset instance CRUD APIs (session-only, no OAuth or API tokens)
   let user_session_apis = Router::new()
     // Toolset types listing
     .route(ENDPOINT_TOOLSET_TYPES, get(toolset_types_index))
-    .route(ENDPOINT_TOOLSETS, post(toolsets_create))
     .route(&format!("{ENDPOINT_TOOLSETS}/{{id}}"), get(toolsets_show))
     .route(&format!("{ENDPOINT_TOOLSETS}/{{id}}"), put(toolsets_update))
     .route(
@@ -181,10 +211,7 @@ pub async fn build_routes(
       delete(toolsets_destroy),
     )
     // MCP CRUD (session-only)
-    .route(ENDPOINT_MCPS, post(mcps_create))
     .route(ENDPOINT_MCPS_FETCH_TOOLS, post(mcps_fetch_tools))
-    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), put(mcps_update))
-    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), delete(mcps_destroy))
     // Unified auth config endpoints
     .route(ENDPOINT_MCPS_AUTH_CONFIGS, post(mcp_auth_configs_create))
     .route(ENDPOINT_MCPS_AUTH_CONFIGS, get(mcp_auth_configs_index))
@@ -464,18 +491,31 @@ pub async fn build_routes(
       },
     ));
 
-  // Combine all protected APIs
-  let protected_apis = Router::new()
-    .merge(user_apis)
+  // Session-protected routes (RESTRICTIVE CORS — blocks all cross-origin)
+  let session_protected = Router::new()
     .merge(user_session_apis)
-    .merge(user_oauth_apis)
-    .merge(toolset_exec_apis)
-    .merge(mcp_exec_apis)
-    .merge(power_user_apis)
     .merge(power_user_session_apis)
     .merge(admin_session_apis)
     .merge(manager_session_apis)
-    .route_layer(from_fn_with_state(state.clone(), auth_middleware));
+    .route_layer(from_fn_with_state(state.clone(), auth_middleware))
+    .layer(restrictive_cors());
+
+  // API-protected routes (PERMISSIVE CORS — external tools/apps need access)
+  let api_protected = Router::new()
+    .merge(user_apis)
+    .merge(user_oauth_apis)
+    .merge(overlapping_session_apis)
+    .merge(toolset_exec_apis)
+    .merge(mcp_exec_apis)
+    .merge(power_user_apis)
+    .route_layer(from_fn_with_state(state.clone(), auth_middleware))
+    .layer(permissive_cors());
+
+  // Public + optional auth (PERMISSIVE CORS)
+  let public_router = Router::new()
+    .merge(public_apis)
+    .merge(optional_auth)
+    .layer(permissive_cors());
 
   // Reduce verbose middleware logging - only log errors and warnings for better signal-to-noise ratio
   let info_trace = TraceLayer::new_for_http()
@@ -489,20 +529,12 @@ pub async fn build_routes(
     .await;
   GlobalErrorResponses.modify(&mut openapi);
 
-  // Build final router
+  // Build final router — NO global CorsLayer
   let router = Router::<Arc<dyn AppService>>::new()
-    .merge(public_apis)
-    .merge(optional_auth)
-    .merge(protected_apis)
+    .merge(public_router)
+    .merge(session_protected)
+    .merge(api_protected)
     .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi))
-    .layer(
-      CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any)
-        .allow_private_network(true)
-        .allow_credentials(false),
-    )
     .with_state(state);
 
   let router = apply_ui_router(
@@ -560,3 +592,7 @@ async fn apply_ui_router(
 #[cfg(test)]
 #[path = "test_routes.rs"]
 mod test_routes;
+
+#[cfg(test)]
+#[path = "test_cors.rs"]
+mod test_cors;

@@ -151,10 +151,7 @@ pub async fn apps_get_access_request_status(
   }
 
   let requested_role: UserScope = request.requested_role.parse()?;
-  let approved_role: Option<UserScope> = request
-    .approved_role
-    .map(|r| r.parse())
-    .transpose()?;
+  let approved_role: Option<UserScope> = request.approved_role.map(|r| r.parse()).transpose()?;
 
   Ok(Json(AccessRequestStatusResponse {
     id: request.id,
