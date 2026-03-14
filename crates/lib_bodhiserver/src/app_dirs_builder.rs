@@ -202,7 +202,7 @@ fn find_bodhi_home(
           } else {
             "bodhi-dev"
           };
-          (home_dir.join(".cache").join(path), SettingSource::Default)
+          (home_dir.join(format!(".{}", path)), SettingSource::Default)
         }
         None => return Err(BootstrapError::BodhiHomeNotResolved),
       }

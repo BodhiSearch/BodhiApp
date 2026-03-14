@@ -435,7 +435,7 @@ impl SettingService for DefaultSettingService {
         None => self
           .env_wrapper
           .home_dir()
-          .map(|home_dir| home_dir.join(".cache").join("bodhi"))
+          .map(|home_dir| home_dir.join(".bodhi"))
           .map(|path| Value::String(path.display().to_string())),
       },
       BODHI_LOGS => match defaults.get(BODHI_LOGS).cloned() {
@@ -445,7 +445,7 @@ impl SettingService for DefaultSettingService {
             self
               .env_wrapper
               .home_dir()
-              .map(|home_dir| home_dir.join(".cache").join("bodhi"))
+              .map(|home_dir| home_dir.join(".bodhi"))
               .map(|path| Value::String(path.display().to_string()))
           });
           bodhi_home.map(|bh| {

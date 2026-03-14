@@ -29,7 +29,7 @@ const mockSettingInfos: SettingInfo[] = [
   {
     key: 'BODHI_HOME',
     current_value: '/home/user/.bodhi',
-    default_value: '/home/user/.cache/bodhi',
+    default_value: '/home/user/.bodhi',
     source: 'default',
     metadata: {
       type: 'string',
@@ -179,7 +179,7 @@ describe('SettingsPage', () => {
 
     // Check setting values
     expect(screen.getByText('BODHI_HOME')).toBeInTheDocument();
-    expect(screen.getByText(/\/home\/user\/.bodhi/)).toBeInTheDocument();
+    expect(screen.getAllByText(/\/home\/user\/.bodhi/).length).toBeGreaterThan(0);
   });
 
   it('shows setting source badges', async () => {

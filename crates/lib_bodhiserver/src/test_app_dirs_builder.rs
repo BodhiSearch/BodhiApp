@@ -41,7 +41,7 @@ fn test_create_bodhi_home_from_home_dir(temp_dir: TempDir) -> anyhow::Result<()>
     &options.env_type,
     &file_defaults,
   )?;
-  let expected_path = temp_dir.path().join(".cache").join("bodhi-dev");
+  let expected_path = temp_dir.path().join(".bodhi-dev");
   assert_eq!(source, services::SettingSource::Default);
   assert_eq!(result_path, expected_path);
   assert!(expected_path.exists());
@@ -162,7 +162,7 @@ fn test_find_bodhi_home_invalid_file_default_falls_back(temp_dir: TempDir) -> an
     &file_defaults,
   )?;
 
-  let expected_path = temp_dir.path().join(".cache").join("bodhi-dev");
+  let expected_path = temp_dir.path().join(".bodhi-dev");
   assert_eq!(result_path, expected_path);
   assert_eq!(source, SettingSource::Default);
   Ok(())

@@ -34,7 +34,7 @@ export function mockSettingsDefault() {
     {
       key: 'BODHI_HOME',
       current_value: '/home/user/.bodhi',
-      default_value: '/home/user/.cache/bodhi',
+      default_value: '/home/user/.bodhi',
       source: 'default',
       metadata: {
         type: 'string',

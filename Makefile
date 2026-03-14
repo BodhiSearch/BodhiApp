@@ -127,7 +127,7 @@ run.native: ## Run native app in development mode
 	cd crates/bodhi/src-tauri && cargo tauri dev
 
 app.clear: ## Clear the app data folders
-	rm -rf ~/.cache/bodhi-dev-makefile
+	rm -rf ~/.bodhi-dev-makefile
 
 app.clean-run:
 	cd crates/bodhi && npm run build && cd ../../ && $(MAKE) app.run
@@ -136,14 +136,14 @@ app.run: ## Run the BodhiApp
 	BODHI_ENCRYPTION_KEY=dummy-key \
 		BODHI_LOG_LEVEL=info \
 		BODHI_LOG_STDOUT=true \
-		BODHI_HOME=~/.cache/bodhi-dev-makefile \
+		BODHI_HOME=~/.bodhi-dev-makefile \
 		cargo run --bin bodhi -- serve --port 1135
 
 app.run.pg: dev.deps.up ## Run the BodhiApp with PostgreSQL dev databases
 	BODHI_ENCRYPTION_KEY=dummy-key \
 		BODHI_LOG_LEVEL=info \
 		BODHI_LOG_STDOUT=true \
-		BODHI_HOME=~/.cache/bodhi-dev-makefile \
+		BODHI_HOME=~/.bodhi-dev-makefile \
 		BODHI_APP_DB_URL=postgres://bodhi_dev:bodhi_dev@localhost:34320/bodhi_app \
 		BODHI_SESSION_DB_URL=postgres://bodhi_dev:bodhi_dev@localhost:34321/bodhi_sessions \
 		cargo run --bin bodhi -- serve --port 1135

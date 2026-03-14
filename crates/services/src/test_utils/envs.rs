@@ -124,7 +124,7 @@ impl SettingServiceStub {
   }
 
   fn setup(home: &Path) -> HashMap<String, String> {
-    let bodhi = home.join(".cache").join("bodhi");
+    let bodhi = home.join(".bodhi");
     std::fs::create_dir_all(&bodhi).unwrap();
     let hf_home = home.join(".cache").join("huggingface");
     std::fs::create_dir_all(&hf_home).unwrap();

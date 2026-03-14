@@ -33,7 +33,7 @@ See [CLAUDE.md](CLAUDE.md) for architectural guidance.
 `setup_app_dirs(options: &AppOptions)` returns `(PathBuf, SettingSource, HashMap<String, Value>)`:
 
 1. Load `defaults.yaml` from the executable directory (optional, silently empty if missing).
-2. Resolve BODHI_HOME: env var > `defaults.yaml` > `~/.cache/bodhi[-dev]` > error `BodhiHomeNotResolved`.
+2. Resolve BODHI_HOME: env var > `defaults.yaml` > `~/.bodhi[-dev]` > error `BodhiHomeNotResolved`.
 3. Create the BODHI_HOME directory if absent.
 
 `setup_bootstrap_service(options, bodhi_home, source, file_defaults, command)` returns `BootstrapService`:

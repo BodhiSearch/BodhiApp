@@ -189,13 +189,12 @@ async fn test_setting_service_init_with_defaults(temp_dir: TempDir) -> anyhow::R
   for (key, expected) in [
     (
       BODHI_HOME,
-      home_dir.join(".cache").join("bodhi").display().to_string(),
+      home_dir.join(".bodhi").display().to_string(),
     ),
     (
       BODHI_LOGS,
       home_dir
-        .join(".cache")
-        .join("bodhi")
+        .join(".bodhi")
         .join("logs")
         .display()
         .to_string(),

@@ -11,9 +11,9 @@ If you encounter issues with Bodhi App, this guide can help you diagnose and res
 ## Startup Issues
 
 - **Bodhi Home Directory:**  
-  Bodhi App sets up its home directory inside `$HOME/.cache/bodhi`. If access to this folder is denied or if it isn't writable, the app may crash during startup.  
+  Bodhi App sets up its home directory inside `$HOME/.bodhi`. If access to this folder is denied or if it isn't writable, the app may crash during startup.
   **Solution:**
-  - Verify that the `$HOME/.cache/bodhi` folder exists and has the correct permissions.
+  - Verify that the `$HOME/.bodhi` folder exists and has the correct permissions.
   - Ensure you have read/write access to this directory.
 
 - **Keychain Access (macOS):**  

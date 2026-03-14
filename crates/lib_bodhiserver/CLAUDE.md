@@ -25,7 +25,7 @@ Embeddable server library: service composition (`AppServiceBuilder`), applicatio
 ### setup_app_dirs (`src/app_dirs_builder.rs`)
 - `setup_app_dirs(options: &AppOptions)` -- returns `(PathBuf, SettingSource, HashMap<String, Value>)` (bodhi_home, source, file_defaults)
 - `setup_bootstrap_service(options, bodhi_home, source, file_defaults, command)` -- returns `BootstrapService`
-- `create_bodhi_home()` -- resolves: env var > defaults.yaml > `~/.cache/bodhi[-dev]`
+- `create_bodhi_home()` -- resolves: env var > defaults.yaml > `~/.bodhi[-dev]`
 
 ### BootstrapService (`src/bootstrap_service.rs`)
 - Holds pre-computed bootstrap-critical values: `bodhi_home`, `logs_dir`, `log_level`, `log_stdout`
