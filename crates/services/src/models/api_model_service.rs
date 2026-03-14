@@ -142,9 +142,17 @@ impl ApiModelService for DefaultApiModelService {
       .await?
       .is_some();
 
-    // NOTE: For forward_all models, cache population should be handled by a proper
-    // async job/queue system. The previous spawn_cache_refresh has been removed as
-    // it was a fire-and-forget pattern that couldn't be properly tested or monitored.
+    if api_alias.forward_all_with_prefix {
+      spawn_cache_refresh(
+        self.db_service.clone(),
+        self.ai_api_service.clone(),
+        self.time_service.clone(),
+        tenant_id.to_string(),
+        user_id.to_string(),
+        api_alias.id.clone(),
+        api_alias.base_url.clone(),
+      );
+    }
 
     Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
   }
@@ -191,6 +199,18 @@ impl ApiModelService for DefaultApiModelService {
       .get_api_key_for_alias(tenant_id, user_id, id)
       .await?
       .is_some();
+
+    if api_alias.forward_all_with_prefix {
+      spawn_cache_refresh(
+        self.db_service.clone(),
+        self.ai_api_service.clone(),
+        self.time_service.clone(),
+        tenant_id.to_string(),
+        user_id.to_string(),
+        api_alias.id.clone(),
+        api_alias.base_url.clone(),
+      );
+    }
 
     Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
   }
@@ -292,6 +312,30 @@ impl ApiModelService for DefaultApiModelService {
 // =============================================================================
 // Shared validation helper
 // =============================================================================
+
+fn spawn_cache_refresh(
+  db_service: Arc<dyn DbService>,
+  ai_api_service: Arc<dyn AiApiService>,
+  time_service: Arc<dyn TimeService>,
+  tenant_id: String,
+  user_id: String,
+  alias_id: String,
+  base_url: String,
+) {
+  tokio::spawn(async move {
+    let api_key = db_service
+      .get_api_key_for_alias(&tenant_id, &user_id, &alias_id)
+      .await
+      .ok()
+      .flatten();
+    if let Ok(models) = ai_api_service.fetch_models(api_key, &base_url).await {
+      let now = time_service.utc_now();
+      let _ = db_service
+        .update_api_model_cache(&tenant_id, &alias_id, models, now)
+        .await;
+    }
+  });
+}
 
 fn validate_forward_all(form: &ApiModelRequest) -> Result<(), ApiModelServiceError> {
   if form.forward_all_with_prefix {

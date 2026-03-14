@@ -19,6 +19,9 @@ mod progress_tracking;
 #[path = "test_api_alias_repository.rs"]
 mod test_api_alias_repository;
 #[cfg(test)]
+#[path = "test_api_model_service.rs"]
+mod test_api_model_service;
+#[cfg(test)]
 #[path = "test_api_alias_repository_isolation.rs"]
 mod test_api_alias_repository_isolation;
 #[cfg(test)]
