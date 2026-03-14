@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Wrench } from
 
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { decodeMcpToolName } from '@/lib/mcps';
 import { decodeToolName } from '@/lib/toolsets';
 import { cn } from '@/lib/utils';
 import { Message, ToolCall } from '@/types/chat';
@@ -78,9 +79,10 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
     }
   }, [status, forceOpen]);
 
-  const decoded = decodeToolName(toolCall.function.name);
-  const toolName = decoded?.method || toolCall.function.name;
-  const toolsetSlug = decoded?.toolsetSlug || 'unknown';
+  const toolsetDecoded = decodeToolName(toolCall.function.name);
+  const mcpDecoded = decodeMcpToolName(toolCall.function.name);
+  const toolName = toolsetDecoded?.method ?? mcpDecoded?.toolName ?? toolCall.function.name;
+  const sourceSlug = toolsetDecoded?.toolsetSlug ?? mcpDecoded?.mcpSlug ?? 'unknown';
   const statusConfig = getStatusConfig(status);
 
   // Parse result content for display
@@ -100,7 +102,7 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
             </div>
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium">{toolName}</span>
-              <span className="text-xs text-muted-foreground">{toolsetSlug}</span>
+              <span className="text-xs text-muted-foreground">{sourceSlug}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">

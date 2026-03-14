@@ -40,6 +40,7 @@ export interface Chat {
   model?: string;
   settings?: ChatSettings;
   enabledTools?: Record<string, string[]>;
+  enabledMcpTools?: Record<string, string[]>;
 }
 
 export interface ChatSettings {

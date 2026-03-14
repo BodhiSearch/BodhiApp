@@ -85,6 +85,10 @@ export class RESTPage {
     }
   }
 
+  async getError() {
+    return await this.page.locator(this.selectors.error).textContent();
+  }
+
   async getState() {
     return await this.page.locator(this.selectors.section).getAttribute('data-test-state');
   }

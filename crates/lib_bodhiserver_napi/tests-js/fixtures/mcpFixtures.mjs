@@ -106,6 +106,27 @@ export class McpFixtures {
     };
   }
 
+  static EXA_MCP_URL = 'https://mcp.exa.ai/mcp';
+  static EXA_EXPECTED_TOOL = 'web_search_exa';
+
+  static createExaServerData() {
+    const ts = Date.now();
+    return {
+      url: McpFixtures.EXA_MCP_URL,
+      name: `Exa-Server-${ts}`,
+      description: 'Exa MCP Server (public, no auth)',
+    };
+  }
+
+  static createExaInstanceData() {
+    const ts = Date.now();
+    return {
+      name: `Exa-${ts}`,
+      slug: `exa-${ts}`,
+      description: 'Exa search MCP instance',
+    };
+  }
+
   static OAUTH_DCR_PORT = process.env.TEST_MCP_OAUTH_DCR_PORT || '55175';
   static OAUTH_DCR_MCP_URL = `http://localhost:${McpFixtures.OAUTH_DCR_PORT}/mcp`;
   static OAUTH_DCR_SERVER_BASE = `http://localhost:${McpFixtures.OAUTH_DCR_PORT}`;

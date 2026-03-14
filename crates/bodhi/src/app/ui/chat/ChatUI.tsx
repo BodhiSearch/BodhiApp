@@ -5,6 +5,7 @@ import { FormEvent, RefObject, useEffect, useRef, memo, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 
 import { ChatMessage } from '@/app/ui/chat/ChatMessage';
+import { McpsPopover } from '@/app/ui/chat/McpsPopover';
 import { ToolsetsPopover } from '@/app/ui/chat/ToolsetsPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
@@ -12,9 +13,11 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useChat } from '@/hooks/use-chat';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
+import { useMcpSelection } from '@/hooks/use-mcp-selection';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useToolsetSelection } from '@/hooks/use-toolset-selection';
+import { useMcps } from '@/hooks/useMcps';
 import { useToolsets } from '@/hooks/useToolsets';
 import { cn } from '@/lib/utils';
 import { Message } from '@/types/chat';
@@ -38,6 +41,9 @@ interface ChatInputProps {
   enabledTools: Record<string, string[]>;
   onToggleTool: (toolsetId: string, toolName: string) => void;
   onToggleToolset: (toolsetId: string, allToolNames: string[]) => void;
+  enabledMcpTools: Record<string, string[]>;
+  onToggleMcpTool: (mcpId: string, toolName: string) => void;
+  onToggleMcp: (mcpId: string, allToolNames: string[]) => void;
 }
 
 const ChatInput = memo(function ChatInput({
@@ -50,6 +56,9 @@ const ChatInput = memo(function ChatInput({
   enabledTools,
   onToggleTool,
   onToggleToolset,
+  enabledMcpTools,
+  onToggleMcpTool,
+  onToggleMcp,
 }: ChatInputProps) {
   const { createNewChat } = useChatDB();
   const getTestId = useResponsiveTestId();
@@ -84,6 +93,13 @@ const ChatInput = memo(function ChatInput({
               onToggleToolset={onToggleToolset}
               disabled={streamLoading}
             />
+
+            <McpsPopover
+              enabledMcpTools={enabledMcpTools}
+              onToggleTool={onToggleMcpTool}
+              onToggleMcp={onToggleMcp}
+              disabled={streamLoading}
+            />
           </div>
 
           <form onSubmit={handleSubmit} className="flex w-full items-center" data-testid={getTestId('chat-form')}>
@@ -91,7 +107,7 @@ const ChatInput = memo(function ChatInput({
               ref={inputRef}
               data-testid={getTestId('chat-input')}
               className={cn(
-                'flex-1 resize-none bg-transparent pl-24 pr-12 py-3 text-sm outline-none disabled:opacity-50',
+                'flex-1 resize-none bg-transparent pl-32 pr-12 py-3 text-sm outline-none disabled:opacity-50',
                 !isModelSelected && 'ring-2 ring-destructive'
               )}
               rows={1}
@@ -228,6 +244,16 @@ export function ChatUI() {
   const toolsets = useMemo(() => toolsetsResponse?.toolsets || [], [toolsetsResponse?.toolsets]);
   const toolsetTypes = useMemo(() => toolsetsResponse?.toolset_types || [], [toolsetsResponse?.toolset_types]);
 
+  // MCP selection
+  const {
+    enabledTools: enabledMcpTools,
+    toggleTool: toggleMcpTool,
+    toggleToolset: toggleMcp,
+    setEnabledTools: setEnabledMcpTools,
+  } = useMcpSelection();
+  const { data: mcpsResponse } = useMcps();
+  const mcps = useMemo(() => mcpsResponse?.mcps || [], [mcpsResponse?.mcps]);
+
   // Create scope enabled map from toolset_types
   const scopeEnabledMap = useMemo(() => {
     const map = new Map<string, boolean>();
@@ -260,7 +286,39 @@ export function ChatUI() {
     }
   }, [toolsets, scopeEnabledMap, enabledTools, setEnabledTools]);
 
-  // Chat with toolsets support
+  // Auto-filter unavailable MCPs from selection
+  useEffect(() => {
+    if (mcps.length === 0) return;
+
+    const availableIds = new Set(
+      mcps
+        .filter(
+          (m) =>
+            m.mcp_server.enabled &&
+            m.enabled &&
+            m.tools_cache != null &&
+            m.tools_cache.length > 0 &&
+            (m.tools_filter == null || m.tools_filter.length > 0)
+        )
+        .map((m) => m.id)
+    );
+
+    const filtered: Record<string, string[]> = {};
+    let hasUnavailable = false;
+    for (const [id, tools] of Object.entries(enabledMcpTools)) {
+      if (availableIds.has(id)) {
+        filtered[id] = tools;
+      } else {
+        hasUnavailable = true;
+      }
+    }
+
+    if (hasUnavailable) {
+      setEnabledMcpTools(filtered);
+    }
+  }, [mcps, enabledMcpTools, setEnabledMcpTools]);
+
+  // Chat with toolsets + MCPs support
   const {
     input,
     setInput,
@@ -273,6 +331,8 @@ export function ChatUI() {
     enabledTools,
     toolsets,
     toolsetTypes,
+    enabledMcpTools,
+    mcps,
   });
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -338,6 +398,9 @@ export function ChatUI() {
         enabledTools={enabledTools}
         onToggleTool={toggleTool}
         onToggleToolset={toggleToolset}
+        enabledMcpTools={enabledMcpTools}
+        onToggleMcpTool={toggleMcpTool}
+        onToggleMcp={toggleMcp}
       />
     </div>
   );

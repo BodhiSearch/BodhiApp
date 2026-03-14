@@ -54,6 +54,18 @@ export class ChatPage extends BasePage {
     toolsetCheckbox: (toolsetType) =>
       `[data-testid-type="${toolsetType}"] [data-testid^="toolset-checkbox-"]`,
     toolsetsBadge: '[data-testid="toolsets-badge"]',
+
+    // MCPs popover elements
+    mcpsPopoverTrigger: '[data-testid="mcps-popover-trigger"]',
+    mcpsPopoverContent: '[data-testid="mcps-popover-content"]',
+    mcpsBadge: '[data-testid="mcps-badge"]',
+    mcpsEmptyState: '[data-testid="mcps-empty-state"]',
+    mcpRow: (id) => `[data-testid="mcp-row-${id}"]`,
+    mcpExpand: (id) => `[data-testid="mcp-expand-${id}"]`,
+    mcpCheckbox: (id) => `[data-testid="mcp-checkbox-${id}"]`,
+    mcpItem: (id) => `[data-testid="mcp-item-${id}"]`,
+    mcpToolRow: (mcpId, toolName) => `[data-testid="mcp-tool-row-${mcpId}-${toolName}"]`,
+    mcpToolCheckbox: (mcpId, toolName) => `[data-testid="mcp-tool-checkbox-${mcpId}-${toolName}"]`,
   };
 
   /**
@@ -611,5 +623,74 @@ export class ChatPage extends BasePage {
       (await popoverContent.getByText('Loading...').count()) > 0 ||
       (await popoverContent.getByText('No toolsets available').count()) > 0;
     expect(hasContent).toBe(true);
+  }
+
+  // MCPs Popover interactions
+
+  async openMcpsPopover() {
+    await this.page.locator(this.selectors.mcpsPopoverTrigger).click();
+    await expect(this.page.locator(this.selectors.mcpsPopoverContent)).toBeVisible();
+  }
+
+  async closeMcpsPopover() {
+    await this.page.keyboard.press('Escape');
+    await expect(this.page.locator(this.selectors.mcpsPopoverContent)).not.toBeVisible();
+  }
+
+  async expectMcpsPopoverTriggerVisible() {
+    const trigger = this.page.locator(this.selectors.mcpsPopoverTrigger);
+    await expect(trigger).toBeVisible();
+  }
+
+  async expectMcpsPopoverOpen() {
+    const popoverContent = this.page.locator(this.selectors.mcpsPopoverContent);
+    await expect(popoverContent).toBeVisible();
+    await expect(popoverContent.locator('h4')).toContainText('MCPs');
+  }
+
+  async expectMcpInPopover(mcpId) {
+    const popoverContent = this.page.locator(this.selectors.mcpsPopoverContent);
+    const mcpRow = popoverContent.locator(this.selectors.mcpRow(mcpId));
+    await expect(mcpRow).toBeVisible();
+  }
+
+  async expandMcp(mcpId) {
+    await this.page.locator(this.selectors.mcpExpand(mcpId)).click();
+  }
+
+  async enableMcp(mcpId) {
+    const checkbox = this.page.locator(this.selectors.mcpCheckbox(mcpId));
+    await expect(checkbox).toBeEnabled();
+    await checkbox.click();
+  }
+
+  async enableMcpTool(mcpId, toolName) {
+    const checkbox = this.page.locator(this.selectors.mcpToolCheckbox(mcpId, toolName));
+    await expect(checkbox).toBeEnabled();
+    await checkbox.click();
+  }
+
+  async expectMcpCheckboxChecked(mcpId) {
+    const checkbox = this.page.locator(this.selectors.mcpCheckbox(mcpId));
+    await expect(checkbox).toBeChecked();
+  }
+
+  async expectMcpBadgeVisible(count) {
+    const badge = this.page.locator(this.selectors.mcpsBadge);
+    await expect(badge).toBeVisible();
+    await expect(badge).toContainText(count.toString());
+  }
+
+  async expectMcpBadgeNotVisible() {
+    const badge = this.page.locator(this.selectors.mcpsBadge);
+    await expect(badge).not.toBeVisible();
+  }
+
+  async expectMcpsEmptyState() {
+    await expect(this.page.locator(this.selectors.mcpsEmptyState)).toBeVisible();
+  }
+
+  async waitForMcpsToLoad() {
+    await this.page.waitForSelector('[data-testid^="mcp-item-"]', { timeout: 15000 });
   }
 }

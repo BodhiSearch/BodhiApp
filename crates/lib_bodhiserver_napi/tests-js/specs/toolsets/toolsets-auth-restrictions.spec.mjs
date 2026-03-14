@@ -480,7 +480,7 @@ test.describe(
       await sessionContext.close();
     });
 
-    test('GET and PUT /toolsets/{id} with OAuth token returns 401 (session-only)', async ({
+    test('GET and PUT /toolsets/{id} with OAuth token is blocked by CORS (session-only)', async ({
       page,
       sharedServerUrl,
     }) => {
@@ -522,17 +522,19 @@ test.describe(
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
 
-      await test.step('Verify OAuth token is blocked for GET /toolsets/{id}', async () => {
+      await test.step('Verify GET /toolsets/{id} is blocked by restrictive CORS', async () => {
         await app.rest.navigateTo();
 
         await app.rest.sendRequest({
           method: 'GET',
           url: `/bodhi/v1/toolsets/${toolsetUuid}`,
         });
-        expect(await app.rest.getResponseStatus()).toBe(401);
+        // Session-only endpoints have restrictive CORS — cross-origin preflight fails
+        expect(await app.rest.getState()).toBe('error');
+        expect(await app.rest.getError()).toContain('Failed to fetch');
       });
 
-      await test.step('Verify OAuth token is blocked for PUT /toolsets/{id}', async () => {
+      await test.step('Verify PUT /toolsets/{id} is blocked by restrictive CORS', async () => {
         await app.rest.sendRequest({
           method: 'PUT',
           url: `/bodhi/v1/toolsets/${toolsetUuid}`,
@@ -544,7 +546,9 @@ test.describe(
             api_key: { action: 'Keep' },
           }),
         });
-        expect(await app.rest.getResponseStatus()).toBe(401);
+        // Session-only endpoints have restrictive CORS — cross-origin preflight fails
+        expect(await app.rest.getState()).toBe('error');
+        expect(await app.rest.getError()).toContain('Failed to fetch');
       });
     });
   }
