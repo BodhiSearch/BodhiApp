@@ -4,8 +4,8 @@ use crate::BootstrapService;
 use serde_yaml::Value;
 use services::{AppCommand, EnvType, Setting, SettingMetadata, SettingSource};
 use services::{
-  EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_COMMIT_SHA, BODHI_ENV_TYPE,
-  BODHI_HOME, BODHI_VERSION, SETTINGS_YAML,
+  EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_COMMIT_SHA, BODHI_DEPLOYMENT,
+  BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, SETTINGS_YAML,
 };
 use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc};
 use tracing::{info, warn};
@@ -61,8 +61,18 @@ pub fn setup_bootstrap_service(
     .get(BODHI_COMMIT_SHA)
     .map(|v| v.as_str())
     .unwrap_or(None);
-  let system_settings =
-    build_system_settings(options, app_version, app_commit_sha, &bodhi_home, &source);
+  let deployment_mode = file_defaults
+    .get(BODHI_DEPLOYMENT)
+    .map(|v| v.as_str())
+    .unwrap_or(None);
+  let system_settings = build_system_settings(
+    options,
+    app_version,
+    app_commit_sha,
+    deployment_mode,
+    &bodhi_home,
+    &source,
+  );
   let bootstrap_service = BootstrapService::new(
     options.env_wrapper.clone(),
     system_settings,
@@ -79,6 +89,7 @@ fn build_system_settings(
   options: &AppOptions,
   app_version: Option<&str>,
   app_commit_sha: Option<&str>,
+  deployment_mode: Option<&str>,
   bodhi_home: &PathBuf,
   source: &SettingSource,
 ) -> Vec<Setting> {
@@ -130,6 +141,16 @@ fn build_system_settings(
     Setting {
       key: BODHI_AUTH_REALM.to_string(),
       value: serde_yaml::Value::String(options.auth_realm.clone()),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
+    Setting {
+      key: BODHI_DEPLOYMENT.to_string(),
+      value: serde_yaml::Value::String(
+        deployment_mode
+          .unwrap_or(&options.deployment_mode.to_string())
+          .to_string(),
+      ),
       source: SettingSource::System,
       metadata: SettingMetadata::String,
     },

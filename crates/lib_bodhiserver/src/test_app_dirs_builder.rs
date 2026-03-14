@@ -69,6 +69,7 @@ fn test_find_bodhi_home_fails_when_not_found() -> anyhow::Result<()> {
     "unknown".to_string(),
     "http://localhost:8080".to_string(),
     "bodhi".to_string(),
+    services::DeploymentMode::default(),
     HashMap::new(),
     None,
   );

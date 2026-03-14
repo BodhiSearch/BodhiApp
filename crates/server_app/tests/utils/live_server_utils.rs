@@ -121,6 +121,12 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
       source: SettingSource::System,
       metadata: SettingMetadata::String,
     },
+    Setting {
+      key: BODHI_DEPLOYMENT.to_string(),
+      value: YamlValue::String("standalone".to_string()),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
   ];
 
   // Create SQLite databases early (before setting_service, which needs db_service)
@@ -517,6 +523,12 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     Setting {
       key: BODHI_AUTH_REALM.to_string(),
       value: YamlValue::String(realm.clone()),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
+    Setting {
+      key: BODHI_DEPLOYMENT.to_string(),
+      value: YamlValue::String("standalone".to_string()),
       source: SettingSource::System,
       metadata: SettingMetadata::String,
     },

@@ -1,7 +1,8 @@
 use crate::{
   create_napi_app_options, set_env_var, set_system_setting, NapiAppOptions, BODHI_APP_TYPE,
-  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH,
-  BODHI_HOME, BODHI_HOST, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_VERSION,
+  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
+  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT,
+  BODHI_VERSION,
 };
 use rstest::fixture;
 use services::test_utils::temp_dir;
@@ -50,6 +51,11 @@ pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
     "https://test-id.getbodhi.app".to_string(),
   );
   config = set_system_setting(config, BODHI_AUTH_REALM.to_string(), "bodhiapp".to_string());
+  config = set_system_setting(
+    config,
+    BODHI_DEPLOYMENT.to_string(),
+    "standalone".to_string(),
+  );
 
   // Set optional configurations
   config = set_env_var(config, BODHI_EXEC_LOOKUP_PATH.to_string(), exec_lookup_path);

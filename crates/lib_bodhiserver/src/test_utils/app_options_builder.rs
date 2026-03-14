@@ -1,6 +1,6 @@
 use crate::AppOptionsBuilder;
 use services::BODHI_HOME;
-use services::{AppType, EnvType};
+use services::{AppType, DeploymentMode, EnvType};
 
 impl AppOptionsBuilder {
   /// Creates a development configuration builder for testing
@@ -11,6 +11,7 @@ impl AppOptionsBuilder {
       .app_version(env!("CARGO_PKG_VERSION"))
       .auth_url("https://test-id.getbodhi.app")
       .auth_realm("bodhi")
+      .deployment_mode(DeploymentMode::Standalone)
   }
 
   /// Creates a builder with a specific bodhi home directory for testing

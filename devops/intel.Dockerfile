@@ -39,6 +39,9 @@ HF_HOME: /data/hf_home
 BODHI_VERSION: ${BODHI_VERSION}
 BODHI_COMMIT_SHA: ${BODHI_COMMIT_SHA}
 
+# Deployment mode
+BODHI_DEPLOYMENT: standalone
+
 # Server configuration
 BODHI_HOST: "0.0.0.0"
 BODHI_PORT: 8080

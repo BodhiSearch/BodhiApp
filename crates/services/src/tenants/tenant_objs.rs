@@ -2,8 +2,20 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default, ToSchema)]
+#[derive(
+  Debug,
+  Clone,
+  PartialEq,
+  Eq,
+  Serialize,
+  Deserialize,
+  Default,
+  ToSchema,
+  strum::Display,
+  strum::EnumString,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum DeploymentMode {
   #[default]
   Standalone,

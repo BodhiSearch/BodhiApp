@@ -30,7 +30,7 @@ pub use routes_app::{ApiError, OpenAIApiError};
 pub use services::{AppError, ErrorType};
 
 // Settings/config types from services crate
-pub use services::{AppCommand, AppType, EnvType, LogLevel};
+pub use services::{AppCommand, AppType, DeploymentMode, EnvType, LogLevel};
 
 // Service interfaces and implementations from services crate
 pub use services::{
@@ -46,6 +46,7 @@ pub use services::{
   BODHI_AUTH_REALM,
   BODHI_AUTH_URL,
   BODHI_COMMIT_SHA,
+  BODHI_DEPLOYMENT,
   BODHI_ENCRYPTION_KEY,
   BODHI_ENV_TYPE,
   BODHI_EXEC_LOOKUP_PATH,

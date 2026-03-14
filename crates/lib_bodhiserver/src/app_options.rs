@@ -1,8 +1,8 @@
 use crate::{BootstrapError, DefaultEnvWrapper};
-use services::{AppType, EnvType};
+use services::{AppType, DeploymentMode, EnvType};
 use services::{
   EnvWrapper, Tenant, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_COMMIT_SHA,
-  BODHI_ENV_TYPE, BODHI_VERSION,
+  BODHI_DEPLOYMENT, BODHI_ENV_TYPE, BODHI_VERSION,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -25,6 +25,8 @@ pub struct AppOptions {
   pub auth_url: String,
   /// Authentication realm
   pub auth_realm: String,
+  /// Deployment mode (Standalone or MultiTenant)
+  pub deployment_mode: DeploymentMode,
   /// App settings (configurable via settings.yaml)
   pub app_settings: HashMap<String, String>,
   /// Tenant with OAuth credentials and status (optional)
@@ -44,6 +46,7 @@ pub struct AppOptionsBuilder {
   app_commit_sha: Option<String>,
   auth_url: Option<String>,
   auth_realm: Option<String>,
+  deployment_mode: Option<DeploymentMode>,
 
   // Configuration fields
   app_settings: HashMap<String, String>,
@@ -81,6 +84,10 @@ impl AppOptionsBuilder {
       BODHI_COMMIT_SHA => Ok(self.app_commit_sha(value)),
       BODHI_AUTH_URL => Ok(self.auth_url(value)),
       BODHI_AUTH_REALM => Ok(self.auth_realm(value)),
+      BODHI_DEPLOYMENT => {
+        let deployment_mode = value.parse::<DeploymentMode>()?;
+        Ok(self.deployment_mode(deployment_mode))
+      }
       key => Err(BootstrapError::UnknownSystemSetting(key.to_string())),
     }
   }
@@ -115,6 +122,11 @@ impl AppOptionsBuilder {
     self
   }
 
+  pub fn deployment_mode(mut self, deployment_mode: DeploymentMode) -> Self {
+    self.deployment_mode = Some(deployment_mode);
+    self
+  }
+
   /// Sets tenant with OAuth credentials and status
   pub fn set_tenant(mut self, instance: Tenant) -> Self {
     self.tenant = Some(instance);
@@ -146,6 +158,9 @@ impl AppOptionsBuilder {
       auth_realm: self
         .auth_realm
         .ok_or_else(|| BootstrapError::ValidationError(BODHI_AUTH_REALM.to_string()))?,
+      deployment_mode: self
+        .deployment_mode
+        .ok_or_else(|| BootstrapError::ValidationError(BODHI_DEPLOYMENT.to_string()))?,
       app_settings: self.app_settings,
       tenant: self.tenant,
     })

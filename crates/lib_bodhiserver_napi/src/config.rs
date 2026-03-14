@@ -334,6 +334,11 @@ mod tests {
       "http://localhost:8080".to_string(),
     );
     config = set_system_setting(config, BODHI_AUTH_REALM.to_string(), "bodhi".to_string());
+    config = set_system_setting(
+      config,
+      BODHI_DEPLOYMENT.to_string(),
+      "standalone".to_string(),
+    );
 
     let _ = try_build_app_options_internal(config)?;
     Ok(())
@@ -370,6 +375,11 @@ mod tests {
       "http://localhost:8080".to_string(),
     );
     config = set_system_setting(config, BODHI_AUTH_REALM.to_string(), "bodhi".to_string());
+    config = set_system_setting(
+      config,
+      BODHI_DEPLOYMENT.to_string(),
+      "standalone".to_string(),
+    );
     config = set_client_credentials(config, "client123".to_string(), "secret456".to_string());
     config = set_app_status(config, "ready".to_string()).unwrap();
     config = set_created_by(config, "test-user-id".to_string());

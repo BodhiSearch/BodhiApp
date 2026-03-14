@@ -82,8 +82,8 @@ async function main() {
     clientId = mtConfig.tenantId;
     clientSecret = mtConfig.tenantSecret;
     createdBy = process.env.INTEG_TEST_USERNAME_ID;
-    // Set multi-tenant settings as env vars (SettingService reads these via get_setting/get_env)
-    envVars[bindings.BODHI_DEPLOYMENT] = 'multi_tenant';
+    // BODHI_DEPLOYMENT is now a system setting (not env var)
+    // Dashboard credentials remain as env vars
     envVars[bindings.BODHI_MULTITENANT_CLIENT_ID] = mtConfig.dashboardClientId;
     envVars[bindings.BODHI_MULTITENANT_CLIENT_SECRET] = mtConfig.dashboardClientSecret;
   } else {
@@ -99,6 +99,12 @@ async function main() {
       ? `[do-not-delete] Test ${process.env.INTEG_TEST_USERNAME || 'user@email.com'} tenant`
       : null;
 
+  // Build system settings for deployment mode
+  const systemSettings = {};
+  if (deployment === 'multi_tenant') {
+    systemSettings[bindings.BODHI_DEPLOYMENT] = 'multi_tenant';
+  }
+
   console.log(`Creating ${dbType} server (${deployment}) with configuration...`);
   const serverOptions = {
     port,
@@ -111,6 +117,7 @@ async function main() {
     createdBy,
     tenantName,
     envVars,
+    systemSettings,
   };
 
   // Add DB URLs for postgres (uses db-config.mjs as single source of truth)

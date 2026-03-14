@@ -9,11 +9,12 @@ use services::{
   AccessRequestService, AiApiService, AuthService, BootstrapParts, CacheService, DataService,
   DefaultAccessRequestService, DefaultAiApiService, DefaultAppService, DefaultExaService,
   DefaultMcpService, DefaultNetworkService, DefaultSessionService, DefaultSettingService,
-  DefaultTenantService, DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue,
-  KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService, McpService,
-  MokaCacheService, MultiTenantDataService, NetworkService, QueueConsumer, QueueProducer,
-  RefreshWorker, SessionService, SettingService, SystemKeyringStore, TenantService, ToolService,
-  BODHI_APP_DB_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
+  DefaultTenantService, DefaultToolService, DeploymentMode, ExaService, HfHubService, HubService,
+  InMemoryQueue, KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService,
+  McpService, MokaCacheService, MultiTenantDataService, NetworkService, QueueConsumer,
+  QueueProducer, RefreshWorker, SessionService, SettingService, SystemKeyringStore, TenantService,
+  ToolService, BODHI_APP_DB_URL, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN,
+  PROD_DB,
 };
 use std::sync::Arc;
 
@@ -117,14 +118,24 @@ impl AppServiceBuilder {
     )
     .await?;
 
+    let deployment_mode = parts
+      .system_settings
+      .iter()
+      .find(|s| s.key == BODHI_DEPLOYMENT)
+      .and_then(|s| s.value.as_str())
+      .map(|v| {
+        v.parse::<DeploymentMode>()
+          .expect("BODHI_DEPLOYMENT system setting should be a valid DeploymentMode")
+      })
+      .expect("BODHI_DEPLOYMENT must be present in system settings");
+    let is_multi_tenant = deployment_mode == DeploymentMode::MultiTenant;
+
     let setting_service: Arc<dyn SettingService> =
       Arc::new(DefaultSettingService::from_parts(parts, db_service.clone()));
 
     let hub_service = Self::build_hub_service(&setting_service).await?;
     let tenant_service: Arc<dyn TenantService> =
       Arc::new(DefaultTenantService::new(db_service.clone()));
-
-    let is_multi_tenant = setting_service.is_multi_tenant().await;
 
     let data_service: Arc<dyn DataService> = if is_multi_tenant {
       Arc::new(MultiTenantDataService::new(db_service.clone()))
