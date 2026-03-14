@@ -187,7 +187,7 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
 
       await app.rest.sendRequest({
         method: 'GET',
-        url: `/bodhi/v1/mcps/${mcpInstanceId}`,
+        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}`,
       });
       expect(await app.rest.getResponseStatus()).toBe(200);
       const mcpData = await app.rest.getResponse();
@@ -198,7 +198,7 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
     await test.step('Phase 5: Execute echo tool via REST API as 3rd party', async () => {
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${mcpInstanceId}/tools/${McpFixtures.OAUTH_EXPECTED_TOOL}/execute`,
+        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/${McpFixtures.OAUTH_EXPECTED_TOOL}/execute`,
         body: JSON.stringify({
           params: { text: 'Hello from 3rd party' },
         }),

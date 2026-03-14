@@ -2,7 +2,7 @@ use crate::mcps::{
   FetchMcpToolsRequest, McpAuth, McpExecuteRequest, McpExecuteResponse, McpRouteError,
   McpToolsResponse, ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS,
 };
-use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_MCPS};
+use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_APPS, API_TAG_MCPS, ENDPOINT_APPS_MCPS};
 use axum::{extract::Path, http::StatusCode, Json};
 use services::{
   ApprovalStatus, ApprovedResources, AuthContext, Mcp, McpRequest, McpWithServerEntity,
@@ -315,6 +315,94 @@ pub async fn mcps_execute_tool(
     result: exec_response.result,
     error: exec_response.error,
   }))
+}
+
+// ============================================================================
+// External App (/apps/) Wrappers
+// ============================================================================
+
+/// List MCP instances accessible to the authenticated external app
+#[utoipa::path(
+  get,
+  path = ENDPOINT_APPS_MCPS,
+  tag = API_TAG_APPS,
+  operation_id = "appsListMcps",
+  responses(
+    (status = 200, description = "List of MCP instances accessible to the external app", body = ListMcpsResponse),
+  ),
+  security(("bearer_oauth_token" = []))
+)]
+pub async fn apps_mcps_index(auth_scope: AuthScope) -> Result<Json<ListMcpsResponse>, ApiError> {
+  mcps_index(auth_scope).await
+}
+
+/// Get a specific MCP instance by ID via external app
+#[utoipa::path(
+  get,
+  path = ENDPOINT_APPS_MCPS.to_owned() + "/{id}",
+  tag = API_TAG_APPS,
+  operation_id = "appsGetMcp",
+  params(
+    ("id" = String, Path, description = "MCP instance UUID")
+  ),
+  responses(
+    (status = 200, description = "MCP instance", body = Mcp),
+    (status = 404, description = "MCP not found"),
+  ),
+  security(("bearer_oauth_token" = []))
+)]
+pub async fn apps_mcps_show(
+  auth_scope: AuthScope,
+  path: Path<String>,
+) -> Result<Json<Mcp>, ApiError> {
+  mcps_show(auth_scope, path).await
+}
+
+/// Refresh tools for an MCP instance via external app
+#[utoipa::path(
+  post,
+  path = ENDPOINT_APPS_MCPS.to_owned() + "/{id}/tools/refresh",
+  tag = API_TAG_APPS,
+  operation_id = "appsRefreshMcpTools",
+  params(
+    ("id" = String, Path, description = "MCP instance UUID")
+  ),
+  responses(
+    (status = 200, description = "Refreshed list of tools", body = McpToolsResponse),
+    (status = 404, description = "MCP not found"),
+  ),
+  security(("bearer_oauth_token" = []))
+)]
+pub async fn apps_mcps_refresh_tools(
+  auth_scope: AuthScope,
+  path: Path<String>,
+) -> Result<Json<McpToolsResponse>, ApiError> {
+  mcps_refresh_tools(auth_scope, path).await
+}
+
+/// Execute a tool on an MCP server via external app
+#[utoipa::path(
+  post,
+  path = ENDPOINT_APPS_MCPS.to_owned() + "/{id}/tools/{tool_name}/execute",
+  tag = API_TAG_APPS,
+  operation_id = "appsExecuteMcpTool",
+  params(
+    ("id" = String, Path, description = "MCP instance UUID"),
+    ("tool_name" = String, Path, description = "Tool name to execute")
+  ),
+  request_body = McpExecuteRequest,
+  responses(
+    (status = 200, description = "Tool execution result", body = McpExecuteResponse),
+    (status = 404, description = "MCP or tool not found"),
+  ),
+  security(("bearer_oauth_token" = []))
+)]
+pub async fn apps_mcps_execute_tool(
+  auth_scope: AuthScope,
+  path: Path<(String, String)>,
+  json: Json<McpExecuteRequest>,
+) -> Result<Json<McpExecuteResponse>, ApiError> {
+  mcps_execute_tool(auth_scope, path, json).await
 }
 
 #[cfg(test)]

@@ -3,7 +3,8 @@ use crate::toolsets::toolsets_api_schemas::{
 };
 use crate::ApiError;
 use crate::{
-  AuthScope, ValidatedJson, API_TAG_TOOLSETS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
+  AuthScope, ValidatedJson, API_TAG_APPS, API_TAG_TOOLSETS, ENDPOINT_APPS_TOOLSETS,
+  ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
 };
 use axum::{
   extract::Path,
@@ -362,6 +363,53 @@ async fn toolset_to_response(
     created_at: toolset.created_at,
     updated_at: toolset.updated_at,
   })
+}
+
+// ============================================================================
+// External App (/apps/) Wrappers
+// ============================================================================
+
+/// List toolsets accessible to the authenticated external app
+#[utoipa::path(
+  get,
+  path = ENDPOINT_APPS_TOOLSETS,
+  tag = API_TAG_APPS,
+  operation_id = "appsListToolsets",
+  responses(
+    (status = 200, description = "List of toolsets accessible to the external app", body = ListToolsetsResponse),
+  ),
+  security(("bearer_oauth_token" = []))
+)]
+pub async fn apps_toolsets_index(
+  auth_scope: AuthScope,
+) -> Result<Json<ListToolsetsResponse>, ApiError> {
+  toolsets_index(auth_scope).await
+}
+
+/// Execute a tool on a toolset via external app
+#[utoipa::path(
+  post,
+  path = ENDPOINT_APPS_TOOLSETS.to_owned() + "/{id}/tools/{tool_name}/execute",
+  tag = API_TAG_APPS,
+  operation_id = "appsExecuteToolsetTool",
+  params(
+    ("id" = String, Path, description = "Toolset instance UUID"),
+    ("tool_name" = String, Path, description = "Tool name to execute")
+  ),
+  request_body = ExecuteToolsetRequest,
+  responses(
+    (status = 200, description = "Tool execution result", body = ToolsetExecutionResponse),
+    (status = 400, description = "Validation error or toolset not configured"),
+    (status = 404, description = "Toolset or method not found"),
+  ),
+  security(("bearer_oauth_token" = []))
+)]
+pub async fn apps_toolsets_execute(
+  auth_scope: AuthScope,
+  Path((id, tool_name)): Path<(String, String)>,
+  Json(request): Json<ExecuteToolsetRequest>,
+) -> Result<Json<ToolsetExecutionResponse>, ApiError> {
+  toolsets_execute(auth_scope, Path((id, tool_name)), Json(request)).await
 }
 
 #[cfg(test)]

@@ -3869,6 +3869,185 @@ export type GetAccessRequestStatusResponses = {
 
 export type GetAccessRequestStatusResponse = GetAccessRequestStatusResponses[keyof GetAccessRequestStatusResponses];
 
+export type AppsListMcpsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/apps/mcps';
+};
+
+export type AppsListMcpsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type AppsListMcpsError = AppsListMcpsErrors[keyof AppsListMcpsErrors];
+
+export type AppsListMcpsResponses = {
+    /**
+     * List of MCP instances accessible to the external app
+     */
+    200: ListMcpsResponse;
+};
+
+export type AppsListMcpsResponse = AppsListMcpsResponses[keyof AppsListMcpsResponses];
+
+export type AppsGetMcpData = {
+    body?: never;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/apps/mcps/{id}';
+};
+
+export type AppsGetMcpErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type AppsGetMcpError = AppsGetMcpErrors[keyof AppsGetMcpErrors];
+
+export type AppsGetMcpResponses = {
+    /**
+     * MCP instance
+     */
+    200: Mcp;
+};
+
+export type AppsGetMcpResponse = AppsGetMcpResponses[keyof AppsGetMcpResponses];
+
+export type AppsRefreshMcpToolsData = {
+    body?: never;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/apps/mcps/{id}/tools/refresh';
+};
+
+export type AppsRefreshMcpToolsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type AppsRefreshMcpToolsError = AppsRefreshMcpToolsErrors[keyof AppsRefreshMcpToolsErrors];
+
+export type AppsRefreshMcpToolsResponses = {
+    /**
+     * Refreshed list of tools
+     */
+    200: McpToolsResponse;
+};
+
+export type AppsRefreshMcpToolsResponse = AppsRefreshMcpToolsResponses[keyof AppsRefreshMcpToolsResponses];
+
+export type AppsExecuteMcpToolData = {
+    body: McpExecuteRequest;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+        /**
+         * Tool name to execute
+         */
+        tool_name: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute';
+};
+
+export type AppsExecuteMcpToolErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP or tool not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type AppsExecuteMcpToolError = AppsExecuteMcpToolErrors[keyof AppsExecuteMcpToolErrors];
+
+export type AppsExecuteMcpToolResponses = {
+    /**
+     * Tool execution result
+     */
+    200: McpExecuteResponse;
+};
+
+export type AppsExecuteMcpToolResponse = AppsExecuteMcpToolResponses[keyof AppsExecuteMcpToolResponses];
+
 export type CreateAccessRequestData = {
     /**
      * Access request details
@@ -3912,6 +4091,93 @@ export type CreateAccessRequestResponses = {
 };
 
 export type CreateAccessRequestResponse2 = CreateAccessRequestResponses[keyof CreateAccessRequestResponses];
+
+export type AppsListToolsetsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/apps/toolsets';
+};
+
+export type AppsListToolsetsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type AppsListToolsetsError = AppsListToolsetsErrors[keyof AppsListToolsetsErrors];
+
+export type AppsListToolsetsResponses = {
+    /**
+     * List of toolsets accessible to the external app
+     */
+    200: ListToolsetsResponse;
+};
+
+export type AppsListToolsetsResponse = AppsListToolsetsResponses[keyof AppsListToolsetsResponses];
+
+export type AppsExecuteToolsetToolData = {
+    body: ExecuteToolsetRequest;
+    path: {
+        /**
+         * Toolset instance UUID
+         */
+        id: string;
+        /**
+         * Tool name to execute
+         */
+        tool_name: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/apps/toolsets/{id}/tools/{tool_name}/execute';
+};
+
+export type AppsExecuteToolsetToolErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Toolset or method not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type AppsExecuteToolsetToolError = AppsExecuteToolsetToolErrors[keyof AppsExecuteToolsetToolErrors];
+
+export type AppsExecuteToolsetToolResponses = {
+    /**
+     * Tool execution result
+     */
+    200: ToolsetExecutionResponse;
+};
+
+export type AppsExecuteToolsetToolResponse = AppsExecuteToolsetToolResponses[keyof AppsExecuteToolsetToolResponses];
 
 export type CompleteOAuthFlowData = {
     /**

@@ -91,7 +91,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       // GET /mcps with OAuth token should return the approved MCP instance
       await app.rest.sendRequest({
         method: 'GET',
-        url: '/bodhi/v1/mcps',
+        url: '/bodhi/v1/apps/mcps',
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -105,7 +105,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       // GET /mcps/{id} should return the MCP details
       await app.rest.sendRequest({
         method: 'GET',
-        url: `/bodhi/v1/mcps/${mcpInstanceId}`,
+        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}`,
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -115,14 +115,14 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       // POST /mcps/{id}/tools/refresh to refresh tools
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${mcpInstanceId}/tools/refresh`,
+        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/refresh`,
       });
       expect(await app.rest.getResponseStatus()).toBe(200);
 
       // Execute a tool on the MCP instance
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${mcpInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
+        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
         body: JSON.stringify({
           params: McpFixtures.PLAYGROUND_PARAMS,
         }),
@@ -187,7 +187,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
       await app.rest.sendRequest({
         method: 'GET',
-        url: '/bodhi/v1/mcps',
+        url: '/bodhi/v1/apps/mcps',
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -264,7 +264,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
       await app.rest.sendRequest({
         method: 'GET',
-        url: `/bodhi/v1/mcps/${approvedInstanceId}`,
+        url: `/bodhi/v1/apps/mcps/${approvedInstanceId}`,
       });
       expect(await app.rest.getResponseStatus()).toBe(200);
       const mcpData = await app.rest.getResponse();
@@ -272,13 +272,13 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${approvedInstanceId}/tools/refresh`,
+        url: `/bodhi/v1/apps/mcps/${approvedInstanceId}/tools/refresh`,
       });
       expect(await app.rest.getResponseStatus()).toBe(200);
 
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${approvedInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
+        url: `/bodhi/v1/apps/mcps/${approvedInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
         body: JSON.stringify({ params: McpFixtures.PLAYGROUND_PARAMS }),
       });
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -289,7 +289,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
     await test.step('Phase 5: Verify restricted MCP denied (403)', async () => {
       await app.rest.sendRequest({
         method: 'GET',
-        url: `/bodhi/v1/mcps/${restrictedInstanceId}`,
+        url: `/bodhi/v1/apps/mcps/${restrictedInstanceId}`,
       });
       expect(await app.rest.getResponseStatus()).toBe(403);
       const getError = await app.rest.getResponse();
@@ -297,7 +297,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${restrictedInstanceId}/tools/refresh`,
+        url: `/bodhi/v1/apps/mcps/${restrictedInstanceId}/tools/refresh`,
       });
       expect(await app.rest.getResponseStatus()).toBe(403);
       const refreshError = await app.rest.getResponse();
@@ -305,7 +305,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${restrictedInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
+        url: `/bodhi/v1/apps/mcps/${restrictedInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
         body: JSON.stringify({ params: McpFixtures.PLAYGROUND_PARAMS }),
       });
       expect(await app.rest.getResponseStatus()).toBe(403);

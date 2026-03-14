@@ -31,9 +31,10 @@ use crate::{
 // Toolsets DTOs and handlers
 use crate::{
   ExecuteToolsetRequest, ListToolsetTypesResponse, ListToolsetsResponse, ToolsetResponse,
-  __path_toolset_types_disable, __path_toolset_types_enable, __path_toolset_types_index,
-  __path_toolsets_create, __path_toolsets_destroy, __path_toolsets_execute, __path_toolsets_index,
-  __path_toolsets_show, __path_toolsets_update,
+  __path_apps_toolsets_execute, __path_apps_toolsets_index, __path_toolset_types_disable,
+  __path_toolset_types_enable, __path_toolset_types_index, __path_toolsets_create,
+  __path_toolsets_destroy, __path_toolsets_execute, __path_toolsets_index, __path_toolsets_show,
+  __path_toolsets_update,
 };
 // MCP DTOs and handlers
 use crate::{
@@ -41,14 +42,15 @@ use crate::{
   ListMcpServersResponse, ListMcpsResponse, McpAuth, McpExecuteRequest, McpExecuteResponse,
   McpServerResponse, McpToolsResponse, OAuthDiscoverAsRequest, OAuthDiscoverAsResponse,
   OAuthDiscoverMcpRequest, OAuthDiscoverMcpResponse, OAuthLoginRequest, OAuthLoginResponse,
-  OAuthTokenExchangeRequest, OAuthTokenResponse, __path_mcp_auth_configs_create,
-  __path_mcp_auth_configs_destroy, __path_mcp_auth_configs_index, __path_mcp_auth_configs_show,
-  __path_mcp_oauth_discover_as, __path_mcp_oauth_discover_mcp, __path_mcp_oauth_dynamic_register,
-  __path_mcp_oauth_login, __path_mcp_oauth_token_exchange, __path_mcp_oauth_tokens_destroy,
-  __path_mcp_oauth_tokens_show, __path_mcp_servers_create, __path_mcp_servers_index,
-  __path_mcp_servers_show, __path_mcp_servers_update, __path_mcps_create, __path_mcps_destroy,
-  __path_mcps_execute_tool, __path_mcps_fetch_tools, __path_mcps_index, __path_mcps_refresh_tools,
-  __path_mcps_show, __path_mcps_update,
+  OAuthTokenExchangeRequest, OAuthTokenResponse, __path_apps_mcps_execute_tool,
+  __path_apps_mcps_index, __path_apps_mcps_refresh_tools, __path_apps_mcps_show,
+  __path_mcp_auth_configs_create, __path_mcp_auth_configs_destroy, __path_mcp_auth_configs_index,
+  __path_mcp_auth_configs_show, __path_mcp_oauth_discover_as, __path_mcp_oauth_discover_mcp,
+  __path_mcp_oauth_dynamic_register, __path_mcp_oauth_login, __path_mcp_oauth_token_exchange,
+  __path_mcp_oauth_tokens_destroy, __path_mcp_oauth_tokens_show, __path_mcp_servers_create,
+  __path_mcp_servers_index, __path_mcp_servers_show, __path_mcp_servers_update, __path_mcps_create,
+  __path_mcps_destroy, __path_mcps_execute_tool, __path_mcps_fetch_tools, __path_mcps_index,
+  __path_mcps_refresh_tools, __path_mcps_show, __path_mcps_update,
 };
 // Settings and setup DTOs and handlers
 use crate::OpenAIApiError;
@@ -63,8 +65,8 @@ use crate::{
   __path_tenants_create, __path_tenants_index,
 };
 use crate::{
-  API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA,
-  API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TENANTS,
+  API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_APPS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS,
+  API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TENANTS,
   API_TAG_TOOLSETS,
 };
 use async_openai::types::{
@@ -139,6 +141,8 @@ make_ui_endpoint!(ENDPOINT_API_MODELS_API_FORMATS, "api-models/api-formats");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
 make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
+make_ui_endpoint!(ENDPOINT_APPS_TOOLSETS, "apps/toolsets");
+make_ui_endpoint!(ENDPOINT_APPS_MCPS, "apps/mcps");
 make_ui_endpoint!(ENDPOINT_TENANTS, "tenants");
 // MCP endpoint constants are defined in mcps/mod.rs
 
@@ -278,6 +282,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         (name = API_TAG_MCPS, description = "MCP server management and tool execution"),
         (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
         (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
+        (name = API_TAG_APPS, description = "External app API endpoints (OAuth token required)"),
         (name = API_TAG_TENANTS, description = "Tenant management endpoints"),
     ),
     components(
@@ -554,6 +559,14 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         // OAuth token endpoints
         mcp_oauth_tokens_show,
         mcp_oauth_tokens_destroy,
+
+        // External app endpoints
+        apps_toolsets_index,
+        apps_toolsets_execute,
+        apps_mcps_index,
+        apps_mcps_show,
+        apps_mcps_refresh_tools,
+        apps_mcps_execute_tool,
 
         // Tenant management endpoints
         tenants_index,

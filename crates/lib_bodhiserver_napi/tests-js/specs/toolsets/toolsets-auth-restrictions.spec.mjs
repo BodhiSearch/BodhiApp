@@ -177,7 +177,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       // Test: GET /toolsets with OAuth token returns filtered list containing the toolset
       await app.rest.sendRequest({
         method: 'GET',
-        url: '/bodhi/v1/toolsets',
+        url: '/bodhi/v1/apps/toolsets',
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -198,7 +198,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       // Execute the toolset using OAuth token
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/toolsets/${exaToolset.id}/tools/search/execute`,
+        url: `/bodhi/v1/apps/toolsets/${exaToolset.id}/tools/search/execute`,
 
         body: JSON.stringify({
           params: {
@@ -308,7 +308,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       // so ExternalApp authentication fails with 401.
       await app.rest.sendRequest({
         method: 'GET',
-        url: '/bodhi/v1/toolsets',
+        url: '/bodhi/v1/apps/toolsets',
       });
 
       expect(await app.rest.getResponseStatus()).toBe(401);
@@ -425,7 +425,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       // Test: GET /toolsets with OAuth token (no toolset scope) returns empty list
       await app.rest.sendRequest({
         method: 'GET',
-        url: '/bodhi/v1/toolsets',
+        url: '/bodhi/v1/apps/toolsets',
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);

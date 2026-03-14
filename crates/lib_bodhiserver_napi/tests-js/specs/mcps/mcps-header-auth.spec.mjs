@@ -236,7 +236,7 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
 
       await app.rest.sendRequest({
         method: 'GET',
-        url: '/bodhi/v1/mcps',
+        url: '/bodhi/v1/apps/mcps',
       });
       expect(await app.rest.getResponseStatus()).toBe(200);
       const listData = await app.rest.getResponse();
@@ -248,7 +248,7 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
 
       await app.rest.sendRequest({
         method: 'GET',
-        url: `/bodhi/v1/mcps/${mcpInstanceId}`,
+        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}`,
       });
       expect(await app.rest.getResponseStatus()).toBe(200);
       const mcpData = await app.rest.getResponse();
@@ -259,13 +259,13 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
     await test.step('Phase 5: Execute tavily_search via REST API', async () => {
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${mcpInstanceId}/tools/refresh`,
+        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/refresh`,
       });
       expect(await app.rest.getResponseStatus()).toBe(200);
 
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/mcps/${mcpInstanceId}/tools/${McpFixtures.TAVILY_EXPECTED_TOOL}/execute`,
+        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/${McpFixtures.TAVILY_EXPECTED_TOOL}/execute`,
         body: JSON.stringify({
           params: McpFixtures.TAVILY_SEARCH_PARAMS,
         }),

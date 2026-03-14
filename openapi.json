@@ -2079,6 +2079,331 @@
         ]
       }
     },
+    "/bodhi/v1/apps/mcps": {
+      "get": {
+        "tags": [
+          "apps"
+        ],
+        "summary": "List MCP instances accessible to the authenticated external app",
+        "operationId": "appsListMcps",
+        "responses": {
+          "200": {
+            "description": "List of MCP instances accessible to the external app",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMcpsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_oauth_token": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/apps/mcps/{id}": {
+      "get": {
+        "tags": [
+          "apps"
+        ],
+        "summary": "Get a specific MCP instance by ID via external app",
+        "operationId": "appsGetMcp",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "MCP instance UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MCP instance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mcp"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MCP not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_oauth_token": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/apps/mcps/{id}/tools/refresh": {
+      "post": {
+        "tags": [
+          "apps"
+        ],
+        "summary": "Refresh tools for an MCP instance via external app",
+        "operationId": "appsRefreshMcpTools",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "MCP instance UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refreshed list of tools",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpToolsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MCP not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_oauth_token": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute": {
+      "post": {
+        "tags": [
+          "apps"
+        ],
+        "summary": "Execute a tool on an MCP server via external app",
+        "operationId": "appsExecuteMcpTool",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "MCP instance UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tool_name",
+            "in": "path",
+            "description": "Tool name to execute",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tool execution result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpExecuteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MCP or tool not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_oauth_token": []
+          }
+        ]
+      }
+    },
     "/bodhi/v1/apps/request-access": {
       "post": {
         "tags": [
@@ -2162,6 +2487,171 @@
         },
         "security": [
           {}
+        ]
+      }
+    },
+    "/bodhi/v1/apps/toolsets": {
+      "get": {
+        "tags": [
+          "apps"
+        ],
+        "summary": "List toolsets accessible to the authenticated external app",
+        "operationId": "appsListToolsets",
+        "responses": {
+          "200": {
+            "description": "List of toolsets accessible to the external app",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListToolsetsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_oauth_token": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/apps/toolsets/{id}/tools/{tool_name}/execute": {
+      "post": {
+        "tags": [
+          "apps"
+        ],
+        "summary": "Execute a tool on a toolset via external app",
+        "operationId": "appsExecuteToolsetTool",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Toolset instance UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tool_name",
+            "in": "path",
+            "description": "Tool name to execute",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteToolsetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tool execution result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolsetExecutionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Toolset or method not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_oauth_token": []
+          }
         ]
       }
     },
@@ -16270,6 +16760,10 @@
     {
       "name": "ollama",
       "description": "Ollama-compatible API endpoints"
+    },
+    {
+      "name": "apps",
+      "description": "External app API endpoints (OAuth token required)"
     },
     {
       "name": "tenants",
