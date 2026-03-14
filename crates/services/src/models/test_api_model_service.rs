@@ -2,7 +2,9 @@ use crate::models::{
   ApiAliasRepository, ApiFormat, ApiKeyUpdate, ApiModelRequest, ApiModelService,
   DefaultApiModelService,
 };
-use crate::test_utils::{test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID, TEST_USER_ID};
+use crate::test_utils::{
+  test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID, TEST_USER_ID,
+};
 use crate::MockAiApiService;
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
@@ -44,11 +46,7 @@ async fn test_create_forward_all_triggers_cache_refresh(
     .returning(|_, _| Ok(vec!["model-a".to_string(), "model-b".to_string()]));
 
   let time_service = Arc::new(FrozenTimeService::default());
-  let service = DefaultApiModelService::new(
-    db_service.clone(),
-    time_service,
-    Arc::new(mock_ai),
-  );
+  let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
   let form = ApiModelRequest {
     api_format: ApiFormat::OpenAI,
@@ -62,8 +60,7 @@ async fn test_create_forward_all_triggers_cache_refresh(
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(result.forward_all_with_prefix);
 
-  let event_received =
-    wait_for_event!(rx, "update_api_model_cache", Duration::from_millis(500));
+  let event_received = wait_for_event!(rx, "update_api_model_cache", Duration::from_millis(500));
   assert!(
     event_received,
     "Timed out waiting for update_api_model_cache event"
@@ -97,11 +94,7 @@ async fn test_create_non_forward_all_does_not_trigger_cache_refresh(
   mock_ai.expect_fetch_models().times(0);
 
   let time_service = Arc::new(FrozenTimeService::default());
-  let service = DefaultApiModelService::new(
-    db_service.clone(),
-    time_service,
-    Arc::new(mock_ai),
-  );
+  let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
   let form = ApiModelRequest {
     api_format: ApiFormat::OpenAI,
@@ -137,11 +130,7 @@ async fn test_update_forward_all_triggers_cache_refresh(
     .returning(|_, _| Ok(vec!["remote-1".to_string(), "remote-2".to_string()]));
 
   let time_service = Arc::new(FrozenTimeService::default());
-  let service = DefaultApiModelService::new(
-    db_service.clone(),
-    time_service,
-    Arc::new(mock_ai),
-  );
+  let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
   // First create a non-forward_all model
   let create_form = ApiModelRequest {
@@ -170,8 +159,7 @@ async fn test_update_forward_all_triggers_cache_refresh(
     .await?;
   assert!(result.forward_all_with_prefix);
 
-  let event_received =
-    wait_for_event!(rx, "update_api_model_cache", Duration::from_millis(500));
+  let event_received = wait_for_event!(rx, "update_api_model_cache", Duration::from_millis(500));
   assert!(
     event_received,
     "Timed out waiting for update_api_model_cache event"
@@ -205,11 +193,7 @@ async fn test_update_non_forward_all_does_not_trigger_cache_refresh(
   mock_ai.expect_fetch_models().times(0);
 
   let time_service = Arc::new(FrozenTimeService::default());
-  let service = DefaultApiModelService::new(
-    db_service.clone(),
-    time_service,
-    Arc::new(mock_ai),
-  );
+  let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
   // Create a non-forward_all model
   let create_form = ApiModelRequest {
