@@ -60,11 +60,11 @@ export class ApiModelFormPage extends BasePage {
   }
 
   async expectToBeOnCreatePage() {
-    await this.expectToBeOnPage('/ui/models/create');
+    await this.expectToBeOnPage('/ui/models/api/new');
   }
 
   async expectToBeOnEditPage(modelId) {
-    await this.expectToBeOnPage(`/ui/models/${modelId}/edit`);
+    await this.expectToBeOnPage(`/ui/models/api/edit`);
   }
 
   async expectToBeOnModelsListPage() {

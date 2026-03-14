@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { TestPromptRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
 
 import { useToast } from '@/hooks/use-toast';
-import { useTestApiModel } from '@/hooks/useApiModels';
+import { useTestApiModel } from '@/hooks/useModelsApi';
 
 import { DEFAULT_TEST_PROMPT } from '../providers/constants';
 

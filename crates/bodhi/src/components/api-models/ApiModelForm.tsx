@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-import { ApiModelOutput } from '@bodhiapp/ts-client';
+import { ApiAliasResponse } from '@bodhiapp/ts-client';
 import { useRouter } from 'next/navigation';
 
 // Import shared components
@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ApiModelFormProps {
   mode: 'create' | 'edit' | 'setup';
-  initialData?: ApiModelOutput;
+  initialData?: ApiAliasResponse;
   onSuccessRoute?: string;
   onCancelRoute?: string;
 }

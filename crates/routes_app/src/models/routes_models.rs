@@ -1,18 +1,12 @@
-use crate::models::error::ModelRouteError;
-use crate::models::models_api_schemas::{LocalModelResponse, PaginatedLocalModelResponse};
 use crate::shared::AuthScope;
-use crate::{ApiError, OpenAIApiError, ValidatedJson};
-use crate::{PaginationSortParams, API_TAG_MODELS, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES};
+use crate::{ApiError, OpenAIApiError};
+use crate::{PaginationSortParams, API_TAG_MODELS, ENDPOINT_MODELS};
 use axum::{
   extract::{Path, Query},
-  http::StatusCode,
   Json,
 };
 use services::Alias;
-use services::{
-  AliasResponse, CopyAliasRequest, DataServiceError, HubFile, PaginatedAliasResponse,
-  UserAliasResponse,
-};
+use services::{AliasResponse, DataServiceError, PaginatedAliasResponse, UserAliasResponse};
 
 /// List all model aliases as discriminated union (user, model, and API aliases)
 #[utoipa::path(
@@ -137,88 +131,6 @@ pub async fn models_index(
   Ok(Json(paginated))
 }
 
-/// List available model files in GGUF format from HuggingFace cache
-#[utoipa::path(
-    get,
-    path = ENDPOINT_MODEL_FILES,
-    tag = API_TAG_MODELS,
-    operation_id = "listModelFiles",
-    summary = "List Local Model Files",
-    description = "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size. Requires any authenticated user (User level permissions or higher).",
-    params(
-        PaginationSortParams
-    ),
-    responses(
-        (status = 200, description = "Local model files retrieved successfully from cache", body = PaginatedLocalModelResponse,
-         example = json!({
-             "data": [{
-                 "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
-                 "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
-                 "snapshot_id": "ab12cd34",
-                 "size": 4815162
-             }],
-             "total": 1,
-             "page": 1,
-             "page_size": 10
-         })
-        ),
-    ),
-    security(
-        ("bearer_api_token" = ["scope_token_user"]),
-        ("bearer_oauth_token" = ["scope_user_user"]),
-        ("session_auth" = ["resource_user"])
-    ),
-)]
-pub async fn modelfiles_index(
-  auth_scope: AuthScope,
-  Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedLocalModelResponse>, ApiError> {
-  let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
-  let mut models = auth_scope.hub_service().list_local_models();
-  sort_models(&mut models, &sort, &sort_order);
-  let total = models.len();
-  let (start, end) = calculate_pagination(page, page_size, total);
-
-  let page_models: Vec<HubFile> = models.into_iter().skip(start).take(end - start).collect();
-
-  // Batch fetch metadata for all models in this page
-  let keys: Vec<(String, String, String)> = page_models
-    .iter()
-    .map(|m| (m.repo.to_string(), m.filename.clone(), m.snapshot.clone()))
-    .collect();
-
-  let metadata_map = auth_scope
-    .db_service()
-    .batch_get_metadata_by_files("", &keys)
-    .await
-    .map_err(|e| {
-      tracing::error!("Failed to batch fetch metadata: {}", e);
-      ModelRouteError::MetadataFetchFailed
-    })?;
-
-  // Convert to responses with metadata attached
-  let data: Vec<LocalModelResponse> = page_models
-    .into_iter()
-    .map(|model| {
-      let key = (
-        model.repo.to_string(),
-        model.filename.clone(),
-        model.snapshot.clone(),
-      );
-      let metadata = metadata_map.get(&key).map(|row| row.clone().into());
-      LocalModelResponse::from(model).with_metadata(metadata)
-    })
-    .collect();
-
-  let paginated = PaginatedLocalModelResponse {
-    data,
-    total,
-    page,
-    page_size,
-  };
-  Ok(Json(paginated))
-}
-
 fn extract_pagination_sort_params(params: PaginationSortParams) -> (usize, usize, String, String) {
   let page = params.page;
   let page_size = params.page_size.min(100);
@@ -231,23 +143,6 @@ fn calculate_pagination(page: usize, page_size: usize, total: usize) -> (usize, 
   let start = (page - 1) * page_size;
   let end = (start + page_size).min(total);
   (start, end)
-}
-
-fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
-  models.sort_by(|a, b| {
-    let cmp = match sort {
-      "repo" => a.repo.cmp(&b.repo),
-      "filename" => a.filename.cmp(&b.filename),
-      "snapshot" => a.snapshot.cmp(&b.snapshot),
-      "size" => a.size.cmp(&b.size),
-      _ => a.repo.cmp(&b.repo),
-    };
-    if sort_order.to_lowercase() == "desc" {
-      cmp.reverse()
-    } else {
-      cmp
-    }
-  });
 }
 
 fn sort_aliases(aliases: &mut [Alias], sort: &str, sort_order: &str) {
@@ -355,114 +250,3 @@ pub async fn models_show(
     UserAliasResponse::from(user_alias).with_metadata(metadata),
   ))
 }
-
-/// Create Alias
-#[utoipa::path(
-    post,
-    path = ENDPOINT_MODELS,
-    tag = API_TAG_MODELS,
-    operation_id = "createAlias",
-    request_body = services::UserAliasRequest,
-    responses(
-      (status = 201, description = "Alias created succesfully", body = UserAliasResponse),
-    ),
-    security(
-        ("bearer_api_token" = ["scope_token_power_user"]),
-        ("bearer_oauth_token" = ["scope_user_power_user"]),
-        ("session_auth" = ["resource_power_user"])
-    ),
-)]
-pub async fn models_create(
-  auth_scope: AuthScope,
-  ValidatedJson(form): ValidatedJson<services::UserAliasRequest>,
-) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  let alias = auth_scope.data().create_alias_from_form(form).await?;
-  Ok((StatusCode::CREATED, Json(UserAliasResponse::from(alias))))
-}
-
-/// Update Alias
-#[utoipa::path(
-    put,
-    path = ENDPOINT_MODELS.to_owned() + "/{id}",
-    tag = API_TAG_MODELS,
-    params(
-        ("id" = String, Path, description = "UUID of the alias to update")
-    ),
-    operation_id = "updateAlias",
-    request_body = services::UserAliasRequest,
-    responses(
-      (status = 200, description = "Alias updated succesfully", body = UserAliasResponse),
-    ),
-    security(
-        ("bearer_api_token" = ["scope_token_power_user"]),
-        ("bearer_oauth_token" = ["scope_user_power_user"]),
-        ("session_auth" = ["resource_power_user"])
-    ),
-)]
-pub async fn models_update(
-  auth_scope: AuthScope,
-  Path(id): Path<String>,
-  ValidatedJson(form): ValidatedJson<services::UserAliasRequest>,
-) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  let updated_alias = auth_scope.data().update_alias_from_form(&id, form).await?;
-  Ok((StatusCode::OK, Json(UserAliasResponse::from(updated_alias))))
-}
-
-/// Delete a model alias by UUID
-#[utoipa::path(
-    delete,
-    path = ENDPOINT_MODELS.to_owned() + "/{id}",
-    tag = API_TAG_MODELS,
-    operation_id = "deleteAlias",
-    params(("id" = String, Path, description = "UUID of the alias to delete")),
-    responses(
-      (status = 200, description = "Alias deleted successfully"),
-      (status = 404, description = "Alias not found"),
-    ),
-    security(
-        ("bearer_api_token" = ["scope_token_power_user"]),
-        ("bearer_oauth_token" = ["scope_user_power_user"]),
-        ("session_auth" = ["resource_power_user"])
-    ),
-)]
-pub async fn models_destroy(
-  auth_scope: AuthScope,
-  Path(id): Path<String>,
-) -> Result<StatusCode, ApiError> {
-  auth_scope.data().delete_alias(&id).await?;
-  Ok(StatusCode::OK)
-}
-
-/// Copy a model alias
-#[utoipa::path(
-    post,
-    path = ENDPOINT_MODELS.to_owned() + "/{id}/copy",
-    tag = API_TAG_MODELS,
-    operation_id = "copyAlias",
-    params(("id" = String, Path, description = "UUID of the alias to copy")),
-    request_body = CopyAliasRequest,
-    responses(
-      (status = 201, description = "Alias copied successfully", body = UserAliasResponse),
-      (status = 404, description = "Source alias not found"),
-    ),
-    security(
-        ("bearer_api_token" = ["scope_token_power_user"]),
-        ("bearer_oauth_token" = ["scope_user_power_user"]),
-        ("session_auth" = ["resource_power_user"])
-    ),
-)]
-pub async fn models_copy(
-  auth_scope: AuthScope,
-  Path(id): Path<String>,
-  ValidatedJson(payload): ValidatedJson<CopyAliasRequest>,
-) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  let new_alias = auth_scope.data().copy_alias(&id, &payload.alias).await?;
-  Ok((
-    StatusCode::CREATED,
-    Json(UserAliasResponse::from(new_alias)),
-  ))
-}
-
-#[cfg(test)]
-#[path = "test_aliases_crud.rs"]
-mod test_aliases_crud;

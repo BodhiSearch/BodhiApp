@@ -14,13 +14,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { useToast } from '@/hooks/use-toast';
-import { useDeleteApiModel } from '@/hooks/useApiModels';
+import { useDeleteApiModel } from '@/hooks/useModelsApi';
 import { useModels } from '@/hooks/useModels';
 import { hasLocalFileProperties, isApiAlias, isUserAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
 import { SortState } from '@/types/models';
 
-import { ModelTableRow } from '@/app/ui/models/ModelTableRow';
+import { ModelTableRow } from '@/app/ui/models/components/ModelTableRow';
 import { ModelPreviewModal } from '@/app/ui/models/components/ModelPreviewModal';
 
 const columns = [
@@ -111,15 +111,15 @@ function ModelsPageContent() {
 
   const handleEdit = (model: AliasResponse) => {
     if (isApiAlias(model)) {
-      router.push(`/ui/api-models/edit?id=${model.id}`);
+      router.push(`/ui/models/api/edit?id=${model.id}`);
     } else if (isUserAlias(model)) {
-      router.push(`/ui/models/edit?id=${model.id}`);
+      router.push(`/ui/models/alias/edit?id=${model.id}`);
     }
   };
 
   const handleNew = (model: AliasResponse) => {
     if (hasLocalFileProperties(model)) {
-      router.push(`/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
+      router.push(`/ui/models/alias/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
     }
   };
 
@@ -170,11 +170,11 @@ function ModelsPageContent() {
   };
 
   const handleNewAlias = () => {
-    router.push('/ui/models/new');
+    router.push('/ui/models/alias/new');
   };
 
   const handleNewApiModel = () => {
-    router.push('/ui/api-models/new');
+    router.push('/ui/models/api/new');
   };
 
   const getModelDisplayRepo = (model: AliasResponse): string => {

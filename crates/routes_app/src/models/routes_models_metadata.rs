@@ -163,7 +163,3 @@ pub async fn queue_status_handler(
   let status = auth_scope.queue_status();
   Ok(Json(QueueStatusResponse { status }))
 }
-
-#[cfg(test)]
-#[path = "test_metadata.rs"]
-mod test_metadata;

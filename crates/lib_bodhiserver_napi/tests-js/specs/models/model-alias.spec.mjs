@@ -208,7 +208,7 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     await submitButton.click();
 
     // Verify we're still on the form page (didn't submit)
-    await expect(page.url()).toContain('/ui/models/new');
+    await expect(page.url()).toContain('/ui/models/alias/new');
 
     // Clear form and test missing repo
     await page.reload();
@@ -219,7 +219,7 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
       missingFields.missingRepo.filename
     );
     await submitButton.click();
-    await expect(page.url()).toContain('/ui/models/new');
+    await expect(page.url()).toContain('/ui/models/alias/new');
 
     // Clear form and test missing filename
     await page.reload();
@@ -230,7 +230,7 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
       missingFields.missingFilename.filename
     );
     await submitButton.click();
-    await expect(page.url()).toContain('/ui/models/new');
+    await expect(page.url()).toContain('/ui/models/alias/new');
 
     // Step 3: Create valid alias for duplicate testing
     await page.reload();
@@ -255,7 +255,7 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     await submitButton.click();
 
     // Should show error about duplicate alias or stay on form
-    await expect(page.url()).toContain('/ui/models/new');
+    await expect(page.url()).toContain('/ui/models/alias/new');
 
     // Step 6: Create valid alias to verify form works correctly
     await page.reload();

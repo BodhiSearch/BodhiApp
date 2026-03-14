@@ -1128,71 +1128,6 @@ fn default_api_key_keep() -> ApiKeyUpdate {
 }
 
 // =============================================================================
-// ApiModelOutput (output type returned from handlers)
-// =============================================================================
-
-/// Output type for API model configuration.
-// Returned as `Json<ApiModelOutput>` from handlers.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-#[schema(example = json!({
-    "id": "openai-gpt4",
-    "api_format": "openai",
-    "base_url": "https://api.openai.com/v1",
-    "has_api_key": true,
-    "models": ["gpt-4", "gpt-3.5-turbo"],
-    "prefix": "openai",
-    "forward_all_with_prefix": false,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
-}))]
-pub struct ApiModelOutput {
-  pub id: String,
-  pub api_format: ApiFormat,
-  pub base_url: String,
-  pub has_api_key: bool,
-  pub models: Vec<String>,
-  pub prefix: Option<String>,
-  pub forward_all_with_prefix: bool,
-  #[schema(value_type = String, format = "date-time")]
-  pub created_at: chrono::DateTime<chrono::Utc>,
-  #[schema(value_type = String, format = "date-time")]
-  pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-
-impl ApiModelOutput {
-  /// Create output from an ApiAlias with has_api_key flag
-  pub fn from_alias(alias: ApiAlias, has_api_key: bool) -> Self {
-    // get_models() returns models_cache for forward_all, models for regular aliases
-    // All models are returned WITHOUT prefix - the UI will apply the prefix
-    let models = alias.get_models().to_vec();
-    Self {
-      id: alias.id,
-      api_format: alias.api_format,
-      base_url: alias.base_url,
-      has_api_key,
-      models,
-      prefix: alias.prefix,
-      forward_all_with_prefix: alias.forward_all_with_prefix,
-      created_at: alias.created_at,
-      updated_at: alias.updated_at,
-    }
-  }
-}
-
-// =============================================================================
-// PaginatedApiModelOutput
-// =============================================================================
-
-/// Paginated response for API model listings
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-pub struct PaginatedApiModelOutput {
-  pub data: Vec<ApiModelOutput>,
-  pub total: usize,
-  pub page: usize,
-  pub page_size: usize,
-}
-
-// =============================================================================
 // TestCreds (credential specification for test/fetch operations)
 // =============================================================================
 
@@ -1486,6 +1421,7 @@ pub struct ApiAliasResponse {
   pub id: String,
   pub api_format: ApiFormat,
   pub base_url: String,
+  pub has_api_key: bool,
   /// Models available through this alias (merged from cache for forward_all)
   pub models: Vec<String>,
   pub prefix: Option<String>,
@@ -1504,12 +1440,20 @@ impl From<ApiAlias> for ApiAliasResponse {
       id: alias.id,
       api_format: alias.api_format,
       base_url: alias.base_url,
+      has_api_key: false,
       models,
       prefix: alias.prefix,
       forward_all_with_prefix: alias.forward_all_with_prefix,
       created_at: alias.created_at,
       updated_at: alias.updated_at,
     }
+  }
+}
+
+impl ApiAliasResponse {
+  pub fn with_has_api_key(mut self, v: bool) -> Self {
+    self.has_api_key = v;
+    self
   }
 }
 

@@ -44,15 +44,29 @@ export const defaultNavigationItems: NavigationItem[] = [
         items: [
           {
             title: 'New Model Alias',
-            href: '/ui/models/new/',
+            href: '/ui/models/alias/new/',
             description: 'Create a new model alias',
             icon: FilePlus2,
             skip: true,
           },
           {
             title: 'Edit Model Alias',
-            href: '/ui/models/edit/',
+            href: '/ui/models/alias/edit/',
             description: 'Edit a model alias',
+            icon: FilePlus2,
+            skip: true,
+          },
+          {
+            title: 'New API Model',
+            href: '/ui/models/api/new/',
+            description: 'Create a new API model',
+            icon: FilePlus2,
+            skip: true,
+          },
+          {
+            title: 'Edit API Model',
+            href: '/ui/models/api/edit/',
+            description: 'Edit an API model',
             icon: FilePlus2,
             skip: true,
           },
@@ -60,13 +74,13 @@ export const defaultNavigationItems: NavigationItem[] = [
       },
       {
         title: 'Model Files',
-        href: '/ui/modelfiles/',
+        href: '/ui/models/files/',
         description: 'Browse and manage model files',
         icon: Files,
       },
       {
         title: 'Model Downloads',
-        href: '/ui/pull/',
+        href: '/ui/models/files/pull/',
         description: 'Download new models',
         icon: Download,
       },

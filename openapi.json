@@ -1073,917 +1073,6 @@
         ]
       }
     },
-    "/bodhi/v1/api-models": {
-      "get": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "List API Model Configurations",
-        "description": "Retrieves paginated list of all configured API model aliases including external API formats like OpenAI, etc. API keys are masked in list view for security.",
-        "operationId": "listApiModels",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number (1-based indexing)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "description": "Number of items to return per page (maximum 100)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sort_order",
-            "in": "query",
-            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "API model configurations retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedApiModelOutput"
-                },
-                "example": {
-                  "data": [
-                    {
-                      "api_format": "openai",
-                      "base_url": "https://api.openai.com/v1",
-                      "has_api_key": true,
-                      "id": "openai-gpt4"
-                    }
-                  ],
-                  "page": 1,
-                  "page_size": 10,
-                  "total": 1
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Create a new API model configuration",
-        "operationId": "createApiModel",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiModelRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "API model created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiModelOutput"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Alias already exists",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/api-models/api-formats": {
-      "get": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Get Available API Formats",
-        "description": "Retrieves list of supported API formats/protocols (e.g., OpenAI).",
-        "operationId": "getApiFormats",
-        "responses": {
-          "200": {
-            "description": "API formats retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiFormatsResponse"
-                },
-                "example": {
-                  "data": [
-                    "openai"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/api-models/fetch-models": {
-      "post": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Fetch available models from the API.",
-        "operationId": "fetchApiModels",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FetchModelsRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Available models",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FetchModelsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/api-models/test": {
-      "post": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Test API connectivity with a prompt.",
-        "operationId": "testApiModel",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TestPromptRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Test result",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TestPromptResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/api-models/{id}": {
-      "get": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Get API Model Configuration",
-        "description": "Retrieves detailed configuration for a specific API model alias by ID. API keys are masked for security unless explicitly requested.",
-        "operationId": "getApiModel",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Unique identifier for the API model alias",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "example": "openai-gpt4"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "API model configuration retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiModelOutput"
-                },
-                "example": {
-                  "api_format": "openai",
-                  "base_url": "https://api.openai.com/v1",
-                  "has_api_key": true,
-                  "id": "openai-gpt4",
-                  "models": [
-                    "gpt-4"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "API model with specified ID not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "entity_not_found",
-                    "message": "API model 'invalid-model' not found",
-                    "type": "not_found_error"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      },
-      "put": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Update an existing API model configuration",
-        "operationId": "updateApiModel",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "API model ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApiModelRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "API model updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiModelOutput"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "API model not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Delete an API model configuration",
-        "operationId": "deleteApiModel",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "API model ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "API model deleted"
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "API model not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/api-models/{id}/sync-models": {
-      "post": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Sync Models to Cache",
-        "description": "Synchronously fetches models from the external API and populates the cache. This ensures the cache is populated before returning. Primarily used for testing to avoid timing issues.",
-        "operationId": "syncModels",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Unique identifier for the API model alias",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "example": "openai-gpt4"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Models synced to cache successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiModelOutput"
-                },
-                "example": {
-                  "api_format": "openai",
-                  "base_url": "https://api.openai.com/v1",
-                  "created_at": "2024-01-01T00:00:00Z",
-                  "forward_all_with_prefix": false,
-                  "has_api_key": true,
-                  "id": "openai-gpt4",
-                  "models": [
-                    "gpt-4",
-                    "gpt-3.5-turbo",
-                    "gpt-4-turbo"
-                  ],
-                  "prefix": null,
-                  "updated_at": "2024-01-01T00:00:00Z"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "API model not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
     "/bodhi/v1/apps/access-requests/{id}": {
       "get": {
         "tags": [
@@ -4981,510 +4070,6 @@
         ]
       }
     },
-    "/bodhi/v1/modelfiles": {
-      "get": {
-        "tags": [
-          "models"
-        ],
-        "summary": "List Local Model Files",
-        "description": "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size. Requires any authenticated user (User level permissions or higher).",
-        "operationId": "listModelFiles",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number (1-based indexing)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "description": "Number of items to return per page (maximum 100)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sort_order",
-            "in": "query",
-            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Local model files retrieved successfully from cache",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedLocalModelResponse"
-                },
-                "example": {
-                  "data": [
-                    {
-                      "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
-                      "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
-                      "size": 4815162,
-                      "snapshot_id": "ab12cd34"
-                    }
-                  ],
-                  "page": 1,
-                  "page_size": 10,
-                  "total": 1
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/modelfiles/pull": {
-      "get": {
-        "tags": [
-          "models"
-        ],
-        "summary": "List Model Download Requests",
-        "description": "Retrieves paginated list of all model download requests with their current status, progress, and metadata. Includes both active downloads and completed/failed requests.",
-        "operationId": "listDownloads",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number (1-based indexing)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "description": "Number of items to return per page (maximum 100)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sort_order",
-            "in": "query",
-            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Model download requests retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedDownloadResponse"
-                },
-                "example": {
-                  "data": [
-                    {
-                      "created_at": "2024-01-15T10:30:00Z",
-                      "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
-                      "id": "download_123",
-                      "progress": 45.5,
-                      "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
-                      "status": "downloading",
-                      "updated_at": "2024-01-15T10:35:00Z"
-                    }
-                  ],
-                  "page": 1,
-                  "page_size": 10,
-                  "total": 1
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "models"
-        ],
-        "summary": "Start Model File Download",
-        "description": "Initiates a new model file download from HuggingFace repository. Creates a download request that can be tracked for progress. Returns existing request if download is already in progress.",
-        "operationId": "pullModelFile",
-        "requestBody": {
-          "description": "Model file download specification with repository and filename",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewDownloadRequest"
-              },
-              "example": {
-                "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
-                "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Existing download request found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DownloadRequest"
-                },
-                "example": {
-                  "created_at": "2024-11-10T04:52:06.786Z",
-                  "error": null,
-                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
-                  "id": "550e8400-e29b-41d4-a716-446655440000",
-                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
-                  "status": "pending",
-                  "updated_at": "2024-11-10T04:52:06.786Z"
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "Download request created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DownloadRequest"
-                },
-                "example": {
-                  "created_at": "2024-11-10T04:52:06.786Z",
-                  "error": null,
-                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
-                  "id": "550e8400-e29b-41d4-a716-446655440000",
-                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
-                  "status": "pending",
-                  "updated_at": "2024-11-10T04:52:06.786Z"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/modelfiles/pull/{id}": {
-      "get": {
-        "tags": [
-          "models"
-        ],
-        "summary": "Get Download Request Status",
-        "description": "Retrieves the current status and progress information for a specific model download request. Includes download progress, error details, and completion status.",
-        "operationId": "getDownloadStatus",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Unique identifier of the download request (UUID format)",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "example": "550e8400-e29b-41d4-a716-446655440000"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Download request found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DownloadRequest"
-                },
-                "example": {
-                  "created_at": "2024-11-10T04:52:06.786Z",
-                  "error": null,
-                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
-                  "id": "550e8400-e29b-41d4-a716-446655440000",
-                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
-                  "status": "completed",
-                  "updated_at": "2024-01-20T12:00:10Z"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Download request not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "db_error-item_not_found",
-                    "message": "item '550e8400-e29b-41d4-a716-446655440000' of type 'download_requests' not found in db",
-                    "type": "not_found_error"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
     "/bodhi/v1/models": {
       "get": {
         "tags": [
@@ -5643,13 +4228,15 @@
             ]
           }
         ]
-      },
+      }
+    },
+    "/bodhi/v1/models/alias": {
       "post": {
         "tags": [
-          "models"
+          "models-alias"
         ],
         "summary": "Create Alias",
-        "operationId": "createAlias",
+        "operationId": "models_alias_create",
         "requestBody": {
           "content": {
             "application/json": {
@@ -5697,6 +4284,1575 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/alias/{id}": {
+      "put": {
+        "tags": [
+          "models-alias"
+        ],
+        "summary": "Update Alias",
+        "operationId": "models_alias_update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of the alias to update",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserAliasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Alias updated succesfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAliasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "models-alias"
+        ],
+        "summary": "Delete a model alias by UUID",
+        "operationId": "models_alias_destroy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of the alias to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alias deleted successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alias not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/alias/{id}/copy": {
+      "post": {
+        "tags": [
+          "models-alias"
+        ],
+        "summary": "Copy a model alias",
+        "operationId": "models_alias_copy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of the alias to copy",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyAliasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Alias copied successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAliasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Source alias not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/api": {
+      "post": {
+        "tags": [
+          "models-api"
+        ],
+        "summary": "Create a new API model configuration",
+        "operationId": "createApiModel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "API model created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiAliasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Alias already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/api/fetch-models": {
+      "post": {
+        "tags": [
+          "models-api"
+        ],
+        "summary": "Fetch available models from the API.",
+        "operationId": "fetchApiModels",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FetchModelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Available models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FetchModelsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/api/formats": {
+      "get": {
+        "tags": [
+          "models-api"
+        ],
+        "summary": "Get Available API Formats",
+        "description": "Retrieves list of supported API formats/protocols (e.g., OpenAI).",
+        "operationId": "getApiFormats",
+        "responses": {
+          "200": {
+            "description": "API formats retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiFormatsResponse"
+                },
+                "example": {
+                  "data": [
+                    "openai"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/api/test": {
+      "post": {
+        "tags": [
+          "models-api"
+        ],
+        "summary": "Test API connectivity with a prompt.",
+        "operationId": "testApiModel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPromptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Test result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPromptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/api/{id}": {
+      "get": {
+        "tags": [
+          "models-api"
+        ],
+        "summary": "Get API Model Configuration",
+        "description": "Retrieves detailed configuration for a specific API model alias by ID. API keys are masked for security unless explicitly requested.",
+        "operationId": "getApiModel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique identifier for the API model alias",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "openai-gpt4"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API model configuration retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiAliasResponse"
+                },
+                "example": {
+                  "api_format": "openai",
+                  "base_url": "https://api.openai.com/v1",
+                  "has_api_key": true,
+                  "id": "openai-gpt4",
+                  "models": [
+                    "gpt-4"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model with specified ID not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "entity_not_found",
+                    "message": "API model 'invalid-model' not found",
+                    "type": "not_found_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "models-api"
+        ],
+        "summary": "Update an existing API model configuration",
+        "operationId": "updateApiModel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "API model ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "API model updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiAliasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "models-api"
+        ],
+        "summary": "Delete an API model configuration",
+        "operationId": "deleteApiModel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "API model ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "API model deleted"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/api/{id}/sync-models": {
+      "post": {
+        "tags": [
+          "models-api"
+        ],
+        "summary": "Sync Models to Cache",
+        "description": "Synchronously fetches models from the external API and populates the cache. This ensures the cache is populated before returning. Primarily used for testing to avoid timing issues.",
+        "operationId": "syncModels",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique identifier for the API model alias",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "openai-gpt4"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Models synced to cache successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiAliasResponse"
+                },
+                "example": {
+                  "api_format": "openai",
+                  "base_url": "https://api.openai.com/v1",
+                  "created_at": "2024-01-01T00:00:00Z",
+                  "forward_all_with_prefix": false,
+                  "has_api_key": true,
+                  "id": "openai-gpt4",
+                  "models": [
+                    "gpt-4",
+                    "gpt-3.5-turbo",
+                    "gpt-4-turbo"
+                  ],
+                  "prefix": null,
+                  "updated_at": "2024-01-01T00:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/files": {
+      "get": {
+        "tags": [
+          "models-files"
+        ],
+        "summary": "List Local Model Files",
+        "description": "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size. Requires any authenticated user (User level permissions or higher).",
+        "operationId": "listModelFiles",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based indexing)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items to return per page (maximum 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Local model files retrieved successfully from cache",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedLocalModelResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+                      "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                      "size": 4815162,
+                      "snapshot_id": "ab12cd34"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 10,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/files/pull": {
+      "get": {
+        "tags": [
+          "models-files"
+        ],
+        "summary": "List Model Download Requests",
+        "description": "Retrieves paginated list of all model download requests with their current status, progress, and metadata. Includes both active downloads and completed/failed requests.",
+        "operationId": "listDownloads",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based indexing)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items to return per page (maximum 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Model download requests retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedDownloadResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "created_at": "2024-01-15T10:30:00Z",
+                      "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+                      "id": "download_123",
+                      "progress": 45.5,
+                      "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                      "status": "downloading",
+                      "updated_at": "2024-01-15T10:35:00Z"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 10,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "models-files"
+        ],
+        "summary": "Start Model File Download",
+        "description": "Initiates a new model file download from HuggingFace repository. Creates a download request that can be tracked for progress. Returns existing request if download is already in progress.",
+        "operationId": "pullModelFile",
+        "requestBody": {
+          "description": "Model file download specification with repository and filename",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDownloadRequest"
+              },
+              "example": {
+                "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+                "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Existing download request found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "error": null,
+                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                  "status": "pending",
+                  "updated_at": "2024-11-10T04:52:06.786Z"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Download request created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "error": null,
+                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                  "status": "pending",
+                  "updated_at": "2024-11-10T04:52:06.786Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/files/pull/{id}": {
+      "get": {
+        "tags": [
+          "models-files"
+        ],
+        "summary": "Get Download Request Status",
+        "description": "Retrieves the current status and progress information for a specific model download request. Includes download progress, error details, and completion status.",
+        "operationId": "getDownloadStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique identifier of the download request (UUID format)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download request found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "error": null,
+                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                  "status": "completed",
+                  "updated_at": "2024-01-20T12:00:10Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Download request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "db_error-item_not_found",
+                    "message": "item '550e8400-e29b-41d4-a716-446655440000' of type 'download_requests' not found in db",
+                    "type": "not_found_error"
+                  }
                 }
               }
             }
@@ -5929,288 +6085,6 @@
           {
             "session_auth": [
               "resource_user"
-            ]
-          }
-        ]
-      },
-      "put": {
-        "tags": [
-          "models"
-        ],
-        "summary": "Update Alias",
-        "operationId": "updateAlias",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "UUID of the alias to update",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserAliasRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Alias updated succesfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserAliasResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "models"
-        ],
-        "summary": "Delete a model alias by UUID",
-        "operationId": "deleteAlias",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "UUID of the alias to delete",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Alias deleted successfully"
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Alias not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/models/{id}/copy": {
-      "post": {
-        "tags": [
-          "models"
-        ],
-        "summary": "Copy a model alias",
-        "operationId": "copyAlias",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "UUID of the alias to copy",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CopyAliasRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Alias copied successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserAliasResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Source alias not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
-          },
-          {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
-          },
-          {
-            "session_auth": [
-              "resource_power_user"
             ]
           }
         ]
@@ -9383,6 +9257,7 @@
           "id",
           "api_format",
           "base_url",
+          "has_api_key",
           "models",
           "forward_all_with_prefix",
           "created_at",
@@ -9400,6 +9275,9 @@
           },
           "base_url": {
             "type": "string"
+          },
+          "has_api_key": {
+            "type": "boolean"
           },
           "models": {
             "type": "array",
@@ -9501,71 +9379,6 @@
           }
         ],
         "description": "Represents an API key update operation for API model aliases and toolsets."
-      },
-      "ApiModelOutput": {
-        "type": "object",
-        "description": "Output type for API model configuration.",
-        "required": [
-          "id",
-          "api_format",
-          "base_url",
-          "has_api_key",
-          "models",
-          "forward_all_with_prefix",
-          "created_at",
-          "updated_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "api_format": {
-            "$ref": "#/components/schemas/ApiFormat"
-          },
-          "base_url": {
-            "type": "string"
-          },
-          "has_api_key": {
-            "type": "boolean"
-          },
-          "models": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "prefix": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "forward_all_with_prefix": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "example": {
-          "api_format": "openai",
-          "base_url": "https://api.openai.com/v1",
-          "created_at": "2024-01-01T00:00:00Z",
-          "forward_all_with_prefix": false,
-          "has_api_key": true,
-          "id": "openai-gpt4",
-          "models": [
-            "gpt-4",
-            "gpt-3.5-turbo"
-          ],
-          "prefix": "openai",
-          "updated_at": "2024-01-01T00:00:00Z"
-        }
       },
       "ApiModelRequest": {
         "type": "object",
@@ -14645,36 +14458,6 @@
           }
         }
       },
-      "PaginatedApiModelOutput": {
-        "type": "object",
-        "description": "Paginated response for API model listings",
-        "required": [
-          "data",
-          "total",
-          "page",
-          "page_size"
-        ],
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ApiModelOutput"
-            }
-          },
-          "total": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "page": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "page_size": {
-            "type": "integer",
-            "minimum": 0
-          }
-        }
-      },
       "PaginatedDownloadResponse": {
         "type": "object",
         "description": "Paginated list of download requests",
@@ -16734,12 +16517,20 @@
       "description": "API keys management"
     },
     {
-      "name": "api-models",
+      "name": "models",
+      "description": "Model files and aliases"
+    },
+    {
+      "name": "models-alias",
+      "description": "User-created model aliases"
+    },
+    {
+      "name": "models-api",
       "description": "Remote AI API model configuration"
     },
     {
-      "name": "models",
-      "description": "Model files and aliases"
+      "name": "models-files",
+      "description": "Local model files and downloads"
     },
     {
       "name": "settings",

@@ -117,6 +117,7 @@ export type ApiAliasResponse = {
     id: string;
     api_format: ApiFormat;
     base_url: string;
+    has_api_key: boolean;
     /**
      * Models available through this alias (merged from cache for forward_all)
      */
@@ -155,21 +156,6 @@ export type ApiKeyUpdate = {
      */
     value: ApiKey;
     action: 'set';
-};
-
-/**
- * Output type for API model configuration.
- */
-export type ApiModelOutput = {
-    id: string;
-    api_format: ApiFormat;
-    base_url: string;
-    has_api_key: boolean;
-    models: Array<string>;
-    prefix?: string | null;
-    forward_all_with_prefix: boolean;
-    created_at: string;
-    updated_at: string;
 };
 
 /**
@@ -2108,16 +2094,6 @@ export type PaginatedAliasResponse = {
 };
 
 /**
- * Paginated response for API model listings
- */
-export type PaginatedApiModelOutput = {
-    data: Array<ApiModelOutput>;
-    total: number;
-    page: number;
-    page_size: number;
-};
-
-/**
  * Paginated list of download requests
  */
 export type PaginatedDownloadResponse = {
@@ -3427,396 +3403,6 @@ export type GetAccessRequestReviewResponses = {
 };
 
 export type GetAccessRequestReviewResponse = GetAccessRequestReviewResponses[keyof GetAccessRequestReviewResponses];
-
-export type ListApiModelsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Page number (1-based indexing)
-         */
-        page?: number;
-        /**
-         * Number of items to return per page (maximum 100)
-         */
-        page_size?: number;
-        /**
-         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
-         */
-        sort?: string;
-        /**
-         * Sort order: 'asc' for ascending, 'desc' for descending
-         */
-        sort_order?: string;
-    };
-    url: '/bodhi/v1/api-models';
-};
-
-export type ListApiModelsErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ListApiModelsError = ListApiModelsErrors[keyof ListApiModelsErrors];
-
-export type ListApiModelsResponses = {
-    /**
-     * API model configurations retrieved successfully
-     */
-    200: PaginatedApiModelOutput;
-};
-
-export type ListApiModelsResponse = ListApiModelsResponses[keyof ListApiModelsResponses];
-
-export type CreateApiModelData = {
-    body: ApiModelRequest;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/api-models';
-};
-
-export type CreateApiModelErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Alias already exists
-     */
-    409: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type CreateApiModelError = CreateApiModelErrors[keyof CreateApiModelErrors];
-
-export type CreateApiModelResponses = {
-    /**
-     * API model created
-     */
-    201: ApiModelOutput;
-};
-
-export type CreateApiModelResponse = CreateApiModelResponses[keyof CreateApiModelResponses];
-
-export type GetApiFormatsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/api-models/api-formats';
-};
-
-export type GetApiFormatsErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type GetApiFormatsError = GetApiFormatsErrors[keyof GetApiFormatsErrors];
-
-export type GetApiFormatsResponses = {
-    /**
-     * API formats retrieved successfully
-     */
-    200: ApiFormatsResponse;
-};
-
-export type GetApiFormatsResponse = GetApiFormatsResponses[keyof GetApiFormatsResponses];
-
-export type FetchApiModelsData = {
-    body: FetchModelsRequest;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/api-models/fetch-models';
-};
-
-export type FetchApiModelsErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type FetchApiModelsError = FetchApiModelsErrors[keyof FetchApiModelsErrors];
-
-export type FetchApiModelsResponses = {
-    /**
-     * Available models
-     */
-    200: FetchModelsResponse;
-};
-
-export type FetchApiModelsResponse = FetchApiModelsResponses[keyof FetchApiModelsResponses];
-
-export type TestApiModelData = {
-    body: TestPromptRequest;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/api-models/test';
-};
-
-export type TestApiModelErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type TestApiModelError = TestApiModelErrors[keyof TestApiModelErrors];
-
-export type TestApiModelResponses = {
-    /**
-     * Test result
-     */
-    200: TestPromptResponse;
-};
-
-export type TestApiModelResponse = TestApiModelResponses[keyof TestApiModelResponses];
-
-export type DeleteApiModelData = {
-    body?: never;
-    path: {
-        /**
-         * API model ID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/api-models/{id}';
-};
-
-export type DeleteApiModelErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * API model not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type DeleteApiModelError = DeleteApiModelErrors[keyof DeleteApiModelErrors];
-
-export type DeleteApiModelResponses = {
-    /**
-     * API model deleted
-     */
-    204: void;
-};
-
-export type DeleteApiModelResponse = DeleteApiModelResponses[keyof DeleteApiModelResponses];
-
-export type GetApiModelData = {
-    body?: never;
-    path: {
-        /**
-         * Unique identifier for the API model alias
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/api-models/{id}';
-};
-
-export type GetApiModelErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * API model with specified ID not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type GetApiModelError = GetApiModelErrors[keyof GetApiModelErrors];
-
-export type GetApiModelResponses = {
-    /**
-     * API model configuration retrieved successfully
-     */
-    200: ApiModelOutput;
-};
-
-export type GetApiModelResponse = GetApiModelResponses[keyof GetApiModelResponses];
-
-export type UpdateApiModelData = {
-    body: ApiModelRequest;
-    path: {
-        /**
-         * API model ID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/api-models/{id}';
-};
-
-export type UpdateApiModelErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * API model not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type UpdateApiModelError = UpdateApiModelErrors[keyof UpdateApiModelErrors];
-
-export type UpdateApiModelResponses = {
-    /**
-     * API model updated
-     */
-    200: ApiModelOutput;
-};
-
-export type UpdateApiModelResponse = UpdateApiModelResponses[keyof UpdateApiModelResponses];
-
-export type SyncModelsData = {
-    body?: never;
-    path: {
-        /**
-         * Unique identifier for the API model alias
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/api-models/{id}/sync-models';
-};
-
-export type SyncModelsErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * API model not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type SyncModelsError = SyncModelsErrors[keyof SyncModelsErrors];
-
-export type SyncModelsResponses = {
-    /**
-     * Models synced to cache successfully
-     */
-    200: ApiModelOutput;
-};
-
-export type SyncModelsResponse = SyncModelsResponses[keyof SyncModelsResponses];
 
 export type GetAccessRequestStatusData = {
     body?: never;
@@ -5405,204 +4991,6 @@ export type ExecuteMcpToolResponses = {
 
 export type ExecuteMcpToolResponse = ExecuteMcpToolResponses[keyof ExecuteMcpToolResponses];
 
-export type ListModelFilesData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Page number (1-based indexing)
-         */
-        page?: number;
-        /**
-         * Number of items to return per page (maximum 100)
-         */
-        page_size?: number;
-        /**
-         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
-         */
-        sort?: string;
-        /**
-         * Sort order: 'asc' for ascending, 'desc' for descending
-         */
-        sort_order?: string;
-    };
-    url: '/bodhi/v1/modelfiles';
-};
-
-export type ListModelFilesErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ListModelFilesError = ListModelFilesErrors[keyof ListModelFilesErrors];
-
-export type ListModelFilesResponses = {
-    /**
-     * Local model files retrieved successfully from cache
-     */
-    200: PaginatedLocalModelResponse;
-};
-
-export type ListModelFilesResponse = ListModelFilesResponses[keyof ListModelFilesResponses];
-
-export type ListDownloadsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Page number (1-based indexing)
-         */
-        page?: number;
-        /**
-         * Number of items to return per page (maximum 100)
-         */
-        page_size?: number;
-        /**
-         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
-         */
-        sort?: string;
-        /**
-         * Sort order: 'asc' for ascending, 'desc' for descending
-         */
-        sort_order?: string;
-    };
-    url: '/bodhi/v1/modelfiles/pull';
-};
-
-export type ListDownloadsErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ListDownloadsError = ListDownloadsErrors[keyof ListDownloadsErrors];
-
-export type ListDownloadsResponses = {
-    /**
-     * Model download requests retrieved successfully
-     */
-    200: PaginatedDownloadResponse;
-};
-
-export type ListDownloadsResponse = ListDownloadsResponses[keyof ListDownloadsResponses];
-
-export type PullModelFileData = {
-    /**
-     * Model file download specification with repository and filename
-     */
-    body: NewDownloadRequest;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/modelfiles/pull';
-};
-
-export type PullModelFileErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type PullModelFileError = PullModelFileErrors[keyof PullModelFileErrors];
-
-export type PullModelFileResponses = {
-    /**
-     * Existing download request found
-     */
-    200: DownloadRequest;
-    /**
-     * Download request created
-     */
-    201: DownloadRequest;
-};
-
-export type PullModelFileResponse = PullModelFileResponses[keyof PullModelFileResponses];
-
-export type GetDownloadStatusData = {
-    body?: never;
-    path: {
-        /**
-         * Unique identifier of the download request (UUID format)
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/modelfiles/pull/{id}';
-};
-
-export type GetDownloadStatusErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Download request not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type GetDownloadStatusError = GetDownloadStatusErrors[keyof GetDownloadStatusErrors];
-
-export type GetDownloadStatusResponses = {
-    /**
-     * Download request found
-     */
-    200: DownloadRequest;
-};
-
-export type GetDownloadStatusResponse = GetDownloadStatusResponses[keyof GetDownloadStatusResponses];
-
 export type ListAllModelsData = {
     body?: never;
     path?: never;
@@ -5657,14 +5045,14 @@ export type ListAllModelsResponses = {
 
 export type ListAllModelsResponse = ListAllModelsResponses[keyof ListAllModelsResponses];
 
-export type CreateAliasData = {
+export type ModelsAliasCreateData = {
     body: UserAliasRequest;
     path?: never;
     query?: never;
-    url: '/bodhi/v1/models';
+    url: '/bodhi/v1/models/alias';
 };
 
-export type CreateAliasErrors = {
+export type ModelsAliasCreateErrors = {
     /**
      * Invalid request parameters
      */
@@ -5683,16 +5071,682 @@ export type CreateAliasErrors = {
     500: OpenAiApiError;
 };
 
-export type CreateAliasError = CreateAliasErrors[keyof CreateAliasErrors];
+export type ModelsAliasCreateError = ModelsAliasCreateErrors[keyof ModelsAliasCreateErrors];
 
-export type CreateAliasResponses = {
+export type ModelsAliasCreateResponses = {
     /**
      * Alias created succesfully
      */
     201: UserAliasResponse;
 };
 
-export type CreateAliasResponse = CreateAliasResponses[keyof CreateAliasResponses];
+export type ModelsAliasCreateResponse = ModelsAliasCreateResponses[keyof ModelsAliasCreateResponses];
+
+export type ModelsAliasDestroyData = {
+    body?: never;
+    path: {
+        /**
+         * UUID of the alias to delete
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/alias/{id}';
+};
+
+export type ModelsAliasDestroyErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Alias not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ModelsAliasDestroyError = ModelsAliasDestroyErrors[keyof ModelsAliasDestroyErrors];
+
+export type ModelsAliasDestroyResponses = {
+    /**
+     * Alias deleted successfully
+     */
+    200: unknown;
+};
+
+export type ModelsAliasUpdateData = {
+    body: UserAliasRequest;
+    path: {
+        /**
+         * UUID of the alias to update
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/alias/{id}';
+};
+
+export type ModelsAliasUpdateErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ModelsAliasUpdateError = ModelsAliasUpdateErrors[keyof ModelsAliasUpdateErrors];
+
+export type ModelsAliasUpdateResponses = {
+    /**
+     * Alias updated succesfully
+     */
+    200: UserAliasResponse;
+};
+
+export type ModelsAliasUpdateResponse = ModelsAliasUpdateResponses[keyof ModelsAliasUpdateResponses];
+
+export type ModelsAliasCopyData = {
+    body: CopyAliasRequest;
+    path: {
+        /**
+         * UUID of the alias to copy
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/alias/{id}/copy';
+};
+
+export type ModelsAliasCopyErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Source alias not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ModelsAliasCopyError = ModelsAliasCopyErrors[keyof ModelsAliasCopyErrors];
+
+export type ModelsAliasCopyResponses = {
+    /**
+     * Alias copied successfully
+     */
+    201: UserAliasResponse;
+};
+
+export type ModelsAliasCopyResponse = ModelsAliasCopyResponses[keyof ModelsAliasCopyResponses];
+
+export type CreateApiModelData = {
+    body: ApiModelRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/models/api';
+};
+
+export type CreateApiModelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Alias already exists
+     */
+    409: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CreateApiModelError = CreateApiModelErrors[keyof CreateApiModelErrors];
+
+export type CreateApiModelResponses = {
+    /**
+     * API model created
+     */
+    201: ApiAliasResponse;
+};
+
+export type CreateApiModelResponse = CreateApiModelResponses[keyof CreateApiModelResponses];
+
+export type FetchApiModelsData = {
+    body: FetchModelsRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/models/api/fetch-models';
+};
+
+export type FetchApiModelsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type FetchApiModelsError = FetchApiModelsErrors[keyof FetchApiModelsErrors];
+
+export type FetchApiModelsResponses = {
+    /**
+     * Available models
+     */
+    200: FetchModelsResponse;
+};
+
+export type FetchApiModelsResponse = FetchApiModelsResponses[keyof FetchApiModelsResponses];
+
+export type GetApiFormatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/models/api/formats';
+};
+
+export type GetApiFormatsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetApiFormatsError = GetApiFormatsErrors[keyof GetApiFormatsErrors];
+
+export type GetApiFormatsResponses = {
+    /**
+     * API formats retrieved successfully
+     */
+    200: ApiFormatsResponse;
+};
+
+export type GetApiFormatsResponse = GetApiFormatsResponses[keyof GetApiFormatsResponses];
+
+export type TestApiModelData = {
+    body: TestPromptRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/models/api/test';
+};
+
+export type TestApiModelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type TestApiModelError = TestApiModelErrors[keyof TestApiModelErrors];
+
+export type TestApiModelResponses = {
+    /**
+     * Test result
+     */
+    200: TestPromptResponse;
+};
+
+export type TestApiModelResponse = TestApiModelResponses[keyof TestApiModelResponses];
+
+export type DeleteApiModelData = {
+    body?: never;
+    path: {
+        /**
+         * API model ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/api/{id}';
+};
+
+export type DeleteApiModelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * API model not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DeleteApiModelError = DeleteApiModelErrors[keyof DeleteApiModelErrors];
+
+export type DeleteApiModelResponses = {
+    /**
+     * API model deleted
+     */
+    204: void;
+};
+
+export type DeleteApiModelResponse = DeleteApiModelResponses[keyof DeleteApiModelResponses];
+
+export type GetApiModelData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier for the API model alias
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/api/{id}';
+};
+
+export type GetApiModelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * API model with specified ID not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetApiModelError = GetApiModelErrors[keyof GetApiModelErrors];
+
+export type GetApiModelResponses = {
+    /**
+     * API model configuration retrieved successfully
+     */
+    200: ApiAliasResponse;
+};
+
+export type GetApiModelResponse = GetApiModelResponses[keyof GetApiModelResponses];
+
+export type UpdateApiModelData = {
+    body: ApiModelRequest;
+    path: {
+        /**
+         * API model ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/api/{id}';
+};
+
+export type UpdateApiModelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * API model not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type UpdateApiModelError = UpdateApiModelErrors[keyof UpdateApiModelErrors];
+
+export type UpdateApiModelResponses = {
+    /**
+     * API model updated
+     */
+    200: ApiAliasResponse;
+};
+
+export type UpdateApiModelResponse = UpdateApiModelResponses[keyof UpdateApiModelResponses];
+
+export type SyncModelsData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier for the API model alias
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/api/{id}/sync-models';
+};
+
+export type SyncModelsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * API model not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type SyncModelsError = SyncModelsErrors[keyof SyncModelsErrors];
+
+export type SyncModelsResponses = {
+    /**
+     * Models synced to cache successfully
+     */
+    200: ApiAliasResponse;
+};
+
+export type SyncModelsResponse = SyncModelsResponses[keyof SyncModelsResponses];
+
+export type ListModelFilesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number (1-based indexing)
+         */
+        page?: number;
+        /**
+         * Number of items to return per page (maximum 100)
+         */
+        page_size?: number;
+        /**
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
+         */
+        sort?: string;
+        /**
+         * Sort order: 'asc' for ascending, 'desc' for descending
+         */
+        sort_order?: string;
+    };
+    url: '/bodhi/v1/models/files';
+};
+
+export type ListModelFilesErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListModelFilesError = ListModelFilesErrors[keyof ListModelFilesErrors];
+
+export type ListModelFilesResponses = {
+    /**
+     * Local model files retrieved successfully from cache
+     */
+    200: PaginatedLocalModelResponse;
+};
+
+export type ListModelFilesResponse = ListModelFilesResponses[keyof ListModelFilesResponses];
+
+export type ListDownloadsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number (1-based indexing)
+         */
+        page?: number;
+        /**
+         * Number of items to return per page (maximum 100)
+         */
+        page_size?: number;
+        /**
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
+         */
+        sort?: string;
+        /**
+         * Sort order: 'asc' for ascending, 'desc' for descending
+         */
+        sort_order?: string;
+    };
+    url: '/bodhi/v1/models/files/pull';
+};
+
+export type ListDownloadsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListDownloadsError = ListDownloadsErrors[keyof ListDownloadsErrors];
+
+export type ListDownloadsResponses = {
+    /**
+     * Model download requests retrieved successfully
+     */
+    200: PaginatedDownloadResponse;
+};
+
+export type ListDownloadsResponse = ListDownloadsResponses[keyof ListDownloadsResponses];
+
+export type PullModelFileData = {
+    /**
+     * Model file download specification with repository and filename
+     */
+    body: NewDownloadRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/models/files/pull';
+};
+
+export type PullModelFileErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type PullModelFileError = PullModelFileErrors[keyof PullModelFileErrors];
+
+export type PullModelFileResponses = {
+    /**
+     * Existing download request found
+     */
+    200: DownloadRequest;
+    /**
+     * Download request created
+     */
+    201: DownloadRequest;
+};
+
+export type PullModelFileResponse = PullModelFileResponses[keyof PullModelFileResponses];
+
+export type GetDownloadStatusData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier of the download request (UUID format)
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/files/pull/{id}';
+};
+
+export type GetDownloadStatusErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Download request not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetDownloadStatusError = GetDownloadStatusErrors[keyof GetDownloadStatusErrors];
+
+export type GetDownloadStatusResponses = {
+    /**
+     * Download request found
+     */
+    200: DownloadRequest;
+};
+
+export type GetDownloadStatusResponse = GetDownloadStatusResponses[keyof GetDownloadStatusResponses];
 
 export type RefreshModelMetadataData = {
     /**
@@ -5742,50 +5796,6 @@ export type RefreshModelMetadataResponses = {
 
 export type RefreshModelMetadataResponse = RefreshModelMetadataResponses[keyof RefreshModelMetadataResponses];
 
-export type DeleteAliasData = {
-    body?: never;
-    path: {
-        /**
-         * UUID of the alias to delete
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/models/{id}';
-};
-
-export type DeleteAliasErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Alias not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type DeleteAliasError = DeleteAliasErrors[keyof DeleteAliasErrors];
-
-export type DeleteAliasResponses = {
-    /**
-     * Alias deleted successfully
-     */
-    200: unknown;
-};
-
 export type GetAliasData = {
     body?: never;
     path: {
@@ -5831,94 +5841,6 @@ export type GetAliasResponses = {
 };
 
 export type GetAliasResponse = GetAliasResponses[keyof GetAliasResponses];
-
-export type UpdateAliasData = {
-    body: UserAliasRequest;
-    path: {
-        /**
-         * UUID of the alias to update
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/models/{id}';
-};
-
-export type UpdateAliasErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type UpdateAliasError = UpdateAliasErrors[keyof UpdateAliasErrors];
-
-export type UpdateAliasResponses = {
-    /**
-     * Alias updated succesfully
-     */
-    200: UserAliasResponse;
-};
-
-export type UpdateAliasResponse = UpdateAliasResponses[keyof UpdateAliasResponses];
-
-export type CopyAliasData = {
-    body: CopyAliasRequest;
-    path: {
-        /**
-         * UUID of the alias to copy
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/models/{id}/copy';
-};
-
-export type CopyAliasErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Source alias not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type CopyAliasError = CopyAliasErrors[keyof CopyAliasErrors];
-
-export type CopyAliasResponses = {
-    /**
-     * Alias copied successfully
-     */
-    201: UserAliasResponse;
-};
-
-export type CopyAliasResponse = CopyAliasResponses[keyof CopyAliasResponses];
 
 export type GetQueueStatusData = {
     body?: never;

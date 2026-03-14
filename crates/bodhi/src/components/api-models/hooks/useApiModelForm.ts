@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 
-import { ApiModelOutput } from '@bodhiapp/ts-client';
+import { ApiAliasResponse } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-import { useCreateApiModel, useUpdateApiModel, useApiFormats } from '@/hooks/useApiModels';
+import { useCreateApiModel, useUpdateApiModel, useApiFormats } from '@/hooks/useModelsApi';
 import {
   ApiModelFormData,
   UpdateApiModelFormData,
@@ -22,7 +22,7 @@ import { useTestConnection } from './useTestConnection';
 
 interface UseApiModelFormProps {
   mode: 'create' | 'edit' | 'setup';
-  initialData?: ApiModelOutput;
+  initialData?: ApiAliasResponse;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (data: any) => void;
   onError?: (error: string) => void;

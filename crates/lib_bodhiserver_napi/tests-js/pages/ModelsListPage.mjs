@@ -64,7 +64,7 @@ export class ModelsListPage extends BasePage {
   async clickNewApiModel() {
     await this.expectVisible(this.selectors.newApiModelButton);
     await this.page.click(this.selectors.newApiModelButton);
-    await this.waitForUrl('/ui/api-models/new/');
+    await this.waitForUrl('/ui/models/api/new/');
     await this.waitForSPAReady();
   }
 
@@ -91,7 +91,7 @@ export class ModelsListPage extends BasePage {
     const editBtn = this.page.locator(this.selectors.editButton(modelId));
     await expect(editBtn).toBeVisible();
     await editBtn.click();
-    await this.waitForUrl('/ui/api-models/edit/');
+    await this.waitForUrl('/ui/models/api/edit/');
     await this.waitForSPAReady();
 
     // Verify we're on the edit page with correct model ID
@@ -140,7 +140,7 @@ export class ModelsListPage extends BasePage {
   async clickNewModelAlias() {
     await this.expectVisible(this.selectors.newModelAliasButton);
     await this.page.click(this.selectors.newModelAliasButton);
-    await this.waitForUrl('/ui/models/new/');
+    await this.waitForUrl('/ui/models/alias/new/');
     await this.waitForSPAReady();
   }
 
@@ -175,7 +175,7 @@ export class ModelsListPage extends BasePage {
     const editBtn = this.page.locator(this.selectors.editButton(alias));
     await expect(editBtn).toBeVisible();
     await editBtn.click();
-    await this.waitForUrl('/ui/models/edit/');
+    await this.waitForUrl('/ui/models/alias/edit/');
     await this.waitForSPAReady();
 
     // Verify we're on the edit page with correct model UUID
@@ -212,7 +212,7 @@ export class ModelsListPage extends BasePage {
     await createBtn.click();
 
     // Wait for navigation to new alias form with pre-populated data
-    await this.waitForUrl('/ui/models/new/');
+    await this.waitForUrl('/ui/models/alias/new/');
     await this.waitForSPAReady();
   }
 
@@ -284,7 +284,7 @@ export class ModelsListPage extends BasePage {
     await expect(editBtn).toBeVisible();
     await editBtn.click();
 
-    await this.waitForUrl('/ui/api-models/edit/');
+    await this.waitForUrl('/ui/models/api/edit/');
     await this.waitForSPAReady();
   }
 

@@ -2,7 +2,7 @@
  * Type-safe MSW v2 handlers for models endpoint using openapi-msw
  */
 import { ENDPOINT_MODELS_REFRESH, ENDPOINT_QUEUE } from '@/hooks/useModelMetadata';
-import { ENDPOINT_MODELS, ENDPOINT_MODEL_ID } from '@/hooks/useModels';
+import { ENDPOINT_MODELS, ENDPOINT_MODEL_ID, ENDPOINT_ALIAS, ENDPOINT_ALIAS_ID } from '@/hooks/useModels';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
@@ -85,6 +85,7 @@ export function mockModelsWithApiModel() {
         id: 'test-api-model',
         api_format: 'openai',
         base_url: 'https://api.openai.com/v1',
+        has_api_key: true,
         models: ['gpt-4', 'gpt-3.5-turbo'],
         forward_all_with_prefix: false,
         created_at: '2024-01-01T00:00:00Z',
@@ -210,7 +211,7 @@ export function mockCreateModel(
   let hasBeenCalled = false;
 
   return [
-    typedHttp.post(ENDPOINT_MODELS, async ({ response }) => {
+    typedHttp.post(ENDPOINT_ALIAS, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -252,7 +253,7 @@ export function mockCreateModelError(
   let hasBeenCalled = false;
 
   return [
-    typedHttp.post(ENDPOINT_MODELS, async ({ response }) => {
+    typedHttp.post(ENDPOINT_ALIAS, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -450,7 +451,7 @@ export function mockUpdateModel(
   let hasBeenCalled = false;
 
   return [
-    typedHttp.put(ENDPOINT_MODEL_ID, async ({ response, params }) => {
+    typedHttp.put(ENDPOINT_ALIAS_ID, async ({ response, params }) => {
       const { id: paramId } = params;
 
       // Only respond if id matches
@@ -500,7 +501,7 @@ export function mockUpdateModelError(
   let hasBeenCalled = false;
 
   return [
-    typedHttp.put(ENDPOINT_MODEL_ID, async ({ response, params }) => {
+    typedHttp.put(ENDPOINT_ALIAS_ID, async ({ response, params }) => {
       const { id: paramId } = params;
 
       // Only respond if id matches

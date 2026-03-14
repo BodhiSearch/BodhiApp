@@ -6,7 +6,7 @@ import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useMode
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
 // ============================================================================
-// Model Files Endpoint (/bodhi/v1/modelfiles)
+// Model Files Endpoint (/bodhi/v1/models/files)
 // ============================================================================
 
 // Success Handlers
@@ -115,7 +115,7 @@ export function mockModelFilesEmpty() {
 }
 
 // ============================================================================
-// Model Pull Downloads Endpoint (/bodhi/v1/modelfiles/pull GET)
+// Model Pull Downloads Endpoint (/bodhi/v1/models/files/pull GET)
 // ============================================================================
 
 // Success Handlers
@@ -267,7 +267,7 @@ export function mockModelPullDownloadsInternalError() {
 }
 
 // ============================================================================
-// Model Pull POST Endpoint (/bodhi/v1/modelfiles/pull POST)
+// Model Pull POST Endpoint (/bodhi/v1/models/files/pull POST)
 // ============================================================================
 
 // Success Handlers

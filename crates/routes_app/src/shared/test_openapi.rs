@@ -1,7 +1,7 @@
 use crate::{
   BodhiOpenAPIDoc, GlobalErrorResponses, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT,
-  ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS,
-  ENDPOINT_USER_INFO,
+  ENDPOINT_MODELS, ENDPOINT_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL, ENDPOINT_PING,
+  ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
 };
 use pretty_assertions::assert_eq;
 use serde_json::json;
@@ -202,18 +202,18 @@ fn test_modelfiles_endpoint() {
 
   // Verify tags
   let tags = api_doc.tags.as_ref().unwrap();
-  assert!(tags.iter().any(|t| t.name == "models"));
+  assert!(tags.iter().any(|t| t.name == "models-files"));
 
   // Verify endpoint
   let paths = &api_doc.paths;
   let modelfiles = paths
     .paths
-    .get(ENDPOINT_MODEL_FILES)
+    .get(ENDPOINT_MODELS_FILES)
     .expect("Modelfiles endpoint not found");
   let get_op = modelfiles.get.as_ref().expect("GET operation not found");
 
   // Check operation details
-  assert_eq!(get_op.tags.as_ref().unwrap()[0], "models");
+  assert_eq!(get_op.tags.as_ref().unwrap()[0], "models-files");
   assert_eq!(get_op.operation_id.as_ref().unwrap(), "listModelFiles");
 
   // Check query parameters
@@ -252,19 +252,19 @@ fn test_download_endpoints() {
 
   // Verify tags
   let tags = api_doc.tags.as_ref().unwrap();
-  assert!(tags.iter().any(|t| t.name == "models"));
+  assert!(tags.iter().any(|t| t.name == "models-files"));
 
   let paths = &api_doc.paths;
 
-  // Test GET /modelfiles/pull endpoint
+  // Test GET /models/files/pull endpoint
   let downloads = paths
     .paths
-    .get(ENDPOINT_MODEL_PULL)
+    .get(ENDPOINT_MODELS_FILES_PULL)
     .expect("Downloads endpoint not found");
 
   // Check GET operation
   let get_op = downloads.get.as_ref().expect("GET operation not found");
-  assert_eq!(get_op.tags.as_ref().unwrap()[0], "models");
+  assert_eq!(get_op.tags.as_ref().unwrap()[0], "models-files");
   assert_eq!(get_op.operation_id.as_ref().unwrap(), "listDownloads");
 
   // Check query parameters
@@ -291,7 +291,7 @@ fn test_download_endpoints() {
 
   // Check POST operation
   let post_op = downloads.post.as_ref().expect("POST operation not found");
-  assert_eq!(post_op.tags.as_ref().unwrap()[0], "models");
+  assert_eq!(post_op.tags.as_ref().unwrap()[0], "models-files");
   assert_eq!(post_op.operation_id.as_ref().unwrap(), "pullModelFile");
 
   // Verify request body schema
@@ -395,13 +395,13 @@ fn test_get_download_status_endpoint() {
   // Verify endpoint
   let status_path = paths
     .paths
-    .get("/bodhi/v1/modelfiles/pull/{id}")
+    .get("/bodhi/v1/models/files/pull/{id}")
     .expect("Download status endpoint not found");
 
   let get_op = status_path.get.as_ref().expect("GET operation not found");
 
   // Check operation details
-  assert_eq!(get_op.tags.as_ref().unwrap()[0], "models");
+  assert_eq!(get_op.tags.as_ref().unwrap()[0], "models-files");
   assert_eq!(get_op.operation_id.as_ref().unwrap(), "getDownloadStatus");
 
   // Check path parameters

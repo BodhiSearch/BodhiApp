@@ -2,9 +2,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use crate::db::{DbError, DbService, TimeService};
-use crate::models::{
-  ApiAlias, ApiKeyUpdate, ApiModelOutput, ApiModelRequest, PaginatedApiModelOutput,
-};
+use crate::models::{ApiAlias, ApiAliasResponse, ApiKeyUpdate, ApiModelRequest};
 use crate::new_ulid;
 use crate::AiApiService;
 use errmeta::{AppError, EntityError, ErrorType};
@@ -50,7 +48,7 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     tenant_id: &str,
     user_id: &str,
     form: ApiModelRequest,
-  ) -> Result<ApiModelOutput, ApiModelServiceError>;
+  ) -> Result<ApiAliasResponse, ApiModelServiceError>;
 
   /// Update an existing API model configuration
   async fn update(
@@ -59,7 +57,7 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     user_id: &str,
     id: &str,
     form: ApiModelRequest,
-  ) -> Result<ApiModelOutput, ApiModelServiceError>;
+  ) -> Result<ApiAliasResponse, ApiModelServiceError>;
 
   /// Delete an API model configuration
   async fn delete(
@@ -75,16 +73,7 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     tenant_id: &str,
     user_id: &str,
     id: &str,
-  ) -> Result<ApiModelOutput, ApiModelServiceError>;
-
-  /// List API model configurations with pagination
-  async fn list(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-    page: usize,
-    page_size: usize,
-  ) -> Result<PaginatedApiModelOutput, ApiModelServiceError>;
+  ) -> Result<ApiAliasResponse, ApiModelServiceError>;
 
   /// Synchronously fetch and cache models for an API model alias
   async fn sync_cache(
@@ -92,7 +81,7 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     tenant_id: &str,
     user_id: &str,
     id: &str,
-  ) -> Result<ApiModelOutput, ApiModelServiceError>;
+  ) -> Result<ApiAliasResponse, ApiModelServiceError>;
 }
 
 // =============================================================================
@@ -113,7 +102,7 @@ impl ApiModelService for DefaultApiModelService {
     tenant_id: &str,
     user_id: &str,
     form: ApiModelRequest,
-  ) -> Result<ApiModelOutput, ApiModelServiceError> {
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     validate_forward_all(&form)?;
 
     let now = self.time_service.utc_now();
@@ -157,7 +146,7 @@ impl ApiModelService for DefaultApiModelService {
     // async job/queue system. The previous spawn_cache_refresh has been removed as
     // it was a fire-and-forget pattern that couldn't be properly tested or monitored.
 
-    Ok(ApiModelOutput::from_alias(api_alias, has_api_key))
+    Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
   }
 
   async fn update(
@@ -166,7 +155,7 @@ impl ApiModelService for DefaultApiModelService {
     user_id: &str,
     id: &str,
     form: ApiModelRequest,
-  ) -> Result<ApiModelOutput, ApiModelServiceError> {
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     validate_forward_all(&form)?;
 
     // Get existing API model
@@ -203,7 +192,7 @@ impl ApiModelService for DefaultApiModelService {
       .await?
       .is_some();
 
-    Ok(ApiModelOutput::from_alias(api_alias, has_api_key))
+    Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
   }
 
   async fn delete(
@@ -237,7 +226,7 @@ impl ApiModelService for DefaultApiModelService {
     tenant_id: &str,
     user_id: &str,
     id: &str,
-  ) -> Result<ApiModelOutput, ApiModelServiceError> {
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     let api_alias = self
       .db_service
       .get_api_model_alias(tenant_id, user_id, id)
@@ -250,45 +239,7 @@ impl ApiModelService for DefaultApiModelService {
       .await?
       .is_some();
 
-    Ok(ApiModelOutput::from_alias(api_alias, has_api_key))
-  }
-
-  async fn list(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-    page: usize,
-    page_size: usize,
-  ) -> Result<PaginatedApiModelOutput, ApiModelServiceError> {
-    let aliases = self
-      .db_service
-      .list_api_model_aliases(tenant_id, user_id)
-      .await?;
-
-    let total = aliases.len();
-    let start = (page - 1) * page_size;
-
-    // P0-8: Bounds check — if start >= total, return empty page instead of panicking
-    let page_data: Vec<ApiModelOutput> = if start >= total {
-      Vec::new()
-    } else {
-      let end = std::cmp::min(start + page_size, total);
-      aliases[start..end]
-        .iter()
-        .map(|alias| {
-          // TODO(P1-7): has_api_key is hardcoded to true for list view for efficiency;
-          // checking individual key existence would require N queries
-          ApiModelOutput::from_alias(alias.clone(), true)
-        })
-        .collect()
-    };
-
-    Ok(PaginatedApiModelOutput {
-      data: page_data,
-      total,
-      page,
-      page_size,
-    })
+    Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
   }
 
   async fn sync_cache(
@@ -296,7 +247,7 @@ impl ApiModelService for DefaultApiModelService {
     tenant_id: &str,
     user_id: &str,
     id: &str,
-  ) -> Result<ApiModelOutput, ApiModelServiceError> {
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     let api_alias = self
       .db_service
       .get_api_model_alias(tenant_id, user_id, id)
@@ -334,7 +285,7 @@ impl ApiModelService for DefaultApiModelService {
 
     let has_api_key = api_key.is_some();
 
-    Ok(ApiModelOutput::from_alias(updated_alias, has_api_key))
+    Ok(ApiAliasResponse::from(updated_alias).with_has_api_key(has_api_key))
   }
 }
 

@@ -216,7 +216,7 @@ test.describe('Model Metadata Refresh and Preview', () => {
   test('modal refresh auto-updates metadata from modelfiles page', async ({ page }) => {
     // Login and navigate to modelfiles page
     await loginPage.performOAuthLogin();
-    await page.goto(`${baseUrl}/ui/modelfiles/`);
+    await page.goto(`${baseUrl}/ui/models/files/`);
     await page.waitForSelector('[data-testid="modelfiles-content"]');
 
     // Use a model that hasn't been processed yet

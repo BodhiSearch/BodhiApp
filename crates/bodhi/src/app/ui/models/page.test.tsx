@@ -157,7 +157,9 @@ describe('ModelsPage', () => {
         newButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/models/new?repo=test-repo&filename=test-file.bin&snapshot=abc123');
+      expect(pushMock).toHaveBeenCalledWith(
+        '/ui/models/alias/new?repo=test-repo&filename=test-file.bin&snapshot=abc123'
+      );
     });
 
     it('shows edit button for non-model source type', async () => {
@@ -174,7 +176,7 @@ describe('ModelsPage', () => {
         editButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/models/edit?id=test-uuid-1');
+      expect(pushMock).toHaveBeenCalledWith('/ui/models/alias/edit?id=test-uuid-1');
     });
 
     it('shows chat and huggingface buttons for all models', async () => {
@@ -223,7 +225,7 @@ describe('ModelsPage', () => {
         newApiModelButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/api-models/new');
+      expect(pushMock).toHaveBeenCalledWith('/ui/models/api/new');
     });
   });
 
@@ -256,7 +258,7 @@ describe('ModelsPage', () => {
         editButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/api-models/edit?id=test-api-model');
+      expect(pushMock).toHaveBeenCalledWith('/ui/models/api/edit?id=test-api-model');
     });
 
     it('shows chat button for API models with model identifier', async () => {
@@ -318,7 +320,7 @@ describe('ModelsPage', () => {
       });
 
       // Verify navigation to edit page with correct ID
-      expect(pushMock).toHaveBeenCalledWith('/ui/api-models/edit?id=test-api-model');
+      expect(pushMock).toHaveBeenCalledWith('/ui/models/api/edit?id=test-api-model');
     });
 
     it('navigates to chat page when clicking on API model for chat', async () => {

@@ -7,9 +7,9 @@ import {
   ENDPOINT_API_MODELS_FORMATS,
   ENDPOINT_API_MODELS_TEST,
   ENDPOINT_API_MODEL_ID,
-} from '@/hooks/useApiModels';
+} from '@/hooks/useModelsApi';
 
-import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
+import { INTERNAL_SERVER_ERROR, typedHttp, http, HttpResponse, type components } from '../setup';
 
 // =============================================================================
 // CORE TYPED HTTP METHODS (Success cases + Error handlers)
@@ -18,29 +18,26 @@ import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 /**
  * Mock handler for API models list endpoint with configurable responses
  */
+/**
+ * Note: The GET list endpoint for API models was removed.
+ * Use mockModels from handlers/models.ts for the combined models list.
+ * These handlers are kept for backward compatibility but use standard http.
+ */
 export function mockApiModels(
   {
     data = [],
     page = 1,
     page_size = 30,
     total = 0,
-    ...rest
-  }: Partial<components['schemas']['PaginatedApiModelOutput']> = {},
+  }: { data?: components['schemas']['ApiAliasResponse'][]; page?: number; page_size?: number; total?: number } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
-    typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
+    http.get(`*${ENDPOINT_API_MODELS}`, () => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-      const responseData: components['schemas']['PaginatedApiModelOutput'] = {
-        data,
-        page,
-        page_size,
-        total,
-        ...rest,
-      };
-      return response(200 as const).json(responseData);
+      return HttpResponse.json({ data, page, page_size, total });
     }),
   ];
 }
@@ -51,22 +48,15 @@ export function mockApiModelsError(
     message = INTERNAL_SERVER_ERROR.message,
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
-    ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['ErrorBody']> & { status?: number } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
-    typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
+    http.get(`*${ENDPOINT_API_MODELS}`, () => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-      const errorData = {
-        code,
-        message,
-        type,
-        ...rest,
-      };
-      return response(status).json({ error: errorData });
+      return HttpResponse.json({ error: { code, message, type } }, { status });
     }),
   ];
 }
@@ -80,6 +70,7 @@ export function mockApiModelsError(
  */
 export function mockCreateApiModel(
   {
+    source = 'api',
     id = 'test-api-model-123',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
@@ -90,7 +81,7 @@ export function mockCreateApiModel(
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
-  }: Partial<components['schemas']['ApiModelOutput']> = {},
+  }: Partial<components['schemas']['ApiAliasResponse']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -98,7 +89,8 @@ export function mockCreateApiModel(
     typedHttp.post(ENDPOINT_API_MODELS, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-      const responseData: components['schemas']['ApiModelOutput'] = {
+      const responseData: components['schemas']['ApiAliasResponse'] = {
+        source,
         id,
         api_format,
         base_url,
@@ -151,6 +143,7 @@ export function mockCreateApiModelError(
 export function mockGetApiModel(
   expectedId: string,
   {
+    source = 'api',
     id = '',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
@@ -161,7 +154,7 @@ export function mockGetApiModel(
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
-  }: Partial<components['schemas']['ApiModelOutput']> = {},
+  }: Partial<components['schemas']['ApiAliasResponse']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -177,7 +170,8 @@ export function mockGetApiModel(
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
-      const responseData: components['schemas']['ApiModelOutput'] = {
+      const responseData: components['schemas']['ApiAliasResponse'] = {
+        source,
         id: id || (paramId as string),
         api_format,
         base_url,
@@ -239,6 +233,7 @@ export function mockGetApiModelError(
 export function mockUpdateApiModel(
   expectedId: string,
   {
+    source = 'api',
     id = '',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
@@ -249,7 +244,7 @@ export function mockUpdateApiModel(
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
-  }: Partial<components['schemas']['ApiModelOutput']> = {},
+  }: Partial<components['schemas']['ApiAliasResponse']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -265,7 +260,8 @@ export function mockUpdateApiModel(
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
-      const responseData: components['schemas']['ApiModelOutput'] = {
+      const responseData: components['schemas']['ApiAliasResponse'] = {
+        source,
         id: id || (paramId as string),
         api_format,
         base_url,
@@ -534,6 +530,7 @@ export function mockApiModelsDefault() {
   return mockApiModels({
     data: [
       {
+        source: 'api',
         id: 'test-api-model',
         api_format: 'openai',
         base_url: 'https://api.openai.com/v1',
@@ -609,7 +606,7 @@ export function mockCreateApiModelSuccess() {
  * Mock API model with API key (has_api_key: true)
  * Use this when testing scenarios where an API key exists
  */
-export function mockApiModelWithKey(overrides?: Partial<components['schemas']['ApiModelOutput']>) {
+export function mockApiModelWithKey(overrides?: Partial<components['schemas']['ApiAliasResponse']>) {
   return mockCreateApiModel({
     has_api_key: true,
     ...overrides,
@@ -620,7 +617,7 @@ export function mockApiModelWithKey(overrides?: Partial<components['schemas']['A
  * Mock API model without API key (null)
  * Use this when testing public API scenarios or models without authentication
  */
-export function mockApiModelWithoutKey(overrides?: Partial<components['schemas']['ApiModelOutput']>) {
+export function mockApiModelWithoutKey(overrides?: Partial<components['schemas']['ApiAliasResponse']>) {
   return mockCreateApiModel({
     has_api_key: false,
     ...overrides,

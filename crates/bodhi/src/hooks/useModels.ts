@@ -16,10 +16,12 @@ import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@
 
 // Constants at top
 export const BODHI_API_BASE = '/bodhi/v1';
-export const ENDPOINT_MODEL_FILES = `${BODHI_API_BASE}/modelfiles`;
-export const ENDPOINT_MODEL_FILES_PULL = `${BODHI_API_BASE}/modelfiles/pull`;
+export const ENDPOINT_MODEL_FILES = `${BODHI_API_BASE}/models/files`;
+export const ENDPOINT_MODEL_FILES_PULL = `${BODHI_API_BASE}/models/files/pull`;
 export const ENDPOINT_MODELS = `${BODHI_API_BASE}/models`;
 export const ENDPOINT_MODEL_ID = `${BODHI_API_BASE}/models/{id}`;
+export const ENDPOINT_ALIAS = `${BODHI_API_BASE}/models/alias`;
+export const ENDPOINT_ALIAS_ID = `${BODHI_API_BASE}/models/alias/{id}`;
 
 // Type alias
 type ErrorResponse = OpenAiApiError;
@@ -53,7 +55,7 @@ export function useCreateModel(options?: {
   onError?: (message: string) => void;
 }): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UserAliasRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<Alias, UserAliasRequest>(ENDPOINT_MODELS, 'post', {
+  return useMutationQuery<Alias, UserAliasRequest>(ENDPOINT_ALIAS, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(ENDPOINT_MODELS);
       options?.onSuccess?.(response.data);
@@ -74,7 +76,7 @@ export function useUpdateModel(
 ): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UserAliasRequest> {
   const queryClient = useQueryClient();
   return useMutationQuery<Alias, UserAliasRequest>(
-    () => `${ENDPOINT_MODELS}/${id}`,
+    () => `${ENDPOINT_ALIAS}/${id}`,
     'put',
     {
       onSuccess: (response) => {

@@ -613,7 +613,7 @@ describe('Model Hooks', () => {
       const onError = vi.fn();
       // Create a custom handler that doesn't include a code field
       server.use(
-        http.post('/bodhi/v1/modelfiles/pull', () => {
+        http.post('/bodhi/v1/models/files/pull', () => {
           return HttpResponse.json(
             {
               error: {

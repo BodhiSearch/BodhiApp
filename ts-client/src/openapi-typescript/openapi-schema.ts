@@ -188,123 +188,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/api-models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List API Model Configurations
-         * @description Retrieves paginated list of all configured API model aliases including external API formats like OpenAI, etc. API keys are masked in list view for security.
-         */
-        get: operations["listApiModels"];
-        put?: never;
-        /** Create a new API model configuration */
-        post: operations["createApiModel"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/api-models/api-formats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Available API Formats
-         * @description Retrieves list of supported API formats/protocols (e.g., OpenAI).
-         */
-        get: operations["getApiFormats"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/api-models/fetch-models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Fetch available models from the API. */
-        post: operations["fetchApiModels"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/api-models/test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Test API connectivity with a prompt. */
-        post: operations["testApiModel"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/api-models/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get API Model Configuration
-         * @description Retrieves detailed configuration for a specific API model alias by ID. API keys are masked for security unless explicitly requested.
-         */
-        get: operations["getApiModel"];
-        /** Update an existing API model configuration */
-        put: operations["updateApiModel"];
-        post?: never;
-        /** Delete an API model configuration */
-        delete: operations["deleteApiModel"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/api-models/{id}/sync-models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Sync Models to Cache
-         * @description Synchronously fetches models from the external API and populates the cache. This ensures the cache is populated before returning. Primarily used for testing to avoid timing issues.
-         */
-        post: operations["syncModels"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/bodhi/v1/apps/access-requests/{id}": {
         parameters: {
             query?: never;
@@ -830,7 +713,192 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/modelfiles": {
+    "/bodhi/v1/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List All Model Aliases
+         * @description Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).
+         */
+        get: operations["listAllModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/alias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Alias */
+        post: operations["models_alias_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/alias/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Alias */
+        put: operations["models_alias_update"];
+        post?: never;
+        /** Delete a model alias by UUID */
+        delete: operations["models_alias_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/alias/{id}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a model alias */
+        post: operations["models_alias_copy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/api": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a new API model configuration */
+        post: operations["createApiModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/api/fetch-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch available models from the API. */
+        post: operations["fetchApiModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/api/formats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Available API Formats
+         * @description Retrieves list of supported API formats/protocols (e.g., OpenAI).
+         */
+        get: operations["getApiFormats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/api/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test API connectivity with a prompt. */
+        post: operations["testApiModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/api/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get API Model Configuration
+         * @description Retrieves detailed configuration for a specific API model alias by ID. API keys are masked for security unless explicitly requested.
+         */
+        get: operations["getApiModel"];
+        /** Update an existing API model configuration */
+        put: operations["updateApiModel"];
+        post?: never;
+        /** Delete an API model configuration */
+        delete: operations["deleteApiModel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/api/{id}/sync-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Models to Cache
+         * @description Synchronously fetches models from the external API and populates the cache. This ensures the cache is populated before returning. Primarily used for testing to avoid timing issues.
+         */
+        post: operations["syncModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/files": {
         parameters: {
             query?: never;
             header?: never;
@@ -850,7 +918,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/modelfiles/pull": {
+    "/bodhi/v1/models/files/pull": {
         parameters: {
             query?: never;
             header?: never;
@@ -874,7 +942,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/modelfiles/pull/{id}": {
+    "/bodhi/v1/models/files/pull/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -888,27 +956,6 @@ export interface paths {
         get: operations["getDownloadStatus"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List All Model Aliases
-         * @description Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).
-         */
-        get: operations["listAllModels"];
-        put?: never;
-        /** Create Alias */
-        post: operations["createAlias"];
         delete?: never;
         options?: never;
         head?: never;
@@ -953,27 +1000,8 @@ export interface paths {
          * @description Retrieves detailed information for a specific model alias by UUID. Requires any authenticated user (User level permissions or higher).
          */
         get: operations["getAlias"];
-        /** Update Alias */
-        put: operations["updateAlias"];
-        post?: never;
-        /** Delete a model alias by UUID */
-        delete: operations["deleteAlias"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/models/{id}/copy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
         put?: never;
-        /** Copy a model alias */
-        post: operations["copyAlias"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1581,6 +1609,7 @@ export interface components {
             id: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
+            has_api_key: boolean;
             /** @description Models available through this alias (merged from cache for forward_all) */
             models: string[];
             prefix?: string | null;
@@ -1617,36 +1646,6 @@ export interface components {
             value: components["schemas"]["ApiKey"];
             /** @enum {string} */
             action: "set";
-        };
-        /**
-         * @description Output type for API model configuration.
-         * @example {
-         *       "api_format": "openai",
-         *       "base_url": "https://api.openai.com/v1",
-         *       "created_at": "2024-01-01T00:00:00Z",
-         *       "forward_all_with_prefix": false,
-         *       "has_api_key": true,
-         *       "id": "openai-gpt4",
-         *       "models": [
-         *         "gpt-4",
-         *         "gpt-3.5-turbo"
-         *       ],
-         *       "prefix": "openai",
-         *       "updated_at": "2024-01-01T00:00:00Z"
-         *     }
-         */
-        ApiModelOutput: {
-            id: string;
-            api_format: components["schemas"]["ApiFormat"];
-            base_url: string;
-            has_api_key: boolean;
-            models: string[];
-            prefix?: string | null;
-            forward_all_with_prefix: boolean;
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
         };
         /**
          * @description Input request for creating or updating an API model configuration.
@@ -3298,13 +3297,6 @@ export interface components {
             page: number;
             page_size: number;
         };
-        /** @description Paginated response for API model listings */
-        PaginatedApiModelOutput: {
-            data: components["schemas"]["ApiModelOutput"][];
-            total: number;
-            page: number;
-            page_size: number;
-        };
         /** @description Paginated list of download requests */
         PaginatedDownloadResponse: {
             data: components["schemas"]["DownloadRequest"][];
@@ -4829,643 +4821,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    listApiModels: {
-        parameters: {
-            query?: {
-                /** @description Page number (1-based indexing) */
-                page?: number;
-                /** @description Number of items to return per page (maximum 100) */
-                page_size?: number;
-                /** @description Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at */
-                sort?: string;
-                /** @description Sort order: 'asc' for ascending, 'desc' for descending */
-                sort_order?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description API model configurations retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "data": [
-                     *         {
-                     *           "api_format": "openai",
-                     *           "base_url": "https://api.openai.com/v1",
-                     *           "has_api_key": true,
-                     *           "id": "openai-gpt4"
-                     *         }
-                     *       ],
-                     *       "page": 1,
-                     *       "page_size": 10,
-                     *       "total": 1
-                     *     } */
-                    "application/json": components["schemas"]["PaginatedApiModelOutput"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    createApiModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApiModelRequest"];
-            };
-        };
-        responses: {
-            /** @description API model created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiModelOutput"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Alias already exists */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    getApiFormats: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description API formats retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "data": [
-                     *         "openai"
-                     *       ]
-                     *     } */
-                    "application/json": components["schemas"]["ApiFormatsResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    fetchApiModels: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FetchModelsRequest"];
-            };
-        };
-        responses: {
-            /** @description Available models */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FetchModelsResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    testApiModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestPromptRequest"];
-            };
-        };
-        responses: {
-            /** @description Test result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TestPromptResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    getApiModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description Unique identifier for the API model alias
-                 * @example openai-gpt4
-                 */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description API model configuration retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "api_format": "openai",
-                     *       "base_url": "https://api.openai.com/v1",
-                     *       "has_api_key": true,
-                     *       "id": "openai-gpt4",
-                     *       "models": [
-                     *         "gpt-4"
-                     *       ]
-                     *     } */
-                    "application/json": components["schemas"]["ApiModelOutput"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description API model with specified ID not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "entity_not_found",
-                     *         "message": "API model 'invalid-model' not found",
-                     *         "type": "not_found_error"
-                     *       }
-                     *     } */
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    updateApiModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description API model ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApiModelRequest"];
-            };
-        };
-        responses: {
-            /** @description API model updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiModelOutput"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description API model not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    deleteApiModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description API model ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description API model deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description API model not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    syncModels: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description Unique identifier for the API model alias
-                 * @example openai-gpt4
-                 */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Models synced to cache successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "api_format": "openai",
-                     *       "base_url": "https://api.openai.com/v1",
-                     *       "created_at": "2024-01-01T00:00:00Z",
-                     *       "forward_all_with_prefix": false,
-                     *       "has_api_key": true,
-                     *       "id": "openai-gpt4",
-                     *       "models": [
-                     *         "gpt-4",
-                     *         "gpt-3.5-turbo",
-                     *         "gpt-4-turbo"
-                     *       ],
-                     *       "prefix": null,
-                     *       "updated_at": "2024-01-01T00:00:00Z"
-                     *     } */
-                    "application/json": components["schemas"]["ApiModelOutput"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description API model not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Internal server error */
             500: {
@@ -7890,6 +7245,928 @@ export interface operations {
             };
         };
     };
+    listAllModels: {
+        parameters: {
+            query?: {
+                /** @description Page number (1-based indexing) */
+                page?: number;
+                /** @description Number of items to return per page (maximum 100) */
+                page_size?: number;
+                /** @description Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at */
+                sort?: string;
+                /** @description Sort order: 'asc' for ascending, 'desc' for descending */
+                sort_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of model aliases retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example {
+                     *       "data": [
+                     *         {
+                     *           "alias": "llama2:chat",
+                     *           "context_params": [
+                     *             "--ctx_size",
+                     *             "4096"
+                     *           ],
+                     *           "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+                     *           "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                     *           "request_params": {
+                     *             "temperature": 0.7,
+                     *             "top_p": 0.95
+                     *           },
+                     *           "snapshot": "abc123",
+                     *           "source": "user"
+                     *         },
+                     *         {
+                     *           "alias": "TheBloke/Llama-2-7B-Chat-GGUF:Q4_K_M",
+                     *           "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+                     *           "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                     *           "snapshot": "abc123",
+                     *           "source": "model"
+                     *         },
+                     *         {
+                     *           "api_format": "openai",
+                     *           "base_url": "https://api.openai.com/v1",
+                     *           "created_at": "2024-01-01T00:00:00Z",
+                     *           "id": "openai-gpt4",
+                     *           "models": [
+                     *             "gpt-4",
+                     *             "gpt-3.5-turbo"
+                     *           ],
+                     *           "source": "api",
+                     *           "updated_at": "2024-01-01T00:00:00Z"
+                     *         }
+                     *       ],
+                     *       "page": 1,
+                     *       "page_size": 10,
+                     *       "total": 3
+                     *     } */
+                    "application/json": components["schemas"]["PaginatedAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    models_alias_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserAliasRequest"];
+            };
+        };
+        responses: {
+            /** @description Alias created succesfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    models_alias_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the alias to update */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserAliasRequest"];
+            };
+        };
+        responses: {
+            /** @description Alias updated succesfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    models_alias_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the alias to delete */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Alias deleted successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Alias not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    models_alias_copy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the alias to copy */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyAliasRequest"];
+            };
+        };
+        responses: {
+            /** @description Alias copied successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Source alias not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    createApiModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiModelRequest"];
+            };
+        };
+        responses: {
+            /** @description API model created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Alias already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    fetchApiModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FetchModelsRequest"];
+            };
+        };
+        responses: {
+            /** @description Available models */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FetchModelsResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    getApiFormats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description API formats retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example {
+                     *       "data": [
+                     *         "openai"
+                     *       ]
+                     *     } */
+                    "application/json": components["schemas"]["ApiFormatsResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    testApiModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestPromptRequest"];
+            };
+        };
+        responses: {
+            /** @description Test result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestPromptResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    getApiModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Unique identifier for the API model alias
+                 * @example openai-gpt4
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description API model configuration retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example {
+                     *       "api_format": "openai",
+                     *       "base_url": "https://api.openai.com/v1",
+                     *       "has_api_key": true,
+                     *       "id": "openai-gpt4",
+                     *       "models": [
+                     *         "gpt-4"
+                     *       ]
+                     *     } */
+                    "application/json": components["schemas"]["ApiAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description API model with specified ID not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example {
+                     *       "error": {
+                     *         "code": "entity_not_found",
+                     *         "message": "API model 'invalid-model' not found",
+                     *         "type": "not_found_error"
+                     *       }
+                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    updateApiModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description API model ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiModelRequest"];
+            };
+        };
+        responses: {
+            /** @description API model updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description API model not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    deleteApiModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description API model ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description API model deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description API model not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    syncModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Unique identifier for the API model alias
+                 * @example openai-gpt4
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Models synced to cache successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example {
+                     *       "api_format": "openai",
+                     *       "base_url": "https://api.openai.com/v1",
+                     *       "created_at": "2024-01-01T00:00:00Z",
+                     *       "forward_all_with_prefix": false,
+                     *       "has_api_key": true,
+                     *       "id": "openai-gpt4",
+                     *       "models": [
+                     *         "gpt-4",
+                     *         "gpt-3.5-turbo",
+                     *         "gpt-4-turbo"
+                     *       ],
+                     *       "prefix": null,
+                     *       "updated_at": "2024-01-01T00:00:00Z"
+                     *     } */
+                    "application/json": components["schemas"]["ApiAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description API model not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
     listModelFiles: {
         parameters: {
             query?: {
@@ -8228,172 +8505,6 @@ export interface operations {
             };
         };
     };
-    listAllModels: {
-        parameters: {
-            query?: {
-                /** @description Page number (1-based indexing) */
-                page?: number;
-                /** @description Number of items to return per page (maximum 100) */
-                page_size?: number;
-                /** @description Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at */
-                sort?: string;
-                /** @description Sort order: 'asc' for ascending, 'desc' for descending */
-                sort_order?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Paginated list of model aliases retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "data": [
-                     *         {
-                     *           "alias": "llama2:chat",
-                     *           "context_params": [
-                     *             "--ctx_size",
-                     *             "4096"
-                     *           ],
-                     *           "filename": "llama-2-7b-chat.Q4_K_M.gguf",
-                     *           "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-                     *           "request_params": {
-                     *             "temperature": 0.7,
-                     *             "top_p": 0.95
-                     *           },
-                     *           "snapshot": "abc123",
-                     *           "source": "user"
-                     *         },
-                     *         {
-                     *           "alias": "TheBloke/Llama-2-7B-Chat-GGUF:Q4_K_M",
-                     *           "filename": "llama-2-7b-chat.Q4_K_M.gguf",
-                     *           "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-                     *           "snapshot": "abc123",
-                     *           "source": "model"
-                     *         },
-                     *         {
-                     *           "api_format": "openai",
-                     *           "base_url": "https://api.openai.com/v1",
-                     *           "created_at": "2024-01-01T00:00:00Z",
-                     *           "id": "openai-gpt4",
-                     *           "models": [
-                     *             "gpt-4",
-                     *             "gpt-3.5-turbo"
-                     *           ],
-                     *           "source": "api",
-                     *           "updated_at": "2024-01-01T00:00:00Z"
-                     *         }
-                     *       ],
-                     *       "page": 1,
-                     *       "page_size": 10,
-                     *       "total": 3
-                     *     } */
-                    "application/json": components["schemas"]["PaginatedAliasResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    createAlias: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserAliasRequest"];
-            };
-        };
-        responses: {
-            /** @description Alias created succesfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserAliasResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
     refreshModelMetadata: {
         parameters: {
             query?: never;
@@ -8537,203 +8648,6 @@ export interface operations {
                      *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    updateAlias: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description UUID of the alias to update */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserAliasRequest"];
-            };
-        };
-        responses: {
-            /** @description Alias updated succesfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserAliasResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    deleteAlias: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description UUID of the alias to delete */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Alias deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Alias not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    copyAlias: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description UUID of the alias to copy */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CopyAliasRequest"];
-            };
-        };
-        responses: {
-            /** @description Alias copied successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserAliasResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Source alias not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Internal server error */
             500: {

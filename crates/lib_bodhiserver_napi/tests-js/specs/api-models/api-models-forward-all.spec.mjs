@@ -68,7 +68,7 @@ test.describe('API Models Forward All With Prefix', () => {
     // Synchronously populate cache by calling sync-models endpoint
     // Also trigger a /v1/models call to populate frontend cache
     const syncResult = await page.evaluate(async (modelId) => {
-      const response = await fetch(`/bodhi/v1/api-models/${modelId}/sync-models`, {
+      const response = await fetch(`/bodhi/v1/models/api/${modelId}/sync-models`, {
         method: 'POST',
         credentials: 'include',
       });

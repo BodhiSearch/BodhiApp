@@ -1,7 +1,4 @@
-use crate::{
-  ApiModelOutput, ApiModelRequest, ApiModelServiceError, AppService, AuthContext,
-  PaginatedApiModelOutput,
-};
+use crate::{ApiAliasResponse, ApiModelRequest, ApiModelServiceError, AppService, AuthContext};
 use std::sync::Arc;
 
 /// Auth-scoped wrapper around ApiModelService that injects tenant_id and user_id from AuthContext.
@@ -22,7 +19,7 @@ impl AuthScopedApiModelService {
   pub async fn create(
     &self,
     form: ApiModelRequest,
-  ) -> Result<ApiModelOutput, ApiModelServiceError> {
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
@@ -37,7 +34,7 @@ impl AuthScopedApiModelService {
     &self,
     id: &str,
     form: ApiModelRequest,
-  ) -> Result<ApiModelOutput, ApiModelServiceError> {
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
@@ -59,7 +56,7 @@ impl AuthScopedApiModelService {
   }
 
   /// Get a specific API model configuration
-  pub async fn get(&self, id: &str) -> Result<ApiModelOutput, ApiModelServiceError> {
+  pub async fn get(&self, id: &str) -> Result<ApiAliasResponse, ApiModelServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
@@ -69,23 +66,8 @@ impl AuthScopedApiModelService {
       .await
   }
 
-  /// List API model configurations with pagination
-  pub async fn list(
-    &self,
-    page: usize,
-    page_size: usize,
-  ) -> Result<PaginatedApiModelOutput, ApiModelServiceError> {
-    let tenant_id = self.auth_context.require_tenant_id()?;
-    let user_id = self.auth_context.require_user_id()?;
-    self
-      .app_service
-      .api_model_service()
-      .list(tenant_id, user_id, page, page_size)
-      .await
-  }
-
   /// Synchronously fetch and cache models for an API model alias
-  pub async fn sync_cache(&self, id: &str) -> Result<ApiModelOutput, ApiModelServiceError> {
+  pub async fn sync_cache(&self, id: &str) -> Result<ApiAliasResponse, ApiModelServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self

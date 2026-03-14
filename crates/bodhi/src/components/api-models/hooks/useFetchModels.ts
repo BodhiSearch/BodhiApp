@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { FetchModelsRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
 
 import { useToast } from '@/hooks/use-toast';
-import { useFetchApiModels } from '@/hooks/useApiModels';
+import { useFetchApiModels } from '@/hooks/useModelsApi';
 
 import { ApiProvider } from '../providers/constants';
 

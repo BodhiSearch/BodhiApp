@@ -1,4 +1,4 @@
-import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, ApiModelOutput } from '@bodhiapp/ts-client';
+import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, ApiAliasResponse } from '@bodhiapp/ts-client';
 import * as z from 'zod';
 
 // API format presets for AI APIs
@@ -157,7 +157,7 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModel
  */
 export const convertFormToUpdateRequest = (
   formData: UpdateApiModelFormData,
-  initialData?: ApiModelOutput
+  initialData?: ApiAliasResponse
 ): ApiModelRequest => ({
   api_format: formData.api_format as ApiFormat,
   base_url: formData.base_url,
@@ -197,7 +197,7 @@ export const convertFormToUpdateRequest = (
  * - true: API key is stored → checkbox CHECKED (has key)
  * - false: No API key stored → checkbox UNCHECKED (no key)
  */
-export const convertApiToForm = (apiData: ApiModelOutput): ApiModelFormData => ({
+export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData => ({
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',
@@ -218,7 +218,7 @@ export const convertApiToForm = (apiData: ApiModelOutput): ApiModelFormData => (
  * - true: API key is stored → checkbox CHECKED (has key)
  * - false: No API key stored → checkbox UNCHECKED (no key)
  */
-export const convertApiToUpdateForm = (apiData: ApiModelOutput): UpdateApiModelFormData => ({
+export const convertApiToUpdateForm = (apiData: ApiAliasResponse): UpdateApiModelFormData => ({
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',

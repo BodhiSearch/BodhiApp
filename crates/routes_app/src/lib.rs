@@ -9,7 +9,6 @@ pub mod middleware;
 mod shared;
 
 // -- Domain route modules (folders)
-mod api_models;
 mod apps;
 mod auth;
 mod mcps;
@@ -32,7 +31,6 @@ mod routes_proxy;
 // -- Test modules
 
 // -- Re-exports
-pub use api_models::*;
 pub use apps::*;
 pub use auth::*;
 pub use mcps::*;

@@ -6,7 +6,7 @@ use crate::middleware::{
 use crate::proxy_router;
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_formats,
-  api_models_index, api_models_show, api_models_sync, api_models_test, api_models_update,
+  api_models_show, api_models_sync, api_models_test, api_models_update,
   apps_approve_access_request, apps_create_access_request, apps_deny_access_request,
   apps_get_access_request_review, apps_get_access_request_status, auth_callback, auth_initiate,
   auth_logout, dashboard_auth_callback, dashboard_auth_initiate, dev_clients_dag_handler,
@@ -19,16 +19,17 @@ use crate::{
   users_change_role, users_destroy, users_index, users_info, users_request_access,
   users_request_status, BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier,
   ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
-  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW, ENDPOINT_API_MODELS,
-  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
+  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW,
   ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
   ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
   ENDPOINT_DASHBOARD_AUTH_CALLBACK, ENDPOINT_DASHBOARD_AUTH_INITIATE, ENDPOINT_DEV_CLIENTS_DAG,
   ENDPOINT_DEV_DB_RESET, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_DEV_TENANTS_CLEANUP,
-  ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES,
-  ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TENANTS,
-  ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES, ENDPOINT_USERS, ENDPOINT_USER_INFO,
-  ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
+  ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODELS_ALIAS, ENDPOINT_MODELS_API,
+  ENDPOINT_MODELS_API_FETCH_MODELS, ENDPOINT_MODELS_API_FORMATS, ENDPOINT_MODELS_API_TEST,
+  ENDPOINT_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL, ENDPOINT_MODELS_REFRESH, ENDPOINT_PING,
+  ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TENANTS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS,
+  ENDPOINT_TOOLSET_TYPES, ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS,
+  ENDPOINT_USER_REQUEST_STATUS,
 };
 use crate::{
   apps_mcps_execute_tool, apps_mcps_index, apps_mcps_refresh_tools, apps_mcps_show,
@@ -171,7 +172,7 @@ pub async fn build_routes(
     // Basic Bodhi APIs
     .route(ENDPOINT_MODELS, get(models_index))
     .route(&format!("{ENDPOINT_MODELS}/{{id}}"), get(models_show))
-    .route(ENDPOINT_MODEL_FILES, get(modelfiles_index))
+    .route(ENDPOINT_MODELS_FILES, get(modelfiles_index))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -267,28 +268,27 @@ pub async fn build_routes(
       post(apps_deny_access_request),
     )
     // API Models management (session-only, user role)
-    .route(ENDPOINT_API_MODELS, get(api_models_index))
-    .route(ENDPOINT_API_MODELS, post(api_models_create))
-    .route(ENDPOINT_API_MODELS_API_FORMATS, get(api_models_formats))
-    .route(ENDPOINT_API_MODELS_TEST, post(api_models_test))
+    .route(ENDPOINT_MODELS_API, post(api_models_create))
+    .route(ENDPOINT_MODELS_API_FORMATS, get(api_models_formats))
+    .route(ENDPOINT_MODELS_API_TEST, post(api_models_test))
     .route(
-      ENDPOINT_API_MODELS_FETCH_MODELS,
+      ENDPOINT_MODELS_API_FETCH_MODELS,
       post(api_models_fetch_models),
     )
     .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
+      &format!("{ENDPOINT_MODELS_API}/{{id}}"),
       get(api_models_show),
     )
     .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
+      &format!("{ENDPOINT_MODELS_API}/{{id}}"),
       put(api_models_update),
     )
     .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
+      &format!("{ENDPOINT_MODELS_API}/{{id}}"),
       delete(api_models_destroy),
     )
     .route(
-      &format!("{ENDPOINT_API_MODELS}/{{id}}/sync-models"),
+      &format!("{ENDPOINT_MODELS_API}/{{id}}/sync-models"),
       post(api_models_sync),
     )
     .route_layer(from_fn_with_state(
@@ -419,16 +419,19 @@ pub async fn build_routes(
 
   // Power user APIs (role=power_user or scope=scope_token_power_user)
   let power_user_apis = Router::new()
-    .route(ENDPOINT_MODELS, post(models_create))
+    .route(ENDPOINT_MODELS_ALIAS, post(models_create))
     .route(
-      &format!("{ENDPOINT_MODELS}/{{id}}"),
+      &format!("{ENDPOINT_MODELS_ALIAS}/{{id}}"),
       put(models_update).delete(models_destroy),
     )
-    .route(&format!("{ENDPOINT_MODELS}/{{id}}/copy"), post(models_copy))
-    .route(ENDPOINT_MODEL_PULL, get(models_pull_index))
-    .route(ENDPOINT_MODEL_PULL, post(models_pull_create))
     .route(
-      &format!("{ENDPOINT_MODEL_PULL}/{{id}}"),
+      &format!("{ENDPOINT_MODELS_ALIAS}/{{id}}/copy"),
+      post(models_copy),
+    )
+    .route(ENDPOINT_MODELS_FILES_PULL, get(models_pull_index))
+    .route(ENDPOINT_MODELS_FILES_PULL, post(models_pull_create))
+    .route(
+      &format!("{ENDPOINT_MODELS_FILES_PULL}/{{id}}"),
       get(models_pull_show),
     )
     .route_layer(from_fn_with_state(

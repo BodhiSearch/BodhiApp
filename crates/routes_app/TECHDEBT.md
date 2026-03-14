@@ -19,3 +19,7 @@
 
 - **Currently**: `SessionService` in the services crate depends on `tower-sessions`, which is an axum-specific framework concern
 - **Should be**: Abstracted behind a trait that doesn't leak web framework types
+
+## Models list query filter
+GET /bodhi/v1/models returns all 3 types with no filter.
+Add query parameter type=alias|api|model to filter by source type.

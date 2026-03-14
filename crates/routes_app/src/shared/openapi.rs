@@ -13,8 +13,8 @@ use crate::{
 use crate::{
   AppInfo, ListUsersParams, PaginatedLocalModelResponse, QueueStatusResponse, RedirectResponse,
   UserInfoEnvelope, UserResponse, __path_api_models_create, __path_api_models_destroy,
-  __path_api_models_fetch_models, __path_api_models_formats, __path_api_models_index,
-  __path_api_models_show, __path_api_models_sync, __path_api_models_test, __path_api_models_update,
+  __path_api_models_fetch_models, __path_api_models_formats, __path_api_models_show,
+  __path_api_models_sync, __path_api_models_test, __path_api_models_update,
   __path_apps_approve_access_request, __path_apps_create_access_request,
   __path_apps_deny_access_request, __path_apps_get_access_request_review,
   __path_apps_get_access_request_status, __path_auth_callback, __path_auth_initiate,
@@ -65,9 +65,9 @@ use crate::{
   __path_tenants_create, __path_tenants_index,
 };
 use crate::{
-  API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_APPS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS,
-  API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TENANTS,
-  API_TAG_TOOLSETS,
+  API_TAG_API_KEYS, API_TAG_APPS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_MODELS_ALIAS,
+  API_TAG_MODELS_API, API_TAG_MODELS_FILES, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS,
+  API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TENANTS, API_TAG_TOOLSETS,
 };
 use async_openai::types::{
   chat::{
@@ -82,19 +82,19 @@ use async_openai::types::{
 };
 use services::{
   Alias, AliasResponse, ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiKey, ApiKeyUpdate,
-  ApiModelOutput, ApiModelRequest, AppAccessRequestStatus, AppRole, AppStatus, ApprovalStatus,
+  ApiModelRequest, AppAccessRequestStatus, AppRole, AppStatus, ApprovalStatus,
   ApproveAccessRequest, ApproveUserAccessRequest, ChangeRoleRequest, CopyAliasRequest,
   CreateAccessRequest, CreateMcpAuthConfigRequest, CreateTokenRequest, DownloadRequest,
   DownloadStatus, FetchModelsRequest, FetchModelsResponse, FlowType, Mcp, McpAuthConfigResponse,
   McpAuthConfigsListResponse, McpAuthType, McpRequest, McpServer, McpServerInfo, McpServerRequest,
   McpTool, ModelAliasResponse, NewDownloadRequest, OAIRequestParams, PaginatedAliasResponse,
-  PaginatedApiModelOutput, PaginatedDownloadResponse, PaginatedTokenResponse,
-  PaginatedUserAccessResponse, PaginatedUserAliasResponse, RefreshRequest, RefreshResponse,
-  RefreshSource, ResourceRole, SettingInfo, SettingMetadata, SettingService, SettingSource,
-  TestCreds, TestPromptRequest, TestPromptResponse, TokenCreated, TokenDetail, TokenScope,
-  TokenStatus, ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionResponse,
-  ToolsetRequest, UpdateSettingRequest, UpdateTokenRequest, UserAccessStatusResponse,
-  UserAliasRequest, UserAliasResponse, UserInfo, UserListResponse, UserScope,
+  PaginatedDownloadResponse, PaginatedTokenResponse, PaginatedUserAccessResponse,
+  PaginatedUserAliasResponse, RefreshRequest, RefreshResponse, RefreshSource, ResourceRole,
+  SettingInfo, SettingMetadata, SettingService, SettingSource, TestCreds, TestPromptRequest,
+  TestPromptResponse, TokenCreated, TokenDetail, TokenScope, TokenStatus, ToolDefinition, Toolset,
+  ToolsetDefinition, ToolsetExecutionResponse, ToolsetRequest, UpdateSettingRequest,
+  UpdateTokenRequest, UserAccessStatusResponse, UserAliasRequest, UserAliasResponse, UserInfo,
+  UserListResponse, UserScope,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -127,17 +127,18 @@ make_ui_endpoint!(ENDPOINT_AUTH_CALLBACK, "auth/callback");
 make_ui_endpoint!(ENDPOINT_DASHBOARD_AUTH_INITIATE, "auth/dashboard/initiate");
 make_ui_endpoint!(ENDPOINT_DASHBOARD_AUTH_CALLBACK, "auth/dashboard/callback");
 
-make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
-make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
 make_ui_endpoint!(ENDPOINT_MODELS, "models");
+make_ui_endpoint!(ENDPOINT_MODELS_ALIAS, "models/alias");
+make_ui_endpoint!(ENDPOINT_MODELS_API, "models/api");
+make_ui_endpoint!(ENDPOINT_MODELS_API_TEST, "models/api/test");
+make_ui_endpoint!(ENDPOINT_MODELS_API_FETCH_MODELS, "models/api/fetch-models");
+make_ui_endpoint!(ENDPOINT_MODELS_API_FORMATS, "models/api/formats");
+make_ui_endpoint!(ENDPOINT_MODELS_FILES, "models/files");
+make_ui_endpoint!(ENDPOINT_MODELS_FILES_PULL, "models/files/pull");
 make_ui_endpoint!(ENDPOINT_MODELS_REFRESH, "models/refresh");
 make_ui_endpoint!(ENDPOINT_QUEUE, "queue");
 make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
 make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
-make_ui_endpoint!(ENDPOINT_API_MODELS, "api-models");
-make_ui_endpoint!(ENDPOINT_API_MODELS_TEST, "api-models/test");
-make_ui_endpoint!(ENDPOINT_API_MODELS_FETCH_MODELS, "api-models/fetch-models");
-make_ui_endpoint!(ENDPOINT_API_MODELS_API_FORMATS, "api-models/api-formats");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
 make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
@@ -275,8 +276,10 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         (name = API_TAG_SETUP, description = "Application setup and initialization"),
         (name = API_TAG_AUTH, description = "Authentication and session management"),
         (name = API_TAG_API_KEYS, description = "API keys management"),
-        (name = API_TAG_API_MODELS, description = "Remote AI API model configuration"),
         (name = API_TAG_MODELS, description = "Model files and aliases"),
+        (name = API_TAG_MODELS_ALIAS, description = "User-created model aliases"),
+        (name = API_TAG_MODELS_API, description = "Remote AI API model configuration"),
+        (name = API_TAG_MODELS_FILES, description = "Local model files and downloads"),
         (name = API_TAG_SETTINGS, description = "Application settings management"),
         (name = API_TAG_TOOLSETS, description = "AI toolsets configuration and execution"),
         (name = API_TAG_MCPS, description = "MCP server management and tool execution"),
@@ -333,8 +336,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             PaginatedTokenResponse,
             TokenDetail,
             // api models
-            PaginatedApiModelOutput,
-            ApiModelOutput,
             ApiModelRequest,
             ApiKey,
             ApiKeyUpdate,
@@ -459,7 +460,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         tokens_index,
 
         // API Models endpoints
-        api_models_index,
         api_models_show,
         api_models_create,
         api_models_update,
