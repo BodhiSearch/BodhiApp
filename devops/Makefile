@@ -2,7 +2,7 @@
 # This file contains all Docker build logic for local development
 # Called from root Makefile for delegation
 
-.PHONY: help build.app-binary build.cpu build.cpu.amd64 build.cpu.arm64 build.cpu.multi build.cuda build.rocm build.vulkan run clean list-images
+.PHONY: help build.app-binary build.cpu build.cpu.amd64 build.cpu.arm64 build.cpu.multi build.cuda build.rocm build.vulkan build.multi-tenant build.multi-tenant-arm64 run run.multi-tenant clean list-images dev.multi-tenant dev.multi-tenant.amd64 prod.multi-tenant prod.multi-tenant.amd64
 .DEFAULT_GOAL := help
 
 # Default build variant (can be overridden)
@@ -24,7 +24,7 @@ help: ## Show this help message
 	@echo 'Environment Variables:'
 	@echo '  BUILD_VARIANT    Build variant: development (default) or production'
 	@echo '  PLATFORM        Docker platform: linux/amd64 (default), linux/arm64'
-	@echo '  VARIANT         Image variant to run: cpu (default), cuda, rocm, vulkan'
+	@echo '  VARIANT         Image variant to run: cpu (default), cuda, rocm, vulkan, multi-tenant, multi-tenant-arm64'
 	@echo ''
 	@echo 'Examples:'
 	@echo '  make build.cpu                          # Build CPU image for current platform (AMD64)'
@@ -109,6 +109,27 @@ build.vulkan: build.app-binary ## Build Vulkan GPU image (AMD64 only)
 		-t bodhiapp:local-vulkan-$(BUILD_VARIANT) .
 	@echo "✓ Built: bodhiapp:local-vulkan-$(BUILD_VARIANT)"
 
+build.multi-tenant: build.app-binary ## Build multi-tenant image (AMD64, for cloud)
+	@echo "Building multi-tenant AMD64 image ($(BUILD_VARIANT) variant)..."
+	@cd $(PROJECT_ROOT) && docker buildx build --load \
+		--platform linux/amd64 \
+		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
+		--build-arg APP_BINARY_IMAGE=$(APP_BINARY_TAG) \
+		-f devops/multi-tenant.Dockerfile \
+		-t bodhiapp:local-multi-tenant-$(BUILD_VARIANT) .
+	@echo "✓ Built: bodhiapp:local-multi-tenant-$(BUILD_VARIANT)"
+
+build.multi-tenant-arm64: ## Build multi-tenant image (ARM64, for macOS dev)
+	@$(MAKE) build.app-binary PLATFORM=linux/arm64
+	@echo "Building multi-tenant ARM64 image ($(BUILD_VARIANT) variant)..."
+	@cd $(PROJECT_ROOT) && docker buildx build --load \
+		--platform linux/arm64 \
+		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
+		--build-arg APP_BINARY_IMAGE=$(APP_BINARY_TAG) \
+		-f devops/multi-tenant-arm64.Dockerfile \
+		-t bodhiapp:local-multi-tenant-arm64-$(BUILD_VARIANT) .
+	@echo "✓ Built: bodhiapp:local-multi-tenant-arm64-$(BUILD_VARIANT)"
+
 run: ## Run locally built image (specify VARIANT)
 	@VARIANT=$${VARIANT:-cpu} && \
 	BUILD_VAR=$${BUILD_VARIANT:-$(BUILD_VARIANT)} && \
@@ -134,6 +155,25 @@ run.rocm: ## Run ROCm image with AMD GPU support
 
 run.vulkan: ## Run Vulkan image with GPU support
 	@$(MAKE) run VARIANT=vulkan EXTRA_ARGS="--device=/dev/dri"
+
+run.multi-tenant: ## Run multi-tenant image (defaults to ARM64 for macOS dev)
+	@ENV_FILE="$(CURDIR)/.env.local"; \
+	if [ ! -f "$$ENV_FILE" ]; then \
+		echo "ERROR: $$ENV_FILE not found. Copy .env.example to .env.local and fill in values:"; \
+		echo "  cp devops/.env.example devops/.env.local"; \
+		exit 1; \
+	fi; \
+	VARIANT=$${VARIANT:-multi-tenant-arm64} && \
+	BUILD_VAR=$${BUILD_VARIANT:-$(BUILD_VARIANT)} && \
+	IMAGE_NAME="bodhiapp:local-$$VARIANT-$$BUILD_VAR"; \
+	echo "Running BodhiApp multi-tenant container: $$IMAGE_NAME"; \
+	mkdir -p $(PROJECT_ROOT)/docker-data/mt_bodhi_home $(PROJECT_ROOT)/docker-data/mt_hf_home && \
+	docker run --rm -it \
+		--env-file "$$ENV_FILE" \
+		-p 1135:1135 \
+		-v $(PROJECT_ROOT)/docker-data/mt_bodhi_home:/data/bodhi_home \
+		-v $(PROJECT_ROOT)/docker-data/mt_hf_home:/data/hf_home \
+		$$IMAGE_NAME
 
 list-images: ## List all locally built BodhiApp images
 	@echo "Local BodhiApp images:"
@@ -174,3 +214,15 @@ prod.cpu.arm64: ## Production build for ARM64 CPU
 
 prod.cuda: ## Production build for CUDA
 	@$(MAKE) build.cuda BUILD_VARIANT=production
+
+dev.multi-tenant: ## Quick development build for multi-tenant (ARM64, macOS dev)
+	@$(MAKE) build.multi-tenant-arm64 BUILD_VARIANT=development
+
+dev.multi-tenant.amd64: ## Quick development build for multi-tenant (AMD64, cloud)
+	@$(MAKE) build.multi-tenant BUILD_VARIANT=development
+
+prod.multi-tenant: ## Production build for multi-tenant (ARM64)
+	@$(MAKE) build.multi-tenant-arm64 BUILD_VARIANT=production
+
+prod.multi-tenant.amd64: ## Production build for multi-tenant (AMD64, cloud)
+	@$(MAKE) build.multi-tenant BUILD_VARIANT=production

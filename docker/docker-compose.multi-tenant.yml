@@ -1,0 +1,45 @@
+# PostgreSQL containers for local multi-tenant development.
+# App DB on port 44320, Session DB on port 44321.
+# Uses different ports from dev (34320/34321) and test (54320/64320) containers.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.multi-tenant.yml up -d
+#   make docker.dev.multi-tenant        # ARM64 (macOS default)
+#   make docker.dev.multi-tenant.amd64  # AMD64 (cloud)
+#   make docker.run.multi-tenant
+services:
+  bodhi_mt_app_db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: bodhi_app
+      POSTGRES_USER: bodhi_dev
+      POSTGRES_PASSWORD: bodhi_dev
+    ports:
+      - "44320:5432"
+    volumes:
+      - mt_app_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bodhi_dev -d bodhi_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bodhi_mt_session_db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: bodhi_sessions
+      POSTGRES_USER: bodhi_dev
+      POSTGRES_PASSWORD: bodhi_dev
+    ports:
+      - "44321:5432"
+    volumes:
+      - mt_session_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bodhi_dev -d bodhi_sessions"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mt_app_db_data:
+  mt_session_db_data:
