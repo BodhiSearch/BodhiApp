@@ -90,6 +90,19 @@ function downloadFile(url, destPath, headers) {
   });
 }
 
+function moveFile(src, dest) {
+  try {
+    fs.renameSync(src, dest);
+  } catch (err) {
+    if (err.code === 'EXDEV') {
+      fs.copyFileSync(src, dest);
+      fs.unlinkSync(src);
+    } else {
+      throw err;
+    }
+  }
+}
+
 function execname(extension) {
   return extension ? `llama-server.${extension}` : 'llama-server';
 }
@@ -168,7 +181,7 @@ async function main() {
           if (entry === asset.name) continue;
           const src = path.join(tmpDir, entry);
           const dest = path.join(targetDir, entry);
-          fs.renameSync(src, dest);
+          moveFile(src, dest);
           // Set executable permissions on llama-server only
           if (process.platform !== 'win32' && entry === 'llama-server') {
             fs.chmodSync(dest, 0o755);
@@ -177,7 +190,7 @@ async function main() {
       } else {
         // Direct file
         const dest = path.join(targetDir, execname(extension));
-        fs.renameSync(downloadPath, dest);
+        moveFile(downloadPath, dest);
         if (process.platform !== 'win32') {
           fs.chmodSync(dest, 0o755);
         }
