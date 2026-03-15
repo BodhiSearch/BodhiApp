@@ -8,7 +8,7 @@ order: 215
 
 Model Files in Bodhi App provide an overview of the downloaded GGUF models from HuggingFace repositories. This page lists all GGUF model files stored locally along with their repository information, file size, and other metadata. It also offers a direct link to the corresponding HuggingFace repository for each model file.
 
-**Note**: This page displays locally downloaded GGUF models only. For information about configuring API models from providers like OpenAI, Anthropic, and others, see [API Models](/docs/features/api-models).
+**Note**: This page displays locally downloaded GGUF models only. For information about configuring API models from providers like OpenAI and others, see [API Models](/docs/features/models/api-models).
 
 ## Overview
 
@@ -35,7 +35,8 @@ An action button is provided for each model file so that you can quickly open th
 When you navigate to the Model Files page, Bodhi App retrieves and displays all the downloaded model files from your local cache. For each model file, the available action buttons include:
 
 - **Open in HuggingFace:** Clicking this button opens the corresponding repository homepage in your browser.
-- **Delete:** Although this feature is coming soon, you will be able to remove model files directly from your local disk.
+- **Delete:** Remove model files from local disk.
+- **Preview:** Open a modal showing model metadata, capabilities, and architecture details extracted from GGUF headers.
 
 ## Benefits
 
@@ -56,12 +57,10 @@ Bodhi App uses the GGUF (GPT-Generated Unified Format) for local model inference
 - **Metadata Embedded**: GGUF files contain model metadata for automatic configuration
 - **Cross-Platform**: Works on macOS, Windows, and Linux with appropriate hardware acceleration
 
-For information about using non-GGUF models through API providers, see [API Models](/docs/features/api-models).
+For information about using non-GGUF models through API providers, see [API Models](/docs/features/models/api-models).
 
 ## Best Practices
 
 - Regularly review the Model Files page to ensure that your local cache is up-to-date.
 - Use the link to navigate to the HuggingFace repository for further details about each model.
-- Keep an eye out for upcoming features, such as the ability to delete model files directly from the UI.
-
-Happy managing!
+- Use the Preview modal to check model capabilities before creating an alias.

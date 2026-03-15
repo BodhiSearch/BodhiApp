@@ -23,7 +23,7 @@ Key points:
 ## How It Works
 
 1. **Submit a Download Request:**
-   - Navigate to the Download Models section in the app.
+   - Navigate to the Download Models page at <a href="/ui/models/files/pull/" target="_blank" rel="noopener noreferrer">/ui/models/files/pull/</a>.
    - Provide the **repository** (e.g., `TheBloke/Mistral-7B-Instruct-v0.1-GGUF`) and the **filename** (e.g., `mistral-7b-instruct-v0.1.Q8_0.gguf`).
    - The system creates a new download request or returns an existing request if the file is already present.
 
@@ -97,8 +97,3 @@ After submitting a download request:
 - If the status is `error`, expand the row to review the detailed error message and resolve the issue
 - For failed downloads, submit a new download request to retry
 
----
-
-Happy downloading!
-
----
