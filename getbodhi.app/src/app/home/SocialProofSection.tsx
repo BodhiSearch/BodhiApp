@@ -2,7 +2,7 @@
 
 import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { Database, FileJson, Rocket } from 'lucide-react';
+import { Database, FileJson, Rocket, Wrench } from 'lucide-react';
 import { Container } from '@/components/ui/container';
 
 function SocialProofSectionComponent() {
@@ -26,6 +26,10 @@ function SocialProofSectionComponent() {
           <div className="flex items-center gap-2">
             <FileJson className="w-5 h-5 text-gray-600" />
             <span className="text-sm font-medium text-gray-600">OpenAI API Compatible</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-gray-600" />
+            <span className="text-sm font-medium text-gray-600">MCP Tool Integration</span>
           </div>
         </motion.div>
       </Container>

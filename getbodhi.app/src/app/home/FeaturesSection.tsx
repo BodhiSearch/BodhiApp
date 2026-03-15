@@ -14,6 +14,9 @@ import {
   Settings,
   Gauge,
   Radio,
+  Wrench,
+  Bot,
+  Brain,
 } from 'lucide-react';
 import { Container } from '@/components/ui/container';
 import { FeatureCard } from '@/app/home/FeatureCard';
@@ -27,7 +30,7 @@ const features = {
       icon: <MessageSquare className={cn(STYLES.iconSize, STYLES.iconColor)} />,
       title: 'Built-in Chat UI',
       description: 'Intuitive chat interface with full markdown and settings.',
-      href: '/docs/features/chat-ui/',
+      href: '/docs/features/chat/chat-ui',
     },
     {
       icon: <Lock className={cn(STYLES.iconSize, STYLES.iconColor)} />,
@@ -39,25 +42,43 @@ const features = {
       icon: <Database className={cn(STYLES.iconSize, STYLES.iconColor)} />,
       title: 'Model Management',
       description: 'One-click downloads from HuggingFace with real-time progress tracking.',
-      href: '/docs/features/model-downloads/',
+      href: '/docs/features/models/model-downloads',
     },
     {
       icon: <Cloud className={cn(STYLES.iconSize, STYLES.iconColor)} />,
-      title: 'Hybrid AI Architecture',
-      description: 'Use local GGUF models alongside API providers (OpenAI, Anthropic, Groq) in one unified interface.',
-      href: '/docs/features/api-models/',
+      title: 'AI Gateway',
+      description: 'Use local GGUF models alongside cloud API providers and MCP tools in one unified interface.',
+      href: '/docs/features/models/api-models',
     },
     {
       icon: <Radio className={cn(STYLES.iconSize, STYLES.iconColor)} />,
       title: 'Real-time Streaming',
       description: 'Server-Sent Events provide instant response feedback with live token streaming.',
-      href: '/docs/features/chat-ui/',
+      href: '/docs/features/chat/chat-ui',
     },
     {
       icon: <Settings className={cn(STYLES.iconSize, STYLES.iconColor)} />,
       title: 'Advanced Configuration',
       description: '12+ parameters for fine-tuning: temperature, top-p, frequency penalty, and more.',
-      href: '/docs/features/chat-ui/',
+      href: '/docs/features/chat/chat-ui',
+    },
+    {
+      icon: <Wrench className={cn(STYLES.iconSize, STYLES.iconColor)} />,
+      title: 'MCP Tool Integration',
+      description: 'Connect to MCP servers, discover and execute tools directly from the chat interface.',
+      href: '/docs/features/mcps/setup',
+    },
+    {
+      icon: <Bot className={cn(STYLES.iconSize, STYLES.iconColor)} />,
+      title: 'Agentic Chat',
+      description: 'Models invoke MCP tools mid-conversation for autonomous task completion.',
+      href: '/docs/features/mcps/usage',
+    },
+    {
+      icon: <Brain className={cn(STYLES.iconSize, STYLES.iconColor)} />,
+      title: 'Thinking Models',
+      description: 'View LLM internal reasoning and chain-of-thought during conversations.',
+      href: '/docs/features/chat/chat-ui',
     },
   ],
   technicalFeatures: [
@@ -65,7 +86,7 @@ const features = {
       icon: <Terminal className={cn(STYLES.iconSize, STYLES.iconColor)} />,
       title: 'API Compatibility',
       description: 'Drop-in replacement for OpenAI APIs. Use your existing code and tools.',
-      href: '/docs/features/openapi-docs/',
+      href: '/docs/developer/openapi-reference',
     },
     {
       icon: <Cpu className={cn(STYLES.iconSize, STYLES.iconColor)} />,
@@ -83,19 +104,19 @@ const features = {
       icon: <Download className={cn(STYLES.iconSize, STYLES.iconColor)} />,
       title: 'Model Aliases',
       description: 'Save and switch between inference configurations instantly without restarts.',
-      href: '/docs/features/model-alias/',
+      href: '/docs/features/models/model-alias',
     },
     {
       icon: <Gauge className={cn(STYLES.iconSize, STYLES.iconColor)} />,
       title: 'Performance Metrics',
       description: 'Real-time statistics showing tokens per second and processing speed.',
-      href: '/docs/features/chat-ui/',
+      href: '/docs/features/chat/chat-ui',
     },
     {
       icon: <Activity className={cn(STYLES.iconSize, STYLES.iconColor)} />,
       title: 'Background Downloads',
       description: 'Download models asynchronously with progress tracking and auto-resumption.',
-      href: '/docs/features/model-downloads/',
+      href: '/docs/features/models/model-downloads',
     },
   ],
 };

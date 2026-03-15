@@ -19,7 +19,7 @@ export function HeroSection() {
             <a href={SOCIAL_LINKS.productHunt} target="_blank" rel="noopener noreferrer">
               <img
                 src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=850615&theme=light&t=1738822645521"
-                alt="Bodhi App - Run LLMs Locally - Your Personal, Private, Powerful AI Assistant | Free & OSS"
+                alt="Bodhi App - Your Unified AI Gateway for Local Models, Cloud APIs & MCP Tools | Free & OSS"
                 width="250"
                 height="54"
                 className="w-[250px] h-[54px]"
@@ -28,9 +28,9 @@ export function HeroSection() {
           </div>
 
           <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-            Your Complete AI Infrastructure:{' '}
+            Your Unified AI Gateway:{' '}
             <span className="bg-gradient-to-r from-violet-600 to-purple-400 bg-clip-text text-transparent animate-gradient">
-              Local Privacy, Cloud Power
+              Local Models, Cloud APIs, MCP Tools
             </span>
           </h1>
           <HeroCTA platform={detectedOS} platformData={platformData} />

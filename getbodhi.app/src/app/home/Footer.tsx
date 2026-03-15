@@ -20,26 +20,26 @@ function FooterComponent() {
               <Image src="/bodhi-logo/bodhi-logo-60.svg" alt="Bodhi Logo" width={24} height={24} className="h-6 w-6" />
               <span className="font-semibold text-foreground">Bodhi</span>
             </Link>
-            <p className="text-sm text-muted-foreground">Run LLMs locally with complete privacy and control.</p>
+            <p className="text-sm text-muted-foreground">Unified AI gateway for local models, cloud APIs, and MCP tools.</p>
           </div>
 
           {/* Resources */}
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">Resources</h3>
             <nav className="flex flex-col space-y-3">
-              <Link href="/docs/install/" className="text-sm text-muted-foreground hover:text-violet-600">
+              <Link href="/docs/install" className="text-sm text-muted-foreground hover:text-violet-600">
                 Installation Guide
               </Link>
-              <Link href="/docs/features/chat-ui/" className="text-sm text-muted-foreground hover:text-violet-600">
+              <Link href="/docs/features/chat/chat-ui" className="text-sm text-muted-foreground hover:text-violet-600">
                 Chat Interface
               </Link>
               <Link
-                href="/docs/features/model-downloads/"
+                href="/docs/features/mcps/setup"
                 className="text-sm text-muted-foreground hover:text-violet-600"
               >
-                Model Management
+                MCP Tools
               </Link>
-              <Link href="/docs/troubleshooting/" className="text-sm text-muted-foreground hover:text-violet-600">
+              <Link href="/docs/troubleshooting" className="text-sm text-muted-foreground hover:text-violet-600">
                 Troubleshooting
               </Link>
             </nav>

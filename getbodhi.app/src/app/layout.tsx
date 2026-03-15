@@ -16,6 +16,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 
 export const metadata = {
-  title: 'Bodhi App - Run LLMs locally',
-  description: 'Run LLMs locally with complete privacy and control',
+  title: 'Bodhi App - Your Unified AI Gateway',
+  description: 'Unified AI gateway combining local LLM inference, cloud API proxying, and MCP tool integration with built-in chat UI and enterprise access control.',
 };

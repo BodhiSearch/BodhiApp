@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { Code2, Key, BookOpen, FileJson, Package } from 'lucide-react';
+import { Code2, Key, BookOpen, FileJson, Package, Handshake } from 'lucide-react';
 import { Container } from '@/components/ui/container';
 import { FeatureCard } from '@/app/home/FeatureCard';
 import { SectionHeader } from '@/app/home/SectionHeader';
@@ -11,34 +11,39 @@ import { cn } from '@/lib/utils';
 const developerFeatures = [
   {
     icon: <Package className={cn(STYLES.iconSize, STYLES.iconColor)} />,
-    title: 'TypeScript SDK',
-    description: 'Production-ready npm package @bodhiapp/ts-client for seamless integration.',
-    href: 'https://www.npmjs.com/package/@bodhiapp/ts-client',
-    external: true,
+    title: 'Bodhi JS SDK',
+    description: 'React hooks and components via @bodhiapp/bodhi-js-react for seamless AI integration.',
+    href: '/docs/developer/bodhi-js-sdk/getting-started',
   },
   {
     icon: <Key className={cn(STYLES.iconSize, STYLES.iconColor)} />,
     title: 'API Token Management',
     description: 'Scope-based permissions with SHA-256 hashing and database-backed security.',
-    href: '/docs/features/api-tokens/',
+    href: '/docs/features/auth/api-tokens',
   },
   {
     icon: <BookOpen className={cn(STYLES.iconSize, STYLES.iconColor)} />,
     title: 'OpenAPI/Swagger UI',
     description: 'Interactive API documentation with auto-generated specs and live testing.',
-    href: '/docs/features/openapi-docs/',
+    href: '/docs/developer/openapi-reference',
   },
   {
     icon: <FileJson className={cn(STYLES.iconSize, STYLES.iconColor)} />,
     title: 'OpenAI Compatible',
     description: 'Drop-in replacement for OpenAI APIs - use existing libraries and tools seamlessly.',
-    href: '/docs/features/openapi-docs/',
+    href: '/docs/developer/openapi-reference',
   },
   {
     icon: <Code2 className={cn(STYLES.iconSize, STYLES.iconColor)} />,
     title: 'Ollama Compatible',
     description: 'Additional API format support for Ollama chat and models endpoints.',
     href: '/docs/intro/',
+  },
+  {
+    icon: <Handshake className={cn(STYLES.iconSize, STYLES.iconColor)} />,
+    title: 'App Access Requests',
+    description: 'Resource consent API for third-party apps with granular permission scoping.',
+    href: '/docs/developer/app-access-requests',
   },
 ];
 
