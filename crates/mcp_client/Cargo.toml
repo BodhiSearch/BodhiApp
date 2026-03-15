@@ -1,13 +1,13 @@
 [package]
 name = "mcp_client"
-version = "0.1.0"
+version = "0.0.46-dev"
 edition = "2021"
 rust-version.workspace = true
 
 [dependencies]
 async-trait = { workspace = true }
-errmeta = { path = "../errmeta" }
-errmeta_derive = { path = "../errmeta_derive" }
+errmeta = { workspace = true }
+errmeta_derive = { workspace = true }
 mockall = { workspace = true, optional = true }
 reqwest = { workspace = true }
 rmcp = { workspace = true, features = [
