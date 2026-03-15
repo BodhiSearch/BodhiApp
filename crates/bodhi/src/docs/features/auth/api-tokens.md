@@ -1,7 +1,7 @@
 ---
 title: 'API Tokens'
 description: 'Create and manage database-backed API tokens for secure programmatic access'
-order: 240
+order: 243
 ---
 
 # API Token Management
@@ -94,21 +94,26 @@ Choose permissions granted to this token. Each scope enables access to specific 
 
 **Available Scopes**:
 
-Currently, Bodhi App supports two token scopes:
+Bodhi App supports three token scopes:
 
-1. **Token User** (Read-Only Access):
+1. **Token User** (`scope_token_user`) — Read-Only Access:
    - Chat completions API (`/bodhi/v1/chat/completions`)
    - Embeddings API (`/bodhi/v1/embeddings`)
    - Model listing (read-only access to `/bodhi/v1/models`)
    - Cannot download or delete models
    - Ideal for: Chat applications, embedding generation, model discovery
 
-2. **Token Power User** (Limited Write Access):
+2. **Token Power User** (`scope_token_power_user`) — Limited Write Access:
    - All Token User capabilities
    - Download models from HuggingFace
    - Delete existing models
    - **Note**: Token Power User has more restrictions than a logged-in PowerUser role
    - Ideal for: Automated model management, CI/CD pipelines
+
+3. **Token Admin** (`scope_token_admin`) — Administrative Access:
+   - All Token Power User capabilities
+   - Administrative API endpoints
+   - Ideal for: Automation scripts requiring admin-level access
 
 **Important**: Token-based access has additional restrictions compared to logged-in user sessions, even with the same scope name.
 
@@ -194,7 +199,7 @@ API tokens work with all Bodhi App API endpoints based on their scope:
 - Model download endpoints
 - Model deletion endpoints
 
-See [OpenAPI Documentation](/docs/features/openapi-docs) for complete endpoint reference.
+See [API Reference](/docs/developer/openapi-reference) for complete endpoint reference.
 
 ## Managing API Tokens
 
@@ -246,9 +251,8 @@ Toggle token status without deleting it.
 
 **Token Expiration**:
 
-- API tokens currently **do not expire**
+- API tokens do not expire
 - They remain valid indefinitely until deactivated or deleted
-- **Future Feature**: Time-based expiration is planned for future releases
 
 **Token States**:
 
@@ -265,17 +269,7 @@ Toggle token status without deleting it.
 
 ### Token Deletion
 
-**Current Status**:
-
-- Delete button is not currently available in the UI
-- The API endpoint for token deletion exists
-- UI support for deletion is planned for future releases
-
-**Workaround**:
-
-- Deactivate tokens you no longer need
-- Inactive tokens cannot authenticate API requests
-- This provides similar security benefits to deletion
+Deactivate tokens you no longer need. Inactive tokens cannot authenticate API requests, providing similar security to deletion.
 
 ## Security Best Practices
 
@@ -447,19 +441,12 @@ Capabilities: All Token User capabilities + model download/deletion
    - Deactivate old token
 
 3. **Verify Endpoint Requirements**:
-   - See [OpenAPI Documentation](/docs/features/openapi-docs) for scope requirements
+   - See [API Reference](/docs/developer/openapi-reference) for scope requirements
    - Token User: Read-only endpoints (chat, embeddings, models list)
    - Token Power User: Model management endpoints (download, delete)
 
 ## Related Documentation
 
-- [OpenAPI Reference](/docs/features/openapi-docs) - API endpoint documentation
-- [TypeScript Client](/docs/developer/typescript-client) - SDK usage guide
-- [Authentication](/docs/intro#authentication) - Session-based authentication
-- [User Management](/docs/features/user-management) - Managing users and roles
-
----
-
-**Summary**: Bodhi App's database-backed API tokens provide secure programmatic access with scope-based permissions. Use one-time display pattern, store tokens securely, apply principle of least privilege, and rotate regularly for optimal security.
-
-Happy integrating!
+- [API Reference](/docs/developer/openapi-reference) - API endpoint documentation
+- [Bodhi JS SDK](/docs/developer/bodhi-js-sdk/getting-started) - SDK integration guide
+- [User Management](/docs/features/auth/user-management) - Managing users and roles

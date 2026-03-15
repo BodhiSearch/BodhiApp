@@ -1,7 +1,7 @@
 ---
 title: 'User Management'
-description: 'Admin dashboard for managing users and access requests'
-order: 220
+description: 'Admin dashboard for managing users, roles, and access requests'
+order: 242
 ---
 
 # User Management
@@ -74,7 +74,6 @@ Bodhi App uses hierarchical role-based access control. Each role grants specific
 2. **PowerUser**: Can download and delete model files, plus all User capabilities
 3. **Manager**: Can manage users and approve access requests, plus all PowerUser capabilities (cannot manage other Admins)
 4. **Admin**: Full system access, all permissions including managing all users
-5. The role permission matrix is subject to change. We may allow some isolated capabilities for User and Manager role in future. Will keep you updated via the docs.
 
 ### Role Permission Matrix
 
@@ -169,7 +168,7 @@ The Access Requests tab displays all user access requests (pending, approved, an
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-For the user-facing workflow, see [Access Requests Guide](/docs/features/access-requests).
+For the user-facing workflow, see [User Access Requests](/docs/features/auth/user-access-requests). For third-party app access management, see [App Access Management](/docs/features/auth/app-access-management).
 
 ### Viewing Access Requests
 
@@ -304,7 +303,7 @@ View all access requests regardless of status for audit purposes.
 
 ## Related Documentation
 
-- [Access Requests (User Guide)](/docs/features/access-requests) - User perspective
-- [Authentication](/docs/intro#authentication) - OAuth2 setup
-- [API Tokens](/docs/features/api-tokens) - Programmatic access
-- [Settings](/docs/features/app-settings) - System configuration
+- [User Access Requests](/docs/features/auth/user-access-requests) - User perspective on requesting access
+- [App Access Management](/docs/features/auth/app-access-management) - Managing third-party app access
+- [API Tokens](/docs/features/auth/api-tokens) - Programmatic access
+- [Settings](/docs/features/settings/app-settings) - System configuration

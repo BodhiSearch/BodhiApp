@@ -1,6 +1,6 @@
 ---
 title: 'Installation'
-description: 'How to install Bodhi'
+description: 'Install Bodhi App on desktop or Docker with guided setup wizard'
 order: 101
 ---
 
@@ -45,7 +45,7 @@ For server deployments and cloud platforms, see [Docker Deployment Guide](/docs/
 
 - CPU variant (AMD64 + ARM64)
 - CUDA variant (NVIDIA GPU acceleration)
-- ROCm variant (AMD GPU acceleration)
+- ROCm, Vulkan, MUSA, Intel, CANN GPU variants
 
 ## Post-Installation: Setup & Launch Flow
 
@@ -249,7 +249,7 @@ Configure remote AI API providers to use cloud models alongside local ones.
 - Message: "Don't have an API key? You can skip this step and configure API models later"
 - Configure later via the API Models page (<a href="/ui/models/" target="_blank" rel="noopener noreferrer">/ui/models/</a>)
 
-**Detailed Configuration:** See [API Models Guide](/docs/features/api-models)
+**Detailed Configuration:** See [API Models Guide](/docs/features/models/api-models)
 
 ### Step 5: Browser Extension (Optional)
 
@@ -264,7 +264,7 @@ Install the Bodhi App browser extension to use AI on any website.
 **Auto-Detection:**
 
 - Wizard detects your current browser
-- Currently supports Chrome (Firefox and Safari support planned for future releases)
+- Currently supports Chrome
 - Can manually select different browser
 
 **Extension Features:**
@@ -413,7 +413,7 @@ Setup complete! Time to start using Bodhi App.
 - Verify network stability
 - Retry download from <a href="/ui/pull/" target="_blank" rel="noopener noreferrer">/ui/pull/</a> page
 - Check error details in download history
-- See [Model Downloads Guide](/docs/features/model-downloads) for detailed troubleshooting
+- See [Model Downloads Guide](/docs/features/models/model-downloads) for detailed troubleshooting
 
 ### API Model Configuration Errors
 
@@ -431,7 +431,7 @@ Setup complete! Time to start using Bodhi App.
 - Check base URL for typos
 - Test provider API directly (e.g., using curl)
 - Skip step and configure later from Models page
-- See [API Models Guide](/docs/features/api-models) for detailed troubleshooting
+- See [API Models Guide](/docs/features/models/api-models) for detailed troubleshooting
 
 ### Browser Extension Not Installing
 
@@ -445,7 +445,7 @@ Setup complete! Time to start using Bodhi App.
 
 **Solutions**:
 
-- Verify browser is supported (Chrome only, Firefox/Safari coming soon)
+- Verify browser is supported (Chrome)
 - Try manual installation from Chrome Web Store
 - Check browser extension permissions
 - Skip step and install later manually

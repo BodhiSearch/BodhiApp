@@ -1,17 +1,26 @@
 ---
-title: 'Model Aliases'
-description: 'Configure and manage your model alias configurations in Bodhi'
+title: 'Models'
+description: 'Browse, configure, and manage all models in Bodhi — local aliases, GGUF files, and API models in one unified list'
 order: 205
 ---
 
-# Model Aliases
+# Models
 
-Model Aliases in Bodhi App provide a streamlined way to manage and apply LLM configurations for inference.
+The Models page (`/ui/models/`) is the central hub for managing all models available in Bodhi App. It displays three types of models in a unified table:
 
-There are two kinds of model aliases:
+1. **User Defined Model Aliases** — Custom YAML configurations with tailored request and context parameters. Source badge: **user**.
+2. **GGUF Model File Defined Aliases** — Direct references to downloaded GGUF model files that use embedded metadata for automatic configuration. Source badge: **model**.
+3. **API Models** — Cloud-based models from providers like OpenAI, OpenRouter, and HuggingFace. Source badge: **API**. See [API Models](/docs/features/models/api-models) for configuration details.
 
-1. **User Defined Model Alias**
-2. **GGUF Model File Defined Alias**
+## GGUF Model Metadata
+
+For local GGUF models, Bodhi App can extract capabilities directly from the GGUF file headers. A preview modal shows metadata including:
+
+- **Capabilities**: vision, audio, thinking support, function calling, structured output
+- **Context Limits**: max input tokens, max output tokens
+- **Architecture**: format, family, parameter count, quantization level
+
+You can refresh metadata for any model from the preview modal or per-row refresh button on the Models page.
 
 ## User Defined Model Alias
 
@@ -56,7 +65,7 @@ A Model Alias YAML file includes the following keys:
     - `--n-predict <n>`: Maximum tokens to generate (e.g., `--n-predict 4096`)
     - `--n-keep <n>`: Tokens to keep from initial prompt (e.g., `--n-keep 24`)
 
-  **Advanced Configuration**: For complete list of available llama-server arguments, see [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/tree/master/tools/server). Additional server parameters can also be configured through the Settings dashboard - see [App Settings](/docs/features/app-settings) page.
+  **Advanced Configuration**: For complete list of available llama-server arguments, see [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/tree/master/tools/server). Additional server parameters can also be configured through the Settings dashboard - see [App Settings](/docs/features/settings/app-settings) page.
 
 - **request_params:** Default request parameters applied if not specified during a request:
   - **frequency_penalty:** Reduces repetition.
@@ -101,23 +110,28 @@ This approach offers several advantages:
 
 ## Models Page
 
-The Models page provides a unified view of all available models in Bodhi App, displaying three types of models in a single interface:
+The Models page provides a unified view of all available models in Bodhi App, displaying all model types in a single sortable, paginated table.
 
-**Model Types Displayed**:
+**Table Columns**:
 
-1. **User Defined Model Aliases**: Custom YAML configurations with tailored request and context parameters. These aliases allow you to save specific inference settings for easy reuse. [See User Defined Model Alias section above](#user-defined-model-alias).
+- **Name**: Model alias or API model ID
+- **API Format/Repo**: API format (for API models) or HuggingFace repository (for local models)
+- **File/Endpoint**: Base URL (for API models) or GGUF filename (for local models)
+- **Type**: Source badge — "user" (user-created alias), "model" (GGUF file alias), or "API" (cloud provider)
+- **Prefix**: Prefix configured for API models (if any)
+- **Forward All**: Whether an API model forwards all provider models via prefix routing
 
-2. **GGUF Model File Defined Aliases**: Direct references to downloaded GGUF model files. These use embedded metadata for automatic configuration with default parameters. [See GGUF Model File Defined Alias section above](#gguf-model-file-defined-alias).
+**Page Actions**:
 
-3. **API Models**: Cloud-based models from providers like OpenAI, Anthropic, Groq, Together AI, and others. These models provide access to frontier AI capabilities without local hardware requirements. For details on configuring API models, see [API Models](/docs/features/api-models).
-
-**Page Features**:
-
-- Browse all models in a unified table view
-- Edit user-defined model aliases directly from the page
-- Start a chat with any model using the action buttons
-- Copy configuration details with hover-to-copy buttons on column values
-- View model source badges (local "model" badge vs. cloud "API" badge)
+- **New Model Alias** button — navigate to `/ui/models/alias/new` to create a local model alias
+- **New API Model** button — navigate to `/ui/models/api/new` to configure a cloud provider
+- **Edit** — edit user-defined aliases (`/ui/models/alias/edit`) or API models (`/ui/models/api/edit`)
+- **Chat** — start a chat session with any model
+- **Preview** — open a modal showing model details, capabilities, and metadata
+- **Refresh** — refresh GGUF metadata from file headers
+- **New from Model** — create a new alias from an existing GGUF model file (pre-fills repo/filename)
+- **External Link** — open HuggingFace repository or provider URL
+- Copy configuration details with hover-to-copy on column values
 
 <img
   src="/doc-images/models-page.jpeg"
@@ -127,7 +141,7 @@ The Models page provides a unified view of all available models in Bodhi App, di
 
 ## Model Alias Form
 
-You can access the New Model Alias form directly from the Models page.
+Create a new alias at <a href="/ui/models/alias/new" target="_blank" rel="noopener noreferrer">/ui/models/alias/new</a>, or edit an existing one at <a href="/ui/models/alias/edit" target="_blank" rel="noopener noreferrer">/ui/models/alias/edit</a>. Both forms are also accessible from the Models page action buttons.
 
 <img
   src="/doc-images/model-alias.jpg"
@@ -173,5 +187,3 @@ When configuring model aliases, consider these key performance factors:
 - Set `n_parallel` based on your expected concurrent usage
 - Use `n_keep` to maintain important context while reducing memory usage
 - Consider using `stop` sequences to prevent unnecessary token generation
-
-Happy configuring!

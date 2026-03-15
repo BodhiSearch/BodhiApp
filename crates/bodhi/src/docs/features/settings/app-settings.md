@@ -1,7 +1,7 @@
 ---
 title: 'App Settings'
-description: 'Configure and manage application settings directly from the UI in Bodhi App'
-order: 230
+description: 'Configure and manage application settings stored in SQLite database'
+order: 231
 ---
 
 # App Settings
@@ -34,11 +34,12 @@ All other settings are displayed for information and transparency, including:
 
 ## Understanding Setting Sources
 
-Settings in Bodhi App can come from multiple sources, displayed with color-coded badges for easy identification:
+Settings in Bodhi App are stored in the SQLite database and can come from multiple sources, displayed with color-coded badges for easy identification:
 
 - **System** (Red Badge): Built-in system defaults
 - **CLI** (Blue Badge): Command-line arguments passed at startup
 - **Env** (Green Badge): Environment variables
+- **Database** (Purple Badge): Settings stored in SQLite database via the UI
 - **File** (Orange Badge): Configuration file settings
 - **Default** (Gray Badge): Application defaults
 
@@ -49,8 +50,9 @@ When the same setting is defined in multiple sources, Bodhi App uses a priority 
 1. **System** - Highest priority, cannot be overridden
 2. **CLI** - Command-line arguments
 3. **Env** - Environment variables
-4. **File** - Configuration file
-5. **Default** - Fallback defaults
+4. **Database** - Settings saved through the UI (stored in SQLite)
+5. **File** - Configuration file
+6. **Default** - Fallback defaults
 
 The Settings page clearly shows which source is providing the current value, helping you understand your configuration.
 
@@ -60,7 +62,7 @@ The Settings page clearly shows which source is providing the current value, hel
    The Settings page displays all application configurations organized into categorized cards. Each setting shows:
    - **Current Value:** The active setting in use
    - **Default Value:** The value that would be applied if not overridden
-   - **Source:** Color-coded badge indicating the origin (System/CLI/Env/File/Default)
+   - **Source:** Color-coded badge indicating the origin (System/CLI/Env/Database/File/Default)
    - **Edit Button:** Available only for editable settings
 
 2. **Editing Settings:**
@@ -100,7 +102,6 @@ Currently, the following settings can be managed via the UI:
 - **BODHI_EXEC_VARIANT:** Define the hardware-specific variant for Llama.cpp execution.
 - **BODHI_KEEP_ALIVE_SECS:** Adjust the idle timeout duration for the application.
 
-Other configuration options are under development and will be made available in future releases.
 
 <img
   src="/doc-images/app-settings.jpg"
@@ -108,8 +109,7 @@ Other configuration options are under development and will be made available in 
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-## Summary
+## Related Documentation
 
-The App Settings feature in Bodhi App empowers administrators to manage system configurations on the fly, offering enhanced flexibility and reducing operational downtime.
-
-Happy configuring!
+- [Docker Deployment](/docs/deployment/docker) - Environment variable configuration for Docker
+- [User Management](/docs/features/auth/user-management) - Role-based access control

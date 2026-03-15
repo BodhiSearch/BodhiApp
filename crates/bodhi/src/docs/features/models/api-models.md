@@ -12,12 +12,13 @@ Bodhi App supports hybrid AI architecture - use powerful API models from leading
 
 **Key Features**:
 
-- OpenAI API format support, more API format support in pipeline
-- Multi-provider support providing API in OpenAI format, e.g. OpenAI, OpenRouter, Huggingface Inference APIs
-- Access to variety of models from the supported providers (Anthropic, Groq, Mistral, Perplexity, Qwen etc.)
-- Encrypted API key storage (AES-GCM)
+- OpenAI API format support
+- Multi-provider support providing API in OpenAI format, e.g. OpenAI, OpenRouter, HuggingFace Inference APIs
+- Access to a variety of models from the supported providers (Anthropic, Groq, Mistral, Perplexity, Qwen etc. via OpenRouter)
+- Optional API key with encrypted storage (AES-GCM)
 - Model discovery from provider APIs
 - Prefix-based routing for namespace separation
+- Forward All with Prefix mode — forward every model from a provider via prefix routing without selecting individual models
 - Test connection before saving
 - Seamless switching between local and remote models
 
@@ -106,7 +107,6 @@ Configure which provider you want to connect to by selecting the API format and 
 
 1. **Select API Format**: Click the "API format" dropdown and select the format
    - Currently only **OpenAI** format is supported
-   - Future support planned for Anthropic, Grok, and other API formats
 
 2. **Enter Base URL**: The provider is determined by the base URL you enter
    - For **OpenAI**: The form auto-fills `https://api.openai.com/v1`
@@ -120,20 +120,26 @@ Configure which provider you want to connect to by selecting the API format and 
 - Should end with the path to which `/chat/completions` can be appended
 - Example: For OpenAI, the base URL is `https://api.openai.com/v1`, so chat completions endpoint becomes `https://api.openai.com/v1/chat/completions`
 
-**Technical Specifications**: For API implementation details, see [OpenAPI Documentation](/docs/features/openapi-docs).
+**Technical Specifications**: For API implementation details, see [API Reference](/docs/developer/openapi-reference).
 
-### Step 3: Enter API Key
+### Step 3: Enter API Key (Optional)
 
-Your API key is encrypted before storage using AES-GCM encryption.
+API keys are optional. Some providers (e.g., local OpenAI-compatible servers) do not require authentication. Use the "Use API Key" checkbox to toggle key usage.
 
-1. Enter API key in password field
-2. Key is masked for security
-3. Enter your API key from the provider (presence validated only, no format restrictions)
+**With API key**:
 
-**Security**:
+1. Check "Use API Key"
+2. Enter API key in password field (masked for security)
+3. Key is encrypted with AES-GCM before database storage
+4. Key is decrypted from DB and sent to the provider when forwarding requests
 
-- API keys encrypted with AES-GCM before database storage
-- De-crypted everytime from DB and sent to the provider when forwarding the request
+**Without API key**:
+
+1. Uncheck "Use API Key"
+2. Requests are sent without an Authorization header
+3. Useful for local or self-hosted providers that do not require authentication
+
+You can add, change, or remove the API key at any time by editing the API model.
 
 ### Step 4: Configure Model Prefix (Optional)
 
@@ -177,6 +183,25 @@ Both OpenAI and OpenRouter can provide access to GPT-4. Using prefixes lets you 
 
 - With prefix enabled, you must include it in model IDs when using Bodhi App's API
 - Example: `openai/gpt-4` instead of `gpt-4`
+
+### Forward All with Prefix
+
+When a prefix is configured, you can enable **Forward All with Prefix** mode. Instead of selecting individual models from the provider, this mode forwards ALL requests whose model ID starts with the configured prefix to the provider.
+
+**How it works**:
+
+1. Configure a prefix (e.g., `fwd/`)
+2. Select the "Forward All" radio button (this disables individual model selection)
+3. Any request with a model ID like `fwd/gpt-4o`, `fwd/gpt-4o-mini`, etc. is automatically routed to the provider
+4. The prefix is stripped before forwarding — `fwd/gpt-4o` becomes `gpt-4o` at the provider
+
+**When to use Forward All**:
+
+- You want access to every model a provider offers without selecting them one by one
+- The provider frequently adds new models and you want automatic access
+- You are using a provider like OpenRouter that aggregates many models
+
+**Prefix uniqueness**: Each prefix must be unique across all API models. Attempting to create a second model with the same prefix will fail with an error.
 
 ### Step 5: Fetch Available Models
 
@@ -272,8 +297,9 @@ Update configuration, change API key, or modify model selection.
 **Editing Capabilities**:
 
 - Update base URL
-- Change API key (enter new key to update)
+- Add, change, or remove API key
 - Modify prefix
+- Toggle between Forward All mode and selected models mode
 - Add or remove models (models can be added/removed after API model creation)
 
 ### Deleting API Models
@@ -443,11 +469,7 @@ For additional troubleshooting, see the [Troubleshooting](/docs/troubleshooting)
 - Review model pricing before selection
 - Track costs per provider monthly
 
-**Token Usage Tracking**:
-
-Currently not available. Token usage tracking is a planned feature for future releases.
-
-**Workaround**: Check your provider's dashboard for token usage and billing information.
+**Token Usage Tracking**: Check your provider's dashboard for token usage and billing information.
 
 ## Security Best Practices
 
@@ -548,14 +570,11 @@ Bodhi App supports OpenAI API-compatible providers. Below are notes for tested p
 
 ### Other Providers
 
-**Future Support**: Support planned for Anthropic, Grok, and other AI API formats in future releases.
-
-**Custom Providers**: Any OpenAI-compatible API can be configured using the Custom provider option. For technical API specifications, see [OpenAPI Documentation](/docs/features/openapi-docs).
+**Custom Providers**: Any OpenAI-compatible API can be configured using the Custom provider option. For technical API specifications, see [API Reference](/docs/developer/openapi-reference).
 
 ## Related Documentation
 
-- [Model Aliases (Local)](/docs/features/model-alias) - Local GGUF models
-- [Chat Interface](/docs/features/chat-ui) - Using models in chat
-- [API Tokens](/docs/features/api-tokens) - Programmatic access
+- [Models](/docs/features/models/model-alias) - Local GGUF models and unified Models page
+- [Chat Interface](/docs/features/chat/chat-ui) - Using models in chat
+- [API Tokens](/docs/features/auth/api-tokens) - Programmatic access
 - [Setup Wizard](/docs/install#post-installation-setup) - First-time setup
-- [Models Page](/docs/features/model-alias#browsing-models) - Unified model view

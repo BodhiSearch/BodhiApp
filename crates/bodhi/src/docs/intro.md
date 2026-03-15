@@ -1,83 +1,39 @@
 ---
 title: 'Introduction'
-description: 'Getting started with Bodhi'
+description: 'Bodhi App — unified AI gateway for local models, cloud APIs, and MCP tools'
 order: 0
 ---
 
 # Welcome to Bodhi App
 
-Bodhi App is a cross‑platform LLM inference tool that seamlessly integrates with the HuggingFace ecosystem and is powered by the llama.cpp server. Whether you're a non‑technical user exploring AI or a developer building sophisticated AI‑powered applications, Bodhi App delivers a rich set of features designed to empower your journey.
+Bodhi App is a unified AI gateway that brings together local LLM inference, cloud API proxying, and MCP tool integration under a single platform with built-in authentication and role-based access control.
 
 ## Key Features
 
-- **OpenAI Compatible Chat and Model APIs**
-  Our chat completions and models API is OpenAI compatible, so you can seamlessly integrate with any tool that accepts OpenAI's API endpoints.
+- **Unified AI Gateway**
+  Run local GGUF models via llama.cpp and proxy requests to cloud providers (OpenAI, OpenRouter, HuggingFace, and any OpenAI-compatible API) — all through one set of endpoints.
 
-- **Ollama Compatible Chat and Model APIs**
-  We also offer Ollama compatible API - chat and models endpoints, providing flexibility and integration options for users within the Ollama ecosystem.
+- **MCP Tool Integration**
+  Connect to MCP servers with support for header-based and OAuth authentication (including Dynamic Client Registration). Discover tools, whitelist them per user, and execute them from the built-in playground or chat UI.
 
-- **Hybrid AI Architecture**
-  Use powerful API models from leading providers (OpenAI, Anthropic, Groq, Together AI) alongside your local GGUF models in a unified interface. [Learn more about API Models](/docs/features/api-models).
+- **OpenAI + Ollama Compatible APIs**
+  Drop-in replacement endpoints for `/v1/chat/completions`, `/v1/models`, and `/v1/embeddings` — compatible with any tool that supports OpenAI or Ollama API formats.
 
-- **User Management System**
-  Admin dashboard for managing users, approving access requests, and assigning roles with granular permissions. [Learn more about User Management](/docs/features/user-management).
+- **Built-in Chat UI with Agentic Tool Execution**
+  Chat interface with streaming responses, markdown rendering, and agentic tool calling — models can invoke MCP tools mid-conversation with full tool call/result display.
 
-- **Multi-Platform Support**
-  Available as desktop apps (Windows, macOS Intel/ARM, Linux) and Docker containers with hardware-specific variants (CPU, CUDA, ROCm). [Learn more about Deployment](/docs/deployment/docker/).
+- **Role-Based Auth & Access Control**
+  OAuth2 PKCE authentication with four-tier role hierarchy (User, PowerUser, Manager, Admin). User access requests, app access requests with resource consent, and scoped API tokens.
 
-- **Developer SDK**
-  TypeScript client package for integrating with Bodhi App APIs into your applications [@bodhiapp/ts-client](https://www.npmjs.com/package/@bodhiapp/ts-client).
+- **Multi-Platform**
+  Desktop apps for macOS (Intel + Apple Silicon), Windows, and Linux. Docker images for CPU (AMD64 + ARM64), CUDA, ROCm, Vulkan, MUSA, Intel, and CANN.
 
-- **Advanced Security & Authentication**
-  Bodhi App uses OAuth2 with PKCE (Proof Key for Code Exchange) for secure, mandatory authentication. The first user to log in via OAuth automatically becomes the admin (determined by checking if any users exist in the database during OAuth login), while subsequent users must request access and await admin approval.
+- **Bodhi JS SDK for Developers**
+  [`@bodhiapp/bodhi-js-react`](https://www.npmjs.com/package/@bodhiapp/bodhi-js-react) — register your app, request MCP access, and call OpenAI-compatible APIs from any web application.
 
-  **Key Security Features:**
-  - Mandatory OAuth2 authentication for all users
-  - First-user admin assignment
-  - Access request workflow for new users
-  - Role-based permissions (User, PowerUser, Manager, Admin)
+## Quick Start
 
-  See [Installing](/docs/install/) for authentication setup details.
-
-- **Built-in Chat UI**  
-  Say goodbye to separate installations—Bodhi App includes a ready‑to‑use Chat UI featuring markdown support (with code blocks and copy functionality), multi‑conversation management, customizable system prompts, and real‑time feedback. For those who prefer an external Chat frontend, our OpenAI‑compatible API endpoints make integration effortless.
-
-- **Model Alias**  
-  Easily create and save your inference configurations by specifying your preferred request parameters and llama‑server settings—such as temperature and context size. Switch between configurations seamlessly without any restarts.
-
-- **Model Files Management**
-  Manage your AI model files seamlessly with the HuggingFace ecosystem. GGUF model files are downloaded into your local HuggingFace home folder, and any compatible GGUF models already present can be used for inference. Model alias configurations are stored separately in `$BODHI_HOME/aliases`. This design saves disk space and bandwidth by reusing your existing resources.
-
-- **Robust API Access & Developer Tools**  
-  Benefit from comprehensive API documentation and developer tools. Whether you are generating API tokens or integrating Bodhi App into external applications, every technical detail is supported.
-
-- **Future‑Ready and Cross‑Platform**  
-  Designed for desktop, mobile, and web, Bodhi App is continuously evolving—with upcoming features such as expanded AI API integrations and enhanced authorization flows.
-
-- **Guided Onboarding & Ongoing Support**  
-  Kickstart your journey with [Installing](/docs/install/) Bodhi App. For more technical details, explore our [API References](/docs/features/openapi-docs/) and discover additional features on our [Features](/docs/features/) page.
-
-## What's in Store
-
-Bodhi App is an evolving platform, and our roadmap includes:
-
-- **Enhanced Chat Capabilities:** Support for rich media, file attachments, and even more interactive conversation management.
-- **Extended Provider Support:** Additional AI providers beyond current OpenAI-compatible APIs.
-- **Advanced Features:** Performance optimizations, enhanced model management, and improved deployment options.
-
-## Choose Your Path
-
-- **Lets Get Started**  
-  Begin your journey by [Installing](/docs/install/) Bodhi App.
-
-- **For Developers:**  
-  Dive into technical details in our [API References](/docs/features/openapi-docs/).
-
-- **Explore?**  
-  Find out more in our [Features](/docs/features/).
-
----
-
-Bodhi App is purposefully designed to be both powerful and user‑friendly—empowering non‑technical users to experiment freely while giving developers the tools to build sophisticated AI‑powered applications.
-
-_Explore, experiment, and evolve with Bodhi App!_
+- **[Install Bodhi App](/docs/install)** — Desktop and Docker setup with guided wizard
+- **[Features](/docs/features)** — Chat, Models, MCPs, Auth, Settings
+- **[Developer Guide](/docs/developer/getting-started)** — Integrate your app with the Bodhi JS SDK
+- **[Docker Deployment](/docs/deployment/docker)** — Production deployment with GPU acceleration

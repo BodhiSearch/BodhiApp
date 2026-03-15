@@ -1,46 +1,43 @@
 ---
 title: 'Chat UI'
 description: "A comprehensive guide to using Bodhi App's Chat Interface"
-order: 200
+order: 201
 ---
 
 # Chat UI
 
-Welcome to Bodhi App's Chat UI! This guide is designed to help you get started with our conversational AI interface. Whether you are a first-time user or someone looking to explore advanced configuration options, you will find all the information you need in this guide.
+Bodhi App's Chat UI provides a conversational AI interface with support for streaming responses, tool calling, MCP integration, and fine-grained parameter control.
 
 ## Overview
 
-Bodhi App's Chat UI features a clean, three-panel design that keeps everything you need at your fingertips. The interface is divided into:
+The Chat UI features a three-panel design:
 
-- **Chat History Panel (Left):** View and manage your past conversations.
-- **Main Chat Panel (Center):** Interact directly with the AI assistant.
-- **Settings Panel (Right):** Configure the AI's behavior using various parameters.
+- **Chat History Panel (Left):** View and manage past conversations.
+- **Main Chat Panel (Center):** Interact with the AI assistant.
+- **Settings Panel (Right):** Configure AI behavior using sampling parameters.
 
-<img 
-  src="/doc-images/chat-ui.jpg" 
-  alt="Chat UI" 
+<img
+  src="/doc-images/chat-ui.jpg"
+  alt="Chat UI"
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-Every conversation and setting is stored locally in your browser. This means your data is private but will be lost if you clear your browser data.
+Conversations and settings are stored locally in your browser's LocalStorage. Data is private but will be lost if you clear your browser data.
 
 ## Streaming Responses
 
-Bodhi App uses real-time streaming to display AI responses as they are generated, providing a more interactive and responsive experience.
+Bodhi App uses real-time streaming to display AI responses as they are generated.
 
 **How It Works**:
 
-- When you send a message, your message appears immediately in the chat
-- The AI assistant's response streams token-by-token as it's generated
-- Typing indicators are not currently shown during streaming responses
+- When you send a message, it appears immediately in the chat
+- The AI assistant's response streams token-by-token as it is generated
 - You can watch the response build in real-time instead of waiting for completion
 
 **Stop Generation**:
 
-- Currently option is not available to stop streaming mid-way
-- You can navigate away from the page to drop the network connection, this will only drop the update to the page
-- The request will still be processed till complete in the backend
-- Having the request processing stopped once the connection is dropped, or stopped explicitly by user is in works
+- Currently there is no option to stop streaming mid-way
+- Navigating away from the page drops the network connection, but the backend continues processing the request until complete
 
 **Technical Details**:
 
@@ -51,16 +48,92 @@ Bodhi App uses real-time streaming to display AI responses as they are generated
 
 - Faster perceived response time (see output immediately)
 - Better user experience (no blank waiting screen)
-- Can stop long or irrelevant responses early
 - More natural conversation flow
+
+## Tool Calling
+
+Models with tool calling support can invoke tools during a conversation. When tools are enabled, the model can decide to call a tool to gather information or perform actions before generating its final response.
+
+**How It Works**:
+
+1. You send a message to the model
+2. The model generates a `tool_call` specifying which tool to invoke and with what arguments
+3. Bodhi executes the tool call against the MCP server
+4. The tool result is returned to the model
+5. The model generates its final response incorporating the tool result
+
+This loop can repeat multiple times in a single conversation turn. The maximum number of iterations is configurable in the settings panel (defaults to 5).
+
+**Tool Call Display in Chat**:
+
+Each tool call appears as a collapsible section in the conversation:
+
+- **Tool name** and **source** (MCP slug) shown in the header
+- **Status badge** indicates the current state:
+  - "Calling..." (blue, with spinner) while the tool is executing
+  - "Completed" (green, with checkmark) when execution succeeds
+  - "Error" (red) when execution fails
+- **Arguments**: JSON of the parameters passed to the tool, shown in a collapsible code block
+- **Result**: The tool's response, shown in a collapsible code block after execution completes
+
+Tool calls auto-expand while executing and collapse once completed. You can click the header to expand or collapse any tool call at any time.
+
+**Parallel Tool Execution**:
+
+When the model requests multiple tool calls in a single turn, they are executed in parallel for faster response times.
+
+## Thinking Model Support
+
+Models with a "thinking" capability expose their internal reasoning process. When a thinking model is used, the LLM's internal reasoning is displayed in a collapsible section within the assistant's message, allowing you to inspect how the model arrived at its response.
+
+## MCP Integration
+
+Model Context Protocol (MCP) servers extend the model's capabilities by providing additional tools. MCPs configured in the [MCP Setup page](/docs/features/mcps/setup) are available for use in the chat UI.
+
+**MCPs Popover**:
+
+The MCPs popover is accessible via the plug icon button in the chat input area. It provides:
+
+- A list of all configured MCP instances
+- A badge on the plug icon showing the count of currently enabled MCP tools
+- Per-MCP enable/disable toggle (checkbox enables or disables all tools for that MCP)
+- Expandable per-tool enable/disable toggles within each MCP
+- Tool count display showing enabled vs. total tools per MCP (e.g., "3/5")
+
+**MCP Availability**:
+
+An MCP appears as available in the popover when:
+
+- The MCP server is enabled by the administrator
+- The MCP instance is enabled by the user
+- Tools have been discovered (tools cache is populated)
+- The tools filter is not empty (if a filter is configured)
+
+Unavailable MCPs are shown dimmed with a tooltip explaining the reason (e.g., "Disabled by administrator", "Tools not yet discovered").
+
+**MCP Tool Selection Persistence**:
+
+Tool selections persist across popover open/close cycles and across new chat sessions within the same browser session. Selections are stored in browser LocalStorage.
+
+**Agentic Loop with MCPs**:
+
+When MCP tools are enabled and the model decides to call one:
+
+1. User sends a message
+2. Model generates a tool call targeting an MCP tool
+3. Bodhi executes the tool call against the MCP server via the backend API
+4. The tool result is returned to the model
+5. The model generates its response (or makes additional tool calls)
+
+The tool call UI shows collapsible sections with status badges, arguments JSON, and result display.
 
 ## The Chat History Panel
 
-The left panel displays your previous conversations grouped by the time they were started—such as _Today_, _Yesterday_, and _Previous 7 Days_. You can click on any conversation to reopen it. A dedicated delete option lets you permanently remove a conversation from your browser's local storage, so use it with caution.
+The left panel displays previous conversations grouped by time period (Today, Yesterday, Previous 7 Days). You can click on any conversation to reopen it. A delete option lets you permanently remove a conversation from browser LocalStorage.
 
 **LocalStorage Data Structure**:
 
-- Conversations are stored in browser LocalStorage under the key `bodhi-chats`
+- Conversations are stored under the key `bodhi-chats`
 - Current active chat ID is stored in `bodhi-current-chat`
 - Sidebar state (open/closed) persists in `sidebar-history-open`
 
@@ -68,41 +141,34 @@ The left panel displays your previous conversations grouped by the time they wer
 
 - Chat history survives page reloads and browser restarts
 - Storage limits depend on your browser (typically 5-10MB)
-- Data is private to your browser - not sent to any server
-- Chats are stored in browser localStorage for complete privacy
+- Data is private to your browser and not sent to any server
 
 **Clear Chat History**:
 
-- Chats are not stored on the server side - they're stored only in browser localStorage
-- When you clear chat history, it deletes the chats from browser localStorage
-- Your conversations stay on your device and are never sent to the server
+- Chats are stored only in browser LocalStorage
+- When you clear chat history, it deletes the chats from browser LocalStorage
+- Conversations are never sent to the server
 
 ## The Main Chat Panel
 
-The center panel is where the conversation happens. Here you can:
+The center panel is where the conversation happens:
 
-- Type your message in the input field at the bottom.
-- Press **Enter** (or click the **+** icon) to start a new chat or submit your message.
-- Enjoy real-time streaming of AI responses, or see complete responses once processing is finished.
-- Experience rich content rendering: Markdown is converted to HTML, and code blocks are syntax highlighted
-- Copy the response or code block using Copy button
+- Type your message in the input field at the bottom
+- Press **Enter** (or click the send icon) to submit your message
+- Click the **+** icon to start a new chat
+- Responses stream in real-time with rich Markdown rendering and syntax-highlighted code blocks
+- Copy responses or individual code blocks using the copy button
 
 ## Chat Statistics
 
-Bodhi App displays real-time performance metrics for each AI response, helping you understand model performance and optimize your settings.
+Bodhi App displays performance metrics for each AI response.
 
 **Metrics Displayed**:
 
-- **Speed**: Displays processing speed in tokens per second (e.g., "Speed 25.3 token/sec")
-- Statistics appear below each AI message after completion
-- Metrics are saved with chat history and displayed each time you view the conversation
-
-**Use Cases**:
-
-- Monitor model performance across different configurations
-- Compare local vs remote model speed
-- Troubleshoot slow responses or performance issues
-- Understand resource consumption for different models
+- **Token counts**: Query and response token counts
+- **Speed**: Processing speed in tokens per second (e.g., "Speed 25.3 t/s")
+- Statistics appear below each completed AI message
+- Metrics are saved with chat history
 
 **Statistics by Model Type**:
 
@@ -111,29 +177,29 @@ Bodhi App displays real-time performance metrics for each AI response, helping y
 
 ## The Settings Panel
 
-The right panel is your command center for configuring how the AI responds. The Settings panel provides 12+ configuration parameters to fine-tune AI behavior.
+The right panel provides configuration parameters to fine-tune AI behavior.
 
 **Panel Controls**:
 
 - Sidebar can be collapsed to maximize chat space
-- Settings are saved globally for the user in browser LocalStorage
+- Settings are saved globally in browser LocalStorage
 - Settings apply to new messages and conversations
 - Settings changes do not affect already completed conversations
-- Each parameter has a tooltip explaining its purpose and impact
+- Each parameter has a tooltip explaining its purpose
 
 ### Model Selection (Required)
 
-You must select a model before sending messages to the AI.
+You must select a model before sending messages.
 
 **Available Models**:
 
-- **Local Model Aliases**: GGUF models you've configured on your device
-- **API Models**: API models from providers (OpenAI, Anthropic, Groq, Together AI)
-- Models are shown in a single dropdown without visual distinction between local and remote models
+- **Local Model Aliases**: GGUF models configured on your device
+- **API Models**: Models from providers (OpenAI, Anthropic, Groq, Together AI)
+- Models are shown in a single searchable dropdown
 
 **Model Dropdown**:
 
-- Shows all available models in a searchable dropdown
+- Searchable dropdown showing all available models
 - Selecting a model enables the send button
 - Switching models mid-conversation starts a new context
 
@@ -344,7 +410,7 @@ Max Tokens: 1500
 
 ## Collapsible Panels & Starting a New Chat
 
-Both the Chat History and Settings Panels are collapsible. This allows you to maximize your workspace if you have limited screen space or wish to focus solely on your conversation. You can toggle each panel independently.
+Both the Chat History and Settings Panels are collapsible, allowing you to maximize chat space.
 
 **Panel State Persistence**:
 
@@ -354,8 +420,8 @@ Both the Chat History and Settings Panels are collapsible. This allows you to ma
 
 You have two options to start a new conversation:
 
-- Click the **+** button in the main chat input area.
-- Use the new chat option in the Chat History Panel.
+- Click the **+** button in the chat input area
+- Use the new chat option in the Chat History Panel
 
 **New Chat Behavior**:
 
@@ -365,7 +431,7 @@ You have two options to start a new conversation:
 
 ## Error Handling
 
-Bodhi App includes robust error handling to ensure a smooth chat experience.
+Bodhi App includes error handling to ensure a smooth chat experience.
 
 **Input Restoration**:
 
@@ -384,19 +450,17 @@ Bodhi App includes robust error handling to ensure a smooth chat experience.
 - **"Network connection failed"**: Check your internet connection and try again
 - **"Model unavailable"**: The selected model may be loading or unavailable. Try a different model or wait a moment
 - **"Request timeout"**: The request took too long. Try with a shorter prompt or different model
-- **"Rate limit exceeded"**: Too many requests in a short time. Please wait a moment before trying again
+- **"Rate limit exceeded"**: Too many requests in a short time. Wait a moment before trying again
 
 ## Mobile and Responsive Design
 
-The Chat UI adapts to different screen sizes for optimal experience on all devices.
+The Chat UI adapts to different screen sizes.
 
 **Responsive Behavior**:
 
 - **Mobile**: Sidebars become drawer overlays, single-column chat layout, simplified settings panel
 - **Tablet**: Collapsible sidebars adapt to available space
 - **Desktop**: Fixed dual sidebars with optional collapse, full settings panel with all controls visible
-
-The interface automatically adjusts based on your screen size to provide the best experience.
 
 ## Advanced Features
 
@@ -421,25 +485,7 @@ The interface automatically adjusts based on your screen size to provide the bes
 
 ## Related Documentation
 
-- [Model Aliases](/docs/features/model-alias) - Configure local GGUF models
-- [API Models](/docs/features/api-models) - Set up API providers
-- [API Tokens](/docs/features/api-tokens) - Create tokens for programmatic access
-- [Application Settings](/docs/features/app-settings) - System configuration
-
-## Final Thoughts
-
-Bodhi App's Chat UI is thoughtfully designed to combine ease of use with powerful functionality. With real-time streaming, comprehensive performance statistics, and 12+ configuration parameters, you have complete control over your AI conversations.
-
-**Key Highlights**:
-
-- Real-time streaming responses for immediate feedback
-- Comprehensive settings panel with 12+ parameters
-- Performance statistics to monitor and optimize
-- Local data storage for privacy and persistence
-- Support for both local GGUF and API models
-- Rich markdown rendering and code syntax highlighting
-- Responsive design for mobile, tablet, and desktop
-
-Enjoy interacting with the AI assistant and experiment with the settings to tailor the experience to your needs. Always remember that your configurations and history are stored locally in your browser, so manage your data wisely.
-
-Happy chatting!
+- [Model Aliases](/docs/features/models/model-alias) - Configure local GGUF models
+- [API Models](/docs/features/models/api-models) - Set up API providers
+- [API Tokens](/docs/features/auth/api-tokens) - Create tokens for programmatic access
+- [Application Settings](/docs/features/settings/app-settings) - System configuration
