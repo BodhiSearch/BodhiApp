@@ -240,8 +240,10 @@ impl AppServiceBuilder {
   ) -> Result<Arc<dyn HubService>, BootstrapError> {
     let hf_cache = setting_service.hf_cache().await;
     let hf_token = setting_service.get_env(HF_TOKEN).await;
+    let deployment_mode = setting_service.deployment_mode().await;
     let hub_service = HfHubService::new_from_hf_cache(hf_cache, hf_token, true)
-      .map_err(|err| BootstrapError::Io(IoError::from(err)))?;
+      .map_err(|err| BootstrapError::Io(IoError::from(err)))?
+      .with_deployment_mode(deployment_mode);
     Ok(Arc::new(hub_service))
   }
 

@@ -1,10 +1,10 @@
 use crate::models::{HubFile, Repo};
 use crate::{
   test_utils::{
-    build_hf_service, generate_test_data_gguf_files, hf_test_token_allowed, hf_test_token_public,
-    temp_hf_home, test_hf_service, TestHfService, SNAPSHOT,
+    build_hf_service, empty_hf_home, generate_test_data_gguf_files, hf_test_token_allowed,
+    hf_test_token_public, temp_hf_home, test_hf_service, TestHfService, SNAPSHOT,
   },
-  HubService, HubServiceError, SNAPSHOT_MAIN,
+  DeploymentMode, HfHubService, HubService, HubServiceError, SNAPSHOT_MAIN,
 };
 use anyhow_trace::anyhow_trace;
 use errmeta::AppError;
@@ -437,5 +437,23 @@ fn test_list_model_aliases(
   assert!(alias_names.contains(&"TheBloke/Llama-2-7B-Chat-GGUF:Q8_0".to_string()));
   assert!(alias_names.contains(&"TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K".to_string()));
 
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_download_unsupported_in_multi_tenant(empty_hf_home: TempDir) -> anyhow::Result<()> {
+  let hub = HfHubService::new(
+    empty_hf_home.path().join("huggingface").join("hub"),
+    false,
+    None,
+  )
+  .with_deployment_mode(DeploymentMode::MultiTenant);
+
+  let repo = Repo::try_from("test/repo".to_string())?;
+  let result = hub.download(&repo, "test.gguf", None, None).await;
+  assert!(result.is_err());
+  assert_eq!("hub_service_error-unsupported", result.unwrap_err().code());
   Ok(())
 }

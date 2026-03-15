@@ -51,6 +51,10 @@ pub enum HubServiceError {
     snapshot: String,
   },
 
+  #[error("operation not supported in multi-tenant deployment mode")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  Unsupported,
+
   #[error(transparent)]
   ModelValidationError(#[from] crate::models::ModelValidationError),
   #[error(transparent)]
@@ -119,6 +123,9 @@ impl HubService for HfHubService {
     snapshot: Option<String>,
     progress: Option<Progress>,
   ) -> Result<HubFile> {
+    if self.deployment_mode == crate::DeploymentMode::MultiTenant {
+      return Err(HubServiceError::Unsupported);
+    }
     if self.local_file_exists(repo, filename, snapshot.clone())? {
       return self.find_local_file(repo, filename, snapshot.clone());
     }
@@ -363,6 +370,7 @@ pub struct HfHubService {
   cache: Cache,
   progress_bar: bool,
   token: Option<String>,
+  deployment_mode: crate::DeploymentMode,
 }
 
 impl Debug for HfHubService {
@@ -386,6 +394,7 @@ impl HfHubService {
       cache: Cache::new(hf_cache),
       progress_bar,
       token,
+      deployment_mode: crate::DeploymentMode::Standalone,
     }
   }
 
@@ -395,6 +404,7 @@ impl HfHubService {
       cache,
       progress_bar,
       token,
+      deployment_mode: crate::DeploymentMode::Standalone,
     }
   }
 
@@ -410,7 +420,13 @@ impl HfHubService {
       cache,
       progress_bar,
       token,
+      deployment_mode: crate::DeploymentMode::Standalone,
     })
+  }
+
+  pub fn with_deployment_mode(mut self, mode: crate::DeploymentMode) -> Self {
+    self.deployment_mode = mode;
+    self
   }
 
   pub fn progress_bar(&mut self, progress_bar: bool) {

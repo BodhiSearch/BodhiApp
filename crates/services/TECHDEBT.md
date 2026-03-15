@@ -35,3 +35,22 @@
 **Proposed fix**: Encapsulate the token refresh lifecycle into a unified session token manager parameterized by token type/prefix and client credentials.
 
 **Deferred because**: Both methods now use distributed locking and work correctly. Unification requires careful design of the locking strategy and error handling semantics across token types.
+
+## Multi-Tenant Deployment Mode Centralization
+
+**Location**: Multiple crates — `services`, `routes_app`, `server_core`, `lib_bodhiserver`
+
+**Issue**: Deployment mode checks are scattered across different layers:
+- **Service-level polymorphism**: `DataService` (LocalDataService vs MultiTenantDataService), `InferenceService` (StandaloneInferenceService vs MultitenantInferenceService)
+- **Inline service check**: `HfHubService.download()` checks `self.deployment_mode` (temporary fix)
+- **Route-level if-checks**: `routes_tenants.rs`, `routes_settings.rs` (LLM_SETTINGS), `routes_dev.rs`
+
+**Impact**: Inconsistent patterns make it hard to audit which operations are blocked in multi-tenant mode. New features may miss deployment checks.
+
+**Proposed fix**:
+1. `HubService` → `NoopHubService` for multi-tenant (empty results for reads, `Unsupported` for `download()`)
+2. `DownloadService` → `UnsupportedDownloadService` for multi-tenant (all mutating ops return `Unsupported`)
+3. Migrate route-level deployment if-checks (`routes_settings.rs` LLM_SETTINGS, `routes_tenants.rs`, `routes_dev.rs`) into service-level polymorphism
+4. Consider a central `DeploymentPolicy` trait that services can query
+
+**Deferred because**: Production hotfix to block downloads was sufficient for immediate release. Full centralization requires designing the polymorphism for each service and migrating all route-level checks.
