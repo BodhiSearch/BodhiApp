@@ -84,9 +84,7 @@ When your app needs access to specific MCP servers, request access during login.
 const handleLogin = async () => {
   await login({
     requested: {
-      mcp_servers: [
-        { url: 'http://localhost:3000/mcp' },
-      ],
+      mcp_servers: [{ url: 'http://localhost:3000/mcp' }],
     },
     onProgress: (stage) => {
       // stage: 'requesting' -> 'reviewing' -> 'authenticating'
@@ -173,11 +171,7 @@ const { mcps } = await client.mcps.list();
 const { tools } = await client.mcps.listTools(mcp.id);
 
 // Execute a tool
-const result = await client.mcps.executeTool(
-  mcp.id,
-  'tool_name',
-  { param: 'value' }
-);
+const result = await client.mcps.executeTool(mcp.id, 'tool_name', { param: 'value' });
 ```
 
 Each MCP instance has a `slug` identifier and a `tools_cache` array. Tools have `name`, `description`, and `input_schema` fields.
@@ -220,17 +214,17 @@ The tool naming convention is `mcp__<slug>__<tool-name>`. When the LLM returns a
 
 All Bodhi-specific endpoints use the `/bodhi/v1/` prefix. External app endpoints use `/bodhi/v1/apps/`:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/chat/completions` | POST | OpenAI-compatible chat completions |
-| `/v1/models` | GET | List available models |
-| `/v1/embeddings` | POST | Generate embeddings |
-| `/bodhi/v1/apps/request-access` | POST | Create access request |
-| `/bodhi/v1/apps/access-requests/{id}` | GET | Poll access request status |
-| `/bodhi/v1/apps/mcps` | GET | List accessible MCP instances |
-| `/bodhi/v1/apps/mcps/{id}` | GET | Get MCP instance details |
-| `/bodhi/v1/apps/mcps/{id}/tools/refresh` | POST | Refresh MCP tool list |
-| `/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute` | POST | Execute an MCP tool |
+| Endpoint                                             | Method | Description                        |
+| ---------------------------------------------------- | ------ | ---------------------------------- |
+| `/v1/chat/completions`                               | POST   | OpenAI-compatible chat completions |
+| `/v1/models`                                         | GET    | List available models              |
+| `/v1/embeddings`                                     | POST   | Generate embeddings                |
+| `/bodhi/v1/apps/request-access`                      | POST   | Create access request              |
+| `/bodhi/v1/apps/access-requests/{id}`                | GET    | Poll access request status         |
+| `/bodhi/v1/apps/mcps`                                | GET    | List accessible MCP instances      |
+| `/bodhi/v1/apps/mcps/{id}`                           | GET    | Get MCP instance details           |
+| `/bodhi/v1/apps/mcps/{id}/tools/refresh`             | POST   | Refresh MCP tool list              |
+| `/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute` | POST   | Execute an MCP tool                |
 
 For the complete API specification, visit `/swagger-ui` on your Bodhi instance or see the [OpenAPI Reference](/docs/developer/openapi-reference).
 

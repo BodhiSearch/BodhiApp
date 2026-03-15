@@ -16,13 +16,13 @@ The `login()` function accepts an options object to request access to specific M
 
 ```typescript
 interface LoginOptions {
-  userRole?: UserScope;              // 'scope_user_user' | 'scope_user_power_user'
-  requested?: RequestedResources;    // MCPs to request access to
-  flowType?: FlowType;              // 'redirect' | 'popup'
-  redirectUrl?: string;              // Custom redirect after login
+  userRole?: UserScope; // 'scope_user_user' | 'scope_user_power_user'
+  requested?: RequestedResources; // MCPs to request access to
+  flowType?: FlowType; // 'redirect' | 'popup'
+  redirectUrl?: string; // Custom redirect after login
   onProgress?: LoginProgressCallback;
-  pollIntervalMs?: number;           // Default: 2000
-  pollTimeoutMs?: number;            // Default: 300000 (5 minutes)
+  pollIntervalMs?: number; // Default: 2000
+  pollTimeoutMs?: number; // Default: 300000 (5 minutes)
 }
 
 type LoginProgressStage = 'requesting' | 'reviewing' | 'authenticating';
@@ -59,11 +59,11 @@ function LoginWithAccess() {
 
 ### Progress Stages
 
-| Stage | Description |
-|-------|-------------|
-| `requesting` | Submitting the access request to the server |
-| `reviewing` | Waiting for admin approval (polls until approved/denied) |
-| `authenticating` | Access granted, completing OAuth authentication |
+| Stage            | Description                                              |
+| ---------------- | -------------------------------------------------------- |
+| `requesting`     | Submitting the access request to the server              |
+| `reviewing`      | Waiting for admin approval (polls until approved/denied) |
+| `authenticating` | Access granted, completing OAuth authentication          |
 
 ## MCP Agentic Patterns
 
@@ -106,9 +106,7 @@ for (const mcp of mcps) {
 Send a chat request with tools. When streaming, tool call deltas arrive incrementally and must be accumulated across chunks:
 
 ```typescript
-const messages: ChatCompletionRequestMessage[] = [
-  { role: 'user', content: 'What is the weather in San Francisco?' },
-];
+const messages: ChatCompletionRequestMessage[] = [{ role: 'user', content: 'What is the weather in San Francisco?' }];
 
 const stream = client.chat.completions.create({
   model: 'your-model',
@@ -160,8 +158,7 @@ for await (const chunk of stream) {
         }
         if (toolCallDelta.function?.arguments) {
           // Arguments are concatenated as they stream in
-          accumulatedToolCalls[index].function.arguments +=
-            toolCallDelta.function.arguments;
+          accumulatedToolCalls[index].function.arguments += toolCallDelta.function.arguments;
         }
       }
     }
@@ -321,16 +318,16 @@ Pass `WebUIClientParams` to customize the auto-created client:
 
 ### WebUIClientParams
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `redirectUri` | `string` | `{origin}{basePath}/callback` | OAuth redirect URI |
-| `authServerUrl` | `string` | `https://id.getbodhi.app/realms/bodhi` | Auth server URL |
-| `userRole` | `UserScope` | `'scope_user_user'` | Default user role |
-| `basePath` | `string` | `'/'` | App base path |
-| `logLevel` | `LogLevel` | `'warn'` | Logging level |
-| `apiTimeoutMs` | `number` | -- | API request timeout |
-| `initParams.extension.timeoutMs` | `number` | -- | Extension discovery timeout |
-| `initParams.extension.intervalMs` | `number` | -- | Extension polling interval |
+| Param                             | Type        | Default                                | Description                 |
+| --------------------------------- | ----------- | -------------------------------------- | --------------------------- |
+| `redirectUri`                     | `string`    | `{origin}{basePath}/callback`          | OAuth redirect URI          |
+| `authServerUrl`                   | `string`    | `https://id.getbodhi.app/realms/bodhi` | Auth server URL             |
+| `userRole`                        | `UserScope` | `'scope_user_user'`                    | Default user role           |
+| `basePath`                        | `string`    | `'/'`                                  | App base path               |
+| `logLevel`                        | `LogLevel`  | `'warn'`                               | Logging level               |
+| `apiTimeoutMs`                    | `number`    | --                                     | API request timeout         |
+| `initParams.extension.timeoutMs`  | `number`    | --                                     | Extension discovery timeout |
+| `initParams.extension.intervalMs` | `number`    | --                                     | Extension polling interval  |
 
 ### Custom Client Override (DI Pattern)
 
@@ -467,18 +464,14 @@ Non-streaming API methods on `IConnectionClient` (like `sendApiRequest`) return 
 
 ```typescript
 type ApiResponseResult<T> =
-  | { body: T; status: number }      // HTTP response (success or error)
-  | { error: OperationErrorResponse } // Operation error (network, extension)
+  | { body: T; status: number } // HTTP response (success or error)
+  | { error: OperationErrorResponse }; // Operation error (network, extension)
 ```
 
 Use the provided type guards to handle results:
 
 ```typescript
-import {
-  isApiResultSuccess,
-  isApiResultError,
-  isApiResultOperationError,
-} from '@bodhiapp/bodhi-js-react';
+import { isApiResultSuccess, isApiResultError, isApiResultOperationError } from '@bodhiapp/bodhi-js-react';
 
 const result = await client.sendApiRequest('GET', '/v1/models');
 
@@ -554,13 +547,13 @@ if (isOperationError(someError)) {
 
 ### Common Error Types
 
-| Error Type | Cause |
-|------------|-------|
-| `network_error` | Server unreachable or network failure |
+| Error Type        | Cause                                        |
+| ----------------- | -------------------------------------------- |
+| `network_error`   | Server unreachable or network failure        |
 | `extension_error` | Extension not found or communication failure |
-| `auth_error` | Authentication/authorization failure |
-| `timeout_error` | Request timeout exceeded |
-| `operation_error` | General operation failure |
+| `auth_error`      | Authentication/authorization failure         |
+| `timeout_error`   | Request timeout exceeded                     |
+| `operation_error` | General operation failure                    |
 
 ## Further Reading
 

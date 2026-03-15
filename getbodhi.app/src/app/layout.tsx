@@ -17,5 +17,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 export const metadata = {
   title: 'Bodhi App - Your Unified AI Gateway',
-  description: 'Unified AI gateway combining local LLM inference, cloud API proxying, and MCP tool integration with built-in chat UI and enterprise access control.',
+  description:
+    'Unified AI gateway combining local LLM inference, cloud API proxying, and MCP tool integration with built-in chat UI and enterprise access control.',
 };

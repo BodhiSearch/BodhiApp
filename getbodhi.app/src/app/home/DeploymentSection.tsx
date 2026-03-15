@@ -30,7 +30,8 @@ const deploymentOptions = [
   {
     icon: <Zap className={cn(STYLES.iconSize, STYLES.iconColor)} />,
     title: 'GPU Acceleration',
-    description: '8-12x speedup with GPU support for NVIDIA (CUDA), AMD (ROCm), Intel, Moore Threads (MUSA), and Huawei Ascend (CANN).',
+    description:
+      '8-12x speedup with GPU support for NVIDIA (CUDA), AMD (ROCm), Intel, Moore Threads (MUSA), and Huawei Ascend (CANN).',
     href: '/docs/deployment/docker',
   },
   {

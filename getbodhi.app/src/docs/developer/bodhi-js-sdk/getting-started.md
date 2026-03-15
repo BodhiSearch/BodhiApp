@@ -42,16 +42,16 @@ function App() {
 
 ### BodhiProvider Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `authClientId` | `string` | -- | Required (unless `client` is provided). Your OAuth client ID from the developer portal. |
-| `basePath` | `string` | `'/'` | Base path for your app. Affects callback URL and storage isolation. |
-| `logLevel` | `LogLevel` | `'warn'` | Logging verbosity: `'debug'` \| `'info'` \| `'warn'` \| `'error'` |
-| `handleCallback` | `boolean` | `true` | Auto-handle OAuth callbacks on the callback route. |
-| `callbackPath` | `string` | `'{basePath}/callback'` | Custom OAuth callback path. |
-| `modalHtmlPath` | `string` | -- | Custom path to setup modal HTML. |
-| `client` | `UIClient` | -- | Provide a custom client instance (advanced). |
-| `clientConfig` | `WebUIClientParams` | -- | Configuration passed to auto-created `WebUIClient`. |
+| Prop             | Type                | Default                 | Description                                                                             |
+| ---------------- | ------------------- | ----------------------- | --------------------------------------------------------------------------------------- |
+| `authClientId`   | `string`            | --                      | Required (unless `client` is provided). Your OAuth client ID from the developer portal. |
+| `basePath`       | `string`            | `'/'`                   | Base path for your app. Affects callback URL and storage isolation.                     |
+| `logLevel`       | `LogLevel`          | `'warn'`                | Logging verbosity: `'debug'` \| `'info'` \| `'warn'` \| `'error'`                       |
+| `handleCallback` | `boolean`           | `true`                  | Auto-handle OAuth callbacks on the callback route.                                      |
+| `callbackPath`   | `string`            | `'{basePath}/callback'` | Custom OAuth callback path.                                                             |
+| `modalHtmlPath`  | `string`            | --                      | Custom path to setup modal HTML.                                                        |
+| `client`         | `UIClient`          | --                      | Provide a custom client instance (advanced).                                            |
+| `clientConfig`   | `WebUIClientParams` | --                      | Configuration passed to auto-created `WebUIClient`.                                     |
 
 ## Check Connection and Login
 
@@ -89,23 +89,23 @@ function Dashboard() {
 
 ### Key Context Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `client` | `UIClient` | The SDK client for API calls |
-| `isOverallReady` | `boolean` | Connection and server both ready |
-| `isReady` | `boolean` | Client has a connection (extension or direct) |
-| `isServerReady` | `boolean` | Backend server is operational |
-| `isAuthenticated` | `boolean` | User is authenticated |
-| `canLogin` | `boolean` | Ready to login (not loading) |
-| `isInitializing` | `boolean` | Client init in progress |
-| `isExtension` | `boolean` | Using extension connection mode |
-| `isDirect` | `boolean` | Using direct HTTP connection mode |
-| `auth` | `AuthState` | Full auth state object |
-| `clientState` | `ClientContextState` | Full connection state object |
-| `login(options?)` | function | Initiate login flow |
-| `logout()` | function | Log out |
-| `showSetup()` | function | Open the setup modal |
-| `hideSetup()` | function | Close the setup modal |
+| Property          | Type                 | Description                                   |
+| ----------------- | -------------------- | --------------------------------------------- |
+| `client`          | `UIClient`           | The SDK client for API calls                  |
+| `isOverallReady`  | `boolean`            | Connection and server both ready              |
+| `isReady`         | `boolean`            | Client has a connection (extension or direct) |
+| `isServerReady`   | `boolean`            | Backend server is operational                 |
+| `isAuthenticated` | `boolean`            | User is authenticated                         |
+| `canLogin`        | `boolean`            | Ready to login (not loading)                  |
+| `isInitializing`  | `boolean`            | Client init in progress                       |
+| `isExtension`     | `boolean`            | Using extension connection mode               |
+| `isDirect`        | `boolean`            | Using direct HTTP connection mode             |
+| `auth`            | `AuthState`          | Full auth state object                        |
+| `clientState`     | `ClientContextState` | Full connection state object                  |
+| `login(options?)` | function             | Initiate login flow                           |
+| `logout()`        | function             | Log out                                       |
+| `showSetup()`     | function             | Open the setup modal                          |
+| `hideSetup()`     | function             | Close the setup modal                         |
 
 ## Setup Modal for Troubleshooting
 
@@ -213,11 +213,7 @@ const { mcps } = await client.mcps.list();
 const { tools } = await client.mcps.listTools(mcp.id);
 
 // Execute a tool
-const result = await client.mcps.executeTool(
-  mcp.id,
-  'tool_name',
-  { param: 'value' }
-);
+const result = await client.mcps.executeTool(mcp.id, 'tool_name', { param: 'value' });
 ```
 
 Each MCP has a `slug` identifier and a `tools_cache` array. Tools have `name`, `description`, and `input_schema` fields. See [Advanced: MCP Agentic Patterns](/docs/developer/bodhi-js-sdk/advanced#mcp-agentic-patterns) for building agentic chat loops with tool calls.

@@ -96,4 +96,3 @@ After submitting a download request:
 - If the status is `completed`, the model file is ready for use in model aliases
 - If the status is `error`, expand the row to review the detailed error message and resolve the issue
 - For failed downloads, submit a new download request to retry
-

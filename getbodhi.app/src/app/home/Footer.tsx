@@ -20,7 +20,9 @@ function FooterComponent() {
               <Image src="/bodhi-logo/bodhi-logo-60.svg" alt="Bodhi Logo" width={24} height={24} className="h-6 w-6" />
               <span className="font-semibold text-foreground">Bodhi</span>
             </Link>
-            <p className="text-sm text-muted-foreground">Unified AI gateway for local models, cloud APIs, and MCP tools.</p>
+            <p className="text-sm text-muted-foreground">
+              Unified AI gateway for local models, cloud APIs, and MCP tools.
+            </p>
           </div>
 
           {/* Resources */}
@@ -33,10 +35,7 @@ function FooterComponent() {
               <Link href="/docs/features/chat/chat-ui" className="text-sm text-muted-foreground hover:text-violet-600">
                 Chat Interface
               </Link>
-              <Link
-                href="/docs/features/mcps/setup"
-                className="text-sm text-muted-foreground hover:text-violet-600"
-              >
+              <Link href="/docs/features/mcps/setup" className="text-sm text-muted-foreground hover:text-violet-600">
                 MCP Tools
               </Link>
               <Link href="/docs/troubleshooting" className="text-sm text-muted-foreground hover:text-violet-600">

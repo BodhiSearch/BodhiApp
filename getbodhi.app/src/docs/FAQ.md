@@ -51,6 +51,7 @@ A model alias defines default inference and server parameters for a model. See [
 ### Can I use both local and remote AI models?
 
 Yes. Bodhi App supports hybrid AI usage:
+
 - **Local models**: Download GGUF models from HuggingFace for complete privacy
 - **API Models**: Configure providers like OpenAI, OpenRouter, HuggingFace, and any OpenAI-compatible API
 
@@ -67,6 +68,7 @@ Verify your network connection and review error messages on the Downloads page. 
 ### What Docker variants are available?
 
 Seven variants optimized for different hardware:
+
 - **CPU**: AMD64 + ARM64
 - **CUDA**: NVIDIA GPU acceleration
 - **ROCm**: AMD GPU acceleration
@@ -124,6 +126,7 @@ API tokens support scope-based permissions and can be activated/deactivated as n
 ### What are the user roles?
 
 Hierarchical role system:
+
 - **User**: Chat and embeddings API access
 - **PowerUser**: Plus model downloads, aliases, API model configuration, API tokens
 - **Manager**: Plus user management and access request approval (cannot manage Admins)
@@ -144,6 +147,7 @@ See the [Troubleshooting](/docs/troubleshooting) page. If problems persist, reac
 **Desktop**: Download the latest installer from [releases](https://github.com/BodhiSearch/BodhiApp/releases). Settings are preserved.
 
 **Docker**: Pull the latest image:
+
 ```bash
 docker pull ghcr.io/bodhisearch/bodhiapp:latest-cpu
 ```

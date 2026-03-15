@@ -39,15 +39,15 @@ The examples in this documentation use `latest-{variant}` tags for convenience, 
 
 ## Variant Comparison
 
-| Variant    | Platforms         | Hardware             | Use Case                         |
-| ---------- | ----------------- | -------------------- | -------------------------------- |
-| **CPU**    | AMD64, ARM64      | Any CPU              | General purpose, ARM devices     |
-| **CUDA**   | AMD64             | NVIDIA GPU           | NVIDIA GPUs, cloud instances     |
-| **ROCm**   | AMD64             | AMD GPU              | AMD Radeon / Instinct GPUs       |
-| **Vulkan** | AMD64             | Cross-vendor GPU     | Multi-vendor GPU support         |
-| **MUSA**   | AMD64             | Moore Threads GPU    | Moore Threads S-series GPUs      |
-| **Intel**  | AMD64             | Intel GPU            | Intel Arc / Data Center GPUs     |
-| **CANN**   | AMD64, ARM64      | Huawei Ascend NPU   | Huawei Ascend AI processors      |
+| Variant    | Platforms    | Hardware          | Use Case                     |
+| ---------- | ------------ | ----------------- | ---------------------------- |
+| **CPU**    | AMD64, ARM64 | Any CPU           | General purpose, ARM devices |
+| **CUDA**   | AMD64        | NVIDIA GPU        | NVIDIA GPUs, cloud instances |
+| **ROCm**   | AMD64        | AMD GPU           | AMD Radeon / Instinct GPUs   |
+| **Vulkan** | AMD64        | Cross-vendor GPU  | Multi-vendor GPU support     |
+| **MUSA**   | AMD64        | Moore Threads GPU | Moore Threads S-series GPUs  |
+| **Intel**  | AMD64        | Intel GPU         | Intel Arc / Data Center GPUs |
+| **CANN**   | AMD64, ARM64 | Huawei Ascend NPU | Huawei Ascend AI processors  |
 
 > **Note**: Check [getbodhi.app](https://getbodhi.app) for the complete and up-to-date list of available variants.
 

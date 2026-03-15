@@ -102,7 +102,6 @@ Currently, the following settings can be managed via the UI:
 - **BODHI_EXEC_VARIANT:** Define the hardware-specific variant for Llama.cpp execution.
 - **BODHI_KEEP_ALIVE_SECS:** Adjust the idle timeout duration for the application.
 
-
 <img
   src="/doc-images/app-settings.jpg"
   alt="App Settings Page"
