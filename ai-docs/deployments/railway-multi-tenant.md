@@ -1,0 +1,17 @@
+BODHI_ENCRYPTION_KEY="<secret>"
+BODHI_LOG_STDOUT="true"
+BODHI_LOG_LEVEL="info"
+BODHI_CANONICAL_REDIRECT="false"
+BODHI_PUBLIC_HOST="dev-multi-tenant.getbodhi.app"
+BODHI_PUBLIC_PORT="443"
+BODHI_PUBLIC_SCHEME="https"
+BODHI_HOST="0.0.0.0"
+BODHI_PORT="8080"
+BODHI_HOME=/data/bodhi_home
+HF_HOME=/data/hf_home
+HF_TOKEN="<secret>"
+RAILWAY_RUN_UID="0"
+BODHI_APP_DB_URL="postgresql://postgres:<secret>@postgres-app-db.railway.internal:5432/railway"
+BODHI_SESSION_DB_URL="postgresql://postgres:<secret>@postgres-session-db.railway.internal:5432/railway"
+BODHI_MULTITENANT_CLIENT_ID="dashboard-client-<secret>"
+BODHI_MULTITENANT_CLIENT_SECRET="<secret>"
