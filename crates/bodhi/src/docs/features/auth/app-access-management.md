@@ -44,11 +44,11 @@ You can approve some resources and deny others within the same request. The "App
 
 The role dropdown shows only roles you are allowed to grant:
 
-| Your Role          | Roles You Can Grant for Apps   |
-| ------------------ | ------------------------------ |
-| **PowerUser**      | User, PowerUser                |
-| **Manager**        | User, PowerUser                |
-| **Admin**          | User, PowerUser                |
+| Your Role     | Roles You Can Grant for Apps |
+| ------------- | ---------------------------- |
+| **PowerUser** | User, PowerUser              |
+| **Manager**   | User, PowerUser              |
+| **Admin**     | User, PowerUser              |
 
 Apps are limited to **User** and **PowerUser** roles. Manager and Admin are never available for app tokens, regardless of who is reviewing.
 

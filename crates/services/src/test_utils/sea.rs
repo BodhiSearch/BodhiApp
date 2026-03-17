@@ -42,7 +42,7 @@ pub async fn sea_context(db_type: &str) -> SeaTestContext {
       opts.connect_timeout(Duration::from_secs(3));
       let db = Database::connect(opts)
         .await
-        .expect(format!("Failed to connect to PostgreSQL on {pg_url}").as_str());
+        .unwrap_or_else(|_| panic!("Failed to connect to PostgreSQL on {pg_url}"));
 
       Migrator::fresh(&db).await.unwrap();
 

@@ -72,15 +72,15 @@ export const mockMcpWithHeaderAuth: Mcp = {
   slug: 'header-mcp',
   name: 'Header Auth MCP',
   auth_type: 'header',
-  auth_uuid: 'auth-header-uuid-1',
+  auth_config_id: 'auth-header-uuid-1',
 };
 
 export const mockOAuthToken: OAuthTokenResponse = {
   id: 'oauth-token-uuid-1',
-  mcp_oauth_config_id: 'oauth-config-uuid-1',
+  mcp_id: 'mcp-uuid-3',
+  auth_config_id: 'oauth-config-uuid-1',
   scopes_granted: 'mcp:tools mcp:read',
   expires_at: Math.floor(Date.now() / 1000) + 3600,
-  has_access_token: true,
   has_refresh_token: true,
   user_id: 'test-user',
   created_at: '2024-01-01T00:00:00Z',
@@ -93,7 +93,7 @@ export const mockMcpWithOAuth: Mcp = {
   slug: 'oauth-mcp',
   name: 'OAuth MCP',
   auth_type: 'oauth',
-  auth_uuid: 'oauth-token-uuid-1',
+  auth_config_id: 'oauth-config-uuid-1',
 };
 
 export const mockMcpWithDcr: Mcp = {
@@ -102,7 +102,7 @@ export const mockMcpWithDcr: Mcp = {
   slug: 'dcr-mcp',
   name: 'DCR MCP',
   auth_type: 'oauth',
-  auth_uuid: 'oauth-token-uuid-2',
+  auth_config_id: 'oauth-config-dcr-uuid-1',
 };
 
 // ============================================================================
@@ -113,8 +113,8 @@ export const mockAuthConfigHeader: McpAuthConfigResponse = {
   id: 'auth-header-uuid-1',
   name: 'Header',
   mcp_server_id: 'server-uuid-1',
-  header_key: 'Authorization',
-  has_header_value: true,
+  created_by: 'admin',
+  entries: [{ id: 'entry-1', param_type: 'header', param_key: 'Authorization' }],
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
   type: 'header',
@@ -124,6 +124,7 @@ export const mockAuthConfigOAuthPreReg: McpAuthConfigResponse = {
   id: 'oauth-config-uuid-1',
   name: 'OAuth Pre-Registered',
   mcp_server_id: 'server-uuid-1',
+  created_by: 'admin',
   registration_type: 'pre_registered',
   client_id: 'test-client-id',
   authorization_endpoint: 'https://auth.example.com/authorize',
@@ -140,6 +141,7 @@ export const mockAuthConfigOAuthDynamic: McpAuthConfigResponse = {
   id: 'oauth-config-dcr-uuid-1',
   name: 'OAuth Dynamic',
   mcp_server_id: 'server-uuid-1',
+  created_by: 'admin',
   registration_type: 'dynamic_registration',
   client_id: 'dcr-client-id-123',
   authorization_endpoint: 'https://auth.example.com/authorize',

@@ -127,6 +127,33 @@ export class McpFixtures {
     };
   }
 
+  // Header auth test server (port 55176)
+  static AUTH_HEADER_PORT = process.env.TEST_MCP_AUTH_HEADER_PORT || '55176';
+  static AUTH_HEADER_MCP_URL = `http://localhost:${McpFixtures.AUTH_HEADER_PORT}/mcp`;
+  static AUTH_HEADER_KEY = 'Authorization';
+  static AUTH_HEADER_VALUE = 'Bearer test-header-key';
+  static AUTH_HEADER_EXPECTED_TOOL = 'echo';
+
+  // Query param auth test server (port 55177)
+  static AUTH_QUERY_PORT = process.env.TEST_MCP_AUTH_QUERY_PORT || '55177';
+  static AUTH_QUERY_MCP_URL = `http://localhost:${McpFixtures.AUTH_QUERY_PORT}/mcp`;
+  static AUTH_QUERY_KEY = 'api_key';
+  static AUTH_QUERY_VALUE = 'test-query-key';
+  static AUTH_QUERY_EXPECTED_TOOL = 'echo';
+
+  // Mixed auth test server (port 55178)
+  static AUTH_MIXED_PORT = process.env.TEST_MCP_AUTH_MIXED_PORT || '55178';
+  static AUTH_MIXED_MCP_URL = `http://localhost:${McpFixtures.AUTH_MIXED_PORT}/mcp`;
+  static AUTH_MIXED_HEADERS = [
+    { key: 'X-Auth-1', value: 'header-val-1' },
+    { key: 'X-Auth-2', value: 'header-val-2' },
+  ];
+  static AUTH_MIXED_QUERIES = [
+    { key: 'q_key_1', value: 'query-val-1' },
+    { key: 'q_key_2', value: 'query-val-2' },
+  ];
+  static AUTH_MIXED_EXPECTED_TOOL = 'echo';
+
   static OAUTH_DCR_PORT = process.env.TEST_MCP_OAUTH_DCR_PORT || '55175';
   static OAUTH_DCR_MCP_URL = `http://localhost:${McpFixtures.OAUTH_DCR_PORT}/mcp`;
   static OAUTH_DCR_SERVER_BASE = `http://localhost:${McpFixtures.OAUTH_DCR_PORT}`;

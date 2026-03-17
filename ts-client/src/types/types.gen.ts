@@ -1191,8 +1191,7 @@ export type CreateEmbeddingResponse = {
  */
 export type CreateMcpAuthConfigRequest = {
     name: string;
-    header_key: string;
-    header_value: string;
+    entries: Array<McpAuthConfigParamInput>;
     type: 'header';
 } | {
     name: string;
@@ -1388,7 +1387,9 @@ export type ExecuteToolsetRequest = {
 export type FetchMcpToolsRequest = {
     mcp_server_id: string;
     auth?: null | McpAuth;
-    auth_uuid?: string | null;
+    credentials?: Array<McpAuthParamInput> | null;
+    auth_config_id?: string | null;
+    oauth_token_id?: string | null;
 };
 
 /**
@@ -1623,9 +1624,9 @@ export type Mcp = {
     tools_filter?: Array<string> | null;
     auth_type: McpAuthType;
     /**
-     * Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id)
+     * Reference to the auth config (mcp_auth_configs.id)
      */
-    auth_uuid?: string | null;
+    auth_config_id?: string | null;
     /**
      * When this instance was created
      */
@@ -1650,6 +1651,17 @@ export type McpAuth = {
     type: 'header';
 };
 
+export type McpAuthConfigParam = {
+    id: string;
+    param_type: McpAuthParamType;
+    param_key: string;
+};
+
+export type McpAuthConfigParamInput = {
+    param_type: McpAuthParamType;
+    param_key: string;
+};
+
 /**
  * Discriminated union response for any type of MCP auth config.
  * The JSON `"type"` field determines the variant: `"header"` or `"oauth"`.
@@ -1658,8 +1670,8 @@ export type McpAuthConfigResponse = {
     id: string;
     name: string;
     mcp_server_id: string;
-    header_key: string;
-    has_header_value: boolean;
+    created_by: string;
+    entries: Array<McpAuthConfigParam>;
     created_at: string;
     updated_at: string;
     type: 'header';
@@ -1667,6 +1679,7 @@ export type McpAuthConfigResponse = {
     id: string;
     name: string;
     mcp_server_id: string;
+    created_by: string;
     registration_type: RegistrationType;
     client_id: string;
     authorization_endpoint: string;
@@ -1682,12 +1695,29 @@ export type McpAuthConfigResponse = {
     type: 'oauth';
 };
 
+export type McpAuthConfigType = 'header' | 'oauth';
+
 /**
  * List wrapper for unified auth config responses.
  */
 export type McpAuthConfigsListResponse = {
     auth_configs: Array<McpAuthConfigResponse>;
 };
+
+export type McpAuthParam = {
+    id: string;
+    param_type: McpAuthParamType;
+    param_key: string;
+    has_value: boolean;
+};
+
+export type McpAuthParamInput = {
+    param_type: McpAuthParamType;
+    param_key: string;
+    value: string;
+};
+
+export type McpAuthParamType = 'header' | 'query';
 
 export type McpAuthType = 'public' | 'header' | 'oauth';
 
@@ -1743,7 +1773,15 @@ export type McpRequest = {
     /**
      * Reference to auth config
      */
-    auth_uuid?: string | null;
+    auth_config_id?: string | null;
+    /**
+     * Instance-level auth params (values for the auth config's key definitions)
+     */
+    credentials?: Array<McpAuthParamInput> | null;
+    /**
+     * OAuth token ID to link to this MCP instance (set after OAuth flow)
+     */
+    oauth_token_id?: string | null;
 };
 
 /**
@@ -2015,6 +2053,7 @@ export type OAuthLoginResponse = {
 };
 
 export type OAuthTokenExchangeRequest = {
+    mcp_id?: string | null;
     code: string;
     redirect_uri: string;
     state: string;
@@ -2022,10 +2061,10 @@ export type OAuthTokenExchangeRequest = {
 
 export type OAuthTokenResponse = {
     id: string;
-    mcp_oauth_config_id: string;
+    mcp_id?: string | null;
+    auth_config_id: string;
     scopes_granted?: string | null;
     expires_at?: number | null;
-    has_access_token: boolean;
     has_refresh_token: boolean;
     user_id: string;
     created_at: string;

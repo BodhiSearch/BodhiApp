@@ -3,7 +3,7 @@
 // convention used by CRUD entities.
 
 use serde::{Deserialize, Serialize};
-use services::{CreateMcpAuthConfigRequest, McpOAuthToken, McpTool};
+use services::{CreateMcpAuthConfigRequest, McpAuthParamInput, McpOAuthToken, McpTool};
 use utoipa::{IntoParams, ToSchema};
 
 // ============================================================================
@@ -37,7 +37,11 @@ pub struct FetchMcpToolsRequest {
   #[serde(default)]
   pub auth: Option<McpAuth>,
   #[serde(default)]
-  pub auth_uuid: Option<String>,
+  pub credentials: Option<Vec<McpAuthParamInput>>,
+  #[serde(default)]
+  pub auth_config_id: Option<String>,
+  #[serde(default)]
+  pub oauth_token_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -83,12 +87,13 @@ pub struct AuthConfigsQuery {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct OAuthTokenResponse {
   pub id: String,
-  pub mcp_oauth_config_id: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub mcp_id: Option<String>,
+  pub auth_config_id: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub scopes_granted: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub expires_at: Option<i64>,
-  pub has_access_token: bool,
   pub has_refresh_token: bool,
   pub user_id: String,
   pub created_at: String,
@@ -99,10 +104,10 @@ impl From<McpOAuthToken> for OAuthTokenResponse {
   fn from(t: McpOAuthToken) -> Self {
     OAuthTokenResponse {
       id: t.id,
-      mcp_oauth_config_id: t.mcp_oauth_config_id,
+      mcp_id: t.mcp_id,
+      auth_config_id: t.auth_config_id,
       scopes_granted: t.scopes_granted,
       expires_at: t.expires_at,
-      has_access_token: t.has_access_token,
       has_refresh_token: t.has_refresh_token,
       user_id: t.user_id,
       created_at: t.created_at.to_rfc3339(),
@@ -127,6 +132,8 @@ pub struct OAuthLoginResponse {
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct OAuthTokenExchangeRequest {
+  #[serde(default)]
+  pub mcp_id: Option<String>,
   pub code: String,
   pub redirect_uri: String,
   pub state: String,

@@ -1,6 +1,6 @@
 use crate::{
-  AppService, AuthContext, CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpError,
-  McpExecutionRequest, McpExecutionResponse, McpOAuthToken, McpRequest, McpServerEntity,
+  AppService, AuthContext, CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpAuthParamInput,
+  McpError, McpExecutionRequest, McpExecutionResponse, McpOAuthToken, McpRequest, McpServerEntity,
   McpServerError, McpServerRequest, McpTool, McpWithServerEntity,
 };
 use std::sync::Arc;
@@ -121,10 +121,11 @@ impl AuthScopedMcpService {
     request: CreateMcpAuthConfigRequest,
   ) -> Result<McpAuthConfigResponse, McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
+    let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .mcp_service()
-      .create_auth_config(tenant_id, mcp_server_id, request)
+      .create_auth_config(tenant_id, user_id, mcp_server_id, request)
       .await
   }
 
@@ -165,6 +166,7 @@ impl AuthScopedMcpService {
   /// Exchange an authorization code for tokens.
   pub async fn exchange_oauth_token(
     &self,
+    mcp_id: Option<String>,
     config_id: &str,
     code: &str,
     redirect_uri: &str,
@@ -178,6 +180,7 @@ impl AuthScopedMcpService {
       .exchange_oauth_token(
         tenant_id,
         user_id,
+        mcp_id,
         config_id,
         code,
         redirect_uri,
@@ -297,9 +300,9 @@ impl AuthScopedMcpService {
   pub async fn fetch_tools_for_server(
     &self,
     server_id: &str,
-    auth_header_key: Option<String>,
-    auth_header_value: Option<String>,
-    auth_uuid: Option<String>,
+    credentials: Option<Vec<McpAuthParamInput>>,
+    auth_config_id: Option<String>,
+    oauth_token_id: Option<String>,
   ) -> Result<Vec<McpTool>, McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     self
@@ -308,9 +311,9 @@ impl AuthScopedMcpService {
       .fetch_tools_for_server(
         tenant_id,
         server_id,
-        auth_header_key,
-        auth_header_value,
-        auth_uuid,
+        credentials,
+        auth_config_id,
+        oauth_token_id,
       )
       .await
   }

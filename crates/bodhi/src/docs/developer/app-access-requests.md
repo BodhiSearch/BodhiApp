@@ -59,9 +59,9 @@ The `review_url` is where the user reviews and approves the request. The app ope
 
 #### Flow Types
 
-| Flow Type | Behavior |
-|-----------|----------|
-| `popup` | App opens the review URL in a popup window. After the user decides, the window closes and the app detects the result. |
+| Flow Type  | Behavior                                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `popup`    | App opens the review URL in a popup window. After the user decides, the window closes and the app detects the result.                                   |
 | `redirect` | App redirects to the review URL. After the user decides, Bodhi redirects back to the app's `redirect_url`. Requires `redirect_url` in the request body. |
 
 ### Step 2: User Reviews the Request
@@ -103,12 +103,12 @@ The `app_client_id` query parameter is required for security -- only the app tha
 
 **Possible status values:**
 
-| Status | Meaning |
-|--------|---------|
-| `draft` | Awaiting user review |
+| Status     | Meaning                                                               |
+| ---------- | --------------------------------------------------------------------- |
+| `draft`    | Awaiting user review                                                  |
 | `approved` | User approved; `access_request_scope` is available for token exchange |
-| `denied` | User denied the request |
-| `failed` | Processing error |
+| `denied`   | User denied the request                                               |
+| `failed`   | Processing error                                                      |
 
 ### Step 4: Token Exchange
 
@@ -161,16 +161,16 @@ The access request system enforces strict privilege boundaries:
 
 ## API Reference
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/bodhi/v1/apps/request-access` | POST | None | Create a draft access request |
-| `/bodhi/v1/apps/access-requests/{id}` | GET | None | Poll access request status (requires `app_client_id` query param) |
-| `/bodhi/v1/access-requests/{id}/review` | GET | Session | Get review page data |
-| `/bodhi/v1/access-requests/{id}/approve` | PUT | Session | Approve with role and resource selections |
-| `/bodhi/v1/access-requests/{id}/deny` | POST | Session | Deny the request |
-| `/bodhi/v1/apps/mcps` | GET | Bearer | List MCP instances accessible to the app |
-| `/bodhi/v1/apps/mcps/{id}` | GET | Bearer | Get a specific MCP instance |
-| `/bodhi/v1/apps/mcps/{id}/tools/refresh` | POST | Bearer | Refresh tools for an MCP instance |
-| `/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute` | POST | Bearer | Execute a tool on an MCP instance |
+| Endpoint                                             | Method | Auth    | Description                                                       |
+| ---------------------------------------------------- | ------ | ------- | ----------------------------------------------------------------- |
+| `/bodhi/v1/apps/request-access`                      | POST   | None    | Create a draft access request                                     |
+| `/bodhi/v1/apps/access-requests/{id}`                | GET    | None    | Poll access request status (requires `app_client_id` query param) |
+| `/bodhi/v1/access-requests/{id}/review`              | GET    | Session | Get review page data                                              |
+| `/bodhi/v1/access-requests/{id}/approve`             | PUT    | Session | Approve with role and resource selections                         |
+| `/bodhi/v1/access-requests/{id}/deny`                | POST   | Session | Deny the request                                                  |
+| `/bodhi/v1/apps/mcps`                                | GET    | Bearer  | List MCP instances accessible to the app                          |
+| `/bodhi/v1/apps/mcps/{id}`                           | GET    | Bearer  | Get a specific MCP instance                                       |
+| `/bodhi/v1/apps/mcps/{id}/tools/refresh`             | POST   | Bearer  | Refresh tools for an MCP instance                                 |
+| `/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute` | POST   | Bearer  | Execute a tool on an MCP instance                                 |
 
 For the full API specification with request/response schemas, see the [OpenAPI Reference](/docs/developer/openapi-reference) or visit `/swagger-ui` on your Bodhi instance.

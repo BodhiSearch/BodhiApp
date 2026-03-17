@@ -9,8 +9,9 @@ pub const TEST_USER_ID: &str = "test-user";
 pub const TEST_TENANT_A_USER_B_ID: &str = "test-tenant-a-user-b";
 
 use crate::mcps::{
-  McpAuthHeaderEntity, McpAuthRepository, McpEntity, McpInstanceRepository, McpOAuthConfigEntity,
-  McpOAuthTokenEntity, McpServerEntity, McpServerRepository, McpWithServerEntity,
+  McpAuthConfigEntity, McpAuthConfigParamEntity, McpAuthParamEntity, McpEntity,
+  McpOAuthConfigDetailEntity, McpOAuthTokenEntity, McpRepository, McpServerEntity,
+  McpServerRepository, McpWithServerEntity,
 };
 use crate::models::{
   ApiAlias, ApiAliasRepository, DownloadRepository, DownloadRequestEntity, ModelMetadataEntity,
@@ -723,7 +724,7 @@ impl McpServerRepository for TestDbService {
 }
 
 #[async_trait::async_trait]
-impl McpInstanceRepository for TestDbService {
+impl McpRepository for TestDbService {
   async fn create_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError> {
     self
       .inner
@@ -785,131 +786,90 @@ impl McpInstanceRepository for TestDbService {
       .await
       .tap(|_| self.notify("delete_mcp"))
   }
-}
 
-#[async_trait::async_trait]
-impl McpAuthRepository for TestDbService {
-  async fn get_mcp_auth_header(
+  // ---- Auth methods (formerly McpAuthRepository) ----
+
+  async fn create_mcp_auth_config(
+    &self,
+    row: &McpAuthConfigEntity,
+  ) -> Result<McpAuthConfigEntity, DbError> {
+    self
+      .inner
+      .create_mcp_auth_config(row)
+      .await
+      .tap(|_| self.notify("create_mcp_auth_config"))
+  }
+  async fn get_mcp_auth_config(
     &self,
     tenant_id: &str,
     id: &str,
-  ) -> Result<Option<crate::mcps::McpAuthHeader>, DbError> {
+  ) -> Result<Option<McpAuthConfigEntity>, DbError> {
     self
       .inner
-      .get_mcp_auth_header(tenant_id, id)
+      .get_mcp_auth_config(tenant_id, id)
       .await
-      .tap(|_| self.notify("get_mcp_auth_header"))
+      .tap(|_| self.notify("get_mcp_auth_config"))
   }
-
-  async fn create_mcp_auth_header(
-    &self,
-    row: &McpAuthHeaderEntity,
-  ) -> Result<McpAuthHeaderEntity, DbError> {
-    self
-      .inner
-      .create_mcp_auth_header(row)
-      .await
-      .tap(|_| self.notify("create_mcp_auth_header"))
-  }
-
-  async fn update_mcp_auth_header(
-    &self,
-    row: &McpAuthHeaderEntity,
-  ) -> Result<McpAuthHeaderEntity, DbError> {
-    self
-      .inner
-      .update_mcp_auth_header(row)
-      .await
-      .tap(|_| self.notify("update_mcp_auth_header"))
-  }
-
-  async fn delete_mcp_auth_header(&self, tenant_id: &str, id: &str) -> Result<(), DbError> {
-    self
-      .inner
-      .delete_mcp_auth_header(tenant_id, id)
-      .await
-      .tap(|_| self.notify("delete_mcp_auth_header"))
-  }
-
-  async fn list_mcp_auth_headers_by_server(
+  async fn list_mcp_auth_configs_by_server(
     &self,
     tenant_id: &str,
     mcp_server_id: &str,
-  ) -> Result<Vec<crate::mcps::McpAuthHeader>, DbError> {
+  ) -> Result<Vec<McpAuthConfigEntity>, DbError> {
     self
       .inner
-      .list_mcp_auth_headers_by_server(tenant_id, mcp_server_id)
+      .list_mcp_auth_configs_by_server(tenant_id, mcp_server_id)
       .await
-      .tap(|_| self.notify("list_mcp_auth_headers_by_server"))
+      .tap(|_| self.notify("list_mcp_auth_configs_by_server"))
   }
-
-  async fn get_decrypted_auth_header(
+  async fn delete_mcp_auth_config(&self, tenant_id: &str, id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_mcp_auth_config(tenant_id, id)
+      .await
+      .tap(|_| self.notify("delete_mcp_auth_config"))
+  }
+  async fn create_mcp_auth_config_param(
+    &self,
+    row: &McpAuthConfigParamEntity,
+  ) -> Result<McpAuthConfigParamEntity, DbError> {
+    self
+      .inner
+      .create_mcp_auth_config_param(row)
+      .await
+      .tap(|_| self.notify("create_mcp_auth_config_param"))
+  }
+  async fn list_mcp_auth_config_params(
     &self,
     tenant_id: &str,
-    id: &str,
-  ) -> Result<Option<(String, String)>, DbError> {
+    auth_config_id: &str,
+  ) -> Result<Vec<McpAuthConfigParamEntity>, DbError> {
     self
       .inner
-      .get_decrypted_auth_header(tenant_id, id)
+      .list_mcp_auth_config_params(tenant_id, auth_config_id)
       .await
-      .tap(|_| self.notify("get_decrypted_auth_header"))
+      .tap(|_| self.notify("list_mcp_auth_config_params"))
   }
-
-  async fn create_mcp_oauth_config(
+  async fn create_mcp_oauth_config_detail(
     &self,
-    row: &McpOAuthConfigEntity,
-  ) -> Result<McpOAuthConfigEntity, DbError> {
+    row: &McpOAuthConfigDetailEntity,
+  ) -> Result<McpOAuthConfigDetailEntity, DbError> {
     self
       .inner
-      .create_mcp_oauth_config(row)
+      .create_mcp_oauth_config_detail(row)
       .await
-      .tap(|_| self.notify("create_mcp_oauth_config"))
+      .tap(|_| self.notify("create_mcp_oauth_config_detail"))
   }
-
-  async fn get_mcp_oauth_config(
+  async fn get_mcp_oauth_config_detail(
     &self,
     tenant_id: &str,
-    id: &str,
+    auth_config_id: &str,
   ) -> Result<Option<crate::mcps::McpOAuthConfig>, DbError> {
     self
       .inner
-      .get_mcp_oauth_config(tenant_id, id)
+      .get_mcp_oauth_config_detail(tenant_id, auth_config_id)
       .await
-      .tap(|_| self.notify("get_mcp_oauth_config"))
+      .tap(|_| self.notify("get_mcp_oauth_config_detail"))
   }
-
-  async fn list_mcp_oauth_configs_by_server(
-    &self,
-    tenant_id: &str,
-    mcp_server_id: &str,
-  ) -> Result<Vec<crate::mcps::McpOAuthConfig>, DbError> {
-    self
-      .inner
-      .list_mcp_oauth_configs_by_server(tenant_id, mcp_server_id)
-      .await
-      .tap(|_| self.notify("list_mcp_oauth_configs_by_server"))
-  }
-
-  async fn delete_mcp_oauth_config(&self, tenant_id: &str, id: &str) -> Result<(), DbError> {
-    self
-      .inner
-      .delete_mcp_oauth_config(tenant_id, id)
-      .await
-      .tap(|_| self.notify("delete_mcp_oauth_config"))
-  }
-
-  async fn delete_oauth_config_cascade(
-    &self,
-    tenant_id: &str,
-    config_id: &str,
-  ) -> Result<(), DbError> {
-    self
-      .inner
-      .delete_oauth_config_cascade(tenant_id, config_id)
-      .await
-      .tap(|_| self.notify("delete_oauth_config_cascade"))
-  }
-
   async fn get_decrypted_client_secret(
     &self,
     tenant_id: &str,
@@ -921,7 +881,49 @@ impl McpAuthRepository for TestDbService {
       .await
       .tap(|_| self.notify("get_decrypted_client_secret"))
   }
-
+  async fn create_mcp_auth_param(
+    &self,
+    row: &McpAuthParamEntity,
+  ) -> Result<McpAuthParamEntity, DbError> {
+    self
+      .inner
+      .create_mcp_auth_param(row)
+      .await
+      .tap(|_| self.notify("create_mcp_auth_param"))
+  }
+  async fn list_mcp_auth_params(
+    &self,
+    tenant_id: &str,
+    mcp_id: &str,
+  ) -> Result<Vec<McpAuthParamEntity>, DbError> {
+    self
+      .inner
+      .list_mcp_auth_params(tenant_id, mcp_id)
+      .await
+      .tap(|_| self.notify("list_mcp_auth_params"))
+  }
+  async fn delete_mcp_auth_params_by_mcp(
+    &self,
+    tenant_id: &str,
+    mcp_id: &str,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_mcp_auth_params_by_mcp(tenant_id, mcp_id)
+      .await
+      .tap(|_| self.notify("delete_mcp_auth_params_by_mcp"))
+  }
+  async fn get_decrypted_auth_params(
+    &self,
+    tenant_id: &str,
+    mcp_id: &str,
+  ) -> Result<Option<mcp_client::McpAuthParams>, DbError> {
+    self
+      .inner
+      .get_decrypted_auth_params(tenant_id, mcp_id)
+      .await
+      .tap(|_| self.notify("get_decrypted_auth_params"))
+  }
   async fn create_mcp_oauth_token(
     &self,
     row: &McpOAuthTokenEntity,
@@ -932,7 +934,6 @@ impl McpAuthRepository for TestDbService {
       .await
       .tap(|_| self.notify("create_mcp_oauth_token"))
   }
-
   async fn get_mcp_oauth_token(
     &self,
     tenant_id: &str,
@@ -945,19 +946,17 @@ impl McpAuthRepository for TestDbService {
       .await
       .tap(|_| self.notify("get_mcp_oauth_token"))
   }
-
-  async fn get_latest_oauth_token_by_config(
+  async fn get_latest_oauth_token_by_mcp(
     &self,
     tenant_id: &str,
-    config_id: &str,
+    mcp_id: &str,
   ) -> Result<Option<crate::mcps::McpOAuthToken>, DbError> {
     self
       .inner
-      .get_latest_oauth_token_by_config(tenant_id, config_id)
+      .get_latest_oauth_token_by_mcp(tenant_id, mcp_id)
       .await
-      .tap(|_| self.notify("get_latest_oauth_token_by_config"))
+      .tap(|_| self.notify("get_latest_oauth_token_by_mcp"))
   }
-
   async fn update_mcp_oauth_token(
     &self,
     row: &McpOAuthTokenEntity,
@@ -968,7 +967,6 @@ impl McpAuthRepository for TestDbService {
       .await
       .tap(|_| self.notify("update_mcp_oauth_token"))
   }
-
   async fn delete_mcp_oauth_token(
     &self,
     tenant_id: &str,
@@ -981,44 +979,25 @@ impl McpAuthRepository for TestDbService {
       .await
       .tap(|_| self.notify("delete_mcp_oauth_token"))
   }
-
-  async fn delete_oauth_tokens_by_config(
-    &self,
-    tenant_id: &str,
-    config_id: &str,
-  ) -> Result<(), DbError> {
+  async fn delete_oauth_tokens_by_mcp(&self, tenant_id: &str, mcp_id: &str) -> Result<(), DbError> {
     self
       .inner
-      .delete_oauth_tokens_by_config(tenant_id, config_id)
+      .delete_oauth_tokens_by_mcp(tenant_id, mcp_id)
       .await
-      .tap(|_| self.notify("delete_oauth_tokens_by_config"))
+      .tap(|_| self.notify("delete_oauth_tokens_by_mcp"))
   }
-
-  async fn delete_oauth_tokens_by_config_and_user(
+  async fn delete_oauth_tokens_by_mcp_and_user(
     &self,
     tenant_id: &str,
-    config_id: &str,
+    mcp_id: &str,
     user_id: &str,
   ) -> Result<(), DbError> {
     self
       .inner
-      .delete_oauth_tokens_by_config_and_user(tenant_id, config_id, user_id)
+      .delete_oauth_tokens_by_mcp_and_user(tenant_id, mcp_id, user_id)
       .await
-      .tap(|_| self.notify("delete_oauth_tokens_by_config_and_user"))
+      .tap(|_| self.notify("delete_oauth_tokens_by_mcp_and_user"))
   }
-
-  async fn get_decrypted_oauth_bearer(
-    &self,
-    tenant_id: &str,
-    id: &str,
-  ) -> Result<Option<(String, String)>, DbError> {
-    self
-      .inner
-      .get_decrypted_oauth_bearer(tenant_id, id)
-      .await
-      .tap(|_| self.notify("get_decrypted_oauth_bearer"))
-  }
-
   async fn get_decrypted_refresh_token(
     &self,
     tenant_id: &str,
@@ -1029,6 +1008,102 @@ impl McpAuthRepository for TestDbService {
       .get_decrypted_refresh_token(tenant_id, token_id)
       .await
       .tap(|_| self.notify("get_decrypted_refresh_token"))
+  }
+  async fn get_decrypted_oauth_access_token(
+    &self,
+    tenant_id: &str,
+    token_id: &str,
+  ) -> Result<Option<String>, DbError> {
+    self
+      .inner
+      .get_decrypted_oauth_access_token(tenant_id, token_id)
+      .await
+      .tap(|_| self.notify("get_decrypted_oauth_access_token"))
+  }
+  async fn link_oauth_token_to_mcp(
+    &self,
+    tenant_id: &str,
+    token_id: &str,
+    user_id: &str,
+    mcp_id: &str,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .link_oauth_token_to_mcp(tenant_id, token_id, user_id, mcp_id)
+      .await
+      .tap(|_| self.notify("link_oauth_token_to_mcp"))
+  }
+
+  // ---- Composite methods ----
+
+  async fn create_mcp_with_auth(
+    &self,
+    tenant_id: &str,
+    row: &McpEntity,
+    auth_params: Option<Vec<McpAuthParamEntity>>,
+    oauth_token_id: Option<String>,
+    user_id: &str,
+  ) -> Result<McpEntity, DbError> {
+    self
+      .inner
+      .create_mcp_with_auth(tenant_id, row, auth_params, oauth_token_id, user_id)
+      .await
+      .tap(|_| self.notify("create_mcp_with_auth"))
+  }
+
+  async fn update_mcp_with_auth(
+    &self,
+    tenant_id: &str,
+    row: &McpEntity,
+    auth_params: Option<Vec<McpAuthParamEntity>>,
+    oauth_token_id: Option<String>,
+    user_id: &str,
+  ) -> Result<McpEntity, DbError> {
+    self
+      .inner
+      .update_mcp_with_auth(tenant_id, row, auth_params, oauth_token_id, user_id)
+      .await
+      .tap(|_| self.notify("update_mcp_with_auth"))
+  }
+
+  async fn create_auth_config_header(
+    &self,
+    tenant_id: &str,
+    config_entity: &McpAuthConfigEntity,
+    params: Vec<McpAuthConfigParamEntity>,
+  ) -> Result<McpAuthConfigEntity, DbError> {
+    self
+      .inner
+      .create_auth_config_header(tenant_id, config_entity, params)
+      .await
+      .tap(|_| self.notify("create_auth_config_header"))
+  }
+
+  async fn create_auth_config_oauth(
+    &self,
+    tenant_id: &str,
+    config_entity: &McpAuthConfigEntity,
+    oauth_detail: &McpOAuthConfigDetailEntity,
+  ) -> Result<(McpAuthConfigEntity, McpOAuthConfigDetailEntity), DbError> {
+    self
+      .inner
+      .create_auth_config_oauth(tenant_id, config_entity, oauth_detail)
+      .await
+      .tap(|_| self.notify("create_auth_config_oauth"))
+  }
+
+  async fn store_oauth_token(
+    &self,
+    tenant_id: &str,
+    mcp_id: Option<String>,
+    user_id: &str,
+    row: &McpOAuthTokenEntity,
+  ) -> Result<McpOAuthTokenEntity, DbError> {
+    self
+      .inner
+      .store_oauth_token(tenant_id, mcp_id, user_id, row)
+      .await
+      .tap(|_| self.notify("store_oauth_token"))
   }
 }
 
@@ -1472,38 +1547,41 @@ mockall::mock! {
   }
 
   #[async_trait::async_trait]
-  impl McpInstanceRepository for DbService {
+  impl McpRepository for DbService {
     async fn create_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError>;
     async fn get_mcp(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<McpEntity>, DbError>;
     async fn get_mcp_by_slug(&self, tenant_id: &str, user_id: &str, slug: &str) -> Result<Option<McpEntity>, DbError>;
     async fn list_mcps_with_server(&self, tenant_id: &str, user_id: &str) -> Result<Vec<McpWithServerEntity>, DbError>;
     async fn update_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError>;
     async fn delete_mcp(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
-  }
-
-  #[async_trait::async_trait]
-  impl McpAuthRepository for DbService {
-    async fn create_mcp_auth_header(&self, row: &McpAuthHeaderEntity) -> Result<McpAuthHeaderEntity, DbError>;
-    async fn get_mcp_auth_header(&self, tenant_id: &str, id: &str) -> Result<Option<crate::mcps::McpAuthHeader>, DbError>;
-    async fn update_mcp_auth_header(&self, row: &McpAuthHeaderEntity) -> Result<McpAuthHeaderEntity, DbError>;
-    async fn delete_mcp_auth_header(&self, tenant_id: &str, id: &str) -> Result<(), DbError>;
-    async fn list_mcp_auth_headers_by_server(&self, tenant_id: &str, mcp_server_id: &str) -> Result<Vec<crate::mcps::McpAuthHeader>, DbError>;
-    async fn get_decrypted_auth_header(&self, tenant_id: &str, id: &str) -> Result<Option<(String, String)>, DbError>;
-    async fn create_mcp_oauth_config(&self, row: &McpOAuthConfigEntity) -> Result<McpOAuthConfigEntity, DbError>;
-    async fn get_mcp_oauth_config(&self, tenant_id: &str, id: &str) -> Result<Option<crate::mcps::McpOAuthConfig>, DbError>;
-    async fn list_mcp_oauth_configs_by_server(&self, tenant_id: &str, mcp_server_id: &str) -> Result<Vec<crate::mcps::McpOAuthConfig>, DbError>;
-    async fn delete_mcp_oauth_config(&self, tenant_id: &str, id: &str) -> Result<(), DbError>;
-    async fn delete_oauth_config_cascade(&self, tenant_id: &str, config_id: &str) -> Result<(), DbError>;
+    async fn create_mcp_auth_config(&self, row: &McpAuthConfigEntity) -> Result<McpAuthConfigEntity, DbError>;
+    async fn get_mcp_auth_config(&self, tenant_id: &str, id: &str) -> Result<Option<McpAuthConfigEntity>, DbError>;
+    async fn list_mcp_auth_configs_by_server(&self, tenant_id: &str, mcp_server_id: &str) -> Result<Vec<McpAuthConfigEntity>, DbError>;
+    async fn delete_mcp_auth_config(&self, tenant_id: &str, id: &str) -> Result<(), DbError>;
+    async fn create_mcp_auth_config_param(&self, row: &McpAuthConfigParamEntity) -> Result<McpAuthConfigParamEntity, DbError>;
+    async fn list_mcp_auth_config_params(&self, tenant_id: &str, auth_config_id: &str) -> Result<Vec<McpAuthConfigParamEntity>, DbError>;
+    async fn create_mcp_oauth_config_detail(&self, row: &McpOAuthConfigDetailEntity) -> Result<McpOAuthConfigDetailEntity, DbError>;
+    async fn get_mcp_oauth_config_detail(&self, tenant_id: &str, auth_config_id: &str) -> Result<Option<crate::mcps::McpOAuthConfig>, DbError>;
     async fn get_decrypted_client_secret(&self, tenant_id: &str, id: &str) -> Result<Option<(String, String)>, DbError>;
+    async fn create_mcp_auth_param(&self, row: &McpAuthParamEntity) -> Result<McpAuthParamEntity, DbError>;
+    async fn list_mcp_auth_params(&self, tenant_id: &str, mcp_id: &str) -> Result<Vec<McpAuthParamEntity>, DbError>;
+    async fn delete_mcp_auth_params_by_mcp(&self, tenant_id: &str, mcp_id: &str) -> Result<(), DbError>;
+    async fn get_decrypted_auth_params(&self, tenant_id: &str, mcp_id: &str) -> Result<Option<mcp_client::McpAuthParams>, DbError>;
     async fn create_mcp_oauth_token(&self, row: &McpOAuthTokenEntity) -> Result<McpOAuthTokenEntity, DbError>;
     async fn get_mcp_oauth_token(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<crate::mcps::McpOAuthToken>, DbError>;
-    async fn get_latest_oauth_token_by_config(&self, tenant_id: &str, config_id: &str) -> Result<Option<crate::mcps::McpOAuthToken>, DbError>;
+    async fn get_latest_oauth_token_by_mcp(&self, tenant_id: &str, mcp_id: &str) -> Result<Option<crate::mcps::McpOAuthToken>, DbError>;
     async fn update_mcp_oauth_token(&self, row: &McpOAuthTokenEntity) -> Result<McpOAuthTokenEntity, DbError>;
     async fn delete_mcp_oauth_token(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
-    async fn delete_oauth_tokens_by_config(&self, tenant_id: &str, config_id: &str) -> Result<(), DbError>;
-    async fn delete_oauth_tokens_by_config_and_user(&self, tenant_id: &str, config_id: &str, user_id: &str) -> Result<(), DbError>;
-    async fn get_decrypted_oauth_bearer(&self, tenant_id: &str, id: &str) -> Result<Option<(String, String)>, DbError>;
+    async fn delete_oauth_tokens_by_mcp(&self, tenant_id: &str, mcp_id: &str) -> Result<(), DbError>;
+    async fn delete_oauth_tokens_by_mcp_and_user(&self, tenant_id: &str, mcp_id: &str, user_id: &str) -> Result<(), DbError>;
     async fn get_decrypted_refresh_token(&self, tenant_id: &str, token_id: &str) -> Result<Option<String>, DbError>;
+    async fn get_decrypted_oauth_access_token(&self, tenant_id: &str, token_id: &str) -> Result<Option<String>, DbError>;
+    async fn link_oauth_token_to_mcp(&self, tenant_id: &str, token_id: &str, user_id: &str, mcp_id: &str) -> Result<(), DbError>;
+    async fn create_mcp_with_auth(&self, tenant_id: &str, row: &McpEntity, auth_params: Option<Vec<McpAuthParamEntity>>, oauth_token_id: Option<String>, user_id: &str) -> Result<McpEntity, DbError>;
+    async fn update_mcp_with_auth(&self, tenant_id: &str, row: &McpEntity, auth_params: Option<Vec<McpAuthParamEntity>>, oauth_token_id: Option<String>, user_id: &str) -> Result<McpEntity, DbError>;
+    async fn create_auth_config_header(&self, tenant_id: &str, config_entity: &McpAuthConfigEntity, params: Vec<McpAuthConfigParamEntity>) -> Result<McpAuthConfigEntity, DbError>;
+    async fn create_auth_config_oauth(&self, tenant_id: &str, config_entity: &McpAuthConfigEntity, oauth_detail: &McpOAuthConfigDetailEntity) -> Result<(McpAuthConfigEntity, McpOAuthConfigDetailEntity), DbError>;
+    async fn store_oauth_token(&self, tenant_id: &str, mcp_id: Option<String>, user_id: &str, row: &McpOAuthTokenEntity) -> Result<McpOAuthTokenEntity, DbError>;
   }
 
   #[async_trait::async_trait]
@@ -1540,6 +1618,12 @@ mockall::mock! {
 #[derive(Debug)]
 pub struct InMemorySettingsRepository {
   store: std::sync::RwLock<std::collections::HashMap<String, DbSetting>>,
+}
+
+impl Default for InMemorySettingsRepository {
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl InMemorySettingsRepository {

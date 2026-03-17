@@ -69,11 +69,13 @@ function OAuthCallbackContent() {
       return;
     }
 
+    const mcpId = formState.mcp_id || undefined;
+
     setExchanged(true);
     const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback`;
 
     tokenExchangeMutation.mutate(
-      { id: configId, code, redirect_uri: redirectUri, state },
+      { id: configId, mcp_id: mcpId, code, redirect_uri: redirectUri, state },
       {
         onSuccess: (response) => {
           const tokenId = response.data.id;

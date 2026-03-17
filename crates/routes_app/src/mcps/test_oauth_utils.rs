@@ -226,10 +226,10 @@ fn test_oauth_token() -> McpOAuthToken {
   let now = fixed_dt();
   McpOAuthToken {
     id: "token-uuid-1".to_string(),
-    mcp_oauth_config_id: "oauth-config-uuid-1".to_string(),
+    mcp_id: Some("mcp-instance-1".to_string()),
+    auth_config_id: "oauth-config-uuid-1".to_string(),
     scopes_granted: Some("openid profile".to_string()),
     expires_at: Some(1700000000),
-    has_access_token: true,
     has_refresh_token: true,
     user_id: "user123".to_string(),
     created_at: now,
@@ -279,12 +279,12 @@ async fn test_get_oauth_token_handler_success() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, response.status());
   let body: Value = response.json().await?;
   assert_eq!("token-uuid-1", body["id"].as_str().unwrap());
+  assert_eq!("mcp-instance-1", body["mcp_id"].as_str().unwrap());
   assert_eq!(
     "oauth-config-uuid-1",
-    body["mcp_oauth_config_id"].as_str().unwrap()
+    body["auth_config_id"].as_str().unwrap()
   );
   assert_eq!("openid profile", body["scopes_granted"].as_str().unwrap());
-  assert!(body["has_access_token"].as_bool().unwrap());
   assert!(body["has_refresh_token"].as_bool().unwrap());
   Ok(())
 }

@@ -131,7 +131,7 @@ describe('ServerViewPage - Auth Configs', () => {
 
     expect(screen.getByTestId(`auth-config-row-${mockAuthConfigHeader.id}`)).toBeInTheDocument();
     expect(screen.getByTestId(`auth-config-type-badge-${mockAuthConfigHeader.id}`)).toHaveTextContent('Header');
-    expect(screen.getByText('Key: Authorization')).toBeInTheDocument();
+    expect(screen.getByText('Keys: header:Authorization')).toBeInTheDocument();
   });
 
   it('shows OAuth configs', async () => {
@@ -233,10 +233,9 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Fill out header form fields
+    // Fill out header form fields - multi-entry form
     await user.type(screen.getByTestId('auth-config-name-input'), 'My API Key');
-    await user.type(screen.getByTestId('auth-config-header-key-input'), 'Authorization');
-    await user.type(screen.getByTestId('auth-config-header-value-input'), 'Bearer sk-test');
+    await user.type(screen.getByTestId('auth-config-entry-key-0'), 'Authorization');
 
     await user.click(screen.getByTestId('auth-config-save-button'));
 
@@ -264,8 +263,7 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('add-auth-config-button'));
     await user.type(screen.getByTestId('auth-config-name-input'), 'Duplicate');
-    await user.type(screen.getByTestId('auth-config-header-key-input'), 'X-Api-Key');
-    await user.type(screen.getByTestId('auth-config-header-value-input'), 'secret');
+    await user.type(screen.getByTestId('auth-config-entry-key-0'), 'X-Api-Key');
 
     await user.click(screen.getByTestId('auth-config-save-button'));
 
@@ -351,8 +349,8 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Default is header - should show header fields
-    expect(screen.getByTestId('auth-config-header-key-input')).toBeInTheDocument();
+    // Default is header - should show entry fields
+    expect(screen.getByTestId('auth-config-entry-key-0')).toBeInTheDocument();
     expect(screen.queryByTestId('auth-config-client-id-input')).not.toBeInTheDocument();
 
     // Change to oauth
@@ -360,7 +358,7 @@ describe('ServerViewPage - Auth Configs', () => {
     await user.click(screen.getByText('OAuth'));
 
     // Should now show OAuth fields
-    expect(screen.queryByTestId('auth-config-header-key-input')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('auth-config-entry-key-0')).not.toBeInTheDocument();
     expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-auth-endpoint-input')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-token-endpoint-input')).toBeInTheDocument();

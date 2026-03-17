@@ -104,7 +104,9 @@ async fn create_mcp_instance(
           tools_cache: None,
           tools_filter: None,
           auth_type: McpAuthType::Public,
-          auth_uuid: None,
+          auth_config_id: None,
+          credentials: None,
+          oauth_token_id: None,
         })?
         .with_auth_context(auth.clone()),
     )
@@ -242,7 +244,9 @@ async fn test_cross_tenant_mcp_update_isolation(
           tools_cache: None,
           tools_filter: None,
           auth_type: McpAuthType::Public,
-          auth_uuid: None,
+          auth_config_id: None,
+          credentials: None,
+          oauth_token_id: None,
         })?
         .with_auth_context(auth_b.clone()),
     )

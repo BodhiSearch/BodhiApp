@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.0.46-dev"
+    "version": "0.0.47-dev"
   },
   "servers": [
     {
@@ -12018,19 +12018,18 @@
             "type": "object",
             "required": [
               "name",
-              "header_key",
-              "header_value",
+              "entries",
               "type"
             ],
             "properties": {
               "name": {
                 "type": "string"
               },
-              "header_key": {
-                "type": "string"
-              },
-              "header_value": {
-                "type": "string"
+              "entries": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/McpAuthConfigParamInput"
+                }
               },
               "type": {
                 "type": "string",
@@ -12593,7 +12592,22 @@
               }
             ]
           },
-          "auth_uuid": {
+          "credentials": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/McpAuthParamInput"
+            }
+          },
+          "auth_config_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "oauth_token_id": {
             "type": [
               "string",
               "null"
@@ -13082,12 +13096,12 @@
           "auth_type": {
             "$ref": "#/components/schemas/McpAuthType"
           },
-          "auth_uuid": {
+          "auth_config_id": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id)"
+            "description": "Reference to the auth config (mcp_auth_configs.id)"
           },
           "created_at": {
             "type": "string",
@@ -13168,6 +13182,40 @@
           }
         ]
       },
+      "McpAuthConfigParam": {
+        "type": "object",
+        "required": [
+          "id",
+          "param_type",
+          "param_key"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "param_type": {
+            "$ref": "#/components/schemas/McpAuthParamType"
+          },
+          "param_key": {
+            "type": "string"
+          }
+        }
+      },
+      "McpAuthConfigParamInput": {
+        "type": "object",
+        "required": [
+          "param_type",
+          "param_key"
+        ],
+        "properties": {
+          "param_type": {
+            "$ref": "#/components/schemas/McpAuthParamType"
+          },
+          "param_key": {
+            "type": "string"
+          }
+        }
+      },
       "McpAuthConfigResponse": {
         "oneOf": [
           {
@@ -13176,8 +13224,8 @@
               "id",
               "name",
               "mcp_server_id",
-              "header_key",
-              "has_header_value",
+              "created_by",
+              "entries",
               "created_at",
               "updated_at",
               "type"
@@ -13192,11 +13240,14 @@
               "mcp_server_id": {
                 "type": "string"
               },
-              "header_key": {
+              "created_by": {
                 "type": "string"
               },
-              "has_header_value": {
-                "type": "boolean"
+              "entries": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/McpAuthConfigParam"
+                }
               },
               "created_at": {
                 "type": "string",
@@ -13220,6 +13271,7 @@
               "id",
               "name",
               "mcp_server_id",
+              "created_by",
               "registration_type",
               "client_id",
               "authorization_endpoint",
@@ -13238,6 +13290,9 @@
                 "type": "string"
               },
               "mcp_server_id": {
+                "type": "string"
+              },
+              "created_by": {
                 "type": "string"
               },
               "registration_type": {
@@ -13302,6 +13357,13 @@
         ],
         "description": "Discriminated union response for any type of MCP auth config.\nThe JSON `\"type\"` field determines the variant: `\"header\"` or `\"oauth\"`."
       },
+      "McpAuthConfigType": {
+        "type": "string",
+        "enum": [
+          "header",
+          "oauth"
+        ]
+      },
       "McpAuthConfigsListResponse": {
         "type": "object",
         "description": "List wrapper for unified auth config responses.",
@@ -13316,6 +13378,55 @@
             }
           }
         }
+      },
+      "McpAuthParam": {
+        "type": "object",
+        "required": [
+          "id",
+          "param_type",
+          "param_key",
+          "has_value"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "param_type": {
+            "$ref": "#/components/schemas/McpAuthParamType"
+          },
+          "param_key": {
+            "type": "string"
+          },
+          "has_value": {
+            "type": "boolean"
+          }
+        }
+      },
+      "McpAuthParamInput": {
+        "type": "object",
+        "required": [
+          "param_type",
+          "param_key",
+          "value"
+        ],
+        "properties": {
+          "param_type": {
+            "$ref": "#/components/schemas/McpAuthParamType"
+          },
+          "param_key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "McpAuthParamType": {
+        "type": "string",
+        "enum": [
+          "header",
+          "query"
+        ]
       },
       "McpAuthType": {
         "type": "string",
@@ -13416,12 +13527,29 @@
             "$ref": "#/components/schemas/McpAuthType",
             "description": "Authentication type"
           },
-          "auth_uuid": {
+          "auth_config_id": {
             "type": [
               "string",
               "null"
             ],
             "description": "Reference to auth config"
+          },
+          "credentials": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/McpAuthParamInput"
+            },
+            "description": "Instance-level auth params (values for the auth config's key definitions)"
+          },
+          "oauth_token_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "OAuth token ID to link to this MCP instance (set after OAuth flow)"
           }
         }
       },
@@ -14105,6 +14233,12 @@
           "state"
         ],
         "properties": {
+          "mcp_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "code": {
             "type": "string"
           },
@@ -14120,8 +14254,7 @@
         "type": "object",
         "required": [
           "id",
-          "mcp_oauth_config_id",
-          "has_access_token",
+          "auth_config_id",
           "has_refresh_token",
           "user_id",
           "created_at",
@@ -14131,7 +14264,13 @@
           "id": {
             "type": "string"
           },
-          "mcp_oauth_config_id": {
+          "mcp_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "auth_config_id": {
             "type": "string"
           },
           "scopes_granted": {
@@ -14146,9 +14285,6 @@
               "null"
             ],
             "format": "int64"
-          },
-          "has_access_token": {
-            "type": "boolean"
           },
           "has_refresh_token": {
             "type": "boolean"

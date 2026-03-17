@@ -11,7 +11,6 @@ import {
   mockFetchMcpTools,
   mockFetchMcpToolsError,
   mockGetMcp,
-  mockGetOAuthToken,
   mockListAuthConfigs,
   mockListMcpServers,
   mockMcp,
@@ -308,7 +307,9 @@ describe('NewMcpPage - Auth config dropdown', () => {
     await waitFor(() => {
       expect(screen.getByTestId(`auth-config-option-${mockAuthConfigHeader.id}`)).toBeInTheDocument();
     });
-    expect(screen.getByTestId(`auth-config-option-${mockAuthConfigHeader.id}`)).toHaveTextContent('[Header]');
+    expect(screen.getByTestId(`auth-config-option-${mockAuthConfigHeader.id}`)).toHaveTextContent(
+      '[Header / Query Params]'
+    );
   });
 
   it('shows OAuth configs from server in dropdown with badge', async () => {
@@ -332,7 +333,7 @@ describe('NewMcpPage - Auth config dropdown', () => {
     expect(screen.getByTestId(`auth-config-option-${mockAuthConfigOAuthPreReg.id}`)).toHaveTextContent('[OAuth]');
   });
 
-  it('shows read-only header summary when header config selected', async () => {
+  it('shows credential input fields when header config selected', async () => {
     server.use(mockListAuthConfigs({ auth_configs: [mockAuthConfigHeader] }));
 
     const user = userEvent.setup();
@@ -348,11 +349,11 @@ describe('NewMcpPage - Auth config dropdown', () => {
 
     // Auto-select should pick the first config (header)
     await waitFor(() => {
-      expect(screen.getByTestId('auth-config-header-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('auth-config-header-credentials')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('auth-config-header-summary')).toHaveTextContent('Authorization');
-    expect(screen.getByTestId('auth-config-header-summary')).toHaveTextContent('Configured');
+    // Should have input field for Authorization key
+    expect(screen.getByTestId('credential-input-Authorization')).toBeInTheDocument();
   });
 
   it('shows Connect button when OAuth config selected', async () => {
@@ -441,7 +442,7 @@ describe('NewMcpPage - Auth config dropdown', () => {
     expect(screen.queryByTestId('auth-config-option-new')).not.toBeInTheDocument();
   });
 
-  it('submits with header auth_type and auth_uuid when header config selected', async () => {
+  it('submits with header auth_type and auth_config_id when header config selected', async () => {
     const createCalled = vi.fn();
     server.use(
       mockListAuthConfigs({ auth_configs: [mockAuthConfigHeader] }),
@@ -481,7 +482,7 @@ describe('NewMcpPage - Auth config dropdown', () => {
 
     const body = createCalled.mock.calls[0][0];
     expect(body.auth_type).toBe('header');
-    expect(body.auth_uuid).toBe(mockAuthConfigHeader.id);
+    expect(body.auth_config_id).toBe(mockAuthConfigHeader.id);
   });
 
   it('shows new auth config redirect section when admin selects new', async () => {
@@ -553,7 +554,7 @@ describe('NewMcpPage - Edit with header auth', () => {
     );
   });
 
-  it('shows header config selected in dropdown and summary', async () => {
+  it('shows header config selected in dropdown with credential inputs', async () => {
     await act(async () => {
       render(<NewMcpPage />, { wrapper: createWrapper() });
     });
@@ -567,9 +568,9 @@ describe('NewMcpPage - Edit with header auth', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('auth-config-header-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('auth-config-header-credentials')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('auth-config-header-summary')).toHaveTextContent('Authorization');
+    expect(screen.getByTestId('credential-input-Authorization')).toBeInTheDocument();
   });
 });
 
@@ -580,7 +581,6 @@ describe('NewMcpPage - Edit with OAuth auth', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] }),
-      mockGetOAuthToken(mockOAuthToken),
       mockFetchMcpTools([mockMcpTool]),
       mockUpdateMcp(mockMcpWithOAuth),
       mockOAuthLogin(),
@@ -625,11 +625,6 @@ describe('NewMcpPage - Edit with DCR OAuth auth', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthDynamic] }),
-      mockGetOAuthToken({
-        ...mockOAuthToken,
-        id: 'oauth-token-uuid-2',
-        mcp_oauth_config_id: mockAuthConfigOAuthDynamic.id,
-      }),
       mockFetchMcpTools([mockMcpTool]),
       mockUpdateMcp(mockMcpWithDcr),
       mockDeleteOAuthToken(),
@@ -729,7 +724,6 @@ describe('NewMcpPage - Session data takes priority over API data in edit mode', 
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] }),
-      mockGetOAuthToken(mockOAuthToken),
       mockFetchMcpTools([mockMcpTool]),
       mockGetMcp(mockMcpWithOAuth)
     );
@@ -895,25 +889,15 @@ describe('NewMcpPage - OAuth Connect flow', () => {
 });
 
 describe('NewMcpPage - Edit with DCR disconnect and update', () => {
-  it('update after disconnect deletes token and submits without auth_uuid', async () => {
+  it('update after disconnect submits without auth_config_id', async () => {
     searchParamsMap = { id: 'mcp-uuid-4' };
-    const deleteTokenCalled = vi.fn();
     const updateCalled = vi.fn();
 
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthDynamic] }),
-      mockGetOAuthToken({
-        ...mockOAuthToken,
-        id: 'oauth-token-uuid-2',
-        mcp_oauth_config_id: mockAuthConfigOAuthDynamic.id,
-      }),
       mockFetchMcpTools([mockMcpTool]),
-      http.delete(`${BODHI_API_BASE}/mcps/oauth-tokens/:tokenId`, () => {
-        deleteTokenCalled();
-        return new HttpResponse(null, { status: 204 });
-      }),
       mockGetMcp(mockMcpWithDcr),
       http.put(`${BODHI_API_BASE}/mcps/:id`, async ({ request }) => {
         const body = await request.json();
@@ -940,14 +924,10 @@ describe('NewMcpPage - Edit with DCR disconnect and update', () => {
     await user.click(screen.getByTestId('mcp-update-button'));
 
     await waitFor(() => {
-      expect(deleteTokenCalled).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
       expect(updateCalled).toHaveBeenCalled();
     });
 
     const updateBody = updateCalled.mock.calls[0][0];
-    expect(updateBody).not.toHaveProperty('auth_uuid');
+    expect(updateBody).not.toHaveProperty('auth_config_id');
   });
 });

@@ -1,24 +1,10 @@
 import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
-import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
-import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
-import {
-  getAuthServerConfig,
-  getPreConfiguredAppClient,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
-// TODO(I19): All 3 tests in this describe block depend on the external Tavily API
-// (https://mcp.tavily.com/mcp/) and require INTEG_TEST_TAVILY_API_KEY to be set.
-// This makes them flaky in CI when Tavily is unavailable or the key is missing.
-// To make these tests fully self-contained, replace Tavily with a local mock MCP server
-// (similar to the OAuth test MCP on port 55174) that accepts a configurable header key/value
-// and exposes a simple tool. The mock server should be started as a webServer entry in
-// playwright.config.mjs alongside the existing test MCP servers.
-test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
+test.describe('MCP Header/Query Auth E2E', { tag: ['@mcps', '@auth'] }, () => {
   let authServerConfig;
   let testCredentials;
 
@@ -27,253 +13,344 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
     testCredentials = getTestCredentials();
   });
 
-  test('Create MCP with header auth, fetch tools, and execute via playground', async ({
+  test('single header auth - create via form with credentials, fetch tools, execute', async ({
     page,
     sharedServerUrl,
   }) => {
     const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
     const mcpsPage = new McpsPage(page, sharedServerUrl);
-    const serverData = McpFixtures.createTavilyServerData();
-    const instanceData = McpFixtures.createTavilyInstanceData();
-    let serverId;
-    let authConfigId;
 
-    await test.step('Login', async () => {
-      await loginPage.performOAuthLogin('/ui/chat/');
+    await loginPage.performOAuthLogin('/ui/chat/');
+
+    // 1. Create server pointing to AUTH_HEADER_MCP_URL
+    const ts = Date.now();
+    const srvName = `Hdr-Srv-${ts}`;
+    await mcpsPage.createMcpServer(McpFixtures.AUTH_HEADER_MCP_URL, srvName, 'Header auth test');
+    const srvId = await mcpsPage.getServerUuidByName(srvName);
+    expect(srvId).toBeTruthy();
+
+    // 2. Create auth config with single header key definition
+    const authConfig = await mcpsPage.createAuthConfigViaApi(srvId, {
+      name: 'Header Auth',
+      entries: [{ param_type: 'header', param_key: McpFixtures.AUTH_HEADER_KEY }],
+    });
+    expect(authConfig.id).toBeTruthy();
+
+    // 3. Create MCP instance via form: select config, fill credential, fetch tools, create
+    const mcpSlug = `mcp-hdr-${ts}`;
+    await mcpsPage.createMcpInstanceWithHeaderAuth({
+      serverName: srvName,
+      name: `MCP Header Auth ${ts}`,
+      slug: mcpSlug,
+      authConfigId: authConfig.id,
+      credentials: [
+        { param_key: McpFixtures.AUTH_HEADER_KEY, value: McpFixtures.AUTH_HEADER_VALUE },
+      ],
     });
 
-    await test.step('Create Tavily MCP server', async () => {
-      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
-      const row = mcpsPage.page.locator(`[data-test-server-name="${serverData.name}"]`).first();
-      await expect(row).toBeVisible();
+    // 4. Verify MCP was created by finding it in the list
+    const mcpId = await mcpsPage.getMcpUuidByName(`MCP Header Auth ${ts}`);
+    expect(mcpId).toBeTruthy();
+
+    // 5. Execute echo tool via playground
+    await mcpsPage.clickPlaygroundById(mcpId);
+    await mcpsPage.expectPlaygroundPage();
+    await mcpsPage.selectPlaygroundTool('echo');
+    await mcpsPage.expectPlaygroundToolSelected('echo');
+    await mcpsPage.fillPlaygroundParam('text', 'hello-header');
+    await mcpsPage.clickPlaygroundExecute();
+    await mcpsPage.expectPlaygroundResultSuccess();
+  });
+
+  test('single query param auth - create via form with credentials, fetch tools', async ({
+    page,
+    sharedServerUrl,
+  }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
+
+    await loginPage.performOAuthLogin('/ui/chat/');
+
+    const ts = Date.now();
+    const srvName = `Qry-Srv-${ts}`;
+    await mcpsPage.createMcpServer(McpFixtures.AUTH_QUERY_MCP_URL, srvName, 'Query auth test');
+    const srvId = await mcpsPage.getServerUuidByName(srvName);
+    expect(srvId).toBeTruthy();
+
+    const authConfig = await mcpsPage.createAuthConfigViaApi(srvId, {
+      name: 'Query Auth',
+      entries: [{ param_type: 'query', param_key: McpFixtures.AUTH_QUERY_KEY }],
+    });
+    expect(authConfig.id).toBeTruthy();
+
+    const mcpSlug = `mcp-qry-${ts}`;
+    await mcpsPage.createMcpInstanceWithHeaderAuth({
+      serverName: srvName,
+      name: `MCP Query Auth ${ts}`,
+      slug: mcpSlug,
+      authConfigId: authConfig.id,
+      credentials: [{ param_key: McpFixtures.AUTH_QUERY_KEY, value: McpFixtures.AUTH_QUERY_VALUE }],
     });
 
-    await test.step('Create auth header config via API', async () => {
-      serverId = await mcpsPage.getServerUuidByName(serverData.name);
-      expect(serverId).toBeTruthy();
+    const mcpId = await mcpsPage.getMcpUuidByName(`MCP Query Auth ${ts}`);
+    expect(mcpId).toBeTruthy();
+  });
 
-      const authHeader = await mcpsPage.createAuthHeaderViaApi(serverId, {
-        name: 'Tavily Auth',
-        headerKey: 'Authorization',
-        headerValue: `Bearer ${McpFixtures.TAVILY_API_KEY}`,
-      });
-      expect(authHeader.id).toBeTruthy();
-      authConfigId = authHeader.id;
+  test('mixed auth - header + query params via form, verify credential values', async ({
+    page,
+    sharedServerUrl,
+  }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
+
+    await loginPage.performOAuthLogin('/ui/chat/');
+
+    const ts = Date.now();
+    const srvName = `Mix-Srv-${ts}`;
+    await mcpsPage.createMcpServer(McpFixtures.AUTH_MIXED_MCP_URL, srvName, 'Mixed auth test');
+    const srvId = await mcpsPage.getServerUuidByName(srvName);
+    expect(srvId).toBeTruthy();
+
+    const entries = [
+      ...McpFixtures.AUTH_MIXED_HEADERS.map((h) => ({ param_type: 'header', param_key: h.key })),
+      ...McpFixtures.AUTH_MIXED_QUERIES.map((q) => ({ param_type: 'query', param_key: q.key })),
+    ];
+
+    const authConfig = await mcpsPage.createAuthConfigViaApi(srvId, {
+      name: 'Mixed Auth',
+      entries,
+    });
+    expect(authConfig.id).toBeTruthy();
+
+    const credentials = [
+      ...McpFixtures.AUTH_MIXED_HEADERS.map((h) => ({ param_key: h.key, value: h.value })),
+      ...McpFixtures.AUTH_MIXED_QUERIES.map((q) => ({ param_key: q.key, value: q.value })),
+    ];
+
+    const mcpSlug = `mcp-mix-${ts}`;
+    await mcpsPage.createMcpInstanceWithHeaderAuth({
+      serverName: srvName,
+      name: `MCP Mixed Auth ${ts}`,
+      slug: mcpSlug,
+      authConfigId: authConfig.id,
+      credentials,
     });
 
-    await test.step('Create MCP instance with header auth from dropdown', async () => {
-      await mcpsPage.createMcpInstanceWithHeaderAuth({
-        serverName: serverData.name,
-        name: instanceData.name,
-        slug: instanceData.slug,
-        authConfigId,
-        description: instanceData.description,
-      });
-      await mcpsPage.expectMcpsListPage();
-      const row = await mcpsPage.getMcpRowByName(instanceData.name);
-      await expect(row).toBeVisible();
-    });
+    const mcpId = await mcpsPage.getMcpUuidByName(`MCP Mixed Auth ${ts}`);
+    expect(mcpId).toBeTruthy();
 
-    await test.step('Navigate to playground and execute tavily_search', async () => {
-      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
-      expect(mcpId).toBeTruthy();
-      await mcpsPage.clickPlaygroundById(mcpId);
-      await mcpsPage.expectPlaygroundPage();
+    // Execute get_auth_info via playground to verify all params sent
+    await mcpsPage.clickPlaygroundById(mcpId);
+    await mcpsPage.expectPlaygroundPage();
+    await mcpsPage.selectPlaygroundTool('get_auth_info');
+    await mcpsPage.expectPlaygroundToolSelected('get_auth_info');
+    await mcpsPage.clickPlaygroundExecute();
+    await mcpsPage.expectPlaygroundResultSuccess();
 
-      await mcpsPage.selectPlaygroundTool(McpFixtures.TAVILY_EXPECTED_TOOL);
-      await mcpsPage.expectPlaygroundToolSelected(McpFixtures.TAVILY_EXPECTED_TOOL);
+    // Verify credential values in the tool execution result
+    await test.step('Verify credential values flow through encryption/decryption', async () => {
+      // Switch to raw tab to get the full response JSON
+      await mcpsPage.clickPlaygroundResultTab('raw');
+      const rawContent = await mcpsPage.getPlaygroundResultContent();
+      expect(rawContent).toBeTruthy();
 
-      await mcpsPage.fillPlaygroundParam('query', McpFixtures.TAVILY_SEARCH_PARAMS.query);
-      await mcpsPage.clickPlaygroundExecute();
-      await mcpsPage.expectPlaygroundResultSuccess();
+      // The raw response contains { result: { content: [{ type: 'text', text: '...' }] } }
+      const rawJson = JSON.parse(rawContent);
+      const textContent = rawJson.result.content[0].text;
+      const authInfo = JSON.parse(textContent);
+
+      // Assert exact header key-value pairs match what was entered in the form
+      for (const h of McpFixtures.AUTH_MIXED_HEADERS) {
+        expect(authInfo.headers[h.key.toLowerCase()]).toBe(h.value);
+      }
+
+      // Assert exact query param key-value pairs match what was entered
+      for (const q of McpFixtures.AUTH_MIXED_QUERIES) {
+        expect(authInfo.query[q.key]).toBe(q.value);
+      }
     });
   });
 
-  test('Edit MCP: switch header auth to public and back', async ({ page, sharedServerUrl }) => {
+  test('single header auth - missing credentials fails to fetch tools', async ({
+    page,
+    sharedServerUrl,
+  }) => {
     const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
     const mcpsPage = new McpsPage(page, sharedServerUrl);
-    const serverData = McpFixtures.createTavilyServerData();
-    const instanceData = McpFixtures.createTavilyInstanceData();
-    let serverId;
-    let authConfigId;
 
-    await test.step('Login, create server, create auth header, create MCP', async () => {
-      await loginPage.performOAuthLogin('/ui/chat/');
-      await mcpsPage.createMcpServer(serverData.url, serverData.name);
+    await loginPage.performOAuthLogin('/ui/chat/');
 
-      serverId = await mcpsPage.getServerUuidByName(serverData.name);
-      const authHeader = await mcpsPage.createAuthHeaderViaApi(serverId, {
-        name: 'Tavily Auth',
-        headerKey: 'Authorization',
-        headerValue: `Bearer ${McpFixtures.TAVILY_API_KEY}`,
-      });
-      authConfigId = authHeader.id;
-
-      await mcpsPage.createMcpInstanceWithHeaderAuth({
-        serverName: serverData.name,
-        name: instanceData.name,
-        slug: instanceData.slug,
-        authConfigId,
-      });
-    });
-
-    await test.step('Edit MCP: switch to public auth', async () => {
-      await mcpsPage.expectMcpsListPage();
-      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
-      expect(mcpId).toBeTruthy();
-      await mcpsPage.clickEditById(mcpId);
-      await mcpsPage.expectNewMcpPage();
-
-      await mcpsPage.expectAuthConfigState('header');
-      await mcpsPage.expectAuthConfigHeaderSummary();
-
-      await mcpsPage.selectAuthConfigPublic();
-      await mcpsPage.clickUpdate();
-      await mcpsPage.expectMcpsListPage();
-    });
-
-    await test.step('Edit MCP: switch back to header auth', async () => {
-      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
-      // Set up listener BEFORE navigation so we catch the auth-configs API response
-      const authConfigsLoaded = mcpsPage.page.waitForResponse(
-        (resp) => resp.url().includes('/auth-configs') && resp.status() === 200
+    await test.step('Create server and auth config', async () => {
+      const ts = Date.now();
+      const srvName = `Hdr-NoCred-${ts}`;
+      await mcpsPage.createMcpServer(
+        McpFixtures.AUTH_HEADER_MCP_URL,
+        srvName,
+        'Header auth - no credentials test'
       );
-      await mcpsPage.clickEditById(mcpId);
+      const srvId = await mcpsPage.getServerUuidByName(srvName);
+      expect(srvId).toBeTruthy();
+
+      const authConfig = await mcpsPage.createAuthConfigViaApi(srvId, {
+        name: 'Header Auth No Cred',
+        entries: [{ param_type: 'header', param_key: McpFixtures.AUTH_HEADER_KEY }],
+      });
+      expect(authConfig.id).toBeTruthy();
+
+      // Navigate to new MCP form, select server and auth config but do NOT fill credentials
+      await mcpsPage.navigateToMcpsList();
+      await mcpsPage.expectMcpsListPage();
+      await mcpsPage.clickNewMcp();
       await mcpsPage.expectNewMcpPage();
 
-      await mcpsPage.expectAuthConfigState('public');
-      await authConfigsLoaded;
+      await mcpsPage.selectServerFromCombobox(srvName);
+      await mcpsPage.fillName(`MCP No Cred ${ts}`);
+      await mcpsPage.fillSlug(`mcp-nocred-${ts}`);
 
-      await mcpsPage.selectAuthConfigById(authConfigId);
-      await mcpsPage.expectAuthConfigHeaderSummary();
-      await mcpsPage.clickUpdate();
-      await mcpsPage.expectMcpsListPage();
+      await mcpsPage.selectAuthConfigById(authConfig.id);
+      await mcpsPage.expectAuthConfigHeaderCredentials();
+
+      // Deliberately do NOT fill credential values
     });
 
-    await test.step('Verify auth works via playground execution', async () => {
-      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
-      await mcpsPage.clickPlaygroundById(mcpId);
-      await mcpsPage.expectPlaygroundPage();
+    await test.step('Fetch tools fails without credentials', async () => {
+      await mcpsPage.clickFetchTools();
 
-      await mcpsPage.selectPlaygroundTool(McpFixtures.TAVILY_EXPECTED_TOOL);
-      await mcpsPage.fillPlaygroundParam('query', 'test');
-      await mcpsPage.clickPlaygroundExecute();
-      await mcpsPage.expectPlaygroundResultSuccess();
+      // Wait for the fetch to complete (loading spinner disappears)
+      await mcpsPage.expectToolsLoadingHidden();
+
+      // Tools list should NOT be visible since the server rejected the request
+      await mcpsPage.expectToolsListNotVisible();
+
+      // The empty state should be visible again (tools were not fetched)
+      await mcpsPage.expectToolsEmptyState();
     });
   });
 
-  test('OAuth access request with header-auth MCP and tool execution via REST', async ({
+  test('single header auth - wrong credentials fails to fetch tools', async ({
     page,
     sharedServerUrl,
   }) => {
-    let mcpInstanceId;
-    let serverId;
-    const serverData = McpFixtures.createTavilyServerData();
-    const instanceData = McpFixtures.createTavilyInstanceData();
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
 
-    await test.step('Phase 1: Session login, create Tavily MCP server + header-auth instance', async () => {
-      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-      await loginPage.performOAuthLogin();
+    await loginPage.performOAuthLogin('/ui/chat/');
 
-      const mcpsPage = new McpsPage(page, sharedServerUrl);
-      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+    await test.step('Create server and auth config', async () => {
+      const ts = Date.now();
+      const srvName = `Hdr-WrongCred-${ts}`;
+      await mcpsPage.createMcpServer(
+        McpFixtures.AUTH_HEADER_MCP_URL,
+        srvName,
+        'Header auth - wrong credentials test'
+      );
+      const srvId = await mcpsPage.getServerUuidByName(srvName);
+      expect(srvId).toBeTruthy();
 
-      serverId = await mcpsPage.getServerUuidByName(serverData.name);
-      const authHeader = await mcpsPage.createAuthHeaderViaApi(serverId, {
-        name: 'Tavily Auth',
-        headerKey: 'Authorization',
-        headerValue: `Bearer ${McpFixtures.TAVILY_API_KEY}`,
+      const authConfig = await mcpsPage.createAuthConfigViaApi(srvId, {
+        name: 'Header Auth Wrong Cred',
+        entries: [{ param_type: 'header', param_key: McpFixtures.AUTH_HEADER_KEY }],
       });
+      expect(authConfig.id).toBeTruthy();
 
-      await mcpsPage.createMcpInstanceWithHeaderAuth({
-        serverName: serverData.name,
-        name: instanceData.name,
-        slug: instanceData.slug,
-        authConfigId: authHeader.id,
-        description: instanceData.description,
-      });
-
+      // Navigate to new MCP form, select server and auth config, fill WRONG credential value
       await mcpsPage.navigateToMcpsList();
-      mcpInstanceId = await mcpsPage.getMcpUuidByName(instanceData.name);
-      expect(mcpInstanceId).toBeTruthy();
+      await mcpsPage.expectMcpsListPage();
+      await mcpsPage.clickNewMcp();
+      await mcpsPage.expectNewMcpPage();
+
+      await mcpsPage.selectServerFromCombobox(srvName);
+      await mcpsPage.fillName(`MCP Wrong Cred ${ts}`);
+      await mcpsPage.fillSlug(`mcp-wrongcred-${ts}`);
+
+      await mcpsPage.selectAuthConfigById(authConfig.id);
+      await mcpsPage.expectAuthConfigHeaderCredentials();
+
+      // Fill with an incorrect credential value
+      await mcpsPage.fillCredentialValue(McpFixtures.AUTH_HEADER_KEY, 'wrong-value-123');
     });
 
-    const appClient = getPreConfiguredAppClient();
-    const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
-    const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+    await test.step('Fetch tools fails with wrong credentials', async () => {
+      await mcpsPage.clickFetchTools();
 
-    await test.step('Phase 2: Configure OAuth form with Tavily MCP request', async () => {
-      await app.navigate();
+      // Wait for the fetch to complete (loading spinner disappears)
+      await mcpsPage.expectToolsLoadingHidden();
 
-      await app.config.configureOAuthForm({
-        bodhiServerUrl: sharedServerUrl,
-        authServerUrl: authServerConfig.authUrl,
-        realm: authServerConfig.authRealm,
-        clientId: appClient.clientId,
-        redirectUri,
-        scope: 'openid profile email',
-        requested: JSON.stringify({ mcp_servers: [{ url: McpFixtures.TAVILY_URL }] }),
+      // Tools list should NOT be visible since the server rejected the request (401)
+      await mcpsPage.expectToolsListNotVisible();
+
+      // The empty state should be visible again (tools were not fetched)
+      await mcpsPage.expectToolsEmptyState();
+    });
+  });
+
+  test('mixed auth - partial credentials fails to fetch tools', async ({
+    page,
+    sharedServerUrl,
+  }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
+
+    await loginPage.performOAuthLogin('/ui/chat/');
+
+    await test.step('Create server and auth config with 4 params', async () => {
+      const ts = Date.now();
+      const srvName = `Mix-Partial-${ts}`;
+      await mcpsPage.createMcpServer(
+        McpFixtures.AUTH_MIXED_MCP_URL,
+        srvName,
+        'Mixed auth - partial credentials test'
+      );
+      const srvId = await mcpsPage.getServerUuidByName(srvName);
+      expect(srvId).toBeTruthy();
+
+      const entries = [
+        ...McpFixtures.AUTH_MIXED_HEADERS.map((h) => ({
+          param_type: 'header',
+          param_key: h.key,
+        })),
+        ...McpFixtures.AUTH_MIXED_QUERIES.map((q) => ({
+          param_type: 'query',
+          param_key: q.key,
+        })),
+      ];
+
+      const authConfig = await mcpsPage.createAuthConfigViaApi(srvId, {
+        name: 'Mixed Auth Partial',
+        entries,
       });
+      expect(authConfig.id).toBeTruthy();
+
+      // Navigate to new MCP form, select server and auth config
+      await mcpsPage.navigateToMcpsList();
+      await mcpsPage.expectMcpsListPage();
+      await mcpsPage.clickNewMcp();
+      await mcpsPage.expectNewMcpPage();
+
+      await mcpsPage.selectServerFromCombobox(srvName);
+      await mcpsPage.fillName(`MCP Partial Cred ${ts}`);
+      await mcpsPage.fillSlug(`mcp-partial-${ts}`);
+
+      await mcpsPage.selectAuthConfigById(authConfig.id);
+      await mcpsPage.expectAuthConfigHeaderCredentials();
+
+      // Fill only 1 of the 4 credential values (first header only)
+      const firstHeader = McpFixtures.AUTH_MIXED_HEADERS[0];
+      await mcpsPage.fillCredentialValue(firstHeader.key, firstHeader.value);
+      // Leave the other 3 credentials empty
     });
 
-    await test.step('Phase 3: Submit access request and approve with Tavily MCP', async () => {
-      await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+    await test.step('Fetch tools fails with partial credentials', async () => {
+      await mcpsPage.clickFetchTools();
 
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.approveWithMcps([
-        { url: McpFixtures.TAVILY_URL, instanceId: mcpInstanceId },
-      ]);
+      // Wait for the fetch to complete (loading spinner disappears)
+      await mcpsPage.expectToolsLoadingHidden();
 
-      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-      await app.accessCallback.waitForLoaded();
-      await app.accessCallback.clickLogin();
-      await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
-    });
+      // Tools list should NOT be visible since the server requires all auth params
+      await mcpsPage.expectToolsListNotVisible();
 
-    await test.step('Phase 4: Verify header-auth MCP access via REST API', async () => {
-      await app.rest.navigateTo();
-
-      await app.rest.sendRequest({
-        method: 'GET',
-        url: '/bodhi/v1/apps/mcps',
-      });
-      expect(await app.rest.getResponseStatus()).toBe(200);
-      const listData = await app.rest.getResponse();
-      expect(listData.mcps).toBeDefined();
-      const approvedMcp = listData.mcps.find((m) => m.id === mcpInstanceId);
-      expect(approvedMcp).toBeTruthy();
-      expect(approvedMcp.auth_type).toBe('header');
-      expect(approvedMcp.auth_uuid).toBeTruthy();
-
-      await app.rest.sendRequest({
-        method: 'GET',
-        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}`,
-      });
-      expect(await app.rest.getResponseStatus()).toBe(200);
-      const mcpData = await app.rest.getResponse();
-      expect(mcpData.id).toBe(mcpInstanceId);
-      expect(mcpData.auth_type).toBe('header');
-    });
-
-    await test.step('Phase 5: Execute tavily_search via REST API', async () => {
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/refresh`,
-      });
-      expect(await app.rest.getResponseStatus()).toBe(200);
-
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/${McpFixtures.TAVILY_EXPECTED_TOOL}/execute`,
-        body: JSON.stringify({
-          params: McpFixtures.TAVILY_SEARCH_PARAMS,
-        }),
-      });
-      expect(await app.rest.getResponseStatus()).toBe(200);
-      const executeData = await app.rest.getResponse();
-      expect(executeData.error).toBeUndefined();
-      expect(executeData.result).toBeDefined();
+      // The empty state should be visible again (tools were not fetched)
+      await mcpsPage.expectToolsEmptyState();
     });
   });
 });

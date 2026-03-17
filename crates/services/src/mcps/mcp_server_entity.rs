@@ -21,10 +21,8 @@ pub struct Model {
 pub enum Relation {
   #[sea_orm(has_many = "super::mcp_entity::Entity")]
   Mcp,
-  #[sea_orm(has_many = "super::mcp_auth_header_entity::Entity")]
-  McpAuthHeader,
-  #[sea_orm(has_many = "super::mcp_oauth_config_entity::Entity")]
-  McpOAuthConfig,
+  #[sea_orm(has_many = "super::mcp_auth_config_entity::Entity")]
+  McpAuthConfig,
 }
 
 impl Related<super::mcp_entity::Entity> for Entity {
@@ -33,15 +31,9 @@ impl Related<super::mcp_entity::Entity> for Entity {
   }
 }
 
-impl Related<super::mcp_auth_header_entity::Entity> for Entity {
+impl Related<super::mcp_auth_config_entity::Entity> for Entity {
   fn to() -> RelationDef {
-    Relation::McpAuthHeader.def()
-  }
-}
-
-impl Related<super::mcp_oauth_config_entity::Entity> for Entity {
-  fn to() -> RelationDef {
-    Relation::McpOAuthConfig.def()
+    Relation::McpAuthConfig.def()
   }
 }
 

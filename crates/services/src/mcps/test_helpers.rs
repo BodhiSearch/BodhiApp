@@ -1,6 +1,9 @@
 //! Shared test helper factories for MCP repository tests.
 use crate::db::encryption::encrypt_api_key;
-use crate::mcps::{McpAuthHeaderEntity, McpAuthType, McpEntity, McpServerEntity};
+use crate::mcps::{
+  McpAuthConfigEntity, McpAuthConfigParamEntity, McpAuthParamEntity, McpAuthType, McpEntity,
+  McpServerEntity,
+};
 use crate::test_utils::TEST_TENANT_ID;
 use chrono::DateTime;
 use chrono::Utc;
@@ -41,28 +44,66 @@ pub(crate) fn make_mcp(
     tools_cache: None,
     tools_filter: None,
     auth_type: McpAuthType::Public,
-    auth_uuid: None,
+    auth_config_id: None,
     created_at: now,
     updated_at: now,
   }
 }
 
-pub(crate) fn make_auth_header_row(
+pub(crate) fn make_auth_config_row(
   id: &str,
   server_id: &str,
+  config_type: &str,
   now: DateTime<Utc>,
-) -> McpAuthHeaderEntity {
-  let (encrypted, salt, nonce) =
-    encrypt_api_key(ENCRYPTION_KEY, "Bearer sk-secret-token-123").expect("encryption failed");
-  McpAuthHeaderEntity {
+) -> McpAuthConfigEntity {
+  McpAuthConfigEntity {
     id: id.to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
-    name: "Header".to_string(),
     mcp_server_id: server_id.to_string(),
-    header_key: "Authorization".to_string(),
-    encrypted_header_value: encrypted,
-    header_value_salt: salt,
-    header_value_nonce: nonce,
+    config_type: config_type.to_string(),
+    name: format!("Config {}", id),
+    created_by: "admin".to_string(),
+    created_at: now,
+    updated_at: now,
+  }
+}
+
+pub(crate) fn make_auth_config_param_row(
+  id: &str,
+  auth_config_id: &str,
+  param_type: &str,
+  param_key: &str,
+  now: DateTime<Utc>,
+) -> McpAuthConfigParamEntity {
+  McpAuthConfigParamEntity {
+    id: id.to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    auth_config_id: auth_config_id.to_string(),
+    param_type: param_type.to_string(),
+    param_key: param_key.to_string(),
+    created_at: now,
+    updated_at: now,
+  }
+}
+
+pub(crate) fn make_auth_param_row(
+  id: &str,
+  mcp_id: &str,
+  param_type: &str,
+  param_key: &str,
+  value: &str,
+  now: DateTime<Utc>,
+) -> McpAuthParamEntity {
+  let (encrypted, salt, nonce) = encrypt_api_key(ENCRYPTION_KEY, value).expect("encryption failed");
+  McpAuthParamEntity {
+    id: id.to_string(),
+    tenant_id: TEST_TENANT_ID.to_string(),
+    mcp_id: mcp_id.to_string(),
+    param_type: param_type.to_string(),
+    param_key: param_key.to_string(),
+    encrypted_value: encrypted,
+    value_salt: salt,
+    value_nonce: nonce,
     created_at: now,
     updated_at: now,
   }

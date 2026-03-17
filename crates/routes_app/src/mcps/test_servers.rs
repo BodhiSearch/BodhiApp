@@ -161,18 +161,22 @@ async fn test_create_mcp_server_with_header_auth_config() -> anyhow::Result<()> 
 
   mock
     .expect_create_auth_config()
-    .withf(|_, server_id, request| {
+    .withf(|_, _created_by, server_id, request| {
       server_id == "server-uuid-1"
-        && matches!(request, CreateMcpAuthConfigRequest::Header { name, header_key, .. } if name == "My Header" && header_key == "Authorization")
+        && matches!(request, CreateMcpAuthConfigRequest::Header { name, entries, .. } if name == "My Header" && entries.len() == 1 && entries[0].param_key == "Authorization")
     })
     .times(1)
-    .returning(|_, _, _| {
+    .returning(|_, _, _, _| {
       Ok(McpAuthConfigResponse::Header {
         id: "auth-config-uuid-1".to_string(),
         name: "My Header".to_string(),
         mcp_server_id: "server-uuid-1".to_string(),
-        header_key: "Authorization".to_string(),
-        has_header_value: true,
+        created_by: "admin-user".to_string(),
+        entries: vec![services::McpAuthConfigParam {
+          id: "param-1".to_string(),
+          param_type: services::McpAuthParamType::Header,
+          param_key: "Authorization".to_string(),
+        }],
         created_at: fixed_dt(),
         updated_at: fixed_dt(),
       })
@@ -191,8 +195,9 @@ async fn test_create_mcp_server_with_header_auth_config() -> anyhow::Result<()> 
     "auth_config": {
       "type": "header",
       "name": "My Header",
-      "header_key": "Authorization",
-      "header_value": "Bearer token123"
+      "entries": [
+        { "param_type": "header", "param_key": "Authorization" }
+      ]
     }
   }))?;
 
@@ -215,14 +220,12 @@ async fn test_create_mcp_server_with_header_auth_config() -> anyhow::Result<()> 
   assert!(body.auth_config.is_some());
   match body.auth_config.unwrap() {
     McpAuthConfigResponse::Header {
-      id,
-      name,
-      header_key,
-      ..
+      id, name, entries, ..
     } => {
       assert_eq!("auth-config-uuid-1", id);
       assert_eq!("My Header", name);
-      assert_eq!("Authorization", header_key);
+      assert_eq!(1, entries.len());
+      assert_eq!("Authorization", entries[0].param_key);
     }
     _ => panic!("expected Header auth config"),
   }
@@ -244,11 +247,12 @@ async fn test_create_mcp_server_with_oauth_prereg_auth_config() -> anyhow::Resul
   mock
     .expect_create_auth_config()
     .times(1)
-    .returning(|_, _, _| {
+    .returning(|_, _, _, _| {
       Ok(McpAuthConfigResponse::Oauth {
         id: "oauth-config-uuid-1".to_string(),
         name: "My OAuth".to_string(),
         mcp_server_id: "server-uuid-1".to_string(),
+        created_by: "admin-user".to_string(),
         registration_type: RegistrationType::PreRegistered,
         client_id: "client-123".to_string(),
         authorization_endpoint: "https://auth.example.com/authorize".to_string(),

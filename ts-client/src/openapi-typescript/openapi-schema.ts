@@ -2535,8 +2535,7 @@ export interface components {
          *     The JSON `"type"` field determines the variant: `"header"` or `"oauth"`. */
         CreateMcpAuthConfigRequest: {
             name: string;
-            header_key: string;
-            header_value: string;
+            entries: components["schemas"]["McpAuthConfigParamInput"][];
             /** @enum {string} */
             type: "header";
         } | {
@@ -2718,7 +2717,9 @@ export interface components {
         FetchMcpToolsRequest: {
             mcp_server_id: string;
             auth?: null | components["schemas"]["McpAuth"];
-            auth_uuid?: string | null;
+            credentials?: components["schemas"]["McpAuthParamInput"][] | null;
+            auth_config_id?: string | null;
+            oauth_token_id?: string | null;
         };
         /**
          * @description Request to fetch available models from provider
@@ -2888,8 +2889,8 @@ export interface components {
             /** @description Whitelisted tool names (empty = block all) */
             tools_filter?: string[] | null;
             auth_type: components["schemas"]["McpAuthType"];
-            /** @description Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id) */
-            auth_uuid?: string | null;
+            /** @description Reference to the auth config (mcp_auth_configs.id) */
+            auth_config_id?: string | null;
             /**
              * Format: date-time
              * @description When this instance was created
@@ -2917,14 +2918,23 @@ export interface components {
             /** @enum {string} */
             type: "header";
         };
+        McpAuthConfigParam: {
+            id: string;
+            param_type: components["schemas"]["McpAuthParamType"];
+            param_key: string;
+        };
+        McpAuthConfigParamInput: {
+            param_type: components["schemas"]["McpAuthParamType"];
+            param_key: string;
+        };
         /** @description Discriminated union response for any type of MCP auth config.
          *     The JSON `"type"` field determines the variant: `"header"` or `"oauth"`. */
         McpAuthConfigResponse: {
             id: string;
             name: string;
             mcp_server_id: string;
-            header_key: string;
-            has_header_value: boolean;
+            created_by: string;
+            entries: components["schemas"]["McpAuthConfigParam"][];
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -2935,6 +2945,7 @@ export interface components {
             id: string;
             name: string;
             mcp_server_id: string;
+            created_by: string;
             registration_type: components["schemas"]["RegistrationType"];
             client_id: string;
             authorization_endpoint: string;
@@ -2953,10 +2964,25 @@ export interface components {
             /** @enum {string} */
             type: "oauth";
         };
+        /** @enum {string} */
+        McpAuthConfigType: "header" | "oauth";
         /** @description List wrapper for unified auth config responses. */
         McpAuthConfigsListResponse: {
             auth_configs: components["schemas"]["McpAuthConfigResponse"][];
         };
+        McpAuthParam: {
+            id: string;
+            param_type: components["schemas"]["McpAuthParamType"];
+            param_key: string;
+            has_value: boolean;
+        };
+        McpAuthParamInput: {
+            param_type: components["schemas"]["McpAuthParamType"];
+            param_key: string;
+            value: string;
+        };
+        /** @enum {string} */
+        McpAuthParamType: "header" | "query";
         /** @enum {string} */
         McpAuthType: "public" | "header" | "oauth";
         McpExecuteRequest: {
@@ -2988,7 +3014,11 @@ export interface components {
             /** @description Authentication type */
             auth_type?: components["schemas"]["McpAuthType"];
             /** @description Reference to auth config */
-            auth_uuid?: string | null;
+            auth_config_id?: string | null;
+            /** @description Instance-level auth params (values for the auth config's key definitions) */
+            credentials?: components["schemas"]["McpAuthParamInput"][] | null;
+            /** @description OAuth token ID to link to this MCP instance (set after OAuth flow) */
+            oauth_token_id?: string | null;
         };
         /** @description Admin-managed MCP server registry entry.
          *     Admins/managers register MCP server URLs that users can then create instances of. */
@@ -3199,17 +3229,18 @@ export interface components {
             authorization_url: string;
         };
         OAuthTokenExchangeRequest: {
+            mcp_id?: string | null;
             code: string;
             redirect_uri: string;
             state: string;
         };
         OAuthTokenResponse: {
             id: string;
-            mcp_oauth_config_id: string;
+            mcp_id?: string | null;
+            auth_config_id: string;
             scopes_granted?: string | null;
             /** Format: int64 */
             expires_at?: number | null;
-            has_access_token: boolean;
             has_refresh_token: boolean;
             user_id: string;
             created_at: string;

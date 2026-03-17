@@ -1,4 +1,4 @@
-use crate::mcps::{McpEntity, McpInstanceRepository, McpServerEntity, McpServerRepository};
+use crate::mcps::{McpEntity, McpRepository, McpServerEntity, McpServerRepository};
 use crate::test_utils::{sea_context, setup_env, TEST_TENANT_ID};
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;

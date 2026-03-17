@@ -12,7 +12,7 @@ export function authConfigTypeBadge(config: McpAuthConfigResponse): string {
 export function authConfigTypeLabel(type: string): string {
   switch (type) {
     case 'header':
-      return 'Header';
+      return 'Header / Query Params';
     case 'oauth':
       return 'OAuth';
     default:
@@ -30,6 +30,9 @@ export function authConfigBadgeVariant(config: McpAuthConfigResponse): 'default'
 }
 
 export function authConfigDetail(config: McpAuthConfigResponse): string {
-  if (config.type === 'header') return `Key: ${config.header_key}`;
+  if (config.type === 'header') {
+    const keys = config.entries.map((e) => `${e.param_type}:${e.param_key}`);
+    return keys.length > 0 ? `Keys: ${keys.join(', ')}` : 'No keys defined';
+  }
   return `${config.scopes || 'no scopes'}`;
 }

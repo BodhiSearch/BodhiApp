@@ -1,13 +1,11 @@
-use crate::mcps::{
-  McpAuthRepository, McpAuthType, McpEntity, McpInstanceRepository, McpServerRepository,
-};
+use crate::mcps::{McpAuthType, McpEntity, McpRepository, McpServerRepository};
 use crate::test_utils::{sea_context, setup_env};
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-use crate::mcps::test_helpers::{make_auth_header_row, make_mcp, make_server};
+use crate::mcps::test_helpers::{make_auth_config_row, make_mcp, make_server};
 
 // ============================================================================
 // MCP Instance Tests
@@ -125,6 +123,10 @@ async fn test_update_mcp(
   let mcp = make_mcp("m1", "s1", "my-mcp", "user-1", ctx.now);
   ctx.service.create_mcp("", &mcp).await?;
 
+  // Create an auth config that the updated MCP can reference
+  let auth_config = make_auth_config_row("auth-1", "s1", "header", ctx.now);
+  ctx.service.create_mcp_auth_config(&auth_config).await?;
+
   let updated_at = ctx.now + chrono::Duration::seconds(30);
   let updated = McpEntity {
     name: "Updated MCP".to_string(),
@@ -134,7 +136,7 @@ async fn test_update_mcp(
     tools_cache: Some("{\"tools\":[]}".to_string()),
     tools_filter: Some("[\"tool1\"]".to_string()),
     auth_type: McpAuthType::Header,
-    auth_uuid: Some("auth-1".to_string()),
+    auth_config_id: Some("auth-1".to_string()),
     updated_at,
     ..mcp
   };
@@ -253,14 +255,14 @@ async fn test_list_mcps_with_server_with_auth(
     .service
     .create_mcp_server("", &make_server("s1", "https://mcp.example.com", ctx.now))
     .await?;
-  ctx
-    .service
-    .create_mcp_auth_header(&make_auth_header_row("ah-1", "s1", ctx.now))
-    .await?;
+
+  // Create an auth config that the MCP can reference
+  let auth_config = make_auth_config_row("ac-1", "s1", "header", ctx.now);
+  ctx.service.create_mcp_auth_config(&auth_config).await?;
 
   let mcp = McpEntity {
     auth_type: McpAuthType::Header,
-    auth_uuid: Some("ah-1".to_string()),
+    auth_config_id: Some("ac-1".to_string()),
     ..make_mcp("m1", "s1", "mcp-with-auth", "user-1", ctx.now)
   };
   ctx.service.create_mcp("", &mcp).await?;
@@ -268,6 +270,6 @@ async fn test_list_mcps_with_server_with_auth(
   let results = ctx.service.list_mcps_with_server("", "user-1").await?;
   assert_eq!(1, results.len());
   assert_eq!(McpAuthType::Header, results[0].auth_type);
-  assert_eq!(Some("ah-1".to_string()), results[0].auth_uuid);
+  assert_eq!(Some("ac-1".to_string()), results[0].auth_config_id);
   Ok(())
 }

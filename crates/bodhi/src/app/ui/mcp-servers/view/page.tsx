@@ -33,6 +33,7 @@ import {
 } from '@/hooks/useMcps';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 import { AuthConfigForm } from '../components/AuthConfigForm';
+import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
 
 function ServerViewContent() {
   const searchParams = useSearchParams();
@@ -49,8 +50,7 @@ function ServerViewContent() {
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<'header' | 'oauth'>('header');
   const [formName, setFormName] = useState('');
-  const [formHeaderKey, setFormHeaderKey] = useState('');
-  const [formHeaderValue, setFormHeaderValue] = useState('');
+  const [formEntries, setFormEntries] = useState<McpAuthConfigParamInput[]>([{ param_type: 'header', param_key: '' }]);
   const [formRegistrationType, setFormRegistrationType] = useState<'pre_registered' | 'dynamic_registration'>(
     'pre_registered'
   );
@@ -93,8 +93,7 @@ function ServerViewContent() {
 
   const resetForm = () => {
     setFormName('');
-    setFormHeaderKey('');
-    setFormHeaderValue('');
+    setFormEntries([{ param_type: 'header', param_key: '' }]);
     setFormRegistrationType('pre_registered');
     setFormClientId('');
     setFormClientSecret('');
@@ -110,8 +109,7 @@ function ServerViewContent() {
         mcp_server_id: serverId,
         type: 'header',
         name: formName,
-        header_key: formHeaderKey,
-        header_value: formHeaderValue,
+        entries: formEntries.filter((e) => e.param_key.trim() !== ''),
       });
     } else if (formType === 'oauth' && formRegistrationType === 'dynamic_registration') {
       // Dynamic registration: call standalone DCR first
@@ -246,10 +244,8 @@ function ServerViewContent() {
                 name={formName}
                 onTypeChange={setFormType}
                 onNameChange={setFormName}
-                headerKey={formHeaderKey}
-                headerValue={formHeaderValue}
-                onHeaderKeyChange={setFormHeaderKey}
-                onHeaderValueChange={setFormHeaderValue}
+                entries={formEntries}
+                onEntriesChange={setFormEntries}
                 registrationType={formRegistrationType}
                 clientId={formClientId}
                 clientSecret={formClientSecret}

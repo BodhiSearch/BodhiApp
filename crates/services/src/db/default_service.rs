@@ -94,26 +94,33 @@ impl DbCore for DefaultDbService {
     let backend = self.db.get_database_backend();
     match backend {
       sea_orm::DatabaseBackend::Postgres => {
-        // Use TRUNCATE CASCADE for Postgres
+        // Use DO block to truncate only tables that exist (migration/reset timing mismatch safe)
         // Note: tenants table is NOT reset - it holds tenant (client credentials, status)
         sea_orm::ConnectionTrait::execute_unprepared(
           &self.db,
-          "TRUNCATE TABLE settings,
-             app_access_requests,
-             toolsets,
-             mcps,
-             mcp_oauth_tokens,
-             mcp_oauth_configs,
-             mcp_auth_headers,
-             mcp_servers,
-             app_toolset_configs,
-             user_aliases,
-             model_metadata,
-             api_model_aliases,
-             api_tokens,
-             user_access_requests,
-             download_requests
-           CASCADE",
+          "DO $$
+           DECLARE
+             _tables text[];
+             _existing text[];
+           BEGIN
+             _tables := ARRAY[
+               'settings', 'app_access_requests', 'toolsets',
+               'mcp_auth_params', 'mcp_oauth_tokens', 'mcp_oauth_config_details',
+               'mcp_auth_config_params', 'mcps', 'mcp_auth_configs', 'mcp_servers',
+               'app_toolset_configs', 'user_aliases', 'model_metadata',
+               'api_model_aliases', 'api_tokens', 'user_access_requests',
+               'download_requests'
+             ];
+             SELECT array_agg(t) INTO _existing
+               FROM unnest(_tables) AS t
+               WHERE EXISTS (
+                 SELECT 1 FROM information_schema.tables
+                 WHERE table_schema = 'public' AND table_name = t
+               );
+             IF _existing IS NOT NULL AND array_length(_existing, 1) > 0 THEN
+               EXECUTE 'TRUNCATE TABLE ' || array_to_string(_existing, ', ') || ' CASCADE';
+             END IF;
+           END $$;",
         )
         .await?;
         // Remove non-creator tenant memberships (preserves creator's membership)
@@ -128,26 +135,36 @@ impl DbCore for DefaultDbService {
         .await?;
       }
       _ => {
-        // Use DELETE FROM for SQLite
+        // Use DELETE FROM for SQLite (safe if table doesn't exist yet)
         // Note: tenants table is NOT reset - it holds tenant (client credentials, status)
+        let tables = [
+          "settings",
+          "app_access_requests",
+          "toolsets",
+          "mcp_auth_params",
+          "mcp_oauth_tokens",
+          "mcp_oauth_config_details",
+          "mcp_auth_config_params",
+          "mcps",
+          "mcp_auth_configs",
+          "mcp_servers",
+          "app_toolset_configs",
+          "user_aliases",
+          "model_metadata",
+          "api_model_aliases",
+          "api_tokens",
+          "user_access_requests",
+          "download_requests",
+        ];
+        for table in tables {
+          let sql = format!(
+            "DELETE FROM {table} WHERE EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='{table}')"
+          );
+          let _ = sea_orm::ConnectionTrait::execute_unprepared(&self.db, &sql).await;
+        }
         sea_orm::ConnectionTrait::execute_unprepared(
           &self.db,
-          "DELETE FROM settings;
-           DELETE FROM app_access_requests;
-           DELETE FROM toolsets;
-           DELETE FROM mcps;
-           DELETE FROM mcp_oauth_tokens;
-           DELETE FROM mcp_oauth_configs;
-           DELETE FROM mcp_auth_headers;
-           DELETE FROM mcp_servers;
-           DELETE FROM app_toolset_configs;
-           DELETE FROM user_aliases;
-           DELETE FROM model_metadata;
-           DELETE FROM api_model_aliases;
-           DELETE FROM api_tokens;
-           DELETE FROM user_access_requests;
-           DELETE FROM download_requests;
-           DELETE FROM tenants_users
+          "DELETE FROM tenants_users
              WHERE NOT EXISTS (
                SELECT 1 FROM tenants t
                WHERE t.id = tenants_users.tenant_id AND t.created_by = tenants_users.user_id

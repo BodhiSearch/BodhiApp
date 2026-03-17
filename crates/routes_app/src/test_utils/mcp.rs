@@ -81,7 +81,6 @@ pub async fn create_header_auth_config_in_db(
   user_cookie: &str,
   server_id: &str,
   header_key: &str,
-  header_value: &str,
 ) -> anyhow::Result<String> {
   use axum::body::Body;
   use axum::http::StatusCode;
@@ -93,8 +92,9 @@ pub async fn create_header_auth_config_in_db(
     "mcp_server_id": server_id,
     "type": "header",
     "name": "Header",
-    "header_key": header_key,
-    "header_value": header_value
+    "entries": [
+      { "param_type": "header", "param_key": header_key }
+    ]
   });
   let response = router
     .clone()

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle2, ExternalLink, KeyRound, Loader2, Unplug } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, Loader2, Unplug } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -25,7 +25,6 @@ import {
   useCreateMcp,
   useDeleteOAuthToken,
   useFetchMcpTools,
-  useGetOAuthToken,
   useListAuthConfigs,
   useMcp,
   useMcpServers,
@@ -40,7 +39,7 @@ import { authConfigTypeLabel } from '@/lib/mcpUtils';
 import McpServerSelector from '@/app/ui/mcps/new/McpServerSelector';
 import ToolSelection from '@/app/ui/mcps/new/ToolSelection';
 import { useMcpFormStore } from '@/stores/mcpFormStore';
-import type { McpAuthType } from '@bodhiapp/ts-client';
+import type { McpAuthParamInput, McpAuthType } from '@bodhiapp/ts-client';
 
 const safeOrigin = (urlStr: string): string => {
   try {
@@ -164,6 +163,7 @@ function NewMcpPageContent() {
   const [selectedServer, setSelectedServer] = useState<McpServerResponse | null>(null);
   const [showNewAuthRedirect, setShowNewAuthRedirect] = useState(false);
   const [pendingDeleteTokenId, setPendingDeleteTokenId] = useState<string | null>(null);
+  const [visibleCredentials, setVisibleCredentials] = useState<Set<string>>(new Set());
 
   const { data: authConfigsData } = useListAuthConfigs(selectedServer?.id || '', {
     enabled: !!selectedServer?.id,
@@ -183,11 +183,6 @@ function NewMcpPageContent() {
     () => authConfigOptions.find((o) => o.id === store.selectedAuthConfigId) || null,
     [authConfigOptions, store.selectedAuthConfigId]
   );
-
-  // For edit mode with OAuth: fetch the token to find the corresponding config
-  const { data: existingOAuthToken } = useGetOAuthToken(existingMcp?.auth_uuid || '', {
-    enabled: !!existingMcp?.auth_uuid && existingMcp?.auth_type === 'oauth',
-  });
 
   const oauthLoginMutation = useOAuthLogin();
   const deleteOAuthTokenMutation = useDeleteOAuthToken({
@@ -311,21 +306,21 @@ function NewMcpPageContent() {
         store.setSelectedTools(new Set(existingMcp.tools_filter || []));
         store.setToolsFetched(true);
       }
-      if (existingMcp.auth_type === 'header' && existingMcp.auth_uuid) {
-        store.setSelectedAuthConfig(existingMcp.auth_uuid, 'header');
+      if (existingMcp.auth_type === 'header' && existingMcp.auth_config_id) {
+        store.setSelectedAuthConfig(existingMcp.auth_config_id, 'header');
       }
-      if (existingMcp.auth_type === 'oauth' && existingMcp.auth_uuid) {
-        store.completeOAuthFlow(existingMcp.auth_uuid);
+      if (existingMcp.auth_type === 'oauth' && existingMcp.auth_config_id) {
+        store.completeOAuthFlow(existingMcp.auth_config_id);
       }
     }
   }, [existingMcp, editId, form]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Set the selected auth config for OAuth MCPs once the token data loads (reveals the config ID)
+  // Set the selected auth config for OAuth MCPs from Mcp.auth_config_id
   useEffect(() => {
-    if (existingOAuthToken && editId && existingMcp) {
-      store.setSelectedAuthConfig(existingOAuthToken.mcp_oauth_config_id, existingMcp.auth_type);
+    if (editId && existingMcp && existingMcp.auth_type === 'oauth' && existingMcp.auth_config_id) {
+      store.setSelectedAuthConfig(existingMcp.auth_config_id, existingMcp.auth_type);
     }
-  }, [existingOAuthToken, editId, existingMcp]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editId, existingMcp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-select first auth config when configs load for a newly selected server (create mode only)
   useEffect(() => {
@@ -377,6 +372,7 @@ function NewMcpPageContent() {
       store.setSelectedAuthConfig(null, null);
       form.setValue('auth_type', 'public');
       store.disconnect();
+      store.clearCredentialValues();
     } else if (val === '__new__') {
       setShowNewAuthRedirect(true);
     } else {
@@ -385,24 +381,42 @@ function NewMcpPageContent() {
         store.setSelectedAuthConfig(opt.id, opt.type);
         form.setValue('auth_type', opt.type as McpAuthType);
         store.disconnect();
+        store.clearCredentialValues();
       }
     }
+  };
+
+  const buildCredentials = (): McpAuthParamInput[] | undefined => {
+    const config = selectedAuthOption?.config;
+    if (!config || config.type !== 'header' || !config.entries?.length) return undefined;
+    const creds: McpAuthParamInput[] = [];
+    for (const entry of config.entries) {
+      const val = store.credentialValues[entry.param_key];
+      if (val) {
+        creds.push({ param_type: entry.param_type, param_key: entry.param_key, value: val });
+      }
+    }
+    return creds.length > 0 ? creds : undefined;
   };
 
   const handleFetchTools = () => {
     const serverId = form.getValues('mcp_server_id');
     if (!serverId) return;
 
-    const authType = store.selectedAuthConfigType;
-    if (authType === 'header' && store.selectedAuthConfigId) {
+    const credentials = buildCredentials();
+    const authConfigId = store.selectedAuthConfigId || existingMcp?.auth_config_id;
+    if (credentials) {
       fetchToolsMutation.mutate({
         mcp_server_id: serverId,
-        auth_uuid: store.selectedAuthConfigId,
+        credentials,
+        auth_config_id: authConfigId || undefined,
+        oauth_token_id: store.oauthTokenId || undefined,
       });
-    } else if (authType === 'oauth' && (store.oauthTokenId || existingMcp?.auth_uuid)) {
+    } else if (authConfigId) {
       fetchToolsMutation.mutate({
         mcp_server_id: serverId,
-        auth_uuid: store.oauthTokenId || existingMcp?.auth_uuid || undefined,
+        auth_config_id: authConfigId,
+        oauth_token_id: store.oauthTokenId || undefined,
       });
     } else {
       fetchToolsMutation.mutate({ mcp_server_id: serverId });
@@ -420,7 +434,7 @@ function NewMcpPageContent() {
     try {
       await deletePendingToken();
       store.saveToSession(
-        form.getValues(),
+        { ...form.getValues(), mcp_id: editId || '' },
         selectedServer ? { url: selectedServer.url, name: selectedServer.name } : undefined
       );
       const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback`;
@@ -435,9 +449,8 @@ function NewMcpPageContent() {
   };
 
   const handleDisconnect = () => {
-    const tokenToDelete = store.oauthTokenId || existingMcp?.auth_uuid;
-    if (tokenToDelete) {
-      setPendingDeleteTokenId(tokenToDelete);
+    if (store.oauthTokenId) {
+      setPendingDeleteTokenId(store.oauthTokenId);
     }
     store.disconnect();
   };
@@ -456,7 +469,7 @@ function NewMcpPageContent() {
   const onSubmit = async (data: CreateMcpFormData) => {
     const authType = data.auth_type;
 
-    if (authType === 'oauth' && !store.isConnected && !existingMcp?.auth_uuid) {
+    if (authType === 'oauth' && !store.isConnected && !existingMcp?.auth_config_id) {
       toast({ title: 'Please complete OAuth authorization first', variant: 'destructive' });
       return;
     }
@@ -471,17 +484,25 @@ function NewMcpPageContent() {
       tools_filter: Array.from(store.selectedTools),
     };
 
-    let authPayload: { auth_type?: McpAuthType; auth_uuid?: string } = {};
+    let authPayload: { auth_type?: McpAuthType; auth_config_id?: string; oauth_token_id?: string } = {};
 
     if (authType === 'header' && store.selectedAuthConfigId) {
-      authPayload = { auth_type: 'header', auth_uuid: store.selectedAuthConfigId };
+      authPayload = { auth_type: 'header', auth_config_id: store.selectedAuthConfigId };
+      const credentials = buildCredentials();
+      if (credentials) {
+        (authPayload as Record<string, unknown>).credentials = credentials;
+      }
     } else if (authType === 'oauth') {
       if (editId && !store.isConnected && pendingDeleteTokenId) {
         await deletePendingToken();
         authPayload = { auth_type: 'oauth' };
       } else {
-        const tokenId = store.oauthTokenId || existingMcp?.auth_uuid;
-        authPayload = { auth_type: 'oauth', auth_uuid: tokenId || undefined };
+        const configId = store.selectedAuthConfigId || existingMcp?.auth_config_id;
+        authPayload = {
+          auth_type: 'oauth',
+          auth_config_id: configId || undefined,
+          oauth_token_id: store.oauthTokenId || undefined,
+        };
       }
     } else {
       authPayload = { auth_type: 'public' };
@@ -663,19 +684,58 @@ function NewMcpPageContent() {
                   selectedAuthOption &&
                   selectedAuthOption.config.type === 'header' && (
                     <div
-                      className="rounded-lg border p-3 text-sm space-y-1 bg-muted/50"
-                      data-testid="auth-config-header-summary"
+                      className="rounded-lg border p-3 text-sm space-y-3 bg-muted/50"
+                      data-testid="auth-config-header-credentials"
                     >
                       <p>
                         <span className="font-medium">Config:</span> {selectedAuthOption.name}
                       </p>
-                      <p>
-                        <span className="font-medium">Header:</span> {selectedAuthOption.config.header_key}
-                      </p>
-                      <p>
-                        <span className="font-medium">Value:</span>{' '}
-                        {selectedAuthOption.config.has_header_value ? 'Configured' : 'Not configured'}
-                      </p>
+                      {selectedAuthOption.config.entries.length > 0 ? (
+                        selectedAuthOption.config.entries.map((entry) => {
+                          const isVisible = visibleCredentials.has(entry.param_key);
+                          return (
+                            <div
+                              key={entry.param_key}
+                              className="space-y-1"
+                              data-testid={`credential-field-${entry.param_key}`}
+                            >
+                              <label className="text-xs font-medium text-muted-foreground">
+                                {entry.param_key} <span className="text-xs opacity-60">({entry.param_type})</span>
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type={isVisible ? 'text' : 'password'}
+                                  placeholder={`Enter ${entry.param_key} value`}
+                                  value={store.credentialValues[entry.param_key] || ''}
+                                  onChange={(e) => store.setCredentialValue(entry.param_key, e.target.value)}
+                                  disabled={isSubmitting}
+                                  data-testid={`credential-input-${entry.param_key}`}
+                                  className="flex-1"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9 shrink-0"
+                                  onClick={() => {
+                                    setVisibleCredentials((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(entry.param_key)) next.delete(entry.param_key);
+                                      else next.add(entry.param_key);
+                                      return next;
+                                    });
+                                  }}
+                                  data-testid={`credential-toggle-${entry.param_key}`}
+                                >
+                                  {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-muted-foreground">No credential keys defined for this config.</p>
+                      )}
                     </div>
                   )}
 

@@ -163,5 +163,23 @@ export default defineConfig({
         TEST_MCP_OAUTH_PORT: '55175',
       },
     },
+    {
+      command: 'cd test-mcp-auth-server && npm run build && node dist/index.js --header Authorization="Bearer test-header-key" --port 55176',
+      url: 'http://localhost:55176/ping',
+      timeout: 30 * 1000,
+      reuseExistingServer: false,
+    },
+    {
+      command: 'cd test-mcp-auth-server && npm run build && node dist/index.js --query api_key=test-query-key --port 55177',
+      url: 'http://localhost:55177/ping',
+      timeout: 30 * 1000,
+      reuseExistingServer: false,
+    },
+    {
+      command: 'cd test-mcp-auth-server && npm run build && node dist/index.js --header X-Auth-1=header-val-1 --header X-Auth-2=header-val-2 --query q_key_1=query-val-1 --query q_key_2=query-val-2 --port 55178',
+      url: 'http://localhost:55178/ping',
+      timeout: 30 * 1000,
+      reuseExistingServer: false,
+    },
   ],
 });

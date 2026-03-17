@@ -85,6 +85,110 @@ impl McpAuthType {
 }
 
 // ============================================================================
+// McpAuthParamType - Type of auth parameter (header or query)
+// ============================================================================
+
+#[derive(
+  Debug,
+  Clone,
+  PartialEq,
+  Serialize,
+  Deserialize,
+  ToSchema,
+  Display,
+  EnumString,
+  IntoStaticStr,
+  sea_orm::DeriveValueType,
+)]
+#[sea_orm(value_type = "String")]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum McpAuthParamType {
+  Header,
+  Query,
+}
+
+impl McpAuthParamType {
+  pub fn as_str(&self) -> &'static str {
+    self.into()
+  }
+}
+
+// ============================================================================
+// McpAuthConfigType - Type of auth config (header or oauth)
+// ============================================================================
+
+#[derive(
+  Debug,
+  Clone,
+  PartialEq,
+  Serialize,
+  Deserialize,
+  ToSchema,
+  Display,
+  EnumString,
+  IntoStaticStr,
+  sea_orm::DeriveValueType,
+)]
+#[sea_orm(value_type = "String")]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum McpAuthConfigType {
+  Header,
+  Oauth,
+}
+
+impl McpAuthConfigType {
+  pub fn as_str(&self) -> &'static str {
+    self.into()
+  }
+}
+
+// ============================================================================
+// McpAuthConfigParam - Key definition response
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpAuthConfigParam {
+  pub id: String,
+  pub param_type: McpAuthParamType,
+  pub param_key: String,
+}
+
+// ============================================================================
+// McpAuthConfigParamInput - Key definition input
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpAuthConfigParamInput {
+  pub param_type: McpAuthParamType,
+  pub param_key: String,
+}
+
+// ============================================================================
+// McpAuthParam - Masked auth param response
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpAuthParam {
+  pub id: String,
+  pub param_type: McpAuthParamType,
+  pub param_key: String,
+  pub has_value: bool,
+}
+
+// ============================================================================
+// McpAuthParamInput - Auth param input (for creating params)
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpAuthParamInput {
+  pub param_type: McpAuthParamType,
+  pub param_key: String,
+  pub value: String,
+}
+
+// ============================================================================
 // Mcp - User-owned MCP instance (public API model)
 // ============================================================================
 
@@ -111,38 +215,13 @@ pub struct Mcp {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tools_filter: Option<Vec<String>>,
   pub auth_type: McpAuthType,
-  /// Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id)
+  /// Reference to the auth config (mcp_auth_configs.id)
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub auth_uuid: Option<String>,
+  pub auth_config_id: Option<String>,
   /// When this instance was created
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
   /// When this instance was last updated
-  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
-  pub updated_at: DateTime<Utc>,
-}
-
-// ============================================================================
-// McpAuthHeader - Public API model for header-based auth config
-// ============================================================================
-
-/// Header-based authentication configuration (secrets masked).
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct McpAuthHeader {
-  /// Unique identifier (UUID)
-  pub id: String,
-  /// Human-readable display name
-  pub name: String,
-  /// Parent MCP server ID
-  pub mcp_server_id: String,
-  /// HTTP header name (e.g. "Authorization", "X-API-Key")
-  pub header_key: String,
-  /// Whether an encrypted header value is stored
-  pub has_header_value: bool,
-  /// When this config was created
-  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
-  pub created_at: DateTime<Utc>,
-  /// When this config was last updated
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }
@@ -186,12 +265,13 @@ pub struct McpOAuthConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpOAuthToken {
   pub id: String,
-  pub mcp_oauth_config_id: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub mcp_id: Option<String>,
+  pub auth_config_id: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub scopes_granted: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub expires_at: Option<i64>,
-  pub has_access_token: bool,
   pub has_refresh_token: bool,
   pub user_id: String,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
@@ -266,8 +346,7 @@ impl RegistrationType {
 pub enum CreateMcpAuthConfigRequest {
   Header {
     name: String,
-    header_key: String,
-    header_value: String,
+    entries: Vec<McpAuthConfigParamInput>,
   },
   Oauth {
     name: String,
@@ -301,8 +380,8 @@ pub enum McpAuthConfigResponse {
     id: String,
     name: String,
     mcp_server_id: String,
-    header_key: String,
-    has_header_value: bool,
+    created_by: String,
+    entries: Vec<McpAuthConfigParam>,
     #[schema(value_type = String, format = "date-time")]
     created_at: DateTime<Utc>,
     #[schema(value_type = String, format = "date-time")]
@@ -312,6 +391,7 @@ pub enum McpAuthConfigResponse {
     id: String,
     name: String,
     mcp_server_id: String,
+    created_by: String,
     registration_type: RegistrationType,
     client_id: String,
     authorization_endpoint: String,
@@ -349,42 +429,6 @@ impl McpAuthConfigResponse {
   }
 }
 
-impl From<McpAuthHeader> for McpAuthConfigResponse {
-  fn from(h: McpAuthHeader) -> Self {
-    McpAuthConfigResponse::Header {
-      id: h.id,
-      name: h.name,
-      mcp_server_id: h.mcp_server_id,
-      header_key: h.header_key,
-      has_header_value: h.has_header_value,
-      created_at: h.created_at,
-      updated_at: h.updated_at,
-    }
-  }
-}
-
-impl From<McpOAuthConfig> for McpAuthConfigResponse {
-  fn from(o: McpOAuthConfig) -> Self {
-    McpAuthConfigResponse::Oauth {
-      id: o.id,
-      name: o.name,
-      mcp_server_id: o.mcp_server_id,
-      registration_type: o.registration_type,
-      client_id: o.client_id,
-      authorization_endpoint: o.authorization_endpoint,
-      token_endpoint: o.token_endpoint,
-      registration_endpoint: o.registration_endpoint,
-      scopes: o.scopes,
-      client_id_issued_at: o.client_id_issued_at,
-      token_endpoint_auth_method: o.token_endpoint_auth_method,
-      has_client_secret: o.has_client_secret,
-      has_registration_access_token: o.has_registration_access_token,
-      created_at: o.created_at,
-      updated_at: o.updated_at,
-    }
-  }
-}
-
 /// List wrapper for unified auth config responses.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct McpAuthConfigsListResponse {
@@ -392,7 +436,7 @@ pub struct McpAuthConfigsListResponse {
 }
 
 // ============================================================================
-// Entity → Response conversions
+// Entity -> Response conversions
 // ============================================================================
 
 impl From<super::mcp_server_entity::McpServerEntity> for McpServer {
@@ -437,7 +481,7 @@ impl From<super::mcp_entity::McpWithServerEntity> for Mcp {
       tools_cache,
       tools_filter,
       auth_type: row.auth_type,
-      auth_uuid: row.auth_uuid,
+      auth_config_id: row.auth_config_id,
       created_at: row.created_at,
       updated_at: row.updated_at,
     }
@@ -483,7 +527,13 @@ pub struct McpRequest {
   pub auth_type: McpAuthType,
   /// Reference to auth config
   #[serde(default)]
-  pub auth_uuid: Option<String>,
+  pub auth_config_id: Option<String>,
+  /// Instance-level auth params (values for the auth config's key definitions)
+  #[serde(default)]
+  pub credentials: Option<Vec<McpAuthParamInput>>,
+  /// OAuth token ID to link to this MCP instance (set after OAuth flow)
+  #[serde(default)]
+  pub oauth_token_id: Option<String>,
 }
 
 // ============================================================================

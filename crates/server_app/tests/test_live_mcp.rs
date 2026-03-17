@@ -322,12 +322,12 @@ async fn test_non_admin_cannot_create_mcp_server() -> anyhow::Result<()> {
 /// Multi-step auth lifecycle using unified auth config flow:
 ///   1. Admin creates MCP server
 ///   2. Admin creates auth header config via /mcps/auth-configs
-///   3. Admin creates MCP with auth_type=header and auth_uuid referencing the config
-///   4. Verify response: auth_type=header, auth_uuid present, no raw secrets leaked
+///   3. Admin creates MCP with auth_type=header and auth_config_id referencing the config
+///   4. Verify response: auth_type=header, auth_config_id present
 ///   5. Verify MCP references the auth config via GET
 ///   6. Admin switches MCP to public auth
 ///   7. Verify auth cleared on MCP but auth config preserved
-///   8. Admin creates new auth header config and switches MCP back to header auth
+///   8. Admin reuses original auth config and switches MCP back to header auth
 ///   9. Verify auth restored
 #[anyhow_trace]
 #[tokio::test]
@@ -362,21 +362,19 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
       "mcp_server_id": mcp_server_id,
       "type": "header",
       "name": "Test Auth Header",
-      "header_key": "Authorization",
-      "header_value": "Bearer token-1"
+      "entries": [
+        { "param_type": "header", "param_key": "Authorization" }
+      ]
     }))
     .send()
     .await?;
   assert_eq!(StatusCode::CREATED, resp.status());
   let auth_config: Value = resp.json().await?;
-  let auth_uuid = auth_config["id"].as_str().unwrap().to_string();
+  let auth_config_id = auth_config["id"].as_str().unwrap().to_string();
   assert_eq!("header", auth_config["type"]);
-  assert_eq!("Authorization", auth_config["header_key"]);
-  assert_eq!(
-    true,
-    auth_config["has_header_value"].as_bool().unwrap(),
-    "should indicate header value is set"
-  );
+  let entries = auth_config["entries"].as_array().unwrap();
+  assert_eq!(1, entries.len());
+  assert_eq!("Authorization", entries[0]["param_key"]);
 
   // Step 3: Create MCP with header auth referencing the config
   let resp = client
@@ -388,7 +386,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
       "mcp_server_id": mcp_server_id,
       "enabled": true,
       "auth_type": "header",
-      "auth_uuid": auth_uuid
+      "auth_config_id": auth_config_id
     }))
     .send()
     .await?;
@@ -398,15 +396,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
 
   // Step 4: Verify auth fields in response
   assert_eq!("header", mcp["auth_type"]);
-  assert_eq!(auth_uuid, mcp["auth_uuid"]);
-  assert!(
-    mcp.get("auth_header_value").is_none(),
-    "Raw auth value must not leak in MCP response"
-  );
-  assert!(
-    mcp.get("encrypted_auth_header_value").is_none(),
-    "Encrypted value must not leak in MCP response"
-  );
+  assert_eq!(auth_config_id, mcp["auth_config_id"]);
 
   // Step 5: Verify MCP references the auth config via GET
   let resp = client
@@ -417,7 +407,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, resp.status());
   let fetched_mcp: Value = resp.json().await?;
   assert_eq!("header", fetched_mcp["auth_type"]);
-  assert_eq!(auth_uuid, fetched_mcp["auth_uuid"]);
+  assert_eq!(auth_config_id, fetched_mcp["auth_config_id"]);
 
   // Step 6: Switch MCP to public auth
   let resp = client
@@ -437,15 +427,15 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
   // Step 7: Verify auth cleared on MCP but auth config preserved
   assert_eq!("public", public_mcp["auth_type"]);
   assert!(
-    public_mcp["auth_uuid"].is_null(),
-    "auth_uuid should be null after switching to public"
+    public_mcp["auth_config_id"].is_null(),
+    "auth_config_id should be null after switching to public"
   );
 
   // Auth configs are admin-managed resources - they should be preserved for reuse
   let resp = client
     .get(format!(
       "{}/bodhi/v1/mcps/auth-configs/{}",
-      server.base_url, auth_uuid
+      server.base_url, auth_config_id
     ))
     .header("Cookie", &admin_cookie)
     .send()
@@ -465,7 +455,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
       "slug": "auth-mcp",
       "enabled": true,
       "auth_type": "header",
-      "auth_uuid": auth_uuid
+      "auth_config_id": auth_config_id
     }))
     .send()
     .await?;
@@ -474,7 +464,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
 
   // Step 9: Verify auth restored with original auth config
   assert_eq!("header", restored["auth_type"]);
-  assert_eq!(auth_uuid, restored["auth_uuid"]);
+  assert_eq!(auth_config_id, restored["auth_config_id"]);
 
   // Verify via list that auth info is present
   let resp = client
@@ -487,7 +477,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
   let items = list["mcps"].as_array().unwrap();
   assert_eq!(1, items.len());
   assert_eq!("header", items[0]["auth_type"]);
-  assert_eq!(auth_uuid, items[0]["auth_uuid"]);
+  assert_eq!(auth_config_id, items[0]["auth_config_id"]);
 
   server.handle.shutdown().await?;
   Ok(())

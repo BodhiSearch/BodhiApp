@@ -14,6 +14,7 @@ mod m20250101_000012_mcp_oauth;
 mod m20250101_000013_settings;
 mod m20250101_000014_tenants;
 mod m20250101_000015_tenants_users;
+mod m20250101_000016_mcp_auth_redesign;
 use sea_orm_migration::prelude::*;
 
 pub struct Migrator;
@@ -38,6 +39,7 @@ impl MigratorTrait for Migrator {
       Box::new(m20250101_000013_settings::Migration),
       Box::new(m20250101_000014_tenants::Migration),
       Box::new(m20250101_000015_tenants_users::Migration),
+      Box::new(m20250101_000016_mcp_auth_redesign::Migration),
     ]
   }
 }

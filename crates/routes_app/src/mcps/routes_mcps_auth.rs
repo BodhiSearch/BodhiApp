@@ -259,8 +259,17 @@ pub async fn mcp_oauth_token_exchange(
 
   let _ = session.remove::<serde_json::Value>(&session_key).await;
 
+  // Verify MCP instance ownership when mcp_id is provided
+  if let Some(ref mcp_id) = request.mcp_id {
+    mcps
+      .get(mcp_id)
+      .await?
+      .ok_or_else(|| services::McpError::McpNotFound(mcp_id.clone()))?;
+  }
+
   let token = mcps
     .exchange_oauth_token(
+      request.mcp_id,
       &config_id,
       &request.code,
       &request.redirect_uri,

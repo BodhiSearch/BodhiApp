@@ -138,8 +138,10 @@ async fn test_postgres_rls_policies_and_function_installed(_setup_env: ()) -> an
     "user_aliases",
     "mcp_servers",
     "mcps",
-    "mcp_auth_headers",
-    "mcp_oauth_configs",
+    "mcp_auth_configs",
+    "mcp_auth_config_params",
+    "mcp_oauth_config_details",
+    "mcp_auth_params",
     "mcp_oauth_tokens",
   ];
 

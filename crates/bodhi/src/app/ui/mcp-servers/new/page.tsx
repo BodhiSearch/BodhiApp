@@ -17,6 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { useCreateMcpServer, useStandaloneDynamicRegister, type CreateMcpAuthConfigRequest } from '@/hooks/useMcps';
 import { extractSecondLevelDomain } from '@/lib/urlUtils';
 import { AuthConfigForm } from '../components/AuthConfigForm';
+import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
 
 type AuthConfigType = 'none' | 'header' | 'oauth';
 type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
@@ -34,8 +35,7 @@ function NewMcpServerContent() {
   const [authConfigType, setAuthConfigType] = useState<AuthConfigType>('none');
   const [oauthRegistrationType, setOauthRegistrationType] = useState<OAuthRegistrationType>('pre_registered');
   const [authName, setAuthName] = useState('');
-  const [headerKey, setHeaderKey] = useState('');
-  const [headerValue, setHeaderValue] = useState('');
+  const [entries, setEntries] = useState<McpAuthConfigParamInput[]>([{ param_type: 'header', param_key: '' }]);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [authEndpoint, setAuthEndpoint] = useState('');
@@ -82,8 +82,7 @@ function NewMcpServerContent() {
       return {
         type: 'header',
         name: authName || 'Header',
-        header_key: headerKey,
-        header_value: headerValue,
+        entries: entries.filter((e) => e.param_key.trim() !== ''),
       };
     }
 
@@ -257,10 +256,8 @@ function NewMcpServerContent() {
                       name={authName}
                       onTypeChange={(type) => setAuthConfigType(type)}
                       onNameChange={setAuthName}
-                      headerKey={headerKey}
-                      headerValue={headerValue}
-                      onHeaderKeyChange={setHeaderKey}
-                      onHeaderValueChange={setHeaderValue}
+                      entries={entries}
+                      onEntriesChange={setEntries}
                       registrationType={oauthRegistrationType}
                       clientId={clientId}
                       clientSecret={clientSecret}

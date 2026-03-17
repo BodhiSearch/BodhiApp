@@ -6,6 +6,7 @@ interface McpFormState {
   selectedAuthConfigType: string | null;
   oauthTokenId: string | null;
   isConnected: boolean;
+  credentialValues: Record<string, string>;
 
   fetchedTools: McpTool[];
   selectedTools: Set<string>;
@@ -14,6 +15,8 @@ interface McpFormState {
   setSelectedAuthConfig: (id: string | null, type: string | null) => void;
   completeOAuthFlow: (tokenId: string) => void;
   disconnect: () => void;
+  setCredentialValue: (key: string, value: string) => void;
+  clearCredentialValues: () => void;
   setFetchedTools: (tools: McpTool[]) => void;
   setSelectedTools: (tools: Set<string>) => void;
   toggleTool: (toolName: string) => void;
@@ -35,6 +38,7 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
   selectedAuthConfigType: null,
   oauthTokenId: null,
   isConnected: false,
+  credentialValues: {},
   fetchedTools: [],
   selectedTools: new Set<string>(),
   toolsFetched: false,
@@ -51,7 +55,15 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
     set({
       oauthTokenId: null,
       isConnected: false,
+      credentialValues: {},
     }),
+
+  setCredentialValue: (key, value) =>
+    set((state) => ({
+      credentialValues: { ...state.credentialValues, [key]: value },
+    })),
+
+  clearCredentialValues: () => set({ credentialValues: {} }),
 
   setFetchedTools: (tools) => set({ fetchedTools: tools }),
   setSelectedTools: (tools) => set({ selectedTools: tools }),
@@ -104,6 +116,7 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
       selectedAuthConfigType: null,
       oauthTokenId: null,
       isConnected: false,
+      credentialValues: {},
       fetchedTools: [],
       selectedTools: new Set(),
       toolsFetched: false,

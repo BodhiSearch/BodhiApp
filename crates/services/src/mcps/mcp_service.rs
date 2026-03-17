@@ -1,16 +1,17 @@
 use super::{
-  CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpAuthHeader, McpAuthType,
-  McpExecutionRequest, McpExecutionResponse, McpOAuthConfig, McpOAuthToken, McpRequest,
-  McpServerRequest, RegistrationType,
+  CreateMcpAuthConfigRequest, McpAuthConfigParam, McpAuthConfigResponse, McpAuthConfigType,
+  McpAuthParamType, McpAuthType, McpExecutionRequest, McpExecutionResponse, McpOAuthConfig,
+  McpOAuthToken, McpRequest, McpServerRequest, RegistrationType,
 };
 use super::{
-  McpAuthHeaderEntity, McpEntity, McpOAuthConfigEntity, McpOAuthTokenEntity, McpServerEntity,
-  McpWithServerEntity,
+  McpAuthConfigEntity, McpAuthConfigParamEntity, McpAuthParamEntity, McpEntity,
+  McpOAuthConfigDetailEntity, McpOAuthTokenEntity, McpServerEntity, McpWithServerEntity,
 };
 use super::{McpError, McpServerError};
 use crate::db::{encryption::encrypt_api_key, DbService, TimeService};
+use crate::mcps::McpAuthParamInput;
 use crate::new_ulid;
-use mcp_client::{McpClient, McpTool};
+use mcp_client::{McpAuthParams, McpClient, McpTool};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -99,9 +100,9 @@ pub trait McpService: Debug + Send + Sync {
     &self,
     tenant_id: &str,
     server_id: &str,
-    auth_header_key: Option<String>,
-    auth_header_value: Option<String>,
-    auth_uuid: Option<String>,
+    credentials: Option<Vec<McpAuthParamInput>>,
+    auth_config_id: Option<String>,
+    oauth_token_id: Option<String>,
   ) -> Result<Vec<McpTool>, McpError>;
 
   async fn execute(
@@ -113,45 +114,12 @@ pub trait McpService: Debug + Send + Sync {
     request: McpExecutionRequest,
   ) -> Result<McpExecutionResponse, McpError>;
 
-  // ---- MCP auth header config operations ----
-
-  async fn create_auth_header(
-    &self,
-    tenant_id: &str,
-    name: &str,
-    mcp_server_id: &str,
-    header_key: &str,
-    header_value: &str,
-  ) -> Result<McpAuthHeader, McpError>;
-
-  async fn get_auth_header(
-    &self,
-    tenant_id: &str,
-    id: &str,
-  ) -> Result<Option<McpAuthHeader>, McpError>;
-
-  async fn list_auth_headers_by_server(
-    &self,
-    tenant_id: &str,
-    mcp_server_id: &str,
-  ) -> Result<Vec<McpAuthHeader>, McpError>;
-
-  async fn update_auth_header(
-    &self,
-    tenant_id: &str,
-    id: &str,
-    name: &str,
-    header_key: &str,
-    header_value: &str,
-  ) -> Result<McpAuthHeader, McpError>;
-
-  async fn delete_auth_header(&self, tenant_id: &str, id: &str) -> Result<(), McpError>;
-
   // ---- MCP OAuth config operations ----
 
   async fn create_oauth_config(
     &self,
     tenant_id: &str,
+    created_by: &str,
     name: &str,
     mcp_server_id: &str,
     client_id: &str,
@@ -172,20 +140,13 @@ pub trait McpService: Debug + Send + Sync {
     id: &str,
   ) -> Result<Option<McpOAuthConfig>, McpError>;
 
-  async fn list_oauth_configs_by_server(
-    &self,
-    tenant_id: &str,
-    mcp_server_id: &str,
-  ) -> Result<Vec<McpOAuthConfig>, McpError>;
-
-  async fn delete_oauth_config(&self, tenant_id: &str, id: &str) -> Result<(), McpError>;
-
   // ---- MCP OAuth token operations ----
 
   async fn store_oauth_token(
     &self,
     tenant_id: &str,
     user_id: &str,
+    mcp_id: Option<String>,
     config_id: &str,
     access_token: &str,
     refresh_token: Option<String>,
@@ -208,12 +169,11 @@ pub trait McpService: Debug + Send + Sync {
   ) -> Result<(), McpError>;
 
   /// Exchange an authorization code for tokens via the OAuth token endpoint.
-  /// Handles client credential resolution, HTTP POST, response parsing,
-  /// and token storage.
   async fn exchange_oauth_token(
     &self,
     tenant_id: &str,
     user_id: &str,
+    mcp_id: Option<String>,
     config_id: &str,
     code: &str,
     redirect_uri: &str,
@@ -241,6 +201,7 @@ pub trait McpService: Debug + Send + Sync {
   async fn create_auth_config(
     &self,
     tenant_id: &str,
+    created_by: &str,
     mcp_server_id: &str,
     request: CreateMcpAuthConfigRequest,
   ) -> Result<McpAuthConfigResponse, McpError>;
@@ -261,7 +222,6 @@ pub trait McpService: Debug + Send + Sync {
 }
 
 /// Maximum number of concurrent refresh lock entries.
-/// Once exceeded, least-recently-inserted entries are evicted.
 const MAX_REFRESH_LOCKS: usize = 1000;
 
 pub struct DefaultMcpService {
@@ -305,12 +265,9 @@ impl DefaultMcpService {
       }
     }
     let mut locks = self.refresh_locks.write().await;
-    // Double-check after acquiring write lock
     if let Some(lock) = locks.get(key) {
       return Arc::clone(lock);
     }
-    // Evict entries when exceeding the bound.
-    // Only evict entries whose Mutex is not currently held (strong_count == 1).
     if locks.len() >= MAX_REFRESH_LOCKS {
       let evict_keys: Vec<String> = locks
         .iter()
@@ -345,7 +302,7 @@ impl DefaultMcpService {
       tools_cache: row.tools_cache,
       tools_filter: row.tools_filter,
       auth_type: row.auth_type,
-      auth_uuid: row.auth_uuid,
+      auth_config_id: row.auth_config_id,
       created_at: row.created_at,
       updated_at: row.updated_at,
       server_url: server.url.clone(),
@@ -392,19 +349,21 @@ impl DefaultMcpService {
   async fn resolve_oauth_token(
     &self,
     tenant_id: &str,
-    user_id: &str,
-    auth_uuid: &str,
-  ) -> Result<Option<(String, String)>, McpError> {
+    mcp_id: &str,
+  ) -> Result<Option<McpAuthParams>, McpError> {
     let lock = self
-      .get_refresh_lock(&format!("oauth_refresh:{}", auth_uuid))
+      .get_refresh_lock(&format!("oauth_refresh:{}", mcp_id))
       .await;
     let _guard = lock.lock().await;
 
-    let token = self
+    let token = match self
       .db_service
-      .get_mcp_oauth_token(tenant_id, user_id, auth_uuid)
+      .get_latest_oauth_token_by_mcp(tenant_id, mcp_id)
       .await?
-      .ok_or_else(|| McpError::OAuthTokenNotFound(auth_uuid.to_string()))?;
+    {
+      Some(t) => t,
+      None => return Err(McpError::OAuthTokenNotFound(mcp_id.to_string())),
+    };
 
     let now = self.time_service.utc_now();
     let is_expired = token
@@ -415,28 +374,28 @@ impl DefaultMcpService {
     if is_expired {
       if !token.has_refresh_token {
         warn!(
-          auth_uuid,
+          mcp_id,
           "OAuth token expired with no refresh token available"
         );
-        return Err(McpError::OAuthTokenExpired(auth_uuid.to_string()));
+        return Err(McpError::OAuthTokenExpired(mcp_id.to_string()));
       }
 
-      debug!(auth_uuid, "OAuth token expired, attempting refresh");
+      debug!(mcp_id, "OAuth token expired, attempting refresh");
       let refresh_token = self
         .db_service
-        .get_decrypted_refresh_token(tenant_id, auth_uuid)
+        .get_decrypted_refresh_token(tenant_id, &token.id)
         .await?
-        .ok_or_else(|| McpError::OAuthTokenExpired(auth_uuid.to_string()))?;
+        .ok_or_else(|| McpError::OAuthTokenExpired(mcp_id.to_string()))?;
 
       let config = self
         .db_service
-        .get_mcp_oauth_config(tenant_id, &token.mcp_oauth_config_id)
+        .get_mcp_oauth_config_detail(tenant_id, &token.auth_config_id)
         .await?
-        .ok_or_else(|| McpError::McpNotFound(token.mcp_oauth_config_id.clone()))?;
+        .ok_or_else(|| McpError::McpNotFound(token.auth_config_id.clone()))?;
 
       let client_creds = self
         .db_service
-        .get_decrypted_client_secret(tenant_id, &config.id)
+        .get_decrypted_client_secret(tenant_id, &token.auth_config_id)
         .await?;
 
       let mut form_params = vec![
@@ -457,7 +416,7 @@ impl DefaultMcpService {
       form_params.push(("resource".to_string(), mcp_server_url));
 
       debug!(
-        auth_uuid,
+        mcp_id,
         token_endpoint = config.token_endpoint,
         "Sending token refresh request"
       );
@@ -473,7 +432,7 @@ impl DefaultMcpService {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
         warn!(
-          auth_uuid,
+          mcp_id,
           status = status.as_u16(),
           "OAuth token refresh failed"
         );
@@ -495,9 +454,6 @@ impl DefaultMcpService {
       let new_refresh = token_resp["refresh_token"].as_str().map(|s| s.to_string());
       let new_expires_in = token_resp["expires_in"].as_i64();
 
-      let (enc_at, salt_at, nonce_at) =
-        encrypt_api_key(self.db_service.encryption_key(), &new_access_token)?;
-
       // Use new refresh token if provided, otherwise re-encrypt the old one
       let effective_refresh = new_refresh.as_deref().unwrap_or(&refresh_token);
       let (enc_rt, salt_rt, nonce_rt) = {
@@ -507,10 +463,15 @@ impl DefaultMcpService {
 
       let new_expires_at = new_expires_in.map(|ei| now + chrono::Duration::seconds(ei));
 
+      let (enc_at, salt_at, nonce_at) =
+        encrypt_api_key(self.db_service.encryption_key(), &new_access_token)?;
+
       let updated_row = McpOAuthTokenEntity {
         id: token.id,
         tenant_id: tenant_id.to_string(),
-        mcp_oauth_config_id: token.mcp_oauth_config_id,
+        mcp_id: Some(mcp_id.to_string()),
+        auth_config_id: token.auth_config_id,
+        user_id: token.user_id,
         encrypted_access_token: enc_at,
         access_token_salt: salt_at,
         access_token_nonce: nonce_at,
@@ -519,57 +480,55 @@ impl DefaultMcpService {
         refresh_token_nonce: nonce_rt,
         scopes_granted: token.scopes_granted,
         expires_at: new_expires_at,
-        user_id: token.user_id,
         created_at: token.created_at,
         updated_at: now,
       };
 
       self.db_service.update_mcp_oauth_token(&updated_row).await?;
 
-      info!(auth_uuid, "OAuth token refreshed successfully");
-      return Ok(Some((
-        "Authorization".to_string(),
-        format!("Bearer {}", new_access_token),
-      )));
+      info!(mcp_id, "OAuth token refreshed successfully");
+      return Ok(Some(McpAuthParams {
+        headers: vec![(
+          "Authorization".to_string(),
+          format!("Bearer {}", new_access_token),
+        )],
+        query_params: vec![],
+      }));
     }
 
-    debug!(auth_uuid, "OAuth token not expired, using cached token");
-    Ok(
-      self
-        .db_service
-        .get_decrypted_oauth_bearer(tenant_id, auth_uuid)
-        .await?,
-    )
+    debug!(mcp_id, "OAuth token not expired, using cached credentials");
+    // Read access token from mcp_oauth_tokens
+    let access_token = self
+      .db_service
+      .get_decrypted_oauth_access_token(tenant_id, &token.id)
+      .await?
+      .ok_or_else(|| McpError::OAuthTokenNotFound(mcp_id.to_string()))?;
+    Ok(Some(McpAuthParams {
+      headers: vec![(
+        "Authorization".to_string(),
+        format!("Bearer {}", access_token),
+      )],
+      query_params: vec![],
+    }))
   }
 
-  async fn resolve_auth_header_for_mcp(
+  async fn resolve_auth_params_for_mcp(
     &self,
     tenant_id: &str,
     mcp_row: &McpEntity,
-  ) -> Result<Option<(String, String)>, McpError> {
-    let user_id = &mcp_row.user_id;
-
+  ) -> Result<Option<McpAuthParams>, McpError> {
     match mcp_row.auth_type {
-      McpAuthType::Header => {
-        if let Some(ref auth_uuid) = mcp_row.auth_uuid {
-          return Ok(
-            self
-              .db_service
-              .get_decrypted_auth_header(tenant_id, auth_uuid)
-              .await?,
-          );
-        }
+      McpAuthType::Header | McpAuthType::Public => {
+        // Read credentials from mcp_auth_params table
+        Ok(
+          self
+            .db_service
+            .get_decrypted_auth_params(tenant_id, &mcp_row.id)
+            .await?,
+        )
       }
-      McpAuthType::Oauth => {
-        if let Some(ref auth_uuid) = mcp_row.auth_uuid {
-          return self
-            .resolve_oauth_token(tenant_id, user_id, auth_uuid)
-            .await;
-        }
-      }
-      McpAuthType::Public => {}
+      McpAuthType::Oauth => self.resolve_oauth_token(tenant_id, &mcp_row.id).await,
     }
-    Ok(None)
   }
 }
 
@@ -758,8 +717,9 @@ impl McpService for DefaultMcpService {
       .map(|tf| serde_json::to_string(tf).expect("Vec<String> serialization cannot fail"));
 
     let now = self.time_service.utc_now();
+    let mcp_id = new_ulid();
     let row = McpEntity {
-      id: new_ulid(),
+      id: mcp_id.clone(),
       tenant_id: tenant_id.to_string(),
       user_id: user_id.to_string(),
       mcp_server_id: mcp_server.id.clone(),
@@ -770,12 +730,50 @@ impl McpService for DefaultMcpService {
       tools_cache: tools_cache_json,
       tools_filter: tools_filter_json,
       auth_type: request.auth_type,
-      auth_uuid: request.auth_uuid,
+      auth_config_id: request.auth_config_id,
       created_at: now,
       updated_at: now,
     };
 
-    let result = self.db_service.create_mcp(tenant_id, &row).await?;
+    // Pre-encrypt credentials if provided
+    let auth_params = if let Some(ref credentials) = request.credentials {
+      if credentials.is_empty() {
+        None
+      } else {
+        let mut params = Vec::new();
+        for cred in credentials {
+          let (encrypted, salt, nonce) =
+            encrypt_api_key(self.db_service.encryption_key(), &cred.value)?;
+          params.push(McpAuthParamEntity {
+            id: new_ulid(),
+            tenant_id: tenant_id.to_string(),
+            mcp_id: mcp_id.clone(),
+            param_type: cred.param_type.as_str().to_string(),
+            param_key: cred.param_key.clone(),
+            encrypted_value: encrypted,
+            value_salt: salt,
+            value_nonce: nonce,
+            created_at: now,
+            updated_at: now,
+          });
+        }
+        Some(params)
+      }
+    } else {
+      None
+    };
+
+    let result = self
+      .db_service
+      .create_mcp_with_auth(
+        tenant_id,
+        &row,
+        auth_params,
+        request.oauth_token_id,
+        user_id,
+      )
+      .await?;
+
     Ok(self.mcp_row_to_with_server(result, &mcp_server))
   }
 
@@ -814,26 +812,18 @@ impl McpService for DefaultMcpService {
     };
 
     let new_auth_type = request.auth_type;
-    let (resolved_auth_type, resolved_auth_uuid) = if existing.auth_type != new_auth_type {
-      if let Some(ref old_uuid) = existing.auth_uuid {
-        match existing.auth_type {
-          // Auth headers are admin-managed resources - don't delete them when
-          // an MCP instance stops using them. They can be reused by other instances.
-          McpAuthType::Header => {}
-          McpAuthType::Oauth => {
-            let _ = self
-              .db_service
-              .delete_mcp_oauth_token(tenant_id, user_id, old_uuid)
-              .await;
-          }
-          McpAuthType::Public => {}
-        }
+    let (resolved_auth_type, resolved_auth_config_id) = if existing.auth_type != new_auth_type {
+      if existing.auth_type == McpAuthType::Oauth {
+        // Clean up OAuth tokens when switching away from OAuth
+        let _ = self
+          .db_service
+          .delete_oauth_tokens_by_mcp(tenant_id, id)
+          .await;
       }
-      (new_auth_type, request.auth_uuid)
+      (new_auth_type, request.auth_config_id)
     } else {
-      // When auth_type hasn't changed, still allow updating auth_uuid if provided
-      let uuid = request.auth_uuid.or(existing.auth_uuid);
-      (existing.auth_type, uuid)
+      let config_id = request.auth_config_id.or(existing.auth_config_id);
+      (existing.auth_type, config_id)
     };
 
     let now = self.time_service.utc_now();
@@ -849,12 +839,46 @@ impl McpService for DefaultMcpService {
       tools_cache: resolved_cache,
       tools_filter: resolved_filter,
       auth_type: resolved_auth_type,
-      auth_uuid: resolved_auth_uuid,
+      auth_config_id: resolved_auth_config_id,
       created_at: existing.created_at,
       updated_at: now,
     };
 
-    let result = self.db_service.update_mcp(tenant_id, &row).await?;
+    // Pre-encrypt credentials if provided
+    let auth_params = if let Some(ref credentials) = request.credentials {
+      let mut params = Vec::new();
+      for cred in credentials {
+        let (encrypted, salt, nonce) =
+          encrypt_api_key(self.db_service.encryption_key(), &cred.value)?;
+        params.push(McpAuthParamEntity {
+          id: new_ulid(),
+          tenant_id: tenant_id.to_string(),
+          mcp_id: id.to_string(),
+          param_type: cred.param_type.as_str().to_string(),
+          param_key: cred.param_key.clone(),
+          encrypted_value: encrypted,
+          value_salt: salt,
+          value_nonce: nonce,
+          created_at: now,
+          updated_at: now,
+        });
+      }
+      Some(params)
+    } else {
+      None
+    };
+
+    let result = self
+      .db_service
+      .update_mcp_with_auth(
+        tenant_id,
+        &row,
+        auth_params,
+        request.oauth_token_id,
+        user_id,
+      )
+      .await?;
+
     Ok(self.mcp_row_to_with_server(result, &server))
   }
 
@@ -864,21 +888,14 @@ impl McpService for DefaultMcpService {
       .await?
       .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
 
-    if let Some(ref auth_uuid) = existing.auth_uuid {
-      match existing.auth_type {
-        // Auth headers are admin-managed shared resources - don't delete them
-        // when an MCP instance is deleted. They can be reused by other instances.
-        McpAuthType::Header => {}
-        McpAuthType::Oauth => {
-          let _ = self
-            .db_service
-            .delete_mcp_oauth_token(tenant_id, user_id, auth_uuid)
-            .await;
-        }
-        McpAuthType::Public => {}
-      }
+    if existing.auth_type == McpAuthType::Oauth {
+      let _ = self
+        .db_service
+        .delete_oauth_tokens_by_mcp(tenant_id, id)
+        .await;
     }
 
+    // Credentials are cleaned up by CASCADE FK on mcp_auth_params.mcp_id
     self.db_service.delete_mcp(tenant_id, user_id, id).await?;
     Ok(())
   }
@@ -898,12 +915,12 @@ impl McpService for DefaultMcpService {
       return Err(McpError::McpDisabled);
     }
 
-    let auth_header = self
-      .resolve_auth_header_for_mcp(tenant_id, &existing)
+    let auth_params = self
+      .resolve_auth_params_for_mcp(tenant_id, &existing)
       .await?;
     let tools = self
       .mcp_client
-      .fetch_tools(&server.url, auth_header)
+      .fetch_tools(&server.url, auth_params)
       .await?;
 
     let tools_cache_json = serde_json::to_string(&tools).unwrap_or_default();
@@ -931,9 +948,9 @@ impl McpService for DefaultMcpService {
     &self,
     tenant_id: &str,
     server_id: &str,
-    auth_header_key: Option<String>,
-    auth_header_value: Option<String>,
-    auth_uuid: Option<String>,
+    credentials: Option<Vec<McpAuthParamInput>>,
+    _auth_config_id: Option<String>,
+    oauth_token_id: Option<String>,
   ) -> Result<Vec<McpTool>, McpError> {
     let server = self
       .db_service
@@ -945,29 +962,46 @@ impl McpService for DefaultMcpService {
       return Err(McpError::McpDisabled);
     }
 
-    let auth_header = if let Some(uuid) = auth_uuid {
-      let header = self
+    // Build auth params: oauth token > credentials array > none
+    let auth_params = if let Some(ref token_id) = oauth_token_id {
+      let access_token = self
         .db_service
-        .get_decrypted_auth_header(tenant_id, &uuid)
-        .await?;
-      if header.is_some() {
-        header
+        .get_decrypted_oauth_access_token(tenant_id, token_id)
+        .await?
+        .ok_or_else(|| McpError::OAuthTokenNotFound(token_id.clone()))?;
+      Some(McpAuthParams {
+        headers: vec![(
+          "Authorization".to_string(),
+          format!("Bearer {}", access_token),
+        )],
+        query_params: vec![],
+      })
+    } else if let Some(ref creds) = credentials {
+      if creds.is_empty() {
+        None
       } else {
-        self
-          .db_service
-          .get_decrypted_oauth_bearer(tenant_id, &uuid)
-          .await?
+        let mut headers = Vec::new();
+        let mut query_params = Vec::new();
+        for cred in creds {
+          match cred.param_type {
+            McpAuthParamType::Header => headers.push((cred.param_key.clone(), cred.value.clone())),
+            McpAuthParamType::Query => {
+              query_params.push((cred.param_key.clone(), cred.value.clone()))
+            }
+          }
+        }
+        Some(McpAuthParams {
+          headers,
+          query_params,
+        })
       }
     } else {
-      match (auth_header_key, auth_header_value) {
-        (Some(key), Some(value)) => Some((key, value)),
-        _ => None,
-      }
+      None
     };
 
     let tools = self
       .mcp_client
-      .fetch_tools(&server.url, auth_header)
+      .fetch_tools(&server.url, auth_params)
       .await?;
     Ok(tools)
   }
@@ -1003,12 +1037,12 @@ impl McpService for DefaultMcpService {
       return Err(McpError::ToolNotAllowed(tool_name.to_string()));
     }
 
-    let auth_header = self
-      .resolve_auth_header_for_mcp(tenant_id, &existing)
+    let auth_params = self
+      .resolve_auth_params_for_mcp(tenant_id, &existing)
       .await?;
     match self
       .mcp_client
-      .call_tool(&server.url, tool_name, request.params, auth_header)
+      .call_tool(&server.url, tool_name, request.params, auth_params)
       .await
     {
       Ok(result) => Ok(McpExecutionResponse {
@@ -1022,120 +1056,12 @@ impl McpService for DefaultMcpService {
     }
   }
 
-  // ---- MCP auth header config operations ----
-
-  async fn create_auth_header(
-    &self,
-    tenant_id: &str,
-    name: &str,
-    mcp_server_id: &str,
-    header_key: &str,
-    header_value: &str,
-  ) -> Result<McpAuthHeader, McpError> {
-    let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), header_value)?;
-
-    let now = self.time_service.utc_now();
-    let row = McpAuthHeaderEntity {
-      id: new_ulid(),
-      tenant_id: tenant_id.to_string(),
-      name: name.to_string(),
-      mcp_server_id: mcp_server_id.to_string(),
-      header_key: header_key.to_string(),
-      encrypted_header_value: encrypted,
-      header_value_salt: salt,
-      header_value_nonce: nonce,
-      created_at: now,
-      updated_at: now,
-    };
-
-    let result = self.db_service.create_mcp_auth_header(&row).await?;
-    Ok(McpAuthHeader {
-      id: result.id,
-      name: result.name,
-      mcp_server_id: result.mcp_server_id,
-      header_key: result.header_key,
-      has_header_value: true,
-      created_at: result.created_at,
-      updated_at: result.updated_at,
-    })
-  }
-
-  async fn get_auth_header(
-    &self,
-    tenant_id: &str,
-    id: &str,
-  ) -> Result<Option<McpAuthHeader>, McpError> {
-    Ok(self.db_service.get_mcp_auth_header(tenant_id, id).await?)
-  }
-
-  async fn list_auth_headers_by_server(
-    &self,
-    tenant_id: &str,
-    mcp_server_id: &str,
-  ) -> Result<Vec<McpAuthHeader>, McpError> {
-    Ok(
-      self
-        .db_service
-        .list_mcp_auth_headers_by_server(tenant_id, mcp_server_id)
-        .await?,
-    )
-  }
-
-  async fn update_auth_header(
-    &self,
-    tenant_id: &str,
-    id: &str,
-    name: &str,
-    header_key: &str,
-    header_value: &str,
-  ) -> Result<McpAuthHeader, McpError> {
-    let existing = self
-      .db_service
-      .get_mcp_auth_header(tenant_id, id)
-      .await?
-      .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
-
-    let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), header_value)?;
-
-    let now = self.time_service.utc_now();
-    let row = McpAuthHeaderEntity {
-      id: existing.id,
-      tenant_id: tenant_id.to_string(),
-      name: name.to_string(),
-      mcp_server_id: existing.mcp_server_id,
-      header_key: header_key.to_string(),
-      encrypted_header_value: encrypted,
-      header_value_salt: salt,
-      header_value_nonce: nonce,
-      created_at: existing.created_at,
-      updated_at: now,
-    };
-
-    let result = self.db_service.update_mcp_auth_header(&row).await?;
-    Ok(McpAuthHeader {
-      id: result.id,
-      name: result.name,
-      mcp_server_id: result.mcp_server_id,
-      header_key: result.header_key,
-      has_header_value: true,
-      created_at: result.created_at,
-      updated_at: result.updated_at,
-    })
-  }
-
-  async fn delete_auth_header(&self, tenant_id: &str, id: &str) -> Result<(), McpError> {
-    self
-      .db_service
-      .delete_mcp_auth_header(tenant_id, id)
-      .await?;
-    Ok(())
-  }
-
   // ---- MCP OAuth config operations ----
 
   async fn create_oauth_config(
     &self,
     tenant_id: &str,
+    created_by: &str,
     name: &str,
     mcp_server_id: &str,
     client_id: &str,
@@ -1164,11 +1090,23 @@ impl McpService for DefaultMcpService {
     };
 
     let now = self.time_service.utc_now();
-    let row = McpOAuthConfigEntity {
-      id: new_ulid(),
+    let config_id = new_ulid();
+
+    // Create base auth config row
+    let base_row = McpAuthConfigEntity {
+      id: config_id.clone(),
       tenant_id: tenant_id.to_string(),
-      name: name.to_string(),
       mcp_server_id: mcp_server_id.to_string(),
+      config_type: McpAuthConfigType::Oauth.as_str().to_string(),
+      name: name.to_string(),
+      created_by: created_by.to_string(),
+      created_at: now,
+      updated_at: now,
+    };
+    // Build OAuth detail row
+    let detail_row = McpOAuthConfigDetailEntity {
+      auth_config_id: config_id.clone(),
+      tenant_id: tenant_id.to_string(),
       registration_type,
       client_id: client_id.to_string(),
       encrypted_client_secret: enc_secret,
@@ -1183,16 +1121,21 @@ impl McpService for DefaultMcpService {
       client_id_issued_at: client_id_issued_at
         .and_then(|ts| chrono::DateTime::from_timestamp(ts, 0)),
       token_endpoint_auth_method,
-      scopes,
+      scopes: scopes.clone(),
       created_at: now,
       updated_at: now,
     };
 
-    let result = self.db_service.create_mcp_oauth_config(&row).await?;
+    // Atomically create config + OAuth detail
+    let (_config_result, result) = self
+      .db_service
+      .create_auth_config_oauth(tenant_id, &base_row, &detail_row)
+      .await?;
+
     Ok(McpOAuthConfig {
-      id: result.id,
-      name: result.name,
-      mcp_server_id: result.mcp_server_id,
+      id: config_id,
+      name: name.to_string(),
+      mcp_server_id: mcp_server_id.to_string(),
       registration_type: result.registration_type,
       client_id: result.client_id,
       authorization_endpoint: result.authorization_endpoint,
@@ -1213,28 +1156,12 @@ impl McpService for DefaultMcpService {
     tenant_id: &str,
     id: &str,
   ) -> Result<Option<McpOAuthConfig>, McpError> {
-    Ok(self.db_service.get_mcp_oauth_config(tenant_id, id).await?)
-  }
-
-  async fn list_oauth_configs_by_server(
-    &self,
-    tenant_id: &str,
-    mcp_server_id: &str,
-  ) -> Result<Vec<McpOAuthConfig>, McpError> {
     Ok(
       self
         .db_service
-        .list_mcp_oauth_configs_by_server(tenant_id, mcp_server_id)
+        .get_mcp_oauth_config_detail(tenant_id, id)
         .await?,
     )
-  }
-
-  async fn delete_oauth_config(&self, tenant_id: &str, id: &str) -> Result<(), McpError> {
-    self
-      .db_service
-      .delete_oauth_config_cascade(tenant_id, id)
-      .await?;
-    Ok(())
   }
 
   // ---- MCP OAuth token operations ----
@@ -1243,15 +1170,13 @@ impl McpService for DefaultMcpService {
     &self,
     tenant_id: &str,
     user_id: &str,
+    mcp_id: Option<String>,
     config_id: &str,
     access_token: &str,
     refresh_token: Option<String>,
     scopes_granted: Option<String>,
     expires_in: Option<i64>,
   ) -> Result<McpOAuthToken, McpError> {
-    let (enc_at, salt_at, nonce_at) =
-      encrypt_api_key(self.db_service.encryption_key(), access_token)?;
-
     let (enc_rt, salt_rt, nonce_rt) = if let Some(ref rt) = refresh_token {
       let (e, s, n) = encrypt_api_key(self.db_service.encryption_key(), rt)?;
       (Some(e), Some(s), Some(n))
@@ -1259,38 +1184,42 @@ impl McpService for DefaultMcpService {
       (None, None, None)
     };
 
+    let (enc_at, salt_at, nonce_at) =
+      encrypt_api_key(self.db_service.encryption_key(), access_token)?;
+
     let now = self.time_service.utc_now();
     let expires_at = expires_in.map(|ei| now + chrono::Duration::seconds(ei));
 
     let row = McpOAuthTokenEntity {
       id: new_ulid(),
       tenant_id: tenant_id.to_string(),
-      mcp_oauth_config_id: config_id.to_string(),
+      mcp_id: mcp_id.clone(),
+      auth_config_id: config_id.to_string(),
+      user_id: user_id.to_string(),
       encrypted_access_token: enc_at,
       access_token_salt: salt_at,
       access_token_nonce: nonce_at,
       encrypted_refresh_token: enc_rt,
       refresh_token_salt: salt_rt,
       refresh_token_nonce: nonce_rt,
-      scopes_granted,
+      scopes_granted: scopes_granted.clone(),
       expires_at,
-      user_id: user_id.to_string(),
       created_at: now,
       updated_at: now,
     };
 
-    // Delete existing tokens for this (config_id, user_id) to prevent orphaned rows
-    self
+    // Atomically delete existing tokens for (mcp_id, user_id) and insert new one
+    let result = self
       .db_service
-      .delete_oauth_tokens_by_config_and_user(tenant_id, config_id, user_id)
+      .store_oauth_token(tenant_id, mcp_id.clone(), user_id, &row)
       .await?;
-    let result = self.db_service.create_mcp_oauth_token(&row).await?;
+
     Ok(McpOAuthToken {
       id: result.id,
-      mcp_oauth_config_id: result.mcp_oauth_config_id,
+      mcp_id: result.mcp_id,
+      auth_config_id: result.auth_config_id,
       scopes_granted: result.scopes_granted,
       expires_at: result.expires_at.map(|dt| dt.timestamp()),
-      has_access_token: true,
       has_refresh_token: result.encrypted_refresh_token.is_some(),
       user_id: result.user_id,
       created_at: result.created_at,
@@ -1329,6 +1258,7 @@ impl McpService for DefaultMcpService {
     &self,
     tenant_id: &str,
     user_id: &str,
+    mcp_id: Option<String>,
     config_id: &str,
     code: &str,
     redirect_uri: &str,
@@ -1341,7 +1271,7 @@ impl McpService for DefaultMcpService {
 
     let config = self
       .db_service
-      .get_mcp_oauth_config(tenant_id, config_id)
+      .get_mcp_oauth_config_detail(tenant_id, config_id)
       .await?
       .ok_or_else(|| McpError::McpNotFound(config_id.to_string()))?;
 
@@ -1412,6 +1342,7 @@ impl McpService for DefaultMcpService {
       .store_oauth_token(
         tenant_id,
         user_id,
+        mcp_id,
         config_id,
         &access_token,
         refresh_token,
@@ -1615,19 +1546,63 @@ impl McpService for DefaultMcpService {
   async fn create_auth_config(
     &self,
     tenant_id: &str,
+    created_by: &str,
     mcp_server_id: &str,
     request: CreateMcpAuthConfigRequest,
   ) -> Result<McpAuthConfigResponse, McpError> {
     match request {
-      CreateMcpAuthConfigRequest::Header {
-        name,
-        header_key,
-        header_value,
-      } => {
-        let header = self
-          .create_auth_header(tenant_id, &name, mcp_server_id, &header_key, &header_value)
+      CreateMcpAuthConfigRequest::Header { name, entries } => {
+        let now = self.time_service.utc_now();
+        let config_id = new_ulid();
+
+        // Build base auth config row
+        let base_row = McpAuthConfigEntity {
+          id: config_id.clone(),
+          tenant_id: tenant_id.to_string(),
+          mcp_server_id: mcp_server_id.to_string(),
+          config_type: McpAuthConfigType::Header.as_str().to_string(),
+          name: name.clone(),
+          created_by: created_by.to_string(),
+          created_at: now,
+          updated_at: now,
+        };
+
+        // Build param entries
+        let mut param_rows = Vec::new();
+        let mut result_entries = Vec::new();
+        for entry in entries {
+          let param_id = new_ulid();
+          param_rows.push(McpAuthConfigParamEntity {
+            id: param_id.clone(),
+            tenant_id: tenant_id.to_string(),
+            auth_config_id: config_id.clone(),
+            param_type: entry.param_type.as_str().to_string(),
+            param_key: entry.param_key.clone(),
+            created_at: now,
+            updated_at: now,
+          });
+          result_entries.push(McpAuthConfigParam {
+            id: param_id,
+            param_type: entry.param_type,
+            param_key: entry.param_key,
+          });
+        }
+
+        // Atomically create config + params
+        self
+          .db_service
+          .create_auth_config_header(tenant_id, &base_row, param_rows)
           .await?;
-        Ok(McpAuthConfigResponse::from(header))
+
+        Ok(McpAuthConfigResponse::Header {
+          id: config_id,
+          name,
+          mcp_server_id: mcp_server_id.to_string(),
+          created_by: created_by.to_string(),
+          entries: result_entries,
+          created_at: now,
+          updated_at: now,
+        })
       }
       CreateMcpAuthConfigRequest::Oauth {
         name,
@@ -1645,6 +1620,7 @@ impl McpService for DefaultMcpService {
         let config = self
           .create_oauth_config(
             tenant_id,
+            created_by,
             &name,
             mcp_server_id,
             &client_id,
@@ -1659,7 +1635,24 @@ impl McpService for DefaultMcpService {
             registration_access_token,
           )
           .await?;
-        Ok(McpAuthConfigResponse::from(config))
+        Ok(McpAuthConfigResponse::Oauth {
+          id: config.id,
+          name: config.name,
+          mcp_server_id: config.mcp_server_id,
+          created_by: created_by.to_string(),
+          registration_type: config.registration_type,
+          client_id: config.client_id,
+          authorization_endpoint: config.authorization_endpoint,
+          token_endpoint: config.token_endpoint,
+          registration_endpoint: config.registration_endpoint,
+          scopes: config.scopes,
+          client_id_issued_at: config.client_id_issued_at,
+          token_endpoint_auth_method: config.token_endpoint_auth_method,
+          has_client_secret: config.has_client_secret,
+          has_registration_access_token: config.has_registration_access_token,
+          created_at: config.created_at,
+          updated_at: config.updated_at,
+        })
       }
     }
   }
@@ -1669,16 +1662,19 @@ impl McpService for DefaultMcpService {
     tenant_id: &str,
     mcp_server_id: &str,
   ) -> Result<Vec<McpAuthConfigResponse>, McpError> {
-    let headers = self
-      .list_auth_headers_by_server(tenant_id, mcp_server_id)
+    let configs = self
+      .db_service
+      .list_mcp_auth_configs_by_server(tenant_id, mcp_server_id)
       .await?;
-    let oauth_configs = self
-      .list_oauth_configs_by_server(tenant_id, mcp_server_id)
-      .await?;
-    let mut configs: Vec<McpAuthConfigResponse> = Vec::new();
-    configs.extend(headers.into_iter().map(McpAuthConfigResponse::from));
-    configs.extend(oauth_configs.into_iter().map(McpAuthConfigResponse::from));
-    Ok(configs)
+
+    let mut results = Vec::new();
+    for config in configs {
+      match self.get_auth_config(tenant_id, &config.id).await? {
+        Some(resp) => results.push(resp),
+        None => {} // skip configs that can't be loaded
+      }
+    }
+    Ok(results)
   }
 
   async fn get_auth_config(
@@ -1686,32 +1682,82 @@ impl McpService for DefaultMcpService {
     tenant_id: &str,
     id: &str,
   ) -> Result<Option<McpAuthConfigResponse>, McpError> {
-    if let Some(header) = self.get_auth_header(tenant_id, id).await? {
-      return Ok(Some(McpAuthConfigResponse::from(header)));
+    let base = match self.db_service.get_mcp_auth_config(tenant_id, id).await? {
+      Some(b) => b,
+      None => return Ok(None),
+    };
+
+    match base.config_type.as_str() {
+      "header" => {
+        let params = self
+          .db_service
+          .list_mcp_auth_config_params(tenant_id, &base.id)
+          .await?;
+        let entries: Vec<McpAuthConfigParam> = params
+          .into_iter()
+          .map(|p| {
+            let param_type = p
+              .param_type
+              .parse::<McpAuthParamType>()
+              .unwrap_or(McpAuthParamType::Header);
+            McpAuthConfigParam {
+              id: p.id,
+              param_type,
+              param_key: p.param_key,
+            }
+          })
+          .collect();
+        Ok(Some(McpAuthConfigResponse::Header {
+          id: base.id,
+          name: base.name,
+          mcp_server_id: base.mcp_server_id,
+          created_by: base.created_by,
+          entries,
+          created_at: base.created_at,
+          updated_at: base.updated_at,
+        }))
+      }
+      "oauth" => {
+        let oauth = self
+          .db_service
+          .get_mcp_oauth_config_detail(tenant_id, &base.id)
+          .await?;
+        match oauth {
+          Some(config) => Ok(Some(McpAuthConfigResponse::Oauth {
+            id: base.id,
+            name: base.name,
+            mcp_server_id: base.mcp_server_id,
+            created_by: base.created_by,
+            registration_type: config.registration_type,
+            client_id: config.client_id,
+            authorization_endpoint: config.authorization_endpoint,
+            token_endpoint: config.token_endpoint,
+            registration_endpoint: config.registration_endpoint,
+            scopes: config.scopes,
+            client_id_issued_at: config.client_id_issued_at,
+            token_endpoint_auth_method: config.token_endpoint_auth_method,
+            has_client_secret: config.has_client_secret,
+            has_registration_access_token: config.has_registration_access_token,
+            created_at: config.created_at,
+            updated_at: config.updated_at,
+          })),
+          None => Ok(None),
+        }
+      }
+      _ => Ok(None),
     }
-    if let Some(oauth_config) = self.get_oauth_config(tenant_id, id).await? {
-      return Ok(Some(McpAuthConfigResponse::from(oauth_config)));
-    }
-    Ok(None)
   }
 
   async fn delete_auth_config(&self, tenant_id: &str, id: &str) -> Result<(), McpError> {
-    // Try auth header first
-    if self.get_auth_header(tenant_id, id).await?.is_some() {
-      return self.delete_auth_header(tenant_id, id).await;
-    }
-    // Try OAuth config
-    if self.get_oauth_config(tenant_id, id).await?.is_some() {
-      return self.delete_oauth_config(tenant_id, id).await;
-    }
-    Err(McpError::McpNotFound(id.to_string()))
+    // CASCADE FK handles children (params, details, tokens)
+    self
+      .db_service
+      .delete_mcp_auth_config(tenant_id, id)
+      .await?;
+    Ok(())
   }
 }
 
 #[cfg(test)]
 #[path = "test_mcp_service.rs"]
 mod test_mcp_service;
-
-#[cfg(test)]
-#[path = "test_mcp_repository_isolation.rs"]
-mod test_mcp_repository_isolation;

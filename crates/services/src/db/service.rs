@@ -1,6 +1,6 @@
 use crate::app_access_requests::AccessRequestRepository;
 use crate::db::DbCore;
-use crate::mcps::{McpAuthRepository, McpInstanceRepository, McpServerRepository};
+use crate::mcps::{McpRepository, McpServerRepository};
 use crate::models::{
   ApiAliasRepository, DownloadRepository, ModelMetadataRepository, UserAliasRepository,
 };
@@ -23,8 +23,7 @@ pub trait DbService:
   + TokenRepository
   + ToolsetRepository
   + McpServerRepository
-  + McpInstanceRepository
-  + McpAuthRepository
+  + McpRepository
   + UserAliasRepository
   + SettingsRepository
   + DbCore
@@ -44,8 +43,7 @@ impl<T> DbService for T where
     + TokenRepository
     + ToolsetRepository
     + McpServerRepository
-    + McpInstanceRepository
-    + McpAuthRepository
+    + McpRepository
     + UserAliasRepository
     + SettingsRepository
     + DbCore

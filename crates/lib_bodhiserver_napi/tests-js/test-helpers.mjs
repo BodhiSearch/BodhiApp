@@ -249,7 +249,8 @@ function getLocalNetworkIP() {
 async function resetDatabase(baseUrl) {
   const response = await fetch(`${baseUrl}/dev/db-reset`, { method: 'POST' });
   if (!response.ok) {
-    throw new Error(`db-reset failed: ${response.status}`);
+    const body = await response.text();
+    throw new Error(`db-reset failed: ${response.status} - ${body}`);
   }
   return response.json();
 }

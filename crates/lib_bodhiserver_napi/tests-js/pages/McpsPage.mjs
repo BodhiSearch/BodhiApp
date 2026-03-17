@@ -62,7 +62,10 @@ export class McpsPage extends BasePage {
     authConfigOptionPublic: '[data-testid="auth-config-option-public"]',
     authConfigOption: (id) => `[data-testid="auth-config-option-${id}"]`,
     authConfigOptionNew: '[data-testid="auth-config-option-new"]',
-    authConfigHeaderSummary: '[data-testid="auth-config-header-summary"]',
+    authConfigHeaderCredentials: '[data-testid="auth-config-header-credentials"]',
+    credentialField: (paramKey) => `[data-testid="credential-field-${paramKey}"]`,
+    credentialInput: (paramKey) => `[data-testid="credential-input-${paramKey}"]`,
+    credentialToggle: (paramKey) => `[data-testid="credential-toggle-${paramKey}"]`,
     authConfigOAuthConnect: '[data-testid="auth-config-oauth-connect"]',
     authConfigNewRedirect: '[data-testid="auth-config-new-redirect"]',
 
@@ -82,6 +85,7 @@ export class McpsPage extends BasePage {
     selectAllButton: '[data-testid="mcp-select-all-tools"]',
     deselectAllButton: '[data-testid="mcp-deselect-all-tools"]',
     noTools: '[data-testid="mcp-no-tools"]',
+    toolsEmptyState: '[data-testid="mcp-tools-empty-state"]',
 
     // Playground page
     mcpPlaygroundButton: (id) => `[data-testid="mcp-playground-button-${id}"]`,
@@ -170,26 +174,33 @@ export class McpsPage extends BasePage {
 
   // ========== API Helpers (auth config creation via fetch) ==========
 
-  async createAuthHeaderViaApi(serverId, { name, headerKey, headerValue }) {
+  async createAuthConfigViaApi(serverId, { name, entries }) {
+    // entries is array of { param_type: 'header' | 'query', param_key: string }
     return await this.page.evaluate(
-      async ({ baseUrl, serverId, name, headerKey, headerValue }) => {
+      async ({ baseUrl, serverId, name, entries }) => {
         const resp = await fetch(`${baseUrl}/bodhi/v1/mcps/auth-configs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
             type: 'header',
-            name: name || 'Header',
+            name: name || 'Header / Query Params',
             mcp_server_id: serverId,
-            header_key: headerKey,
-            header_value: headerValue,
+            entries: entries,
           }),
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
         return await resp.json();
       },
-      { baseUrl: this.baseUrl, serverId, name, headerKey, headerValue }
+      { baseUrl: this.baseUrl, serverId, name, entries }
     );
+  }
+
+  async createAuthHeaderViaApi(serverId, { name, headerKey, headerValue }) {
+    return await this.createAuthConfigViaApi(serverId, {
+      name,
+      entries: [{ param_type: 'header', param_key: headerKey }],
+    });
   }
 
   async createOAuthConfigViaApi(serverId, config) {
@@ -366,8 +377,16 @@ export class McpsPage extends BasePage {
     await expect(trigger).toHaveAttribute('data-test-state', type);
   }
 
-  async expectAuthConfigHeaderSummary() {
-    await expect(this.page.locator(this.selectors.authConfigHeaderSummary)).toBeVisible();
+  async expectAuthConfigHeaderCredentials() {
+    await expect(this.page.locator(this.selectors.authConfigHeaderCredentials)).toBeVisible();
+  }
+
+  async expectCredentialField(paramKey) {
+    await expect(this.page.locator(this.selectors.credentialField(paramKey))).toBeVisible();
+  }
+
+  async fillCredentialValue(paramKey, value) {
+    await this.page.fill(this.selectors.credentialInput(paramKey), value);
   }
 
   async clickOAuthConnect() {
@@ -399,6 +418,7 @@ export class McpsPage extends BasePage {
     name,
     slug,
     authConfigId,
+    credentials = [],
     description = '',
   }) {
     await this.navigateToMcpsList();
@@ -413,7 +433,11 @@ export class McpsPage extends BasePage {
     if (description) await this.fillDescription(description);
 
     await this.selectAuthConfigById(authConfigId);
-    await this.expectAuthConfigHeaderSummary();
+    await this.expectAuthConfigHeaderCredentials();
+
+    for (const cred of credentials) {
+      await this.fillCredentialValue(cred.param_key, cred.value);
+    }
 
     await this.clickFetchTools();
     await this.expectToolsList();
@@ -474,6 +498,18 @@ export class McpsPage extends BasePage {
 
   async selectAllTools() {
     await this.page.click(this.selectors.selectAllButton);
+  }
+
+  async expectToolsListNotVisible() {
+    await expect(this.page.locator(this.selectors.toolsList)).not.toBeVisible();
+  }
+
+  async expectToolsEmptyState() {
+    await expect(this.page.locator(this.selectors.toolsEmptyState)).toBeVisible();
+  }
+
+  async expectToolsLoadingHidden() {
+    await expect(this.page.locator(this.selectors.toolsLoading)).not.toBeVisible();
   }
 
   // ========== Playground Page Methods ==========

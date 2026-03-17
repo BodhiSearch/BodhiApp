@@ -19,7 +19,9 @@ fn mcp_request_with_name(name: &str) -> McpRequest {
     tools_cache: None,
     tools_filter: None,
     auth_type: McpAuthType::default(),
-    auth_uuid: None,
+    auth_config_id: None,
+    credentials: None,
+    oauth_token_id: None,
   }
 }
 
@@ -33,7 +35,9 @@ fn mcp_request_with_slug(slug: &str) -> McpRequest {
     tools_cache: None,
     tools_filter: None,
     auth_type: McpAuthType::default(),
-    auth_uuid: None,
+    auth_config_id: None,
+    credentials: None,
+    oauth_token_id: None,
   }
 }
 
@@ -47,7 +51,9 @@ fn mcp_request_with_description(desc: Option<&str>) -> McpRequest {
     tools_cache: None,
     tools_filter: None,
     auth_type: McpAuthType::default(),
-    auth_uuid: None,
+    auth_config_id: None,
+    credentials: None,
+    oauth_token_id: None,
   }
 }
 

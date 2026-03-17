@@ -17,7 +17,7 @@ pub struct Model {
   pub tools_cache: Option<String>,
   pub tools_filter: Option<String>,
   pub auth_type: McpAuthType,
-  pub auth_uuid: Option<String>,
+  pub auth_config_id: Option<String>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -30,11 +30,23 @@ pub enum Relation {
     to = "super::mcp_server_entity::Column::Id"
   )]
   McpServer,
+  #[sea_orm(
+    belongs_to = "super::mcp_auth_config_entity::Entity",
+    from = "Column::AuthConfigId",
+    to = "super::mcp_auth_config_entity::Column::Id"
+  )]
+  McpAuthConfig,
 }
 
 impl Related<super::mcp_server_entity::Entity> for Entity {
   fn to() -> RelationDef {
     Relation::McpServer.def()
+  }
+}
+
+impl Related<super::mcp_auth_config_entity::Entity> for Entity {
+  fn to() -> RelationDef {
+    Relation::McpAuthConfig.def()
   }
 }
 
@@ -56,7 +68,7 @@ pub struct McpWithServerEntity {
   pub tools_cache: Option<String>,
   pub tools_filter: Option<String>,
   pub auth_type: McpAuthType,
-  pub auth_uuid: Option<String>,
+  pub auth_config_id: Option<String>,
   pub created_at: chrono::DateTime<chrono::Utc>,
   pub updated_at: chrono::DateTime<chrono::Utc>,
   // Server info from JOIN

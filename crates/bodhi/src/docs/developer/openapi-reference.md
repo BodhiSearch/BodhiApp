@@ -34,11 +34,11 @@ Bodhi organizes its API under two main prefixes:
 
 These endpoints follow the OpenAI API format, so existing OpenAI client libraries work with Bodhi:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/chat/completions` | POST | Chat completions (streaming and non-streaming) |
-| `/v1/models` | GET | List available models |
-| `/v1/embeddings` | POST | Generate text embeddings |
+| Endpoint               | Method | Description                                    |
+| ---------------------- | ------ | ---------------------------------------------- |
+| `/v1/chat/completions` | POST   | Chat completions (streaming and non-streaming) |
+| `/v1/models`           | GET    | List available models                          |
+| `/v1/embeddings`       | POST   | Generate text embeddings                       |
 
 ### `/bodhi/v1/` -- Bodhi-Specific Endpoints
 
@@ -48,14 +48,14 @@ Bodhi-specific functionality lives under the `/bodhi/v1/` prefix. This includes 
 
 Third-party apps that have completed the [access request flow](/docs/developer/app-access-requests) use endpoints under `/bodhi/v1/apps/`:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/bodhi/v1/apps/request-access` | POST | Create an access request |
-| `/bodhi/v1/apps/access-requests/{id}` | GET | Poll access request status |
-| `/bodhi/v1/apps/mcps` | GET | List accessible MCP instances |
-| `/bodhi/v1/apps/mcps/{id}` | GET | Get MCP instance details |
-| `/bodhi/v1/apps/mcps/{id}/tools/refresh` | POST | Refresh MCP tool list |
-| `/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute` | POST | Execute an MCP tool |
+| Endpoint                                             | Method | Description                   |
+| ---------------------------------------------------- | ------ | ----------------------------- |
+| `/bodhi/v1/apps/request-access`                      | POST   | Create an access request      |
+| `/bodhi/v1/apps/access-requests/{id}`                | GET    | Poll access request status    |
+| `/bodhi/v1/apps/mcps`                                | GET    | List accessible MCP instances |
+| `/bodhi/v1/apps/mcps/{id}`                           | GET    | Get MCP instance details      |
+| `/bodhi/v1/apps/mcps/{id}/tools/refresh`             | POST   | Refresh MCP tool list         |
+| `/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute` | POST   | Execute an MCP tool           |
 
 ## CORS Policy
 

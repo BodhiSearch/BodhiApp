@@ -44,7 +44,10 @@
     "e2e:server:multi_tenant": "node tests-js/scripts/start-shared-server.mjs --port 41135 --db-type postgres --deployment multi_tenant",
     "e2e:server:test-app-oauth": "cd test-oauth-app && npm run build && npx serve dist -s -l 55173",
     "e2e:server:test-app-mcp": "cd test-mcp-oauth-server && npm run build && npm start",
-    "e2e:server:test-app-mcp-dcr": "cd test-mcp-oauth-server && npm run build && node dist/index.js --dcr"
+    "e2e:server:test-app-mcp-dcr": "cd test-mcp-oauth-server && npm run build && node dist/index.js --dcr",
+    "e2e:server:test-mcp-auth-header": "cd test-mcp-auth-server && npm run build && node dist/index.js --header Authorization=\"Bearer test-header-key\" --port 55176",
+    "e2e:server:test-mcp-auth-query": "cd test-mcp-auth-server && npm run build && node dist/index.js --query api_key=test-query-key --port 55177",
+    "e2e:server:test-mcp-auth-mixed": "cd test-mcp-auth-server && npm run build && node dist/index.js --header X-Auth-1=header-val-1 --header X-Auth-2=header-val-2 --query q_key_1=query-val-1 --query q_key_2=query-val-2 --port 55178"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

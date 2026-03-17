@@ -102,11 +102,11 @@ For example, a Manager cannot assign the Admin role. If a Manager views a pendin
 
 ## Request Status Types
 
-| Status       | Meaning            | What to Do                                           |
-| ------------ | ------------------ | ---------------------------------------------------- |
-| **Pending**  | Under review       | Wait for admin/manager decision                      |
-| **Approved** | Access granted     | Log out and log back in to use Bodhi App             |
-| **Rejected** | Access denied      | Request Access page shown again; re-request any time |
+| Status       | Meaning        | What to Do                                           |
+| ------------ | -------------- | ---------------------------------------------------- |
+| **Pending**  | Under review   | Wait for admin/manager decision                      |
+| **Approved** | Access granted | Log out and log back in to use Bodhi App             |
+| **Rejected** | Access denied  | Request Access page shown again; re-request any time |
 
 ## Frequently Asked Questions
 

@@ -33,8 +33,9 @@ async fn test_create_auth_config_header_success() -> anyhow::Result<()> {
     "mcp_server_id": server_id,
     "type": "header",
     "name": "My Header",
-    "header_key": "Authorization",
-    "header_value": "Bearer secret"
+    "entries": [
+      { "param_type": "header", "param_key": "Authorization" }
+    ]
   });
   let response = router
     .clone()
@@ -52,14 +53,13 @@ async fn test_create_auth_config_header_success() -> anyhow::Result<()> {
     McpAuthConfigResponse::Header {
       name,
       mcp_server_id,
-      header_key,
-      has_header_value,
+      entries,
       ..
     } => {
       assert_eq!("My Header", name);
       assert_eq!(server_id, mcp_server_id);
-      assert_eq!("Authorization", header_key);
-      assert!(has_header_value);
+      assert_eq!(1, entries.len());
+      assert_eq!("Authorization", entries[0].param_key);
     }
     _ => panic!("expected Header auth config"),
   }
@@ -82,14 +82,8 @@ async fn test_get_auth_config_success() -> anyhow::Result<()> {
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
   let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
-  let auth_id = create_header_auth_config_in_db(
-    &router,
-    &user_cookie,
-    &server_id,
-    "Authorization",
-    "Bearer s",
-  )
-  .await?;
+  let auth_id =
+    create_header_auth_config_in_db(&router, &user_cookie, &server_id, "Authorization").await?;
 
   let response = router
     .clone()
@@ -128,8 +122,7 @@ async fn test_delete_auth_config_success() -> anyhow::Result<()> {
       .await?;
   let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
   let auth_id =
-    create_header_auth_config_in_db(&router, &user_cookie, &server_id, "X-Api-Key", "key-val")
-      .await?;
+    create_header_auth_config_in_db(&router, &user_cookie, &server_id, "X-Api-Key").await?;
 
   let response = router
     .clone()
@@ -161,14 +154,7 @@ async fn test_list_auth_configs_success() -> anyhow::Result<()> {
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
   let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
-  create_header_auth_config_in_db(
-    &router,
-    &user_cookie,
-    &server_id,
-    "Authorization",
-    "Bearer s",
-  )
-  .await?;
+  create_header_auth_config_in_db(&router, &user_cookie, &server_id, "Authorization").await?;
 
   let response = router
     .clone()

@@ -1,6 +1,4 @@
-use crate::mcps::{
-  McpAuthType, McpEntity, McpInstanceRepository, McpServerEntity, McpServerRepository,
-};
+use crate::mcps::{McpAuthType, McpEntity, McpRepository, McpServerEntity, McpServerRepository};
 use crate::test_utils::{
   sea_context, setup_env, TEST_TENANT_A_USER_B_ID, TEST_TENANT_B_ID, TEST_TENANT_ID, TEST_USER_ID,
 };
@@ -45,7 +43,7 @@ fn make_mcp_for(
     tools_cache: None,
     tools_filter: None,
     auth_type: McpAuthType::Public,
-    auth_uuid: None,
+    auth_config_id: None,
     created_at: now,
     updated_at: now,
   }

@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDiscoverMcp } from '@/hooks/useMcps';
+import type { McpAuthConfigParamInput, McpAuthParamType } from '@bodhiapp/ts-client';
 
 type AuthConfigType = 'header' | 'oauth';
 type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
@@ -27,11 +28,9 @@ interface AuthConfigFormProps {
   showTypeSelector?: boolean;
   showActions?: boolean;
 
-  // Header auth state
-  headerKey: string;
-  headerValue: string;
-  onHeaderKeyChange: (value: string) => void;
-  onHeaderValueChange: (value: string) => void;
+  // Header/Query auth entries state
+  entries: McpAuthConfigParamInput[];
+  onEntriesChange: (entries: McpAuthConfigParamInput[]) => void;
 
   // OAuth state
   registrationType: OAuthRegistrationType;
@@ -141,6 +140,26 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.registrationType, props.type, autoDcrFailed, props.serverUrl, props.enableAutoDcr]);
 
+  const handleAddEntry = () => {
+    props.onEntriesChange([...props.entries, { param_type: 'header', param_key: '' }]);
+  };
+
+  const handleRemoveEntry = (index: number) => {
+    props.onEntriesChange(props.entries.filter((_, i) => i !== index));
+  };
+
+  const handleEntryParamTypeChange = (index: number, paramType: McpAuthParamType) => {
+    const updated = [...props.entries];
+    updated[index] = { ...updated[index], param_type: paramType };
+    props.onEntriesChange(updated);
+  };
+
+  const handleEntryParamKeyChange = (index: number, paramKey: string) => {
+    const updated = [...props.entries];
+    updated[index] = { ...updated[index], param_key: paramKey };
+    props.onEntriesChange(updated);
+  };
+
   return (
     <div className="space-y-4">
       {/* Type selector - only show if not handled by parent */}
@@ -152,7 +171,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="header">Header</SelectItem>
+              <SelectItem value="header">Header / Query Params</SelectItem>
               <SelectItem value="oauth">OAuth</SelectItem>
             </SelectContent>
           </Select>
@@ -170,29 +189,53 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
         />
       </div>
 
-      {/* Header fields */}
+      {/* Header/Query param entries */}
       {props.type === 'header' && (
-        <>
-          <div className="space-y-2">
-            <Label>Header Key</Label>
-            <Input
-              value={props.headerKey}
-              onChange={(e) => props.onHeaderKeyChange(e.target.value)}
-              placeholder="e.g. Authorization"
-              data-testid="auth-config-header-key-input"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Header Value</Label>
-            <Input
-              type="password"
-              value={props.headerValue}
-              onChange={(e) => props.onHeaderValueChange(e.target.value)}
-              placeholder="e.g. Bearer sk-..."
-              data-testid="auth-config-header-value-input"
-            />
-          </div>
-        </>
+        <div className="space-y-3">
+          <Label>Key Definitions</Label>
+          {props.entries.map((entry, index) => (
+            <div key={index} className="flex items-center gap-2" data-testid={`auth-config-entry-${index}`}>
+              <Select
+                value={entry.param_type}
+                onValueChange={(val) => handleEntryParamTypeChange(index, val as McpAuthParamType)}
+              >
+                <SelectTrigger className="w-[130px]" data-testid={`auth-config-entry-type-${index}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="header">Header</SelectItem>
+                  <SelectItem value="query">Query</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                value={entry.param_key}
+                onChange={(e) => handleEntryParamKeyChange(index, e.target.value)}
+                placeholder="e.g. Authorization"
+                data-testid={`auth-config-entry-key-${index}`}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                onClick={() => handleRemoveEntry(index)}
+                data-testid={`auth-config-entry-remove-${index}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddEntry}
+            data-testid="auth-config-add-entry-button"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Key
+          </Button>
+        </div>
       )}
 
       {/* OAuth fields */}

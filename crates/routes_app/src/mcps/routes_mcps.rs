@@ -5,7 +5,8 @@ use crate::mcps::{
 use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_APPS, API_TAG_MCPS, ENDPOINT_APPS_MCPS};
 use axum::{extract::Path, http::StatusCode, Json};
 use services::{
-  ApprovalStatus, ApprovedResources, AuthContext, Mcp, McpRequest, McpWithServerEntity,
+  ApprovalStatus, ApprovedResources, AuthContext, Mcp, McpAuthParamInput, McpAuthParamType,
+  McpRequest, McpWithServerEntity,
 };
 
 // ============================================================================
@@ -201,21 +202,30 @@ pub async fn mcps_fetch_tools(
     return Err(McpRouteError::Validation("mcp_server_id is required".to_string()).into());
   }
 
-  let (auth_header_key, auth_header_value) = match request.auth {
-    Some(McpAuth::Header {
-      header_key,
-      header_value,
-    }) => (Some(header_key), Some(header_value)),
-    _ => (None, None),
+  // Prefer new `credentials` field; fall back to legacy `McpAuth::Header` for backward compat
+  let credentials = if request.credentials.is_some() {
+    request.credentials
+  } else {
+    match request.auth {
+      Some(McpAuth::Header {
+        header_key,
+        header_value,
+      }) => Some(vec![McpAuthParamInput {
+        param_type: McpAuthParamType::Header,
+        param_key: header_key,
+        value: header_value,
+      }]),
+      _ => None,
+    }
   };
 
   let tools = auth_scope
     .mcps()
     .fetch_tools_for_server(
       &request.mcp_server_id,
-      auth_header_key,
-      auth_header_value,
-      request.auth_uuid,
+      credentials,
+      request.auth_config_id,
+      request.oauth_token_id,
     )
     .await?;
 
