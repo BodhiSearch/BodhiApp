@@ -128,6 +128,7 @@ function createFullTestConfig(bindings, options = {}) {
   config = bindings.setSystemSetting(config, bindings.BODHI_VERSION, '1.0.0-test');
   config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_URL, authUrl);
   config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_REALM, authRealm);
+  config = bindings.setSystemSetting(config, bindings.BODHI_DEPLOYMENT, 'standalone');
 
   if (appStatus) {
     config = bindings.setAppStatus(config, appStatus);
