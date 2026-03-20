@@ -49,9 +49,6 @@ pub enum AppStatus {
   /// Admin setup required
   #[schema(rename = "resource_admin")]
   ResourceAdmin,
-  /// User must select a tenant
-  #[schema(rename = "tenant_selection")]
-  TenantSelection,
 }
 
 /// Tenant represents an OAuth2 client registration (the "app instance") for this deployment.

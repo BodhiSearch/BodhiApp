@@ -1721,7 +1721,7 @@ export interface components {
          * @example ready
          * @enum {string}
          */
-        AppStatus: "setup" | "ready" | "resource_admin" | "tenant_selection";
+        AppStatus: "setup" | "ready" | "resource_admin";
         /** @description Application-level toolset configuration */
         AppToolsetConfig: {
             /** @description Toolset type identifier (e.g., "builtin-exa-search") */

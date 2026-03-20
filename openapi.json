@@ -9531,8 +9531,7 @@
         "enum": [
           "setup",
           "ready",
-          "resource_admin",
-          "tenant_selection"
+          "resource_admin"
         ],
         "example": "ready"
       },

@@ -77,7 +77,7 @@ Each domain module follows `*_objs.rs` pattern for types and `error.rs` for erro
 - `tokens/token_objs.rs` — `TokenStatus`, `TokenDetail`, `CreateTokenRequest`, `UpdateTokenRequest`
 - `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `JsonVec`, `DownloadStatus`, `ApiModelRequest`, `UserAliasRequest`
 - `settings/setting_objs.rs` — `Setting`, `EnvType`, `AppType`, `LogLevel`
-- `tenants/tenant_objs.rs` — `AppStatus` (Setup/Ready/ResourceAdmin/TenantSelection), `Tenant` (includes `created_by: Option<String>`)
+- `tenants/tenant_objs.rs` — `AppStatus` (Setup/Ready/ResourceAdmin), `Tenant` (includes `created_by: Option<String>`)
 - `tenants/spi_types.rs` — `SpiTenant`, `SpiTenantListResponse`, `SpiCreateTenantRequest`, `SpiCreateTenantResponse`
 - `mcps/mcp_objs.rs` — MCP types, `McpRequest`, `McpServerRequest` (both derive `Validate`)
 - `toolsets/toolset_objs.rs` — `Toolset`, `ToolsetRequest` (derives `Validate`)

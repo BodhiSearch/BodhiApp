@@ -227,7 +227,7 @@ async fn get_resource_token(
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 /// GET /bodhi/v1/info without any session in multi-tenant mode
-/// should return status=tenant_selection and deployment=multi-tenant
+/// should return status=ready and deployment=multi-tenant
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -248,7 +248,7 @@ async fn test_info_multi_tenant_no_session(
   assert_eq!(StatusCode::OK, response.status());
 
   let body: AppInfo = response.json().await?;
-  assert_eq!(AppStatus::TenantSelection, body.status);
+  assert_eq!(AppStatus::Ready, body.status);
   assert_eq!(services::DeploymentMode::MultiTenant, body.deployment);
   assert_eq!(None, body.client_id);
 

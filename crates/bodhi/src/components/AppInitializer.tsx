@@ -60,13 +60,14 @@ export default function AppInitializer({
             }
             break;
           case 'ready':
-            router.push(ROUTE_DEFAULT);
+            if (appInfo.deployment === 'multi_tenant' && !appInfo.client_id) {
+              router.push(ROUTE_LOGIN);
+            } else {
+              router.push(ROUTE_DEFAULT);
+            }
             break;
           case 'resource_admin':
             router.push(ROUTE_RESOURCE_ADMIN);
-            break;
-          case 'tenant_selection':
-            router.push(ROUTE_LOGIN);
             break;
         }
       }
@@ -133,7 +134,7 @@ export default function AppInitializer({
   }
 
   if (appInfo?.status) {
-    if (!['setup', 'ready', 'resource_admin', 'tenant_selection'].includes(appInfo.status)) {
+    if (!['setup', 'ready', 'resource_admin'].includes(appInfo.status)) {
       return (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>

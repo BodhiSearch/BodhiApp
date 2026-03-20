@@ -162,6 +162,35 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
       expect(pushMock).not.toHaveBeenCalled();
     }
   );
+
+  // Multi-tenant routing tests
+  it('redirects to /ui/login when ready + multi_tenant + no client_id', async () => {
+    server.use(...mockAppInfo({ status: 'ready', deployment: 'multi_tenant' }));
+
+    await renderWithSetup(<AppInitializer />);
+    expect(pushMock).toHaveBeenCalledWith('/ui/login');
+  });
+
+  it('redirects to chat when ready + multi_tenant + client_id', async () => {
+    server.use(...mockAppInfo({ status: 'ready', deployment: 'multi_tenant', client_id: 'test-client' }));
+
+    await renderWithSetup(<AppInitializer />);
+    expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
+  });
+
+  it('redirects to /ui/setup/tenants when setup + multi_tenant', async () => {
+    server.use(...mockAppInfo({ status: 'setup', deployment: 'multi_tenant' }));
+
+    await renderWithSetup(<AppInitializer />);
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup/tenants');
+  });
+
+  it('stays on page when ready + multi_tenant + no client_id and allowedStatus=ready', async () => {
+    server.use(...mockAppInfo({ status: 'ready', deployment: 'multi_tenant' }));
+
+    await renderWithSetup(<AppInitializer allowedStatus="ready" />);
+    expect(pushMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('AppInitializer role-based access control', () => {

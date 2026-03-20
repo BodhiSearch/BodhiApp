@@ -51,7 +51,7 @@ pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, ApiError
         .await
         .unwrap_or(false);
       if has_memberships {
-        (AppStatus::TenantSelection, None)
+        (AppStatus::Ready, None)
       } else {
         (AppStatus::Setup, None)
       }
@@ -60,7 +60,7 @@ pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, ApiError
     AuthContext::Anonymous {
       deployment: DeploymentMode::MultiTenant,
       ..
-    } => (AppStatus::TenantSelection, None),
+    } => (AppStatus::Ready, None),
     // Anonymous standalone
     AuthContext::Anonymous { .. } => {
       let tenant_svc = auth_scope.tenants();

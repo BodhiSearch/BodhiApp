@@ -328,7 +328,7 @@ describe('MultiTenantLoginContent', () => {
   });
 
   it('does not call /bodhi/v1/tenants when no dashboard session present', async () => {
-    server.use(...mockUserLoggedOut(), ...mockAppInfo({ status: 'tenant_selection', deployment: 'multi_tenant' }));
+    server.use(...mockUserLoggedOut(), ...mockAppInfo({ status: 'ready', deployment: 'multi_tenant' }));
 
     await act(async () => {
       render(<LoginPage />, { wrapper: createWrapper() });
@@ -344,7 +344,7 @@ describe('MultiTenantLoginContent', () => {
   });
 
   it('shows login button when no dashboard session (State A)', async () => {
-    server.use(...mockUserLoggedOut(), ...mockAppInfo({ status: 'tenant_selection', deployment: 'multi_tenant' }));
+    server.use(...mockUserLoggedOut(), ...mockAppInfo({ status: 'ready', deployment: 'multi_tenant' }));
 
     await act(async () => {
       render(<LoginPage />, { wrapper: createWrapper() });
@@ -368,7 +368,7 @@ describe('MultiTenantLoginContent', () => {
       ...mockUserLoggedOut({
         dashboard: { user_id: 'test-id', username: 'test@example.com', first_name: null, last_name: null },
       }),
-      ...mockAppInfo({ status: 'tenant_selection', deployment: 'multi_tenant' }),
+      ...mockAppInfo({ status: 'ready', deployment: 'multi_tenant' }),
       ...mockTenantsList(tenants, { stub: true })
     );
 

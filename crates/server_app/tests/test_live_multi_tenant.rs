@@ -79,7 +79,7 @@ impl MultiTenantEnv {
 
 /// Full end-to-end multi-tenant flow:
 ///
-/// 1. GET /bodhi/v1/info (no cookie) -> tenant_selection, deployment: multi-tenant
+/// 1. GET /bodhi/v1/info (no cookie) -> ready, deployment: multi-tenant
 /// 2. Get dashboard token via password grant
 /// 3. Inject dashboard token into session -> get session cookie
 /// 4. DELETE /dev/tenants/cleanup (with cookie) -> clean slate for KC and local DB
@@ -99,14 +99,14 @@ async fn test_multi_tenant_full_flow() -> anyhow::Result<()> {
   let env = MultiTenantEnv::load()?;
   let client = reqwest::Client::new();
 
-  // Step 1: GET /bodhi/v1/info without session -> tenant_selection
+  // Step 1: GET /bodhi/v1/info without session -> ready
   let resp = client
     .get(format!("{}/bodhi/v1/info", server.base_url))
     .send()
     .await?;
   assert_eq!(StatusCode::OK, resp.status());
   let info: Value = resp.json().await?;
-  assert_eq!("tenant_selection", info["status"].as_str().unwrap());
+  assert_eq!("ready", info["status"].as_str().unwrap());
   assert_eq!("multi_tenant", info["deployment"].as_str().unwrap());
 
   // Step 2: Get dashboard token
@@ -260,8 +260,8 @@ async fn test_multi_tenant_full_flow() -> anyhow::Result<()> {
 
 /// Info status progression in multi-tenant mode:
 ///
-/// 1. No session -> tenant_selection
-/// 2. Dashboard session only, no tenants created -> setup or tenant_selection
+/// 1. No session -> ready
+/// 2. Dashboard session only, no tenants created -> setup or ready
 /// 3. Dashboard + created & activated tenant -> ready
 /// 4. Cleanup
 #[anyhow_trace]
@@ -272,14 +272,14 @@ async fn test_info_state_progression() -> anyhow::Result<()> {
   let env = MultiTenantEnv::load()?;
   let client = reqwest::Client::new();
 
-  // State 1: No session -> tenant_selection
+  // State 1: No session -> ready
   let resp = client
     .get(format!("{}/bodhi/v1/info", server.base_url))
     .send()
     .await?;
   assert_eq!(StatusCode::OK, resp.status());
   let info: Value = resp.json().await?;
-  assert_eq!("tenant_selection", info["status"].as_str().unwrap());
+  assert_eq!("ready", info["status"].as_str().unwrap());
 
   // Get dashboard token and create session
   let dashboard_token = env.get_dashboard_token().await?;
@@ -305,8 +305,8 @@ async fn test_info_state_progression() -> anyhow::Result<()> {
   let info: Value = resp.json().await?;
   let status = info["status"].as_str().unwrap();
   assert!(
-    status == "setup" || status == "tenant_selection",
-    "Expected setup or tenant_selection, got: {}",
+    status == "setup" || status == "ready",
+    "Expected setup or ready, got: {}",
     status
   );
 

@@ -222,7 +222,7 @@ export type AppInfo = {
 
 export type AppRole = ResourceRole | TokenScope | UserScope;
 
-export type AppStatus = 'setup' | 'ready' | 'resource_admin' | 'tenant_selection';
+export type AppStatus = 'setup' | 'ready' | 'resource_admin';
 
 /**
  * Application-level toolset configuration

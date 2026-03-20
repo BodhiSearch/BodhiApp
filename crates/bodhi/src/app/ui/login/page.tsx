@@ -453,7 +453,7 @@ export default function LoginPage() {
   // so the login page can process the invite before redirecting
   const hasInviteFlow = typeof window !== 'undefined' && sessionStorage.getItem('login_to_tenant');
   const allowedStatuses: AppStatus[] =
-    isMultiTenant && hasInviteFlow ? ['ready', 'tenant_selection', 'setup'] : ['ready', 'tenant_selection'];
+    isMultiTenant && hasInviteFlow ? ['ready', 'setup'] : ['ready'];
 
   return (
     <AppInitializer allowedStatus={allowedStatuses} authenticated={false}>

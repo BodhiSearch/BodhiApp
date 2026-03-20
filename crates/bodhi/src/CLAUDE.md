@@ -69,9 +69,11 @@ react-hook-form + zod schema + ts-client types. See `src/schemas/alias.ts` for c
 
 `AppInitializer` (`src/components/AppInitializer.tsx`) checks `/bodhi/v1/info` status and redirects:
 
-- `setup` → `/ui/setup`
-- `ready` → `/ui/setup/download-models` (first visit) or `/ui/chat` (returning)
-- `resource-admin` → `/ui/setup/resource-admin`
+- `setup` + standalone → `/ui/setup`
+- `setup` + multi_tenant → `/ui/setup/tenants`
+- `ready` + multi_tenant + no client_id → `/ui/login`
+- `ready` (all other) → `/ui/chat`
+- `resource_admin` → `/ui/setup/resource-admin`
 
 Route constants defined in `src/lib/constants.ts`.
 
