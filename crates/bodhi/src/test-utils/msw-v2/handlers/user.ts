@@ -29,7 +29,10 @@ import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
  * Mock handler for user info endpoint - logged out state
  * Uses generated OpenAPI types directly
  */
-export function mockUserLoggedOut({ stub }: { stub?: boolean } = {}) {
+export function mockUserLoggedOut({
+  stub,
+  ...rest
+}: { stub?: boolean; dashboard?: components['schemas']['DashboardUser'] | null } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USER_INFO, ({ response }) => {
@@ -37,6 +40,7 @@ export function mockUserLoggedOut({ stub }: { stub?: boolean } = {}) {
       hasBeenCalled = true;
       return response(200 as const).json({
         auth_status: 'logged_out',
+        ...rest,
       });
     }),
   ];
@@ -53,8 +57,9 @@ export function mockUserLoggedIn(
     first_name = null,
     last_name = null,
     role = null,
+    dashboard,
     ...rest
-  }: Partial<components['schemas']['UserInfo']> = {},
+  }: Partial<components['schemas']['UserInfo']> & { dashboard?: components['schemas']['DashboardUser'] | null } = {},
   { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -74,6 +79,7 @@ export function mockUserLoggedIn(
         first_name,
         last_name,
         role,
+        ...(dashboard ? { dashboard } : {}),
         ...rest,
       };
       return response(200 as const).json(responseData);

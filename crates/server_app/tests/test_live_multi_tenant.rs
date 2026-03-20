@@ -227,7 +227,7 @@ async fn test_multi_tenant_full_flow() -> anyhow::Result<()> {
   assert_eq!("multi_tenant", info["deployment"].as_str().unwrap());
   assert_eq!(new_client_id, info["client_id"].as_str().unwrap());
 
-  // Step 11: GET /bodhi/v1/user (with cookie) -> has_dashboard_session: true
+  // Step 11: GET /bodhi/v1/user (with cookie) -> dashboard object present
   let resp = client
     .get(format!("{}/bodhi/v1/user", server.base_url))
     .header("Cookie", &session_cookie)
@@ -235,12 +235,13 @@ async fn test_multi_tenant_full_flow() -> anyhow::Result<()> {
     .await?;
   assert_eq!(StatusCode::OK, resp.status());
   let user_info: Value = resp.json().await?;
-  assert_eq!(
-    true,
-    user_info["has_dashboard_session"]
-      .as_bool()
-      .unwrap_or(false)
+  assert!(
+    user_info["dashboard"].is_object(),
+    "Expected dashboard to be an object, got: {:?}",
+    user_info.get("dashboard")
   );
+  assert!(user_info["dashboard"]["user_id"].is_string());
+  assert!(user_info["dashboard"]["username"].is_string());
 
   // Step 12: Cleanup
   // Refresh dashboard token (original may have expired during the test)

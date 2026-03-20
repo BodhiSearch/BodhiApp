@@ -1290,7 +1290,7 @@ export interface paths {
         };
         /**
          * Get Current User Information
-         * @description Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange). Includes `has_dashboard_session` when the user has an active dashboard session.
+         * @description Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange). Includes `dashboard` object when the user has an active dashboard session.
          */
         get: operations["getCurrentUser"];
         put?: never;
@@ -2609,6 +2609,13 @@ export interface components {
             grammar: components["schemas"]["CustomGrammarFormatParam"];
             /** @enum {string} */
             type: "grammar";
+        };
+        /** @description Dashboard user information from a validated dashboard session token */
+        DashboardUser: {
+            user_id: string;
+            username: string;
+            first_name?: string | null;
+            last_name?: string | null;
         };
         /** @enum {string} */
         DeploymentMode: "standalone" | "multi_tenant";
@@ -3993,8 +4000,7 @@ export interface components {
         };
         /** @description Envelope wrapping UserResponse with additional session info */
         UserInfoEnvelope: components["schemas"]["UserResponse"] & {
-            /** @description Whether the user has an active dashboard session (only present when true) */
-            has_dashboard_session?: boolean;
+            dashboard?: null | components["schemas"]["DashboardUser"];
         };
         UserListResponse: {
             /** @example resource-abc123def456 */

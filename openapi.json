@@ -7867,7 +7867,7 @@
           "auth"
         ],
         "summary": "Get Current User Information",
-        "description": "Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange). Includes `has_dashboard_session` when the user has an active dashboard session.",
+        "description": "Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange). Includes `dashboard` object when the user has an active dashboard session.",
         "operationId": "getCurrentUser",
         "responses": {
           "200": {
@@ -7879,13 +7879,30 @@
                 },
                 "examples": {
                   "authenticated": {
-                    "summary": "Authenticated user",
+                    "summary": "Fully authenticated with dashboard",
                     "value": {
                       "auth_status": "logged_in",
-                      "has_dashboard_session": true,
+                      "dashboard": {
+                        "first_name": "Test",
+                        "last_name": "User",
+                        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "username": "user@example.com"
+                      },
                       "role": "resource_admin",
                       "user_id": "550e8400-e29b-41d4-a716-446655440000",
                       "username": "user@example.com"
+                    }
+                  },
+                  "dashboard_only": {
+                    "summary": "Dashboard session only (no tenant login)",
+                    "value": {
+                      "auth_status": "logged_out",
+                      "dashboard": {
+                        "first_name": "Test",
+                        "last_name": "User",
+                        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "username": "user@example.com"
+                      }
                     }
                   },
                   "unauthenticated": {
@@ -12286,6 +12303,34 @@
           }
         ]
       },
+      "DashboardUser": {
+        "type": "object",
+        "description": "Dashboard user information from a validated dashboard session token",
+        "required": [
+          "user_id",
+          "username"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "DeploymentMode": {
         "type": "string",
         "enum": [
@@ -16357,9 +16402,16 @@
           {
             "type": "object",
             "properties": {
-              "has_dashboard_session": {
-                "type": "boolean",
-                "description": "Whether the user has an active dashboard session (only present when true)"
+              "dashboard": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DashboardUser",
+                    "description": "Dashboard user info when a validated dashboard session exists"
+                  }
+                ]
               }
             }
           }

@@ -93,7 +93,7 @@ function MultiTenantLoginContent() {
   });
 
   // Fetch tenants when user has dashboard session
-  const needsTenantSelection = !!userInfo?.has_dashboard_session && !appInfo?.client_id;
+  const needsTenantSelection = !!userInfo?.dashboard && !appInfo?.client_id;
   const { data: tenantsData, isLoading: tenantsLoading } = useTenants({
     enabled: needsTenantSelection,
   });
@@ -125,7 +125,7 @@ function MultiTenantLoginContent() {
     if (!loginToTenant) return;
 
     // No dashboard session — keep in sessionStorage (survive OAuth redirect), trigger dashboard login
-    if (!userInfo?.has_dashboard_session) {
+    if (!userInfo?.dashboard) {
       if (!userLoading) {
         hasInviteFlowTriggered.current = true;
         initiateDashboardOAuth();

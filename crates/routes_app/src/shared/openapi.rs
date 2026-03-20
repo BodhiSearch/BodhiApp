@@ -11,10 +11,10 @@ use crate::{
   PaginationSortParams, PingResponse,
 };
 use crate::{
-  AppInfo, ListUsersParams, PaginatedLocalModelResponse, QueueStatusResponse, RedirectResponse,
-  UserInfoEnvelope, UserResponse, __path_api_models_create, __path_api_models_destroy,
-  __path_api_models_fetch_models, __path_api_models_formats, __path_api_models_show,
-  __path_api_models_sync, __path_api_models_test, __path_api_models_update,
+  AppInfo, DashboardUser, ListUsersParams, PaginatedLocalModelResponse, QueueStatusResponse,
+  RedirectResponse, UserInfoEnvelope, UserResponse, __path_api_models_create,
+  __path_api_models_destroy, __path_api_models_fetch_models, __path_api_models_formats,
+  __path_api_models_show, __path_api_models_sync, __path_api_models_test, __path_api_models_update,
   __path_apps_approve_access_request, __path_apps_create_access_request,
   __path_apps_deny_access_request, __path_apps_get_access_request_review,
   __path_apps_get_access_request_status, __path_auth_callback, __path_auth_initiate,
@@ -306,6 +306,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             AuthCallbackRequest,
             UserResponse,
             UserInfoEnvelope,
+            DashboardUser,
             AppRole,
             ResourceRole,
             TokenScope,

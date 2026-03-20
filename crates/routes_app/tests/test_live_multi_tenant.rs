@@ -445,7 +445,7 @@ async fn test_tenants_activate_not_logged_in(
 }
 
 /// GET /bodhi/v1/user with a dashboard token in session
-/// should return has_dashboard_session: true
+/// should return dashboard object and auth_status: logged_out (no resource token)
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -478,16 +478,21 @@ async fn test_user_info_has_dashboard_session(
   assert_eq!(StatusCode::OK, response.status());
 
   let body: Value = response.json().await?;
-  assert_eq!(
-    true,
-    body["has_dashboard_session"].as_bool().unwrap_or(false)
+  assert_eq!("logged_out", body["auth_status"].as_str().unwrap());
+  assert!(
+    body["dashboard"].is_object(),
+    "Expected dashboard to be an object, got: {:?}",
+    body.get("dashboard")
   );
+  assert!(body["dashboard"]["user_id"].is_string());
+  assert!(body["dashboard"]["username"].is_string());
+  assert!(body.get("has_dashboard_session").is_none());
 
   Ok(())
 }
 
 /// GET /bodhi/v1/user without a dashboard token in session
-/// should NOT include has_dashboard_session (or it should be false)
+/// should NOT include dashboard field
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -508,13 +513,12 @@ async fn test_user_info_no_dashboard_session(
   assert_eq!(StatusCode::OK, response.status());
 
   let body: Value = response.json().await?;
-  // has_dashboard_session is skipped when false (skip_serializing_if), so it should be absent
   assert!(
-    body.get("has_dashboard_session").is_none()
-      || body["has_dashboard_session"].as_bool() == Some(false),
-    "Expected has_dashboard_session to be absent or false, got: {:?}",
-    body.get("has_dashboard_session")
+    body.get("dashboard").is_none(),
+    "Expected dashboard to be absent, got: {:?}",
+    body.get("dashboard")
   );
+  assert_eq!("logged_out", body["auth_status"].as_str().unwrap());
 
   Ok(())
 }

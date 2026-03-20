@@ -207,10 +207,7 @@ test.describe(
       });
     });
 
-    test('Add OAuth DCR auth config via server view page UI', async ({
-      page,
-      sharedServerUrl,
-    }) => {
+    test('Add OAuth DCR auth config via server view page UI', async ({ page, sharedServerUrl }) => {
       const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       const mcpsPage = new McpsPage(page, sharedServerUrl);
       const serverData = McpFixtures.createDcrServerData();
@@ -235,12 +232,12 @@ test.describe(
         await mcpsPage.expectRegistrationType('dynamic_registration');
 
         // Verify endpoints are auto-populated
-        await expect(
-          page.locator(mcpsPage.selectors.authConfigAuthEndpointInput)
-        ).not.toHaveValue('');
-        await expect(
-          page.locator(mcpsPage.selectors.authConfigTokenEndpointInput)
-        ).not.toHaveValue('');
+        await expect(page.locator(mcpsPage.selectors.authConfigAuthEndpointInput)).not.toHaveValue(
+          ''
+        );
+        await expect(page.locator(mcpsPage.selectors.authConfigTokenEndpointInput)).not.toHaveValue(
+          ''
+        );
         await expect(
           page.locator(mcpsPage.selectors.authConfigRegistrationEndpointInput)
         ).not.toHaveValue('');

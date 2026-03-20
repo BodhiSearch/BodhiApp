@@ -213,7 +213,8 @@ export class McpsPage extends BasePage {
 
   async expectRegistrationType(type) {
     const selector = this.selectors.oauthRegistrationTypeSelect;
-    const expectedText = type === 'dynamic_registration' ? 'Dynamic Registration' : 'Pre-Registered';
+    const expectedText =
+      type === 'dynamic_registration' ? 'Dynamic Registration' : 'Pre-Registered';
     await expect(this.page.locator(selector)).toContainText(expectedText);
   }
 

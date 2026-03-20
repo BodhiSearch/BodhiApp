@@ -52,19 +52,24 @@ pub enum UserResponse {
   Token(TokenInfo),
 }
 
+/// Dashboard user information from a validated dashboard session token
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
+pub struct DashboardUser {
+  pub user_id: String,
+  pub username: String,
+  pub first_name: Option<String>,
+  pub last_name: Option<String>,
+}
+
 /// Envelope wrapping UserResponse with additional session info
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct UserInfoEnvelope {
   /// Core user authentication response
   #[serde(flatten)]
   pub user: UserResponse,
-  /// Whether the user has an active dashboard session (only present when true)
-  #[serde(default, skip_serializing_if = "is_false")]
-  pub has_dashboard_session: bool,
-}
-
-fn is_false(v: &bool) -> bool {
-  !v
+  /// Dashboard user info when a validated dashboard session exists
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub dashboard: Option<DashboardUser>,
 }
 
 // === From routes_users_list.rs ===

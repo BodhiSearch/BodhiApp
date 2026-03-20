@@ -1286,6 +1286,16 @@ export type CustomToolPropertiesFormat = {
     type: 'grammar';
 };
 
+/**
+ * Dashboard user information from a validated dashboard session token
+ */
+export type DashboardUser = {
+    user_id: string;
+    username: string;
+    first_name?: string | null;
+    last_name?: string | null;
+};
+
 export type DeploymentMode = 'standalone' | 'multi_tenant';
 
 export type DownloadRequest = {
@@ -2891,10 +2901,7 @@ export type UserInfo = {
  * Envelope wrapping UserResponse with additional session info
  */
 export type UserInfoEnvelope = UserResponse & {
-    /**
-     * Whether the user has an active dashboard session (only present when true)
-     */
-    has_dashboard_session?: boolean;
+    dashboard?: null | DashboardUser;
 };
 
 export type UserListResponse = {

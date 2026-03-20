@@ -6,6 +6,7 @@ import {
   mockLogout,
 } from '@/test-utils/msw-v2/handlers/auth';
 import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockTenantsList } from '@/test-utils/msw-v2/handlers/tenants';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { server } from '@/test-utils/msw-v2/setup';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
@@ -315,5 +316,96 @@ describe('LoginContent access control', () => {
       render(<LoginPage />, { wrapper: createWrapper() });
     });
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/ui/setup'));
+  });
+});
+
+describe('MultiTenantLoginContent', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    pushMock.mockClear();
+    replaceMock.mockClear();
+    sessionStorage.clear();
+  });
+
+  it('does not call /bodhi/v1/tenants when no dashboard session present', async () => {
+    server.use(...mockUserLoggedOut(), ...mockAppInfo({ status: 'tenant_selection', deployment: 'multi_tenant' }));
+
+    await act(async () => {
+      render(<LoginPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Login to Bodhi Platform' })).toBeInTheDocument();
+    });
+
+    // Verify no tenants call was made by ensuring login state is shown (not loading)
+    expect(screen.getByTestId('login-page')).toBeInTheDocument();
+    expect(screen.queryByText('Select Workspace')).not.toBeInTheDocument();
+  });
+
+  it('shows login button when no dashboard session (State A)', async () => {
+    server.use(...mockUserLoggedOut(), ...mockAppInfo({ status: 'tenant_selection', deployment: 'multi_tenant' }));
+
+    await act(async () => {
+      render(<LoginPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Login to Bodhi Platform' })).toBeInTheDocument();
+    });
+
+    const card = screen.getByTestId('login-page').querySelector('[data-test-state="login"]');
+    expect(card).toBeInTheDocument();
+  });
+
+  it('shows tenant selection when dashboard session present without tenant login (State B)', async () => {
+    const tenants = [
+      { client_id: 'tenant-1', name: 'Workspace 1', status: 'ready' as const, is_active: false, logged_in: false },
+      { client_id: 'tenant-2', name: 'Workspace 2', status: 'ready' as const, is_active: false, logged_in: false },
+    ];
+
+    server.use(
+      ...mockUserLoggedOut({
+        dashboard: { user_id: 'test-id', username: 'test@example.com', first_name: null, last_name: null },
+      }),
+      ...mockAppInfo({ status: 'tenant_selection', deployment: 'multi_tenant' }),
+      ...mockTenantsList(tenants, { stub: true })
+    );
+
+    await act(async () => {
+      render(<LoginPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Select Workspace')).toBeInTheDocument();
+    });
+
+    const card = screen.getByTestId('login-page').querySelector('[data-test-state="select"]');
+    expect(card).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Workspace 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Workspace 2' })).toBeInTheDocument();
+  });
+
+  it('shows welcome when fully authenticated with tenant (State C)', async () => {
+    server.use(
+      ...mockUserLoggedIn({
+        role: 'resource_admin',
+        dashboard: { user_id: 'test-id', username: 'test@example.com', first_name: null, last_name: null },
+      }),
+      ...mockAppInfo({ status: 'ready', deployment: 'multi_tenant', client_id: 'test-client' }),
+      ...mockLogout({ location: '/ui/login' })
+    );
+
+    await act(async () => {
+      render(<LoginPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Welcome')).toBeInTheDocument();
+    });
+
+    const card = screen.getByTestId('login-page').querySelector('[data-test-state="welcome"]');
+    expect(card).toBeInTheDocument();
+    expect(screen.getByText(/test@example.com/)).toBeInTheDocument();
   });
 });
