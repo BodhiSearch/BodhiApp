@@ -2,7 +2,8 @@
 # This file contains release targets and shared release utility functions
 
 .PHONY: release.ts-client release.app release.app-bindings \
-	release.docker release.docker-dev release.all docker.version-check
+	release.docker release.docker-dev release.all docker.version-check \
+	release.docker.mt release.docker.dev-mt
 
 release.ts-client: ## Release TypeScript client package
 	@echo "Preparing to release ts-client package..."
@@ -206,6 +207,54 @@ release.all: ## Release all components: ts-client, app-bindings, app, docker
 		exit 1; \
 	fi
 
+release.docker.mt: ## Create and push tag for multi-tenant Docker image release (use DOCKER_MT_VERSION=docker-mt/vX.Y.Z to override)
+	@echo "Preparing to release multi-tenant CPU-only Docker image..."
+	$(call check_git_branch)
+	@if [ -n "$(DOCKER_MT_VERSION)" ]; then \
+		echo "Using manually specified version: $(DOCKER_MT_VERSION)"; \
+		if ! echo "$(DOCKER_MT_VERSION)" | grep -qE '^docker-mt/v[0-9]+\.[0-9]+\.[0-9]+$$'; then \
+			echo "Error: DOCKER_MT_VERSION must be in format docker-mt/vX.Y.Z (e.g., docker-mt/v0.0.5)"; \
+			exit 1; \
+		fi; \
+		TAG_NAME="$(DOCKER_MT_VERSION)"; \
+		$(call delete_tag_if_exists,$$TAG_NAME); \
+		echo "Creating multi-tenant production release tag $$TAG_NAME..."; \
+		git tag "$$TAG_NAME"; \
+		git push origin "$$TAG_NAME"; \
+		echo "Multi-tenant production release tag $$TAG_NAME pushed. GitHub workflow will handle the Docker image build and publish."; \
+	else \
+		echo "Fetching latest production release version from GHCR..."; \
+		CURRENT_VERSION=$$($(call get_ghcr_docker_version,production)); \
+		if [ "$$CURRENT_VERSION" = "0.0.0" ]; then \
+			echo "No existing production releases found in GHCR, starting with version 0.0.1"; \
+		fi; \
+		$(call create_docker_release_tag,production,$$CURRENT_VERSION,docker-mt); \
+	fi
+
+release.docker.dev-mt: ## Create and push tag for multi-tenant development Docker image release (use DOCKER_MT_DEV_VERSION=docker-mt-dev/vX.Y.Z to override)
+	@echo "Preparing to release multi-tenant CPU-only development Docker image..."
+	$(call check_git_branch)
+	@if [ -n "$(DOCKER_MT_DEV_VERSION)" ]; then \
+		echo "Using manually specified version: $(DOCKER_MT_DEV_VERSION)"; \
+		if ! echo "$(DOCKER_MT_DEV_VERSION)" | grep -qE '^docker-mt-dev/v[0-9]+\.[0-9]+\.[0-9]+$$'; then \
+			echo "Error: DOCKER_MT_DEV_VERSION must be in format docker-mt-dev/vX.Y.Z (e.g., docker-mt-dev/v0.0.5)"; \
+			exit 1; \
+		fi; \
+		TAG_NAME="$(DOCKER_MT_DEV_VERSION)"; \
+		$(call delete_tag_if_exists,$$TAG_NAME); \
+		echo "Creating multi-tenant development release tag $$TAG_NAME..."; \
+		git tag "$$TAG_NAME"; \
+		git push origin "$$TAG_NAME"; \
+		echo "Multi-tenant development release tag $$TAG_NAME pushed. GitHub workflow will handle the Docker image build and publish."; \
+	else \
+		echo "Fetching latest development release version from GHCR..."; \
+		CURRENT_VERSION=$$($(call get_ghcr_docker_version,development)); \
+		if [ "$$CURRENT_VERSION" = "0.0.0" ]; then \
+			echo "No existing development releases found in GHCR, starting with version 0.0.1"; \
+		fi; \
+		$(call create_docker_release_tag,development,$$CURRENT_VERSION,docker-mt); \
+	fi
+
 # Shared Release Utility Functions
 # These define blocks provide reusable functions for release targets above
 
@@ -277,9 +326,10 @@ define get_ghcr_docker_version
 endef
 
 # Function to increment version and create Docker release tag
-# Usage: $(call create_docker_release_tag,variant,current-version)
+# Usage: $(call create_docker_release_tag,variant,current-version[,tag-base])
 # variant: production or development
 # current-version: X.Y.Z format
+# tag-base: optional tag prefix (default: docker)
 define create_docker_release_tag
 	if [ "$(2)" = "null" ] || [ -z "$(2)" ]; then \
 		CURRENT_VERSION="0.0.0"; \
@@ -291,9 +341,9 @@ define create_docker_release_tag
 	echo "Current $(1) version (from GHCR): $$CURRENT_VERSION" && \
 	echo "Next $(1) version: $$NEXT_VERSION" && \
 	if [ "$(1)" = "production" ]; then \
-		TAG_NAME="docker/v$$NEXT_VERSION"; \
+		TAG_NAME="$(if $(3),$(3),docker)/v$$NEXT_VERSION"; \
 	else \
-		TAG_NAME="docker-dev/v$$NEXT_VERSION"; \
+		TAG_NAME="$(if $(3),$(3),docker)-dev/v$$NEXT_VERSION"; \
 	fi && \
 	$(call delete_tag_if_exists,$$TAG_NAME) && \
 	echo "Creating $(1) release tag $$TAG_NAME..." && \

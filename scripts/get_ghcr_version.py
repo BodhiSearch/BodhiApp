@@ -40,14 +40,14 @@ def extract_versions_from_tags(tags: List[str], variant: str) -> List[str]:
   for tag in tags:
     if variant == "production":
       # Match production tags: X.Y.Z or X.Y.Z-{cpu|cuda|rocm|vulkan}
-      if re.match(r"^\d+\.\d+\.\d+$", tag) or re.match(r"^\d+\.\d+\.\d+-(cpu|cuda|rocm|vulkan)$", tag):
+      if re.match(r"^\d+\.\d+\.\d+$", tag) or re.match(r"^\d+\.\d+\.\d+-(cpu|cuda|rocm|vulkan|multi-tenant)$", tag):
         # Extract version part (remove variant suffix if present)
         version = tag.split("-")[0]
         versions.append(version)
     else:  # development
       # Match development tags: X.Y.Z-development or X.Y.Z-{cpu|cuda|rocm|vulkan}-development
       if re.match(r"^\d+\.\d+\.\d+-development$", tag) or re.match(
-        r"^\d+\.\d+\.\d+-(cpu|cuda|rocm|vulkan)-development$", tag
+        r"^\d+\.\d+\.\d+-(cpu|cuda|rocm|vulkan|multi-tenant)-development$", tag
       ):
         # Extract version part (remove -development and variant suffix)
         if tag.endswith("-development"):
