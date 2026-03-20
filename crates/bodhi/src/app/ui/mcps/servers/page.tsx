@@ -35,6 +35,7 @@ import {
 } from '@/hooks/useMcps';
 import { useUser } from '@/hooks/useUsers';
 import { isAdminRole } from '@/lib/roles';
+import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { authConfigTypeBadge } from '@/lib/mcpUtils';
 
 function ServerAuthConfigsSummary({ serverId }: { serverId: string }) {
@@ -142,7 +143,7 @@ function McpServersPageContent() {
             className="h-8 w-8 p-0"
             data-testid={`server-view-button-${server.id}`}
           >
-            <Link href={`/ui/mcp-servers/view?id=${server.id}`} title={`View ${server.name}`}>
+            <Link href={`${ROUTE_MCP_SERVERS}/view?id=${server.id}`} title={`View ${server.name}`}>
               <Eye className="h-4 w-4" />
             </Link>
           </Button>
@@ -150,7 +151,7 @@ function McpServersPageContent() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push(`/ui/mcp-servers/edit?id=${server.id}`)}
+              onClick={() => router.push(`${ROUTE_MCP_SERVERS}/edit?id=${server.id}`)}
               title={`Edit ${server.name}`}
               className="h-8 w-8 p-0"
               data-testid={`server-edit-button-${server.id}`}
@@ -194,7 +195,7 @@ function McpServersPageContent() {
         <h1 className="text-2xl font-bold">MCP Servers</h1>
         {isAdmin && (
           <Button asChild data-testid="mcp-server-new-button">
-            <Link href="/ui/mcp-servers/new">
+            <Link href={`${ROUTE_MCP_SERVERS}/new`}>
               <Plus className="h-4 w-4 mr-2" />
               New MCP Server
             </Link>
@@ -224,7 +225,7 @@ function McpServersPageContent() {
           <p>No MCP servers registered yet</p>
           {isAdmin && (
             <Button asChild variant="link" className="mt-2">
-              <Link href="/ui/mcp-servers/new">Register the first MCP server</Link>
+              <Link href={`${ROUTE_MCP_SERVERS}/new`}>Register the first MCP server</Link>
             </Button>
           )}
         </div>

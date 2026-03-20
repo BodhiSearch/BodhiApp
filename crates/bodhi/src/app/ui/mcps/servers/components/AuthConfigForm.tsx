@@ -48,9 +48,6 @@ interface AuthConfigFormProps {
   onRegistrationEndpointChange: (value: string) => void;
   onScopesChange: (value: string) => void;
 
-  // Auto-DCR control (optional - for new page only)
-  enableAutoDcr?: boolean;
-
   // Actions
   onSubmit: () => void;
   onCancel: () => void;
@@ -70,7 +67,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
       setAutoDcrFailed(false);
 
       // Ensure registration type is set to dynamic-registration after successful discovery
-      if (props.enableAutoDcr && data.registration_endpoint) {
+      if (data.registration_endpoint) {
         props.onRegistrationTypeChange('dynamic_registration');
       }
 
@@ -82,7 +79,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
     onError: (message) => {
       setIsDiscovering(false);
 
-      if (props.enableAutoDcr && !autoDcrFailed) {
+      if (!autoDcrFailed) {
         // First auto-DCR failure - silent switch
         props.onRegistrationTypeChange('pre_registered');
         setAutoDcrFailed(true);
@@ -104,30 +101,20 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.type]);
 
-  // Auto-DCR on first OAuth selection (new page only)
+  // Auto-DCR on first OAuth selection
   useEffect(() => {
-    if (props.enableAutoDcr && props.type === 'oauth' && !hasAttemptedAutoDcr && props.serverUrl) {
+    if (props.type === 'oauth' && !hasAttemptedAutoDcr && props.serverUrl) {
       props.onRegistrationTypeChange('dynamic_registration');
       setHasAttemptedAutoDcr(true);
       setIsDiscovering(true);
       discoverMcp.mutate({ mcp_server_url: props.serverUrl });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.type, hasAttemptedAutoDcr, props.serverUrl, props.enableAutoDcr]);
-
-  // Auto-discover on OAuth type selection (view page only)
-  useEffect(() => {
-    if (!props.enableAutoDcr && props.type === 'oauth' && props.serverUrl) {
-      setIsDiscovering(true);
-      discoverMcp.mutate({ mcp_server_url: props.serverUrl });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.type, props.serverUrl, props.enableAutoDcr]);
+  }, [props.type, hasAttemptedAutoDcr, props.serverUrl]);
 
   // Manual retry after auto-fail
   useEffect(() => {
     if (
-      props.enableAutoDcr &&
       props.type === 'oauth' &&
       props.registrationType === 'dynamic_registration' &&
       autoDcrFailed &&
@@ -138,7 +125,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
       discoverMcp.mutate({ mcp_server_url: props.serverUrl });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.registrationType, props.type, autoDcrFailed, props.serverUrl, props.enableAutoDcr]);
+  }, [props.registrationType, props.type, autoDcrFailed, props.serverUrl]);
 
   const handleAddEntry = () => {
     props.onEntriesChange([...props.entries, { param_type: 'header', param_key: '' }]);
@@ -241,24 +228,22 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
       {/* OAuth fields */}
       {props.type === 'oauth' && (
         <>
-          {/* Registration Type (only for new page with enableAutoDcr) */}
-          {props.enableAutoDcr && (
-            <div className="space-y-2">
-              <Label>Registration Type</Label>
-              <Select
-                value={props.registrationType}
-                onValueChange={(val) => props.onRegistrationTypeChange(val as OAuthRegistrationType)}
-              >
-                <SelectTrigger data-testid="oauth-registration-type-select">
-                  <SelectValue placeholder="Select registration type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pre_registered">Pre-Registered</SelectItem>
-                  <SelectItem value="dynamic_registration">Dynamic Registration</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Registration Type */}
+          <div className="space-y-2">
+            <Label>Registration Type</Label>
+            <Select
+              value={props.registrationType}
+              onValueChange={(val) => props.onRegistrationTypeChange(val as OAuthRegistrationType)}
+            >
+              <SelectTrigger data-testid="oauth-registration-type-select">
+                <SelectValue placeholder="Select registration type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pre_registered">Pre-Registered</SelectItem>
+                <SelectItem value="dynamic_registration">Dynamic Registration</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Discovery status */}
           {isDiscovering && (
@@ -289,7 +274,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
           )}
 
           {/* Pre-registered fields */}
-          {(!props.enableAutoDcr || props.registrationType === 'pre_registered') && (
+          {props.registrationType === 'pre_registered' && (
             <>
               <div className="space-y-2">
                 <Label>Client ID</Label>
@@ -334,7 +319,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
           </div>
 
           {/* Dynamic registration endpoint */}
-          {(!props.enableAutoDcr || props.registrationType === 'dynamic_registration') && (
+          {props.registrationType === 'dynamic_registration' && (
             <div className="space-y-2">
               <Label>Registration Endpoint</Label>
               <Input

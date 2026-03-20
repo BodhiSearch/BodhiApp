@@ -2,7 +2,7 @@ import { BasePage } from '@/pages/BasePage.mjs';
 import { expect } from '@playwright/test';
 
 /**
- * Page object for MCP management on /ui/mcps and /ui/mcp-servers pages
+ * Page object for MCP management on /ui/mcps and /ui/mcps/servers pages
  */
 export class McpsPage extends BasePage {
   selectors = {
@@ -19,6 +19,22 @@ export class McpsPage extends BasePage {
     serverToggle: (id) => `[data-testid="server-toggle-${id}"]`,
     serverEditButton: (id) => `[data-testid="server-edit-button-${id}"]`,
     serverViewButton: (id) => `[data-testid="server-view-button-${id}"]`,
+
+    // Server view page - auth config inline form
+    addAuthConfigButton: '[data-testid="add-auth-config-button"]',
+    authConfigForm: '[data-testid="auth-config-form"]',
+    authConfigTypeSelect: '[data-testid="auth-config-type-select"]',
+    authConfigNameInput: '[data-testid="auth-config-name-input"]',
+    oauthRegistrationTypeSelect: '[data-testid="oauth-registration-type-select"]',
+    authConfigAuthEndpointInput: '[data-testid="auth-config-auth-endpoint-input"]',
+    authConfigTokenEndpointInput: '[data-testid="auth-config-token-endpoint-input"]',
+    authConfigRegistrationEndpointInput: '[data-testid="auth-config-registration-endpoint-input"]',
+    authConfigScopesInput: '[data-testid="auth-config-scopes-input"]',
+    authConfigClientIdInput: '[data-testid="auth-config-client-id-input"]',
+    authConfigClientSecretInput: '[data-testid="auth-config-client-secret-input"]',
+    authConfigSaveButton: '[data-testid="auth-config-save-button"]',
+    authConfigCancelButton: '[data-testid="auth-config-cancel-button"]',
+    authConfigDiscoverStatus: '[data-testid="auth-config-discover-status"]',
 
     // MCP Server new/edit page
     newServerPage: '[data-testid="new-mcp-server-page"]',
@@ -115,18 +131,18 @@ export class McpsPage extends BasePage {
   // ========== MCP Servers Page Methods ==========
 
   async navigateToServersList() {
-    await this.navigate('/ui/mcp-servers/');
+    await this.navigate('/ui/mcps/servers/');
     await this.waitForSPAReady();
   }
 
   async expectServersListPage() {
-    await this.page.waitForURL(/\/ui\/mcp-servers/);
+    await this.page.waitForURL(/\/ui\/mcps\/servers/);
     await this.waitForSPAReady();
   }
 
   async clickNewServer() {
     await this.page.click(this.selectors.serverNewButton);
-    await this.page.waitForURL(/\/ui\/mcp-servers\/new/);
+    await this.page.waitForURL(/\/ui\/mcps\/servers\/new/);
     await this.waitForSPAReady();
   }
 
@@ -148,7 +164,7 @@ export class McpsPage extends BasePage {
 
   async clickServerSave() {
     await this.page.click(this.selectors.serverSaveButton);
-    await this.page.waitForURL(/\/ui\/mcp-servers(?!\/new)/);
+    await this.page.waitForURL(/\/ui\/mcps\/servers(?!\/new)/);
     await this.waitForSPAReady();
   }
 
@@ -170,6 +186,43 @@ export class McpsPage extends BasePage {
     const row = this.page.locator(this.selectors.serverRowByName(name)).first();
     const testId = await row.getAttribute('data-testid');
     return testId?.replace('server-row-', '');
+  }
+
+  // ========== Server View Page — Inline Auth Config Form Methods ==========
+
+  async clickViewServerById(id) {
+    await this.page.click(this.selectors.serverViewButton(id));
+    await this.page.waitForURL(/\/ui\/mcps\/servers\/view/);
+    await this.waitForSPAReady();
+  }
+
+  async clickAddAuthConfig() {
+    await this.page.click(this.selectors.addAuthConfigButton);
+    await expect(this.page.locator(this.selectors.authConfigForm)).toBeVisible();
+  }
+
+  async selectInlineAuthConfigType(type) {
+    await this.page.click(this.selectors.authConfigTypeSelect);
+    const optionText = type === 'oauth' ? 'OAuth' : 'Header / Query Params';
+    await this.page.getByRole('option', { name: optionText }).click();
+  }
+
+  async waitForDiscoveryComplete() {
+    await expect(this.page.locator(this.selectors.authConfigDiscoverStatus)).not.toBeVisible();
+  }
+
+  async expectRegistrationType(type) {
+    const selector = this.selectors.oauthRegistrationTypeSelect;
+    const expectedText = type === 'dynamic_registration' ? 'Dynamic Registration' : 'Pre-Registered';
+    await expect(this.page.locator(selector)).toContainText(expectedText);
+  }
+
+  async clickInlineAuthConfigSave() {
+    await this.page.click(this.selectors.authConfigSaveButton);
+  }
+
+  async expectAuthConfigRow(configName) {
+    await expect(this.page.locator(`text=${configName}`)).toBeVisible();
   }
 
   // ========== API Helpers (auth config creation via fetch) ==========

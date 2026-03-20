@@ -1,4 +1,4 @@
-import NewMcpServerPage from '@/app/ui/mcp-servers/new/page';
+import NewMcpServerPage from '@/app/ui/mcps/servers/new/page';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockCreateMcpServer,
@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
-  usePathname: () => '/ui/mcp-servers/new',
+  usePathname: () => '/ui/mcps/servers/new',
 }));
 
 setupMswV2();
@@ -192,7 +192,7 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
 
     // Should redirect to MCP servers list
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/mcp-servers');
+      expect(pushMock).toHaveBeenCalledWith('/ui/mcps/servers');
     });
   });
 

@@ -27,4 +27,4 @@ export const ROUTE_DASHBOARD_CALLBACK = '/ui/auth/dashboard/callback';
 
 // MCP routes
 export const ROUTE_MCPS = '/ui/mcps';
-export const ROUTE_MCP_SERVERS = '/ui/mcp-servers';
+export const ROUTE_MCP_SERVERS = '/ui/mcps/servers';

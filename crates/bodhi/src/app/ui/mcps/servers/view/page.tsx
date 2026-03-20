@@ -31,6 +31,7 @@ import {
   useStandaloneDynamicRegister,
   type McpAuthConfigResponse,
 } from '@/hooks/useMcps';
+import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 import { AuthConfigForm } from '../components/AuthConfigForm';
 import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
@@ -196,7 +197,7 @@ function ServerViewContent() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{server?.name}</CardTitle>
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/ui/mcp-servers/edit?id=${serverId}`}>
+            <Link href={`${ROUTE_MCP_SERVERS}/edit?id=${serverId}`}>
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </Link>
@@ -260,7 +261,6 @@ function ServerViewContent() {
                 onTokenEndpointChange={setFormTokenEndpoint}
                 onRegistrationEndpointChange={setFormRegistrationEndpoint}
                 onScopesChange={setFormScopes}
-                enableAutoDcr={false}
                 onSubmit={handleCreateSubmit}
                 onCancel={() => {
                   setShowForm(false);

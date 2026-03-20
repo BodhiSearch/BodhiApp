@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useCreateMcpServer, useStandaloneDynamicRegister, type CreateMcpAuthConfigRequest } from '@/hooks/useMcps';
+import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { extractSecondLevelDomain } from '@/lib/urlUtils';
 import { AuthConfigForm } from '../components/AuthConfigForm';
 import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
@@ -52,7 +53,7 @@ function NewMcpServerContent() {
   const createMutation = useCreateMcpServer({
     onSuccess: () => {
       toast({ title: 'MCP server created' });
-      router.push('/ui/mcp-servers');
+      router.push(ROUTE_MCP_SERVERS);
     },
     onError: (message) => {
       toast({ title: 'Failed to create MCP server', description: message, variant: 'destructive' });
@@ -272,7 +273,6 @@ function NewMcpServerContent() {
                       onTokenEndpointChange={setTokenEndpoint}
                       onRegistrationEndpointChange={setRegistrationEndpoint}
                       onScopesChange={setScopes}
-                      enableAutoDcr={true}
                       showTypeSelector={false}
                       showActions={false}
                       onSubmit={() => {
@@ -287,7 +287,7 @@ function NewMcpServerContent() {
             </div>
 
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => router.push('/ui/mcp-servers')}>
+              <Button type="button" variant="outline" onClick={() => router.push(ROUTE_MCP_SERVERS)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSaving} data-testid="mcp-server-save-button">

@@ -1,4 +1,4 @@
-import ServerViewPage from '@/app/ui/mcp-servers/view/page';
+import ServerViewPage from '@/app/ui/mcps/servers/view/page';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockAuthConfigHeader,
@@ -25,7 +25,7 @@ const pushMock = vi.fn();
 let searchParamsMap: Record<string, string | null> = { id: 'server-uuid-1' };
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
-  usePathname: () => '/ui/mcp-servers/view',
+  usePathname: () => '/ui/mcps/servers/view',
   useSearchParams: () => ({
     get: (key: string) => searchParamsMap[key] ?? null,
   }),
@@ -96,7 +96,7 @@ describe('ServerViewPage - Server Info', () => {
     });
 
     const editLink = screen.getByRole('link', { name: /edit/i });
-    expect(editLink).toHaveAttribute('href', '/ui/mcp-servers/edit?id=server-uuid-1');
+    expect(editLink).toHaveAttribute('href', '/ui/mcps/servers/edit?id=server-uuid-1');
   });
 
   it('shows server disabled status', async () => {
@@ -357,12 +357,18 @@ describe('ServerViewPage - Auth Configs', () => {
     await user.click(screen.getByTestId('auth-config-type-select'));
     await user.click(screen.getByText('OAuth'));
 
+    // Auto-DCR fires and silently fails → falls back to pre_registered, showing client ID field
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
+    });
+
     // Should now show OAuth fields
     expect(screen.queryByTestId('auth-config-entry-key-0')).not.toBeInTheDocument();
-    expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-auth-endpoint-input')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-token-endpoint-input')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-scopes-input')).toBeInTheDocument();
+    // Registration Type dropdown is now always visible
+    expect(screen.getByTestId('oauth-registration-type-select')).toBeInTheDocument();
   });
 
   it('save button is enabled with auto-populated name', async () => {
@@ -429,11 +435,14 @@ describe('ServerViewPage - Auth Configs', () => {
     expect(screen.getByTestId('auth-config-registration-endpoint-input')).toHaveValue('https://mcp.asana.com/register');
     expect(screen.getByTestId('auth-config-scopes-input')).toHaveValue('mcp:tools mcp:read');
 
-    // Client ID field should be visible for manual entry (no auto-DCR on view page)
-    expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
+    // Registration Type dropdown should be visible and set to Dynamic Registration
+    expect(screen.getByTestId('oauth-registration-type-select')).toBeInTheDocument();
+
+    // Client ID field should NOT be visible (dynamic_registration mode hides it)
+    expect(screen.queryByTestId('auth-config-client-id-input')).not.toBeInTheDocument();
   });
 
-  it('shows OAuth fields when discovery fails', async () => {
+  it('silently falls back to pre-registered when discovery fails', async () => {
     const user = userEvent.setup();
     server.use(
       mockGetMcpServer(mockMcpServerResponse),
@@ -461,10 +470,16 @@ describe('ServerViewPage - Auth Configs', () => {
     });
     await user.click(screen.getByRole('option', { name: /oauth/i }));
 
-    // Should show client ID field for manual entry after discovery attempt
+    // Auto-DCR fires and silently fails → falls back to pre_registered (no error shown)
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
     });
+
+    // No error should be shown on first failure (silent fallback)
+    expect(screen.queryByTestId('auth-config-discover-error')).not.toBeInTheDocument();
+
+    // Registration Type dropdown should be visible and show Pre-Registered
+    expect(screen.getByTestId('oauth-registration-type-select')).toHaveTextContent('Pre-Registered');
   });
 
   it('updates name field when switching from header to oauth auth type', async () => {
@@ -511,7 +526,7 @@ describe('ServerViewPage - Auth Configs', () => {
     });
   });
 
-  it('creates OAuth auth config via inline form', async () => {
+  it('creates OAuth auth config via inline form (pre-registered fallback)', async () => {
     const user = userEvent.setup();
     server.use(
       mockGetMcpServer(mockMcpServerResponse),
@@ -534,7 +549,7 @@ describe('ServerViewPage - Auth Configs', () => {
     await user.click(screen.getByTestId('auth-config-type-select'));
     await user.click(screen.getByText('OAuth'));
 
-    // Wait for OAuth fields to appear
+    // Auto-DCR fires and silently fails → falls back to pre_registered
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
     });

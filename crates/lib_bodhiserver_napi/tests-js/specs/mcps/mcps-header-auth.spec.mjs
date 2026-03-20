@@ -156,7 +156,7 @@ test.describe('MCP Header/Query Auth E2E', { tag: ['@mcps', '@auth'] }, () => {
 
       // The raw response contains { result: { content: [{ type: 'text', text: '...' }] } }
       const rawJson = JSON.parse(rawContent);
-      const textContent = rawJson.result.content[0].text;
+      const textContent = rawJson.result[0].text;
       const authInfo = JSON.parse(textContent);
 
       // Assert exact header key-value pairs match what was entered in the form

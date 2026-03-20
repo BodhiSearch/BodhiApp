@@ -207,6 +207,52 @@ test.describe(
       });
     });
 
+    test('Add OAuth DCR auth config via server view page UI', async ({
+      page,
+      sharedServerUrl,
+    }) => {
+      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
+      const serverData = McpFixtures.createDcrServerData();
+
+      let serverId;
+
+      await test.step('Login and create MCP server pointing to DCR test server', async () => {
+        await loginPage.performOAuthLogin('/ui/chat/');
+        await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+        serverId = await mcpsPage.getServerUuidByName(serverData.name);
+        expect(serverId).toBeTruthy();
+      });
+
+      await test.step('Navigate to server view page and click Add Auth Config', async () => {
+        await mcpsPage.clickViewServerById(serverId);
+        await mcpsPage.clickAddAuthConfig();
+      });
+
+      await test.step('Select OAuth → auto-discovery triggers and sets Dynamic Registration', async () => {
+        await mcpsPage.selectInlineAuthConfigType('oauth');
+        await mcpsPage.waitForDiscoveryComplete();
+        await mcpsPage.expectRegistrationType('dynamic_registration');
+
+        // Verify endpoints are auto-populated
+        await expect(
+          page.locator(mcpsPage.selectors.authConfigAuthEndpointInput)
+        ).not.toHaveValue('');
+        await expect(
+          page.locator(mcpsPage.selectors.authConfigTokenEndpointInput)
+        ).not.toHaveValue('');
+        await expect(
+          page.locator(mcpsPage.selectors.authConfigRegistrationEndpointInput)
+        ).not.toHaveValue('');
+      });
+
+      await test.step('Save triggers DCR and creates auth config', async () => {
+        await mcpsPage.clickInlineAuthConfigSave();
+        // After save, form closes and auth config row appears
+        await mcpsPage.expectAuthConfigRow('oauth-default');
+      });
+    });
+
     test('DCR access request: 3rd party app executes tool on DCR MCP via REST', async ({
       page,
       sharedServerUrl,

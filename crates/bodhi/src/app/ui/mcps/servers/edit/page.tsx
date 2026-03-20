@@ -33,6 +33,7 @@ import {
   useDeleteAuthConfig,
   type McpAuthConfigResponse,
 } from '@/hooks/useMcps';
+import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 
 function EditMcpServerContent() {
@@ -56,7 +57,7 @@ function EditMcpServerContent() {
   const updateMutation = useUpdateMcpServer({
     onSuccess: () => {
       toast({ title: 'MCP server updated' });
-      router.push(`/ui/mcp-servers/view?id=${serverId}`);
+      router.push(`${ROUTE_MCP_SERVERS}/view?id=${serverId}`);
     },
     onError: (message) => {
       toast({ title: 'Failed to update MCP server', description: message, variant: 'destructive' });
@@ -258,7 +259,7 @@ function EditMcpServerContent() {
             </div>
 
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => router.push('/ui/mcp-servers')}>
+              <Button type="button" variant="outline" onClick={() => router.push(ROUTE_MCP_SERVERS)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={updateMutation.isLoading} data-testid="mcp-server-save-button">

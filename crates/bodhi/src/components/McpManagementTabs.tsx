@@ -11,18 +11,25 @@ const tabs = [
     href: ROUTE_MCPS,
     label: 'My MCPs',
     description: 'Manage your MCP instances',
+    testId: 'mcp-tab-mcps',
   },
   {
     href: ROUTE_MCP_SERVERS,
     label: 'MCP Servers',
     description: 'Browse available MCP servers',
+    testId: 'mcp-tab-mcp-servers',
   },
 ];
 
 export function McpManagementTabs() {
   const pathname = usePathname();
 
-  const isActive = (href: string) => pathname?.startsWith(href);
+  const isActive = (href: string) => {
+    if (href === ROUTE_MCPS) {
+      return pathname?.startsWith(href) && !pathname?.startsWith(ROUTE_MCP_SERVERS);
+    }
+    return pathname?.startsWith(href);
+  };
 
   return (
     <div className="bg-muted/50 p-1 rounded-lg mb-6">
@@ -38,7 +45,7 @@ export function McpManagementTabs() {
                 : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
             )}
             title={tab.description}
-            data-testid={`mcp-tab-${tab.href.split('/').pop()}`}
+            data-testid={tab.testId}
           >
             {tab.label}
           </Link>

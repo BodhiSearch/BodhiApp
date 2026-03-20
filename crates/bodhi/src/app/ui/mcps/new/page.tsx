@@ -791,7 +791,7 @@ function NewMcpPageContent() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push(`/ui/mcp-servers/view?id=${selectedServer.id}`)}
+                      onClick={() => router.push(`/ui/mcps/servers/view?id=${selectedServer.id}`)}
                       data-testid="auth-config-new-redirect-button"
                     >
                       Go to Server Settings

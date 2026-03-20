@@ -93,7 +93,7 @@ const McpServerSelector = <T extends FieldValues>({
                           <p className="text-sm text-muted-foreground mb-2">No servers found</p>
                           {isAdmin && (
                             <Button asChild variant="link" size="sm">
-                              <Link href="/ui/mcp-servers/new">Register a new server</Link>
+                              <Link href="/ui/mcps/servers/new">Register a new server</Link>
                             </Button>
                           )}
                         </div>
@@ -128,7 +128,7 @@ const McpServerSelector = <T extends FieldValues>({
                         <CommandSeparator />
                         <CommandGroup>
                           <CommandItem
-                            onSelect={() => router.push('/ui/mcp-servers/new')}
+                            onSelect={() => router.push('/ui/mcps/servers/new')}
                             data-testid="mcp-server-add-new"
                           >
                             <Plus className="mr-2 h-4 w-4" />
