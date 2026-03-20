@@ -113,8 +113,6 @@ pub async fn build_routes(
     .route(ENDPOINT_USER_INFO, get(users_info))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate))
     .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback))
-    .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
-    .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status))
     .route(
       ENDPOINT_DASHBOARD_AUTH_INITIATE,
       post(dashboard_auth_initiate),
@@ -151,6 +149,17 @@ pub async fn build_routes(
 
   let optional_auth =
     optional_auth.route_layer(from_fn_with_state(state.clone(), optional_auth_middleware));
+
+  // Guest endpoints (session auth required, minimum Guest role)
+  let guest_endpoints = Router::new()
+    .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
+    .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status))
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| {
+        api_auth_middleware(ResourceRole::Guest, None, None, state, req, next)
+      },
+    ));
 
   // User level APIs (role=user & scope=scope_token_user)
   let user_apis = Router::new()
@@ -533,6 +542,7 @@ pub async fn build_routes(
 
   // Session-protected routes (RESTRICTIVE CORS — blocks all cross-origin)
   let session_protected = Router::new()
+    .merge(guest_endpoints)
     .merge(user_session_apis)
     .merge(power_user_session_apis)
     .merge(admin_session_apis)

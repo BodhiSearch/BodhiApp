@@ -284,6 +284,42 @@ describe('AppInitializer role-based access control', () => {
     expect(pushMock).toHaveBeenCalledWith('/ui/request-access');
   });
 
+  it('redirects to request-access when user has guest role', async () => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        username: 'test@example.com',
+        role: 'resource_guest',
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true}>
+        <div>Protected content</div>
+      </AppInitializer>
+    );
+
+    expect(pushMock).toHaveBeenCalledWith('/ui/request-access');
+  });
+
+  it('redirects to request-access when user has anonymous role', async () => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        username: 'test@example.com',
+        role: 'resource_anonymous',
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true}>
+        <div>Protected content</div>
+      </AppInitializer>
+    );
+
+    expect(pushMock).toHaveBeenCalledWith('/ui/request-access');
+  });
+
   it('prioritizes auth check over role check', async () => {
     server.use(...mockAppInfo({ status: 'ready' }), ...mockUserLoggedOut());
 

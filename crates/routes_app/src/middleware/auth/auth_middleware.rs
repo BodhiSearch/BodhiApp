@@ -168,7 +168,6 @@ pub async fn auth_middleware(
       let (access_token, role) = token_service
         .get_valid_session_token(session.clone(), access_token, &tenant)
         .await?;
-      let role = role.ok_or(AuthError::MissingRoles)?;
       let user_claims = extract_claims::<UserIdClaims>(&access_token)?;
 
       let auth_context = if is_multi_tenant {
@@ -181,7 +180,7 @@ pub async fn auth_middleware(
           tenant_id: Some(tenant.id),
           user_id: user_claims.sub.clone(),
           username: user_claims.preferred_username,
-          role: Some(role),
+          role,
           token: Some(access_token),
           dashboard_token,
         }
@@ -191,7 +190,7 @@ pub async fn auth_middleware(
           tenant_id: tenant.id,
           user_id: user_claims.sub.clone(),
           username: user_claims.preferred_username,
-          role: Some(role),
+          role,
           token: access_token,
         }
       };
@@ -229,8 +228,6 @@ pub async fn optional_auth_middleware(
   );
 
   let anon = || AuthContext::Anonymous {
-    client_id: None,
-    tenant_id: None,
     deployment: deployment.clone(),
   };
 
@@ -333,7 +330,7 @@ pub async fn optional_auth_middleware(
                     tenant_id: None,
                     user_id: user_claims.sub.clone(),
                     username: user_claims.preferred_username,
-                    role: None,
+                    role: services::ResourceRole::Guest,
                     token: None,
                     dashboard_token,
                   });

@@ -48,8 +48,6 @@ mod tests {
     AuthScopedTenantService::new(
       app_service,
       AuthContext::Anonymous {
-        client_id: None,
-        tenant_id: None,
         deployment: DeploymentMode::Standalone,
       },
     )

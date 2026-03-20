@@ -293,15 +293,20 @@ pub async fn apps_approve_access_request(
 
   // Extract approver's role from session and compute max grantable scope
   let approver_role = match auth_scope.auth_context() {
-    services::AuthContext::Session { role, .. } => {
-      role.ok_or(AppsRouteError::InsufficientPrivileges)?
+    services::AuthContext::Session { role, .. }
+    | services::AuthContext::MultiTenantSession { role, .. } => {
+      if !role.has_access_to(&ResourceRole::User) {
+        return Err(AppsRouteError::InsufficientPrivileges)?;
+      }
+      role
     }
-    services::AuthContext::MultiTenantSession { role, .. } => {
-      role.ok_or(AppsRouteError::InsufficientPrivileges)?
+    services::AuthContext::Anonymous { .. }
+    | services::AuthContext::ApiToken { .. }
+    | services::AuthContext::ExternalApp { .. } => {
+      return Err(AppsRouteError::InsufficientPrivileges)?
     }
-    _ => return Err(AppsRouteError::InsufficientPrivileges)?,
   };
-  let max_grantable = if approver_role >= ResourceRole::PowerUser {
+  let max_grantable = if *approver_role >= ResourceRole::PowerUser {
     UserScope::PowerUser
   } else {
     UserScope::User

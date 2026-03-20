@@ -194,8 +194,12 @@ function MultiTenantLoginContent() {
     return null;
   }
 
-  // 5d. Role: None guard — redirect to request-access if logged in with no role
-  if (userInfo?.auth_status === 'logged_in' && appInfo?.client_id && !userInfo.role) {
+  // 5d. Role: None/Guest/Anonymous guard — redirect to request-access if logged in without an assignable role
+  if (
+    userInfo?.auth_status === 'logged_in' &&
+    appInfo?.client_id &&
+    (!userInfo.role || userInfo.role === 'resource_guest' || userInfo.role === 'resource_anonymous')
+  ) {
     router.push(ROUTE_REQUEST_ACCESS);
     return null;
   }
@@ -452,8 +456,7 @@ export default function LoginPage() {
   // Allow 'setup' status when multi-tenant invite flow is active,
   // so the login page can process the invite before redirecting
   const hasInviteFlow = typeof window !== 'undefined' && sessionStorage.getItem('login_to_tenant');
-  const allowedStatuses: AppStatus[] =
-    isMultiTenant && hasInviteFlow ? ['ready', 'setup'] : ['ready'];
+  const allowedStatuses: AppStatus[] = isMultiTenant && hasInviteFlow ? ['ready', 'setup'] : ['ready'];
 
   return (
     <AppInitializer allowedStatus={allowedStatuses} authenticated={false}>

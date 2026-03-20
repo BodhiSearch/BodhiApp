@@ -15081,6 +15081,8 @@
       "ResourceRole": {
         "type": "string",
         "enum": [
+          "resource_anonymous",
+          "resource_guest",
           "resource_user",
           "resource_power_user",
           "resource_manager",

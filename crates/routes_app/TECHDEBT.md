@@ -23,3 +23,9 @@
 ## Models list query filter
 GET /bodhi/v1/models returns all 3 types with no filter.
 Add query parameter type=alias|api|model to filter by source type.
+
+## Multi-tenant endpoint authorization
+
+- **Currently**: `tenants_index`, `tenants_create`, and `tenants_activate` are in `optional_auth` with no role enforcement
+- **Should be**: Behind middleware requiring multi-tenant deployment mode + dashboard session (at minimum Guest role)
+- **Why deferred**: Requires new middleware for deployment mode check + dashboard token validation

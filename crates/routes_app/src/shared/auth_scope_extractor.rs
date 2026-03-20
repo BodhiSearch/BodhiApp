@@ -43,8 +43,6 @@ where
         .get::<AuthContext>()
         .cloned()
         .unwrap_or(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         });
 

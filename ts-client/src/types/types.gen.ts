@@ -2338,7 +2338,7 @@ export type RequestedResources = {
     mcp_servers?: Array<RequestedMcpServer>;
 };
 
-export type ResourceRole = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
+export type ResourceRole = 'resource_anonymous' | 'resource_guest' | 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
 
 export type ResponseFormat = {
     type: 'text';

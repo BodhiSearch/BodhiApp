@@ -3,15 +3,18 @@
  * Single source of truth for all role-related functionality
  */
 
-// Role type definition - using resource_ prefix to match backend
-export type Role = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
+// Import and re-export Role from ts-client (single source of truth)
+import type { ResourceRole } from '@bodhiapp/ts-client';
+export type Role = ResourceRole;
 
 // Role hierarchy for access control and filtering
 export const roleHierarchy: Record<Role, number> = {
-  resource_admin: 4,
-  resource_manager: 3,
-  resource_power_user: 2,
-  resource_user: 1,
+  resource_anonymous: 0,
+  resource_guest: 1,
+  resource_admin: 6,
+  resource_manager: 5,
+  resource_power_user: 4,
+  resource_user: 3,
 };
 
 // Role options for dropdowns and UI components

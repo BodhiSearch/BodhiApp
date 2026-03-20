@@ -64,9 +64,7 @@ async fn test_handler_teapot(
   {
     let token = ctx.token().map(|s| s.to_string());
     let role = match ctx {
-      AuthContext::Session {
-        role: Some(role), ..
-      } => Some(role.to_string()),
+      AuthContext::Session { role, .. } => Some(role.to_string()),
       _ => None,
     };
     let scope = match ctx {

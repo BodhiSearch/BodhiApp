@@ -227,8 +227,6 @@ mod tests {
     let auth_scope = AuthScope(AuthScopedAppService::new(
       app_service.clone(),
       AuthContext::Anonymous {
-        client_id: None,
-        tenant_id: None,
         deployment: services::DeploymentMode::Standalone,
       },
     ));
@@ -384,8 +382,6 @@ mod tests {
     let auth_scope = AuthScope(AuthScopedAppService::new(
       app_service.clone(),
       AuthContext::Anonymous {
-        client_id: None,
-        tenant_id: None,
         deployment: services::DeploymentMode::Standalone,
       },
     ));

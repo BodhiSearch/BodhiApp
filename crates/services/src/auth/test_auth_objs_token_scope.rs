@@ -31,29 +31,12 @@ fn test_token_scope_has_access_to_self(#[case] scope: TokenScope) {
 #[case(TokenScope::PowerUser, "scope_token_power_user")]
 fn test_token_scope_string_formats(#[case] scope: TokenScope, #[case] as_str: &str) {
   assert_eq!(scope.to_string(), as_str);
-  assert_eq!(scope.scope_token(), as_str);
 
   let serialized = serde_json::to_string(&scope).unwrap();
   assert_eq!(serialized, format!("\"{}\"", as_str));
 
   let deserialized: TokenScope = serde_json::from_str(&serialized).unwrap();
   assert_eq!(deserialized, scope);
-}
-
-#[rstest]
-#[case(TokenScope::PowerUser, vec![TokenScope::PowerUser, TokenScope::User])]
-#[case(TokenScope::User, vec![TokenScope::User])]
-fn test_included_scopes_explicit(#[case] scope: TokenScope, #[case] expected: Vec<TokenScope>) {
-  let included = scope.included_scopes();
-  assert_eq!(included, expected);
-
-  if !included.is_empty() {
-    assert_eq!(*included.first().unwrap(), scope);
-    assert_eq!(*included.last().unwrap(), TokenScope::User);
-    for window in included.windows(2) {
-      assert!(window[0] > window[1]);
-    }
-  }
 }
 
 #[rstest]

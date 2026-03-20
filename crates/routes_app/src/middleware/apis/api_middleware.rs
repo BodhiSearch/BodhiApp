@@ -43,19 +43,10 @@ async fn authorize_request(
     .ok_or(ApiAuthError::MissingAuth)?;
 
   match auth_context {
-    AuthContext::Session {
-      role: Some(role), ..
-    }
-    | AuthContext::MultiTenantSession {
-      role: Some(role), ..
-    } => {
+    AuthContext::Session { role, .. } | AuthContext::MultiTenantSession { role, .. } => {
       if !role.has_access_to(&required_role) {
         return Err(ApiAuthError::Forbidden);
       }
-    }
-    AuthContext::Session { role: None, .. }
-    | AuthContext::MultiTenantSession { role: None, .. } => {
-      return Err(ApiAuthError::MissingAuth);
     }
     AuthContext::ApiToken { role, .. } => {
       if let Some(required_token_scope) = required_token_scope {

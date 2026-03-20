@@ -88,8 +88,8 @@ export default function AppInitializer({
 
     // Check for authenticated users
     if (authenticated && userInfo?.auth_status === 'logged_in') {
-      // Check if user has no role - redirect to request access
-      if (!userInfo.role) {
+      // Check if user has no assignable role - redirect to request access
+      if (!userInfo.role || userInfo.role === 'resource_guest' || userInfo.role === 'resource_anonymous') {
         router.push(ROUTE_REQUEST_ACCESS);
         return;
       }

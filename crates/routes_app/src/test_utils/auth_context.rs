@@ -56,7 +56,7 @@ pub fn make_auth_with_role_default_token(
 /// (needed for tests that proceed past auth extraction into auth-scoped services).
 pub fn make_auth_no_role(variant: &str, user_id: &str, username: &str) -> AuthContext {
   match variant {
-    "session" => AuthContext::test_session_no_role(user_id, username),
+    "session" => AuthContext::test_session(user_id, username, ResourceRole::Guest),
     "multi_tenant" => AuthContext::test_multi_tenant_session_no_role(user_id, username),
     _ => panic!("unknown auth variant: {variant}"),
   }

@@ -417,8 +417,6 @@ async fn test_create_token_handler_missing_auth(
           scope: TokenScope::User,
         })?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -456,7 +454,11 @@ async fn test_create_token_handler_invalid_role(
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
         })?
-        .with_auth_context(AuthContext::test_session_no_role(&user_id, "user@test.com")),
+        .with_auth_context(AuthContext::test_session(
+          &user_id,
+          "user@test.com",
+          services::ResourceRole::Guest,
+        )),
     )
     .await?;
 

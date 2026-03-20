@@ -16,8 +16,8 @@ use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::ReqwestError;
 use services::{
   test_utils::{AppServiceStubBuilder, SettingServiceStub, TEST_TENANT_ID, TEST_USER_ID},
-  AppService, AppStatus, AuthContext, AuthServiceError, ClientRegistrationResponse,
-  DeploymentMode, MockAuthService, Tenant, BODHI_DEPLOYMENT,
+  AppService, AppStatus, AuthContext, AuthServiceError, ClientRegistrationResponse, DeploymentMode,
+  MockAuthService, Tenant, BODHI_DEPLOYMENT,
 };
 use std::{collections::HashMap, sync::Arc};
 use tower::ServiceExt;
@@ -84,7 +84,7 @@ async fn test_app_info_handler_with_client_id() -> anyhow::Result<()> {
     tenant_id: TEST_TENANT_ID.to_string(),
     user_id: "test-user".to_string(),
     username: "testuser".to_string(),
-    role: None,
+    role: services::ResourceRole::Guest,
     token: "dummy-token".to_string(),
   };
 
@@ -549,8 +549,6 @@ async fn test_app_info_multi_tenant_anonymous_returns_ready() -> anyhow::Result<
     .with_state(state);
 
   let auth_context = AuthContext::Anonymous {
-    client_id: None,
-    tenant_id: None,
     deployment: DeploymentMode::MultiTenant,
   };
   let resp = router

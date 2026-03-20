@@ -31,29 +31,12 @@ fn test_user_scope_has_access_to_self(#[case] scope: UserScope) {
 #[case(UserScope::PowerUser, "scope_user_power_user")]
 fn test_user_scope_string_formats(#[case] scope: UserScope, #[case] as_str: &str) {
   assert_eq!(scope.to_string(), as_str);
-  assert_eq!(scope.scope_user(), as_str);
 
   let serialized = serde_json::to_string(&scope).unwrap();
   assert_eq!(serialized, format!("\"{}\"", as_str));
 
   let deserialized: UserScope = serde_json::from_str(&serialized).unwrap();
   assert_eq!(deserialized, scope);
-}
-
-#[rstest]
-#[case(UserScope::PowerUser, vec![UserScope::PowerUser, UserScope::User])]
-#[case(UserScope::User, vec![UserScope::User])]
-fn test_included_scopes_explicit(#[case] scope: UserScope, #[case] expected: Vec<UserScope>) {
-  let included = scope.included_scopes();
-  assert_eq!(included, expected);
-
-  if !included.is_empty() {
-    assert_eq!(*included.first().unwrap(), scope);
-    assert_eq!(*included.last().unwrap(), UserScope::User);
-    for window in included.windows(2) {
-      assert!(window[0] > window[1]);
-    }
-  }
 }
 
 #[rstest]

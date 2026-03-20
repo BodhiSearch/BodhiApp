@@ -52,11 +52,15 @@ pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, A
       role,
       ..
     } => (user_id, username, role),
-    _ => return Err(UsersRouteError::AlreadyHasAccess)?,
+    AuthContext::Anonymous { .. }
+    | AuthContext::ApiToken { .. }
+    | AuthContext::ExternalApp { .. } => {
+      return Err(UsersRouteError::AlreadyHasAccess)?;
+    }
   };
 
-  // Check if user already has a role
-  if let Some(role) = role {
+  // Check if user already has a role (User or above)
+  if role.has_access_to(&services::ResourceRole::User) {
     debug!("User {} already has role: {}", username, role);
     return Err(UsersRouteError::AlreadyHasAccess)?;
   }
@@ -219,23 +223,22 @@ pub async fn users_access_request_approve(
   Json(request): Json<ApproveUserAccessRequest>,
 ) -> Result<StatusCode, ApiError> {
   let (approver_username, approver_role) = match auth_scope.auth_context() {
-    AuthContext::Session {
-      username,
-      role: Some(role),
-      ..
-    }
-    | AuthContext::MultiTenantSession {
-      username,
-      role: Some(role),
-      ..
-    } => (username, role),
-    _ => return Err(UsersRouteError::InsufficientPrivileges)?,
+    AuthContext::Session { username, role, .. }
+    | AuthContext::MultiTenantSession { username, role, .. } => (username, role),
+    AuthContext::Anonymous { .. }
+    | AuthContext::ApiToken { .. }
+    | AuthContext::ExternalApp { .. } => return Err(UsersRouteError::InsufficientPrivileges)?,
   };
 
   info!(
     "User {} with role {:?} approving request {} with role {:?}",
     approver_username, approver_role, id, request.role
   );
+
+  // Reject Anonymous/Guest as assignment targets
+  if !request.role.has_access_to(&services::ResourceRole::User) {
+    return Err(UsersRouteError::InsufficientPrivileges)?;
+  }
 
   // Validate role hierarchy - users can only assign roles equal to or lower than their own
   if !approver_role.has_access_to(&request.role) {

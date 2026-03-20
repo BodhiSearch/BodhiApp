@@ -71,7 +71,7 @@ pub async fn users_info(auth_scope: AuthScope) -> Result<Json<UserInfoEnvelope>,
           username: claims.preferred_username,
           first_name: claims.given_name,
           last_name: claims.family_name,
-          role: role.map(AppRole::Session),
+          role: Some(AppRole::Session(*role)),
         }),
         None,
       )
@@ -97,7 +97,7 @@ pub async fn users_info(auth_scope: AuthScope) -> Result<Json<UserInfoEnvelope>,
           username: claims.preferred_username,
           first_name: claims.given_name,
           last_name: claims.family_name,
-          role: role.map(AppRole::Session),
+          role: Some(AppRole::Session(*role)),
         })
       } else {
         UserResponse::LoggedOut

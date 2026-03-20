@@ -6,16 +6,6 @@ const DEFAULT_CLIENT_ID: &str = "test-client-id";
 impl AuthContext {
   pub fn test_anonymous() -> Self {
     AuthContext::Anonymous {
-      client_id: Some(DEFAULT_CLIENT_ID.to_string()),
-      tenant_id: Some(TEST_TENANT_ID.to_string()),
-      deployment: DeploymentMode::Standalone,
-    }
-  }
-
-  pub fn test_anonymous_with_client_id(client_id: &str) -> Self {
-    AuthContext::Anonymous {
-      client_id: Some(client_id.to_string()),
-      tenant_id: Some(TEST_TENANT_ID.to_string()),
       deployment: DeploymentMode::Standalone,
     }
   }
@@ -26,18 +16,7 @@ impl AuthContext {
       tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       username: username.to_string(),
-      role: Some(role),
-      token: "test-token".to_string(),
-    }
-  }
-
-  pub fn test_session_no_role(user_id: &str, username: &str) -> Self {
-    AuthContext::Session {
-      client_id: DEFAULT_CLIENT_ID.to_string(),
-      tenant_id: TEST_TENANT_ID.to_string(),
-      user_id: user_id.to_string(),
-      username: username.to_string(),
-      role: None,
+      role,
       token: "test-token".to_string(),
     }
   }
@@ -53,7 +32,7 @@ impl AuthContext {
       tenant_id: TEST_TENANT_ID.to_string(),
       user_id: user_id.to_string(),
       username: username.to_string(),
-      role: Some(role),
+      role,
       token: token.to_string(),
     }
   }
@@ -64,7 +43,7 @@ impl AuthContext {
       tenant_id: None,
       user_id: user_id.to_string(),
       username: username.to_string(),
-      role: None,
+      role: ResourceRole::Guest,
       token: None,
       dashboard_token: "test-dashboard-token".to_string(),
     }
@@ -76,7 +55,7 @@ impl AuthContext {
       tenant_id: Some(TEST_TENANT_ID.to_string()),
       user_id: user_id.to_string(),
       username: username.to_string(),
-      role: None,
+      role: ResourceRole::Guest,
       token: None,
       dashboard_token: "test-dashboard-token".to_string(),
     }
@@ -95,7 +74,7 @@ impl AuthContext {
       tenant_id: Some(tenant_id.to_string()),
       user_id: user_id.to_string(),
       username: username.to_string(),
-      role: Some(role),
+      role,
       token: Some(token.to_string()),
       dashboard_token: "test-dashboard-token".to_string(),
     }
@@ -148,15 +127,7 @@ impl AuthContext {
 
   pub fn with_deployment(self, deployment: DeploymentMode) -> Self {
     match self {
-      AuthContext::Anonymous {
-        client_id,
-        tenant_id,
-        ..
-      } => AuthContext::Anonymous {
-        client_id,
-        tenant_id,
-        deployment,
-      },
+      AuthContext::Anonymous { .. } => AuthContext::Anonymous { deployment },
       other => other,
     }
   }
@@ -186,15 +157,7 @@ impl AuthContext {
 
   pub fn with_tenant_id(self, tenant_id: &str) -> Self {
     match self {
-      AuthContext::Anonymous {
-        client_id,
-        deployment,
-        ..
-      } => AuthContext::Anonymous {
-        client_id,
-        tenant_id: Some(tenant_id.to_string()),
-        deployment,
-      },
+      AuthContext::Anonymous { .. } => self,
       AuthContext::Session {
         client_id,
         user_id,

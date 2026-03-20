@@ -1,7 +1,6 @@
 use errmeta::{AppError, ErrorType};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use strum::IntoEnumIterator;
 use utoipa::ToSchema;
 
 // ============================================================================
@@ -17,7 +16,6 @@ use utoipa::ToSchema;
   PartialOrd,
   Ord,
   strum::Display,
-  strum::EnumIter,
   Serialize,
   Deserialize,
   ToSchema,
@@ -25,6 +23,12 @@ use utoipa::ToSchema;
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum ResourceRole {
+  #[serde(rename = "resource_anonymous")]
+  #[strum(serialize = "resource_anonymous")]
+  Anonymous,
+  #[serde(rename = "resource_guest")]
+  #[strum(serialize = "resource_guest")]
+  Guest,
   #[serde(rename = "resource_user")]
   #[strum(serialize = "resource_user")]
   User,
@@ -51,34 +55,17 @@ impl ResourceRole {
   /// Checks if this role has access to the required role level
   /// Higher roles automatically have access to lower role endpoints
   pub fn has_access_to(&self, required: &ResourceRole) -> bool {
-    // Since we derive PartialOrd, we can use >= for comparison
-    // Admin > Manager > PowerUser > User
     self >= required
-  }
-
-  /// Get the resource role name for this role
-  pub fn resource_role(&self) -> String {
-    self.to_string()
-  }
-
-  /// Get all roles that this role has access to (including itself)
-  pub fn included_roles(&self) -> Vec<ResourceRole> {
-    // Use iterator to get all roles up to and including this role
-    ResourceRole::iter()
-      .filter(|r| r <= self)
-      .rev() // Reverse to get highest role first
-      .collect()
   }
 
   /// Returns the maximum `UserScope` that this resource role is allowed to grant.
   ///
   /// - `PowerUser`, `Manager`, `Admin` → `UserScope::PowerUser`
-  /// - `User` → `UserScope::User`
+  /// - `Anonymous`, `Guest`, `User` → `UserScope::User`
   pub fn max_user_scope(&self) -> UserScope {
-    if self >= &ResourceRole::PowerUser {
-      UserScope::PowerUser
-    } else {
-      UserScope::User
+    match self {
+      ResourceRole::Anonymous | ResourceRole::Guest | ResourceRole::User => UserScope::User,
+      ResourceRole::PowerUser | ResourceRole::Manager | ResourceRole::Admin => UserScope::PowerUser,
     }
   }
 
@@ -97,8 +84,9 @@ impl FromStr for ResourceRole {
   type Err = RoleError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    // Match base role names first
     match s {
+      "resource_anonymous" => Ok(ResourceRole::Anonymous),
+      "resource_guest" => Ok(ResourceRole::Guest),
       "resource_user" => Ok(ResourceRole::User),
       "resource_power_user" => Ok(ResourceRole::PowerUser),
       "resource_manager" => Ok(ResourceRole::Manager),
@@ -121,7 +109,6 @@ impl FromStr for ResourceRole {
   PartialOrd,
   Ord,
   strum::Display,
-  strum::EnumIter,
   Serialize,
   Deserialize,
   ToSchema,
@@ -148,14 +135,6 @@ pub enum TokenScopeError {
 impl TokenScope {
   pub fn has_access_to(&self, required: &TokenScope) -> bool {
     self >= required
-  }
-
-  pub fn scope_token(&self) -> String {
-    self.to_string()
-  }
-
-  pub fn included_scopes(&self) -> Vec<TokenScope> {
-    TokenScope::iter().filter(|s| s <= self).rev().collect()
   }
 }
 
@@ -184,7 +163,6 @@ impl FromStr for TokenScope {
   PartialOrd,
   Ord,
   strum::Display,
-  strum::EnumIter,
   Serialize,
   Deserialize,
   ToSchema,
@@ -211,14 +189,6 @@ pub enum UserScopeError {
 impl UserScope {
   pub fn has_access_to(&self, required: &UserScope) -> bool {
     self >= required
-  }
-
-  pub fn scope_user(&self) -> String {
-    self.to_string()
-  }
-
-  pub fn included_scopes(&self) -> Vec<UserScope> {
-    UserScope::iter().filter(|s| s <= self).rev().collect()
   }
 }
 

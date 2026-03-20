@@ -165,8 +165,6 @@ async fn test_api_auth_scope_not_allowed(#[case] scope: TokenScope) -> anyhow::R
 #[tokio::test]
 async fn test_api_auth_middleware_missing_role() -> anyhow::Result<()> {
   let ctx = AuthContext::Anonymous {
-    client_id: None,
-    tenant_id: None,
     deployment: services::DeploymentMode::Standalone,
   };
   let router = test_router_with_auth_context(ResourceRole::User, None, ctx).await;
@@ -247,8 +245,6 @@ async fn test_api_auth_user_scope_not_allowed(#[case] user_scope: UserScope) -> 
 #[tokio::test]
 async fn test_api_auth_middleware_user_scope_missing_auth() -> anyhow::Result<()> {
   let ctx = AuthContext::Anonymous {
-    client_id: None,
-    tenant_id: None,
     deployment: services::DeploymentMode::Standalone,
   };
   let router =

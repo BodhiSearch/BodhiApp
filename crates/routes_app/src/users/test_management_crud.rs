@@ -600,3 +600,49 @@ async fn test_change_user_role_allowed_when_caller_has_sufficient_role(
 
   Ok(())
 }
+
+// ============================================================================
+// users_change_role - reject Guest/Anonymous as assignment targets
+// ============================================================================
+
+#[rstest]
+#[case::assign_guest(ResourceRole::Guest)]
+#[case::assign_anonymous(ResourceRole::Anonymous)]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_change_user_role_rejects_non_assignable_roles(
+  _temp_bodhi_home: TempDir,
+  #[case] target_role: ResourceRole,
+) -> anyhow::Result<()> {
+  let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
+
+  // No mock expectations needed - handler should reject before calling service
+  let app_service = AppServiceStubBuilder::default().build().await?;
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
+
+  let router = Router::new()
+    .route("/bodhi/v1/users/{user_id}/role", put(users_change_role))
+    .with_state(state);
+
+  let body = serde_json::json!({ "role": target_role.to_string() });
+  let request = Request::put("/bodhi/v1/users/user-123/role")
+    .header("Content-Type", "application/json")
+    .body(Body::from(body.to_string()))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "admin-user-id",
+      "admin@example.com",
+      ResourceRole::Admin,
+      &test_token,
+    ));
+
+  let response = router.oneshot(request).await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let response_json = response.json::<Value>().await?;
+  assert_eq!(
+    "users_route_error-insufficient_privileges",
+    response_json["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}

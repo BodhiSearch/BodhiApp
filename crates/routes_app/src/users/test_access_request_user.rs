@@ -243,3 +243,80 @@ async fn test_request_status_not_found(temp_bodhi_home: TempDir) -> anyhow::Resu
   );
   Ok(())
 }
+
+// ============================================================================
+// Guest role tests (verifying Guest users can use these endpoints)
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_user_request_access_guest_role_succeeds(
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
+  let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .build()
+    .await?;
+
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
+
+  let router = Router::new()
+    .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
+    .with_state(state);
+
+  let response = router
+    .oneshot(
+      Request::post(ENDPOINT_USER_REQUEST_ACCESS)
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "guest-user-id",
+          "guest@example.com",
+          ResourceRole::Guest,
+        )),
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::CREATED, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_user_request_status_guest_role_not_found(
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
+  let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .build()
+    .await?;
+
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
+
+  let router = Router::new()
+    .route(ENDPOINT_USER_REQUEST_STATUS, get(users_request_status))
+    .with_state(state);
+
+  let response = router
+    .oneshot(
+      Request::get(ENDPOINT_USER_REQUEST_STATUS)
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "guest-user-id",
+          "guest@example.com",
+          ResourceRole::Guest,
+        )),
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::NOT_FOUND, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "users_route_error-pending_request_not_found",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}

@@ -79,8 +79,6 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
       Request::post("/auth/initiate")
         .json(json! {{"client_id": "test_client_id"}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -174,8 +172,6 @@ async fn test_auth_initiate_handler_loopback_host_detection(
         .header("Host", "localhost:1135")
         .json(json! {{"client_id": "test_client_id"}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -249,8 +245,6 @@ async fn test_auth_initiate_handler_network_host_usage(
         .header("Host", "192.168.1.100:1135")
         .json(json! {{"client_id": "test_client_id"}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -397,7 +391,7 @@ async fn test_auth_initiate_dashboard_only_session_initiates_tenant_oauth(
           tenant_id: None,
           user_id: "test-user-id".to_string(),
           username: "test@example.com".to_string(),
-          role: None,
+          role: services::ResourceRole::Guest,
           token: None,
           dashboard_token: "test-dashboard-token".to_string(),
         }),
@@ -460,7 +454,7 @@ async fn test_auth_initiate_full_multi_tenant_session_redirects_to_home(
           tenant_id: Some("test-tenant".to_string()),
           user_id: "test-user-id".to_string(),
           username: "test@example.com".to_string(),
-          role: Some(services::ResourceRole::User),
+          role: services::ResourceRole::User,
           token: Some("some-resource-token".to_string()),
           dashboard_token: "test-dashboard-token".to_string(),
         }),

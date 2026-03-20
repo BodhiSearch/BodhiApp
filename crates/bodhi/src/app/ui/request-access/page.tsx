@@ -24,8 +24,8 @@ export function RequestAccessContent() {
     },
   });
 
-  // If user has a role, redirect to default page
-  if (userInfo?.role) {
+  // If user has an assignable role (User or above), redirect to default page
+  if (userInfo?.role && userInfo.role !== 'resource_guest' && userInfo.role !== 'resource_anonymous') {
     router.push(ROUTE_DEFAULT);
     return null;
   }

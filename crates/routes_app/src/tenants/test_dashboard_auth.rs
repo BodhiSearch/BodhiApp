@@ -109,8 +109,6 @@ async fn test_dashboard_auth_initiate_returns_error_when_not_multi_tenant(
       Request::post(ENDPOINT_DASHBOARD_AUTH_INITIATE)
         .json(json! {{}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -142,8 +140,6 @@ async fn test_dashboard_auth_callback_returns_error_when_not_multi_tenant(
       Request::post(ENDPOINT_DASHBOARD_AUTH_CALLBACK)
         .json(json! {{"code": "test_code", "state": "test_state"}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -194,8 +190,6 @@ async fn test_dashboard_auth_initiate_returns_error_when_client_config_missing(
       Request::post(ENDPOINT_DASHBOARD_AUTH_INITIATE)
         .json(json! {{}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::MultiTenant,
         }),
     )
@@ -227,8 +221,6 @@ async fn test_dashboard_auth_initiate_returns_redirect_url_in_multi_tenant(
       Request::post(ENDPOINT_DASHBOARD_AUTH_INITIATE)
         .json(json! {{}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::MultiTenant,
         }),
     )
@@ -310,8 +302,6 @@ async fn test_dashboard_auth_callback_validates_state_mismatch(
         .header("Sec-Fetch-Site", "same-origin")
         .json(json! {{"code": "test_code", "state": "wrong_state"}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::MultiTenant,
         }),
     )

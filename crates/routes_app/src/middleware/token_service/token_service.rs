@@ -511,7 +511,7 @@ impl DefaultTokenService {
     session: Session,
     access_token: String,
     tenant: &Tenant,
-  ) -> Result<(String, Option<ResourceRole>), AuthError> {
+  ) -> Result<(String, ResourceRole), AuthError> {
     // Validate session token
     let claims = extract_claims::<Claims>(&access_token)?;
 
@@ -525,8 +525,8 @@ impl DefaultTokenService {
       let role = claims
         .resource_access
         .get(&instance_client_id)
-        .map(|roles| ResourceRole::from_resource_role(&roles.roles))
-        .transpose()?;
+        .and_then(|roles| ResourceRole::from_resource_role(&roles.roles).ok())
+        .unwrap_or(ResourceRole::Guest);
       return Ok((access_token, role));
     }
 
@@ -558,7 +558,7 @@ impl DefaultTokenService {
           let client_secret = closure_client_secret.clone();
           Box::pin(async move {
             // Wrap the entire logic in a closure that maps AuthError to boxed error
-            let inner_result: Result<(String, Option<ResourceRole>), AuthError> = async move {
+            let inner_result: Result<(String, ResourceRole), AuthError> = async move {
               // Double-checked locking: re-fetch token from session
               // (another request might have already refreshed it)
               let current_access_token = session_clone
@@ -586,8 +586,8 @@ impl DefaultTokenService {
                 let role = current_claims
                   .resource_access
                   .get(&client_id)
-                  .map(|roles| ResourceRole::from_resource_role(&roles.roles))
-                  .transpose()?;
+                  .and_then(|roles| ResourceRole::from_resource_role(&roles.roles).ok())
+                  .unwrap_or(ResourceRole::Guest);
                 return Ok((current_access_token, role));
               }
 
@@ -662,8 +662,10 @@ impl DefaultTokenService {
               let role = new_claims
                 .resource_access
                 .get(&client_id)
-                .map(|resource_claims| ResourceRole::from_resource_role(&resource_claims.roles))
-                .transpose()?;
+                .and_then(|resource_claims| {
+                  ResourceRole::from_resource_role(&resource_claims.roles).ok()
+                })
+                .unwrap_or(ResourceRole::Guest);
 
               tracing::info!(
                 "Successfully refreshed token for user {} with role: {:?}",

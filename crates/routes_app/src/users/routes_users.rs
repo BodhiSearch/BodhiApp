@@ -75,6 +75,10 @@ pub async fn users_change_role(
     .auth_context()
     .resource_role()
     .ok_or(UsersRouteError::InsufficientPrivileges)?;
+  // Reject Anonymous/Guest as assignment targets
+  if !request.role.has_access_to(&services::ResourceRole::User) {
+    return Err(UsersRouteError::InsufficientPrivileges)?;
+  }
   if !caller_role.has_access_to(&request.role) {
     warn!(
       "Role hierarchy violation: caller role {:?} cannot assign {:?}",

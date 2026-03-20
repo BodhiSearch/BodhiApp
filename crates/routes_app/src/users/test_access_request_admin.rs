@@ -459,3 +459,67 @@ async fn test_approve_request_not_found(temp_bodhi_home: TempDir) -> anyhow::Res
   );
   Ok(())
 }
+
+// ============================================================================
+// users_access_request_approve - reject Guest/Anonymous as assignment targets
+// ============================================================================
+
+#[rstest]
+#[case::approve_with_guest(ResourceRole::Guest)]
+#[case::approve_with_anonymous(ResourceRole::Anonymous)]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_request_rejects_non_assignable_roles(
+  temp_bodhi_home: TempDir,
+  #[case] target_role: ResourceRole,
+) -> anyhow::Result<()> {
+  let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
+  let access_request = db_service
+    .insert_pending_request(
+      TEST_TENANT_ID,
+      "user@example.com".to_string(),
+      "user-id-123".to_string(),
+    )
+    .await?;
+
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .build()
+    .await?;
+
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
+
+  let router = Router::new()
+    .route(
+      &format!("{}/{{id}}/approve", ENDPOINT_ACCESS_REQUESTS_ALL),
+      post(users_access_request_approve),
+    )
+    .with_state(state);
+
+  let response = router
+    .oneshot(
+      Request::post(format!(
+        "{}/{}/approve",
+        ENDPOINT_ACCESS_REQUESTS_ALL, access_request.id
+      ))
+      .header("content-type", "application/json")
+      .body(Body::from(serde_json::to_string(
+        &json!({ "role": target_role.to_string() }),
+      )?))?
+      .with_auth_context(AuthContext::test_session_with_token(
+        "admin-user-id",
+        "admin@example.com",
+        ResourceRole::Admin,
+        "dummy-token",
+      )),
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "users_route_error-insufficient_privileges",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}

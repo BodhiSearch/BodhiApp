@@ -3514,7 +3514,7 @@ export interface components {
             mcp_servers?: components["schemas"]["RequestedMcpServer"][];
         };
         /** @enum {string} */
-        ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
+        ResourceRole: "resource_anonymous" | "resource_guest" | "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
         ResponseFormat: {
             /** @enum {string} */
             type: "text";

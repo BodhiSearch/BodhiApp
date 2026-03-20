@@ -45,8 +45,6 @@ async fn test_tenants_index_returns_error_when_not_multi_tenant() -> anyhow::Res
       Request::get(ENDPOINT_TENANTS)
         .body(Body::empty())?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -76,8 +74,6 @@ async fn test_tenants_create_returns_error_when_not_multi_tenant() -> anyhow::Re
       Request::post(ENDPOINT_TENANTS)
         .json(json! {{"name": "Test Tenant", "description": "A test tenant"}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -107,8 +103,6 @@ async fn test_tenants_activate_returns_error_when_not_multi_tenant() -> anyhow::
       Request::post(&format!("{ENDPOINT_TENANTS}/some-client-id/activate"))
         .json(json! {{}})?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )

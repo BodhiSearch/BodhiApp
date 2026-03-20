@@ -6,8 +6,6 @@ use serde::Serialize;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AuthContext {
   Anonymous {
-    client_id: Option<String>,
-    tenant_id: Option<String>,
     deployment: DeploymentMode,
   },
   Session {
@@ -15,7 +13,7 @@ pub enum AuthContext {
     tenant_id: String,
     user_id: String,
     username: String,
-    role: Option<ResourceRole>,
+    role: ResourceRole,
     token: String,
   },
   MultiTenantSession {
@@ -23,7 +21,7 @@ pub enum AuthContext {
     tenant_id: Option<String>,
     user_id: String,
     username: String,
-    role: Option<ResourceRole>,
+    role: ResourceRole,
     token: Option<String>,
     dashboard_token: String,
   },
@@ -57,7 +55,7 @@ impl AuthContext {
 
   pub fn client_id(&self) -> Option<&str> {
     match self {
-      AuthContext::Anonymous { client_id, .. } => client_id.as_deref(),
+      AuthContext::Anonymous { .. } => None,
       AuthContext::Session { client_id, .. } => Some(client_id),
       AuthContext::MultiTenantSession { client_id, .. } => client_id.as_deref(),
       AuthContext::ApiToken { client_id, .. } => Some(client_id),
@@ -67,7 +65,7 @@ impl AuthContext {
 
   pub fn tenant_id(&self) -> Option<&str> {
     match self {
-      AuthContext::Anonymous { tenant_id, .. } => tenant_id.as_deref(),
+      AuthContext::Anonymous { .. } => None,
       AuthContext::Session { tenant_id, .. } => Some(tenant_id),
       AuthContext::MultiTenantSession { tenant_id, .. } => tenant_id.as_deref(),
       AuthContext::ApiToken { tenant_id, .. } => Some(tenant_id),
@@ -124,8 +122,8 @@ impl AuthContext {
 
   pub fn resource_role(&self) -> Option<&ResourceRole> {
     match self {
-      AuthContext::Session { role, .. } => role.as_ref(),
-      AuthContext::MultiTenantSession { role, .. } => role.as_ref(),
+      AuthContext::Session { role, .. } => Some(role),
+      AuthContext::MultiTenantSession { role, .. } => Some(role),
       _ => None,
     }
   }
@@ -147,15 +145,9 @@ impl AuthContext {
 
   pub fn app_role(&self) -> Option<AppRole> {
     match self {
-      AuthContext::Anonymous { .. } => None,
-      AuthContext::Session {
-        role: Some(role), ..
-      } => Some(AppRole::Session(*role)),
-      AuthContext::Session { role: None, .. } => None,
-      AuthContext::MultiTenantSession {
-        role: Some(role), ..
-      } => Some(AppRole::Session(*role)),
-      AuthContext::MultiTenantSession { role: None, .. } => None,
+      AuthContext::Anonymous { .. } => Some(AppRole::Session(ResourceRole::Anonymous)),
+      AuthContext::Session { role, .. } => Some(AppRole::Session(*role)),
+      AuthContext::MultiTenantSession { role, .. } => Some(AppRole::Session(*role)),
       AuthContext::ApiToken { role, .. } => Some(AppRole::ApiToken(*role)),
       AuthContext::ExternalApp {
         role: Some(role), ..
@@ -220,33 +212,21 @@ mod tests {
   #[test]
   fn test_anonymous_user_id_is_none() {
     let ctx = AuthContext::Anonymous {
-      client_id: None,
-      tenant_id: None,
       deployment: DeploymentMode::Standalone,
     };
     assert_eq!(None, ctx.user_id());
     assert_eq!(None, ctx.client_id());
     assert_eq!(false, ctx.is_authenticated());
     assert_eq!(false, ctx.is_multi_tenant());
-  }
-
-  #[test]
-  fn test_anonymous_with_client_id() {
-    let ctx = AuthContext::Anonymous {
-      client_id: Some("test-client".to_string()),
-      tenant_id: None,
-      deployment: DeploymentMode::Standalone,
-    };
-    assert_eq!(None, ctx.user_id());
-    assert_eq!(Some("test-client"), ctx.client_id());
-    assert_eq!(false, ctx.is_authenticated());
+    assert_eq!(
+      Some(AppRole::Session(ResourceRole::Anonymous)),
+      ctx.app_role()
+    );
   }
 
   #[test]
   fn test_anonymous_multi_tenant() {
     let ctx = AuthContext::Anonymous {
-      client_id: None,
-      tenant_id: None,
       deployment: DeploymentMode::MultiTenant,
     };
     assert_eq!(true, ctx.is_multi_tenant());
@@ -256,8 +236,6 @@ mod tests {
   #[test]
   fn test_require_user_id_anonymous_returns_403() {
     let ctx = AuthContext::Anonymous {
-      client_id: None,
-      tenant_id: None,
       deployment: DeploymentMode::Standalone,
     };
     let result = ctx.require_user_id();
@@ -270,8 +248,6 @@ mod tests {
   #[test]
   fn test_require_client_id_anonymous_returns_403() {
     let ctx = AuthContext::Anonymous {
-      client_id: None,
-      tenant_id: None,
       deployment: DeploymentMode::Standalone,
     };
     let result = ctx.require_client_id();
@@ -288,7 +264,7 @@ mod tests {
       tenant_id: "test-tenant".to_string(),
       user_id: "user1".to_string(),
       username: "testuser".to_string(),
-      role: None,
+      role: ResourceRole::Guest,
       token: "test-token".to_string(),
     };
     let result = ctx.require_user_id();
@@ -303,7 +279,7 @@ mod tests {
       tenant_id: "test-tenant".to_string(),
       user_id: "user1".to_string(),
       username: "testuser".to_string(),
-      role: None,
+      role: ResourceRole::Guest,
       token: "test-token".to_string(),
     };
     let result = ctx.require_client_id();
@@ -314,8 +290,6 @@ mod tests {
   #[test]
   fn test_tenant_id_returns_none_when_not_set() {
     let ctx = AuthContext::Anonymous {
-      client_id: None,
-      tenant_id: None,
       deployment: DeploymentMode::Standalone,
     };
     assert_eq!(None, ctx.tenant_id());
@@ -328,7 +302,7 @@ mod tests {
       tenant_id: "test-tenant".to_string(),
       user_id: "user1".to_string(),
       username: "testuser".to_string(),
-      role: None,
+      role: ResourceRole::Guest,
       token: "test-token".to_string(),
     };
     assert_eq!(Some("test-tenant"), ctx.tenant_id());
@@ -337,8 +311,6 @@ mod tests {
   #[test]
   fn test_require_tenant_id_missing_returns_500() {
     let ctx = AuthContext::Anonymous {
-      client_id: None,
-      tenant_id: None,
       deployment: DeploymentMode::Standalone,
     };
     let result = ctx.require_tenant_id();
@@ -369,7 +341,7 @@ mod tests {
       tenant_id: None,
       user_id: "user1".to_string(),
       username: "testuser".to_string(),
-      role: None,
+      role: ResourceRole::Guest,
       token: None,
       dashboard_token: "dashboard-tok".to_string(),
     };
@@ -389,7 +361,7 @@ mod tests {
       tenant_id: Some("tenant1".to_string()),
       user_id: "user1".to_string(),
       username: "testuser".to_string(),
-      role: Some(crate::ResourceRole::Admin),
+      role: crate::ResourceRole::Admin,
       token: Some("resource-tok".to_string()),
       dashboard_token: "dashboard-tok".to_string(),
     };
@@ -409,7 +381,7 @@ mod tests {
       tenant_id: "t".to_string(),
       user_id: "u".to_string(),
       username: "n".to_string(),
-      role: None,
+      role: ResourceRole::Guest,
       token: "tok".to_string(),
     };
     let err = ctx.require_dashboard_token().unwrap_err();
@@ -424,7 +396,7 @@ mod tests {
       tenant_id: "t".to_string(),
       user_id: "u".to_string(),
       username: "n".to_string(),
-      role: None,
+      role: ResourceRole::Guest,
       token: "tok".to_string(),
     };
     assert_eq!(false, ctx.is_multi_tenant());

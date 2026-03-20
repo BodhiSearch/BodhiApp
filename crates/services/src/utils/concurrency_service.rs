@@ -15,7 +15,7 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// This type represents the result of token validation and refresh operations,
 /// returning a tuple of (access_token, optional_role) on success, or a boxed error on failure.
 /// The error is boxed to avoid circular dependencies between crates.
-pub type AuthTokenResult = Result<(String, Option<ResourceRole>), Box<dyn StdError + Send + Sync>>;
+pub type AuthTokenResult = Result<(String, ResourceRole), Box<dyn StdError + Send + Sync>>;
 
 /// Result type for string-returning lock operations (e.g., dashboard token refresh).
 pub type StringLockResult = Result<String, Box<dyn StdError + Send + Sync>>;
@@ -167,7 +167,7 @@ mod tests {
               let val = counter1.load(Ordering::SeqCst);
               sleep(Duration::from_millis(10)).await;
               counter1.store(val + 1, Ordering::SeqCst);
-              Ok(("token1".to_string(), None))
+              Ok(("token1".to_string(), ResourceRole::Guest))
             })
           }),
         )
@@ -184,7 +184,7 @@ mod tests {
               let val = counter2.load(Ordering::SeqCst);
               sleep(Duration::from_millis(10)).await;
               counter2.store(val + 1, Ordering::SeqCst);
-              Ok(("token2".to_string(), None))
+              Ok(("token2".to_string(), ResourceRole::Guest))
             })
           }),
         )
@@ -214,7 +214,7 @@ mod tests {
           Box::new(|| {
             Box::pin(async {
               sleep(Duration::from_millis(50)).await;
-              Ok(("token1".to_string(), None))
+              Ok(("token1".to_string(), ResourceRole::Guest))
             })
           }),
         )
@@ -228,7 +228,7 @@ mod tests {
           Box::new(|| {
             Box::pin(async {
               sleep(Duration::from_millis(50)).await;
-              Ok(("token2".to_string(), None))
+              Ok(("token2".to_string(), ResourceRole::Guest))
             })
           }),
         )
@@ -257,7 +257,7 @@ mod tests {
     let _ = service
       .with_lock_auth(
         "reuse_key",
-        Box::new(|| Box::pin(async { Ok(("token1".to_string(), None)) })),
+        Box::new(|| Box::pin(async { Ok(("token1".to_string(), ResourceRole::Guest)) })),
       )
       .await;
 
@@ -271,7 +271,7 @@ mod tests {
     let _ = service
       .with_lock_auth(
         "reuse_key",
-        Box::new(|| Box::pin(async { Ok(("token2".to_string(), None)) })),
+        Box::new(|| Box::pin(async { Ok(("token2".to_string(), ResourceRole::Guest)) })),
       )
       .await;
 
@@ -292,14 +292,14 @@ mod tests {
     let result = service
       .with_lock_auth(
         "return_test",
-        Box::new(|| Box::pin(async { Ok(("test_token".to_string(), Some(ResourceRole::User))) })),
+        Box::new(|| Box::pin(async { Ok(("test_token".to_string(), ResourceRole::User)) })),
       )
       .await;
 
     assert!(result.is_ok());
     let (token, role) = result.unwrap();
     assert_eq!("test_token", token);
-    assert_eq!(Some(ResourceRole::User), role);
+    assert_eq!(ResourceRole::User, role);
   }
 
   #[tokio::test]
@@ -343,7 +343,7 @@ mod tests {
                 // Small delay to increase chance of race condition without lock
                 sleep(Duration::from_millis(1)).await;
                 counter_clone.store(val + 1, Ordering::SeqCst);
-                Ok(("token".to_string(), None))
+                Ok(("token".to_string(), ResourceRole::Guest))
               })
             }),
           )

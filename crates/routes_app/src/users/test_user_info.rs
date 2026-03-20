@@ -39,8 +39,6 @@ async fn test_user_info_handler_anonymous() -> anyhow::Result<()> {
       Request::get("/app/user")
         .body(Body::empty())?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::Standalone,
         }),
     )
@@ -210,7 +208,7 @@ async fn test_user_info_handler_session_without_role(
     tenant_id: TEST_TENANT_ID.to_string(),
     user_id: claims.sub.clone(),
     username: "testuser@email.com".to_string(),
-    role: None,
+    role: ResourceRole::Guest,
     token: token.clone(),
   };
   let response = router
@@ -231,7 +229,7 @@ async fn test_user_info_handler_session_without_role(
         username: "testuser@email.com".to_string(),
         first_name: Some("Test".to_string()),
         last_name: Some("User".to_string()),
-        role: None,
+        role: Some(AppRole::Session(ResourceRole::Guest)),
       }),
       dashboard: None,
     },
@@ -245,8 +243,6 @@ async fn test_user_info_handler_session_without_role(
 #[anyhow_trace]
 #[rstest]
 #[case::get_user_info("GET", "/bodhi/v1/user")]
-#[case::request_access("POST", "/bodhi/v1/user/request-access")]
-#[case::request_status("GET", "/bodhi/v1/user/request-status")]
 #[tokio::test]
 async fn test_optional_auth_endpoints_accept_unauthenticated(
   #[case] method: &str,
@@ -259,6 +255,24 @@ async fn test_optional_auth_endpoints_accept_unauthenticated(
   // These endpoints should not return 401/403 for unauthenticated users
   assert_ne!(StatusCode::UNAUTHORIZED, response.status());
   assert_ne!(StatusCode::FORBIDDEN, response.status());
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[case::request_access("POST", "/bodhi/v1/user/request-access")]
+#[case::request_status("GET", "/bodhi/v1/user/request-status")]
+#[tokio::test]
+async fn test_guest_endpoints_require_authentication(
+  #[case] method: &str,
+  #[case] path: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, unauth_request};
+  use tower::ServiceExt;
+  let (router, _, _temp) = build_test_router().await?;
+  let response = router.oneshot(unauth_request(method, path)).await?;
+  // These endpoints require authentication (moved to guest_endpoints behind auth_middleware)
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   Ok(())
 }
 
@@ -354,7 +368,7 @@ async fn test_user_info_handler_with_dashboard_session_no_resource_token(
     tenant_id: None,
     user_id: claims.sub.clone(),
     username: "testuser@email.com".to_string(),
-    role: None,
+    role: ResourceRole::Guest,
     token: None,
     dashboard_token: token.clone(),
   };
@@ -399,7 +413,7 @@ async fn test_user_info_handler_with_dashboard_session_and_resource_token(
     tenant_id: Some("test-tenant-id".to_string()),
     user_id: claims.sub.clone(),
     username: "testuser@email.com".to_string(),
-    role: Some(ResourceRole::Admin),
+    role: ResourceRole::Admin,
     token: Some(token.clone()),
     dashboard_token: token.clone(),
   };
@@ -448,8 +462,6 @@ async fn test_user_info_handler_anonymous_multi_tenant_no_dashboard_session() ->
       Request::get("/app/user")
         .body(Body::empty())?
         .with_auth_context(AuthContext::Anonymous {
-          client_id: None,
-          tenant_id: None,
           deployment: services::DeploymentMode::MultiTenant,
         }),
     )

@@ -55,9 +55,6 @@ fn test_role_string_formats(#[case] role: ResourceRole, #[case] as_str: &str) {
   // Test Display format
   assert_eq!(role.to_string(), as_str);
 
-  // Test resource role format
-  assert_eq!(role.resource_role(), as_str);
-
   // Test serialization
   let serialized = serde_json::to_string(&role).unwrap();
   assert_eq!(serialized, format!("\"{}\"", as_str));
@@ -65,25 +62,6 @@ fn test_role_string_formats(#[case] role: ResourceRole, #[case] as_str: &str) {
   // Test deserialization
   let deserialized: ResourceRole = serde_json::from_str(&serialized).unwrap();
   assert_eq!(deserialized, role);
-}
-
-#[rstest]
-#[case(ResourceRole::Admin, vec![ResourceRole::Admin, ResourceRole::Manager, ResourceRole::PowerUser, ResourceRole::User])]
-#[case(ResourceRole::Manager, vec![ResourceRole::Manager, ResourceRole::PowerUser, ResourceRole::User])]
-#[case(ResourceRole::PowerUser, vec![ResourceRole::PowerUser, ResourceRole::User])]
-#[case(ResourceRole::User, vec![ResourceRole::User])]
-fn test_included_roles_explicit(#[case] role: ResourceRole, #[case] expected: Vec<ResourceRole>) {
-  let included = role.included_roles();
-  assert_eq!(included, expected);
-
-  // Verify ordering properties
-  if !included.is_empty() {
-    assert_eq!(*included.first().unwrap(), role);
-    assert_eq!(*included.last().unwrap(), ResourceRole::User);
-    for window in included.windows(2) {
-      assert!(window[0] > window[1]);
-    }
-  }
 }
 
 #[rstest]
@@ -109,24 +87,6 @@ fn test_role_has_access_to(
   #[case] expected: bool,
 ) {
   assert_eq!(role.has_access_to(&required), expected);
-}
-
-#[rstest]
-#[case(ResourceRole::User, "resource_user")]
-#[case(ResourceRole::PowerUser, "resource_power_user")]
-#[case(ResourceRole::Manager, "resource_manager")]
-#[case(ResourceRole::Admin, "resource_admin")]
-fn test_resource_role(#[case] role: ResourceRole, #[case] expected: &str) {
-  assert_eq!(role.resource_role(), expected);
-}
-
-#[rstest]
-#[case(ResourceRole::User, vec![ResourceRole::User])]
-#[case(ResourceRole::PowerUser, vec![ResourceRole::PowerUser, ResourceRole::User])]
-#[case(ResourceRole::Manager, vec![ResourceRole::Manager, ResourceRole::PowerUser, ResourceRole::User])]
-#[case(ResourceRole::Admin, vec![ResourceRole::Admin, ResourceRole::Manager, ResourceRole::PowerUser, ResourceRole::User])]
-fn test_included_roles(#[case] role: ResourceRole, #[case] expected: Vec<ResourceRole>) {
-  assert_eq!(role.included_roles(), expected);
 }
 
 #[rstest]

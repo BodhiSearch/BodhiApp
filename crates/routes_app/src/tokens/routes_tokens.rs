@@ -51,6 +51,11 @@ pub async fn tokens_create(
     .resource_role()
     .ok_or(TokenRouteError::AccessTokenMissing)?;
 
+  // Guest/Anonymous cannot create tokens
+  if !user_role.has_access_to(&ResourceRole::User) {
+    return Err(TokenRouteError::AccessTokenMissing.into());
+  }
+
   // Validate privilege escalation - users cannot create tokens with higher privileges than their role
   let token_scope = match (user_role, &request.scope) {
     // User can only create user-level tokens
