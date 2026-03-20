@@ -3,7 +3,6 @@ use crate::middleware::{
   optional_auth_middleware, AccessRequestValidator, McpAccessRequestValidator,
   ToolsetAccessRequestValidator,
 };
-use crate::proxy_router;
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_formats,
   api_models_show, api_models_sync, api_models_test, api_models_update,
@@ -46,6 +45,7 @@ use crate::{
   ENDPOINT_MCPS_OAUTH_DISCOVER_MCP, ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE,
   ENDPOINT_MCP_SERVERS,
 };
+use crate::{build_ui_proxy_router, build_ui_spa_router};
 use crate::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
   ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
@@ -56,9 +56,11 @@ use crate::{
 };
 use axum::{
   middleware::from_fn_with_state,
+  response::Redirect,
   routing::{delete, get, post, put},
   Router,
 };
+use include_dir::Dir;
 use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
 use services::{ResourceRole, TokenScope, UserScope};
 use std::sync::Arc;
@@ -87,7 +89,7 @@ fn restrictive_cors() -> CorsLayer {
 
 pub async fn build_routes(
   app_service: Arc<dyn AppService>,
-  static_router: Option<Router>,
+  static_dir: Option<&'static Dir<'static>>,
 ) -> Router {
   let state = app_service.clone();
 
@@ -586,13 +588,7 @@ pub async fn build_routes(
     .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi))
     .with_state(state);
 
-  let router = apply_ui_router(
-    &app_service.setting_service(),
-    router,
-    static_router,
-    proxy_router("http://localhost:3000".to_string()),
-  )
-  .await;
+  let router = apply_ui_router(&app_service.setting_service(), router, static_dir).await;
   router
     .layer(app_service.session_service().session_layer())
     .layer(from_fn_with_state(
@@ -605,32 +601,29 @@ pub async fn build_routes(
 async fn apply_ui_router(
   setting_service: &Arc<dyn SettingService>,
   router: Router,
-  static_router: Option<Router>,
-  proxy_router: Router,
+  static_dir: Option<&'static Dir<'static>>,
 ) -> Router {
+  let is_production = setting_service.is_production().await;
   let proxy_ui = setting_service
     .get_dev_env(BODHI_DEV_PROXY_UI)
     .await
     .map(|val| val.parse::<bool>().unwrap_or_default())
     .unwrap_or_default();
 
-  match setting_service.is_production().await {
-    true => {
-      if let Some(static_router) = static_router {
-        debug!("serving ui from embedded assets");
-        router.merge(static_router)
-      } else {
-        router
-      }
-    }
-    false if proxy_ui => {
+  // Root redirect: / → /ui/
+  let router = router.route("/", get(|| async { Redirect::temporary("/ui/") }));
+
+  match (is_production, proxy_ui) {
+    // Dev with proxy: forward to Next.js dev server for HMR
+    (false, true) => {
       info!("proxying the ui to localhost:3000");
-      router.merge(proxy_router)
+      router.merge(build_ui_proxy_router("http://localhost:3000".to_string()))
     }
-    false => {
-      if let Some(static_router) = static_router {
-        info!("serving ui from embedded assets");
-        router.merge(static_router)
+    // Production or dev without proxy: serve from embedded assets
+    _ => {
+      if let Some(dir) = static_dir {
+        debug!("serving ui from embedded assets under /ui");
+        router.merge(build_ui_spa_router(dir))
       } else {
         router
       }

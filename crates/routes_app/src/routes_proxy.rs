@@ -1,44 +1,203 @@
 use axum::{
   body::Body,
   extract::Request,
-  http::{uri::Uri, Response},
+  http::{header, uri::Uri, Response, StatusCode},
+  routing::any,
   Router,
 };
 use hyper_util::{client::legacy::Client, rt::TokioExecutor};
-use tracing::error;
+use tracing::{debug, error};
 
 type HttpClient = Client<(), ()>;
 
-pub fn proxy_router(backend_url: String) -> Router {
-  Router::new().fallback(move |req| proxy_handler(req, backend_url.clone()))
+/// Build a proxy router that forwards `/ui`, `/ui/`, and `/ui/{*path}` to a backend.
+///
+/// Uses explicit routes (not `nest`) to avoid axum's trailing-slash issues.
+/// The request path is forwarded as-is since it already contains the `/ui` prefix
+/// that the Next.js dev server expects (basePath is active in dev mode).
+pub fn build_ui_proxy_router(backend_url: String) -> Router {
+  let url1 = backend_url.clone();
+  let url2 = backend_url.clone();
+  let url3 = backend_url;
+  Router::new()
+    .route(
+      "/ui",
+      any(move |req: Request| proxy_handler(req, url1.clone())),
+    )
+    .route(
+      "/ui/",
+      any(move |req: Request| proxy_handler(req, url2.clone())),
+    )
+    .route(
+      "/ui/{*path}",
+      any(move |req: Request| proxy_handler(req, url3.clone())),
+    )
 }
 
-async fn proxy_handler(mut req: Request, backend_url: String) -> Response<Body> {
-  let client = HttpClient::builder(TokioExecutor::new()).build_http();
-  let uri = format!(
-    "{backend_url}{}",
-    req.uri().path_and_query().map(|x| x.as_str()).unwrap_or("")
-  )
-  .parse::<Uri>()
-  .unwrap();
+/// Proxy handler that forwards the request path as-is to the backend.
+///
+/// The path already contains `/ui/...` since we use explicit routes, not `nest`.
+async fn proxy_handler(req: Request, backend_url: String) -> Response<Body> {
+  let path = req
+    .uri()
+    .path_and_query()
+    .map(|x| x.as_str())
+    .unwrap_or("/")
+    .to_string();
 
+  if is_websocket_upgrade(&req) {
+    debug!(%path, version = ?req.version(), "proxying websocket upgrade");
+    ws_proxy(req, &backend_url, &path).await
+  } else {
+    debug!(%path, "proxying http request");
+    http_proxy(req, &backend_url, &path).await
+  }
+}
+
+fn is_websocket_upgrade(req: &Request) -> bool {
+  req
+    .headers()
+    .get(header::UPGRADE)
+    .and_then(|v| v.to_str().ok())
+    .map(|v| v.eq_ignore_ascii_case("websocket"))
+    .unwrap_or(false)
+}
+
+async fn http_proxy(mut req: Request, backend_url: &str, path: &str) -> Response<Body> {
+  let client = HttpClient::builder(TokioExecutor::new()).build_http();
+  let backend_uri: Uri = backend_url.parse().unwrap();
+  let backend_authority = backend_uri
+    .authority()
+    .map(|a| a.as_str())
+    .unwrap_or("localhost:3000");
+  let uri = format!("{backend_url}{path}").parse::<Uri>().unwrap();
   *req.uri_mut() = uri;
+  // Replace Host header so Next.js doesn't treat this as a cross-origin request
+  req
+    .headers_mut()
+    .insert(header::HOST, backend_authority.parse().unwrap());
 
   match client.request(req).await {
     Ok(res) => res.map(Body::new),
     Err(e) => {
-      error!(?e, "error proxying request");
-      Response::builder()
-        .status(500)
-        .body(Body::from("Internal Server Error"))
-        .unwrap()
+      error!(?e, "error proxying http request");
+      error_response()
     }
   }
 }
 
+async fn ws_proxy(req: Request, backend_url: &str, path: &str) -> Response<Body> {
+  use hyper::client::conn::http1;
+  use hyper_util::rt::TokioIo;
+  use tokio::net::TcpStream;
+
+  // Parse the backend URL to get host:port
+  let backend_uri: Uri = backend_url.parse().unwrap();
+  let host = backend_uri.host().unwrap_or("127.0.0.1");
+  let port = backend_uri.port_u16().unwrap_or(3000);
+  let addr = format!("{host}:{port}");
+
+  // Extract the OnUpgrade future from the incoming request BEFORE consuming it.
+  let (parts, body) = req.into_parts();
+  let mut client_req = hyper::Request::from_parts(parts, body);
+  let client_upgrade = hyper::upgrade::on(&mut client_req);
+
+  // Connect raw TCP to backend
+  let stream = match TcpStream::connect(&addr).await {
+    Ok(s) => s,
+    Err(e) => {
+      error!(?e, %addr, "failed to connect to backend for websocket");
+      return error_response();
+    }
+  };
+  let io = TokioIo::new(stream);
+
+  // Build an HTTP/1 connection with upgrade support
+  let (mut sender, conn) = match http1::handshake(io).await {
+    Ok(c) => c,
+    Err(e) => {
+      error!(?e, "http1 handshake failed for websocket proxy");
+      return error_response();
+    }
+  };
+
+  // Spawn the connection — .with_upgrades() enables the Upgrade mechanism
+  tokio::spawn(async move {
+    if let Err(e) = conn.with_upgrades().await {
+      error!(?e, "websocket proxy backend connection error");
+    }
+  });
+
+  // Build a new request to the backend with the path.
+  // Force HTTP/1.1 — the incoming request may be HTTP/2 but the backend connection is HTTP/1.1.
+  let uri: Uri = path.parse().unwrap();
+  let (mut req_parts, req_body) = client_req.into_parts();
+  req_parts.uri = uri;
+  req_parts.version = hyper::Version::HTTP_11;
+  // Replace Host header so Next.js doesn't treat this as a cross-origin request
+  req_parts
+    .headers
+    .insert(header::HOST, addr.parse().unwrap());
+  let backend_req = hyper::Request::from_parts(req_parts, req_body);
+
+  // Send the upgrade request to backend
+  let backend_res = match sender.send_request(backend_req).await {
+    Ok(res) => res,
+    Err(e) => {
+      error!(?e, "failed to send websocket upgrade to backend");
+      return error_response();
+    }
+  };
+
+  let status = backend_res.status();
+
+  // Build the client-facing response from backend's headers
+  let mut response_builder = Response::builder().status(status);
+  for (key, value) in backend_res.headers() {
+    response_builder = response_builder.header(key, value);
+  }
+
+  // If backend returned 101, bridge the upgraded streams bidirectionally
+  if status == StatusCode::SWITCHING_PROTOCOLS {
+    tokio::spawn(async move {
+      let upgraded_backend = match hyper::upgrade::on(backend_res).await {
+        Ok(u) => u,
+        Err(e) => {
+          error!(?e, "failed to upgrade backend connection");
+          return;
+        }
+      };
+
+      let upgraded_client = match client_upgrade.await {
+        Ok(u) => u,
+        Err(e) => {
+          error!(?e, "failed to upgrade client connection");
+          return;
+        }
+      };
+
+      let mut client_io = TokioIo::new(upgraded_client);
+      let mut backend_io = TokioIo::new(upgraded_backend);
+
+      if let Err(e) = tokio::io::copy_bidirectional(&mut client_io, &mut backend_io).await {
+        debug!(?e, "websocket proxy relay ended");
+      }
+    });
+  }
+
+  response_builder.body(Body::empty()).unwrap()
+}
+
+fn error_response() -> Response<Body> {
+  Response::builder()
+    .status(StatusCode::INTERNAL_SERVER_ERROR)
+    .body(Body::from("Internal Server Error"))
+    .unwrap()
+}
+
 #[cfg(test)]
 mod tests {
-  use crate::proxy_router;
+  use crate::build_ui_proxy_router;
   use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -59,7 +218,12 @@ mod tests {
     let addr = "127.0.0.1:0";
     let listener = TcpListener::bind(&addr).await.unwrap();
     let local_addr = listener.local_addr().unwrap();
-    let backend_app = Router::new().route("/proxy-handled", get(|| async { "Proxied response" }));
+    // Backend expects /ui-prefixed paths (simulates Next.js dev server with basePath)
+    let backend_app = Router::new()
+      .route("/ui", get(|| async { "Root no slash" }))
+      .route("/ui/", get(|| async { "Root with slash" }))
+      .route("/ui/page", get(|| async { "Proxied page" }))
+      .route("/ui/api/data", get(|| async { "Proxied data" }));
     let (shutdown_tx, shutdown_rx) = channel::<()>();
     tokio::spawn(async move {
       axum::serve(listener, backend_app)
@@ -75,44 +239,78 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  async fn test_proxy_handler(
+  async fn test_proxy_forwards_ui_paths(
     #[future] backend_server: (SocketAddr, Sender<()>),
   ) -> anyhow::Result<()> {
     let (socket_addr, shutdown_tx) = backend_server;
-    let app = Router::new()
-      .route("/test", get(|| async { "Test response" }))
-      .merge(proxy_router(format!("http://{socket_addr}")));
+    let app = build_ui_proxy_router(format!("http://{socket_addr}"));
 
-    // Test attended request (handled by the router)
-    let req = Request::builder()
-      .uri("http://example.com/test")
-      .body(Body::empty())
-      .unwrap();
-
-    let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(StatusCode::OK, res.status());
-    assert_eq!("Test response", res.text().await.unwrap());
-
-    // response handled by proxy backend
+    // /ui → backend /ui
     let res = app
       .clone()
       .oneshot(
         Request::builder()
-          .uri("http://example.com/proxy-handled")
+          .uri("http://example.com/ui")
           .body(Body::empty())
           .unwrap(),
       )
       .await
       .unwrap();
     assert_eq!(StatusCode::OK, res.status());
-    assert_eq!("Proxied response", res.text().await.unwrap());
+    assert_eq!("Root no slash", res.text().await.unwrap());
 
-    // response not handled by proxy backend
-    let req = Request::builder()
-      .uri("http://example.com/unattended")
-      .body(Body::empty())
+    // /ui/ → backend /ui/
+    let res = app
+      .clone()
+      .oneshot(
+        Request::builder()
+          .uri("http://example.com/ui/")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
       .unwrap();
-    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(StatusCode::OK, res.status());
+    assert_eq!("Root with slash", res.text().await.unwrap());
+
+    // /ui/page → backend /ui/page
+    let res = app
+      .clone()
+      .oneshot(
+        Request::builder()
+          .uri("http://example.com/ui/page")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(StatusCode::OK, res.status());
+    assert_eq!("Proxied page", res.text().await.unwrap());
+
+    // /ui/api/data → backend /ui/api/data
+    let res = app
+      .clone()
+      .oneshot(
+        Request::builder()
+          .uri("http://example.com/ui/api/data")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(StatusCode::OK, res.status());
+    assert_eq!("Proxied data", res.text().await.unwrap());
+
+    // /ui/missing → 404 from backend
+    let res = app
+      .oneshot(
+        Request::builder()
+          .uri("http://example.com/ui/missing")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
     assert_eq!(StatusCode::NOT_FOUND, res.status());
 
     shutdown_tx.send(()).unwrap();

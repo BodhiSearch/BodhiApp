@@ -10,6 +10,7 @@ const withMDX = createMDX({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  basePath: '/ui',
   reactStrictMode: true,
   output: 'export',
   trailingSlash: true,
@@ -18,6 +19,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  allowedDevOrigins: ['localhost:1135', '127.0.0.1:1135', '0.0.0.0:1135'],
   eslint: {
     ignoreDuringBuilds: true,
   },

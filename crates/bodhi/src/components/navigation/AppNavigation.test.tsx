@@ -52,13 +52,13 @@ describe('AppNavigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPathname.mockReset();
-    mockPathname.mockReturnValue('/ui/test/');
+    mockPathname.mockReturnValue('/test/');
   });
 
   const testNavigationItems: NavigationItem[] = [
     {
       title: 'Root',
-      href: '/ui/root/',
+      href: '/root/',
       description: 'Test Root',
       icon: Home,
     },
@@ -68,13 +68,13 @@ describe('AppNavigation', () => {
       items: [
         {
           title: 'Parent Item',
-          href: '/ui/parent/',
+          href: '/parent/',
           description: 'Parent Item',
           icon: Settings,
           items: [
             {
               title: 'Hidden Child',
-              href: '/ui/parent/child/',
+              href: '/parent/child/',
               description: 'This item should be hidden but selectable',
               icon: FilePlus2,
               skip: true,
@@ -83,7 +83,7 @@ describe('AppNavigation', () => {
         },
         {
           title: 'Regular Item',
-          href: '/ui/regular/',
+          href: '/regular/',
           description: 'Regular visible item',
           icon: Settings,
         },
@@ -154,7 +154,7 @@ describe('AppNavigation', () => {
 
   it('should highlight parent when skipped child is current', async () => {
     // Mock the current path to be the skipped child's path
-    mockPathname.mockReturnValue('/ui/parent/child/');
+    mockPathname.mockReturnValue('/parent/child/');
 
     const user = userEvent.setup();
     renderNavigation();
@@ -189,7 +189,7 @@ describe('AppNavigation', () => {
 
   it('should highlight item when its href matches current path', async () => {
     // Mock the current path to be the regular item's path
-    mockPathname.mockReturnValue('/ui/regular/');
+    mockPathname.mockReturnValue('/regular/');
 
     const user = userEvent.setup();
     renderNavigation();

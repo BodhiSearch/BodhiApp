@@ -5,7 +5,7 @@
   "identifier": "app.getbodhi.native",
   "build": {
     "frontendDist": "../out",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3000/ui/",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },

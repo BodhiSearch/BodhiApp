@@ -17,27 +17,27 @@ export const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef
  * @param router - Next.js router instance from useRouter()
  */
 export function handleSmartRedirect(location: string, router: { push: (href: string) => void }): void {
-  // Handle relative URLs that start with '/'
+  const basePath = '/ui';
+
   if (location.startsWith('/')) {
-    router.push(location);
+    const path = location.startsWith(basePath) ? location.slice(basePath.length) || '/' : location;
+    router.push(path);
     return;
   }
 
   try {
     const redirectUrl = new URL(location);
     const currentUrl = new URL(window.location.href);
-
-    // Check if scheme and host match (same origin)
     if (redirectUrl.protocol === currentUrl.protocol && redirectUrl.host === currentUrl.host) {
-      // Same origin - use Next.js router with pathname + search + hash
-      const internalPath = redirectUrl.pathname + redirectUrl.search + redirectUrl.hash;
+      let internalPath = redirectUrl.pathname + redirectUrl.search + redirectUrl.hash;
+      if (internalPath.startsWith(basePath)) {
+        internalPath = internalPath.slice(basePath.length) || '/';
+      }
       router.push(internalPath);
     } else {
-      // Different origin - use window.location.href for external redirects (OAuth provider)
       window.location.href = location;
     }
-  } catch (error) {
-    // If URL parsing fails, treat as external URL
+  } catch {
     window.location.href = location;
   }
 }

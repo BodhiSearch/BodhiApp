@@ -2,7 +2,6 @@ use crate::{
   build_server_handle, shutdown_signal, ServerError, ServerHandle, ShutdownCallback, TaskJoinError,
   VariantChangeListener,
 };
-use axum::Router;
 use include_dir::Dir;
 use routes_app::build_routes;
 use services::{impl_error_from, AppError, ErrorType};
@@ -10,7 +9,6 @@ use services::{AppService, SettingServiceError, BODHI_KEEP_ALIVE_SECS, DEFAULT_K
 use services::{SettingSource, SettingsChangeListener};
 use std::sync::Arc;
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
-use tower_serve_static::ServeDir;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -137,13 +135,7 @@ impl ServeCommand {
       }))
       .await;
 
-    // Create static router from directory if provided
-    let static_router = static_dir.map(|dir| {
-      let static_service = ServeDir::new(dir).append_index_html_on_directories(true);
-      Router::new().fallback_service(static_service)
-    });
-
-    let app = build_routes(service.clone(), static_router).await;
+    let app = build_routes(service.clone(), static_dir).await;
     let scheme = setting_service.scheme().await;
     let server_url = format!("{scheme}://{host}:{port}");
     let public_url = setting_service.public_server_url().await;

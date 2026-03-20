@@ -271,7 +271,7 @@ describe('ApiModelForm', () => {
         );
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/models');
+      expect(pushMock).toHaveBeenCalledWith('/models');
     });
 
     it('enables fetch models button when base_url is present (regardless of API key)', async () => {
@@ -468,7 +468,7 @@ describe('ApiModelForm', () => {
         );
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/models');
+      expect(pushMock).toHaveBeenCalledWith('/models');
     });
   });
 
@@ -762,7 +762,7 @@ describe('ApiModelForm', () => {
           );
         });
 
-        expect(pushMock).toHaveBeenCalledWith('/ui/models');
+        expect(pushMock).toHaveBeenCalledWith('/models');
       });
     });
 
@@ -868,7 +868,7 @@ describe('ApiModelForm', () => {
         expect(capturedRequestBody).toBeDefined();
         expect(capturedRequestBody.api_key).toEqual(expectedApiKeyRequest);
 
-        expect(pushMock).toHaveBeenCalledWith('/ui/models');
+        expect(pushMock).toHaveBeenCalledWith('/models');
       });
     });
 
@@ -1056,7 +1056,7 @@ describe('ApiModelForm', () => {
 
       await user.click(screen.getByTestId('cancel-button'));
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/models');
+      expect(pushMock).toHaveBeenCalledWith('/models');
     });
   });
 

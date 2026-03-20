@@ -27,6 +27,7 @@ mod routes;
 mod routes_dev;
 mod routes_ping;
 mod routes_proxy;
+mod spa_router;
 
 // -- Test modules
 
@@ -44,6 +45,7 @@ pub use routes_proxy::*;
 pub use settings::*;
 pub use setup::*;
 pub use shared::*;
+pub use spa_router::*;
 pub use tenants::*;
 pub use tokens::*;
 pub use toolsets::*;

@@ -1,5 +1,7 @@
-import { redirect } from 'next/navigation';
+'use client';
 
-export default function Home() {
-  redirect('/ui');
+import AppInitializer from '@/components/AppInitializer';
+
+export default function HomePage() {
+  return <AppInitializer />;
 }

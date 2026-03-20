@@ -17,7 +17,7 @@ describe('useNavigation', () => {
   const testNavigationItems: NavigationItem[] = [
     {
       title: 'Root',
-      href: '/ui/root/',
+      href: '/root/',
       description: 'Test Root',
       icon: Home,
     },
@@ -27,19 +27,19 @@ describe('useNavigation', () => {
       items: [
         {
           title: 'Manage Users',
-          href: '/ui/users/',
+          href: '/users/',
           description: 'Manage users and access control',
           icon: Users,
         },
         {
           title: 'Child',
-          href: '/ui/child/',
+          href: '/child/',
           description: 'Test Child',
           icon: Settings,
           items: [
             {
               title: 'Grandchild',
-              href: '/ui/child/grandchild/',
+              href: '/child/grandchild/',
               description: 'Test Grandchild',
               icon: Settings,
               skip: true,
@@ -74,7 +74,7 @@ describe('useNavigation', () => {
   });
 
   it('should return root level item when path matches', () => {
-    mockUsePathname.mockReturnValue('/ui/root/');
+    mockUsePathname.mockReturnValue('/root/');
 
     const { result } = renderHook(() => useNavigation(), {
       wrapper: renderWithProvider,
@@ -83,14 +83,14 @@ describe('useNavigation', () => {
     expect(result.current.currentItem).toEqual({
       item: expect.objectContaining({
         title: 'Root',
-        href: '/ui/root/',
+        href: '/root/',
       }),
       parent: null,
     });
   });
 
   it('should return sub-item with parent when path matches', () => {
-    mockUsePathname.mockReturnValue('/ui/child/');
+    mockUsePathname.mockReturnValue('/child/');
 
     const { result } = renderHook(() => useNavigation(), {
       wrapper: renderWithProvider,
@@ -99,7 +99,7 @@ describe('useNavigation', () => {
     expect(result.current.currentItem.item).toEqual(
       expect.objectContaining({
         title: 'Child',
-        href: '/ui/child/',
+        href: '/child/',
         description: 'Test Child',
       })
     );
@@ -113,7 +113,7 @@ describe('useNavigation', () => {
   });
 
   it('should return sub-sub-item with immediate parent when path matches', () => {
-    mockUsePathname.mockReturnValue('/ui/child/grandchild/');
+    mockUsePathname.mockReturnValue('/child/grandchild/');
 
     const { result } = renderHook(() => useNavigation(), {
       wrapper: renderWithProvider,
@@ -122,7 +122,7 @@ describe('useNavigation', () => {
     expect(result.current.currentItem.item).toEqual(
       expect.objectContaining({
         title: 'Grandchild',
-        href: '/ui/child/grandchild/',
+        href: '/child/grandchild/',
         skip: true,
       })
     );
@@ -130,15 +130,15 @@ describe('useNavigation', () => {
     expect(result.current.currentItem.parent).toEqual(
       expect.objectContaining({
         title: 'Child',
-        href: '/ui/child/',
+        href: '/child/',
       })
     );
   });
 
   it.each([
-    ['/ui/users/', 'Manage Users', '/ui/users/', 'Manage users and access control', 'Settings'],
-    ['/ui/users/pending', 'Manage Users', '/ui/users/', 'Manage users and access control', 'Settings'],
-    ['/ui/users/access-requests', 'Manage Users', '/ui/users/', 'Manage users and access control', 'Settings'],
+    ['/users/', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
+    ['/users/pending', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
+    ['/users/access-requests', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
     ['/docs/', 'App Guide', '/docs/', 'User guides and documentation', 'Documentation'],
   ])(
     'should return %s > %s for %s paths',
@@ -176,7 +176,7 @@ describe('useNavigation', () => {
     expect(result.current.currentItem).toEqual({
       item: expect.objectContaining({
         title: 'Root',
-        href: '/ui/root/',
+        href: '/root/',
       }),
       parent: null,
     });

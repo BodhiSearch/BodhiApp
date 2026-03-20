@@ -19,7 +19,7 @@ function SimpleIcon({ icon, className }: { icon: { path: string }; className?: s
 
 export function AppHeader() {
   const pathname = usePathname();
-  const shouldRenderHeader = !pathname?.startsWith('/ui/setup/');
+  const shouldRenderHeader = !pathname?.startsWith('/setup/');
 
   const handleGitHubClick = () => {
     window.open(GITHUB_REPO_URL, '_blank');

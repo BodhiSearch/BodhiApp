@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 
 import {
   Breadcrumb,
@@ -18,7 +19,7 @@ export function AppBreadcrumb() {
   return (
     <div className="flex-1 flex h-16 items-center gap-2 px-4" data-testid="app-breadcrumb">
       <Image
-        src="/bodhi-logo/bodhi-logo-60.svg"
+        src="/ui/bodhi-logo/bodhi-logo-60.svg"
         alt="Bodhi Logo"
         width={20}
         height={20}
@@ -36,16 +37,16 @@ export function AppBreadcrumb() {
           {parent?.href && (
             <>
               <BreadcrumbItem>
-                <BreadcrumbLink href={parent.href} data-testid="breadcrumb-parent">
-                  {parent.title}
+                <BreadcrumbLink asChild data-testid="breadcrumb-parent">
+                  <Link href={parent.href}>{parent.title}</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
             </>
           )}
           <BreadcrumbItem>
-            <BreadcrumbLink href={item.href || '#'} data-testid="breadcrumb-current">
-              {item.title}
+            <BreadcrumbLink asChild data-testid="breadcrumb-current">
+              <Link href={item.href || '#'}>{item.title}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
         </BreadcrumbList>

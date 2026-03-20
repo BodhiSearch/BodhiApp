@@ -28,7 +28,7 @@ import { NavigationItem } from '@/types/navigation';
 export const defaultNavigationItems: NavigationItem[] = [
   {
     title: 'Chat',
-    href: '/ui/chat/',
+    href: '/chat/',
     description: 'AI Chat Interface',
     icon: MessageSquare,
   },
@@ -38,34 +38,34 @@ export const defaultNavigationItems: NavigationItem[] = [
     items: [
       {
         title: 'Model Aliases',
-        href: '/ui/models/',
+        href: '/models/',
         description: 'Configure and manage model aliases',
         icon: Settings2,
         items: [
           {
             title: 'New Model Alias',
-            href: '/ui/models/alias/new/',
+            href: '/models/alias/new/',
             description: 'Create a new model alias',
             icon: FilePlus2,
             skip: true,
           },
           {
             title: 'Edit Model Alias',
-            href: '/ui/models/alias/edit/',
+            href: '/models/alias/edit/',
             description: 'Edit a model alias',
             icon: FilePlus2,
             skip: true,
           },
           {
             title: 'New API Model',
-            href: '/ui/models/api/new/',
+            href: '/models/api/new/',
             description: 'Create a new API model',
             icon: FilePlus2,
             skip: true,
           },
           {
             title: 'Edit API Model',
-            href: '/ui/models/api/edit/',
+            href: '/models/api/edit/',
             description: 'Edit an API model',
             icon: FilePlus2,
             skip: true,
@@ -74,13 +74,13 @@ export const defaultNavigationItems: NavigationItem[] = [
       },
       {
         title: 'Model Files',
-        href: '/ui/models/files/',
+        href: '/models/files/',
         description: 'Browse and manage model files',
         icon: Files,
       },
       {
         title: 'Model Downloads',
-        href: '/ui/models/files/pull/',
+        href: '/models/files/pull/',
         description: 'Download new models',
         icon: Download,
       },
@@ -92,39 +92,39 @@ export const defaultNavigationItems: NavigationItem[] = [
     items: [
       {
         title: 'App Settings',
-        href: '/ui/settings/',
+        href: '/settings/',
         description: 'Manage application settings',
         icon: Cog,
       },
       {
         title: 'API Tokens',
-        href: '/ui/tokens/',
+        href: '/tokens/',
         description: 'Manage API access tokens',
         icon: Key,
       },
       {
         title: 'Toolsets',
-        href: '/ui/toolsets/',
+        href: '/toolsets/',
         description: 'Configure AI toolsets',
         icon: Wrench,
         items: [
           {
             title: 'New Toolset',
-            href: '/ui/toolsets/new/',
+            href: '/toolsets/new/',
             description: 'Create a new toolset',
             icon: Wrench,
             skip: true,
           },
           {
             title: 'Edit Toolset',
-            href: '/ui/toolsets/edit/',
+            href: '/toolsets/edit/',
             description: 'Edit a toolset',
             icon: Wrench,
             skip: true,
           },
           {
             title: 'Admin Toolsets',
-            href: '/ui/toolsets/admin/',
+            href: '/toolsets/admin/',
             description: 'Admin toolsets',
             icon: Wrench,
             skip: true,
@@ -133,41 +133,41 @@ export const defaultNavigationItems: NavigationItem[] = [
       },
       {
         title: 'MCP',
-        href: '/ui/mcps/',
+        href: '/mcps/',
         description: 'Manage MCP servers and instances',
         icon: Plug,
         items: [
           {
             title: 'MCP Servers',
-            href: '/ui/mcps/servers/',
+            href: '/mcps/servers/',
             description: 'Browse MCP server registry',
             icon: Plug,
             skip: true,
           },
           {
             title: 'New MCP',
-            href: '/ui/mcps/new/',
+            href: '/mcps/new/',
             description: 'Add an MCP instance',
             icon: Plug,
             skip: true,
           },
           {
             title: 'New MCP Server',
-            href: '/ui/mcps/servers/new/',
+            href: '/mcps/servers/new/',
             description: 'Register a new MCP server',
             icon: Plug,
             skip: true,
           },
           {
             title: 'Edit MCP Server',
-            href: '/ui/mcps/servers/edit/',
+            href: '/mcps/servers/edit/',
             description: 'Edit an MCP server',
             icon: Plug,
             skip: true,
           },
           {
             title: 'Playground',
-            href: '/ui/mcps/playground/',
+            href: '/mcps/playground/',
             description: 'Test MCP tools',
             icon: Play,
             skip: true,
@@ -176,7 +176,7 @@ export const defaultNavigationItems: NavigationItem[] = [
       },
       {
         title: 'Manage Users',
-        href: '/ui/users/',
+        href: '/users/',
         description: 'Manage users and access control',
         icon: Users,
       },
@@ -236,14 +236,14 @@ export function NavigationProvider({ children, items = defaultNavigationItems }:
       const docsSubItem = docsItem?.items?.find((item) => item.href === '/docs/');
       return { item: docsSubItem!, parent: docsItem! };
     }
-    if (pathname?.startsWith('/ui/users/')) {
+    if (pathname?.startsWith('/users/')) {
       const settingsItem = items.find((item) => item.title === 'Settings');
-      const usersSubItem = settingsItem?.items?.find((item) => item.href === '/ui/users/');
+      const usersSubItem = settingsItem?.items?.find((item) => item.href === '/users/');
       return { item: usersSubItem!, parent: settingsItem! };
     }
-    if (pathname?.startsWith('/ui/mcps/')) {
+    if (pathname?.startsWith('/mcps/')) {
       const settingsItem = items.find((item) => item.title === 'Settings');
-      const mcpSubItem = settingsItem?.items?.find((item) => item.href === '/ui/mcps/');
+      const mcpSubItem = settingsItem?.items?.find((item) => item.href === '/mcps/');
       return { item: mcpSubItem!, parent: settingsItem! };
     }
     const topLevelItem = items.find((item) => item.href === pathname);

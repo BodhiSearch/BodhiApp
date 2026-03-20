@@ -29,8 +29,8 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
   const { toast } = useToast();
 
   // Determine default routes based on mode
-  const defaultSuccessRoute = mode === 'setup' ? '/ui/setup/complete' : '/ui/models';
-  const defaultCancelRoute = mode === 'setup' ? '/ui/setup/complete' : '/ui/models';
+  const defaultSuccessRoute = mode === 'setup' ? '/setup/complete' : '/models';
+  const defaultCancelRoute = mode === 'setup' ? '/setup/complete' : '/models';
 
   const successRoute = onSuccessRoute || defaultSuccessRoute;
   const cancelRoute = onCancelRoute || defaultCancelRoute;

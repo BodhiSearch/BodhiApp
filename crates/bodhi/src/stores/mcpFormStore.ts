@@ -89,7 +89,16 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
       tools_filter: Array.from(state.selectedTools),
       server_url: serverInfo?.url,
       server_name: serverInfo?.name,
-      return_url: typeof window !== 'undefined' ? window.location.pathname + window.location.search : undefined,
+      return_url:
+        typeof window !== 'undefined'
+          ? (() => {
+              const basePath = '/ui';
+              const pathname = window.location.pathname.startsWith(basePath)
+                ? window.location.pathname.slice(basePath.length) || '/'
+                : window.location.pathname;
+              return pathname + window.location.search;
+            })()
+          : undefined,
     };
     sessionStorage.setItem(OAUTH_FORM_STORAGE_KEY, JSON.stringify(data));
   },

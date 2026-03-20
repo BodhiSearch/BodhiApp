@@ -80,8 +80,8 @@ export function AppNavigation() {
                     </DropdownMenuLabel>
                     {item.items
                       .filter((subItem) => subItem.skip !== true)
-                      .map((subItem) => (
-                        <Link key={subItem.title} href={subItem.href || '#'} target={subItem.target}>
+                      .map((subItem) => {
+                        const subItemContent = (
                           <DropdownMenuItem
                             className={cn(
                               'flex items-center gap-2 pl-8 cursor-pointer',
@@ -96,21 +96,39 @@ export function AppNavigation() {
                               )}
                             </div>
                           </DropdownMenuItem>
-                        </Link>
-                      ))}
+                        );
+                        return subItem.target ? (
+                          <a key={subItem.title} href={subItem.href || '#'} target={subItem.target}>
+                            {subItemContent}
+                          </a>
+                        ) : (
+                          <Link key={subItem.title} href={subItem.href || '#'}>
+                            {subItemContent}
+                          </Link>
+                        );
+                      })}
                   </>
                 ) : (
-                  <Link href={item.href || '#'} target={item.target}>
-                    <DropdownMenuItem
-                      className={cn('flex items-center gap-2 cursor-pointer', isSelected(item) && 'bg-accent')}
-                    >
-                      {item.icon && <item.icon className="size-4" />}
-                      <div className="space-y-1">
-                        <p>{item.title}</p>
-                        {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
-                      </div>
-                    </DropdownMenuItem>
-                  </Link>
+                  (() => {
+                    const topItemContent = (
+                      <DropdownMenuItem
+                        className={cn('flex items-center gap-2 cursor-pointer', isSelected(item) && 'bg-accent')}
+                      >
+                        {item.icon && <item.icon className="size-4" />}
+                        <div className="space-y-1">
+                          <p>{item.title}</p>
+                          {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                        </div>
+                      </DropdownMenuItem>
+                    );
+                    return item.target ? (
+                      <a href={item.href || '#'} target={item.target}>
+                        {topItemContent}
+                      </a>
+                    ) : (
+                      <Link href={item.href || '#'}>{topItemContent}</Link>
+                    );
+                  })()
                 )}
                 <DropdownMenuSeparator />
               </React.Fragment>

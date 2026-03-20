@@ -92,7 +92,7 @@ describe('LoginMenu Component', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/ui/chat');
+      expect(mockPush).toHaveBeenCalledWith('/chat');
     });
   });
 
@@ -199,7 +199,7 @@ describe('LoginMenu Component', () => {
 
     // Wait for logout to complete and navigation to occur
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/ui/login');
+      expect(mockPush).toHaveBeenCalledWith('/login');
     });
   });
 
@@ -219,7 +219,7 @@ describe('LoginMenu Component', () => {
 
     // Should redirect to login page on error
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/ui/login');
+      expect(mockPush).toHaveBeenCalledWith('/login');
     });
   });
 
