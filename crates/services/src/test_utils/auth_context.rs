@@ -4,10 +4,8 @@ use crate::{AuthContext, DeploymentMode, ResourceRole, TokenScope, UserScope};
 const DEFAULT_CLIENT_ID: &str = "test-client-id";
 
 impl AuthContext {
-  pub fn test_anonymous() -> Self {
-    AuthContext::Anonymous {
-      deployment: DeploymentMode::Standalone,
-    }
+  pub fn test_anonymous(deployment: DeploymentMode) -> Self {
+    AuthContext::Anonymous { deployment }
   }
 
   pub fn test_session(user_id: &str, username: &str, role: ResourceRole) -> Self {

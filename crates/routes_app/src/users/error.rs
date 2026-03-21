@@ -23,6 +23,10 @@ pub enum UsersRouteError {
   #[error_meta(error_type = ErrorType::UnprocessableEntity)]
   AlreadyHasAccess,
 
+  #[error("Tenant selection required to request access.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  TenantRequired,
+
   #[error("Pending access request for user not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   PendingRequestNotFound,

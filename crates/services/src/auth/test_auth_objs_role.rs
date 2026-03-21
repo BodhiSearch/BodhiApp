@@ -19,6 +19,15 @@ use rstest::rstest;
 #[case(ResourceRole::User, ResourceRole::Manager, false)]
 #[case(ResourceRole::User, ResourceRole::PowerUser, false)]
 #[case(ResourceRole::User, ResourceRole::User, false)]
+#[case(ResourceRole::Guest, ResourceRole::Anonymous, true)]
+#[case(ResourceRole::User, ResourceRole::Guest, true)]
+#[case(ResourceRole::Anonymous, ResourceRole::Guest, false)]
+#[case(ResourceRole::Anonymous, ResourceRole::User, false)]
+#[case(ResourceRole::Guest, ResourceRole::User, false)]
+#[case(ResourceRole::Guest, ResourceRole::Guest, false)]
+#[case(ResourceRole::Anonymous, ResourceRole::Anonymous, false)]
+#[case(ResourceRole::Admin, ResourceRole::Anonymous, true)]
+#[case(ResourceRole::Admin, ResourceRole::Guest, true)]
 fn test_role_ordering_explicit(
   #[case] left: ResourceRole,
   #[case] right: ResourceRole,
@@ -42,6 +51,8 @@ fn test_role_ordering_explicit(
 #[case(ResourceRole::PowerUser, UserScope::PowerUser)]
 #[case(ResourceRole::Manager, UserScope::PowerUser)]
 #[case(ResourceRole::Admin, UserScope::PowerUser)]
+#[case(ResourceRole::Anonymous, UserScope::User)]
+#[case(ResourceRole::Guest, UserScope::User)]
 fn test_max_user_scope(#[case] role: ResourceRole, #[case] expected: UserScope) {
   assert_eq!(expected, role.max_user_scope());
 }
@@ -51,6 +62,8 @@ fn test_max_user_scope(#[case] role: ResourceRole, #[case] expected: UserScope) 
 #[case(ResourceRole::PowerUser, "resource_power_user")]
 #[case(ResourceRole::Manager, "resource_manager")]
 #[case(ResourceRole::Admin, "resource_admin")]
+#[case(ResourceRole::Anonymous, "resource_anonymous")]
+#[case(ResourceRole::Guest, "resource_guest")]
 fn test_role_string_formats(#[case] role: ResourceRole, #[case] as_str: &str) {
   // Test Display format
   assert_eq!(role.to_string(), as_str);
@@ -81,6 +94,16 @@ fn test_role_string_formats(#[case] role: ResourceRole, #[case] as_str: &str) {
 #[case(ResourceRole::User, ResourceRole::PowerUser, false)]
 #[case(ResourceRole::User, ResourceRole::Manager, false)]
 #[case(ResourceRole::User, ResourceRole::Admin, false)]
+#[case(ResourceRole::Anonymous, ResourceRole::Anonymous, true)]
+#[case(ResourceRole::Anonymous, ResourceRole::Guest, false)]
+#[case(ResourceRole::Anonymous, ResourceRole::User, false)]
+#[case(ResourceRole::Guest, ResourceRole::Anonymous, true)]
+#[case(ResourceRole::Guest, ResourceRole::Guest, true)]
+#[case(ResourceRole::Guest, ResourceRole::User, false)]
+#[case(ResourceRole::User, ResourceRole::Anonymous, true)]
+#[case(ResourceRole::User, ResourceRole::Guest, true)]
+#[case(ResourceRole::Admin, ResourceRole::Anonymous, true)]
+#[case(ResourceRole::Admin, ResourceRole::Guest, true)]
 fn test_role_has_access_to(
   #[case] role: ResourceRole,
   #[case] required: ResourceRole,
@@ -94,6 +117,8 @@ fn test_role_has_access_to(
 #[case(ResourceRole::PowerUser, "\"resource_power_user\"")]
 #[case(ResourceRole::Manager, "\"resource_manager\"")]
 #[case(ResourceRole::Admin, "\"resource_admin\"")]
+#[case(ResourceRole::Anonymous, "\"resource_anonymous\"")]
+#[case(ResourceRole::Guest, "\"resource_guest\"")]
 fn test_role_serde_format(#[case] role: ResourceRole, #[case] expected_json: &str) {
   // Test serialization
   let serialized = serde_json::to_string(&role).unwrap();
@@ -114,6 +139,10 @@ fn test_role_serde_format(#[case] role: ResourceRole, #[case] expected_json: &st
 #[case(&["resource_power_user", "resource_admin"], ResourceRole::Admin)]
 #[case(&["resource_user", "resource_power_user", "resource_manager"], ResourceRole::Manager)]
 #[case(&["resource_user", "resource_admin", "resource_manager"], ResourceRole::Admin)]
+#[case(&["resource_anonymous"], ResourceRole::Anonymous)]
+#[case(&["resource_guest"], ResourceRole::Guest)]
+#[case(&["resource_anonymous", "resource_user"], ResourceRole::User)]
+#[case(&["resource_guest", "resource_anonymous"], ResourceRole::Guest)]
 fn test_role_from_resource_role_success(#[case] input: &[&str], #[case] expected: ResourceRole) {
   assert_eq!(ResourceRole::from_resource_role(input).unwrap(), expected);
 }
@@ -145,6 +174,8 @@ fn test_role_from_resource_role_mixed(#[case] input: &[&str], #[case] expected: 
 #[case("resource_power_user", Ok(ResourceRole::PowerUser))]
 #[case("resource_manager", Ok(ResourceRole::Manager))]
 #[case("resource_admin", Ok(ResourceRole::Admin))]
+#[case("resource_anonymous", Ok(ResourceRole::Anonymous))]
+#[case("resource_guest", Ok(ResourceRole::Guest))]
 fn test_role_parse_valid(#[case] input: &str, #[case] expected: Result<ResourceRole, RoleError>) {
   assert_eq!(input.parse::<ResourceRole>(), expected);
 }

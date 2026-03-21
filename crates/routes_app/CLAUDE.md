@@ -36,11 +36,12 @@ Key methods on `AuthScope` (via `Deref` to `AuthScopedAppService`):
 - `inference()` -- `Arc<dyn InferenceService>`
 - `data_service()`, `setting_service()` -- passthrough accessors (no auth scoping)
 
-Falls back to `AuthContext::Anonymous { client_id: None, tenant_id: None }` when no auth middleware has populated the extension.
+Falls back to `AuthContext::Anonymous { deployment: DeploymentMode::Standalone }` when no auth middleware has populated the extension.
 
 **AuthContext variants** (defined in `services::auth::auth_context`):
-- `Anonymous { client_id: Option<String>, tenant_id: Option<String> }`
-- `Session { client_id, tenant_id, user_id, username, role: Option<ResourceRole>, token }`
+- `Anonymous { deployment: DeploymentMode }`
+- `Session { client_id, tenant_id, user_id, username, role: ResourceRole, token }`
+- `MultiTenantSession { client_id: Option<String>, tenant_id: Option<String>, user_id, username, role: ResourceRole, token: Option<String>, dashboard_token }`
 - `ApiToken { client_id, tenant_id, user_id, role: TokenScope, token }`
 - `ExternalApp { client_id, tenant_id, user_id, role: Option<UserScope>, token, external_app_token, app_client_id, access_request_id: Option<String> }`
 

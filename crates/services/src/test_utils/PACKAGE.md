@@ -75,7 +75,7 @@ Methods:
 `auth_context.rs` provides `impl AuthContext` factory methods. All use `DEFAULT_CLIENT_ID = "test-client-id"` and `TEST_TENANT_ID`.
 
 Key methods:
-- `test_anonymous()` — Anonymous with default client_id and tenant_id
+- `test_anonymous(deployment)` — Anonymous with given DeploymentMode
 - `test_session(user_id, username, role)` — Session with ResourceRole
 - `test_session_no_role(user_id, username)` — Session without role
 - `test_api_token(user_id, role)` — ApiToken with TokenScope

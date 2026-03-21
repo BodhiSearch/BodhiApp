@@ -19,7 +19,7 @@ Test infrastructure for the services layer. Provides mock services, database tes
 - **AppServiceStubBuilder** (`app.rs`): Provides default mocks for auth, cache, time, settings, hub, network, concurrency, tool, inference services.
 
 ### Auth Testing
-- **AuthContext test factories** (`auth_context.rs`): `test_anonymous()`, `test_session(user_id, username, role)`, `test_api_token(user_id, role)`, `test_external_app(user_id, role, app_client_id, access_request_id)`. Chain with `.with_tenant_id()` / `.with_user_id()` for multi-tenant tests.
+- **AuthContext test factories** (`auth_context.rs`): `test_anonymous(deployment)`, `test_session(user_id, username, role)`, `test_api_token(user_id, role)`, `test_external_app(user_id, role, app_client_id, access_request_id)`. Chain with `.with_tenant_id()` / `.with_user_id()` for multi-tenant tests.
 - **test_auth_service** (`auth.rs`): AuthService with embedded RSA keys for JWT signing. Configurable base URL for mockito.
 
 ### Hub/Data Testing

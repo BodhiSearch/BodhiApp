@@ -245,6 +245,48 @@ async fn test_request_status_not_found(temp_bodhi_home: TempDir) -> anyhow::Resu
 }
 
 // ============================================================================
+// Dashboard-only session tests (no tenant selected)
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_user_request_access_dashboard_only_returns_tenant_required(
+  temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
+  let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .build()
+    .await?;
+
+  let state: Arc<dyn services::AppService> = Arc::new(app_service);
+
+  let router = Router::new()
+    .route(ENDPOINT_USER_REQUEST_ACCESS, post(users_request_access))
+    .with_state(state);
+
+  let response = router
+    .oneshot(
+      Request::post(ENDPOINT_USER_REQUEST_ACCESS)
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_multi_tenant_session(
+          "dashboard-user-id",
+          "dashboard@example.com",
+        )),
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "users_route_error-tenant_required",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+// ============================================================================
 // Guest role tests (verifying Guest users can use these endpoints)
 // ============================================================================
 

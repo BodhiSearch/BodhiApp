@@ -548,9 +548,7 @@ async fn test_app_info_multi_tenant_anonymous_returns_ready() -> anyhow::Result<
     .layer(app_service.session_service().session_layer())
     .with_state(state);
 
-  let auth_context = AuthContext::Anonymous {
-    deployment: DeploymentMode::MultiTenant,
-  };
+  let auth_context = AuthContext::test_anonymous(DeploymentMode::MultiTenant);
   let resp = router
     .oneshot(
       Request::get(TEST_ENDPOINT_APP_INFO)

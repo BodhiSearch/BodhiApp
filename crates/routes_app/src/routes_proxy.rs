@@ -123,7 +123,10 @@ async fn ws_proxy(req: Request, backend_url: &str, path: &str) -> Response<Body>
   }
   raw_request.push_str("\r\n");
 
-  debug!(raw_request_len = raw_request.len(), "sending ws upgrade to backend");
+  debug!(
+    raw_request_len = raw_request.len(),
+    "sending ws upgrade to backend"
+  );
 
   // Write upgrade request
   if let Err(e) = backend_stream.write_all(raw_request.as_bytes()).await {

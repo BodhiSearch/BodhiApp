@@ -59,6 +59,11 @@ pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, A
     }
   };
 
+  // Multi-tenant: require active tenant context
+  if auth_scope.auth_context().tenant_id().is_none() {
+    return Err(UsersRouteError::TenantRequired)?;
+  }
+
   // Check if user already has a role (User or above)
   if role.has_access_to(&services::ResourceRole::User) {
     debug!("User {} already has role: {}", username, role);

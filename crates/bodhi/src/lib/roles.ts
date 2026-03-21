@@ -11,10 +11,10 @@ export type Role = ResourceRole;
 export const roleHierarchy: Record<Role, number> = {
   resource_anonymous: 0,
   resource_guest: 1,
-  resource_admin: 6,
-  resource_manager: 5,
-  resource_power_user: 4,
-  resource_user: 3,
+  resource_user: 2,
+  resource_power_user: 3,
+  resource_manager: 4,
+  resource_admin: 5,
 };
 
 // Role options for dropdowns and UI components
