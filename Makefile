@@ -100,7 +100,7 @@ build: ## Build command line app (server variant)
 build.native: ## Build native app with system tray
 	cd crates/bodhi/src-tauri && cargo tauri build --features native
 
-build.ui: ## Build Next.js frontend and NAPI bindings
+build.ui: ## Build Vite frontend and NAPI bindings
 	cd crates/bodhi && npm run build
 	cd crates/lib_bodhiserver_napi && npm run build
 
@@ -148,14 +148,14 @@ app.run.pg: dev.deps.up ## Run the BodhiApp with PostgreSQL dev databases
 		BODHI_SESSION_DB_URL=postgres://bodhi_dev:bodhi_dev@localhost:34321/bodhi_sessions \
 		cargo run --bin bodhi -- serve --port 1135
 
-app.run.live: ## Run BodhiApp with live Next.js dev server (HMR enabled)
-	@echo "==> Starting Next.js dev server..."
+app.run.live: ## Run BodhiApp with live Vite dev server (HMR enabled)
+	@echo "==> Starting Vite dev server..."
 	@cd crates/bodhi && npm run dev &
-	@echo "==> Waiting for Next.js dev server at http://localhost:3000/ui/..."
+	@echo "==> Waiting for Vite dev server at http://localhost:3000/ui/..."
 	@until curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/ui/ | grep -q '200'; do \
 		sleep 1; \
 	done
-	@echo "Next.js dev server is ready"
+	@echo "Vite dev server is ready"
 	@echo "==> Starting Rust server with BODHI_DEV_PROXY_UI=true..."
 	BODHI_ENCRYPTION_KEY=dummy-key \
 		BODHI_LOG_LEVEL=info \
@@ -164,8 +164,8 @@ app.run.live: ## Run BodhiApp with live Next.js dev server (HMR enabled)
 		BODHI_DEV_PROXY_UI=true \
 		cargo run --bin bodhi -- serve --port 1135
 
-app.run.live.stop: ## Stop live dev servers (Next.js + Rust)
-	@pkill -f "next dev" 2>/dev/null || true
+app.run.live.stop: ## Stop live dev servers (Vite + Rust)
+	@pkill -f "vite" 2>/dev/null || true
 	@echo "Dev servers stopped"
 
 test.extension-download: ## Download Bodhi browser extension for testing (use FORCE=1 to check for updates)

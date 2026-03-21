@@ -1,7 +1,4 @@
-'use client';
-
-import Image from 'next/image';
-import Link from 'next/link';
+import { Link } from '@tanstack/react-router';
 
 import {
   Breadcrumb,
@@ -19,7 +16,7 @@ export function AppBreadcrumb() {
 
   return (
     <div className="flex-1 flex h-16 items-center gap-2 px-4" data-testid="app-breadcrumb">
-      <Image
+      <img
         src={`${BASE_PATH}/bodhi-logo/bodhi-logo-60.svg`}
         alt="Bodhi Logo"
         width={20}
@@ -39,7 +36,7 @@ export function AppBreadcrumb() {
             <>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild data-testid="breadcrumb-parent">
-                  <Link href={parent.href}>{parent.title}</Link>
+                  <Link to={parent.href}>{parent.title}</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -47,7 +44,7 @@ export function AppBreadcrumb() {
           )}
           <BreadcrumbItem>
             <BreadcrumbLink asChild data-testid="breadcrumb-current">
-              <Link href={item.href || '#'}>{item.title}</Link>
+              <Link to={item.href || '#'}>{item.title}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
         </BreadcrumbList>

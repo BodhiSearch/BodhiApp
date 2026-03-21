@@ -1,5 +1,3 @@
-'use client';
-
 import { CodeBlock } from '@/components/ui/codeblock';
 import { fireEvent, render, screen } from '@testing-library/react';
 import fs from 'fs';

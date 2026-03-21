@@ -16,13 +16,20 @@ import {
 } from '@/test-utils/msw-v2/handlers/user';
 import { mockAccessRequestsDefault } from '@/test-utils/msw-v2/handlers/user-access-requests';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: vi.fn().mockReturnValue('/users'),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/users' }),
+  };
+});
 
 // Mock AppInitializer to just render children
 vi.mock('@/components/AppInitializer', () => ({
@@ -70,7 +77,7 @@ function createRoleBasedHandlersV2(role: string, shouldHaveAccess: boolean = tru
 }
 
 afterEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
   mockShowSuccess.mockClear();
   mockShowError.mockClear();
 });
@@ -90,7 +97,7 @@ describe('UsersPage Role-Based Access Control', () => {
     // Should show the page content, not redirect
     expect(screen.getByTestId('users-page')).toBeInTheDocument();
     expect(screen.getAllByText('All Users')[1]).toBeInTheDocument(); // The second occurrence is in the card
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it.each(BLOCKED_ROLES)('blocks access for %s role', async (role) => {

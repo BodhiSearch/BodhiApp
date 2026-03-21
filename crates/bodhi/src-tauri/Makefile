@@ -9,7 +9,7 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9._-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build_frontend: ## Build Next.js frontend for Tauri
+build_frontend: ## Build Vite frontend for Tauri
 	cd .. && npm install && npm run build
 
 # Required env vars for macOS signing

@@ -27,16 +27,23 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-let mockSearchParams: URLSearchParams;
+const navigateMock = vi.fn();
+let mockSearch: Record<string, string | undefined> = {};
 let mockToast: ReturnType<typeof vi.fn>;
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => mockSearchParams,
-}));
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => mockSearch,
+  };
+});
 
 vi.mock('@/hooks/use-toast', () => {
   const toast = vi.fn();
@@ -51,11 +58,11 @@ vi.mock('@/hooks/use-toast', () => {
 setupMswV2();
 
 beforeEach(async () => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
   const { toast } = await import('@/hooks/use-toast');
   mockToast = toast as unknown as ReturnType<typeof vi.fn>;
   mockToast.mockClear();
-  mockSearchParams = new URLSearchParams('id=uuid-test-toolset');
+  mockSearch = { id: 'uuid-test-toolset' };
 });
 
 afterEach(() => {
@@ -71,7 +78,7 @@ describe('EditToolsetPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
     });
   });
 
@@ -83,7 +90,7 @@ describe('EditToolsetPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 });
@@ -94,7 +101,7 @@ describe('EditToolsetPage - Error States', () => {
   });
 
   it('shows error when id parameter is missing', async () => {
-    mockSearchParams = new URLSearchParams('');
+    mockSearch = {};
 
     await act(async () => {
       render(<EditToolsetPage />, { wrapper: createWrapper() });
@@ -197,7 +204,7 @@ describe('EditToolsetPage - Form Display', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/toolsets');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/toolsets' });
     });
   });
 });
@@ -440,7 +447,7 @@ describe('EditToolsetPage - Delete Functionality', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/toolsets');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/toolsets' });
     });
   });
 });

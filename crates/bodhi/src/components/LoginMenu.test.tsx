@@ -13,14 +13,20 @@ import { mockUserLoggedOut, mockUserLoggedIn } from '@/test-utils/msw-v2/handler
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockPush = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    refresh: vi.fn(),
-  }),
-  usePathname: () => '/',
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/' }),
+  };
+});
 
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
@@ -92,7 +98,7 @@ describe('LoginMenu Component', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/chat');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
     });
   });
 
@@ -199,7 +205,7 @@ describe('LoginMenu Component', () => {
 
     // Wait for logout to complete and navigation to occur
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 
@@ -219,7 +225,7 @@ describe('LoginMenu Component', () => {
 
     // Should redirect to login page on error
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 

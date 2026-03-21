@@ -1,9 +1,6 @@
-'use client';
-
 import { useMemo, useState } from 'react';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link, useLocation } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable } from '@/components/DataTable';
@@ -40,7 +37,7 @@ const columns = [
 ];
 
 function AdminToolsetsPageContent() {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const { data, isLoading, error } = useListToolsetTypes();
   const { data: toolsetsData } = useListToolsets();
 
@@ -152,7 +149,7 @@ function AdminToolsetsPageContent() {
       <div className="bg-muted/50 p-1 rounded-lg mb-6">
         <nav className="flex space-x-1" aria-label="Toolsets Navigation">
           <Link
-            href="/toolsets"
+            to="/toolsets"
             className={cn(
               'px-3 py-2 text-sm font-medium rounded-md transition-all',
               pathname === '/toolsets'
@@ -163,7 +160,7 @@ function AdminToolsetsPageContent() {
             My Toolsets
           </Link>
           <Link
-            href="/toolsets/admin"
+            to="/toolsets/admin"
             className={cn(
               'px-3 py-2 text-sm font-medium rounded-md transition-all',
               pathname === '/toolsets/admin'

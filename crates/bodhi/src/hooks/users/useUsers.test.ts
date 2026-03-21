@@ -20,13 +20,15 @@ import {
 import { setupMswV2, server, http, HttpResponse } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
-// Mock next/navigation
-const mockPush = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}));
+// Mock navigation
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
 
 // Type aliases for compatibility
 type ApiError = OpenAiApiError;
@@ -62,7 +64,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  mockPush.mockClear();
+  navigateMock.mockClear();
 });
 
 describe('User Hooks', () => {
@@ -130,7 +132,7 @@ describe('User Hooks', () => {
       });
 
       expect(result.current.data).toEqual(mockUserLoggedInData);
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
     });
 
     it('redirects to login when user is logged out', async () => {
@@ -145,7 +147,7 @@ describe('User Hooks', () => {
       });
 
       expect(result.current.data).toBeUndefined();
-      expect(mockPush).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
 
     it('redirects to login when user auth_status is not logged_in', async () => {
@@ -160,7 +162,7 @@ describe('User Hooks', () => {
       });
 
       expect(result.current.data).toBeUndefined();
-      expect(mockPush).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
 
     it('does not redirect while loading', async () => {
@@ -170,7 +172,7 @@ describe('User Hooks', () => {
 
       // During initial load
       expect(result.current.isLoading).toBe(true);
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
     });
   });
 

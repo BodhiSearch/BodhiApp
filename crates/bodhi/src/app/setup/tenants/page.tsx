@@ -1,7 +1,5 @@
-'use client';
-
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import { AxiosResponse } from 'axios';
 import { RedirectResponse } from '@bodhiapp/ts-client';
@@ -18,7 +16,7 @@ import { useOAuthInitiate } from '@/hooks/auth';
 import { useCreateTenant } from '@/hooks/tenants';
 
 function TenantRegistrationContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +28,7 @@ function TenantRegistrationContent() {
       if (location.startsWith('http')) {
         window.location.href = location;
       } else {
-        router.push(location);
+        navigate({ to: location });
       }
     },
     onError: (message: string) => {

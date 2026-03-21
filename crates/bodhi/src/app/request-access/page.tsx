@@ -1,6 +1,4 @@
-'use client';
-
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
@@ -10,7 +8,7 @@ import { useGetAuthenticatedUser } from '@/hooks/users';
 import { ROUTE_DEFAULT } from '@/lib/constants';
 
 export function RequestAccessContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data: userInfo } = useGetAuthenticatedUser();
   const { data: requestStatus, isLoading: statusLoading, error: _statusError } = useGetRequestStatus();
   const { showSuccess, showError } = useToastMessages();
@@ -26,7 +24,7 @@ export function RequestAccessContent() {
 
   // If user has an assignable role (User or above), redirect to default page
   if (userInfo?.role && userInfo.role !== 'resource_guest' && userInfo.role !== 'resource_anonymous') {
-    router.push(ROUTE_DEFAULT);
+    navigate({ to: ROUTE_DEFAULT });
     return null;
   }
 

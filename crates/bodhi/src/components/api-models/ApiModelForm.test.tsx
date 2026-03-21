@@ -21,15 +21,20 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 // API endpoint constants for MSW handlers
 const ENDPOINT_API_MODEL_ID = '/bodhi/v1/models/api/{id}';
 
-// Mock useRouter
-const pushMock = vi.fn();
-const replaceMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-    replace: replaceMock,
-  }),
-}));
+// Mock navigation
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+  };
+});
 
 // Mock toast
 const mockToast = vi.fn();
@@ -73,7 +78,7 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
   mockToast.mockClear();
 });
 
@@ -271,7 +276,7 @@ describe('ApiModelForm', () => {
         );
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/models');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
     });
 
     it('enables fetch models button when base_url is present (regardless of API key)', async () => {
@@ -468,7 +473,7 @@ describe('ApiModelForm', () => {
         );
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/models');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
     });
   });
 
@@ -762,7 +767,7 @@ describe('ApiModelForm', () => {
           );
         });
 
-        expect(pushMock).toHaveBeenCalledWith('/models');
+        expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
       });
     });
 
@@ -868,7 +873,7 @@ describe('ApiModelForm', () => {
         expect(capturedRequestBody).toBeDefined();
         expect(capturedRequestBody.api_key).toEqual(expectedApiKeyRequest);
 
-        expect(pushMock).toHaveBeenCalledWith('/models');
+        expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
       });
     });
 
@@ -1041,7 +1046,7 @@ describe('ApiModelForm', () => {
           });
         });
 
-        expect(pushMock).not.toHaveBeenCalled();
+        expect(navigateMock).not.toHaveBeenCalled();
       });
     });
   });
@@ -1056,7 +1061,7 @@ describe('ApiModelForm', () => {
 
       await user.click(screen.getByTestId('cancel-button'));
 
-      expect(pushMock).toHaveBeenCalledWith('/models');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
     });
   });
 

@@ -15,19 +15,26 @@ vi.mock('@/app/models/files/pull/PullForm', () => ({
   PullForm: () => <div data-testid="pull-form">Pull Form</div>,
 }));
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+  };
+});
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 beforeEach(() => {
   vi.resetAllMocks();
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 describe('PullPage', () => {
@@ -111,7 +118,7 @@ describe('PullPage access control', () => {
     await act(async () => {
       render(<PullPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/setup');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -119,6 +126,6 @@ describe('PullPage access control', () => {
     await act(async () => {
       render(<PullPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/login');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
   });
 });

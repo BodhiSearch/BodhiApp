@@ -21,21 +21,31 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-let searchParamsMap: Record<string, string | null> = { id: 'server-uuid-1' };
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock }),
-  usePathname: () => '/mcps/servers/view',
-  useSearchParams: () => ({
-    get: (key: string) => searchParamsMap[key] ?? null,
-  }),
-}));
+const navigateMock = vi.fn();
+let mockSearch: Record<string, string | undefined> = { id: 'server-uuid-1' };
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, search, children, ...rest }: any) => {
+      const searchStr = search ? '?' + new URLSearchParams(search).toString() : '';
+      return (
+        <a href={`${to}${searchStr}`} {...rest}>
+          {children}
+        </a>
+      );
+    },
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/mcps/servers/view' }),
+    useSearch: () => mockSearch,
+  };
+});
 
 setupMswV2();
 
 beforeEach(() => {
-  pushMock.mockClear();
-  searchParamsMap = { id: 'server-uuid-1' };
+  navigateMock.mockClear();
+  mockSearch = { id: 'server-uuid-1' };
   server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
 });
 
@@ -52,7 +62,7 @@ describe('ServerViewPage - Authentication', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 });

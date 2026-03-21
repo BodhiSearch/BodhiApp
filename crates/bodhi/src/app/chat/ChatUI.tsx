@@ -1,5 +1,3 @@
-'use client';
-
 import { FormEvent, RefObject, useEffect, useRef, memo, useMemo } from 'react';
 
 import { Plus } from 'lucide-react';

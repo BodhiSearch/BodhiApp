@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useRef, useEffect } from 'react';
 
 import type { AliasResponse, ModelMetadata } from '@bodhiapp/ts-client';

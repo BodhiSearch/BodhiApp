@@ -1,7 +1,5 @@
-'use client';
-
 import { AliasResponse } from '@bodhiapp/ts-client';
-import { useSearchParams } from 'next/navigation';
+import { useSearch } from '@tanstack/react-router';
 
 import AliasForm from '@/app/models/alias/components/AliasForm';
 import AppInitializer from '@/components/AppInitializer';
@@ -10,8 +8,8 @@ import { Loading } from '@/components/ui/Loading';
 import { useGetModel } from '@/hooks/models';
 
 function EditAliasContent() {
-  const searchParams = useSearchParams();
-  const id = searchParams?.get('id');
+  const search = useSearch({ strict: false });
+  const id = search.id;
 
   const { data: modelData, isLoading, error } = useGetModel(id ?? '');
 

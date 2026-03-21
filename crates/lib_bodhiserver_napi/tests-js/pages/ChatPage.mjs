@@ -568,7 +568,7 @@ export class ChatPage extends BasePage {
   }
 
   async closeToolsetsPopover() {
-    await this.page.keyboard.press('Escape');
+    await this.page.locator(this.selectors.toolsetsPopoverTrigger).click();
     await expect(this.page.locator(this.selectors.toolsetsPopoverContent)).not.toBeVisible();
   }
 
@@ -633,7 +633,7 @@ export class ChatPage extends BasePage {
   }
 
   async closeMcpsPopover() {
-    await this.page.keyboard.press('Escape');
+    await this.page.locator(this.selectors.mcpsPopoverTrigger).click();
     await expect(this.page.locator(this.selectors.mcpsPopoverContent)).not.toBeVisible();
   }
 

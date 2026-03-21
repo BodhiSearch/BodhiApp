@@ -1,12 +1,9 @@
-'use client';
-
 import { ReactNode, createContext, useContext, useEffect, useMemo } from 'react';
 
 import {
   Cog,
   Database,
   Download,
-  FileJson,
   FilePlus2,
   Files,
   Key,
@@ -15,12 +12,10 @@ import {
   Settings,
   Settings2,
   Users,
-  BookOpen,
-  BookText,
   Play,
   Wrench,
 } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { useLocation } from '@tanstack/react-router';
 
 import { NavigationItem } from '@/types/navigation';
 
@@ -182,25 +177,6 @@ export const defaultNavigationItems: NavigationItem[] = [
       },
     ],
   },
-  {
-    title: 'Documentation',
-    icon: BookText,
-    items: [
-      {
-        title: 'App Guide',
-        href: '/docs/',
-        description: 'User guides and documentation',
-        icon: BookOpen,
-      },
-      {
-        title: 'OpenAPI Docs',
-        href: '/swagger-ui',
-        description: 'API Documentation',
-        icon: FileJson,
-        target: '_blank',
-      },
-    ],
-  },
 ];
 
 interface NavigationContextType {
@@ -227,15 +203,10 @@ interface NavigationProviderProps {
 }
 
 export function NavigationProvider({ children, items = defaultNavigationItems }: NavigationProviderProps) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
 
   const currentItem = useMemo(() => {
     // First check top-level items
-    if (pathname?.startsWith('/docs/')) {
-      const docsItem = items.find((item) => item.title === 'Documentation');
-      const docsSubItem = docsItem?.items?.find((item) => item.href === '/docs/');
-      return { item: docsSubItem!, parent: docsItem! };
-    }
     if (pathname?.startsWith('/users/')) {
       const settingsItem = items.find((item) => item.title === 'Settings');
       const usersSubItem = settingsItem?.items?.find((item) => item.href === '/users/');

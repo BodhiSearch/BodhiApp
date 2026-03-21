@@ -1,5 +1,3 @@
-'use client';
-
 import { HelpCircle } from 'lucide-react';
 
 import { AliasSelector } from '@/app/chat/settings/AliasSelector';

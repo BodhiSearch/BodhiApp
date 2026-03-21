@@ -1,5 +1,3 @@
-'use client';
-
 import { MemoizedReactMarkdown } from '@/components/ui/markdown';
 import { render } from '@testing-library/react';
 import fs from 'fs';

@@ -28,15 +28,20 @@ import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 
 // Mock router
-const mockPush = vi.fn();
-const mockReplace = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace,
-  }),
-  useSearchParams: () => new URLSearchParams('id=test-model'),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => ({ id: 'test-model' }),
+  };
+});
 
 // Mock toast
 const mockToast = vi.fn();
@@ -200,7 +205,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify redirect to models page
-      expect(mockPush).toHaveBeenCalledWith('/models');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
     });
   });
 
@@ -275,7 +280,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify NO navigation occurred (stays on same page)
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
 
       // Form should still be visible after error
       expect(screen.getByTestId('edit-api-model-form')).toBeInTheDocument();

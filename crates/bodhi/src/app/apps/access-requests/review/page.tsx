@@ -1,9 +1,7 @@
-'use client';
-
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearch } from '@tanstack/react-router';
 
 import McpServerCard from '@/app/apps/access-requests/review/McpServerCard';
 import ToolTypeCard from '@/app/apps/access-requests/review/ToolTypeCard';
@@ -113,8 +111,8 @@ function computeRoleOptions(
 }
 
 const ReviewContent = () => {
-  const searchParams = useSearchParams();
-  const id = searchParams?.get('id');
+  const search = useSearch({ strict: false });
+  const id = search.id;
 
   const { showError } = useToastMessages();
   const [selectedInstances, setSelectedInstances] = useState<Record<string, string>>({});

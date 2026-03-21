@@ -44,15 +44,20 @@ import {
 } from '@/test-utils/api-model-test-utils';
 
 // Mock router
-const mockPush = vi.fn();
-const mockReplace = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace,
-  }),
-  useSearchParams: vi.fn(),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => ({}),
+  };
+});
 
 // Mock toast
 const mockToast = vi.fn();
@@ -215,7 +220,7 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify redirect to models page
-      expect(mockPush).toHaveBeenCalledWith('/models');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
     });
 
     it('handles server error during API model creation', async () => {
@@ -265,7 +270,7 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify NO navigation occurred (stays on same page)
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
 
       // Form should still be visible
       expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();

@@ -1,9 +1,7 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 
 import { Loader2 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
@@ -12,12 +10,12 @@ import { useOAuthTokenExchange } from '@/hooks/mcps';
 import { OAUTH_FORM_STORAGE_KEY } from '@/stores/mcpFormStore';
 
 function OAuthCallbackContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-  const error = searchParams.get('error');
-  const errorDescription = searchParams.get('error_description');
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false });
+  const code = search.code;
+  const state = search.state;
+  const error = search.error;
+  const errorDescription = search.error_description;
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -83,7 +81,7 @@ function OAuthCallbackContent() {
           sessionStorage.setItem(OAUTH_FORM_STORAGE_KEY, JSON.stringify(formState));
           setStatus('success');
           const returnUrl = formState.return_url || '/mcps/new/';
-          router.push(returnUrl);
+          navigate({ to: returnUrl });
         },
         onError: (err) => {
           sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY);
@@ -92,7 +90,7 @@ function OAuthCallbackContent() {
         },
       }
     );
-  }, [code, state, error, errorDescription, exchanged, router]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [code, state, error, errorDescription, exchanged, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="container mx-auto p-4 max-w-md" data-testid="oauth-callback-page">
@@ -135,7 +133,7 @@ function OAuthCallbackContent() {
                   } catch {
                     /* ignore parse errors */
                   }
-                  router.push(returnUrl);
+                  navigate({ to: returnUrl });
                 }}
                 data-testid="oauth-callback-back"
               >

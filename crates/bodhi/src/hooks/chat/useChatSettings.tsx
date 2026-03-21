@@ -1,5 +1,3 @@
-'use client';
-
 import { createContext, useContext, useCallback, useEffect, useState } from 'react';
 
 interface ChatSettings {

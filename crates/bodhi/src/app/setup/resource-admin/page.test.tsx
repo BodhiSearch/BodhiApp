@@ -19,21 +19,21 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SetupProvider } from '@/app/setup/components';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => ({
-    get: () => null,
-  }),
-  redirect: vi.fn(),
-  usePathname: () => '/setup/resource-admin',
-}));
-
-vi.mock('next/image', () => ({
-  default: () => <img alt="mocked image" />,
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => ({}),
+    useLocation: () => ({ pathname: '/setup/resource-admin' }),
+  };
+});
 
 setupMswV2();
 
@@ -44,7 +44,7 @@ const renderWithSetupProvider = (component: React.ReactElement) => {
 beforeEach(() => {
   mockWindowLocation('http://localhost:3000/ui/setup/resource-admin');
   server.resetHandlers();
-  pushMock.mockClear();
+  navigateMock.mockClear();
   vi.clearAllMocks();
 });
 
@@ -78,7 +78,7 @@ describe('ResourceAdminPage', () => {
     renderWithSetupProvider(<ResourceAdminPage />);
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
     });
   });
 
@@ -88,7 +88,7 @@ describe('ResourceAdminPage', () => {
     renderWithSetupProvider(<ResourceAdminPage />);
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
+      expect(navigateMock).toHaveBeenCalledWith({ to: ROUTE_DEFAULT });
     });
   });
 
@@ -148,7 +148,7 @@ describe('ResourceAdminPage', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/chat');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
     });
   });
 

@@ -44,18 +44,20 @@ Object.assign(window.HTMLElement.prototype, {
 });
 
 const mockToast = vi.fn();
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => ({
-    get: (key: string) => {
-      if (key === 'id') return 'test-uuid-1';
-      return null;
-    },
-  }),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => ({ id: 'test-uuid-1' }),
+  };
+});
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
@@ -70,7 +72,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 beforeEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 describe('EditAliasPage', () => {
@@ -272,7 +274,7 @@ describe('EditAliasPage access control', () => {
     await act(async () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/setup');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -280,6 +282,6 @@ describe('EditAliasPage access control', () => {
     await act(async () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/login');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
   });
 });

@@ -12,16 +12,25 @@ export function cn(...inputs: ClassValue[]) {
 export const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 7);
 
 /**
- * Smart URL handling utility that determines whether to use Next.js router or window.location.href
+ * Smart URL handling utility that determines whether to use TanStack Router navigate or window.location.href
  * based on same-origin vs external URL detection.
  *
  * @param location - The URL to redirect to
- * @param router - Next.js router instance from useRouter()
+ * @param navigate - TanStack Router navigate function from useNavigate()
  */
-export function handleSmartRedirect(location: string, router: { push: (href: string) => void }): void {
+export function handleSmartRedirect(
+  location: string,
+  navigate: (opts: { to: string; search?: Record<string, string> }) => void
+): void {
   if (location.startsWith('/')) {
-    const path = location.startsWith(BASE_PATH) ? location.slice(BASE_PATH.length) || '/' : location;
-    router.push(path);
+    const origin = `${window.location.protocol}//${window.location.host}`;
+    const parsed = new URL(location, origin);
+    let pathname = parsed.pathname;
+    if (pathname.startsWith(BASE_PATH)) {
+      pathname = pathname.slice(BASE_PATH.length) || '/';
+    }
+    const search = Object.fromEntries(parsed.searchParams.entries());
+    navigate({ to: pathname, ...(Object.keys(search).length > 0 && { search }) });
     return;
   }
 
@@ -29,11 +38,12 @@ export function handleSmartRedirect(location: string, router: { push: (href: str
     const redirectUrl = new URL(location);
     const currentUrl = new URL(window.location.href);
     if (redirectUrl.protocol === currentUrl.protocol && redirectUrl.host === currentUrl.host) {
-      let internalPath = redirectUrl.pathname + redirectUrl.search + redirectUrl.hash;
-      if (internalPath.startsWith(BASE_PATH)) {
-        internalPath = internalPath.slice(BASE_PATH.length) || '/';
+      let pathname = redirectUrl.pathname;
+      if (pathname.startsWith(BASE_PATH)) {
+        pathname = pathname.slice(BASE_PATH.length) || '/';
       }
-      router.push(internalPath);
+      const search = Object.fromEntries(redirectUrl.searchParams.entries());
+      navigate({ to: pathname, ...(Object.keys(search).length > 0 && { search }) });
     } else {
       window.location.href = location;
     }

@@ -1,5 +1,5 @@
-// Next.js basePath — must match next.config.mjs basePath value.
-// Used where Next.js does NOT auto-apply basePath (e.g., next/image src, window.location stripping).
+// Vite base path — must match vite.config.ts base value and TanStack Router basepath.
+// Used where the framework does NOT auto-apply the base path (e.g., window.location stripping).
 export const BASE_PATH = '/ui';
 
 export const CURRENT_CHAT_KEY = 'current-chat';

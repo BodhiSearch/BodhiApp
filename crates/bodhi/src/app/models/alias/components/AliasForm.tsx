@@ -1,11 +1,9 @@
-'use client';
-
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { AliasResponse } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -71,7 +69,7 @@ function FormFieldWithTooltip({
 }
 
 const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToastMessages();
   const [isRequestExpanded, setIsRequestExpanded] = useState(
     isEditMode && initialData && isUserAlias(initialData) && Object.keys(initialData.request_params || {}).length > 0
@@ -154,7 +152,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     onSuccess: (model) => {
       const identifier = model.source === 'api' ? model.id : model.alias;
       showSuccess('Success', `Alias ${identifier} successfully created`);
-      router.push('/models');
+      navigate({ to: '/models' });
     },
     onError: (message) => {
       showError('Error', message);
@@ -173,7 +171,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     onSuccess: (model) => {
       const identifier = 'alias' in model ? model.alias : 'id' in model ? model.id : '';
       showSuccess('Success', `Alias ${identifier} successfully updated`);
-      router.push('/models');
+      navigate({ to: '/models' });
     },
     onError: (message) => {
       showError('Error', message);

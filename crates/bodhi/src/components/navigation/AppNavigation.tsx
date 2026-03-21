@@ -1,9 +1,7 @@
-'use client';
-
 import * as React from 'react';
 
 import { Menu, ChevronsUpDown, Sun, Moon, Monitor } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@tanstack/react-router';
 
 import { LoginMenu } from '@/components/LoginMenu';
 import { useTheme } from '@/components/ThemeProvider';
@@ -102,7 +100,7 @@ export function AppNavigation() {
                             {subItemContent}
                           </a>
                         ) : (
-                          <Link key={subItem.title} href={subItem.href || '#'}>
+                          <Link key={subItem.title} to={subItem.href || '#'}>
                             {subItemContent}
                           </Link>
                         );
@@ -126,7 +124,7 @@ export function AppNavigation() {
                         {topItemContent}
                       </a>
                     ) : (
-                      <Link href={item.href || '#'}>{topItemContent}</Link>
+                      <Link to={item.href || '#'}>{topItemContent}</Link>
                     );
                   })()
                 )}

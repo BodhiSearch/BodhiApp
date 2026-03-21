@@ -614,7 +614,7 @@ async fn apply_ui_router(
   let router = router.route("/", get(|| async { Redirect::temporary("/ui/") }));
 
   match (is_production, proxy_ui) {
-    // Dev with proxy: forward to Next.js dev server for HMR
+    // Dev with proxy: forward to Vite dev server for HMR
     (false, true) => {
       info!("proxying the ui to localhost:3000");
       router.merge(build_ui_proxy_router("http://localhost:3000".to_string()))

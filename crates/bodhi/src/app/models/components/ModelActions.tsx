@@ -21,7 +21,7 @@ export interface ModelActionsProps {
   onNew: (model: AliasResponse) => void;
   onChat: (model: AliasResponse) => void;
   getExternalUrl: (model: AliasResponse) => string;
-  router: { push: (url: string) => void };
+  navigate: (opts: { to: string }) => void;
 }
 
 const ModelActions = ({
@@ -34,7 +34,7 @@ const ModelActions = ({
   onNew,
   onChat,
   getExternalUrl,
-  router,
+  navigate,
 }: ModelActionsProps) => {
   if (isApiAlias(model)) {
     return (
@@ -80,7 +80,7 @@ const ModelActions = ({
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-xs"
-                  onClick={() => router.push(`/chat?model=${chatModel}`)}
+                  onClick={() => navigate({ to: '/chat', search: { model: chatModel } })}
                   title={`Chat with ${displayName}`}
                   data-testid={`${testIdPrefix}model-chat-button-${chatModel}`}
                 >
@@ -120,7 +120,10 @@ const ModelActions = ({
                 const displayName = formatPrefixedModel(modelName, model.prefix);
                 const chatModel = formatPrefixedModel(modelName, model.prefix);
                 return (
-                  <DropdownMenuItem key={modelName} onClick={() => router.push(`/chat?model=${chatModel}`)}>
+                  <DropdownMenuItem
+                    key={modelName}
+                    onClick={() => navigate({ to: '/chat', search: { model: chatModel } })}
+                  >
                     {displayName}
                   </DropdownMenuItem>
                 );

@@ -30,7 +30,7 @@ fn _main() -> anyhow::Result<()> {
   // Set rerun conditions
   // println!("cargo:rerun-if-changed=../bodhi/src");
   // println!("cargo:rerun-if-changed=../bodhi/package.json");
-  // println!("cargo:rerun-if-changed=../bodhi/next.config.js");
+  // println!("cargo:rerun-if-changed=../bodhi/vite.config.ts");
 
   Ok(())
 }
@@ -109,6 +109,10 @@ fn validate_frontend_assets(bodhi_dir: &Path) -> anyhow::Result<()> {
       "Frontend build output directory does not exist: {:?}",
       out_dir
     );
+  }
+  let index_html = out_dir.join("index.html");
+  if !index_html.exists() {
+    bail!("Frontend build output missing index.html: {:?}", index_html);
   }
   Ok(())
 }

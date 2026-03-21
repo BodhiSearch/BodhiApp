@@ -1,23 +1,21 @@
-'use client';
-
 import React from 'react';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearch } from '@tanstack/react-router';
 
 import AliasForm from '@/app/models/alias/components/AliasForm';
 import AppInitializer from '@/components/AppInitializer';
 
 function NewModelContent() {
-  const searchParams = useSearchParams();
+  const search = useSearch({ strict: false });
 
   const initialData =
-    searchParams?.get('repo') || searchParams?.get('filename')
+    search.repo || search.filename
       ? {
           source: 'user' as const,
           alias: '',
-          repo: searchParams?.get('repo') || '',
-          filename: searchParams?.get('filename') || '',
-          snapshot: searchParams?.get('snapshot') || '',
+          repo: search.repo || '',
+          filename: search.filename || '',
+          snapshot: search.snapshot || '',
           request_params: {},
           context_params: [],
         }

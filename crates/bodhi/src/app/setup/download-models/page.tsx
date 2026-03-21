@@ -1,8 +1,6 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import { SetupContainer, SetupCard, SetupFooter } from '@/app/setup/components';
 import { ModelCard } from '@/app/setup/download-models/ModelCard';
@@ -13,7 +11,7 @@ import { useChatModelsCatalog, useEmbeddingModelsCatalog, useListDownloads, useP
 import { ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 
 export function ModelDownloadContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToastMessages();
   const [enablePolling, setEnablePolling] = useState(false);
   const { data: downloads } = useListDownloads(1, 100, { enablePolling });
@@ -98,7 +96,7 @@ export function ModelDownloadContent() {
 
       <SetupFooter
         clarificationText="Downloads will continue in the background. You can download additional models later on the Models page."
-        onContinue={() => router.push(ROUTE_SETUP_API_MODELS)}
+        onContinue={() => navigate({ to: ROUTE_SETUP_API_MODELS })}
         buttonTestId="continue-button"
       />
     </SetupContainer>

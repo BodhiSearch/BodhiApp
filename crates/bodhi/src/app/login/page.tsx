@@ -1,10 +1,8 @@
-'use client';
-
 import { useEffect, useRef, useState } from 'react';
 
 import { AxiosResponse } from 'axios';
 import { AppStatus, RedirectResponse, TenantListItem } from '@bodhiapp/ts-client';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
@@ -24,20 +22,20 @@ function MultiTenantLoginContent() {
   const [redirecting, setRedirecting] = useState(false);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false });
 
   // 5a. Read invite parameter on mount and store in sessionStorage
   const hasInviteProcessed = useRef(false);
   useEffect(() => {
     if (hasInviteProcessed.current) return;
-    const inviteClientId = searchParams?.get('invite');
+    const inviteClientId = search.invite;
     if (inviteClientId) {
       hasInviteProcessed.current = true;
       sessionStorage.setItem('login_to_tenant', inviteClientId);
-      router.replace('/login/');
+      navigate({ to: '/login/', replace: true });
     }
-  }, [searchParams, router]);
+  }, [search, navigate]);
 
   // Dashboard OAuth (platform login)
   const { mutate: initiateDashboardOAuth, isPending: isDashboardLoading } = useDashboardOAuthInitiate({
@@ -50,7 +48,7 @@ function MultiTenantLoginContent() {
         setRedirecting(false);
         return;
       }
-      handleSmartRedirect(location, router);
+      handleSmartRedirect(location, navigate);
     },
     onError: (message: string) => {
       setError(message);
@@ -69,7 +67,7 @@ function MultiTenantLoginContent() {
         setRedirecting(false);
         return;
       }
-      handleSmartRedirect(location, router);
+      handleSmartRedirect(location, navigate);
     },
     onError: (message) => {
       setError(message);
@@ -102,7 +100,7 @@ function MultiTenantLoginContent() {
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-      handleSmartRedirect(redirectUrl, router);
+      handleSmartRedirect(redirectUrl, navigate);
     },
     onError: (message) => {
       localStorage.clear();
@@ -113,7 +111,7 @@ function MultiTenantLoginContent() {
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
-      handleSmartRedirect(ROUTE_LOGIN, router);
+      handleSmartRedirect(ROUTE_LOGIN, navigate);
     },
   });
 
@@ -190,7 +188,7 @@ function MultiTenantLoginContent() {
 
   // If status is 'setup' and no invite flow active, redirect to tenant creation
   if (appInfo?.status === 'setup' && !sessionStorage.getItem('login_to_tenant')) {
-    router.push(ROUTE_SETUP_TENANTS);
+    navigate({ to: ROUTE_SETUP_TENANTS });
     return null;
   }
 
@@ -200,7 +198,7 @@ function MultiTenantLoginContent() {
     appInfo?.client_id &&
     (!userInfo.role || userInfo.role === 'resource_guest' || userInfo.role === 'resource_anonymous')
   ) {
-    router.push(ROUTE_REQUEST_ACCESS);
+    navigate({ to: ROUTE_REQUEST_ACCESS });
     return null;
   }
 
@@ -347,12 +345,12 @@ export function LoginContent() {
   const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-      handleSmartRedirect(redirectUrl, router);
+      handleSmartRedirect(redirectUrl, navigate);
     },
     onError: (message) => {
       // Reset local storage and cookies on logout failure
@@ -365,7 +363,7 @@ export function LoginContent() {
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
-      handleSmartRedirect(ROUTE_LOGIN, router);
+      handleSmartRedirect(ROUTE_LOGIN, navigate);
     },
   });
 
@@ -384,7 +382,7 @@ export function LoginContent() {
       }
 
       // Handle redirect using smart URL detection
-      handleSmartRedirect(location, router);
+      handleSmartRedirect(location, navigate);
     },
     onError: (message) => {
       setError(message);

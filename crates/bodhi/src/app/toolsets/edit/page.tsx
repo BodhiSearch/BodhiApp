@@ -1,10 +1,8 @@
-'use client';
-
 import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash2 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
@@ -49,9 +47,9 @@ const updateToolsetSchema = z.object({
 type UpdateToolsetFormData = z.infer<typeof updateToolsetSchema>;
 
 function EditToolsetContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const id = searchParams?.get('id');
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false });
+  const id = search.id;
 
   const { data: toolset, isLoading, error } = useGetToolset(id || '', { enabled: !!id });
   const { data: toolsetsResponse } = useListToolsets();
@@ -77,7 +75,7 @@ function EditToolsetContent() {
   const deleteMutation = useDeleteToolset({
     onSuccess: () => {
       toast({ title: 'Toolset deleted successfully' });
-      router.push('/toolsets');
+      navigate({ to: '/toolsets' });
     },
     onError: (message) => {
       toast({ title: 'Failed to delete toolset', description: message, variant: 'destructive' });
@@ -114,9 +112,9 @@ function EditToolsetContent() {
         description: 'This toolset has been disabled by an administrator.',
         variant: 'destructive',
       });
-      router.push('/toolsets');
+      navigate({ to: '/toolsets' });
     }
-  }, [toolset, isAdminEnabled, router]);
+  }, [toolset, isAdminEnabled, navigate]);
 
   const onSubmit = (data: UpdateToolsetFormData) => {
     if (!id) return;
@@ -286,7 +284,7 @@ function EditToolsetContent() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push('/toolsets')}
+            onClick={() => navigate({ to: '/toolsets' })}
             disabled={updateMutation.isPending}
             data-testid="toolset-cancel-button"
           >

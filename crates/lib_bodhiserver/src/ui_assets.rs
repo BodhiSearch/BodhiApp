@@ -1,6 +1,6 @@
 use include_dir::{include_dir, Dir};
 
-/// Embedded UI assets built from the Next.js frontend
+/// Embedded UI assets built from the Vite frontend
 ///
 /// This static directory contains all the compiled frontend assets
 /// including HTML, CSS, JavaScript, and other static files.

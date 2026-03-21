@@ -14,16 +14,25 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock }),
-  usePathname: () => '/mcps/servers/new',
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/mcps/servers/new' }),
+  };
+});
 
 setupMswV2();
 
 beforeEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
   server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
 });
 
@@ -192,7 +201,7 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
 
     // Should redirect to MCP servers list
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/mcps/servers');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/servers' });
     });
   });
 

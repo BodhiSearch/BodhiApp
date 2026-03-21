@@ -1,10 +1,8 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 
 import { AliasResponse } from '@bodhiapp/ts-client';
 import { Globe, MessageSquare, Plus } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable, Pagination } from '@/components/DataTable';
@@ -61,7 +59,7 @@ const columns = [
 ];
 
 function ModelsPageContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sort, setSort] = useState<SortState>({
@@ -110,21 +108,24 @@ function ModelsPageContent() {
 
   const handleEdit = (model: AliasResponse) => {
     if (isApiAlias(model)) {
-      router.push(`/models/api/edit?id=${model.id}`);
+      navigate({ to: '/models/api/edit', search: { id: model.id } });
     } else if (isUserAlias(model)) {
-      router.push(`/models/alias/edit?id=${model.id}`);
+      navigate({ to: '/models/alias/edit', search: { id: model.id } });
     }
   };
 
   const handleNew = (model: AliasResponse) => {
     if (hasLocalFileProperties(model)) {
-      router.push(`/models/alias/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
+      navigate({
+        to: '/models/alias/new',
+        search: { repo: model.repo, filename: model.filename, snapshot: model.snapshot },
+      });
     }
   };
 
   const handleChat = (model: AliasResponse) => {
     const modelIdentifier = isApiAlias(model) ? model.id : model.alias;
-    router.push(`/chat?model=${modelIdentifier}`);
+    navigate({ to: '/chat', search: { model: modelIdentifier } });
   };
 
   const handleDelete = (model: AliasResponse) => {
@@ -169,11 +170,11 @@ function ModelsPageContent() {
   };
 
   const handleNewAlias = () => {
-    router.push('/models/alias/new');
+    navigate({ to: '/models/alias/new' });
   };
 
   const handleNewApiModel = () => {
-    router.push('/models/api/new');
+    navigate({ to: '/models/api/new' });
   };
 
   const getModelDisplayRepo = (model: AliasResponse): string => {
@@ -200,7 +201,7 @@ function ModelsPageContent() {
     onNew: handleNew,
     onChat: handleChat,
     getExternalUrl,
-    router,
+    navigate,
   };
 
   const renderRow = (model: AliasResponse) => (
@@ -283,7 +284,7 @@ function ModelsPageContent() {
                   variant="outline"
                   className="justify-start"
                   onClick={() => {
-                    router.push(`/chat?model=${chatModel}`);
+                    navigate({ to: '/chat', search: { model: chatModel } });
                     setMoreModelsModal(null);
                   }}
                 >

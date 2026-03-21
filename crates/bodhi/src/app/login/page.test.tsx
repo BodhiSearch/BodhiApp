@@ -15,15 +15,20 @@ import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the hooks
-const pushMock = vi.fn();
-const replaceMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-    replace: replaceMock,
-  }),
-  useSearchParams: () => new URLSearchParams(),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => ({}),
+  };
+});
 
 beforeAll(() => {
   server.listen();
@@ -34,8 +39,7 @@ afterAll(() => server.close());
 beforeEach(() => {
   mockWindowLocation('http://localhost:3000/ui/login');
   server.resetHandlers();
-  pushMock.mockClear();
-  replaceMock.mockClear();
+  navigateMock.mockClear();
   sessionStorage.clear();
   vi.clearAllMocks();
 });
@@ -43,7 +47,7 @@ beforeEach(() => {
 describe('LoginContent loading states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    pushMock.mockClear();
+    navigateMock.mockClear();
     server.use(...mockUserLoggedOut(), ...mockAppInfo({ status: 'ready' }));
   });
 
@@ -57,7 +61,7 @@ describe('LoginContent loading states', () => {
 describe('LoginContent with user not Logged In', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    pushMock.mockClear();
+    navigateMock.mockClear();
     server.use(
       ...mockUserLoggedOut(),
       ...mockAppInfo({ status: 'ready', client_id: 'test_client_id' }),
@@ -236,7 +240,7 @@ describe('LoginContent with user not Logged In', () => {
 
     // Should use router.push for same-origin URLs
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/chat');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
     });
   });
 });
@@ -244,7 +248,7 @@ describe('LoginContent with user not Logged In', () => {
 describe('LoginContent with user Logged In', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    pushMock.mockClear();
+    navigateMock.mockClear();
     server.use(
       ...mockUserLoggedIn(),
       ...mockAppInfo({ status: 'ready' }),
@@ -283,7 +287,7 @@ describe('LoginContent with user Logged In', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 
@@ -315,15 +319,14 @@ describe('LoginContent access control', () => {
     await act(async () => {
       render(<LoginPage />, { wrapper: createWrapper() });
     });
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/setup'));
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' }));
   });
 });
 
 describe('MultiTenantLoginContent', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    pushMock.mockClear();
-    replaceMock.mockClear();
+    navigateMock.mockClear();
     sessionStorage.clear();
   });
 

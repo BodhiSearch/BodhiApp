@@ -6,22 +6,21 @@ import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-let mockSearchParams = new URLSearchParams('code=test-code&state=test-state');
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => ({
-    get: vi.fn((key: string) => mockSearchParams.get(key)),
-    forEach: vi.fn((callback: (value: string, key: string) => void) => {
-      mockSearchParams.forEach(callback);
-    }),
-  }),
-}));
-vi.mock('next/image', () => ({
-  default: () => <img alt="mocked image" />,
-}));
+const navigateMock = vi.fn();
+let mockSearch: Record<string, string | undefined> = { code: 'test-code', state: 'test-state' };
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => mockSearch,
+  };
+});
 
 const server = setupServer();
 beforeAll(() => {
@@ -33,9 +32,9 @@ afterAll(() => server.close());
 beforeEach(() => {
   mockWindowLocation('http://localhost:3000/ui/auth/callback');
   server.resetHandlers();
-  pushMock.mockClear();
+  navigateMock.mockClear();
   vi.clearAllMocks();
-  mockSearchParams = new URLSearchParams('code=test-code&state=test-state');
+  mockSearch = { code: 'test-code', state: 'test-state' };
 });
 
 describe('AuthCallbackPage', () => {
@@ -55,7 +54,7 @@ describe('AuthCallbackPage', () => {
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/chat');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
     });
   });
 
@@ -70,11 +69,14 @@ describe('AuthCallbackPage', () => {
     });
   });
 
-  it('handles same-origin URL with different path, query, and hash', async () => {
-    server.use(...mockAuthCallback({ location: 'http://localhost:3000/ui/setup/download-models?step=1#section' }));
+  it('handles same-origin URL with different path and query', async () => {
+    server.use(...mockAuthCallback({ location: 'http://localhost:3000/ui/setup/download-models?step=1' }));
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup/download-models?step=1#section');
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/setup/download-models',
+        search: { step: '1' },
+      });
     });
   });
 
@@ -97,9 +99,12 @@ describe('AuthCallbackPage', () => {
   });
 
   it('sends all OAuth callback parameters to backend', async () => {
-    mockSearchParams = new URLSearchParams(
-      'code=test-auth-code&state=test-state&scope=openid email profile&session_state=session-123'
-    );
+    mockSearch = {
+      code: 'test-auth-code',
+      state: 'test-state',
+      scope: 'openid email profile',
+      session_state: 'session-123',
+    };
     server.use(
       ...mockAuthCallback(
         { location: 'http://localhost:3000/ui/chat' },
@@ -115,7 +120,7 @@ describe('AuthCallbackPage', () => {
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/chat');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
     });
   });
 
@@ -137,7 +142,7 @@ describe('AuthCallbackPage', () => {
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/chat');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
     });
   });
 
@@ -168,7 +173,7 @@ describe('AuthCallbackPage', () => {
       expect(screen.getByText('Processing Login...')).toBeInTheDocument();
     });
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/chat');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
     });
   });
 
@@ -186,7 +191,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles empty search parameters', async () => {
-    mockSearchParams = new URLSearchParams('');
+    mockSearch = {};
     server.use(
       ...mockAuthCallbackError({
         code: 'missing_parameters',

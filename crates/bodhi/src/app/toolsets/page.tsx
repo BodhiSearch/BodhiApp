@@ -1,10 +1,7 @@
-'use client';
-
 import { useMemo, useState } from 'react';
 
 import { Pencil, Plus, Trash2, Wrench } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable } from '@/components/DataTable';
@@ -62,8 +59,8 @@ function getToolsetStatus(
 }
 
 function ToolsetsPageContent() {
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { data: userInfo } = useGetUser();
   const { data, isLoading, error } = useListToolsets();
   const deleteMutation = useDeleteToolset({
@@ -91,7 +88,7 @@ function ToolsetsPageContent() {
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
 
   const handleEdit = (toolset: ToolsetResponse) => {
-    router.push(`/toolsets/edit?id=${toolset.id}`);
+    navigate({ to: '/toolsets/edit', search: { id: toolset.id } });
   };
 
   const handleDeleteClick = (toolset: ToolsetResponse) => {
@@ -180,7 +177,7 @@ function ToolsetsPageContent() {
         <div className="bg-muted/50 p-1 rounded-lg mb-6">
           <nav className="flex space-x-1" aria-label="Toolsets Navigation">
             <Link
-              href="/toolsets"
+              to="/toolsets"
               className={cn(
                 'px-3 py-2 text-sm font-medium rounded-md transition-all',
                 pathname === '/toolsets'
@@ -191,7 +188,7 @@ function ToolsetsPageContent() {
               My Toolsets
             </Link>
             <Link
-              href="/toolsets/admin"
+              to="/toolsets/admin"
               className={cn(
                 'px-3 py-2 text-sm font-medium rounded-md transition-all',
                 pathname === '/toolsets/admin'
@@ -208,7 +205,7 @@ function ToolsetsPageContent() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Toolsets</h1>
         <Button asChild data-testid="toolset-new-button">
-          <Link href="/toolsets/new">
+          <Link to="/toolsets/new">
             <Plus className="h-4 w-4 mr-2" />
             New Toolset
           </Link>
@@ -238,7 +235,7 @@ function ToolsetsPageContent() {
         <div className="text-center py-8 text-muted-foreground">
           <p>No toolsets configured</p>
           <Button asChild variant="link" className="mt-2">
-            <Link href="/toolsets/new">Create your first toolset</Link>
+            <Link to="/toolsets/new">Create your first toolset</Link>
           </Button>
         </div>
       )}

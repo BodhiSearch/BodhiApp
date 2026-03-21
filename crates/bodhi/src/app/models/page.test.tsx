@@ -26,12 +26,22 @@ vi.mock('@/components/DataTable', () => ({
   Pagination: () => <div data-testid="pagination">Mocked Pagination</div>,
 }));
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, search, children, ...rest }: any) => {
+      const searchStr = search ? '?' + new URLSearchParams(search).toString() : '';
+      return (
+        <a href={`${to}${searchStr}`} {...rest}>
+          {children}
+        </a>
+      );
+    },
+    useNavigate: () => navigateMock,
+  };
+});
 
 const mockModelsResponse = {
   data: [
@@ -57,7 +67,7 @@ afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 beforeEach(() => {
   vi.resetAllMocks();
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 // Mock window.matchMedia for responsive testing
@@ -157,7 +167,10 @@ describe('ModelsPage', () => {
         newButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/models/alias/new?repo=test-repo&filename=test-file.bin&snapshot=abc123');
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/models/alias/new',
+        search: { repo: 'test-repo', filename: 'test-file.bin', snapshot: 'abc123' },
+      });
     });
 
     it('shows edit button for non-model source type', async () => {
@@ -174,7 +187,7 @@ describe('ModelsPage', () => {
         editButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/models/alias/edit?id=test-uuid-1');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/alias/edit', search: { id: 'test-uuid-1' } });
     });
 
     it('shows chat and huggingface buttons for all models', async () => {
@@ -192,7 +205,7 @@ describe('ModelsPage', () => {
         chatButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/chat?model=test-model');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat', search: { model: 'test-model' } });
     });
 
     it('opens huggingface link in new tab', async () => {
@@ -223,7 +236,7 @@ describe('ModelsPage', () => {
         newApiModelButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/models/api/new');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/new' });
     });
   });
 
@@ -256,7 +269,7 @@ describe('ModelsPage', () => {
         editButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/models/api/edit?id=test-api-model');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit', search: { id: 'test-api-model' } });
     });
 
     it('shows chat button for API models with model identifier', async () => {
@@ -276,7 +289,7 @@ describe('ModelsPage', () => {
         fireEvent.click(chatButton!);
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/chat?model=gpt-4');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat', search: { model: 'gpt-4' } });
     });
 
     it('does not show HuggingFace button for API models', async () => {
@@ -318,7 +331,7 @@ describe('ModelsPage', () => {
       });
 
       // Verify navigation to edit page with correct ID
-      expect(pushMock).toHaveBeenCalledWith('/models/api/edit?id=test-api-model');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit', search: { id: 'test-api-model' } });
     });
 
     it('navigates to chat page when clicking on API model for chat', async () => {
@@ -344,7 +357,7 @@ describe('ModelsPage', () => {
       });
 
       // Verify navigation to chat page with the API model ID
-      expect(pushMock).toHaveBeenCalledWith('/chat?model=gpt-4');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat', search: { model: 'gpt-4' } });
     });
   });
 
@@ -366,7 +379,7 @@ describe('ModelsPage access control', () => {
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/setup');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
   });
 
   it('should redirect to /login if user is not logged in', async () => {
@@ -374,7 +387,7 @@ describe('ModelsPage access control', () => {
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/login');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
   });
 });
 

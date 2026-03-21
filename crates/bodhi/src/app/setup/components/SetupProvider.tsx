@@ -1,8 +1,6 @@
-'use client';
-
 import { createContext, useContext, ReactNode } from 'react';
 
-import { usePathname } from 'next/navigation';
+import { useLocation } from '@tanstack/react-router';
 
 import { SETUP_STEPS } from '../constants';
 
@@ -16,7 +14,7 @@ interface SetupContextType {
 const SetupContext = createContext<SetupContextType | undefined>(undefined);
 
 export function SetupProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
 
   const getStepFromPath = (path: string): number => {
     if (path.includes('/setup/resource-admin')) return SETUP_STEPS.RESOURCE_ADMIN;

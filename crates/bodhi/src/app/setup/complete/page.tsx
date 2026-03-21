@@ -1,10 +1,8 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 
 import { motion } from 'framer-motion';
 import { ArrowRight, BookOpen } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 import { siDiscord, siGithub, siX, siYoutube } from 'simple-icons';
 
 import { SetupContainer, SetupCard } from '@/app/setup/components';
@@ -110,7 +108,7 @@ function Confetti() {
 }
 
 function SetupCompleteContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [showConfetti, setShowConfetti] = useState(true);
 
   useEffect(() => {
@@ -181,7 +179,7 @@ function SetupCompleteContent() {
 
         {/* Start Using App Button */}
         <motion.div variants={itemVariants} className="flex justify-center pt-4">
-          <Button size="lg" onClick={() => router.push(ROUTE_CHAT)} className="px-8">
+          <Button size="lg" onClick={() => navigate({ to: ROUTE_CHAT })} className="px-8">
             Start Using Bodhi App →
           </Button>
         </motion.div>

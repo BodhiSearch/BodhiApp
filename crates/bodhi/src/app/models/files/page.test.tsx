@@ -25,12 +25,19 @@ vi.mock('@/components/DataTable', () => ({
   Pagination: () => <div data-testid="pagination">Mocked Pagination</div>,
 }));
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+  };
+});
 
 const mockModelFilesResponse = {
   data: [
@@ -52,7 +59,7 @@ afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 beforeEach(() => {
   vi.resetAllMocks();
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 // Mock window.matchMedia for responsive testing
@@ -238,7 +245,7 @@ describe('ModelFilesPage access control', () => {
     await act(async () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/setup');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -247,6 +254,6 @@ describe('ModelFilesPage access control', () => {
     await act(async () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/login');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
   });
 });

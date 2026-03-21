@@ -20,18 +20,25 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: () => '/toolsets',
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/toolsets' }),
+  };
+});
 
 setupMswV2();
 
 beforeEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 afterEach(() => {
@@ -47,7 +54,7 @@ describe('ToolsetsPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
     });
   });
 
@@ -59,7 +66,7 @@ describe('ToolsetsPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 });
@@ -368,7 +375,7 @@ describe('ToolsetsPage - Instance List Display', () => {
     const editButton = screen.getByTestId('toolset-edit-button-uuid-exa-1');
     await user.click(editButton);
 
-    expect(pushMock).toHaveBeenCalledWith('/toolsets/edit?id=uuid-exa-1');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/toolsets/edit', search: { id: 'uuid-exa-1' } });
   });
 
   it('displays empty state when no toolsets available', async () => {

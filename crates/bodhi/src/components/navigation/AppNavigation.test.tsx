@@ -9,18 +9,19 @@ import { describe, expect, it, vi } from 'vitest';
 const mockPathname = vi.fn();
 
 // All vi.mock calls must come before any imports that use them
-vi.mock('next/navigation', () => ({
-  usePathname: () => mockPathname(),
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    prefetch: vi.fn(),
-  }),
-}));
-
-vi.mock('next/link', () => ({
-  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
-}));
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useLocation: () => ({ pathname: mockPathname() }),
+    useNavigate: () => vi.fn(),
+  };
+});
 
 vi.mock('@/components/ThemeProvider', () => ({
   useTheme: () => ({

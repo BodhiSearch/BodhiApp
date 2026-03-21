@@ -1,7 +1,5 @@
-'use client';
-
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import { SetupContainer, SetupFooter } from '@/app/setup/components';
 import { itemVariants } from '@/app/setup/types';
@@ -11,14 +9,14 @@ import { ROUTE_SETUP_BROWSER_EXTENSION } from '@/lib/constants';
 import { SetupToolsetForm } from './SetupToolsetForm';
 
 function ToolsetsSetupContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleSuccess = () => {
-    router.push(ROUTE_SETUP_BROWSER_EXTENSION);
+    navigate({ to: ROUTE_SETUP_BROWSER_EXTENSION });
   };
 
   const handleSkip = () => {
-    router.push(ROUTE_SETUP_BROWSER_EXTENSION);
+    navigate({ to: ROUTE_SETUP_BROWSER_EXTENSION });
   };
 
   return (

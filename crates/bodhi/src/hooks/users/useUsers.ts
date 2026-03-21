@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 
 import { UserInfo, UserInfoEnvelope, UserResponse, UserListResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 // Internal imports
 import { UseQueryResult, UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
@@ -25,14 +25,14 @@ export function useGetUser(options?: { enabled?: boolean }) {
 
 // Authenticated user hook with redirect functionality
 export function useGetAuthenticatedUser(): UseQueryResult<AuthenticatedUser, AxiosError<ErrorResponse>> {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data: userInfo, isLoading, error, ...queryResult } = useGetUser();
 
   useEffect(() => {
     if (!isLoading && userInfo?.auth_status !== 'logged_in') {
-      router.push(ROUTE_LOGIN);
+      navigate({ to: ROUTE_LOGIN });
     }
-  }, [userInfo, isLoading, router]);
+  }, [userInfo, isLoading, navigate]);
 
   // Return the query result but with narrowed type for the data
   return {

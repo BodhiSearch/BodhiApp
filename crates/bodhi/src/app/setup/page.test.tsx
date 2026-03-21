@@ -16,15 +16,21 @@ import userEvent from '@testing-library/user-event';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockToast = vi.fn();
-const pushMock = vi.fn();
-const mockPathname = '/setup';
+const navigateMock = vi.fn();
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: () => mockPathname,
-}));
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/setup' }),
+  };
+});
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
@@ -40,7 +46,7 @@ afterAll(() => server.close());
 afterEach(() => {
   server.resetHandlers();
   vi.clearAllMocks();
-  pushMock.mockClear();
+  navigateMock.mockClear();
   mockToast.mockClear();
 });
 
@@ -82,7 +88,7 @@ describe('Setup Page', () => {
 
     // Wait for the API call and redirect
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup/download-models');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/download-models' });
     });
   });
 
@@ -103,7 +109,7 @@ describe('Setup Page', () => {
 
     // Wait for the API call and redirect
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup/resource-admin');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/resource-admin' });
     });
   });
 
@@ -147,7 +153,7 @@ describe('Setup Page', () => {
     });
 
     // Ensure no API call was made
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('should show validation error for server name longer than 100 characters', async () => {
@@ -170,7 +176,7 @@ describe('Setup Page', () => {
     });
 
     // Ensure no API call was made
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('should show validation error for description longer than 500 characters', async () => {
@@ -199,7 +205,7 @@ describe('Setup Page', () => {
     });
 
     // Ensure no API call was made
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('should render page content with updated benefits', async () => {
@@ -262,7 +268,7 @@ describe('Setup Page', () => {
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
     await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup/download-models');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/download-models' });
     });
   });
 });

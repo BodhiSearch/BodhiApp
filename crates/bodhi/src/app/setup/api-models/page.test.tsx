@@ -37,17 +37,22 @@ import {
 // Import SetupProvider for context
 import { SetupProvider } from '@/app/setup/components';
 
-// Mock next/navigation router
-const mockPush = vi.fn();
-const mockReplace = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace,
-  }),
-  useSearchParams: vi.fn(),
-  usePathname: () => '/setup/api-models',
-}));
+// Mock navigation
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => ({}),
+    useLocation: () => ({ pathname: '/setup/api-models' }),
+  };
+});
 
 // Mock toast notifications
 const mockToast = vi.fn();
@@ -196,8 +201,8 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       await user.click(skipButton);
 
       // Verify navigation to setup browser extension
-      expect(mockPush).toHaveBeenCalledWith('/setup/toolsets');
-      expect(mockPush).toHaveBeenCalledTimes(1);
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/toolsets' });
+      expect(navigateMock).toHaveBeenCalledTimes(1);
 
       // Verify no form submission occurred (no toast notifications)
       expect(mockToast).not.toHaveBeenCalled();
@@ -298,9 +303,9 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       });
 
       // Verify redirect to setup browser extension (NOT to complete or models page)
-      expect(mockPush).toHaveBeenCalledWith('/setup/toolsets');
-      expect(mockPush).not.toHaveBeenCalledWith('/setup/complete');
-      expect(mockPush).not.toHaveBeenCalledWith('/models');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/toolsets' });
+      expect(navigateMock).not.toHaveBeenCalledWith({ to: '/setup/complete' });
+      expect(navigateMock).not.toHaveBeenCalledWith({ to: '/models' });
     });
   });
 
@@ -360,7 +365,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       });
 
       // Verify NO navigation occurred (stays on setup page)
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
 
       // Verify form is still visible and functional
       expect(screen.getByTestId('setup-api-model-form')).toBeInTheDocument();

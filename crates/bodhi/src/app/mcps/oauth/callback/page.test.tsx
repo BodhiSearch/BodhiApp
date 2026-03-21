@@ -9,24 +9,29 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BODHI_API_BASE } from '@/hooks/useQuery';
 
-const pushMock = vi.fn();
-let searchParamsMap: Record<string, string | null> = {};
+const navigateMock = vi.fn();
+let mockSearch: Record<string, string | undefined> = {};
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => ({
-    get: (key: string) => searchParamsMap[key] ?? null,
-  }),
-  usePathname: () => '/mcps/oauth/callback',
-}));
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => mockSearch,
+    useLocation: () => ({ pathname: '/mcps/oauth/callback' }),
+  };
+});
 
 setupMswV2();
 
 beforeEach(() => {
-  pushMock.mockClear();
-  searchParamsMap = {};
+  navigateMock.mockClear();
+  mockSearch = {};
   sessionStorage.clear();
 });
 
@@ -37,7 +42,7 @@ afterEach(() => {
 
 describe('OAuthCallbackPage - Success flow', () => {
   beforeEach(() => {
-    searchParamsMap = { code: 'auth-code-123', state: 'state-abc' };
+    mockSearch = { code: 'auth-code-123', state: 'state-abc' };
     sessionStorage.setItem(
       'mcp_oauth_form_state',
       JSON.stringify({
@@ -65,7 +70,7 @@ describe('OAuthCallbackPage - Success flow', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/mcps/new/');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/new/' });
     });
   });
 
@@ -91,14 +96,14 @@ describe('OAuthCallbackPage - Success flow', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/mcps/new/?id=existing-mcp-id');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/new/?id=existing-mcp-id' });
     });
   });
 });
 
 describe('OAuthCallbackPage - Error from provider', () => {
   beforeEach(() => {
-    searchParamsMap = { error: 'access_denied', error_description: 'User denied access' };
+    mockSearch = { error: 'access_denied', error_description: 'User denied access' };
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({ role: 'resource_user' }, { stub: true })
@@ -120,7 +125,7 @@ describe('OAuthCallbackPage - Error from provider', () => {
 
 describe('OAuthCallbackPage - Missing code', () => {
   beforeEach(() => {
-    searchParamsMap = {};
+    mockSearch = {};
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({ role: 'resource_user' }, { stub: true })
@@ -141,7 +146,7 @@ describe('OAuthCallbackPage - Missing code', () => {
 
 describe('OAuthCallbackPage - Missing state', () => {
   beforeEach(() => {
-    searchParamsMap = { code: 'auth-code-123' };
+    mockSearch = { code: 'auth-code-123' };
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({ role: 'resource_user' }, { stub: true })
@@ -162,7 +167,7 @@ describe('OAuthCallbackPage - Missing state', () => {
 
 describe('OAuthCallbackPage - Corrupt session data', () => {
   beforeEach(() => {
-    searchParamsMap = { code: 'auth-code-123', state: 'state-abc' };
+    mockSearch = { code: 'auth-code-123', state: 'state-abc' };
     sessionStorage.setItem('mcp_oauth_form_state', 'not-valid-json{{{');
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
@@ -184,7 +189,7 @@ describe('OAuthCallbackPage - Corrupt session data', () => {
 
 describe('OAuthCallbackPage - Token exchange failure', () => {
   beforeEach(() => {
-    searchParamsMap = { code: 'bad-code', state: 'state-abc' };
+    mockSearch = { code: 'bad-code', state: 'state-abc' };
     sessionStorage.setItem(
       'mcp_oauth_form_state',
       JSON.stringify({

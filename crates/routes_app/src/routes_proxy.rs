@@ -14,7 +14,7 @@ type HttpClient = Client<(), ()>;
 ///
 /// Uses explicit routes (not `nest`) to avoid axum's trailing-slash issues.
 /// The request path is forwarded as-is since it already contains the `/ui` prefix
-/// that the Next.js dev server expects (basePath is active in dev mode).
+/// that the Vite dev server expects (base path is active in dev mode).
 pub fn build_ui_proxy_router(backend_url: String) -> Router {
   let url1 = backend_url.clone();
   let url2 = backend_url.clone();
@@ -72,7 +72,7 @@ async fn http_proxy(mut req: Request, backend_url: &str, path: &str) -> Response
     .unwrap_or("localhost:3000");
   let uri = format!("{backend_url}{path}").parse::<Uri>().unwrap();
   *req.uri_mut() = uri;
-  // Replace Host header so Next.js doesn't treat this as a cross-origin request
+  // Replace Host header so Vite doesn't treat this as a cross-origin request
   req
     .headers_mut()
     .insert(header::HOST, backend_authority.parse().unwrap());
@@ -225,7 +225,7 @@ mod tests {
     let addr = "127.0.0.1:0";
     let listener = TcpListener::bind(&addr).await.unwrap();
     let local_addr = listener.local_addr().unwrap();
-    // Backend expects /ui-prefixed paths (simulates Next.js dev server with basePath)
+    // Backend expects /ui-prefixed paths (simulates Vite dev server with base path)
     let backend_app = Router::new()
       .route("/ui", get(|| async { "Root no slash" }))
       .route("/ui/", get(|| async { "Root with slash" }))

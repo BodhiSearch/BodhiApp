@@ -1,10 +1,7 @@
-'use client';
-
 import { useState } from 'react';
 
 import { Eye, Pencil, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useNavigate } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable } from '@/components/DataTable';
@@ -71,7 +68,7 @@ const columns = [
 ];
 
 function McpServersPageContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data: userInfo } = useGetUser();
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
   const { data, isLoading, error } = useListMcpServers({});
@@ -143,7 +140,7 @@ function McpServersPageContent() {
             className="h-8 w-8 p-0"
             data-testid={`server-view-button-${server.id}`}
           >
-            <Link href={`${ROUTE_MCP_SERVERS}/view?id=${server.id}`} title={`View ${server.name}`}>
+            <Link to={`${ROUTE_MCP_SERVERS}/view`} search={{ id: server.id }} title={`View ${server.name}`}>
               <Eye className="h-4 w-4" />
             </Link>
           </Button>
@@ -151,7 +148,7 @@ function McpServersPageContent() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push(`${ROUTE_MCP_SERVERS}/edit?id=${server.id}`)}
+              onClick={() => navigate({ to: `${ROUTE_MCP_SERVERS}/edit/`, search: { id: server.id } })}
               title={`Edit ${server.name}`}
               className="h-8 w-8 p-0"
               data-testid={`server-edit-button-${server.id}`}
@@ -195,7 +192,7 @@ function McpServersPageContent() {
         <h1 className="text-2xl font-bold">MCP Servers</h1>
         {isAdmin && (
           <Button asChild data-testid="mcp-server-new-button">
-            <Link href={`${ROUTE_MCP_SERVERS}/new`}>
+            <Link to={`${ROUTE_MCP_SERVERS}/new`}>
               <Plus className="h-4 w-4 mr-2" />
               New MCP Server
             </Link>
@@ -225,7 +222,7 @@ function McpServersPageContent() {
           <p>No MCP servers registered yet</p>
           {isAdmin && (
             <Button asChild variant="link" className="mt-2">
-              <Link href={`${ROUTE_MCP_SERVERS}/new`}>Register the first MCP server</Link>
+              <Link to={`${ROUTE_MCP_SERVERS}/new`}>Register the first MCP server</Link>
             </Button>
           )}
         </div>

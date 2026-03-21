@@ -1,10 +1,7 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { Link, useSearch } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import {
@@ -37,8 +34,8 @@ import { AuthConfigForm } from '../components/AuthConfigForm';
 import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
 
 function ServerViewContent() {
-  const searchParams = useSearchParams();
-  const serverId = searchParams.get('id') || '';
+  const search = useSearch({ strict: false });
+  const serverId = search.id || '';
 
   const {
     data: server,
@@ -197,7 +194,7 @@ function ServerViewContent() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{server?.name}</CardTitle>
           <Button variant="outline" size="sm" asChild>
-            <Link href={`${ROUTE_MCP_SERVERS}/edit?id=${serverId}`}>
+            <Link to={`${ROUTE_MCP_SERVERS}/edit`} search={{ id: serverId }}>
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </Link>

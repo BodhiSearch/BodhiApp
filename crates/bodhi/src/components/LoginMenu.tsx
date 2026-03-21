@@ -1,8 +1,6 @@
-'use client';
-
 import { useState } from 'react';
 
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import { Button } from '@/components/ui/button';
 import { useToastMessages } from '@/hooks/use-toast-messages';
@@ -18,12 +16,12 @@ export function LoginMenu() {
   const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-      handleSmartRedirect(redirectUrl, router);
+      handleSmartRedirect(redirectUrl, navigate);
     },
     onError: (message) => {
       // Reset local storage and cookies on logout failure
@@ -36,7 +34,7 @@ export function LoginMenu() {
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
-      handleSmartRedirect(ROUTE_LOGIN, router);
+      handleSmartRedirect(ROUTE_LOGIN, navigate);
     },
   });
 
@@ -55,7 +53,7 @@ export function LoginMenu() {
       }
 
       // Handle redirect using smart URL detection
-      handleSmartRedirect(location, router);
+      handleSmartRedirect(location, navigate);
     },
     onError: (message) => {
       setError(message);

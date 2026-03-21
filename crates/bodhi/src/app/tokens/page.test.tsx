@@ -35,12 +35,19 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+  };
+});
 
 const toastMock = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
@@ -52,7 +59,7 @@ vi.mock('@/hooks/use-toast', () => ({
 setupMswV2();
 
 beforeEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
   toastMock.mockClear();
 });
 
@@ -69,7 +76,7 @@ describe('TokenPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
     });
   });
 
@@ -81,7 +88,7 @@ describe('TokenPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 });

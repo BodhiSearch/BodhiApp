@@ -1,9 +1,7 @@
-'use client';
-
 import { useMemo } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
@@ -37,14 +35,14 @@ const createToolsetSchema = z.object({
 type CreateToolsetFormData = z.infer<typeof createToolsetSchema>;
 
 function NewToolsetPageContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data: toolsetsData } = useListToolsets();
   const { data: typesData, isLoading: typesLoading, error: typesError } = useListToolsetTypes();
 
   const createMutation = useCreateToolset({
     onSuccess: (toolset) => {
       toast({ title: 'Toolset created successfully', description: `Created ${toolset.slug}` });
-      router.push('/toolsets');
+      navigate({ to: '/toolsets' });
     },
     onError: (message) => {
       toast({ title: 'Failed to create toolset', description: message, variant: 'destructive' });
@@ -270,7 +268,7 @@ function NewToolsetPageContent() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push('/toolsets')}
+                  onClick={() => navigate({ to: '/toolsets' })}
                   disabled={createMutation.isPending}
                   data-testid="toolset-cancel-button"
                 >

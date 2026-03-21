@@ -1,10 +1,7 @@
-'use client';
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AlertTriangle, ArrowLeft, Check, Copy, Loader2, RefreshCw, X } from 'lucide-react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { Link, useSearch } from '@tanstack/react-router';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -494,8 +491,8 @@ function ExecutionArea({ mcpId, tool, isWhitelisted }: { mcpId: string; tool: Mc
 // ============================================================================
 
 function McpPlaygroundContent() {
-  const searchParams = useSearchParams();
-  const id = searchParams.get('id') || '';
+  const search = useSearch({ strict: false });
+  const id = search.id || '';
   const queryClient = useQueryClient();
   const { data: mcp, isLoading, error } = useGetMcp(id, { enabled: !!id });
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
@@ -548,7 +545,7 @@ function McpPlaygroundContent() {
     <div className="flex flex-col h-[calc(100vh-4rem)]" data-testid="mcp-playground-page">
       <div className="border-b px-4 py-3 flex items-center gap-3">
         <Button variant="ghost" size="sm" asChild data-testid="mcp-playground-back-button">
-          <Link href="/mcps/">
+          <Link to="/mcps/">
             <ArrowLeft className="h-4 w-4 mr-1" />
             MCP Servers
           </Link>

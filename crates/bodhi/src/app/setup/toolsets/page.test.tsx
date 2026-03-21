@@ -25,13 +25,20 @@ import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: () => '/setup/toolsets',
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/setup/toolsets' }),
+  };
+});
 
 setupMswV2();
 
@@ -53,7 +60,7 @@ const waitForFormLoad = async () => {
 };
 
 beforeEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
   server.use(
     ...mockAppInfo({ status: 'ready' }, { stub: true }),
     ...mockUserLoggedIn({ role: 'resource_admin' }, { stub: true })
@@ -402,7 +409,7 @@ describe('ToolsetsSetupPage', () => {
       await user.click(createButton);
 
       await waitFor(() => {
-        expect(pushMock).toHaveBeenCalledWith('/setup/browser-extension');
+        expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/browser-extension' });
       });
     });
 
@@ -441,7 +448,7 @@ describe('ToolsetsSetupPage', () => {
       await user.click(createButton);
 
       await waitFor(() => {
-        expect(pushMock).not.toHaveBeenCalled();
+        expect(navigateMock).not.toHaveBeenCalled();
       });
     });
 
@@ -500,7 +507,7 @@ describe('ToolsetsSetupPage', () => {
       const skipButton = screen.getByTestId('skip-toolsets-setup');
       await user.click(skipButton);
 
-      expect(pushMock).toHaveBeenCalledWith('/setup/browser-extension');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/browser-extension' });
     });
   });
 });

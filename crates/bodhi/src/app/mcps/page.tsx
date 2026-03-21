@@ -1,10 +1,7 @@
-'use client';
-
 import { useState } from 'react';
 
 import { Pencil, Play, Plug, Plus, Trash2 } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useNavigate } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable } from '@/components/DataTable';
@@ -48,7 +45,7 @@ function McpStatus({ mcp }: { mcp: Mcp }) {
 }
 
 function McpsPageContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data, isLoading, error } = useListMcps();
   const deleteMutation = useDeleteMcp({
     onSuccess: () => {
@@ -109,7 +106,7 @@ function McpsPageContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/mcps/playground?id=${mcp.id}`)}
+            onClick={() => navigate({ to: '/mcps/playground', search: { id: mcp.id } })}
             title={serverDisabled ? 'MCP server is disabled' : `Playground ${mcp.name}`}
             className="h-8 w-8 p-0"
             disabled={serverDisabled}
@@ -120,7 +117,7 @@ function McpsPageContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/mcps/new?id=${mcp.id}`)}
+            onClick={() => navigate({ to: '/mcps/new', search: { id: mcp.id } })}
             title={serverDisabled ? 'MCP server is disabled' : `Edit ${mcp.name}`}
             className="h-8 w-8 p-0"
             disabled={serverDisabled}
@@ -173,7 +170,7 @@ function McpsPageContent() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">My MCPs</h1>
         <Button asChild data-testid="mcp-new-button">
-          <Link href="/mcps/new">
+          <Link to="/mcps/new">
             <Plus className="h-4 w-4 mr-2" />
             New MCP
           </Link>
@@ -202,7 +199,7 @@ function McpsPageContent() {
         <div className="text-center py-8 text-muted-foreground">
           <p>No MCP servers configured</p>
           <Button asChild variant="link" className="mt-2">
-            <Link href="/mcps/new">Add your first MCP server</Link>
+            <Link to="/mcps/new">Add your first MCP server</Link>
           </Button>
         </div>
       )}

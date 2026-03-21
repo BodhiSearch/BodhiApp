@@ -1,9 +1,7 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
@@ -24,7 +22,7 @@ type AuthConfigType = 'none' | 'header' | 'oauth';
 type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
 
 function NewMcpServerContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -53,7 +51,7 @@ function NewMcpServerContent() {
   const createMutation = useCreateMcpServer({
     onSuccess: () => {
       toast({ title: 'MCP server created' });
-      router.push(ROUTE_MCP_SERVERS);
+      navigate({ to: ROUTE_MCP_SERVERS });
     },
     onError: (message) => {
       toast({ title: 'Failed to create MCP server', description: message, variant: 'destructive' });
@@ -287,7 +285,7 @@ function NewMcpServerContent() {
             </div>
 
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => router.push(ROUTE_MCP_SERVERS)}>
+              <Button type="button" variant="outline" onClick={() => navigate({ to: ROUTE_MCP_SERVERS })}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSaving} data-testid="mcp-server-save-button">

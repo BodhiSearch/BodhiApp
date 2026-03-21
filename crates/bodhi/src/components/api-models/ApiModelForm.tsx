@@ -1,9 +1,7 @@
-'use client';
-
 import React from 'react';
 
 import { ApiAliasResponse } from '@bodhiapp/ts-client';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 // Import shared components
 import { FormActions } from '@/components/api-models/actions/FormActions';
@@ -25,7 +23,7 @@ interface ApiModelFormProps {
 }
 
 export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCancelRoute }: ApiModelFormProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   // Determine default routes based on mode
@@ -48,7 +46,7 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
           ? `Successfully updated ${initialData?.id}`
           : `Successfully created API model: ${data.id}`,
       });
-      router.push(successRoute);
+      navigate({ to: successRoute });
     },
     onError: (errorMessage) => {
       toast({
@@ -58,7 +56,7 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
       });
     },
     onCancel: () => {
-      router.push(cancelRoute);
+      navigate({ to: cancelRoute });
     },
   });
 

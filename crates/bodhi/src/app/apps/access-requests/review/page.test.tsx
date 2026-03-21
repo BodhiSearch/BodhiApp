@@ -36,16 +36,23 @@ import { createWrapper } from '@/tests/wrapper';
 // Mocks
 // ============================================================================
 
-const pushMock = vi.fn();
-let mockSearchParams: URLSearchParams | null = null;
+const navigateMock = vi.fn();
+let mockSearch: Record<string, string | undefined> = {};
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => mockSearchParams,
-  usePathname: vi.fn().mockReturnValue('/apps/access-requests/review'),
-}));
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => mockSearch,
+    useLocation: () => ({ pathname: '/apps/access-requests/review' }),
+  };
+});
 
 vi.mock('@/hooks/use-toast-messages', () => ({
   useToastMessages: () => ({
@@ -66,9 +73,9 @@ beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => {
   server.resetHandlers();
-  pushMock.mockClear();
+  navigateMock.mockClear();
   windowCloseMock.mockClear();
-  mockSearchParams = null;
+  mockSearch = {};
   // Restore window.location if it was mocked
   if (originalLocationDescriptor) {
     Object.defineProperty(window, 'location', originalLocationDescriptor);
@@ -120,7 +127,7 @@ const setupHandlers = (reviewData?: Parameters<typeof mockAppAccessRequestReview
 
 describe('ReviewAccessRequestPage - Loading & Error States', () => {
   it('shows error page when no id query param', async () => {
-    mockSearchParams = new URLSearchParams();
+    mockSearch = {};
     setupHandlers();
 
     await act(async () => {
@@ -133,7 +140,7 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
   });
 
   it('shows loading skeleton while fetching review data', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     // Set up handlers but with a delay by not providing review data yet
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }));
 
@@ -148,7 +155,7 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
   });
 
   it('shows error page when API returns 404', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -171,7 +178,7 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
   });
 
   it('shows error page when API returns 500', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -199,7 +206,7 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
 
 describe('ReviewAccessRequestPage - Draft Review Form', () => {
   it('renders app name and description from review data', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -215,7 +222,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
   });
 
   it('renders tool type cards with correct names and descriptions', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -231,7 +238,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
   });
 
   it('renders instance select dropdowns with available instances', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -244,7 +251,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
   });
 
   it('shows "No instances configured" when tool type has no instances', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftNoInstancesResponse);
 
     await act(async () => {
@@ -259,7 +266,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
   });
 
   it('Approve button disabled when no valid instances exist', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftNoInstancesResponse);
 
     await act(async () => {
@@ -274,7 +281,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
   });
 
   it('Approve button disabled until all tool types have instance selected', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -291,7 +298,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
 
   it('Approve button becomes enabled after selecting valid instance', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -327,7 +334,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
 describe('ReviewAccessRequestPage - Approve Flow', () => {
   it('clicking Approve calls PUT with correct body', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -365,7 +372,7 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
 
   it('clicking Approve on redirect flow redirects using window.location', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -403,7 +410,7 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
 
   it('on approve error, shows toast error message', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -452,7 +459,7 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
 describe('ReviewAccessRequestPage - Deny Flow', () => {
   it('clicking Deny calls POST to deny endpoint', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -480,7 +487,7 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
 
   it('clicking Deny on redirect flow redirects using window.location', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -508,7 +515,7 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
 
   it('on deny error, shows toast error message', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -545,7 +552,7 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
 
 describe('ReviewAccessRequestPage - Non-Draft States', () => {
   it('approved status with popup flow calls window.close', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -563,7 +570,7 @@ describe('ReviewAccessRequestPage - Non-Draft States', () => {
   });
 
   it('denied status with redirect flow shows status', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -581,7 +588,7 @@ describe('ReviewAccessRequestPage - Non-Draft States', () => {
   });
 
   it('expired status with redirect flow shows status', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -605,7 +612,7 @@ describe('ReviewAccessRequestPage - Non-Draft States', () => {
 
 describe('ReviewAccessRequestPage - Multi-Tool Types', () => {
   it('renders multiple tool type cards', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMultiToolResponse);
 
     await act(async () => {
@@ -628,7 +635,7 @@ describe('ReviewAccessRequestPage - Multi-Tool Types', () => {
 
 describe('ReviewAccessRequestPage - Partial Approve', () => {
   it('checkbox renders checked by default for each tool type', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -645,7 +652,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
   it('unchecking checkbox grays out card content', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -671,7 +678,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
   it('unchecking checkbox enables Approve without instance selection', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -697,7 +704,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
   it('instance selection preserved across checkbox toggle', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -742,7 +749,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
   it('no-instances tool: checked by default, blocks Approve, unchecking enables Approve', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftNoInstancesResponse);
 
     await act(async () => {
@@ -771,7 +778,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
   it('multi-tool partial: approve one tool, deny another via checkbox', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
 
     let capturedBody: unknown = null;
     server.use(
@@ -839,7 +846,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
   it('multi-tool mixed: one with instances, one without -- uncheck no-instances tool to enable Approve', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMultiToolMixedResponse);
 
     await act(async () => {
@@ -875,7 +882,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
   it('button shows "Approve All" when all checkboxes checked and instances selected', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -900,7 +907,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
   it('button shows "Approve Selected" when some checkboxes unchecked', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMultiToolResponse);
 
     await act(async () => {
@@ -928,7 +935,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
 
 describe('ReviewAccessRequestPage - MCP Server Review', () => {
   it('renders MCP server card with URL badge', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -944,7 +951,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
   });
 
   it('shows instance select for MCP when approved', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -957,7 +964,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
   });
 
   it('Approve button disabled until MCP instance is selected', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -973,7 +980,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
   it('selecting MCP instance enables Approve button', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -995,7 +1002,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
   });
 
   it('shows "No MCP instances" alert when no instances available', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMcpNoInstancesResponse);
 
     await act(async () => {
@@ -1011,7 +1018,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
   it('unchecking MCP checkbox enables Approve without instance selection', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMcpResponse);
 
     await act(async () => {
@@ -1034,7 +1041,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
   it('approve with MCP sends correct body', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
 
     let capturedBody: unknown = null;
     server.use(
@@ -1092,7 +1099,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
 describe('ReviewAccessRequestPage - Mixed Resources', () => {
   it('renders both tool cards and MCP cards', async () => {
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMixedResourcesResponse);
 
     await act(async () => {
@@ -1110,7 +1117,7 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
 
   it('Approve button requires selections for both tools and MCPs', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMixedResourcesResponse);
 
     await act(async () => {
@@ -1152,7 +1159,7 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
 describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
   it('shows 2 role options when resource_power_user approves scope_user_power_user request', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_power_user' }),
@@ -1176,7 +1183,7 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
 
   it('shows only scope_user_user option when resource_user approves scope_user_power_user request', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -1200,7 +1207,7 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
 
   it('shows only scope_user_user option when requested_role is scope_user_user', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
     await act(async () => {
@@ -1220,7 +1227,7 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
 
   it('approve sends downgraded approved_role when user selects scope_user_user', async () => {
     const user = userEvent.setup();
-    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    mockSearch = { id: MOCK_REQUEST_ID };
 
     let capturedBody: unknown = null;
     server.use(

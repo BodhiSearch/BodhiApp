@@ -33,16 +33,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Mcp, McpTool } from '@/hooks/mcps';
 
-const pushMock = vi.fn();
-let mockSearchParams: URLSearchParams;
+const navigateMock = vi.fn();
+let mockSearch: Record<string, string | undefined> = {};
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: () => '/mcps/playground',
-  useSearchParams: () => mockSearchParams,
-}));
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/mcps/playground' }),
+    useSearch: () => mockSearch,
+  };
+});
 
 setupMswV2();
 
@@ -66,8 +73,8 @@ const mcpWithTools: Mcp = {
 };
 
 beforeEach(() => {
-  pushMock.mockClear();
-  mockSearchParams = new URLSearchParams('id=mcp-uuid-1');
+  navigateMock.mockClear();
+  mockSearch = { id: 'mcp-uuid-1' };
 });
 
 afterEach(() => {
@@ -83,7 +90,7 @@ describe('McpPlaygroundPage - Authentication', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
     });
   });
 
@@ -95,7 +102,7 @@ describe('McpPlaygroundPage - Authentication', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 });

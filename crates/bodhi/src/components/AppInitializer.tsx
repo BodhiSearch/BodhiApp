@@ -1,9 +1,7 @@
-'use client';
-
 import { ReactNode, useEffect } from 'react';
 
 import { AppStatus, OpenAiApiError } from '@bodhiapp/ts-client';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loading } from '@/components/ui/Loading';
@@ -35,7 +33,7 @@ export default function AppInitializer({
   authenticated = false,
   minRole,
 }: AppInitializerProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const { data: appInfo, error: appError, isLoading: appLoading } = useGetAppInfo();
   const {
@@ -54,25 +52,25 @@ export default function AppInitializer({
         switch (status) {
           case 'setup':
             if (appInfo.deployment === 'multi_tenant') {
-              router.push(ROUTE_SETUP_TENANTS);
+              navigate({ to: ROUTE_SETUP_TENANTS });
             } else {
-              router.push(ROUTE_SETUP);
+              navigate({ to: ROUTE_SETUP });
             }
             break;
           case 'ready':
             if (appInfo.deployment === 'multi_tenant' && !appInfo.client_id) {
-              router.push(ROUTE_LOGIN);
+              navigate({ to: ROUTE_LOGIN });
             } else {
-              router.push(ROUTE_DEFAULT);
+              navigate({ to: ROUTE_DEFAULT });
             }
             break;
           case 'resource_admin':
-            router.push(ROUTE_RESOURCE_ADMIN);
+            navigate({ to: ROUTE_RESOURCE_ADMIN });
             break;
         }
       }
     }
-  }, [appInfo, appLoading, allowedStatus, router]);
+  }, [appInfo, appLoading, allowedStatus, navigate]);
 
   useEffect(() => {
     if (appLoading || userLoading || appError || userError) return;
@@ -82,7 +80,7 @@ export default function AppInitializer({
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('bodhi-return-url', window.location.href);
       }
-      router.push(ROUTE_LOGIN);
+      navigate({ to: ROUTE_LOGIN });
       return;
     }
 
@@ -90,7 +88,7 @@ export default function AppInitializer({
     if (authenticated && userInfo?.auth_status === 'logged_in') {
       // Check if user has no assignable role - redirect to request access
       if (!userInfo.role || userInfo.role === 'resource_guest' || userInfo.role === 'resource_anonymous') {
-        router.push(ROUTE_REQUEST_ACCESS);
+        navigate({ to: ROUTE_REQUEST_ACCESS });
         return;
       }
 
@@ -100,12 +98,12 @@ export default function AppInitializer({
         const requiredRole = `resource_${minRole}` as Role; // Convert to resource_ format
 
         if (!userRoleValue || !meetsMinRole(userRoleValue, requiredRole)) {
-          router.push(ROUTE_LOGIN + '?error=insufficient-role');
+          navigate({ to: ROUTE_LOGIN, search: { error: 'insufficient-role' } });
           return;
         }
       }
     }
-  }, [authenticated, userInfo, minRole, router, appLoading, userLoading, appError, userError]);
+  }, [authenticated, userInfo, minRole, navigate, appLoading, userLoading, appError, userError]);
 
   if (appLoading || userLoading) {
     return <Loading message="Initializing app..." />;

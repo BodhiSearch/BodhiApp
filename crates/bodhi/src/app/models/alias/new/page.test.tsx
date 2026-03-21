@@ -41,15 +41,20 @@ Object.assign(window.HTMLElement.prototype, {
 
 const mockToast = vi.fn();
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => ({
-    get: vi.fn().mockReturnValue('test-alias'),
-  }),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => ({ alias: 'test-alias' }),
+  };
+});
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
@@ -79,7 +84,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 beforeEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 // Helper function to select an option from a ComboBoxResponsive component
@@ -284,7 +289,7 @@ describe('CreateAliasPage access control', () => {
     await act(async () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/setup');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -292,6 +297,6 @@ describe('CreateAliasPage access control', () => {
     await act(async () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/login');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
   });
 });

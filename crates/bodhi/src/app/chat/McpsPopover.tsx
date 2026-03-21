@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo, useState } from 'react';
 
 import { Mcp } from '@bodhiapp/ts-client';

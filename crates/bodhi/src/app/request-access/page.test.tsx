@@ -15,13 +15,20 @@ import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: vi.fn().mockReturnValue('/request-access'),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/request-access' }),
+  };
+});
 
 // Mock AppInitializer to just render children
 vi.mock('@/components/AppInitializer', () => ({
@@ -34,7 +41,7 @@ beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => {
   server.resetHandlers();
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 describe('RequestAccessPage Display States', () => {
@@ -77,7 +84,7 @@ describe('RequestAccessPage Display States', () => {
     expect(screen.getByTestId('request-access-page')).toBeInTheDocument();
     // User with roles gets redirected, so should not see the AuthCard content
     expect(screen.queryByTestId('auth-card')).not.toBeInTheDocument();
-    expect(pushMock).toHaveBeenCalledWith('/chat');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
   });
 
   it('shows request access button when user has rejected request and no roles', async () => {

@@ -1,5 +1,3 @@
-'use client';
-
 import { AliasResponse } from '@bodhiapp/ts-client';
 import { HelpCircle, RefreshCw } from 'lucide-react';
 

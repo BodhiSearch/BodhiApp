@@ -31,19 +31,24 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-let searchParamsMap: Record<string, string | null> = {};
+const navigateMock = vi.fn();
+let mockSearch: Record<string, string | undefined> = {};
 let originalLocationDescriptor: PropertyDescriptor | undefined;
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => ({
-    get: (key: string) => searchParamsMap[key] ?? null,
-  }),
-  usePathname: () => '/mcps/new',
-}));
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => mockSearch,
+    useLocation: () => ({ pathname: '/mcps/new' }),
+  };
+});
 
 setupMswV2();
 
@@ -79,8 +84,8 @@ async function selectServer(user: ReturnType<typeof userEvent.setup>) {
 }
 
 beforeEach(() => {
-  pushMock.mockClear();
-  searchParamsMap = {};
+  navigateMock.mockClear();
+  mockSearch = {};
   sessionStorage.clear();
   useMcpFormStore.getState().reset();
 });
@@ -196,7 +201,7 @@ describe('NewMcpPage - Create flow', () => {
     await user.click(screen.getByTestId('mcp-create-button'));
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/mcps');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps' });
     });
   });
 
@@ -223,7 +228,7 @@ describe('NewMcpPage - Create flow', () => {
 
 describe('NewMcpPage - Edit flow', () => {
   beforeEach(() => {
-    searchParamsMap = { id: 'mcp-uuid-1' };
+    mockSearch = { id: 'mcp-uuid-1' };
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
@@ -516,7 +521,7 @@ describe('NewMcpPage - Auth config dropdown', () => {
 
 describe('NewMcpPage - Edit with public auth', () => {
   beforeEach(() => {
-    searchParamsMap = { id: 'mcp-uuid-1' };
+    mockSearch = { id: 'mcp-uuid-1' };
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
@@ -543,7 +548,7 @@ describe('NewMcpPage - Edit with public auth', () => {
 
 describe('NewMcpPage - Edit with header auth', () => {
   beforeEach(() => {
-    searchParamsMap = { id: 'mcp-uuid-2' };
+    mockSearch = { id: 'mcp-uuid-2' };
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
@@ -576,7 +581,7 @@ describe('NewMcpPage - Edit with header auth', () => {
 
 describe('NewMcpPage - Edit with OAuth auth', () => {
   beforeEach(() => {
-    searchParamsMap = { id: 'mcp-uuid-3' };
+    mockSearch = { id: 'mcp-uuid-3' };
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
@@ -620,7 +625,7 @@ describe('NewMcpPage - Edit with OAuth auth', () => {
 
 describe('NewMcpPage - Edit with DCR OAuth auth', () => {
   beforeEach(() => {
-    searchParamsMap = { id: 'mcp-uuid-4' };
+    mockSearch = { id: 'mcp-uuid-4' };
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
@@ -703,7 +708,7 @@ describe('NewMcpPage - OAuth session restore after callback', () => {
 
 describe('NewMcpPage - Session data takes priority over API data in edit mode', () => {
   it('preserves new OAuth token from session instead of old token from API', async () => {
-    searchParamsMap = { id: 'mcp-uuid-3' };
+    mockSearch = { id: 'mcp-uuid-3' };
 
     const sessionData = {
       name: 'OAuth MCP',
@@ -797,7 +802,7 @@ describe('NewMcpPage - OAuth Pre-Registered Client', () => {
     await user.click(screen.getByTestId('mcp-create-button'));
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/mcps');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps' });
     });
   });
 });
@@ -890,7 +895,7 @@ describe('NewMcpPage - OAuth Connect flow', () => {
 
 describe('NewMcpPage - Edit with DCR disconnect and update', () => {
   it('update after disconnect submits without auth_config_id', async () => {
-    searchParamsMap = { id: 'mcp-uuid-4' };
+    mockSearch = { id: 'mcp-uuid-4' };
     const updateCalled = vi.fn();
 
     server.use(

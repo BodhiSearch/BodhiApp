@@ -20,18 +20,25 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: () => '/mcps',
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/mcps' }),
+  };
+});
 
 setupMswV2();
 
 beforeEach(() => {
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 afterEach(() => {
@@ -47,7 +54,7 @@ describe('McpsPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
     });
   });
 
@@ -59,7 +66,7 @@ describe('McpsPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/login');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
     });
   });
 });
@@ -181,7 +188,7 @@ describe('McpsPage - Instance List Display', () => {
     const editButton = screen.getByTestId('mcp-edit-button-mcp-uuid-1');
     await user.click(editButton);
 
-    expect(pushMock).toHaveBeenCalledWith('/mcps/new?id=mcp-uuid-1');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/new', search: { id: 'mcp-uuid-1' } });
   });
 
   it('shows delete confirmation dialog', async () => {

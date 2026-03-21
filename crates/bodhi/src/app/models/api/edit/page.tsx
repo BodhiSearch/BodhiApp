@@ -1,8 +1,6 @@
-'use client';
-
 import React from 'react';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearch } from '@tanstack/react-router';
 
 import ApiModelForm from '@/components/api-models/ApiModelForm';
 import AppInitializer from '@/components/AppInitializer';
@@ -11,8 +9,8 @@ import { Loading } from '@/components/ui/Loading';
 import { useGetApiModel } from '@/hooks/models';
 
 function EditApiModelContent() {
-  const searchParams = useSearchParams();
-  const id = searchParams?.get('id');
+  const search = useSearch({ strict: false });
+  const id = search.id;
 
   const {
     data: apiModel,

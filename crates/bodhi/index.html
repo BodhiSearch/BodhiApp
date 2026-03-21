@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f69435" />
+    <meta name="application-name" content="Bodhi App" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Bodhi App - Run LLMs Locally" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Bodhi App" />
+    <meta property="og:title" content="Bodhi App - Run LLMs Locally" />
+    <meta property="og:description" content="Bodhi App - Run LLMs Locally" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Bodhi App - Run LLMs Locally" />
+    <meta name="twitter:description" content="Bodhi App - Run LLMs Locally" />
+    <link rel="manifest" href="/ui/manifest.json" />
+    <link rel="icon" href="/ui/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Bodhi App - Run LLMs Locally</title>
+    <script>
+      let theme = window.localStorage.getItem('bodhi-ui-theme')
+      if (!theme) {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+      document.documentElement.classList.add(theme)
+    </script>
+  </head>
+  <body class="min-h-screen bg-background font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

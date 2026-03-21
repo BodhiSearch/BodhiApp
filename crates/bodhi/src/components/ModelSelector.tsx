@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useMemo } from 'react';
 
 import { X, Search, Loader2 } from 'lucide-react';

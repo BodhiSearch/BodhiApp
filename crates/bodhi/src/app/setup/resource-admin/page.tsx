@@ -1,9 +1,7 @@
-'use client';
-
 import { useState } from 'react';
 
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import { SetupContainer, SetupCard } from '@/app/setup/components';
 import { itemVariants } from '@/app/setup/types';
@@ -18,7 +16,7 @@ function ResourceAdminContent() {
   const { data: appInfo } = useGetAppInfo();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const { mutate: initiateOAuth, isPending: isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
@@ -35,7 +33,7 @@ function ResourceAdminContent() {
       }
 
       // Handle redirect using smart URL detection
-      handleSmartRedirect(location, router);
+      handleSmartRedirect(location, navigate);
     },
     onError: (message) => {
       setError(message);

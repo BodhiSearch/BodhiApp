@@ -1,9 +1,7 @@
-'use client';
-
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 
 import { BenefitCard } from '@/app/setup/BenefitCard';
@@ -59,15 +57,15 @@ const benefits = [
 ];
 
 function SetupContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { showError } = useToastMessages();
 
   const { mutate: setup, isPending: isLoading } = useSetupApp({
     onSuccess: (appInfo) => {
       if (appInfo.status === 'resource_admin') {
-        router.push(ROUTE_SETUP_RESOURCE_ADMIN);
+        navigate({ to: ROUTE_SETUP_RESOURCE_ADMIN });
       } else {
-        router.push(ROUTE_SETUP_DOWNLOAD_MODELS);
+        navigate({ to: ROUTE_SETUP_DOWNLOAD_MODELS });
       }
     },
     onError: (error) => {

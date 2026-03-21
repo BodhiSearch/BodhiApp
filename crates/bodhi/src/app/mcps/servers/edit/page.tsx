@@ -1,9 +1,7 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 
 import { Trash2 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import {
@@ -37,9 +35,9 @@ import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 
 function EditMcpServerContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const serverId = searchParams.get('id') || '';
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false });
+  const serverId = search.id || '';
   const { data: server, isLoading, error } = useGetMcpServer(serverId, { enabled: !!serverId });
   const { data: authConfigsData, isLoading: configsLoading } = useListAuthConfigs(serverId);
 
@@ -57,7 +55,7 @@ function EditMcpServerContent() {
   const updateMutation = useUpdateMcpServer({
     onSuccess: () => {
       toast({ title: 'MCP server updated' });
-      router.push(`${ROUTE_MCP_SERVERS}/view?id=${serverId}`);
+      navigate({ to: `${ROUTE_MCP_SERVERS}/view/`, search: { id: serverId } });
     },
     onError: (message) => {
       toast({ title: 'Failed to update MCP server', description: message, variant: 'destructive' });
@@ -259,7 +257,7 @@ function EditMcpServerContent() {
             </div>
 
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => router.push(ROUTE_MCP_SERVERS)}>
+              <Button type="button" variant="outline" onClick={() => navigate({ to: ROUTE_MCP_SERVERS })}>
                 Cancel
               </Button>
               <Button type="submit" disabled={updateMutation.isPending} data-testid="mcp-server-save-button">

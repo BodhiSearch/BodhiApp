@@ -1,6 +1,4 @@
-'use client';
-
-import { usePathname } from 'next/navigation';
+import { useLocation } from '@tanstack/react-router';
 import { siGithub } from 'simple-icons';
 
 import { AppBreadcrumb } from '@/components/navigation/AppBreadcrumb';
@@ -18,7 +16,7 @@ function SimpleIcon({ icon, className }: { icon: { path: string }; className?: s
 }
 
 export function AppHeader() {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const shouldRenderHeader = !pathname?.startsWith('/setup/');
 
   const handleGitHubClick = () => {

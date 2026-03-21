@@ -1,9 +1,7 @@
-'use client';
-
 import React from 'react';
 
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import { SetupContainer, SetupFooter } from '@/app/setup/components';
 import { itemVariants } from '@/app/setup/types';
@@ -12,10 +10,10 @@ import AppInitializer from '@/components/AppInitializer';
 import { ROUTE_SETUP_TOOLSETS } from '@/lib/constants';
 
 function ApiModelsSetupContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleSkip = () => {
-    router.push(ROUTE_SETUP_TOOLSETS);
+    navigate({ to: ROUTE_SETUP_TOOLSETS });
   };
 
   return (

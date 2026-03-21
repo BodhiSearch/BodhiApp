@@ -1,9 +1,7 @@
-'use client';
-
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 
 import { ChatHistory } from '@/app/chat/ChatHistory';
 import { ChatUI } from '@/app/chat/ChatUI';
@@ -18,7 +16,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { ChatDBProvider, ChatSettingsProvider } from '@/hooks/chat';
+import { ChatDBProvider, ChatSettingsProvider, useChatDB } from '@/hooks/chat';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
@@ -70,17 +68,49 @@ function ChatWithSettings() {
   );
 }
 
+function ChatUrlSync({ chatIdFromUrl, model }: { chatIdFromUrl?: string; model?: string }) {
+  const { currentChatId, setCurrentChatId, chats } = useChatDB();
+  const navigate = useNavigate();
+  const isInitialSync = useRef(true);
+
+  // On mount: if URL has a chat ID, load that chat
+  useEffect(() => {
+    if (chatIdFromUrl && isInitialSync.current) {
+      const chatExists = chats.some((c) => c.id === chatIdFromUrl);
+      if (chatExists) {
+        setCurrentChatId(chatIdFromUrl);
+      }
+    }
+    isInitialSync.current = false;
+  }, [chatIdFromUrl, chats, setCurrentChatId]);
+
+  // Sync currentChatId changes to URL
+  useEffect(() => {
+    if (isInitialSync.current) return;
+
+    const search: Record<string, string> = {};
+    if (model) search.model = model;
+    if (currentChatId) search.id = currentChatId;
+
+    navigate({ to: '/chat/', search, replace: true });
+  }, [currentChatId, model, navigate]);
+
+  return null;
+}
+
 function ChatWithHistory() {
   const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-settings-open', true);
   const { open, openMobile, isMobile } = useSidebar();
   const showHistoryPanel = isMobile ? openMobile : open;
-  const searchParams = useSearchParams();
-  const model = searchParams?.get('model');
+  const search = useSearch({ strict: false });
+  const model = search.model;
+  const chatIdFromUrl = search.id;
   const initialData = model ? { model: model } : undefined;
   const getTestId = useResponsiveTestId();
 
   return (
     <>
+      <ChatUrlSync chatIdFromUrl={chatIdFromUrl} model={model} />
       <Sidebar side="left" data-testid={getTestId('chat-history-sidebar')}>
         <SidebarContent data-testid={getTestId('chat-history-content')}>
           <NewChatButton />

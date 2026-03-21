@@ -28,13 +28,20 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: vi.fn().mockReturnValue('/users/access-requests'),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/users/access-requests' }),
+  };
+});
 
 // Mock DataTable to avoid sorting prop issues
 vi.mock('@/components/DataTable', () => ({
@@ -68,7 +75,7 @@ beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => {
   server.resetHandlers();
-  pushMock.mockClear();
+  navigateMock.mockClear();
 });
 
 describe('AllRequestsPage Role-Based Access Control', () => {
@@ -98,7 +105,7 @@ describe('AllRequestsPage Role-Based Access Control', () => {
     // Should show the page content, not redirect
     expect(screen.getByTestId('all-requests-page')).toBeInTheDocument();
     expect(screen.getByText('All Access Requests')).toBeInTheDocument();
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it.each(BLOCKED_ROLES)('blocks access for %s role', async (role) => {

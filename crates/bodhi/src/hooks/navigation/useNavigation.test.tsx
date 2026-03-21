@@ -1,14 +1,23 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { Home, Settings, Users, BookText } from 'lucide-react';
+import { Home, Settings, Users } from 'lucide-react';
 import type { NavigationItem } from '@/types/navigation';
 import { createWrapper } from '@/tests/wrapper';
 
 // Setup mocks before importing the components
-const mockUsePathname = vi.fn();
-vi.mock('next/navigation', () => ({
-  usePathname: () => mockUsePathname(),
-}));
+const mockPathname = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useLocation: () => ({ pathname: mockPathname() }),
+  };
+});
 
 // Import after mocks are setup
 import { useNavigation, NavigationProvider } from '@/hooks/navigation';
@@ -48,18 +57,6 @@ describe('useNavigation', () => {
         },
       ],
     },
-    {
-      title: 'Documentation',
-      icon: BookText,
-      items: [
-        {
-          title: 'App Guide',
-          href: '/docs/',
-          description: 'User guides and documentation',
-          icon: BookText,
-        },
-      ],
-    },
   ];
 
   const Wrapper = createWrapper();
@@ -74,7 +71,7 @@ describe('useNavigation', () => {
   });
 
   it('should return root level item when path matches', () => {
-    mockUsePathname.mockReturnValue('/root/');
+    mockPathname.mockReturnValue('/root/');
 
     const { result } = renderHook(() => useNavigation(), {
       wrapper: renderWithProvider,
@@ -90,7 +87,7 @@ describe('useNavigation', () => {
   });
 
   it('should return sub-item with parent when path matches', () => {
-    mockUsePathname.mockReturnValue('/child/');
+    mockPathname.mockReturnValue('/child/');
 
     const { result } = renderHook(() => useNavigation(), {
       wrapper: renderWithProvider,
@@ -113,7 +110,7 @@ describe('useNavigation', () => {
   });
 
   it('should return sub-sub-item with immediate parent when path matches', () => {
-    mockUsePathname.mockReturnValue('/child/grandchild/');
+    mockPathname.mockReturnValue('/child/grandchild/');
 
     const { result } = renderHook(() => useNavigation(), {
       wrapper: renderWithProvider,
@@ -139,11 +136,10 @@ describe('useNavigation', () => {
     ['/users/', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
     ['/users/pending', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
     ['/users/access-requests', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
-    ['/docs/', 'App Guide', '/docs/', 'User guides and documentation', 'Documentation'],
   ])(
     'should return %s > %s for %s paths',
     (pathname, expectedItemTitle, expectedHref, expectedDescription, expectedParentTitle) => {
-      mockUsePathname.mockReturnValue(pathname);
+      mockPathname.mockReturnValue(pathname);
 
       const { result } = renderHook(() => useNavigation(), {
         wrapper: renderWithProvider,
@@ -167,7 +163,7 @@ describe('useNavigation', () => {
   );
 
   it('should default to Home when no path matches', () => {
-    mockUsePathname.mockReturnValue('/non/existent/path');
+    mockPathname.mockReturnValue('/non/existent/path');
 
     const { result } = renderHook(() => useNavigation(), {
       wrapper: renderWithProvider,

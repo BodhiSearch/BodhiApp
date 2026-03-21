@@ -1,5 +1,3 @@
-'use client';
-
 import HomePage from '@/app/page';
 import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
 import { mockAppInfoReady, mockAppInfoResourceAdmin, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
@@ -8,15 +6,20 @@ import { createWrapper } from '@/tests/wrapper';
 import { render, waitFor } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  useSearchParams: () => ({
-    get: () => null,
-  }),
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useSearch: () => ({}),
+  };
+});
 
 // Add this configuration before starting the server
 beforeAll(() => server.listen());
@@ -26,7 +29,7 @@ afterEach(() => server.resetHandlers());
 describe('HomePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    pushMock.mockClear();
+    navigateMock.mockClear();
   });
 
   it('redirects to /setup when status is setup', async () => {
@@ -35,7 +38,7 @@ describe('HomePage', () => {
     render(<HomePage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/setup');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
     });
   });
 
@@ -45,7 +48,7 @@ describe('HomePage', () => {
     render(<HomePage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
+      expect(navigateMock).toHaveBeenCalledWith({ to: ROUTE_DEFAULT });
     });
   });
 
@@ -55,7 +58,7 @@ describe('HomePage', () => {
     render(<HomePage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith(ROUTE_RESOURCE_ADMIN);
+      expect(navigateMock).toHaveBeenCalledWith({ to: ROUTE_RESOURCE_ADMIN });
     });
   });
 });

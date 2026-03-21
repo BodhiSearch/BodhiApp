@@ -39,13 +39,20 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 
-const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-  usePathname: () => '/setup/download-models',
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/setup/download-models' }),
+  };
+});
 
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast-messages', () => ({
@@ -64,7 +71,7 @@ const renderWithSetupProvider = (component: React.ReactElement) => {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  pushMock.mockClear();
+  navigateMock.mockClear();
   mockToast.mockClear();
   localStorage.clear();
 });
@@ -77,7 +84,7 @@ describe('ModelDownloadPage Access Control', () => {
       renderWithSetupProvider(<ModelDownloadPage />);
     });
 
-    expect(pushMock).toHaveBeenCalledWith('/setup');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
   });
 
   it('renders the page when app is ready and user is logged in', async () => {
@@ -94,7 +101,7 @@ describe('ModelDownloadPage Access Control', () => {
     await waitFor(() => {
       expect(screen.getByText('Chat Models')).toBeInTheDocument();
     });
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('redirects to /login when app is ready but user is not logged in', async () => {
@@ -104,7 +111,7 @@ describe('ModelDownloadPage Access Control', () => {
       renderWithSetupProvider(<ModelDownloadPage />);
     });
 
-    expect(pushMock).toHaveBeenCalledWith('/login');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
   });
 });
 
@@ -271,6 +278,6 @@ describe('ModelDownloadPage Navigation', () => {
 
     await user.click(continueButton);
 
-    expect(pushMock).toHaveBeenCalledWith(ROUTE_SETUP_API_MODELS);
+    expect(navigateMock).toHaveBeenCalledWith({ to: ROUTE_SETUP_API_MODELS });
   });
 });

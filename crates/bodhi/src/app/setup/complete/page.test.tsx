@@ -6,11 +6,20 @@ import { createWrapper } from '@/tests/wrapper';
 import { SetupProvider } from '@/app/setup/components';
 
 // Mock navigation
-const mockPush = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-  usePathname: () => '/setup/complete',
-}));
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/setup/complete' }),
+  };
+});
 
 // Mock AppInitializer to prevent status checks
 vi.mock('@/components/AppInitializer', () => ({
@@ -38,7 +47,7 @@ const renderWithSetupProvider = (component: React.ReactElement) => {
 
 describe('SetupCompletePage', () => {
   beforeEach(() => {
-    mockPush.mockClear();
+    navigateMock.mockClear();
   });
 
   it('should render completion message', async () => {
@@ -90,7 +99,7 @@ describe('SetupCompletePage', () => {
       startButton.click();
     });
 
-    expect(mockPush).toHaveBeenCalledWith('/chat');
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
   });
 
   it('should have external links with correct attributes', async () => {

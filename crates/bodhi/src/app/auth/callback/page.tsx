@@ -1,9 +1,7 @@
-'use client';
-
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 import { AuthCallbackRequest } from '@bodhiapp/ts-client';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 
 import { BodhiLogoImage } from '@/app/setup/BodhiLogo';
 import { Button } from '@/components/ui/button';
@@ -14,9 +12,10 @@ import { handleSmartRedirect } from '@/lib/utils';
 function AuthCallbackContent() {
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const hasProcessedRef = useRef(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as Record<string, string | undefined>;
 
   const { mutate: submitCallback, isPending: isLoading } = useOAuthCallback({
     onSuccess: (response) => {
@@ -24,7 +23,7 @@ function AuthCallbackContent() {
       const returnUrl = sessionStorage.getItem('bodhi-return-url');
       if (returnUrl) {
         sessionStorage.removeItem('bodhi-return-url');
-        handleSmartRedirect(returnUrl, router);
+        handleSmartRedirect(returnUrl, navigate);
         return;
       }
 
@@ -37,9 +36,10 @@ function AuthCallbackContent() {
       }
 
       // Handle redirect using smart URL detection
-      handleSmartRedirect(location, router);
+      handleSmartRedirect(location, navigate);
     },
     onError: (message) => {
+      hasProcessedRef.current = false;
       setError(message);
       setProcessing(false);
     },
@@ -53,21 +53,20 @@ function AuthCallbackContent() {
 
     hasProcessedRef.current = true;
 
-    // Extract all OAuth query parameters using Next.js useSearchParams
+    // Extract all OAuth query parameters
     const params: AuthCallbackRequest = {};
-    searchParams?.forEach((value, key) => {
-      // All parameters are flattened in the generated type
-      params[key] = value;
+    Object.entries(search).forEach(([key, value]) => {
+      params[key] = value as string;
     });
 
     // Submit all OAuth callback parameters to backend
     submitCallback(params);
-  }, [submitCallback, searchParams]);
+  }, [submitCallback, search, retryCount]);
 
   const handleRetry = () => {
-    hasProcessedRef.current = false;
     setError(null);
     setProcessing(true);
+    setRetryCount((c) => c + 1);
   };
 
   if (processing || isLoading) {
@@ -110,26 +109,5 @@ function AuthCallbackContent() {
 }
 
 export default function AuthCallbackPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="min-h-screen bg-background p-4 md:p-8" data-testid="oauth-callback-page">
-          <div className="mx-auto max-w-4xl space-y-8 p-4 md:p-8">
-            <BodhiLogoImage />
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-center">Loading...</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-muted-foreground">Initializing authentication...</p>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      }
-    >
-      <AuthCallbackContent />
-    </Suspense>
-  );
+  return <AuthCallbackContent />;
 }

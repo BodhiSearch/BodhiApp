@@ -1,9 +1,7 @@
-'use client';
-
 import React, { useState } from 'react';
 
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from '@tanstack/react-router';
 
 import { SetupContainer, SetupFooter } from '@/app/setup/components';
 import { itemVariants } from '@/app/setup/types';
@@ -15,13 +13,13 @@ import type { BrowserInfo } from '@/lib/browser-utils';
 import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
 
 function BrowserExtensionSetupContent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { detectedBrowser } = useBrowserDetection();
   const { status: extensionStatus, refresh } = useExtensionDetection();
   const [selectedBrowser, setSelectedBrowser] = useState<BrowserInfo | null>(null);
 
   const handleNext = () => {
-    router.push(ROUTE_SETUP_COMPLETE);
+    navigate({ to: ROUTE_SETUP_COMPLETE });
   };
 
   return (

@@ -1,5 +1,3 @@
-'use client';
-
 import { KeyboardEvent, useState } from 'react';
 
 import { HelpCircle, X } from 'lucide-react';

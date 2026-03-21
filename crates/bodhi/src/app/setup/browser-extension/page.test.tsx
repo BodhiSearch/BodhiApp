@@ -5,14 +5,21 @@ import { useBrowserDetection } from '@/hooks/use-browser-detection';
 import { useExtensionDetection } from '@/hooks/use-extension-detection';
 import { SetupProvider } from '@/app/setup/components';
 
-// Mock Next.js router
-const mockPush = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-  usePathname: () => '/setup/browser-extension',
-}));
+// Mock navigation
+const navigateMock = vi.fn();
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router');
+  return {
+    ...actual,
+    Link: ({ to, children, ...rest }: any) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+    useNavigate: () => navigateMock,
+    useLocation: () => ({ pathname: '/setup/browser-extension' }),
+  };
+});
 
 // Mock framer-motion
 vi.mock('framer-motion', () => ({
@@ -282,7 +289,7 @@ describe('BrowserExtensionSetupPage', () => {
       const continueButton = screen.getByTestId('browser-extension-continue');
       continueButton.click();
 
-      expect(mockPush).toHaveBeenCalledWith('/setup/complete');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete' });
     });
 
     it('continues setup when skip button is clicked (extension not installed)', () => {
@@ -309,7 +316,7 @@ describe('BrowserExtensionSetupPage', () => {
       const skipButton = screen.getByTestId('browser-extension-continue');
       skipButton.click();
 
-      expect(mockPush).toHaveBeenCalledWith('/setup/complete');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete' });
     });
 
     it('continues setup when skip button is clicked for unsupported browsers', () => {
@@ -329,7 +336,7 @@ describe('BrowserExtensionSetupPage', () => {
       const skipButton = screen.getByTestId('browser-extension-continue');
       skipButton.click();
 
-      expect(mockPush).toHaveBeenCalledWith('/setup/complete');
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete' });
     });
   });
 });

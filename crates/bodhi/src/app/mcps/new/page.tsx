@@ -1,10 +1,8 @@
-'use client';
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, Loader2, Unplug } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
@@ -141,9 +139,9 @@ function OAuthConnectedCard({
 }
 
 function NewMcpPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const editId = searchParams.get('id');
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false });
+  const editId = search.id || null;
   const { data: userInfo } = useGetUser();
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
 
@@ -200,7 +198,7 @@ function NewMcpPageContent() {
     onSuccess: () => {
       toast({ title: 'MCP created successfully' });
       store.reset();
-      router.push('/mcps');
+      navigate({ to: '/mcps' });
     },
     onError: (message) => {
       toast({ title: 'Failed to create MCP', description: message, variant: 'destructive' });
@@ -211,7 +209,7 @@ function NewMcpPageContent() {
     onSuccess: () => {
       toast({ title: 'MCP updated successfully' });
       store.reset();
-      router.push('/mcps');
+      navigate({ to: '/mcps' });
     },
     onError: (message) => {
       toast({ title: 'Failed to update MCP', description: message, variant: 'destructive' });
@@ -791,7 +789,7 @@ function NewMcpPageContent() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push(`/mcps/servers/view?id=${selectedServer.id}`)}
+                      onClick={() => navigate({ to: '/mcps/servers/view', search: { id: selectedServer.id } })}
                       data-testid="auth-config-new-redirect-button"
                     >
                       Go to Server Settings
@@ -838,7 +836,7 @@ function NewMcpPageContent() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push('/mcps')}
+                  onClick={() => navigate({ to: '/mcps' })}
                   disabled={isSubmitting}
                   data-testid="mcp-cancel-button"
                 >
