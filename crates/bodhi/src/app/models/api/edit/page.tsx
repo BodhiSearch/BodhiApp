@@ -8,7 +8,7 @@ import ApiModelForm from '@/components/api-models/ApiModelForm';
 import AppInitializer from '@/components/AppInitializer';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Loading } from '@/components/ui/Loading';
-import { useApiModel } from '@/hooks/useModelsApi';
+import { useGetApiModel } from '@/hooks/models';
 
 function EditApiModelContent() {
   const searchParams = useSearchParams();
@@ -18,7 +18,7 @@ function EditApiModelContent() {
     data: apiModel,
     isLoading,
     error,
-  } = useApiModel(id || '', {
+  } = useGetApiModel(id || '', {
     enabled: !!id,
   });
 

@@ -12,15 +12,15 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { UsersTable } from '@/components/users/UsersTable';
-import { useAppInfo } from '@/hooks/useInfo';
-import { useAllUsers, useAuthenticatedUser } from '@/hooks/useUsers';
+import { useGetAppInfo } from '@/hooks/info';
+import { useListUsers, useGetAuthenticatedUser } from '@/hooks/users';
 
 function UsersContent() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
 
-  const { data: currentUserInfo, isLoading: isLoadingUser } = useAuthenticatedUser();
-  const { data: usersData, isLoading: isLoadingUsers, error } = useAllUsers(page, pageSize);
+  const { data: currentUserInfo, isLoading: isLoadingUser } = useGetAuthenticatedUser();
+  const { data: usersData, isLoading: isLoadingUsers, error } = useListUsers(page, pageSize);
 
   // Get current user's role and username for filtering
   const currentUserRole = typeof currentUserInfo?.role === 'string' ? currentUserInfo.role : '';
@@ -74,7 +74,7 @@ function UsersContent() {
 }
 
 function InviteLinkSection() {
-  const { data: appInfo } = useAppInfo();
+  const { data: appInfo } = useGetAppInfo();
   const [copied, setCopied] = useState(false);
 
   if (appInfo?.deployment !== 'multi_tenant') {

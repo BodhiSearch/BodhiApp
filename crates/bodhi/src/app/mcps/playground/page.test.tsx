@@ -31,7 +31,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Mcp, McpTool } from '@/hooks/useMcps';
+import type { Mcp, McpTool } from '@/hooks/mcps';
 
 const pushMock = vi.fn();
 let mockSearchParams: URLSearchParams;

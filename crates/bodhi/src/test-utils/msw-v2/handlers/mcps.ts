@@ -8,154 +8,40 @@ import type {
   McpAuthConfigsListResponse,
   McpExecuteResponse,
   Mcp,
-  McpServerInfo,
   McpServerResponse,
   McpTool,
   OAuthTokenResponse,
-} from '@/hooks/useMcps';
+} from '@/hooks/mcps';
 import { BODHI_API_BASE } from '@/hooks/useQuery';
+import {
+  createMockMcpTool,
+  createMockMcpServerInfo,
+  createMockMcpServerResponse,
+  createMockMcp,
+  createMockMcpWithHeaderAuth,
+  createMockMcpWithOAuth,
+  createMockMcpWithDcr,
+  createMockOAuthToken,
+  createMockAuthConfigHeader,
+  createMockAuthConfigOAuthPreReg,
+  createMockAuthConfigOAuthDynamic,
+} from '@/test-fixtures/mcps';
 
 // ============================================================================
-// Mock Data
+// Mock Data — created via fixture factories (single source of truth)
 // ============================================================================
 
-export const mockMcpTool: McpTool = {
-  name: 'read_wiki_structure',
-  description: 'Read the structure of a wiki',
-  input_schema: {
-    type: 'object',
-    properties: {
-      repo_name: { type: 'string', description: 'Repository name' },
-    },
-    required: ['repo_name'],
-  },
-};
-
-export const mockMcpServerInfo: McpServerInfo = {
-  id: 'server-uuid-1',
-  url: 'https://mcp.example.com/mcp',
-  name: 'Example Server',
-  enabled: true,
-};
-
-export const mockMcpServerResponse: McpServerResponse = {
-  id: 'server-uuid-1',
-  url: 'https://mcp.example.com/mcp',
-  name: 'Example Server',
-  description: 'An example MCP server',
-  enabled: true,
-  created_by: 'admin',
-  updated_by: 'admin',
-  enabled_mcp_count: 1,
-  disabled_mcp_count: 0,
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-};
-
-export const mockMcp: Mcp = {
-  id: 'mcp-uuid-1',
-  mcp_server: mockMcpServerInfo,
-  slug: 'example-mcp',
-  name: 'Example MCP',
-  description: 'An example MCP server',
-  enabled: true,
-  tools_cache: [mockMcpTool],
-  tools_filter: ['read_wiki_structure'],
-  auth_type: 'public',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-};
-
-export const mockMcpWithHeaderAuth: Mcp = {
-  ...mockMcp,
-  id: 'mcp-uuid-2',
-  slug: 'header-mcp',
-  name: 'Header Auth MCP',
-  auth_type: 'header',
-  auth_config_id: 'auth-header-uuid-1',
-};
-
-export const mockOAuthToken: OAuthTokenResponse = {
-  id: 'oauth-token-uuid-1',
-  mcp_id: 'mcp-uuid-3',
-  auth_config_id: 'oauth-config-uuid-1',
-  scopes_granted: 'mcp:tools mcp:read',
-  expires_at: Math.floor(Date.now() / 1000) + 3600,
-  has_refresh_token: true,
-  user_id: 'test-user',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-};
-
-export const mockMcpWithOAuth: Mcp = {
-  ...mockMcp,
-  id: 'mcp-uuid-3',
-  slug: 'oauth-mcp',
-  name: 'OAuth MCP',
-  auth_type: 'oauth',
-  auth_config_id: 'oauth-config-uuid-1',
-};
-
-export const mockMcpWithDcr: Mcp = {
-  ...mockMcp,
-  id: 'mcp-uuid-4',
-  slug: 'dcr-mcp',
-  name: 'DCR MCP',
-  auth_type: 'oauth',
-  auth_config_id: 'oauth-config-dcr-uuid-1',
-};
-
-// ============================================================================
-// Mock Data - Unified Auth Configs
-// ============================================================================
-
-export const mockAuthConfigHeader: McpAuthConfigResponse = {
-  id: 'auth-header-uuid-1',
-  name: 'Header',
-  mcp_server_id: 'server-uuid-1',
-  created_by: 'admin',
-  entries: [{ id: 'entry-1', param_type: 'header', param_key: 'Authorization' }],
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-  type: 'header',
-};
-
-export const mockAuthConfigOAuthPreReg: McpAuthConfigResponse = {
-  id: 'oauth-config-uuid-1',
-  name: 'OAuth Pre-Registered',
-  mcp_server_id: 'server-uuid-1',
-  created_by: 'admin',
-  registration_type: 'pre_registered',
-  client_id: 'test-client-id',
-  authorization_endpoint: 'https://auth.example.com/authorize',
-  token_endpoint: 'https://auth.example.com/token',
-  scopes: 'mcp:tools mcp:read',
-  has_client_secret: true,
-  has_registration_access_token: false,
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-  type: 'oauth',
-};
-
-export const mockAuthConfigOAuthDynamic: McpAuthConfigResponse = {
-  id: 'oauth-config-dcr-uuid-1',
-  name: 'OAuth Dynamic',
-  mcp_server_id: 'server-uuid-1',
-  created_by: 'admin',
-  registration_type: 'dynamic_registration',
-  client_id: 'dcr-client-id-123',
-  authorization_endpoint: 'https://auth.example.com/authorize',
-  token_endpoint: 'https://auth.example.com/token',
-  registration_endpoint: 'https://auth.example.com/register',
-  scopes: 'mcp:tools mcp:read',
-  client_id_issued_at: null,
-  token_endpoint_auth_method: null,
-  has_client_secret: false,
-  has_registration_access_token: true,
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-  type: 'oauth',
-};
+export const mockMcpTool: McpTool = createMockMcpTool();
+export const mockMcpServerInfo = createMockMcpServerInfo();
+export const mockMcpServerResponse: McpServerResponse = createMockMcpServerResponse();
+export const mockMcp: Mcp = createMockMcp();
+export const mockMcpWithHeaderAuth: Mcp = createMockMcpWithHeaderAuth();
+export const mockOAuthToken: OAuthTokenResponse = createMockOAuthToken();
+export const mockMcpWithOAuth: Mcp = createMockMcpWithOAuth();
+export const mockMcpWithDcr: Mcp = createMockMcpWithDcr();
+export const mockAuthConfigHeader: McpAuthConfigResponse = createMockAuthConfigHeader();
+export const mockAuthConfigOAuthPreReg: McpAuthConfigResponse = createMockAuthConfigOAuthPreReg();
+export const mockAuthConfigOAuthDynamic: McpAuthConfigResponse = createMockAuthConfigOAuthDynamic();
 
 // ============================================================================
 // Handler Factories - MCP Instance CRUD
@@ -406,6 +292,94 @@ export function mockDeleteOAuthTokenError({
   status = 500,
 }: { message?: string; code?: string; type?: string; status?: number } = {}) {
   return http.delete(`${BODHI_API_BASE}/mcps/oauth-tokens/:tokenId`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockUpdateMcpError({
+  message = 'Failed to update MCP',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.put(`${BODHI_API_BASE}/mcps/:id`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockDeleteMcpError({
+  message = 'Failed to delete MCP',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.delete(`${BODHI_API_BASE}/mcps/:id`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockCreateMcpServerError({
+  message = 'Failed to create MCP server',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/mcps/servers`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockUpdateMcpServerError({
+  message = 'Failed to update MCP server',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.put(`${BODHI_API_BASE}/mcps/servers/:id`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockRefreshMcpToolsError({
+  message = 'Failed to refresh tools',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/mcps/:id/tools/refresh`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockOAuthLoginError({
+  message = 'Failed to initiate OAuth login',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/mcps/auth-configs/:id/login`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockOAuthTokenExchangeError({
+  message = 'Failed to exchange OAuth token',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/mcps/auth-configs/:id/token`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockStandaloneDynamicRegisterError({
+  message = 'Failed to register dynamic client',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/mcps/oauth/dynamic-register`, () =>
     HttpResponse.json({ error: { message, code, type } }, { status })
   );
 }

@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { AliasSelector } from '@/app/chat/settings/AliasSelector';
 import { createWrapper } from '@/tests/wrapper';
-import * as chatSettings from '@/hooks/use-chat-settings';
+import * as chatSettings from '@/hooks/chat';
 
 // Mock useMediaQuery hook
 vi.mock('@/hooks/use-media-query', () => ({
@@ -33,7 +33,7 @@ Object.assign(window.HTMLElement.prototype, {
 });
 
 // Mock useChatSettings
-vi.mock('@/hooks/use-chat-settings', () => ({
+vi.mock('@/hooks/chat', () => ({
   useChatSettings: vi.fn(),
 }));
 

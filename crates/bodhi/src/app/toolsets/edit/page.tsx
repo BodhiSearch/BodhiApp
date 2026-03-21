@@ -29,7 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useDeleteToolset, useToolset, useToolsets, useUpdateToolset } from '@/hooks/useToolsets';
+import { useDeleteToolset, useGetToolset, useListToolsets, useUpdateToolset } from '@/hooks/toolsets';
 
 // Form schema matching the plan specification
 const updateToolsetSchema = z.object({
@@ -53,8 +53,8 @@ function EditToolsetContent() {
   const searchParams = useSearchParams();
   const id = searchParams?.get('id');
 
-  const { data: toolset, isLoading, error } = useToolset(id || '', { enabled: !!id });
-  const { data: toolsetsResponse } = useToolsets();
+  const { data: toolset, isLoading, error } = useGetToolset(id || '', { enabled: !!id });
+  const { data: toolsetsResponse } = useListToolsets();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Create scope enabled map from toolset_types
@@ -166,7 +166,7 @@ function EditToolsetContent() {
               variant="destructive"
               size="sm"
               onClick={() => setDeleteDialogOpen(true)}
-              disabled={deleteMutation.isLoading}
+              disabled={deleteMutation.isPending}
               data-testid="toolset-delete-button"
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -195,7 +195,7 @@ function EditToolsetContent() {
                       <Input
                         {...field}
                         placeholder="my-exa-search"
-                        disabled={updateMutation.isLoading}
+                        disabled={updateMutation.isPending}
                         data-testid="toolset-slug-input"
                       />
                     </FormControl>
@@ -218,7 +218,7 @@ function EditToolsetContent() {
                         {...field}
                         value={field.value || ''}
                         placeholder="Describe what this toolset is used for"
-                        disabled={updateMutation.isLoading}
+                        disabled={updateMutation.isPending}
                         data-testid="toolset-description-input"
                       />
                     </FormControl>
@@ -238,7 +238,7 @@ function EditToolsetContent() {
                       <PasswordInput
                         {...field}
                         placeholder={toolset.has_api_key ? 'Leave empty to keep current key' : 'Enter API key'}
-                        disabled={updateMutation.isLoading}
+                        disabled={updateMutation.isPending}
                         data-testid="toolset-api-key-input"
                       />
                     </FormControl>
@@ -265,7 +265,7 @@ function EditToolsetContent() {
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        disabled={updateMutation.isLoading}
+                        disabled={updateMutation.isPending}
                         data-testid="toolset-enabled-switch"
                       />
                     </FormControl>
@@ -278,16 +278,16 @@ function EditToolsetContent() {
         <CardFooter className="flex gap-4">
           <Button
             onClick={form.handleSubmit(onSubmit)}
-            disabled={updateMutation.isLoading}
+            disabled={updateMutation.isPending}
             data-testid="toolset-save-button"
           >
-            {updateMutation.isLoading ? 'Saving...' : 'Save Changes'}
+            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={() => router.push('/toolsets')}
-            disabled={updateMutation.isLoading}
+            disabled={updateMutation.isPending}
             data-testid="toolset-cancel-button"
           >
             Cancel
@@ -305,8 +305,8 @@ function EditToolsetContent() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={deleteMutation.isLoading}>
-              {deleteMutation.isLoading ? 'Deleting...' : 'Delete'}
+            <AlertDialogAction onClick={handleDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

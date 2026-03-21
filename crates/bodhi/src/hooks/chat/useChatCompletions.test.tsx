@@ -1,0 +1,386 @@
+import { useChatCompletion } from '@/hooks/chat';
+import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/chat';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockChatCompletions,
+  mockChatCompletionsStreaming,
+  mockChatCompletionsStreamingWithError,
+} from '@/test-utils/msw-v2/handlers/chat-completions';
+import { createWrapper } from '@/tests/wrapper';
+
+setupMswV2();
+
+describe('useChatCompletion', () => {
+  describe('non-streaming completion', () => {
+    it('should handle successful completion request', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            finish_reason: 'stop' as const,
+            index: 0,
+            message: {
+              content: 'The day that comes after Monday is Tuesday.',
+              role: 'assistant' as const,
+            },
+          },
+        ],
+        created: 1736234478,
+        model: 'llama2-7B-chat',
+        id: 'chatcmpl-test',
+        object: 'chat.completion' as const,
+      };
+
+      server.use(
+        ...mockChatCompletions({
+          response: mockResponse,
+        })
+      );
+
+      const { result } = renderHook(() => useChatCompletion(), { wrapper: createWrapper() });
+      const onMessage = vi.fn();
+      const onFinish = vi.fn();
+
+      await act(async () => {
+        await result.current.append({
+          request: {
+            model: 'llama2-7B-chat',
+            messages: [
+              {
+                id: '1',
+                role: 'user',
+                content: 'What day comes after Monday?',
+              },
+            ],
+          },
+          onMessage,
+          onFinish,
+        });
+      });
+
+      expect(onMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'The day that comes after Monday is Tuesday.',
+          role: 'assistant',
+        })
+      );
+      expect(onFinish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.objectContaining({
+            content: 'The day that comes after Monday is Tuesday.',
+            role: 'assistant',
+          }),
+          finishReason: 'stop',
+        })
+      );
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+    });
+  });
+
+  describe('streaming completion', () => {
+    it('should handle streaming response with callbacks', async () => {
+      const chunks = [
+        '{"choices":[{"delta":{"content":" The"}}]}',
+        '{"choices":[{"delta":{"content":" day"}}]}',
+        '{"choices":[{"delta":{"content":" that"}}]}',
+        '{"choices":[{"delta":{"content":" comes"}}]}',
+        '{"choices":[{"delta":{"content":" after"}}]}',
+        '{"choices":[{"delta":{"content":" Monday"}}]}',
+        '{"choices":[{"delta":{"content":" is"}}]}',
+        '{"choices":[{"delta":{"content":" Tuesday."}}]}',
+        '[DONE]',
+      ];
+
+      server.use(
+        ...mockChatCompletionsStreaming({
+          chunks,
+        })
+      );
+
+      const onDelta = vi.fn();
+      const onFinish = vi.fn();
+      const { result } = renderHook(() => useChatCompletion(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        await result.current.append({
+          request: {
+            model: 'llama2-7B-chat',
+            messages: [
+              {
+                id: '1',
+                role: 'user',
+                content: 'What day comes after Monday?',
+              },
+            ],
+            stream: true,
+          },
+          onDelta,
+          onFinish,
+        });
+      });
+
+      expect(onDelta).toHaveBeenCalledWith(' The');
+      expect(onDelta).toHaveBeenCalledWith(' day');
+      expect(onDelta).toHaveBeenCalledWith(' that');
+      expect(onDelta).toHaveBeenCalledWith(' comes');
+      expect(onDelta).toHaveBeenCalledWith(' after');
+      expect(onDelta).toHaveBeenCalledWith(' Monday');
+      expect(onDelta).toHaveBeenCalledWith(' is');
+      expect(onDelta).toHaveBeenCalledWith(' Tuesday.');
+      expect(onFinish).toHaveBeenCalledWith({
+        message: {
+          role: 'assistant',
+          content: ' The day that comes after Monday is Tuesday.',
+        },
+        finishReason: null,
+        toolCalls: undefined,
+      });
+    });
+
+    it('should handle errors in event stream', async () => {
+      server.use(
+        ...mockChatCompletionsStreamingWithError({
+          initialChunks: [
+            JSON.stringify({
+              choices: [
+                {
+                  delta: { content: 'Hello' },
+                  finish_reason: null,
+                },
+              ],
+            }),
+          ],
+          errorMessage: 'Server error occurred',
+        })
+      );
+
+      const onDelta = vi.fn();
+      const onFinish = vi.fn();
+      const onError = vi.fn();
+      const { result } = renderHook(() => useChatCompletion(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        await result.current.append({
+          request: {
+            model: 'llama2-7B-chat',
+            messages: [
+              {
+                id: '1',
+                role: 'user',
+                content: 'What day comes after Monday?',
+              },
+            ],
+            stream: true,
+          },
+          onDelta,
+          onFinish,
+          onError,
+        });
+      });
+
+      // Verify we received the content before the error
+      expect(onDelta).toHaveBeenCalledWith('Hello');
+
+      // Current behavior: Stream continues and finishes with partial content
+      expect(onFinish).toHaveBeenCalledWith({
+        message: {
+          role: 'assistant',
+          content: 'Hello',
+        },
+        finishReason: null,
+        toolCalls: undefined,
+      });
+
+      // Intentional: stream errors are silently handled to prevent chat UI disruption
+      expect(onError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('metadata handling', () => {
+    it('should include metadata in non-streaming response', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            finish_reason: 'stop' as const,
+            index: 0,
+            message: {
+              content: 'Test response',
+              role: 'assistant' as const,
+            },
+          },
+        ],
+        created: 1736234478,
+        model: 'test-model',
+        usage: {
+          completion_tokens: 16,
+          prompt_tokens: 5,
+          total_tokens: 21,
+        },
+        timings: {
+          prompt_per_second: 41.7157,
+          predicted_per_second: 31.04,
+        },
+        id: 'chatcmpl-test',
+        object: 'chat.completion' as const,
+      };
+
+      server.use(
+        ...mockChatCompletions({
+          response: mockResponse,
+        })
+      );
+
+      const { result } = renderHook(() => useChatCompletion(), { wrapper: createWrapper() });
+      const onMessage = vi.fn();
+      const onFinish = vi.fn();
+
+      await act(async () => {
+        await result.current.append({
+          request: {
+            model: 'test-model',
+            messages: [{ role: 'user', content: 'test' }],
+          },
+          onMessage,
+          onFinish,
+        });
+      });
+
+      const expectedMetadata = {
+        model: mockResponse.model,
+        usage: mockResponse.usage,
+        timings: {
+          prompt_per_second: mockResponse.timings.prompt_per_second,
+          predicted_per_second: mockResponse.timings.predicted_per_second,
+        },
+      };
+
+      expect(onMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'Test response',
+          role: 'assistant',
+          metadata: expectedMetadata,
+        })
+      );
+      expect(onFinish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.objectContaining({
+            metadata: expectedMetadata,
+          }),
+          finishReason: 'stop',
+        })
+      );
+    });
+
+    it('should include metadata in streaming response', async () => {
+      const streamChunks = [
+        '{"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}',
+        '{"choices":[{"delta":{"content":" world"},"finish_reason":null}]}',
+        `{"choices":[{"delta":{},"finish_reason":"stop"}],"model":"test-model","usage":{"completion_tokens":16,"prompt_tokens":5,"total_tokens":21},"timings":{"prompt_per_second":41.7157,"predicted_per_second":31.04}}`,
+      ];
+
+      server.use(
+        ...mockChatCompletionsStreaming({
+          chunks: streamChunks,
+        })
+      );
+
+      const onDelta = vi.fn();
+      const onFinish = vi.fn();
+      const { result } = renderHook(() => useChatCompletion(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        await result.current.append({
+          request: {
+            model: 'test-model',
+            messages: [{ role: 'user', content: 'test' }],
+            stream: true,
+          },
+          onDelta,
+          onFinish,
+        });
+      });
+
+      expect(onDelta).toHaveBeenCalledWith('Hello');
+      expect(onDelta).toHaveBeenCalledWith(' world');
+      expect(onFinish).toHaveBeenCalledWith({
+        message: {
+          role: 'assistant',
+          content: 'Hello world',
+          metadata: {
+            model: 'test-model',
+            usage: {
+              completion_tokens: 16,
+              prompt_tokens: 5,
+              total_tokens: 21,
+            },
+            timings: {
+              prompt_per_second: 41.7157,
+              predicted_per_second: 31.04,
+            },
+          },
+        },
+        finishReason: 'stop',
+        toolCalls: undefined,
+      });
+    });
+
+    it('should handle missing metadata fields gracefully', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            finish_reason: 'stop' as const,
+            index: 0,
+            message: {
+              content: 'Test response',
+              role: 'assistant' as const,
+            },
+          },
+        ],
+        model: 'test-model',
+        // No usage or timings data
+        id: 'chatcmpl-test',
+        object: 'chat.completion' as const,
+      };
+
+      server.use(
+        ...mockChatCompletions({
+          response: mockResponse,
+        })
+      );
+
+      const { result } = renderHook(() => useChatCompletion(), { wrapper: createWrapper() });
+      const onMessage = vi.fn();
+      const onFinish = vi.fn();
+
+      await act(async () => {
+        await result.current.append({
+          request: {
+            model: 'test-model',
+            messages: [{ role: 'user', content: 'test' }],
+          },
+          onMessage,
+          onFinish,
+        });
+      });
+
+      // Message should be delivered - handler provides consistent metadata structure
+      expect(onMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'Test response',
+          role: 'assistant',
+        })
+      );
+      expect(onFinish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.objectContaining({
+            content: 'Test response',
+            role: 'assistant',
+          }),
+          finishReason: 'stop',
+        })
+      );
+    });
+  });
+});

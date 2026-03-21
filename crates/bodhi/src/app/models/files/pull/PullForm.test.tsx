@@ -1,5 +1,5 @@
 import { PullForm } from '@/app/models/files/pull/PullForm';
-import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useModels';
+import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/models';
 import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';

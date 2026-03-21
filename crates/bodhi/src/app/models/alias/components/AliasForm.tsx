@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useCreateModel, useModelFiles, useUpdateModel } from '@/hooks/useModels';
+import { useCreateModel, useListModelFiles, useUpdateModel } from '@/hooks/models';
 import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
 import {
   AliasFormData,
@@ -78,7 +78,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   );
   const formTestId = isEditMode ? 'form-edit-alias' : 'form-create-alias';
 
-  const { data: modelsData } = useModelFiles(1, 100, 'alias', 'asc');
+  const { data: modelsData } = useListModelFiles(1, 100, 'alias', 'asc');
 
   const [currentRepo, setCurrentRepo] = useState(
     initialData && hasLocalFileProperties(initialData) ? initialData.repo : ''

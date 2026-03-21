@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { BodhiLogoImage } from '@/app/setup/BodhiLogo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useOAuthCallback } from '@/hooks/useAuth';
+import { useOAuthCallback } from '@/hooks/auth';
 import { handleSmartRedirect } from '@/lib/utils';
 
 function AuthCallbackContent() {
@@ -18,7 +18,7 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const { mutate: submitCallback, isLoading } = useOAuthCallback({
+  const { mutate: submitCallback, isPending: isLoading } = useOAuthCallback({
     onSuccess: (response) => {
       // Check for stored return URL (e.g., from access request review page)
       const returnUrl = sessionStorage.getItem('bodhi-return-url');

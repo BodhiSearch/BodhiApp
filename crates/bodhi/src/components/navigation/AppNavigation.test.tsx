@@ -39,7 +39,7 @@ vi.mock('@/components/LoginMenu', () => ({
 
 // Import components after all mocks are defined
 import { AppNavigation } from '@/components/navigation/AppNavigation';
-import { NavigationProvider } from '@/hooks/use-navigation';
+import { NavigationProvider } from '@/hooks/navigation';
 
 describe('AppNavigation', () => {
   // Setup for Radix UI components

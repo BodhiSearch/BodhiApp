@@ -25,8 +25,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { toast } from '@/hooks/use-toast';
-import { useDeleteToolset, useToolsets, type ToolsetResponse } from '@/hooks/useToolsets';
-import { useUser } from '@/hooks/useUsers';
+import { useDeleteToolset, useListToolsets, type ToolsetResponse } from '@/hooks/toolsets';
+import { useGetUser } from '@/hooks/users';
 import { isAdminRole } from '@/lib/roles';
 import { cn } from '@/lib/utils';
 
@@ -64,8 +64,8 @@ function getToolsetStatus(
 function ToolsetsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: userInfo } = useUser();
-  const { data, isLoading, error } = useToolsets();
+  const { data: userInfo } = useGetUser();
+  const { data, isLoading, error } = useListToolsets();
   const deleteMutation = useDeleteToolset({
     onSuccess: () => {
       toast({ title: 'Toolset deleted successfully' });
@@ -253,8 +253,8 @@ function ToolsetsPageContent() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} disabled={deleteMutation.isLoading}>
-              {deleteMutation.isLoading ? 'Deleting...' : 'Delete'}
+            <AlertDialogAction onClick={handleDeleteConfirm} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

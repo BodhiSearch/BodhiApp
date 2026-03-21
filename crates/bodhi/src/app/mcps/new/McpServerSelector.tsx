@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { McpServerResponse } from '@/hooks/useMcps';
+import type { McpServerResponse } from '@/hooks/mcps';
 import type { Control, FieldValues, Path } from 'react-hook-form';
 
 type McpServerSelectorProps<T extends FieldValues> = {

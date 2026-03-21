@@ -15,8 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
-import { useAppInfo } from '@/hooks/useInfo';
+import { useListTokens, useUpdateToken } from '@/hooks/tokens';
+import { useGetAppInfo } from '@/hooks/info';
 import { useQueryClient } from '@/hooks/useQuery';
 
 const columns = [
@@ -44,7 +44,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export function TokenPageContent() {
   const [showDialog, setShowDialog] = useState(false);
-  const { isLoading: appLoading } = useAppInfo();
+  const { isLoading: appLoading } = useGetAppInfo();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sort] = useState<SortState>({

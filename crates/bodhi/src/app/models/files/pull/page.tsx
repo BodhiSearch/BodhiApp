@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { useDownloads } from '@/hooks/useModels';
+import { useListDownloads } from '@/hooks/models';
 import { SortState } from '@/types/models';
 
 const columns = [
@@ -82,7 +82,7 @@ function PullPageContent() {
     direction: 'desc',
   });
   const [enablePolling, setEnablePolling] = useState(false);
-  const { data, isLoading, error } = useDownloads(page, pageSize, { enablePolling });
+  const { data, isLoading, error } = useListDownloads(page, pageSize, { enablePolling });
 
   // Update polling state based on pending downloads
   useEffect(() => {

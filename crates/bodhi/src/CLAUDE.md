@@ -34,7 +34,7 @@ ALWAYS import request/response types from `@bodhiapp/ts-client`, never define AP
 ### API Client Configuration
 
 - `src/lib/apiClient.ts` — axios instance, `baseURL` is `''` (relative) in prod, `http://localhost:3000` in tests
-- `src/lib/queryClient.ts` — separate file, re-exports `QueryClient` from react-query
+- `src/components/ClientProviders.tsx` — creates `QueryClient` and wraps app with `QueryClientProvider`
 - All API endpoints use `/bodhi/v1/` prefix. Constant `BODHI_API_BASE` defined in `src/hooks/useQuery.ts:19`
 
 ### Build Workflow

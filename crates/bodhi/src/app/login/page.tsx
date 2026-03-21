@@ -9,16 +9,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useLogoutHandler, useOAuthInitiate, useDashboardOAuthInitiate } from '@/hooks/useAuth';
-import { useAppInfo } from '@/hooks/useInfo';
-import { useTenants, useTenantActivate } from '@/hooks/useTenants';
-import { useUser } from '@/hooks/useUsers';
+import { useLogoutHandler, useOAuthInitiate, useDashboardOAuthInitiate } from '@/hooks/auth';
+import { useGetAppInfo } from '@/hooks/info';
+import { useListTenants, useTenantActivate } from '@/hooks/tenants';
+import { useGetUser } from '@/hooks/users';
 import { ROUTE_DEFAULT, ROUTE_LOGIN, ROUTE_REQUEST_ACCESS, ROUTE_SETUP_TENANTS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 
 function MultiTenantLoginContent() {
-  const { data: appInfo } = useAppInfo();
-  const { data: userInfo, isLoading: userLoading } = useUser();
+  const { data: appInfo } = useGetAppInfo();
+  const { data: userInfo, isLoading: userLoading } = useGetUser();
   const { showError, showSuccess } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
@@ -40,7 +40,7 @@ function MultiTenantLoginContent() {
   }, [searchParams, router]);
 
   // Dashboard OAuth (platform login)
-  const { mutate: initiateDashboardOAuth, isLoading: isDashboardLoading } = useDashboardOAuthInitiate({
+  const { mutate: initiateDashboardOAuth, isPending: isDashboardLoading } = useDashboardOAuthInitiate({
     onSuccess: (response: AxiosResponse<RedirectResponse>) => {
       setError(null);
       setRedirecting(true);
@@ -59,7 +59,7 @@ function MultiTenantLoginContent() {
   });
 
   // Resource OAuth (tenant login)
-  const { mutate: initiateOAuth, isLoading: isOAuthLoading } = useOAuthInitiate({
+  const { mutate: initiateOAuth, isPending: isOAuthLoading } = useOAuthInitiate({
     onSuccess: (response) => {
       setError(null);
       setRedirecting(true);
@@ -79,7 +79,7 @@ function MultiTenantLoginContent() {
   });
 
   // Tenant activation
-  const { mutate: activateTenant, isLoading: isActivating } = useTenantActivate({
+  const { mutate: activateTenant, isPending: isActivating } = useTenantActivate({
     onSuccess: () => {
       // After activation, trigger resource OAuth for the activated tenant
       if (selectedTenantId) {
@@ -94,7 +94,7 @@ function MultiTenantLoginContent() {
 
   // Fetch tenants when user has dashboard session
   const needsTenantSelection = !!userInfo?.dashboard && !appInfo?.client_id;
-  const { data: tenantsData, isLoading: tenantsLoading } = useTenants({
+  const { data: tenantsData, isLoading: tenantsLoading } = useListTenants({
     enabled: needsTenantSelection,
   });
 
@@ -342,8 +342,8 @@ function MultiTenantLoginContent() {
 }
 
 export function LoginContent() {
-  const { data: appInfo } = useAppInfo();
-  const { data: userInfo, isLoading: userLoading } = useUser();
+  const { data: appInfo } = useGetAppInfo();
+  const { data: userInfo, isLoading: userLoading } = useGetUser();
   const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
@@ -369,7 +369,7 @@ export function LoginContent() {
     },
   });
 
-  const { mutate: initiateOAuth, isLoading } = useOAuthInitiate({
+  const { mutate: initiateOAuth, isPending: isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
       // Clear any previous errors and set redirecting state
       setError(null);
@@ -450,7 +450,7 @@ export function LoginContent() {
 }
 
 export default function LoginPage() {
-  const { data: appInfo } = useAppInfo();
+  const { data: appInfo } = useGetAppInfo();
   const isMultiTenant = appInfo?.deployment === 'multi_tenant';
 
   // Allow 'setup' status when multi-tenant invite flow is active,

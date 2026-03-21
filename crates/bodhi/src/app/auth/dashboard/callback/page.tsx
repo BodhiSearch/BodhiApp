@@ -9,7 +9,7 @@ import { RedirectResponse } from '@bodhiapp/ts-client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/Loading';
-import { useDashboardOAuthCallback } from '@/hooks/useAuth';
+import { useDashboardOAuthCallback } from '@/hooks/auth';
 
 function DashboardCallbackContent() {
   const searchParams = useSearchParams();

@@ -11,7 +11,7 @@ import type {
 } from '@bodhiapp/ts-client';
 import { http, HttpResponse } from 'msw';
 
-import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
+import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/chat';
 import { ToolCall } from '@/types/chat';
 
 import { INTERNAL_SERVER_ERROR } from '../setup';

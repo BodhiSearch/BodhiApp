@@ -3,7 +3,8 @@
  */
 import { delay } from 'msw';
 
-import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/useApiTokens';
+import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/tokens';
+import { createMockToken, createMockTokenCreated } from '@/test-fixtures/tokens';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
@@ -17,18 +18,7 @@ import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
  */
 export function mockTokens(
   {
-    data = [
-      {
-        id: 'token-1',
-        name: 'Test Token 1',
-        status: 'active',
-        token_prefix: 'bodhiapp_test01',
-        scopes: 'scope_token_user',
-        user_id: 'user-123',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-      },
-    ],
+    data = [createMockToken()],
     total = 1,
     page = 1,
     page_size = 10,
@@ -60,7 +50,7 @@ export function mockTokens(
  * Uses generated OpenAPI types directly
  */
 export function mockCreateToken(
-  { token = 'test-token-123', ...rest }: Partial<components['schemas']['TokenCreated']> = {},
+  { token = createMockTokenCreated().token, ...rest }: Partial<components['schemas']['TokenCreated']> = {},
   { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -90,12 +80,12 @@ export function mockUpdateToken(
   tokenId: string,
   {
     id = tokenId,
-    name = 'Test Token 1',
+    name = createMockToken().name,
     status = 'inactive',
-    token_prefix = 'bodhiapp_test01',
-    scopes = 'scope_token_user',
-    user_id = 'user-123',
-    created_at = '2024-01-01T00:00:00Z',
+    token_prefix = createMockToken().token_prefix,
+    scopes = createMockToken().scopes,
+    user_id = createMockToken().user_id,
+    created_at = createMockToken().created_at,
     updated_at = '2024-01-01T00:00:01Z',
     ...rest
   }: Partial<components['schemas']['TokenDetail']> = {},

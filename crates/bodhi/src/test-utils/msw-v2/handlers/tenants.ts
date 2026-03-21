@@ -1,7 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for tenants endpoints using openapi-msw
  */
-import { ENDPOINT_TENANTS } from '@/hooks/useTenants';
+import { ENDPOINT_TENANTS } from '@/hooks/tenants';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 

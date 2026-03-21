@@ -7,7 +7,7 @@ import {
   ENDPOINT_API_MODELS_FORMATS,
   ENDPOINT_API_MODELS_TEST,
   ENDPOINT_API_MODEL_ID,
-} from '@/hooks/useModelsApi';
+} from '@/hooks/models';
 
 import { INTERNAL_SERVER_ERROR, typedHttp, http, HttpResponse, type components } from '../setup';
 

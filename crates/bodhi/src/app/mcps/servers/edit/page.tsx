@@ -27,12 +27,12 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import {
-  useMcpServer,
+  useGetMcpServer,
   useUpdateMcpServer,
   useListAuthConfigs,
   useDeleteAuthConfig,
   type McpAuthConfigResponse,
-} from '@/hooks/useMcps';
+} from '@/hooks/mcps';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 
@@ -40,7 +40,7 @@ function EditMcpServerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const serverId = searchParams.get('id') || '';
-  const { data: server, isLoading, error } = useMcpServer(serverId, { enabled: !!serverId });
+  const { data: server, isLoading, error } = useGetMcpServer(serverId, { enabled: !!serverId });
   const { data: authConfigsData, isLoading: configsLoading } = useListAuthConfigs(serverId);
 
   const [url, setUrl] = useState('');
@@ -262,8 +262,8 @@ function EditMcpServerContent() {
               <Button type="button" variant="outline" onClick={() => router.push(ROUTE_MCP_SERVERS)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={updateMutation.isLoading} data-testid="mcp-server-save-button">
-                {updateMutation.isLoading ? 'Saving...' : 'Save'}
+              <Button type="submit" disabled={updateMutation.isPending} data-testid="mcp-server-save-button">
+                {updateMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
             </div>
           </form>
@@ -289,10 +289,10 @@ function EditMcpServerContent() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              disabled={deleteAuthConfig.isLoading}
+              disabled={deleteAuthConfig.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteAuthConfig.isLoading ? 'Deleting...' : 'Delete'}
+              {deleteAuthConfig.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

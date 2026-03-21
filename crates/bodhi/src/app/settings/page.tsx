@@ -28,7 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { useSettings } from '@/hooks/useSettings';
+import { useListSettings } from '@/hooks/settings';
 import { cn } from '@/lib/utils';
 
 type SettingConfig = {
@@ -263,7 +263,7 @@ const getSourceBadgeVariant = (source: string) => {
 
 export function SettingsPageContent({ config }: SettingsPageContentProps) {
   const [editingSetting, setEditingSetting] = useState<SettingInfo | null>(null);
-  const { data: settings, isLoading, error } = useSettings();
+  const { data: settings, isLoading, error } = useListSettings();
 
   if (isLoading) {
     return <SettingsSkeleton config={config} />;

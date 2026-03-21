@@ -8,7 +8,8 @@ import { CopyButton } from '@/components/CopyButton';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useChatSettings } from '@/hooks/use-chat-settings';
+import { useChatSettings } from '@/hooks/chat';
+import { modelKeys } from '@/hooks/models/constants';
 import { useQueryClient } from '@/hooks/useQuery';
 import { isApiAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
@@ -26,7 +27,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
   // Handle refresh button click
   const handleRefresh = async () => {
     // Invalidate and refetch models cache
-    await queryClient.invalidateQueries({ queryKey: ['models'] });
+    await queryClient.invalidateQueries({ queryKey: modelKeys.all });
   };
 
   // Transform models array to match ComboBoxResponsive's Status type

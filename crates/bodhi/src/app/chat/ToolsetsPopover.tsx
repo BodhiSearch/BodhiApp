@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToolsets, useToolsetTypes } from '@/hooks/useToolsets';
+import { useListToolsets, useListToolsetTypes } from '@/hooks/toolsets';
 import { cn } from '@/lib/utils';
 
 interface ToolsetsPopoverProps {
@@ -213,8 +213,8 @@ export function ToolsetsPopover({
   const [open, setOpen] = useState(false);
   const [expandedToolsets, setExpandedToolsets] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const { data: toolsetsResponse, isLoading: toolsetsLoading } = useToolsets();
-  const { data: typesResponse, isLoading: typesLoading } = useToolsetTypes();
+  const { data: toolsetsResponse, isLoading: toolsetsLoading } = useListToolsets();
+  const { data: typesResponse, isLoading: typesLoading } = useListToolsetTypes();
 
   const toolsets = useMemo(() => toolsetsResponse?.toolsets || [], [toolsetsResponse?.toolsets]);
   const toolsetTypes = useMemo(() => toolsetsResponse?.toolset_types || [], [toolsetsResponse?.toolset_types]);

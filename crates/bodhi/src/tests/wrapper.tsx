@@ -9,6 +9,9 @@ export const createWrapper = () => {
         retry: false,
         refetchOnMount: false,
       },
+      mutations: {
+        retry: false,
+      },
     },
   });
   const Wrapper = ({ children }: { children: ReactNode }) => (

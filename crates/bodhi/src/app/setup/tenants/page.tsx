@@ -14,8 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loading } from '@/components/ui/Loading';
 import { Textarea } from '@/components/ui/textarea';
-import { useOAuthInitiate } from '@/hooks/useAuth';
-import { useCreateTenant } from '@/hooks/useTenants';
+import { useOAuthInitiate } from '@/hooks/auth';
+import { useCreateTenant } from '@/hooks/tenants';
 
 function TenantRegistrationContent() {
   const router = useRouter();
@@ -39,7 +39,7 @@ function TenantRegistrationContent() {
     },
   });
 
-  const { mutate: createTenant, isLoading: isCreating } = useCreateTenant({
+  const { mutate: createTenant, isPending: isCreating } = useCreateTenant({
     onSuccess: (response) => {
       setIsRedirecting(true);
       oauthInitiate({ client_id: response.client_id });

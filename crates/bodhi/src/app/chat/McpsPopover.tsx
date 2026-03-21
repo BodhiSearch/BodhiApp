@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useMcps } from '@/hooks/useMcps';
+import { useListMcps } from '@/hooks/mcps';
 import { cn } from '@/lib/utils';
 
 interface McpsPopoverProps {
@@ -179,7 +179,7 @@ function McpItem({ mcp, isExpanded, onToggleExpand, enabledMcpTools, onToggleToo
 export function McpsPopover({ enabledMcpTools, onToggleTool, onToggleMcp, disabled = false }: McpsPopoverProps) {
   const [open, setOpen] = useState(false);
   const [expandedMcps, setExpandedMcps] = useState<Set<string>>(new Set());
-  const { data: mcpsResponse, isLoading } = useMcps();
+  const { data: mcpsResponse, isLoading } = useListMcps();
 
   const mcps = useMemo(() => mcpsResponse?.mcps || [], [mcpsResponse?.mcps]);
 

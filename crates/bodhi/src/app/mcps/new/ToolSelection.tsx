@@ -4,7 +4,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { McpServerResponse, McpTool } from '@/hooks/useMcps';
+import type { McpServerResponse, McpTool } from '@/hooks/mcps';
 
 type ToolSelectionProps = {
   selectedServer: McpServerResponse | null;

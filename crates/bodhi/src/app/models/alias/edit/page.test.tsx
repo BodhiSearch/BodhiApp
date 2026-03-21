@@ -1,7 +1,7 @@
 import EditAliasPage from '@/app/models/alias/edit/page';
-import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
-import { ENDPOINT_MODEL_FILES, ENDPOINT_MODELS } from '@/hooks/useModels';
-import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
+import { ENDPOINT_APP_INFO } from '@/hooks/info';
+import { ENDPOINT_MODEL_FILES, ENDPOINT_MODELS } from '@/hooks/models';
+import { ENDPOINT_USER_INFO } from '@/hooks/users';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';

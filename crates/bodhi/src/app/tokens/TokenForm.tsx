@@ -13,8 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useCreateToken } from '@/hooks/useApiTokens';
-import { useUser } from '@/hooks/useUsers';
+import { useCreateToken } from '@/hooks/tokens';
+import { useGetUser } from '@/hooks/users';
 
 export const createTokenSchema = z.object({
   name: z.string().optional(),
@@ -29,7 +29,7 @@ interface TokenFormProps {
 
 export function TokenForm({ onTokenCreated }: TokenFormProps) {
   const { showSuccess, showError } = useToastMessages();
-  const { data: userInfo } = useUser();
+  const { data: userInfo } = useGetUser();
 
   // Determine available scope options based on user role
   const scopeOptions = useMemo(() => {
@@ -52,7 +52,7 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
     },
   });
 
-  const { mutate: createToken, isLoading } = useCreateToken({
+  const { mutate: createToken, isPending: isLoading } = useCreateToken({
     onSuccess: (response) => {
       onTokenCreated(response);
       form.reset({

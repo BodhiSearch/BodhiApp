@@ -1,5 +1,5 @@
 import { SettingsSidebar } from '@/app/chat/settings/SettingsSidebar';
-import { ENDPOINT_MODELS } from '@/hooks/useModels';
+import { ENDPOINT_MODELS } from '@/hooks/models';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -50,7 +50,7 @@ vi.mock('@/components/ui/separator', () => ({
 }));
 
 // Mock hooks
-vi.mock('@/hooks/use-chat-settings', () => ({
+vi.mock('@/hooks/chat', () => ({
   useChatSettings: () => ({
     stream: false,
     setStream: vi.fn(),

@@ -16,14 +16,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import {
-  useAppAccessRequestReview,
-  useApproveAppAccessRequest,
-  useDenyAppAccessRequest,
-} from '@/hooks/useAppAccessRequests';
-import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/useAppAccessRequests';
+import { useGetAppAccessRequestReview, useApproveAppAccessRequest, useDenyAppAccessRequest } from '@/hooks/apps';
+import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/apps';
 import type { UserScope } from '@bodhiapp/ts-client';
-import { useUser } from '@/hooks/useUsers';
+import { useGetUser } from '@/hooks/users';
 
 // ============================================================================
 // Non-Draft Status Handler
@@ -129,8 +125,8 @@ const ReviewContent = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
 
-  const { data: reviewData, isLoading, error } = useAppAccessRequestReview(id);
-  const { data: userData } = useUser();
+  const { data: reviewData, isLoading, error } = useGetAppAccessRequestReview(id);
+  const { data: userData } = useGetUser();
 
   const handleActionSuccess = (data: AccessRequestActionResponse) => {
     if (data.flow_type === 'popup') {
@@ -377,7 +373,7 @@ const ReviewContent = () => {
 
           <div className="flex justify-between gap-4">
             <Button variant="outline" onClick={handleDeny} disabled={isSubmitting} data-testid="review-deny-button">
-              {denyMutation.isLoading ? (
+              {denyMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Denying...
@@ -387,7 +383,7 @@ const ReviewContent = () => {
               )}
             </Button>
             <Button onClick={handleApprove} disabled={!canApprove || isSubmitting} data-testid="review-approve-button">
-              {approveMutation.isLoading ? (
+              {approveMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Approving...

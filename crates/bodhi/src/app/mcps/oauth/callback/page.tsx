@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useOAuthTokenExchange } from '@/hooks/useMcps';
+import { useOAuthTokenExchange } from '@/hooks/mcps';
 import { OAUTH_FORM_STORAGE_KEY } from '@/stores/mcpFormStore';
 
 function OAuthCallbackContent() {

@@ -7,7 +7,7 @@ import { Users } from 'lucide-react';
 
 import { DataTable, Pagination } from '@/components/DataTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AuthenticatedUser } from '@/hooks/useUsers';
+import { AuthenticatedUser } from '@/hooks/users';
 import { SortState } from '@/types/models';
 
 import { UserRow } from './UserRow';

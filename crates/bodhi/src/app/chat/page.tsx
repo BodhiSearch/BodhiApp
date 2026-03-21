@@ -18,8 +18,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { ChatDBProvider } from '@/hooks/use-chat-db';
-import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
+import { ChatDBProvider, ChatSettingsProvider } from '@/hooks/chat';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';

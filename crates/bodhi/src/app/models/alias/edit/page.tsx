@@ -7,13 +7,13 @@ import AliasForm from '@/app/models/alias/components/AliasForm';
 import AppInitializer from '@/components/AppInitializer';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Loading } from '@/components/ui/Loading';
-import { useModel } from '@/hooks/useModels';
+import { useGetModel } from '@/hooks/models';
 
 function EditAliasContent() {
   const searchParams = useSearchParams();
   const id = searchParams?.get('id');
 
-  const { data: modelData, isLoading, error } = useModel(id ?? '');
+  const { data: modelData, isLoading, error } = useGetModel(id ?? '');
 
   if (isLoading) {
     return <Loading message="Loading model data..." />;

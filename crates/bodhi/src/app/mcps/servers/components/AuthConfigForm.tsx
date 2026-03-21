@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useDiscoverMcp } from '@/hooks/useMcps';
+import { useDiscoverMcp } from '@/hooks/mcps';
 import type { McpAuthConfigParamInput, McpAuthParamType } from '@bodhiapp/ts-client';
 
 type AuthConfigType = 'header' | 'oauth';

@@ -1,10 +1,10 @@
 import { SystemPrompt } from '@/app/chat/settings/SystemPrompt';
-import * as chatSettings from '@/hooks/use-chat-settings';
+import * as chatSettings from '@/hooks/chat';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 // Mock useChatSettings
-vi.mock('@/hooks/use-chat-settings', () => ({
+vi.mock('@/hooks/chat', () => ({
   useChatSettings: vi.fn(),
 }));
 

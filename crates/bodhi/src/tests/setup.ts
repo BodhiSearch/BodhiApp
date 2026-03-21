@@ -1,7 +1,15 @@
 import '@testing-library/jest-dom';
+import { notifyManager } from '@tanstack/react-query';
 import { beforeAll, afterAll, vi } from 'vitest';
 
 import apiClient from '@/lib/apiClient';
+
+// TanStack Query v5 uses setTimeout(cb, 0) to schedule state notifications by default.
+// This causes mutation/query state updates to be deferred outside of act() blocks in tests.
+// Using queueMicrotask ensures state transitions are flushed within act() blocks
+// (act flushes microtasks) while avoiding infinite re-render loops that happen with
+// fully synchronous scheduling.
+notifyManager.setScheduler((cb) => queueMicrotask(cb));
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

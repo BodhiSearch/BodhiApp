@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction } from '@/components/ui/sidebar';
-import { useChatDB } from '@/hooks/use-chat-db';
+import { useChatDB } from '@/hooks/chat';
 import { cn } from '@/lib/utils';
 import { Chat } from '@/types/chat';
 

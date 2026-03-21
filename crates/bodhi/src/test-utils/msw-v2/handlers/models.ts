@@ -1,8 +1,15 @@
 /**
  * Type-safe MSW v2 handlers for models endpoint using openapi-msw
  */
-import { ENDPOINT_MODELS_REFRESH, ENDPOINT_QUEUE } from '@/hooks/useModelMetadata';
-import { ENDPOINT_MODELS, ENDPOINT_MODEL_ID, ENDPOINT_ALIAS, ENDPOINT_ALIAS_ID } from '@/hooks/useModels';
+import {
+  ENDPOINT_MODELS_REFRESH,
+  ENDPOINT_QUEUE,
+  ENDPOINT_MODELS,
+  ENDPOINT_MODEL_ID,
+  ENDPOINT_ALIAS,
+  ENDPOINT_ALIAS_ID,
+} from '@/hooks/models';
+import { createMockUserAlias, createMockApiAlias, createMockModelAlias } from '@/test-fixtures/models';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
@@ -52,21 +59,7 @@ export function mockModels(
  */
 export function mockModelsDefault() {
   return mockModels({
-    data: [
-      {
-        source: 'user',
-        id: 'test-uuid-1',
-        alias: 'test-model',
-        repo: 'test-repo',
-        filename: 'test-file.bin',
-        snapshot: 'abc123',
-        request_params: {},
-        context_params: [],
-        model_params: {},
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-      },
-    ],
+    data: [createMockUserAlias()],
     total: 1,
     page: 1,
     page_size: 30,
@@ -79,19 +72,7 @@ export function mockModelsDefault() {
  */
 export function mockModelsWithApiModel() {
   return mockModels({
-    data: [
-      {
-        source: 'api',
-        id: 'test-api-model',
-        api_format: 'openai',
-        base_url: 'https://api.openai.com/v1',
-        has_api_key: true,
-        models: ['gpt-4', 'gpt-3.5-turbo'],
-        forward_all_with_prefix: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-      },
-    ],
+    data: [createMockApiAlias()],
     total: 1,
     page: 1,
     page_size: 30,
@@ -104,15 +85,7 @@ export function mockModelsWithApiModel() {
  */
 export function mockModelsWithSourceModel() {
   return mockModels({
-    data: [
-      {
-        source: 'model',
-        alias: 'test-model',
-        repo: 'test-repo',
-        filename: 'test-file.bin',
-        snapshot: 'abc123',
-      },
-    ],
+    data: [createMockModelAlias()],
     total: 1,
     page: 1,
     page_size: 30,
@@ -195,9 +168,9 @@ export function mockCreateModel(
   {
     id = 'test-uuid-create',
     alias = 'new-model',
-    repo = 'test-repo',
-    filename = 'test-file.bin',
-    snapshot = 'abc123',
+    repo = createMockUserAlias().repo,
+    filename = createMockUserAlias().filename,
+    snapshot = createMockUserAlias().snapshot,
     request_params = {},
     context_params = [],
     model_params = {},
@@ -309,10 +282,10 @@ export function mockCreateModelBadRequestError(config: { message?: string } = {}
 export function mockGetModel(
   id: string,
   {
-    alias = 'test-model',
-    repo = 'test-repo',
-    filename = 'test-file.bin',
-    snapshot = 'abc123',
+    alias = createMockUserAlias().alias,
+    repo = createMockUserAlias().repo,
+    filename = createMockUserAlias().filename,
+    snapshot = createMockUserAlias().snapshot,
     request_params = {},
     context_params = [],
     model_params = {},
@@ -436,10 +409,10 @@ export function mockGetModelInternalError(id: string, _config: Record<string, ne
 export function mockUpdateModel(
   id: string,
   {
-    alias = 'test-model',
-    repo = 'test-repo',
-    filename = 'test-file.bin',
-    snapshot = 'abc123',
+    alias = createMockUserAlias().alias,
+    repo = createMockUserAlias().repo,
+    filename = createMockUserAlias().filename,
+    snapshot = createMockUserAlias().snapshot,
     request_params = {},
     context_params = [],
     model_params = {},
@@ -612,9 +585,9 @@ export function mockQueueStatus(status: 'idle' | 'processing' = 'idle', { stub }
  */
 export function mockRefreshSingleMetadata(
   {
-    repo = 'test-repo',
+    repo = createMockModelAlias().repo,
     filename = 'test-file.gguf',
-    snapshot = 'abc123',
+    snapshot = createMockModelAlias().snapshot,
     alias = `${repo}/${filename}`,
     source: _source = 'model',
     metadata = null,

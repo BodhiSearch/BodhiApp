@@ -4,7 +4,7 @@ import { ApiAliasResponse } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-import { useCreateApiModel, useUpdateApiModel, useApiFormats } from '@/hooks/useModelsApi';
+import { useCreateApiModel, useUpdateApiModel, useListApiFormats } from '@/hooks/models';
 import {
   ApiModelFormData,
   UpdateApiModelFormData,
@@ -120,7 +120,7 @@ export function useApiModelForm({
       }
     },
   });
-  const { data: apiFormatsData } = useApiFormats();
+  const { data: apiFormatsData } = useListApiFormats();
 
   // Business logic hooks
   const testConnection = useTestConnection({ mode, initialData });
@@ -297,7 +297,7 @@ export function useApiModelForm({
 
     // Actions
     handleCancel,
-    isLoading: isSubmitting || createMutation.isLoading || updateMutation.isLoading,
+    isLoading: isSubmitting || createMutation.isPending || updateMutation.isPending,
     mode,
     isEditMode,
   };

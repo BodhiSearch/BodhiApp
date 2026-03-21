@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useNavigation } from '@/hooks/use-navigation';
+import { useNavigation } from '@/hooks/navigation';
 import { cn } from '@/lib/utils';
 import { NavigationItem } from '@/types/navigation';
 

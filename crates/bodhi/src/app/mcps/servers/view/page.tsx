@@ -27,10 +27,10 @@ import {
   useCreateAuthConfig,
   useDeleteAuthConfig,
   useListAuthConfigs,
-  useMcpServer,
+  useGetMcpServer,
   useStandaloneDynamicRegister,
   type McpAuthConfigResponse,
-} from '@/hooks/useMcps';
+} from '@/hooks/mcps';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 import { AuthConfigForm } from '../components/AuthConfigForm';
@@ -44,7 +44,7 @@ function ServerViewContent() {
     data: server,
     isLoading: serverLoading,
     error: serverError,
-  } = useMcpServer(serverId, { enabled: !!serverId });
+  } = useGetMcpServer(serverId, { enabled: !!serverId });
   const { data: authConfigsData, isLoading: configsLoading } = useListAuthConfigs(serverId);
 
   const [deleteTarget, setDeleteTarget] = useState<McpAuthConfigResponse | null>(null);
@@ -266,7 +266,7 @@ function ServerViewContent() {
                   setShowForm(false);
                   resetForm();
                 }}
-                isSubmitting={createAuthConfig.isLoading || standaloneDcr.isLoading}
+                isSubmitting={createAuthConfig.isPending || standaloneDcr.isPending}
               />
             </CardContent>
           </Card>
@@ -330,10 +330,10 @@ function ServerViewContent() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              disabled={deleteAuthConfig.isLoading}
+              disabled={deleteAuthConfig.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteAuthConfig.isLoading ? 'Deleting...' : 'Delete'}
+              {deleteAuthConfig.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

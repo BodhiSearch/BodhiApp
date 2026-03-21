@@ -1,4 +1,4 @@
-import type { McpAuthConfigResponse } from '@/hooks/useMcps';
+import type { McpAuthConfigResponse } from '@/hooks/mcps';
 
 export function authConfigTypeBadge(config: McpAuthConfigResponse): string {
   switch (config.type) {

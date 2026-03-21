@@ -26,10 +26,10 @@ import { toast } from '@/hooks/use-toast';
 import {
   useDisableToolsetType,
   useEnableToolsetType,
-  useToolsets,
-  useToolsetTypes,
+  useListToolsets,
+  useListToolsetTypes,
   type ToolsetDefinition,
-} from '@/hooks/useToolsets';
+} from '@/hooks/toolsets';
 import { cn } from '@/lib/utils';
 
 const columns = [
@@ -41,8 +41,8 @@ const columns = [
 
 function AdminToolsetsPageContent() {
   const pathname = usePathname();
-  const { data, isLoading, error } = useToolsetTypes();
-  const { data: toolsetsData } = useToolsets();
+  const { data, isLoading, error } = useListToolsetTypes();
+  const { data: toolsetsData } = useListToolsets();
 
   const [enableDialogOpen, setEnableDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
@@ -101,7 +101,7 @@ function AdminToolsetsPageContent() {
 
   const renderRow = (type: ToolsetDefinition) => {
     const isToggling =
-      selectedType?.toolset_type === type.toolset_type && (enableMutation.isLoading || disableMutation.isLoading);
+      selectedType?.toolset_type === type.toolset_type && (enableMutation.isPending || disableMutation.isPending);
     const isEnabled = scopeEnabledMap.get(type.toolset_type) ?? false;
 
     return [
@@ -215,8 +215,8 @@ function AdminToolsetsPageContent() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleEnableConfirm} disabled={enableMutation.isLoading}>
-              {enableMutation.isLoading ? 'Enabling...' : 'Enable'}
+            <AlertDialogAction onClick={handleEnableConfirm} disabled={enableMutation.isPending}>
+              {enableMutation.isPending ? 'Enabling...' : 'Enable'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -233,8 +233,8 @@ function AdminToolsetsPageContent() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDisableConfirm} disabled={disableMutation.isLoading}>
-              {disableMutation.isLoading ? 'Disabling...' : 'Disable'}
+            <AlertDialogAction onClick={handleDisableConfirm} disabled={disableMutation.isPending}>
+              {disableMutation.isPending ? 'Disabling...' : 'Disable'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -28,12 +28,12 @@ import { TableCell } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import {
   useListAuthConfigs,
-  useMcpServers,
+  useListMcpServers,
   useUpdateMcpServer,
   type McpAuthConfigResponse,
   type McpServerResponse,
-} from '@/hooks/useMcps';
-import { useUser } from '@/hooks/useUsers';
+} from '@/hooks/mcps';
+import { useGetUser } from '@/hooks/users';
 import { isAdminRole } from '@/lib/roles';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { authConfigTypeBadge } from '@/lib/mcpUtils';
@@ -72,9 +72,9 @@ const columns = [
 
 function McpServersPageContent() {
   const router = useRouter();
-  const { data: userInfo } = useUser();
+  const { data: userInfo } = useGetUser();
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
-  const { data, isLoading, error } = useMcpServers({});
+  const { data, isLoading, error } = useListMcpServers({});
   const updateMutation = useUpdateMcpServer({
     onSuccess: () => {
       toast({ title: 'MCP server updated' });
@@ -245,8 +245,8 @@ function McpServersPageContent() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleToggleConfirm} disabled={updateMutation.isLoading}>
-              {updateMutation.isLoading ? 'Updating...' : toggleDialog?.enabled ? 'Disable' : 'Enable'}
+            <AlertDialogAction onClick={handleToggleConfirm} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Updating...' : toggleDialog?.enabled ? 'Disable' : 'Enable'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { usePullModel, useModelFiles } from '@/hooks/useModels';
+import { usePullModel, useListModelFiles } from '@/hooks/models';
 import { pullModelSchema, type PullModelFormData } from '@/schemas/pull';
 
 export function PullForm() {
@@ -27,7 +27,7 @@ export function PullForm() {
     },
   });
 
-  const { mutate: pullModel, isLoading } = usePullModel({
+  const { mutate: pullModel, isPending: isLoading } = usePullModel({
     onSuccess: () => {
       showSuccess('Success', 'Model pull request submitted successfully');
       form.reset();
@@ -43,7 +43,7 @@ export function PullForm() {
     },
   });
 
-  const { data: modelsData, isLoading: modelsLoading } = useModelFiles(1, 100);
+  const { data: modelsData, isLoading: modelsLoading } = useListModelFiles(1, 100);
 
   const repos = Array.from(new Set(modelsData?.data.map((model) => model.repo) || [])).sort();
 

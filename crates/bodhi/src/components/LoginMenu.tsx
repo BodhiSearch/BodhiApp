@@ -6,15 +6,15 @@ import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useLogoutHandler, useOAuthInitiate } from '@/hooks/useAuth';
-import { useAppInfo } from '@/hooks/useInfo';
-import { useUser } from '@/hooks/useUsers';
+import { useLogoutHandler, useOAuthInitiate } from '@/hooks/auth';
+import { useGetAppInfo } from '@/hooks/info';
+import { useGetUser } from '@/hooks/users';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 
 export function LoginMenu() {
-  const { data: appInfo } = useAppInfo();
-  const { data: userInfo, isLoading: userLoading } = useUser();
+  const { data: appInfo } = useGetAppInfo();
+  const { data: userInfo, isLoading: userLoading } = useGetUser();
   const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
@@ -40,7 +40,7 @@ export function LoginMenu() {
     },
   });
 
-  const { mutate: initiateOAuth, isLoading } = useOAuthInitiate({
+  const { mutate: initiateOAuth, isPending: isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
       // Clear any previous errors and set redirecting state
       setError(null);

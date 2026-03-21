@@ -9,15 +9,14 @@ import { ModelCard } from '@/app/setup/download-models/ModelCard';
 import { ModelInfo, ModelCatalog } from '@/app/setup/download-models/types';
 import AppInitializer from '@/components/AppInitializer';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useChatModelsCatalog, useEmbeddingModelsCatalog } from '@/hooks/useModelCatalog';
-import { useDownloads, usePullModel } from '@/hooks/useModels';
+import { useChatModelsCatalog, useEmbeddingModelsCatalog, useListDownloads, usePullModel } from '@/hooks/models';
 import { ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 
 export function ModelDownloadContent() {
   const router = useRouter();
   const { showSuccess, showError } = useToastMessages();
   const [enablePolling, setEnablePolling] = useState(false);
-  const { data: downloads } = useDownloads(1, 100, { enablePolling });
+  const { data: downloads } = useListDownloads(1, 100, { enablePolling });
   const { data: chatModels } = useChatModelsCatalog();
   const { data: embeddingModels } = useEmbeddingModelsCatalog();
 

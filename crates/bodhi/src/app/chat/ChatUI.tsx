@@ -10,15 +10,11 @@ import { ToolsetsPopover } from '@/app/chat/ToolsetsPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 import { useSidebar } from '@/components/ui/sidebar';
-import { useChat } from '@/hooks/use-chat';
-import { useChatDB } from '@/hooks/use-chat-db';
-import { useChatSettings } from '@/hooks/use-chat-settings';
-import { useMcpSelection } from '@/hooks/use-mcp-selection';
+import { useChat, useChatDB, useChatSettings } from '@/hooks/chat';
+import { useMcpSelection, useListMcps } from '@/hooks/mcps';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useToolsetSelection } from '@/hooks/use-toolset-selection';
-import { useMcps } from '@/hooks/useMcps';
-import { useToolsets } from '@/hooks/useToolsets';
+import { useToolsetSelection, useListToolsets } from '@/hooks/toolsets';
 import { cn } from '@/lib/utils';
 import { Message } from '@/types/chat';
 
@@ -240,7 +236,7 @@ export function ChatUI() {
 
   // Toolset selection
   const { enabledTools, toggleTool, toggleToolset, setEnabledTools } = useToolsetSelection();
-  const { data: toolsetsResponse } = useToolsets();
+  const { data: toolsetsResponse } = useListToolsets();
   const toolsets = useMemo(() => toolsetsResponse?.toolsets || [], [toolsetsResponse?.toolsets]);
   const toolsetTypes = useMemo(() => toolsetsResponse?.toolset_types || [], [toolsetsResponse?.toolset_types]);
 
@@ -251,7 +247,7 @@ export function ChatUI() {
     toggleToolset: toggleMcp,
     setEnabledTools: setEnabledMcpTools,
   } = useMcpSelection();
-  const { data: mcpsResponse } = useMcps();
+  const { data: mcpsResponse } = useListMcps();
   const mcps = useMemo(() => mcpsResponse?.mcps || [], [mcpsResponse?.mcps]);
 
   // Create scope enabled map from toolset_types

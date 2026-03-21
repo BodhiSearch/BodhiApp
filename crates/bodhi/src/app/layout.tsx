@@ -7,7 +7,7 @@ import ClientProviders from '@/components/ClientProviders';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
-import { NavigationProvider, defaultNavigationItems } from '@/hooks/use-navigation';
+import { NavigationProvider, defaultNavigationItems } from '@/hooks/navigation';
 import { cn } from '@/lib/utils';
 
 const fontSans = FontSans({

@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 
 // Mock hooks
 const mockCreateNewChat = vi.fn();
-vi.mock('@/hooks/use-chat-db', () => ({
+vi.mock('@/hooks/chat', () => ({
   useChatDB: () => ({
     createNewChat: mockCreateNewChat,
   }),

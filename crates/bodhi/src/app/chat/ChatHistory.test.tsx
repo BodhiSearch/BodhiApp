@@ -1,13 +1,13 @@
 import { ChatHistory } from '@/app/chat/ChatHistory';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { useChatDB } from '@/hooks/use-chat-db';
+import { useChatDB } from '@/hooks/chat';
 import { Chat } from '@/types/chat';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock dependencies
-vi.mock('@/hooks/use-chat-db', () => ({
+vi.mock('@/hooks/chat', () => ({
   useChatDB: vi.fn(),
 }));
 

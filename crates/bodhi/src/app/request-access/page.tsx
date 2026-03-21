@@ -5,17 +5,17 @@ import { useRouter } from 'next/navigation';
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useRequestStatus, useSubmitAccessRequest } from '@/hooks/useAccessRequests';
-import { useAuthenticatedUser } from '@/hooks/useUsers';
+import { useGetRequestStatus, useSubmitAccessRequest } from '@/hooks/users';
+import { useGetAuthenticatedUser } from '@/hooks/users';
 import { ROUTE_DEFAULT } from '@/lib/constants';
 
 export function RequestAccessContent() {
   const router = useRouter();
-  const { data: userInfo } = useAuthenticatedUser();
-  const { data: requestStatus, isLoading: statusLoading, error: _statusError } = useRequestStatus();
+  const { data: userInfo } = useGetAuthenticatedUser();
+  const { data: requestStatus, isLoading: statusLoading, error: _statusError } = useGetRequestStatus();
   const { showSuccess, showError } = useToastMessages();
 
-  const { mutate: submitRequest, isLoading: isSubmitting } = useSubmitAccessRequest({
+  const { mutate: submitRequest, isPending: isSubmitting } = useSubmitAccessRequest({
     onSuccess: () => {
       showSuccess('Request Submitted', 'Your access request has been submitted for review');
     },

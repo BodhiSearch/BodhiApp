@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { FetchModelsRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
 
 import { useToast } from '@/hooks/use-toast';
-import { useFetchApiModels } from '@/hooks/useModelsApi';
+import { useFetchApiModels } from '@/hooks/models';
 
 import { ApiProvider } from '../providers/constants';
 
@@ -112,7 +112,7 @@ export function useFetchModels({
 
   return {
     status,
-    isLoading: fetchModelsMutation.isLoading,
+    isLoading: fetchModelsMutation.isPending,
     availableModels,
     canFetch,
     getFetchDisabledReason,

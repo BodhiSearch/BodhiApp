@@ -14,8 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { useToast } from '@/hooks/use-toast';
-import { useDeleteApiModel } from '@/hooks/useModelsApi';
-import { useModels } from '@/hooks/useModels';
+import { useDeleteApiModel, useListModels } from '@/hooks/models';
 import { hasLocalFileProperties, isApiAlias, isUserAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
 import { SortState } from '@/types/models';
@@ -81,7 +80,7 @@ function ModelsPageContent() {
   const deleteApiModel = useDeleteApiModel();
 
   // Backend will provide combined data including API models, User aliases, and Model File aliases
-  const { data, isLoading, error } = useModels(page, pageSize, sort.column, sort.direction);
+  const { data, isLoading, error } = useListModels(page, pageSize, sort.column, sort.direction);
 
   // Update preview model when query data changes (after metadata refresh)
   useEffect(() => {
@@ -265,7 +264,7 @@ function ModelsPageContent() {
         title="Delete API Model"
         description={`Are you sure you want to delete the API model "${deleteModel?.name}"? This action cannot be undone.`}
         onConfirm={confirmDelete}
-        loading={deleteApiModel.isLoading}
+        loading={deleteApiModel.isPending}
       />
 
       {/* More Models Modal */}

@@ -3,7 +3,7 @@
  */
 import { delay } from 'msw';
 
-import { ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/useAuth';
+import { ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/auth';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 

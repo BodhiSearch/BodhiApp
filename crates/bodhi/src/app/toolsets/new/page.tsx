@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useCreateToolset, useToolsets, useToolsetTypes } from '@/hooks/useToolsets';
+import { useCreateToolset, useListToolsets, useListToolsetTypes } from '@/hooks/toolsets';
 
 // Form schema matching the plan specification
 const createToolsetSchema = z.object({
@@ -38,8 +38,8 @@ type CreateToolsetFormData = z.infer<typeof createToolsetSchema>;
 
 function NewToolsetPageContent() {
   const router = useRouter();
-  const { data: toolsetsData } = useToolsets();
-  const { data: typesData, isLoading: typesLoading, error: typesError } = useToolsetTypes();
+  const { data: toolsetsData } = useListToolsets();
+  const { data: typesData, isLoading: typesLoading, error: typesError } = useListToolsetTypes();
 
   const createMutation = useCreateToolset({
     onSuccess: (toolset) => {
@@ -154,7 +154,7 @@ function NewToolsetPageContent() {
                     <Select
                       onValueChange={handleTypeChange}
                       value={field.value}
-                      disabled={createMutation.isLoading}
+                      disabled={createMutation.isPending}
                       data-testid="toolset-type-select"
                     >
                       <FormControl>
@@ -190,7 +190,7 @@ function NewToolsetPageContent() {
                       <Input
                         {...field}
                         placeholder="my-exa-search"
-                        disabled={createMutation.isLoading}
+                        disabled={createMutation.isPending}
                         data-testid="toolset-slug-input"
                       />
                     </FormControl>
@@ -212,7 +212,7 @@ function NewToolsetPageContent() {
                       <Textarea
                         {...field}
                         placeholder="Describe what this toolset is used for"
-                        disabled={createMutation.isLoading}
+                        disabled={createMutation.isPending}
                         data-testid="toolset-description-input"
                       />
                     </FormControl>
@@ -232,7 +232,7 @@ function NewToolsetPageContent() {
                       <PasswordInput
                         {...field}
                         placeholder="Enter API key"
-                        disabled={createMutation.isLoading}
+                        disabled={createMutation.isPending}
                         data-testid="toolset-api-key-input"
                       />
                     </FormControl>
@@ -255,7 +255,7 @@ function NewToolsetPageContent() {
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        disabled={createMutation.isLoading}
+                        disabled={createMutation.isPending}
                         data-testid="toolset-enabled-switch"
                       />
                     </FormControl>
@@ -264,14 +264,14 @@ function NewToolsetPageContent() {
               />
 
               <div className="flex gap-4">
-                <Button type="submit" disabled={createMutation.isLoading} data-testid="toolset-create-button">
-                  {createMutation.isLoading ? 'Creating...' : 'Create Toolset'}
+                <Button type="submit" disabled={createMutation.isPending} data-testid="toolset-create-button">
+                  {createMutation.isPending ? 'Creating...' : 'Create Toolset'}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => router.push('/toolsets')}
-                  disabled={createMutation.isLoading}
+                  disabled={createMutation.isPending}
                   data-testid="toolset-cancel-button"
                 >
                   Cancel

@@ -30,9 +30,9 @@ import {
   useCreateToolset,
   useDisableToolsetType,
   useEnableToolsetType,
-  useToolsets,
-  useToolsetTypes,
-} from '@/hooks/useToolsets';
+  useListToolsets,
+  useListToolsetTypes,
+} from '@/hooks/toolsets';
 
 const TOOLSET_TYPE = 'builtin-exa-search';
 
@@ -54,8 +54,8 @@ interface SetupToolsetFormProps {
 }
 
 export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
-  const { data: typesData, isLoading: typesLoading } = useToolsetTypes();
-  const { data: toolsetsData } = useToolsets();
+  const { data: typesData, isLoading: typesLoading } = useListToolsetTypes();
+  const { data: toolsetsData } = useListToolsets();
   const [enableDialogOpen, setEnableDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
 
@@ -170,8 +170,8 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
     );
   }
 
-  const isToggling = enableMutation.isLoading || disableMutation.isLoading;
-  const isCreating = createMutation.isLoading;
+  const isToggling = enableMutation.isPending || disableMutation.isPending;
+  const isCreating = createMutation.isPending;
   const isFormDisabled = !isAppEnabled || isToggling || isCreating;
 
   return (
@@ -346,8 +346,8 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleEnableConfirm} disabled={enableMutation.isLoading}>
-              {enableMutation.isLoading ? 'Enabling...' : 'Enable'}
+            <AlertDialogAction onClick={handleEnableConfirm} disabled={enableMutation.isPending}>
+              {enableMutation.isPending ? 'Enabling...' : 'Enable'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -365,8 +365,8 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDisableConfirm} disabled={disableMutation.isLoading}>
-              {disableMutation.isLoading ? 'Disabling...' : 'Disable'}
+            <AlertDialogAction onClick={handleDisableConfirm} disabled={disableMutation.isPending}>
+              {disableMutation.isPending ? 'Disabling...' : 'Disable'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

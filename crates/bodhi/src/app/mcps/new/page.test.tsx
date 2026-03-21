@@ -899,6 +899,7 @@ describe('NewMcpPage - Edit with DCR disconnect and update', () => {
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthDynamic] }),
       mockFetchMcpTools([mockMcpTool]),
       mockGetMcp(mockMcpWithDcr),
+      mockDeleteOAuthToken(),
       http.put(`${BODHI_API_BASE}/mcps/:id`, async ({ request }) => {
         const body = await request.json();
         updateCalled(body);

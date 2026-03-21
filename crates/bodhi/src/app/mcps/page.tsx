@@ -26,7 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { toast } from '@/hooks/use-toast';
-import { useDeleteMcp, useMcps, type Mcp } from '@/hooks/useMcps';
+import { useDeleteMcp, useListMcps, type Mcp } from '@/hooks/mcps';
 
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
@@ -49,7 +49,7 @@ function McpStatus({ mcp }: { mcp: Mcp }) {
 
 function McpsPageContent() {
   const router = useRouter();
-  const { data, isLoading, error } = useMcps();
+  const { data, isLoading, error } = useListMcps();
   const deleteMutation = useDeleteMcp({
     onSuccess: () => {
       toast({ title: 'MCP deleted successfully' });
@@ -217,8 +217,8 @@ function McpsPageContent() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} disabled={deleteMutation.isLoading}>
-              {deleteMutation.isLoading ? 'Deleting...' : 'Delete'}
+            <AlertDialogAction onClick={handleDeleteConfirm} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

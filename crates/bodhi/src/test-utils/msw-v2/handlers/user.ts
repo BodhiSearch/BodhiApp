@@ -11,7 +11,7 @@
  */
 import { delay } from 'msw';
 
-import { ENDPOINT_USER_INFO, ENDPOINT_USERS, ENDPOINT_USER_ROLE, ENDPOINT_USER_ID } from '@/hooks/useUsers';
+import { ENDPOINT_USER_INFO, ENDPOINT_USERS, ENDPOINT_USER_ROLE, ENDPOINT_USER_ID } from '@/hooks/users';
 import {
   mockSimpleUsersResponse,
   mockMultipleAdminsResponse,

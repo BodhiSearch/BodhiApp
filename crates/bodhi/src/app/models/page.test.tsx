@@ -108,14 +108,14 @@ describe('ModelsPage', () => {
       dispatchEvent: vi.fn(),
     }));
 
-    render(<ModelsPage />, { wrapper: createWrapper() });
+    const { unmount: unmountTablet } = render(<ModelsPage />, { wrapper: createWrapper() });
     await screen.findByTestId('name-source-cell-test-model');
 
     // Tablet view should show combined name+source and repo+filename columns
     expect(screen.getByTestId('name-source-cell-test-model')).toBeVisible();
     expect(screen.getByTestId('repo-filename-cell-test-model')).toBeVisible();
 
-    unmount();
+    unmountTablet();
 
     // Add fresh mocks for third render
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }), ...mockModelsDefault());

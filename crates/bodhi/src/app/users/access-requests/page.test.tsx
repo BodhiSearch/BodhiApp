@@ -12,7 +12,7 @@ import {
   mockAccessRequestApproveError,
   mockAccessRequestRejectError,
   mockAccessRequestsError,
-} from '@/test-utils/msw-v2/handlers/access-requests';
+} from '@/test-utils/msw-v2/handlers/user-access-requests';
 import {
   ADMIN_ROLES,
   BLOCKED_ROLES,

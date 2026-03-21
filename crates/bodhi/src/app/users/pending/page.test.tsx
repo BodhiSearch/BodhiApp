@@ -10,7 +10,7 @@ import {
   mockAccessRequestReject,
   mockAccessRequestApproveError,
   mockAccessRequestRejectError,
-} from '@/test-utils/msw-v2/handlers/access-requests';
+} from '@/test-utils/msw-v2/handlers/user-access-requests';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { ADMIN_ROLES, BLOCKED_ROLES, mockPendingRequest, mockEmptyRequests } from '@/test-fixtures/access-requests';

@@ -3,7 +3,7 @@
  */
 import { delay } from 'msw';
 
-import { ENDPOINT_APP_SETUP } from '@/hooks/useInfo';
+import { ENDPOINT_APP_SETUP } from '@/hooks/info';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 

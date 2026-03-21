@@ -15,8 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell } from '@/components/ui/table';
 import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useAllRequests, useApproveRequest, useRejectRequest } from '@/hooks/useAccessRequests';
-import { useAuthenticatedUser } from '@/hooks/useUsers';
+import { useListAllRequests, useApproveRequest, useRejectRequest } from '@/hooks/users';
+import { useGetAuthenticatedUser } from '@/hooks/users';
 import { getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
 
@@ -52,7 +52,7 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequest; user
   const [selectedRole, setSelectedRole] = useState<string>('resource_user');
   const { showSuccess, showError } = useToastMessages();
 
-  const { mutate: approveRequest, isLoading: isApproving } = useApproveRequest({
+  const { mutate: approveRequest, isPending: isApproving } = useApproveRequest({
     onSuccess: () => {
       showSuccess('Request Approved', `Access granted to ${request.username}`);
     },
@@ -61,7 +61,7 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequest; user
     },
   });
 
-  const { mutate: rejectRequest, isLoading: isRejecting } = useRejectRequest({
+  const { mutate: rejectRequest, isPending: isRejecting } = useRejectRequest({
     onSuccess: () => {
       showSuccess('Request Rejected', `Access rejected for ${request.username}`);
     },
@@ -155,8 +155,8 @@ function AllRequestsContent() {
   const noOpSortChange = () => {}; // No-op function
   const getItemId = (request: UserAccessRequest) => request.id;
 
-  const { data: userInfo } = useAuthenticatedUser();
-  const { data: requestsData, isLoading } = useAllRequests(page, pageSize);
+  const { data: userInfo } = useGetAuthenticatedUser();
+  const { data: requestsData, isLoading } = useListAllRequests(page, pageSize);
 
   // Get user's role for filtering
   const userRole = typeof userInfo?.role === 'string' ? userInfo.role : '';

@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loading } from '@/components/ui/Loading';
-import { useAppInfo } from '@/hooks/useInfo';
-import { useUser } from '@/hooks/useUsers';
+import { useGetAppInfo } from '@/hooks/info';
+import { useGetUser } from '@/hooks/users';
 import {
   ROUTE_DEFAULT,
   ROUTE_RESOURCE_ADMIN,
@@ -37,12 +37,12 @@ export default function AppInitializer({
 }: AppInitializerProps) {
   const router = useRouter();
 
-  const { data: appInfo, error: appError, isLoading: appLoading } = useAppInfo();
+  const { data: appInfo, error: appError, isLoading: appLoading } = useGetAppInfo();
   const {
     data: userInfo,
     error: userError,
     isLoading: userLoading,
-  } = useUser({
+  } = useGetUser({
     enabled: authenticated,
   });
 

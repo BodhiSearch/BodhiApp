@@ -4,72 +4,16 @@
 import { http, HttpResponse } from 'msw';
 
 import { BODHI_API_BASE } from '@/hooks/useQuery';
-import type { ToolsetResponse, ToolsetDefinition, AppToolsetConfig } from '@/hooks/useToolsets';
+import type { ToolsetResponse, ToolsetDefinition, AppToolsetConfig } from '@/hooks/toolsets';
+import { createMockToolset, createMockAppToolsetConfig, createMockToolsetDefinition } from '@/test-fixtures/toolsets';
 
 // ============================================================================
-// Mock Data
+// Mock Data — created via fixture factories (single source of truth)
 // ============================================================================
 
-export const mockToolset: ToolsetResponse = {
-  id: 'uuid-test-toolset',
-  slug: 'my-exa-search',
-  toolset_type: 'builtin-exa-search',
-  description: 'Test toolset',
-  enabled: true,
-  has_api_key: true,
-  tools: [
-    {
-      type: 'function',
-      function: {
-        name: 'search',
-        description: 'Search the web using Exa AI',
-        parameters: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'The search query' },
-          },
-          required: ['query'],
-        },
-      },
-    },
-  ],
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-};
-
-export const mockToolsetTypes: AppToolsetConfig[] = [
-  {
-    toolset_type: 'builtin-exa-search',
-    name: 'Exa Web Search',
-    description: 'Search the web using Exa AI',
-    enabled: true,
-    updated_by: 'system',
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
-  },
-];
-
-export const mockType: ToolsetDefinition = {
-  toolset_type: 'builtin-exa-search',
-  name: 'Exa Web Search',
-  description: 'Search the web using Exa AI',
-  tools: [
-    {
-      type: 'function',
-      function: {
-        name: 'search',
-        description: 'Search the web using Exa AI',
-        parameters: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'The search query' },
-          },
-          required: ['query'],
-        },
-      },
-    },
-  ],
-};
+export const mockToolset: ToolsetResponse = createMockToolset();
+export const mockToolsetTypes: AppToolsetConfig[] = [createMockAppToolsetConfig()];
+export const mockType: ToolsetDefinition = createMockToolsetDefinition();
 
 // ============================================================================
 // Handler Factories

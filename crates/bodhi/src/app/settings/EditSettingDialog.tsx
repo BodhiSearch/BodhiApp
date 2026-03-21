@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useUpdateSetting } from '@/hooks/useSettings';
+import { useUpdateSetting } from '@/hooks/settings';
 
 interface EditSettingDialogProps {
   setting: SettingInfo;
@@ -150,8 +150,8 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={updateSetting.isLoading} className="w-full sm:w-auto">
-            {updateSetting.isLoading ? 'Updating...' : 'Save'}
+          <Button onClick={handleSubmit} disabled={updateSetting.isPending} className="w-full sm:w-auto">
+            {updateSetting.isPending ? 'Updating...' : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>

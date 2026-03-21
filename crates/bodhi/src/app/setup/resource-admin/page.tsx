@@ -9,18 +9,18 @@ import { SetupContainer, SetupCard } from '@/app/setup/components';
 import { itemVariants } from '@/app/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
-import { useOAuthInitiate } from '@/hooks/useAuth';
-import { useAppInfo } from '@/hooks/useInfo';
+import { useOAuthInitiate } from '@/hooks/auth';
+import { useGetAppInfo } from '@/hooks/info';
 import { ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 
 function ResourceAdminContent() {
-  const { data: appInfo } = useAppInfo();
+  const { data: appInfo } = useGetAppInfo();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
 
-  const { mutate: initiateOAuth, isLoading } = useOAuthInitiate({
+  const { mutate: initiateOAuth, isPending: isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
       // Clear any previous errors and set redirecting state
       setError(null);

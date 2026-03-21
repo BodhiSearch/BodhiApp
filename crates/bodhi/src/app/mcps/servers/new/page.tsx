@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useCreateMcpServer, useStandaloneDynamicRegister, type CreateMcpAuthConfigRequest } from '@/hooks/useMcps';
+import { useCreateMcpServer, useStandaloneDynamicRegister, type CreateMcpAuthConfigRequest } from '@/hooks/mcps';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { extractSecondLevelDomain } from '@/lib/urlUtils';
 import { AuthConfigForm } from '../components/AuthConfigForm';
@@ -160,7 +160,7 @@ function NewMcpServerContent() {
     });
   };
 
-  const isSaving = createMutation.isLoading || standaloneDcr.isLoading;
+  const isSaving = createMutation.isPending || standaloneDcr.isPending;
 
   return (
     <div className="container mx-auto p-4 max-w-2xl" data-testid="new-mcp-server-page">

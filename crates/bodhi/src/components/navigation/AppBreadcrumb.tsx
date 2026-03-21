@@ -10,7 +10,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { useNavigation } from '@/hooks/use-navigation';
+import { useNavigation } from '@/hooks/navigation';
 import { BASE_PATH } from '@/lib/constants';
 
 export function AppBreadcrumb() {

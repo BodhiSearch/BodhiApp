@@ -7,7 +7,7 @@ import { UserInfo } from '@bodhiapp/ts-client';
 import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useChangeUserRole, useRemoveUser, AuthenticatedUser } from '@/hooks/useUsers';
+import { useChangeUserRole, useRemoveUser, AuthenticatedUser } from '@/hooks/users';
 import { getRoleLabel, getRoleBadgeVariant } from '@/lib/roles';
 
 import { RemoveUserDialog } from './RemoveUserDialog';
@@ -40,7 +40,7 @@ export function UserRow({ user, currentUserRole, currentUsername, currentUserInf
 
   const { showSuccess, showError } = useToastMessages();
 
-  const { mutate: changeRole, isLoading: isChangingRole } = useChangeUserRole({
+  const { mutate: changeRole, isPending: isChangingRole } = useChangeUserRole({
     onSuccess: () => {
       setShowRoleDialog(false);
       showSuccess('Role Updated', `Role updated for ${user.username}`);
@@ -52,7 +52,7 @@ export function UserRow({ user, currentUserRole, currentUsername, currentUserInf
     },
   });
 
-  const { mutate: removeUser, isLoading: isRemoving } = useRemoveUser({
+  const { mutate: removeUser, isPending: isRemoving } = useRemoveUser({
     onSuccess: () => {
       setShowRemoveDialog(false);
       showSuccess('User Removed', `User access removed for ${user.username}`);

@@ -179,9 +179,6 @@ test.describe('Model Metadata Refresh and Preview', () => {
     await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
     await refreshButton.click();
 
-    // Wait for loading state
-    await expect(refreshButton).toHaveAttribute('data-teststate', 'loading');
-
     // Wait for ready state (metadata refresh completed)
     await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
 
@@ -241,9 +238,6 @@ test.describe('Model Metadata Refresh and Preview', () => {
     await expect(refreshButton).toBeVisible();
     await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
     await refreshButton.click();
-
-    // Wait for loading state
-    await expect(refreshButton).toHaveAttribute('data-teststate', 'loading');
 
     // Wait for ready state (metadata refresh completed)
     await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { useRefreshSingleMetadata } from '@/hooks/useModelMetadata';
+import { useRefreshSingleMetadata } from '@/hooks/models';
 import { hasModelMetadata, hasLocalFileProperties, isApiAlias } from '@/lib/utils';
 
 interface ModelPreviewModalProps {
@@ -127,7 +127,7 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
     });
   };
 
-  const isRefreshing = refreshSingleMetadata.isLoading;
+  const isRefreshing = refreshSingleMetadata.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

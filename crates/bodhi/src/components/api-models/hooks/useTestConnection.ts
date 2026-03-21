@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { TestPromptRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
 
 import { useToast } from '@/hooks/use-toast';
-import { useTestApiModel } from '@/hooks/useModelsApi';
+import { useTestApiModel } from '@/hooks/models';
 
 import { DEFAULT_TEST_PROMPT } from '../providers/constants';
 
@@ -101,7 +101,7 @@ export function useTestConnection({ mode: _mode = 'create', initialData: _initia
 
   return {
     status,
-    isLoading: testMutation.isLoading,
+    isLoading: testMutation.isPending,
     canTest,
     getMissingRequirements,
     testConnection,

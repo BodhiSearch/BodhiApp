@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { ToolTypeReviewInfo } from '@/hooks/useAppAccessRequests';
+import type { ToolTypeReviewInfo } from '@/hooks/apps';
 
 const ToolTypeCard = ({
   toolInfo,

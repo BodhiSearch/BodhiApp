@@ -18,7 +18,7 @@ import {
   mockDraftReviewResponsePowerUser,
   mockExpiredReviewResponse,
   mockFailedReviewResponse,
-} from '@/test-fixtures/app-access-requests';
+} from '@/test-fixtures/apps';
 import {
   mockAppAccessRequestApprove,
   mockAppAccessRequestApproveError,
@@ -26,7 +26,7 @@ import {
   mockAppAccessRequestDenyError,
   mockAppAccessRequestReview,
   mockAppAccessRequestReviewError,
-} from '@/test-utils/msw-v2/handlers/app-access-requests';
+} from '@/test-utils/msw-v2/handlers/apps';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server } from '@/test-utils/msw-v2/setup';

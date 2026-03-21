@@ -20,7 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useExecuteMcpTool, useMcp, useRefreshMcpTools, type McpExecuteResponse, type McpTool } from '@/hooks/useMcps';
+import { useExecuteMcpTool, useGetMcp, useRefreshMcpTools, type McpExecuteResponse, type McpTool } from '@/hooks/mcps';
+import { mcpKeys } from '@/hooks/mcps/constants';
 import { useQueryClient } from '@/hooks/useQuery';
 import { cn } from '@/lib/utils';
 
@@ -478,8 +479,8 @@ function ExecutionArea({ mcpId, tool, isWhitelisted }: { mcpId: string; tool: Mc
         </div>
       )}
 
-      <Button onClick={handleExecute} disabled={executeMutation.isLoading} data-testid="mcp-playground-execute-button">
-        {executeMutation.isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+      <Button onClick={handleExecute} disabled={executeMutation.isPending} data-testid="mcp-playground-execute-button">
+        {executeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
         Execute
       </Button>
 
@@ -496,12 +497,12 @@ function McpPlaygroundContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id') || '';
   const queryClient = useQueryClient();
-  const { data: mcp, isLoading, error } = useMcp(id, { enabled: !!id });
+  const { data: mcp, isLoading, error } = useGetMcp(id, { enabled: !!id });
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
 
   const refreshMutation = useRefreshMcpTools({
     onSuccess: () => {
-      queryClient.invalidateQueries(['mcps', id]);
+      queryClient.invalidateQueries({ queryKey: mcpKeys.detail(id) });
       toast({ title: 'Tools refreshed' });
     },
     onError: (message) => {
@@ -564,7 +565,7 @@ function McpPlaygroundContent() {
           updatedAt={mcp.updated_at}
           onSelectTool={setSelectedToolName}
           onRefresh={handleRefresh}
-          isRefreshing={refreshMutation.isLoading}
+          isRefreshing={refreshMutation.isPending}
         />
 
         {selectedTool ? (

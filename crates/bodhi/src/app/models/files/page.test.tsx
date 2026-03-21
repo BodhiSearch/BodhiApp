@@ -4,9 +4,9 @@ import { mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { mockModelFilesDefault, mockModelFilesError } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { mockRefreshSingleMetadata } from '@/test-utils/msw-v2/handlers/models';
-import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
-import { ENDPOINT_MODEL_FILES } from '@/hooks/useModels';
-import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
+import { ENDPOINT_APP_INFO } from '@/hooks/info';
+import { ENDPOINT_MODEL_FILES } from '@/hooks/models';
+import { ENDPOINT_USER_INFO } from '@/hooks/users';
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';

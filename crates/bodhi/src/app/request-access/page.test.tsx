@@ -6,7 +6,7 @@ import {
   mockUserRequestStatusError,
   mockUserRequestStatusPending,
   mockUserRequestStatusRejected,
-} from '@/test-utils/msw-v2/handlers/access-requests';
+} from '@/test-utils/msw-v2/handlers/user-access-requests';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { createWrapper } from '@/tests/wrapper';

@@ -8,26 +8,29 @@ import {
   UseQueryOptions,
   UseQueryResult,
   useQuery as useReactQuery,
-} from 'react-query';
+} from '@tanstack/react-query';
 
+import { BODHI_API_BASE } from '@/hooks/constants';
 import apiClient from '@/lib/apiClient';
+
+// Re-export for backward compatibility (test files import from here)
+export { BODHI_API_BASE };
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
 
-// Shared backend API base
-export const BODHI_API_BASE = '/bodhi/v1';
-
 export function useQuery<T>(
-  key: string | string[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  key: string | readonly any[],
   endpoint: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: Record<string, any>,
-  options?: UseQueryOptions<T, AxiosError<ErrorResponse>>
+  options?: Omit<UseQueryOptions<T, AxiosError<ErrorResponse>>, 'queryKey' | 'queryFn'>
 ): UseQueryResult<T, AxiosError<ErrorResponse>> {
-  return useReactQuery<T, AxiosError<ErrorResponse>>(
-    key,
-    async () => {
+  const queryKey = Array.isArray(key) ? key : [key];
+  return useReactQuery<T, AxiosError<ErrorResponse>>({
+    queryKey,
+    queryFn: async () => {
       const { data } = await apiClient.get<T>(endpoint, {
         params,
         headers: {
@@ -36,8 +39,8 @@ export function useQuery<T>(
       });
       return data;
     },
-    options
-  );
+    ...options,
+  });
 }
 
 export function useMutationQuery<T, V>(
@@ -46,16 +49,13 @@ export function useMutationQuery<T, V>(
   options?: UseMutationOptions<AxiosResponse<T>, AxiosError<ErrorResponse>, V>,
   axiosConfig?: {
     headers?: Record<string, string>;
-    skipCacheInvalidation?: boolean;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     transformBody?: (variables: V) => any;
     noBody?: boolean;
   }
 ): UseMutationResult<AxiosResponse<T>, AxiosError<ErrorResponse>, V> {
-  const queryClient = useQueryClient();
-
-  return useMutation<AxiosResponse<T>, AxiosError<ErrorResponse>, V>(
-    async (variables) => {
+  return useMutation<AxiosResponse<T>, AxiosError<ErrorResponse>, V>({
+    mutationFn: async (variables) => {
       const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
 
       // Handle body transformation or no body
@@ -88,29 +88,18 @@ export function useMutationQuery<T, V>(
         return response;
       }
     },
-    {
-      ...options,
-      onSuccess: (data, variables, context) => {
-        if (!axiosConfig?.skipCacheInvalidation) {
-          const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
-          queryClient.invalidateQueries(_endpoint);
-        }
-        if (options?.onSuccess) {
-          options.onSuccess(data, variables, context);
-        }
-      },
-    }
-  );
+    ...options,
+  });
 }
 
 // Re-export types for other hooks
-export type { UseMutationResult, UseQueryResult, UseMutationOptions, UseQueryOptions } from 'react-query';
+export type { UseMutationResult, UseQueryResult, UseMutationOptions, UseQueryOptions } from '@tanstack/react-query';
 
 // Re-export components for ClientProviders and tests
-export { QueryClient, QueryClientProvider } from 'react-query';
+export { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Re-export hooks for other use cases
-export { useMutation } from 'react-query';
+export { useMutation } from '@tanstack/react-query';
 
 // Export useQueryClient for consistency
-export { useQueryClient } from 'react-query';
+export { useQueryClient } from '@tanstack/react-query';

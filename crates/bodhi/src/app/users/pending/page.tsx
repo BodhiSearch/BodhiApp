@@ -15,8 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell } from '@/components/ui/table';
 import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useApproveRequest, usePendingRequests, useRejectRequest } from '@/hooks/useAccessRequests';
-import { useAuthenticatedUser } from '@/hooks/useUsers';
+import { useApproveRequest, useListPendingRequests, useRejectRequest } from '@/hooks/users';
+import { useGetAuthenticatedUser } from '@/hooks/users';
 import { getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
 
@@ -24,7 +24,7 @@ function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; 
   const [selectedRole, setSelectedRole] = useState<string>('resource_user');
   const { showSuccess, showError } = useToastMessages();
 
-  const { mutate: approveRequest, isLoading: isApproving } = useApproveRequest({
+  const { mutate: approveRequest, isPending: isApproving } = useApproveRequest({
     onSuccess: () => {
       showSuccess('Request Approved', `Access granted to ${request.username}`);
     },
@@ -33,7 +33,7 @@ function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; 
     },
   });
 
-  const { mutate: rejectRequest, isLoading: isRejecting } = useRejectRequest({
+  const { mutate: rejectRequest, isPending: isRejecting } = useRejectRequest({
     onSuccess: () => {
       showSuccess('Request Rejected', `Access rejected for ${request.username}`);
     },
@@ -98,8 +98,8 @@ function PendingRequestsContent() {
   const noOpSortChange = () => {}; // No-op function
   const getItemId = (request: UserAccessRequest) => request.id;
 
-  const { data: userInfo } = useAuthenticatedUser();
-  const { data: requestsData, isLoading, error } = usePendingRequests(page, pageSize);
+  const { data: userInfo } = useGetAuthenticatedUser();
+  const { data: requestsData, isLoading, error } = useListPendingRequests(page, pageSize);
 
   // Get user's role for filtering
   const userRole = typeof userInfo?.role === 'string' ? userInfo.role : '';

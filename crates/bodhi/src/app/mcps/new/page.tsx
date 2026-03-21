@@ -26,14 +26,14 @@ import {
   useDeleteOAuthToken,
   useFetchMcpTools,
   useListAuthConfigs,
-  useMcp,
-  useMcpServers,
+  useGetMcp,
+  useListMcpServers,
   useOAuthLogin,
   useUpdateMcp,
   type McpAuthConfigResponse,
   type McpServerResponse,
-} from '@/hooks/useMcps';
-import { useUser } from '@/hooks/useUsers';
+} from '@/hooks/mcps';
+import { useGetUser } from '@/hooks/users';
 import { isAdminRole } from '@/lib/roles';
 import { authConfigTypeLabel } from '@/lib/mcpUtils';
 import McpServerSelector from '@/app/mcps/new/McpServerSelector';
@@ -144,7 +144,7 @@ function NewMcpPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
-  const { data: userInfo } = useUser();
+  const { data: userInfo } = useGetUser();
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
 
   const store = useMcpFormStore();
@@ -153,9 +153,9 @@ function NewMcpPageContent() {
     data: existingMcp,
     isLoading: loadingExisting,
     error: existingError,
-  } = useMcp(editId || '', { enabled: !!editId });
+  } = useGetMcp(editId || '', { enabled: !!editId });
 
-  const { data: serversData, isLoading: loadingServers } = useMcpServers({ enabled: true }, { enabled: !editId });
+  const { data: serversData, isLoading: loadingServers } = useListMcpServers({ enabled: true }, { enabled: !editId });
 
   const enabledServers = useMemo(() => serversData?.mcp_servers || [], [serversData]);
 
@@ -517,7 +517,7 @@ function NewMcpPageContent() {
     }
   };
 
-  const isSubmitting = createMutation.isLoading || updateMutation.isLoading || oauthLoginMutation.isLoading;
+  const isSubmitting = createMutation.isPending || updateMutation.isPending || oauthLoginMutation.isPending;
   const canCreate = store.toolsFetched && !isSubmitting;
 
   const dropdownValue = showNewAuthRedirect ? '__new__' : store.selectedAuthConfigId || '__public__';
@@ -743,7 +743,7 @@ function NewMcpPageContent() {
                   <OAuthConnectedCard
                     config={selectedAuthOption?.config ?? null}
                     onDisconnect={handleDisconnect}
-                    isDisconnecting={deleteOAuthTokenMutation.isLoading}
+                    isDisconnecting={deleteOAuthTokenMutation.isPending}
                   />
                 )}
 
@@ -768,10 +768,10 @@ function NewMcpPageContent() {
                       variant="outline"
                       size="sm"
                       onClick={handleOAuthConnect}
-                      disabled={oauthLoginMutation.isLoading}
+                      disabled={oauthLoginMutation.isPending}
                       data-testid="auth-config-oauth-connect"
                     >
-                      {oauthLoginMutation.isLoading ? (
+                      {oauthLoginMutation.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
                         <ExternalLink className="mr-2 h-4 w-4" />
@@ -802,7 +802,7 @@ function NewMcpPageContent() {
 
               <ToolSelection
                 selectedServer={selectedServer}
-                isFetchingTools={fetchToolsMutation.isLoading}
+                isFetchingTools={fetchToolsMutation.isPending}
                 toolsFetched={store.toolsFetched}
                 fetchedTools={store.fetchedTools}
                 selectedTools={store.selectedTools}

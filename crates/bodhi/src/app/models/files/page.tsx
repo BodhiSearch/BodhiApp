@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { useModelFiles } from '@/hooks/useModels';
+import { useListModelFiles } from '@/hooks/models';
 import { hasLocalFileProperties } from '@/lib/utils';
 import { SortState } from '@/types/models';
 
@@ -67,7 +67,7 @@ function ModelFilesContent() {
     direction: 'asc',
   });
 
-  const { data, isLoading, error } = useModelFiles(page, pageSize, sort.column, sort.direction);
+  const { data, isLoading, error } = useListModelFiles(page, pageSize, sort.column, sort.direction);
 
   // Update preview model when query data changes (after metadata refresh)
   useEffect(() => {
