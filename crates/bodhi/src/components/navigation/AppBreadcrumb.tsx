@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { useNavigation } from '@/hooks/use-navigation';
+import { BASE_PATH } from '@/lib/constants';
 
 export function AppBreadcrumb() {
   const { currentItem } = useNavigation();
@@ -19,7 +20,7 @@ export function AppBreadcrumb() {
   return (
     <div className="flex-1 flex h-16 items-center gap-2 px-4" data-testid="app-breadcrumb">
       <Image
-        src="/ui/bodhi-logo/bodhi-logo-60.svg"
+        src={`${BASE_PATH}/bodhi-logo/bodhi-logo-60.svg`}
         alt="Bodhi Logo"
         width={20}
         height={20}

@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Next.js 14 frontend for BodhiApp. Static-exported (`output: 'export'`) React app embedded in Tauri desktop and served by `lib_bodhiserver`. Uses App Router with `/ui` route group for main application and `/docs` for documentation.
+Next.js 14 frontend for BodhiApp. Static-exported (`output: 'export'`) React app embedded in Tauri desktop and served by `lib_bodhiserver`. Uses App Router with `basePath: '/ui'` so all pages are served under `/ui/*`. Documentation lives under `/docs`.
 
 ## Architecture Position
 
@@ -69,20 +69,22 @@ react-hook-form + zod schema + ts-client types. See `src/schemas/alias.ts` for c
 
 `AppInitializer` (`src/components/AppInitializer.tsx`) checks `/bodhi/v1/info` status and redirects:
 
-- `setup` + standalone → `/ui/setup`
-- `setup` + multi_tenant → `/ui/setup/tenants`
-- `ready` + multi_tenant + no client_id → `/ui/login`
-- `ready` (all other) → `/ui/chat`
-- `resource_admin` → `/ui/setup/resource-admin`
+- `setup` + standalone → `/setup` (`ROUTE_SETUP`)
+- `setup` + multi_tenant → `/setup/tenants` (`ROUTE_SETUP_TENANTS`)
+- `ready` + multi_tenant + no client_id → `/login` (`ROUTE_LOGIN`)
+- `ready` (all other) → `/chat` (`ROUTE_DEFAULT`)
+- `resource_admin` → `/setup/resource-admin` (`ROUTE_RESOURCE_ADMIN`)
+
+Note: Next.js `basePath: '/ui'` auto-prepends `/ui` to all routes, so browser URLs are `/ui/setup`, `/ui/chat`, etc.
 
 Route constants defined in `src/lib/constants.ts`.
 
 ### MCP Server Management
 
-- MCP instances: `src/app/ui/mcps/` pages, `src/hooks/useMcps.ts`
-- MCP servers (allowlist): `src/app/ui/mcp-servers/` pages
+- MCP instances: `src/app/mcps/` pages, `src/hooks/useMcps.ts`
+- MCP servers (allowlist): `src/app/mcps/servers/` pages
 - Auth config: `McpAuthType` enum (`public`, `header`, `oauth`). OAuth distinguishes pre-registered vs dynamic via `registration_type` field
-- Auto-DCR behavior differs: new page (`mcp-servers/new/page.tsx`) uses `enableAutoDcr={true}` (silent fallback), view page (`mcp-servers/view/page.tsx`) uses `enableAutoDcr={false}` (shows errors)
+- Auto-DCR behavior differs: new page (`mcps/servers/new/page.tsx`) uses `enableAutoDcr={true}` (silent fallback), view page (`mcps/servers/view/page.tsx`) uses `enableAutoDcr={false}` (shows errors)
 - `src/stores/mcpFormStore.ts` uses sessionStorage; `mcpFormStore.reset()` clears it. OAuth callback validates `state` parameter
 
 ### Navigation
@@ -91,7 +93,7 @@ Route constants defined in `src/lib/constants.ts`.
 
 ### Setup Flow
 
-Multi-step onboarding under `/ui/setup/`: download-models → toolsets → api-models → llm-engine → browser-extension → complete. `SetupProvider` manages step state.
+Multi-step onboarding under `src/app/setup/`: download-models → toolsets → api-models → llm-engine → browser-extension → complete. `SetupProvider` manages step state.
 
 ## Testing Rules
 

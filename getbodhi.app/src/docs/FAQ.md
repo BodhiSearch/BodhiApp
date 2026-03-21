@@ -87,7 +87,7 @@ MCP (Model Context Protocol) servers provide tools that AI models can use during
 
 ### How do I set up an MCP server?
 
-Admins configure MCP servers at `/ui/mcp-servers/` with the server URL and authentication method (none, header-based, or OAuth). Users then create MCP instances at `/ui/mcps/` to connect and whitelist tools. See [MCP Setup](/docs/features/mcps/setup).
+Admins configure MCP servers at `/ui/mcps/servers/` with the server URL and authentication method (none, header-based, or OAuth). Users then create MCP instances at `/ui/mcps/` to connect and whitelist tools. See [MCP Setup](/docs/features/mcps/setup).
 
 ### How do I use MCP tools in chat?
 

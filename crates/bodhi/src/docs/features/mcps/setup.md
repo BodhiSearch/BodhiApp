@@ -10,7 +10,7 @@ Bodhi App integrates with external tool providers through the Model Context Prot
 
 ## MCP Servers
 
-MCP Servers are admin-managed endpoints that define where Bodhi connects to access external tools. Manage them at `/ui/mcp-servers/`.
+MCP Servers are admin-managed endpoints that define where Bodhi connects to access external tools. Manage them at `/ui/mcps/servers/`.
 
 ### Server List
 
@@ -70,14 +70,14 @@ If auto-discovery fails, the form silently falls back to pre-registered mode so 
 
 ### Server View Page
 
-The server detail page at `/ui/mcp-servers/view?id=<serverId>` shows server properties and lists all auth configurations. Admins can:
+The server detail page at `/ui/mcps/servers/view?id=<serverId>` shows server properties and lists all auth configurations. Admins can:
 
 - Add new auth configurations directly from this page using the inline **Add Auth Config** form. This form supports the same header and OAuth types as the new server form, but uses `enableAutoDcr={false}` -- discovery errors are displayed rather than silently falling back.
 - Delete existing auth configurations with a confirmation dialog. Deleting an auth config also removes all associated OAuth tokens and leaves linked MCP instances without authentication.
 
 ### Editing a Server
 
-The edit page at `/ui/mcp-servers/edit?id=<serverId>` allows updating the URL, name, description, and enabled state. If the URL changes, a confirmation dialog warns that cached tools and tool filters on all linked MCP instances will be cleared. Auth configurations are displayed read-only with a delete option.
+The edit page at `/ui/mcps/servers/edit?id=<serverId>` allows updating the URL, name, description, and enabled state. If the URL changes, a confirmation dialog warns that cached tools and tool filters on all linked MCP instances will be cleared. Auth configurations are displayed read-only with a delete option.
 
 ## MCP Instances
 

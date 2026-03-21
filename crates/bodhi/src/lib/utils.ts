@@ -3,6 +3,8 @@ import { type ClassValue, clsx } from 'clsx';
 import { customAlphabet } from 'nanoid';
 import { twMerge } from 'tailwind-merge';
 
+import { BASE_PATH } from '@/lib/constants';
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -17,10 +19,8 @@ export const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef
  * @param router - Next.js router instance from useRouter()
  */
 export function handleSmartRedirect(location: string, router: { push: (href: string) => void }): void {
-  const basePath = '/ui';
-
   if (location.startsWith('/')) {
-    const path = location.startsWith(basePath) ? location.slice(basePath.length) || '/' : location;
+    const path = location.startsWith(BASE_PATH) ? location.slice(BASE_PATH.length) || '/' : location;
     router.push(path);
     return;
   }
@@ -30,8 +30,8 @@ export function handleSmartRedirect(location: string, router: { push: (href: str
     const currentUrl = new URL(window.location.href);
     if (redirectUrl.protocol === currentUrl.protocol && redirectUrl.host === currentUrl.host) {
       let internalPath = redirectUrl.pathname + redirectUrl.search + redirectUrl.hash;
-      if (internalPath.startsWith(basePath)) {
-        internalPath = internalPath.slice(basePath.length) || '/';
+      if (internalPath.startsWith(BASE_PATH)) {
+        internalPath = internalPath.slice(BASE_PATH.length) || '/';
       }
       router.push(internalPath);
     } else {

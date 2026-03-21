@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { McpTool } from '@bodhiapp/ts-client';
 
+import { BASE_PATH } from '@/lib/constants';
+
 interface McpFormState {
   selectedAuthConfigId: string | null;
   selectedAuthConfigType: string | null;
@@ -92,9 +94,8 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
       return_url:
         typeof window !== 'undefined'
           ? (() => {
-              const basePath = '/ui';
-              const pathname = window.location.pathname.startsWith(basePath)
-                ? window.location.pathname.slice(basePath.length) || '/'
+              const pathname = window.location.pathname.startsWith(BASE_PATH)
+                ? window.location.pathname.slice(BASE_PATH.length) || '/'
                 : window.location.pathname;
               return pathname + window.location.search;
             })()

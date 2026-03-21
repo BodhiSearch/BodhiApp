@@ -96,9 +96,9 @@ fn has_extension(path: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use axum::http::Request as HttpRequest;
-  use include_dir::include_dir;
+  use super::build_ui_spa_router;
+  use axum::{body::Body, http::header, http::Request as HttpRequest, http::StatusCode};
+  use include_dir::{include_dir, Dir};
   use rstest::rstest;
   use server_core::test_utils::ResponseTestExt;
   use tower::ServiceExt;

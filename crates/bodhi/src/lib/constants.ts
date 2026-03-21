@@ -1,3 +1,7 @@
+// Next.js basePath — must match next.config.mjs basePath value.
+// Used where Next.js does NOT auto-apply basePath (e.g., next/image src, window.location stripping).
+export const BASE_PATH = '/ui';
+
 export const CURRENT_CHAT_KEY = 'current-chat';
 export const ROUTE_CHAT = '/chat';
 export const ROUTE_LOGIN = '/login';

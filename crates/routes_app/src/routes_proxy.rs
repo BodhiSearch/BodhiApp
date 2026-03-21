@@ -87,103 +87,107 @@ async fn http_proxy(mut req: Request, backend_url: &str, path: &str) -> Response
 }
 
 async fn ws_proxy(req: Request, backend_url: &str, path: &str) -> Response<Body> {
-  use hyper::client::conn::http1;
   use hyper_util::rt::TokioIo;
+  use tokio::io::{AsyncReadExt, AsyncWriteExt};
   use tokio::net::TcpStream;
 
-  // Parse the backend URL to get host:port
   let backend_uri: Uri = backend_url.parse().unwrap();
   let host = backend_uri.host().unwrap_or("127.0.0.1");
   let port = backend_uri.port_u16().unwrap_or(3000);
   let addr = format!("{host}:{port}");
 
-  // Extract the OnUpgrade future from the incoming request BEFORE consuming it.
-  let (parts, body) = req.into_parts();
-  let mut client_req = hyper::Request::from_parts(parts, body);
-  let client_upgrade = hyper::upgrade::on(&mut client_req);
+  // Extract the client upgrade handle + headers from the incoming request
+  let (parts, _body) = req.into_parts();
+  let req_headers = parts.headers.clone();
+  let mut upgrade_req = hyper::Request::from_parts(parts, Body::empty());
+  let client_upgrade = hyper::upgrade::on(&mut upgrade_req);
 
   // Connect raw TCP to backend
-  let stream = match TcpStream::connect(&addr).await {
+  let mut backend_stream = match TcpStream::connect(&addr).await {
     Ok(s) => s,
     Err(e) => {
       error!(?e, %addr, "failed to connect to backend for websocket");
       return error_response();
     }
   };
-  let io = TokioIo::new(stream);
 
-  // Build an HTTP/1 connection with upgrade support
-  let (mut sender, conn) = match http1::handshake(io).await {
-    Ok(c) => c,
-    Err(e) => {
-      error!(?e, "http1 handshake failed for websocket proxy");
-      return error_response();
+  // Build raw HTTP/1.1 upgrade request
+  let mut raw_request = format!("GET {path} HTTP/1.1\r\nHost: {addr}\r\n");
+  for (name, value) in req_headers.iter() {
+    if name.as_str().eq_ignore_ascii_case("host") {
+      continue;
     }
-  };
+    if let Ok(v) = value.to_str() {
+      raw_request.push_str(&format!("{}: {v}\r\n", name));
+    }
+  }
+  raw_request.push_str("\r\n");
 
-  // Spawn the connection — .with_upgrades() enables the Upgrade mechanism
+  debug!(raw_request_len = raw_request.len(), "sending ws upgrade to backend");
+
+  // Write upgrade request
+  if let Err(e) = backend_stream.write_all(raw_request.as_bytes()).await {
+    error!(?e, "failed to write ws upgrade request to backend");
+    return error_response();
+  }
+
+  // Read response headers (byte-by-byte until \r\n\r\n)
+  let mut resp_buf = Vec::with_capacity(4096);
+  let mut byte = [0u8; 1];
+  loop {
+    match backend_stream.read_exact(&mut byte).await {
+      Ok(_) => {
+        resp_buf.push(byte[0]);
+        if resp_buf.len() >= 4 && resp_buf.ends_with(b"\r\n\r\n") {
+          break;
+        }
+        if resp_buf.len() > 8192 {
+          error!("ws upgrade response headers too large");
+          return error_response();
+        }
+      }
+      Err(e) => {
+        error!(?e, "failed to read ws upgrade response from backend");
+        return error_response();
+      }
+    }
+  }
+
+  // Parse response
+  let resp_str = String::from_utf8_lossy(&resp_buf);
+  let mut lines = resp_str.lines();
+  let status_line = lines.next().unwrap_or("");
+
+  if !status_line.contains(" 101 ") {
+    error!(%status_line, "backend did not return 101 for ws upgrade");
+    return error_response();
+  }
+
+  // Build response headers to forward to client
+  let mut response_builder = Response::builder().status(StatusCode::SWITCHING_PROTOCOLS);
+  for line in lines {
+    if line.is_empty() {
+      break;
+    }
+    if let Some((key, value)) = line.split_once(':') {
+      response_builder = response_builder.header(key.trim(), value.trim());
+    }
+  }
+
+  // Spawn bidirectional relay between upgraded client and backend
   tokio::spawn(async move {
-    if let Err(e) = conn.with_upgrades().await {
-      error!(?e, "websocket proxy backend connection error");
+    let upgraded_client = match client_upgrade.await {
+      Ok(u) => u,
+      Err(e) => {
+        error!(?e, "failed to upgrade client connection");
+        return;
+      }
+    };
+    let mut client_io = TokioIo::new(upgraded_client);
+    if let Err(e) = tokio::io::copy_bidirectional(&mut client_io, &mut backend_stream).await {
+      debug!(?e, "websocket proxy relay ended");
     }
   });
-
-  // Build a new request to the backend with the path.
-  // Force HTTP/1.1 — the incoming request may be HTTP/2 but the backend connection is HTTP/1.1.
-  let uri: Uri = path.parse().unwrap();
-  let (mut req_parts, req_body) = client_req.into_parts();
-  req_parts.uri = uri;
-  req_parts.version = hyper::Version::HTTP_11;
-  // Replace Host header so Next.js doesn't treat this as a cross-origin request
-  req_parts
-    .headers
-    .insert(header::HOST, addr.parse().unwrap());
-  let backend_req = hyper::Request::from_parts(req_parts, req_body);
-
-  // Send the upgrade request to backend
-  let backend_res = match sender.send_request(backend_req).await {
-    Ok(res) => res,
-    Err(e) => {
-      error!(?e, "failed to send websocket upgrade to backend");
-      return error_response();
-    }
-  };
-
-  let status = backend_res.status();
-
-  // Build the client-facing response from backend's headers
-  let mut response_builder = Response::builder().status(status);
-  for (key, value) in backend_res.headers() {
-    response_builder = response_builder.header(key, value);
-  }
-
-  // If backend returned 101, bridge the upgraded streams bidirectionally
-  if status == StatusCode::SWITCHING_PROTOCOLS {
-    tokio::spawn(async move {
-      let upgraded_backend = match hyper::upgrade::on(backend_res).await {
-        Ok(u) => u,
-        Err(e) => {
-          error!(?e, "failed to upgrade backend connection");
-          return;
-        }
-      };
-
-      let upgraded_client = match client_upgrade.await {
-        Ok(u) => u,
-        Err(e) => {
-          error!(?e, "failed to upgrade client connection");
-          return;
-        }
-      };
-
-      let mut client_io = TokioIo::new(upgraded_client);
-      let mut backend_io = TokioIo::new(upgraded_backend);
-
-      if let Err(e) = tokio::io::copy_bidirectional(&mut client_io, &mut backend_io).await {
-        debug!(?e, "websocket proxy relay ended");
-      }
-    });
-  }
 
   response_builder.body(Body::empty()).unwrap()
 }
