@@ -16,7 +16,7 @@
 ### Building & Packaging
 - `make ci.build` — Build Tauri desktop application
 - `make build.ts-client` — Build TypeScript client package with tests
-- `cd crates/bodhi && npm run build` — Build Next.js frontend
+- `cd crates/bodhi && npm run build` — Build Vite frontend
 - `cd crates/lib_bodhiserver_napi && npm run build:release` — Build NAPI bindings
 
 ### Code Quality
@@ -32,7 +32,7 @@
 - Always regenerate after API changes: `cargo run --package xtask openapi && cd ts-client && npm run generate`
 
 ### Running the Application
-- `cd crates/bodhi && npm run dev` — Start Next.js dev server (hot reload)
+- `cd crates/bodhi && npm run dev` — Start Vite dev server (hot reload, port 3000)
 - `cd crates/bodhi/src-tauri && cargo tauri dev` — Run Tauri desktop app in dev mode
 - `make run.app` — Run standalone HTTP server with dev configuration
 - `cargo run --bin bodhi -- serve --port 1135` — Run server directly
@@ -54,7 +54,7 @@
 ## Technology Stack
 
 - **Backend**: Rust + Axum + SeaORM (SQLite dev/desktop, PostgreSQL production/Docker)
-- **Frontend**: React + TypeScript + Next.js 14 + TailwindCSS + Shadcn UI
+- **Frontend**: React + TypeScript + Vite + TanStack Router + TanStack Query v5 + TailwindCSS + Shadcn UI
 - **Desktop**: Tauri | **LLM**: llama.cpp | **Auth**: OAuth2 + JWT
 - **API**: OpenAI-compatible endpoints | **Types**: OpenAPI -> TypeScript auto-generation
 
@@ -98,38 +98,21 @@ When implementing a feature spanning multiple crates, always work upstream-to-do
 
 ## Important Notes
 
-### Development Guidelines
-- Run `make test` before making changes to verify baseline
-- Use `make format.all` to format and fix linting across all languages
 - Frontend uses strict TypeScript — avoid `any` types, import types from `@bodhiapp/ts-client`
 - NAPI bindings require Node.js >= 22
-
-### Architectural Patterns
-- **Time handling**: Use `TimeService` (never `Utc::now()`) — see `crates/services/src/db/time_service.rs`
-- **Error handling**: service errors -> `ApiError` (in `routes_app::shared`) -> OpenAI-compatible responses. Auth context errors use `AuthContextError` (in `services`). Middleware errors use `MiddlewareError` (in `routes_app::middleware`). `ApiError` is NOT in `services`.
-- **AuthScope extractor**: All route handlers use `AuthScopedAppService` via `AuthScope`. Infrastructure uses `AppService` directly. See `crates/CLAUDE.md` for details.
-- **Imports**: Avoid `use super::*` in `#[cfg(test)]` modules — use explicit imports
-- **Multi-tenant**: Mutating DB ops use `begin_tenant_txn(tenant_id)` for RLS on PostgreSQL
-- **CRUD conventions**: See `crates/services/CLAUDE.md` "CRUD Conventions" for entity aliases, Request types, ValidatedJson, route handler patterns
-
-### Testing Practices
-- **rstest for all Rust tests**: `#[case]` for parameterized, `#[values]` for combinatorial, `#[fixture]` for shared setup
-- **Test file organization**: Prefer `test_*.rs` sibling files via `#[cfg(test)] #[path = "test_<name>.rs"] mod test_<name>;`. Inline `mod tests` for files under 500 lines. Reference: `crates/routes_app/src/mcps/`
-- **Assertions**: `assert_eq!(expected, actual)` with `pretty_assertions`. Error assertions via `.code()`, never message text
-- **Determinism**: No if-else logic or try-catch in test code
-- **UI tests**: Use `data-testid` with `getByTestId`. Do NOT add inline timeouts in component tests or Playwright tests (except ChatPage for model warm-up)
+- For architectural patterns, testing conventions, and cross-crate rules, see `crates/CLAUDE.md`
 
 ## Critical UI Development Workflow
 
 **IMPORTANT: After UI changes, rebuild the embedded UI before testing:**
 
 1. `make build.ui-clean` — Clean embedded UI build
-2. `make build.ui` — Build Next.js + NAPI bindings
+2. `make build.ui` — Build Vite frontend + NAPI bindings
 3. Or: `make build.ui-rebuild` — Combined clean + build
 
-The application embeds the UI build. Changes to `crates/bodhi/src/` are NOT visible until rebuilt. For active development, use `cd crates/bodhi && npm run dev` for hot reload.
+The application embeds the UI build (Vite output in `crates/bodhi/out/`). Changes to `crates/bodhi/src/` are NOT visible until rebuilt. For active development, use `cd crates/bodhi && npm run dev` for hot reload.
+
+**Frontend architecture**: Vite + TanStack Router (file-based routing in `src/routes/`) + TanStack Query v5 (hooks organized in `src/hooks/<domain>/`). See `crates/bodhi/src/CLAUDE.md` for details.
 
 ## Backwards Compatibility
 - Do not plan for backwards compatibility unless specifically mentioned — BodhiApp prioritizes architectural improvement
-- If you make changes to `crates/bodhi/src/`, run `make build.ui-rebuild` for Playwright tests to pick up UI updates
-- Do not add inline timeouts in component tests — rely on defaults or fix the root cause

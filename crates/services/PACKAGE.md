@@ -121,5 +121,39 @@
 - `test-utils` — test utilities, mock services, rstest fixtures, `mcp_client/test-utils`
 - `default = ["tokio"]` — Tokio runtime
 
+## Entity Alias Index
+
+| Domain | Alias | Entity File |
+|--------|-------|-------------|
+| Toolset | `ToolsetEntity` | `src/toolsets/toolset_entity.rs` |
+| MCP Instance | `McpEntity` | `src/mcps/mcp_entity.rs` |
+| MCP Server | `McpServerEntity` | `src/mcps/mcp_server_entity.rs` |
+| MCP Auth Param | `McpAuthParamEntity` | `src/mcps/mcp_auth_param_entity.rs` |
+| MCP Auth Config | `McpAuthConfigEntity` | `src/mcps/mcp_auth_config_entity.rs` |
+| MCP Auth Config Param | `McpAuthConfigParamEntity` | `src/mcps/mcp_auth_config_param_entity.rs` |
+| MCP OAuth Config Detail | `McpOAuthConfigDetailEntity` | `src/mcps/mcp_oauth_config_detail_entity.rs` |
+| MCP OAuth Token | `McpOAuthTokenEntity` | `src/mcps/mcp_oauth_token_entity.rs` |
+| MCP + Server join | `McpWithServerEntity` | `src/mcps/mcp_entity.rs` |
+| API Model | `ApiModelEntity` | `src/models/api_model_alias_entity.rs` |
+| User Alias | `UserAliasEntity` | `src/models/user_alias_entity.rs` |
+| Token | `TokenEntity` | `src/tokens/api_token_entity.rs` |
+| Download | `DownloadEntity` | `src/models/download_request_entity.rs` |
+| Model Metadata | `ModelMetadataEntity` | `src/models/model_metadata_entity.rs` |
+| User Access Req | `UserAccessRequestEntity` | `src/users/access_request_entity.rs` |
+| App Access Req | `AppAccessRequestEntity` | `src/app_access_requests/app_access_request_entity.rs` |
+
+## Auth-Scoped Service Return Types
+
+| Auth-Scoped Service | Error Type |
+|---|---|
+| `AuthScopedTokenService` | `TokenServiceError` |
+| `AuthScopedMcpService` | `McpError` |
+| `AuthScopedToolService` | `ToolsetError` |
+| `AuthScopedUserService` | `AuthScopedUserError` |
+| `AuthScopedDataService` | `DataServiceError` |
+| `AuthScopedApiModelService` | `ApiModelServiceError` |
+| `AuthScopedDownloadService` | `DownloadServiceError` |
+| `AuthScopedTenantService` | `TenantError` |
+
 ## Database Upsert Pattern
 `SettingsRepository::upsert_setting` returns a struct with `created_at` set to `now` even on update path (placeholder). Callers needing actual `created_at` should query. See `src/db/service_settings.rs`.

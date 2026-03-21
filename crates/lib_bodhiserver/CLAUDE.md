@@ -20,7 +20,6 @@ Embeddable server library: service composition (`AppServiceBuilder`), applicatio
   - **Phase 1**: Extract `is_production`, build encryption key (keyring or hash), build `DbService`, build `DefaultSettingService::from_parts()`
   - **Phase 2**: Build remaining services using `setting_service` for config. Multi-tenant mode: `MultiTenantDataService` + `MultitenantInferenceService`; standalone: `LocalDataService` + `StandaloneInferenceService`
 - `build_app_service(bootstrap_parts)` -- convenience wrapper
-- `update_with_option(service, tenant)` -- creates tenant record in DB
 
 ### setup_app_dirs (`src/app_dirs_builder.rs`)
 - `setup_app_dirs(options: &AppOptions)` -- returns `(PathBuf, SettingSource, HashMap<String, Value>)` (bodhi_home, source, file_defaults)
@@ -34,7 +33,7 @@ Embeddable server library: service composition (`AppServiceBuilder`), applicatio
 - Accessors: `bodhi_home()`, `logs_dir()`, `log_level()`, `log_stdout()`
 
 ### AppOptions / AppOptionsBuilder (`src/app_options.rs`)
-- `AppOptions` -- sealed config consumed by `setup_app_dirs`: `env_wrapper`, `env_type`, `app_type`, `app_version`, `app_commit_sha`, `auth_url`, `auth_realm`, `app_settings`, `tenant: Option<Tenant>`
+- `AppOptions` -- sealed config consumed by `setup_app_dirs`: `env_wrapper`, `env_type`, `app_type`, `app_version`, `app_commit_sha`, `auth_url`, `auth_realm`, `deployment_mode`, `app_settings`, `tenant: Option<Tenant>`
 - `AppOptionsBuilder` -- chainable: `set_env()`, `set_app_setting()`, `set_system_setting()` (validates known keys), `set_tenant()`, `build()` validates required fields
 
 ### Re-exports (`src/lib.rs`)
@@ -42,7 +41,7 @@ Re-exports curated surface from `services`, `routes_app`, `server_app` so downst
 - `ApiError`, `OpenAIApiError` from `routes_app`
 - Service traits/impls, setting constants, `AppCommand`, `AppType`, `EnvType`
 - `ServeCommand`, `ServeError`, `ServerShutdownHandle` from `server_app`
-- `EMBEDDED_UI_ASSETS` -- compile-time Next.js embed via `include_dir!`
+- `EMBEDDED_UI_ASSETS` -- compile-time Vite frontend embed via `include_dir!`
 - `BUILD_COMMIT_SHA` -- captured at build time
 
 ### Error Types (`src/error.rs`)

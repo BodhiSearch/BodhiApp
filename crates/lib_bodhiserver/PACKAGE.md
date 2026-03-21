@@ -7,12 +7,12 @@ See [CLAUDE.md](CLAUDE.md) for architectural guidance.
 | File | Purpose |
 |------|---------|
 | `src/lib.rs` | Re-exports from `services`, `routes_app`, `server_app`; `BUILD_COMMIT_SHA` const |
-| `src/app_service_builder.rs` | `AppServiceBuilder`, `build_app_service()`, `update_with_option()` |
+| `src/app_service_builder.rs` | `AppServiceBuilder`, `build_app_service()` |
 | `src/app_dirs_builder.rs` | `setup_app_dirs()`, `setup_bootstrap_service()`, `create_bodhi_home()` |
 | `src/app_options.rs` | `AppOptions`, `AppOptionsBuilder` |
 | `src/bootstrap_service.rs` | `BootstrapService` (pre-computed bootstrap values, `into_parts()`) |
 | `src/error.rs` | `BootstrapError` (unified enum) |
-| `src/ui_assets.rs` | `EMBEDDED_UI_ASSETS` (compile-time Next.js embed via `include_dir!`) |
+| `src/ui_assets.rs` | `EMBEDDED_UI_ASSETS` (compile-time Vite frontend embed via `include_dir!`) |
 | `src/test_utils/mod.rs` | Feature-gated module declaration |
 | `src/test_utils/app_options_builder.rs` | `AppOptionsBuilder::development()`, `::with_bodhi_home()` |
 | `src/test_app_dirs_builder.rs` | Tests for `setup_app_dirs` |
@@ -37,7 +37,7 @@ See [CLAUDE.md](CLAUDE.md) for architectural guidance.
 3. Create the BODHI_HOME directory if absent.
 
 `setup_bootstrap_service(options, bodhi_home, source, file_defaults, command)` returns `BootstrapService`:
-- Assembles system settings (BODHI_HOME, BODHI_ENV_TYPE, BODHI_APP_TYPE, BODHI_VERSION, BODHI_COMMIT_SHA, BODHI_AUTH_URL, BODHI_AUTH_REALM)
+- Assembles system settings (BODHI_HOME, BODHI_ENV_TYPE, BODHI_APP_TYPE, BODHI_VERSION, BODHI_COMMIT_SHA, BODHI_AUTH_URL, BODHI_AUTH_REALM, BODHI_DEPLOYMENT)
 - Constructs `BootstrapService::new(...)` which reads settings YAML and resolves log config
 
 ## Error Types

@@ -18,12 +18,17 @@ transport. Provides `McpClient` trait for `fetch_tools` and `call_tool` operatio
 ### Per-request connection pattern
 `DefaultMcpClient` creates a fresh connection for every `fetch_tools` or `call_tool` call.
 No connection pooling. Each call: connect -> operate -> `client.cancel()` -> return.
-See `src/lib.rs:90-131` for the `connect` method.
+See `src/mcp_client.rs:116-146` for the `connect` method.
 
-### Auth header injection
-Both `fetch_tools` and `call_tool` accept `auth_header: Option<(String, String)>` as
-`(header_name, header_value)`. This is injected as a default header on the reqwest client
-before establishing the MCP connection. Used for API key forwarding to MCP servers.
+### McpAuthParams -- headers + query params
+Both `fetch_tools` and `call_tool` accept `auth_params: Option<McpAuthParams>`.
+`McpAuthParams` (defined in `src/mcp_objs.rs`) carries:
+- `headers: Vec<(String, String)>` -- injected as default headers on the reqwest client
+- `query_params: Vec<(String, String)>` -- appended to the MCP server URL
+
+The `prepare_auth` method (`src/mcp_client.rs:72-114`) handles URL construction and header
+validation. Query params are URL-encoded. Headers are lowercased. Invalid header names or
+unparseable URLs produce `ConnectionFailed` errors.
 
 ### McpTool schema caching
 `McpTool` struct (name, description, input_schema as `serde_json::Value`) is the cached

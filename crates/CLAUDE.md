@@ -16,7 +16,7 @@ See `MDFILES.md` in project root for documentation conventions.
 | `server_app` | Standalone HTTP server: ServeCommand, graceful shutdown, live integration tests |
 | `lib_bodhiserver` | Embeddable server library: AppServiceBuilder, setup_app_dirs, re-exports |
 | `lib_bodhiserver_napi` | NAPI bindings: @bodhiapp/app-bindings, Playwright E2E |
-| `bodhi/src` | Next.js 14 frontend: @bodhiapp/ts-client, react-query, Vitest, MSW |
+| `bodhi/src` | Vite + TanStack Router + TanStack Query v5 frontend: @bodhiapp/ts-client, Vitest, MSW |
 | `bodhi/src-tauri` | Tauri desktop + container server: native feature flag, dual-mode |
 | `ci_optims` | Docker layer caching for CI builds |
 | `xtask/` | Build automation: OpenAPI spec generation, TypeScript client generation |
@@ -50,17 +50,19 @@ Flow: service error -> `AppError` -> `ApiError` (blanket `From<T: AppError>` aut
 
 **IMPORTANT**: `ApiError` is NOT in `services`.
 
-### AuthScope Extractor Flow
-All API route handlers use `AuthScope` -> `AuthScopedAppService`:
-1. Middleware populates `AuthContext` in request extensions
-2. `AuthScope` extracts `AuthContext` + `Arc<dyn AppService>`
-3. Creates `AuthScopedAppService` wrapping both
-4. Handlers access auth-scoped sub-services: `.tokens()`, `.mcps()`, `.tools()`, `.users()`, `.data()`, `.api_models()`, `.downloads()`, `.user_access_requests()`
-5. Auth-scoped files co-located with their domains (e.g., `tokens/auth_scoped.rs`, `mcps/auth_scoped.rs`)
+### Role Hierarchy
+`ResourceRole`: `Anonymous < Guest < User < PowerUser < Manager < Admin`. Derives `PartialOrd` — variant order matters.
+- `Anonymous`: unauthenticated access (maps to `AuthContext::Anonymous`)
+- `Guest`: authenticated but no assigned role (JWT with empty roles)
+- `Session.role` and `MultiTenantSession.role` are `ResourceRole` (not `Option<ResourceRole>`)
+- `Anonymous`/`Guest` cannot be assigned via admin APIs (input validation rejects them)
+- `TokenScope` and `UserScope` do NOT have Guest/Anonymous variants
 
-**Rule**: Route handlers use `AuthScopedAppService`. Infrastructure (bootstrap, middleware) uses `AppService` directly.
-**Rule**: Never call raw `.token_service()`, `.mcp_service()`, `.tool_service()`, `.data_service()` on `AuthScopedAppService` — use the auth-scoped sub-services instead.
-**Exception**: `access_request_service()` is a documented non-auth-scoped passthrough (see `AccessRequestService` doc comment).
+### AuthScope Extractor
+Route handlers use `AuthScope` -> `AuthScopedAppService` (extracts `AuthContext` + `Arc<dyn AppService>`). Use auth-scoped sub-services (`.tokens()`, `.mcps()`, etc.), never raw service accessors. Infrastructure uses `AppService` directly. Full detail in `crates/routes_app/CLAUDE.md`.
+
+### Route Groups and CORS
+Per-group CORS — no global CorsLayer. Session-only APIs have restrictive CORS; external app APIs under `/bodhi/v1/apps/` have permissive CORS. Full group table in `crates/routes_app/CLAUDE.md`.
 
 ### CRUD Conventions
 Uniform architecture across all domains. Full reference (Entity Alias Index, Request/Response types, Service/Route handler patterns) in `crates/services/CLAUDE.md`.
@@ -69,26 +71,7 @@ Uniform architecture across all domains. Full reference (Entity Alias Index, Req
 All mutating `DbService` operations use `begin_tenant_txn(tenant_id)` from `DbCore` trait. PostgreSQL sets RLS via `SET LOCAL app.current_tenant_id`. SQLite returns plain transaction.
 
 ### Multi-Tenant Isolation Test Pattern
-When adding new tenant-scoped or user-scoped tables, add isolation tests in the domain module:
-```rust
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-#[serial(pg_app)]
-async fn test_cross_tenant_<domain>_isolation(
-  _setup_env: (),
-  #[values("sqlite", "postgres")] db_type: &str,
-) -> anyhow::Result<()> {
-  let ctx = sea_context(db_type).await;
-  // 1. Create resource in TEST_TENANT_ID
-  // 2. Create resource in TEST_TENANT_B_ID (same user)
-  // 3. List/Get per tenant -> only that tenant's resources
-  // 4. Cross-tenant Get by ID -> None
-  Ok(())
-}
-```
-Constants: `TEST_TENANT_ID`, `TEST_TENANT_B_ID`, `TEST_USER_ID`, `TEST_TENANT_A_USER_B_ID` in `test_utils/db.rs`.
-Existing isolation tests: `tokens/`, `mcps/`, `toolsets/`, `models/`, `users/`, `app_access_requests/`, `settings/`.
+When adding new tenant-scoped tables, add isolation tests. Reference pattern: `crates/services/src/toolsets/test_toolset_repository_isolation.rs:40`. Tests create resources in two tenants, verify list/get isolation per tenant, and cross-tenant get-by-ID returns None. Run with `#[values("sqlite", "postgres")]`. Constants: `TEST_TENANT_ID`, `TEST_TENANT_B_ID`, `TEST_USER_ID` in `test_utils/db.rs`.
 
 ### Time Handling
 Never use `Utc::now()` directly. All timestamps through `TimeService`. Tests use `FrozenTimeService`.

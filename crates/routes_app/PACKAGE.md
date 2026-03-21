@@ -8,22 +8,24 @@ Entry point: `src/lib.rs` -- re-exports all public modules with conditional `tes
 
 ### Domain Route Modules
 
-| Module | Directory | Key Files |
-|--------|-----------|-----------|
-| `auth` | `src/auth/` | `routes_auth.rs` (initiate/callback/logout) |
-| `users` | `src/users/` | `routes_users.rs` (admin mgmt), `routes_users_access_request.rs`, `routes_users_info.rs` |
-| `apps` | `src/apps/` | `routes_apps.rs` (app access request workflow) |
-| `tokens` | `src/tokens/` | `routes_tokens.rs` (CRUD with privilege escalation prevention) |
-| `models` | `src/models/` | aliases, metadata refresh, model pull |
-| `api_models` | `src/api_models/` | Remote API model config CRUD |
-| `settings` | `src/settings/` | Settings list, update, reset |
-| `setup` | `src/setup/` | App setup, health, app info |
-| `toolsets` | `src/toolsets/` | Toolset CRUD, execution, type management |
-| `mcps` | `src/mcps/` | MCP CRUD, tools, servers, auth configs, OAuth |
-| `oai` | `src/oai/` | OpenAI-compatible chat completions, models, embeddings |
-| `ollama` | `src/ollama/` | Ollama-compatible models, show, chat |
+| Module | Error Enum | Purpose |
+|--------|------------|---------|
+| `auth/` | `AuthRouteError` | OAuth2 initiate/callback/logout |
+| `users/` | `UsersRouteError` | User mgmt, access requests |
+| `apps/` | `AppsRouteError` | App access request workflow |
+| `tokens/` | `TokenRouteError` | API token CRUD |
+| `models/` | `ModelRouteError` | Model alias CRUD, metadata, pull, API models, local files |
+| `settings/` | `SettingsRouteError` | Settings CRUD |
+| `setup/` | `SetupRouteError` | App setup/init |
+| `toolsets/` | `ToolsetRouteError` | Toolset CRUD + execution |
+| `mcps/` | `McpRouteError` | MCP CRUD, tools, servers, OAuth |
+| `oai/` | `OAIRouteError` | OpenAI-compatible endpoints |
+| `ollama/` | `OllamaRouteError` | Ollama-compatible endpoints |
+| `tenants/` | `DashboardAuthRouteError` | Dashboard auth, tenant CRUD, multi-tenant management |
 
-Standalone: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`
+`models/` sub-modules: `alias/` (user-created aliases), `api/` (remote API model configs), `files/` (local model files + downloads).
+
+Standalone: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`, `spa_router.rs`
 
 ### Middleware (`src/middleware/`)
 

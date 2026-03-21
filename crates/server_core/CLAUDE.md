@@ -18,7 +18,7 @@ services / llama_server_proc
     routes_app / server_app / lib_bodhiserver
 ```
 
-Depends on `services` (domain types, business logic), `llama_server_proc` (LLM process management). Does NOT depend on `objs` (absorbed into `services`).
+Depends on `services` (domain types, business logic) and `llama_server_proc` (LLM process management).
 
 ## Module Structure
 

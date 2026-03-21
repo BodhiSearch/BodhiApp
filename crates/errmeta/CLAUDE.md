@@ -16,10 +16,11 @@ pulling in `axum`, `serde`, or `sea-orm`.
 - **Consumed by**: every Rust crate (directly by `llama_server_proc`, `mcp_client`; transitively by others through `services` re-exports)
 - `services` re-exports all errmeta types -- downstream crates never need errmeta as a direct dependency
 
-## Boundary: errmeta vs services
+## Boundary: errmeta vs routes_app
 
 **errmeta**: error types with zero framework deps.
-**services::shared_objs**: framework-dependent wrappers (`ApiError`, `OpenAIApiError`, `SerdeJsonError`, etc.).
+**routes_app::shared**: HTTP response wrappers (`ApiError`, `OpenAIApiError`, `ErrorBody`).
+`services::shared_objs` contains only utility wrappers (`error_wrappers.rs`, `token.rs`, `utils.rs`) -- NOT `ApiError`.
 
 ## Non-Obvious Rules
 
@@ -54,21 +55,8 @@ See `src/rwlock_error.rs`.
 All variants capture both `std::io::Error` source and filesystem path. All map to 500.
 See `src/io_error.rs:54-88`.
 
-### args() calls format!("{}", field) on all named fields
-Fields must implement `Display`. `Option<String>` does not work -- need manual `AppError` impl.
-This is a `errmeta_derive` behavior that surfaces here.
-
-## Error Flow Through the System
-
-```
-errmeta:           AppError trait, ErrorType, IoError, EntityError
-                        |
-errmeta_derive:    #[derive(ErrorMeta)] generates AppError impl
-                        |
-services:          Domain error enums (each implementing AppError via ErrorMeta)
-                        |
-services:          ApiError (From<T: AppError>) -> OpenAIApiError -> JSON HTTP response
-```
+### args() field Display requirement
+All `ErrorMeta`-derived fields must implement `Display`. See `errmeta_derive/CLAUDE.md` for details.
 
 ## Testing
 

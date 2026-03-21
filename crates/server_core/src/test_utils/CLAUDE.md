@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Test infrastructure for server_core's HTTP and LLM server management. Three modules: HTTP response/request helpers, RouterState fixture, and mock server fixtures.
+Test infrastructure for server_core's HTTP and LLM server management. Three modules: HTTP response/request helpers, AppService stub fixture (`router_state_stub`), and mock server fixtures.
 
 ## Key Utilities
 

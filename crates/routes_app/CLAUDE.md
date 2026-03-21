@@ -23,6 +23,39 @@ server_app  lib_bodhiserver  bodhi/src-tauri
 
 State type: `Arc<dyn AppService>` (not `RouterState` -- that was removed).
 
+## Route Group Architecture
+
+Routes are organized into groups with different auth requirements and CORS policies.
+Defined in `src/routes.rs`. Two CORS tiers: **restrictive** (blocks all cross-origin, for session-only APIs) and **permissive** (allows any origin, for external tools/apps).
+
+### Permissive CORS (public + API-protected)
+
+| Group | Auth Middleware | Role/Scope | Purpose |
+|-------|---------------|------------|---------|
+| `public_apis` | none | -- | `/ping`, `/health`, `/setup`, `/logout`, app access request create/status |
+| `optional_auth` | `optional_auth_middleware` | -- | `/info`, `/user`, auth initiate/callback, dashboard auth, tenants, dev-only routes |
+| `user_apis` | `api_auth_middleware` | User / TokenScope::User / UserScope::User | OpenAI/Ollama compat, model listing, model files |
+| `power_user_apis` | `api_auth_middleware` | PowerUser / TokenScope::PowerUser / UserScope::PowerUser | Model alias CRUD, file pull/downloads |
+| `toolset_exec_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | Toolset tool execution (no API tokens) |
+| `mcp_exec_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | MCP tool refresh + execution (no API tokens) |
+| `apps_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | External app endpoints under `/bodhi/v1/apps/...` (OAuth tokens) |
+
+### Restrictive CORS (session-protected)
+
+| Group | Auth Middleware | Role | Purpose |
+|-------|---------------|------|---------|
+| `guest_endpoints` | `api_auth_middleware` | Guest | `users_request_access`, `users_request_status` |
+| `user_session_apis` | `api_auth_middleware` | User | Toolset/MCP CRUD, MCP auth configs, MCP OAuth, MCP servers (read), app access reviews, API model management |
+| `power_user_session_apis` | `api_auth_middleware` | PowerUser | Token CRUD, metadata refresh, queue status |
+| `admin_session_apis` | `api_auth_middleware` | Admin | Settings CRUD, toolset type enable/disable, MCP server create/update |
+| `manager_session_apis` | `api_auth_middleware` | Manager | User access request approval/rejection, user listing, role changes, user deletion |
+
+All session-protected groups share a base `auth_middleware` layer and restrictive CORS layer.
+
+### UI Serving
+
+`spa_router.rs` serves embedded UI assets under `/ui` prefix with SPA-aware fallback (non-extension paths return `index.html`). `routes_proxy.rs` proxies to Vite dev server (`localhost:3000`) for HMR when `BODHI_DEV_PROXY_UI=true`. Root `/` redirects to `/ui/`.
+
 ## AuthScope Extractor (Critical Pattern)
 
 All route handlers use `AuthScope` (`src/shared/auth_scope_extractor.rs`), a newtype around `AuthScopedAppService`. Replaces the old `Extension<AuthContext>` + `State(state)` dual-extractor.
@@ -38,40 +71,13 @@ Key methods on `AuthScope` (via `Deref` to `AuthScopedAppService`):
 
 Falls back to `AuthContext::Anonymous { deployment: DeploymentMode::Standalone }` when no auth middleware has populated the extension.
 
-**AuthContext variants** (defined in `services::auth::auth_context`):
-- `Anonymous { deployment: DeploymentMode }`
-- `Session { client_id, tenant_id, user_id, username, role: ResourceRole, token }`
-- `MultiTenantSession { client_id: Option<String>, tenant_id: Option<String>, user_id, username, role: ResourceRole, token: Option<String>, dashboard_token }`
-- `ApiToken { client_id, tenant_id, user_id, role: TokenScope, token }`
-- `ExternalApp { client_id, tenant_id, user_id, role: Option<UserScope>, token, external_app_token, app_client_id, access_request_id: Option<String> }`
-
-All non-Anonymous variants have `client_id: String` and `tenant_id: String` (multi-tenant support).
+**AuthContext**: 5 variants — `Anonymous`, `Session`, `MultiTenantSession`, `ApiToken`, `ExternalApp`. `Session.role` and `MultiTenantSession.role` are `ResourceRole` (not `Option`). Full variant details in `crates/services/CLAUDE.md`.
 
 ## Domain Module Structure
 
-Flat naming (no `routes_` prefix in module names). Each module has:
-- `error.rs` -- single `<Domain>RouteError` enum with `#[error_meta(trait_to_impl = AppError)]`
-- `<domain>_api_schemas.rs` -- request/response types
-- `routes_<domain>.rs` -- handler functions
-- `mod.rs` -- declarations and re-exports only
+Flat naming (no `routes_` prefix in module names). Each module has: `error.rs` (single `<Domain>RouteError`), `<domain>_api_schemas.rs` (request/response types), `routes_<domain>.rs` (handlers), `mod.rs` (declarations only). Full module index in `PACKAGE.md`.
 
-| Module | Error Enum | Purpose |
-|--------|------------|---------|
-| `auth/` | `AuthRouteError` | OAuth2 initiate/callback/logout |
-| `users/` | `UsersRouteError` | User mgmt, access requests |
-| `apps/` | `AppsRouteError` | App access request workflow |
-| `tokens/` | `TokenRouteError` | API token CRUD |
-| `models/` | `ModelRouteError` | Model aliases, metadata, pull |
-| `api_models/` | `ApiModelsRouteError` | Remote API model config |
-| `settings/` | `SettingsRouteError` | Settings CRUD |
-| `setup/` | `SetupRouteError` | App setup/init |
-| `toolsets/` | `ToolsetRouteError` | Toolset CRUD + execution |
-| `mcps/` | `McpRouteError` | MCP CRUD, tools, servers, OAuth |
-| `oai/` | `OAIRouteError` | OpenAI-compatible endpoints |
-| `ollama/` | `OllamaRouteError` | Ollama-compatible endpoints |
-| `tenants/` | `DashboardAuthRouteError` | Dashboard auth, tenant CRUD, multi-tenant management |
-
-Standalone files: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`
+The `models/` module has three sub-modules: `alias/`, `api/`, `files/`. Standalone files: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`, `spa_router.rs`.
 
 ## Handler Naming Convention
 
@@ -82,21 +88,13 @@ Rails-style, no `_handler` suffix:
 ## JSON Extraction Convention
 
 All handlers accepting JSON bodies with Validate-deriving types use `ValidatedJson<DomainRequest>`:
-```rust
-async fn domain_create(
-  auth_scope: AuthScope,
-  ValidatedJson(form): ValidatedJson<DomainRequest>,
-) -> Result<Json<DomainOutput>, ApiError> {
-```
-Requires: `use crate::ValidatedJson;`
+see `src/shared/validated_json.rs` for implementation. `ValidatedJson` deserializes JSON and calls `form.validate()` automatically. Validation errors return 400 with structured error body. Services assume input is already validated.
 
-`ValidatedJson` deserializes JSON and calls `form.validate()` automatically. Validation errors return 400 with structured error body. Services assume input is already validated — no `form.validate()` calls in services.
+**Entity->Response conversion**: Auth-scoped services return Entity types. Route handlers convert to Response via `.into()` before returning (e.g., `let mcp: Mcp = entity.into();`).
 
-**Entity→Response conversion**: Auth-scoped services return Entity types. Route handlers convert to Response via `.into()` before returning (e.g., `let mcp: Mcp = entity.into();`).
+**Two-layer authorization model**: Middleware checks endpoint access, route handler checks operation-specific params (e.g., token scope privileges, role hierarchy for approval).
 
-**Two-layer authorization model**: Middleware checks endpoint access, route handler checks operation-specific params (e.g., token scope privileges).
-
-**Auth-scoped services only**: Route handlers MUST use `auth_scope.tokens()`, `auth_scope.mcps()`, etc. — never call domain services directly.
+**Auth-scoped services only**: Route handlers MUST use `auth_scope.tokens()`, `auth_scope.mcps()`, etc. -- never call domain services directly.
 
 ## Error Handling Chain
 
@@ -119,8 +117,6 @@ Every new route must:
 
 ## Key Workflow Gotchas
 
-**Time handling**: Always use `app_service.time_service().utc_now()`, never `Utc::now()`.
-
 **Session clearing on role change**: When a user's role changes, all sessions must be cleared via `session_service`. The handler logs but does not fail if clearing errors.
 
 **Settings allowlist**: Only `BODHI_EXEC_VARIANT` and `BODHI_KEEP_ALIVE_SECS` are editable via API. `BODHI_HOME` only via env var. Others return `SettingsRouteError::Unsupported`.
@@ -129,7 +125,13 @@ Every new route must:
 
 **MCP OAuth CSRF**: Token exchange validates `state` parameter from session.
 
-**Multi-tenant endpoints**: Dashboard auth (`/auth/dashboard/initiate`, `/auth/dashboard/callback`) and tenant management (`/tenants`, `/tenants/{client_id}/activate`) in `tenants/` module. Dashboard tokens stored under `dashboard:*` session keys. `/info` returns `deployment` and `client_id`. `/user/info` returns `has_dashboard_session`.
+**Access request role validation**: `users_access_request_approve` rejects `Anonymous`/`Guest` as role assignment targets (`!request.role.has_access_to(&ResourceRole::User)`). Approvers can only assign roles at or below their own level.
+
+**Multi-tenant endpoints**: Dashboard auth (`/auth/dashboard/initiate`, `/auth/dashboard/callback`) and tenant management (`/tenants`, `/tenants/{client_id}/activate`) in `tenants/` module. Dashboard tokens stored under `dashboard:*` session keys. `/info` returns `deployment` and `client_id`. `/user/info` returns `dashboard: Option<DashboardUser>` with user details from the dashboard JWT.
+
+**AppStatus values**: `Setup` (default), `Ready`, `ResourceAdmin`. `TenantSelection` was removed -- Anonymous{MultiTenant} and MultiTenantSession{client_id: None} with memberships now return `Ready`.
+
+**Apps API thin wrappers**: `apps_toolsets_index`, `apps_mcps_index`, etc. in the `apps_apis` group are thin wrappers that delegate to the same auth-scoped services but are mounted under `/bodhi/v1/apps/...` with permissive CORS for external OAuth app access.
 
 ## Commands
 

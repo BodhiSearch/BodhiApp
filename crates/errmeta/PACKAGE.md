@@ -32,12 +32,3 @@
 | `Unknown` (default) | `unknown_error` | 500 |
 | `ServiceUnavailable` | `service_unavailable` | 503 |
 
-## Dependencies
-
-- `errmeta_derive` -- `#[derive(ErrorMeta)]` proc macro
-- `strum` -- enum string serialization (`Display`, `AsRefStr`, `EnumString`)
-- `thiserror` -- `#[derive(Error)]`
-
-Dev: `rstest`, `pretty_assertions`
-
-No feature flags. Intentionally minimal.

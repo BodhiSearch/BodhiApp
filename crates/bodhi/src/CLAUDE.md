@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Next.js 14 frontend for BodhiApp. Static-exported (`output: 'export'`) React app embedded in Tauri desktop and served by `lib_bodhiserver`. Uses App Router with `basePath: '/ui'` so all pages are served under `/ui/*`. Documentation lives under `/docs`.
+Vite + TanStack Router frontend for BodhiApp. SPA built to `out/` and embedded in Tauri desktop and served by `lib_bodhiserver`. All UI served under `/ui` basepath. Uses TanStack Query v5 for data fetching.
 
 ## Architecture Position
 
@@ -31,19 +31,27 @@ ALWAYS import request/response types from `@bodhiapp/ts-client`, never define AP
 2. `make build.ts-client` — regenerate and build TypeScript types
 3. Types auto-available in frontend via file dependency in package.json
 
+### Basepath Configuration
+
+Three places must stay in sync — all set to `/ui`:
+
+1. `vite.config.ts` — `base: '/ui/'`
+2. `src/main.tsx` — `createRouter({ basepath: '/ui' })`
+3. `index.html` — asset hrefs prefixed with `/ui/`
+
+`src/lib/constants.ts` defines `BASE_PATH = '/ui'` for cases where the framework does not auto-apply the base path (e.g., `window.location` stripping). Route constants in the same file (e.g., `ROUTE_CHAT = '/chat'`) do NOT include `/ui` — the router prepends it.
+
 ### API Client Configuration
 
 - `src/lib/apiClient.ts` — axios instance, `baseURL` is `''` (relative) in prod, `http://localhost:3000` in tests
 - `src/components/ClientProviders.tsx` — creates `QueryClient` and wraps app with `QueryClientProvider`
-- All API endpoints use `/bodhi/v1/` prefix. Constant `BODHI_API_BASE` defined in `src/hooks/useQuery.ts:19`
+- All API endpoints use `/bodhi/v1/` prefix. Constant `BODHI_API_BASE` defined in `src/hooks/constants.ts`
 
-### Build Workflow
+### Build & Test
 
-IMPORTANT: After UI changes, rebuild embedded UI before testing:
-
-- `make build.ui-clean` then `make build.ui` — or `make build.ui-rebuild`
-- For active development: `cd crates/bodhi && npm run dev` (hot reload)
+- `cd crates/bodhi && npm run dev` — Vite dev server (hot reload, port 3000)
 - `cd crates/bodhi && npm test` — run Vitest component tests
+- After UI changes, rebuild embedded UI: `make build.ui-rebuild` (see root CLAUDE.md)
 
 ### MSW v2 Handler Ordering
 
@@ -51,15 +59,44 @@ MSW handler registration order matters. Sub-path handlers (`/mcps/servers`, `/mc
 
 ## Key Patterns
 
-### Hook Architecture
+### TanStack Router (File-Based Routing)
 
-- Generic hooks in `src/hooks/useQuery.ts` — `useQuery<T>`, `useMutation<TData, TVariables>` wrapping react-query with `AxiosError<OpenAiApiError>` error typing
-- Domain hooks (useModels, useMcps, useToolsets, useApiModels, etc.) compose the generic hooks with endpoint-specific types
-- Chat system: `use-chat.tsx` (orchestration) → `use-chat-completions.ts` (streaming SSE) → `use-chat-db.tsx` (localStorage persistence) → `use-chat-settings.tsx` (configuration)
+Routes live in `src/routes/` using TanStack Router file conventions. Route files are thin wrappers that import page components from `src/app/` (the old Next.js page components, kept in place).
+
+**Route file pattern** — see `src/routes/login/index.tsx`:
+
+- `createFileRoute('/login/')` defines the route
+- `validateSearch` with Zod schema for type-safe query params
+- `component` points to the page component from `src/app/`
+
+**Layout routes** — `src/routes/setup/route.tsx` wraps child routes with `Outlet`.
+
+**Root layout** — `src/routes/__root.tsx` provides ThemeProvider, ClientProviders, NavigationProvider, AppHeader.
+
+**Navigation APIs** (replaced Next.js equivalents):
+
+- `useNavigate()` replaces `useRouter().push()` — call as `navigate({ to: ROUTE_CHAT })`
+- `useSearch({ strict: false })` replaces `useSearchParams` — returns typed search params
+- `useLocation().pathname` replaces `usePathname()`
+- `<Link to="/chat">` replaces `<Link href="/chat">`
+
+**Router configuration** — `src/main.tsx`: `trailingSlash: 'always'`, `defaultPreload: 'intent'`.
+
+### Hook Architecture (Domain Subdirectories)
+
+Hooks organized into 12 domain subdirectories under `src/hooks/<domain>/`. Each has `constants.ts` (query key factory + endpoints), `index.ts` (barrel), and CRUD-named hooks (`useList*`, `useGet*`, `useCreate*`, `useUpdate*`, `useDelete*`). Full directory listing in `PACKAGE.md`.
+
+**Query key factory pattern** — see `src/hooks/models/constants.ts` for reference. Keys build hierarchically: `modelKeys.all` → `modelKeys.lists()` → `modelKeys.list(...)` → `modelKeys.detail(id)`.
+
+**Generic hooks** in `src/hooks/useQuery.ts`: `useQuery<T>` (GET) and `useMutationQuery<T, V>` (POST/PUT/DELETE) with `AxiosError<OpenAiApiError>` typing.
+
+### Test Fixtures (Factory Pattern)
+
+`src/test-fixtures/<domain>.ts` — fixture factories using OpenAPI-generated types from `@bodhiapp/ts-client`. Each factory accepts optional `Partial<T>` overrides. Domains: `access-requests`, `apps`, `mcps`, `models`, `tokens`, `toolsets`, `users`.
 
 ### Form Pattern
 
-react-hook-form + zod schema + ts-client types. See `src/schemas/alias.ts` for canonical example:
+react-hook-form + zod schema + ts-client types. Schemas in `src/schemas/`:
 
 - Zod schema for form validation
 - `convertFormToApi()` / `convertApiToForm()` for type conversion between form and API formats
@@ -69,36 +106,31 @@ react-hook-form + zod schema + ts-client types. See `src/schemas/alias.ts` for c
 
 `AppInitializer` (`src/components/AppInitializer.tsx`) checks `/bodhi/v1/info` status and redirects:
 
-- `setup` + standalone → `/setup` (`ROUTE_SETUP`)
-- `setup` + multi_tenant → `/setup/tenants` (`ROUTE_SETUP_TENANTS`)
-- `ready` + multi_tenant + no client_id → `/login` (`ROUTE_LOGIN`)
-- `ready` (all other) → `/chat` (`ROUTE_DEFAULT`)
-- `resource_admin` → `/setup/resource-admin` (`ROUTE_RESOURCE_ADMIN`)
+- `setup` + standalone -> `/setup`
+- `setup` + multi_tenant -> `/setup/tenants`
+- `ready` + multi_tenant + no client_id -> `/login`
+- `ready` (all other) -> `/chat`
+- `resource_admin` -> `/setup/resource-admin`
 
-Note: Next.js `basePath: '/ui'` auto-prepends `/ui` to all routes, so browser URLs are `/ui/setup`, `/ui/chat`, etc.
+Authenticated routes check `userInfo.auth_status === 'logged_in'`. Users with `resource_guest` or `resource_anonymous` role are redirected to `/request-access`.
+
+Role hierarchy and utilities in `src/lib/roles.ts`. `Role` type re-exported from `ResourceRole` in `@bodhiapp/ts-client`.
 
 Route constants defined in `src/lib/constants.ts`.
 
 ### MCP Server Management
 
-- MCP instances: `src/app/mcps/` pages, `src/hooks/useMcps.ts`
-- MCP servers (allowlist): `src/app/mcps/servers/` pages
+- MCP instances: `src/routes/mcps/` routes, `src/hooks/mcps/useMcpInstances.ts`
+- MCP servers (allowlist): `src/routes/mcps/servers/` routes, `src/hooks/mcps/useMcpServers.ts`
 - Auth config: `McpAuthType` enum (`public`, `header`, `oauth`). OAuth distinguishes pre-registered vs dynamic via `registration_type` field
-- Auto-DCR behavior differs: new page (`mcps/servers/new/page.tsx`) uses `enableAutoDcr={true}` (silent fallback), view page (`mcps/servers/view/page.tsx`) uses `enableAutoDcr={false}` (shows errors)
 - `src/stores/mcpFormStore.ts` uses sessionStorage; `mcpFormStore.reset()` clears it. OAuth callback validates `state` parameter
-
-### Navigation
-
-`use-navigation.tsx` provides `NavigationProvider` with `defaultNavigationItems`. `AppHeader.tsx` renders header. Sidebar system in `src/components/ui/sidebar.tsx`.
 
 ### Setup Flow
 
-Multi-step onboarding under `src/app/setup/`: download-models → toolsets → api-models → llm-engine → browser-extension → complete. `SetupProvider` manages step state.
+Multi-step onboarding under `src/routes/setup/`: download-models -> toolsets -> api-models -> llm-engine -> browser-extension -> complete. Layout route in `src/routes/setup/route.tsx` wraps with `SetupLayoutComponent`.
 
-## Testing Rules
+## Testing
 
-- Do NOT add inline timeouts in component tests — rely on defaults or fix root cause
-- Use `data-testid` attributes with `getByTestId` for element selection
-- Test wrapper: `src/tests/wrapper.tsx` — `createWrapper()` provides QueryClientProvider
-- MSW v2 with `openapi-msw` for type-safe mocking. Setup in `src/test-utils/msw-v2/setup.ts`
-- `src/tests/setup.ts` configures test environment (sets baseURL, mocks matchMedia/ResizeObserver/pointer events)
+See `TESTING.md` for MSW setup, wrapper utilities, and test patterns.
+
+**Critical gotcha**: `src/tests/setup.ts` sets `notifyManager.setScheduler((cb) => queueMicrotask(cb))`. Without this, TanStack Query v5's `setTimeout(cb, 0)` scheduling breaks tests by deferring state updates outside `act()` blocks.

@@ -5,8 +5,15 @@
 ### Setup File (`src/tests/setup.ts`)
 
 - Sets `apiClient.defaults.baseURL = 'http://localhost:3000'`
-- Mocks: `matchMedia`, `ResizeObserver`, pointer events (`hasPointerCapture`, `setPointerCapture`, `releasePointerCapture`), `scrollIntoView`
+- Sets `notifyManager.setScheduler((cb) => queueMicrotask(cb))` — required for TanStack Query v5 state updates to flush within `act()` blocks
+- Mocks: `matchMedia`, `ResizeObserver`, pointer events (`hasPointerCapture`, `setPointerCapture`, `releasePointerCapture`), `scrollIntoView`, `useMediaQuery`
 - Suppresses console errors for expected HTTP error messages (`Request failed with status code`, `Network Error`)
+
+### Vitest Config (`vitest.config.ts`)
+
+- Environment: `jsdom`
+- Setup file: `src/tests/setup.ts`
+- Aliases `framer-motion` to `src/tests/mocks/framer-motion.tsx`
 
 ### Test Wrapper (`src/tests/wrapper.tsx`)
 
@@ -24,11 +31,17 @@
 
 ### MSW Handler Files (`src/test-utils/msw-v2/handlers/`)
 
-Domain-specific mock handlers: `access-requests.ts`, `app-access-requests.ts`, `api-models.ts`, `auth.ts`, `chat-completions.ts`, `info.ts`, `mcps.ts`, `models.ts`, `modelfiles.ts`, `setup.ts`, `settings.ts`, `tokens.ts`, `toolsets.ts`, `user.ts`
+Domain-specific mock handlers: `api-models.ts`, `apps.ts`, `auth.ts`, `chat-completions.ts`, `info.ts`, `mcps.ts`, `models.ts`, `modelfiles.ts`, `setup.ts`, `settings.ts`, `tenants.ts`, `tokens.ts`, `toolsets.ts`, `user-access-requests.ts`, `user.ts`
 
 **IMPORTANT**: Handler registration order matters for MCPs — sub-path handlers (`/mcps/servers`, `/mcps/auth-configs`) must come before wildcard `/mcps/:id` handlers.
 
-### Test Fixtures
+### Test Fixtures (`src/test-fixtures/`)
+
+Factory functions using OpenAPI-generated types. Each factory accepts `Partial<T>` overrides:
+
+- `access-requests.ts`, `apps.ts`, `mcps.ts`, `models.ts`, `tokens.ts`, `toolsets.ts`, `users.ts`
+
+### Other Test Utilities
 
 - `src/test-utils/fixtures/chat.ts` — chat message fixtures
 - `src/test-utils/api-model-test-utils.ts` — API model test helpers
@@ -48,9 +61,10 @@ Domain-specific mock handlers: `access-requests.ts`, `app-access-requests.ts`, `
 
 - Use `renderHook()` from `@testing-library/react` with `wrapper: createWrapper()`
 - Mock API calls with MSW handlers, not axios mocks
+- Hook test files co-located in domain directories (e.g., `src/hooks/models/useModels.test.ts`)
 
 ### Page Tests
 
-- Co-located: `page.test.tsx` alongside `page.tsx`
+- Co-located in `src/app/` alongside page components: `page.test.tsx` next to `page.tsx`
 - Test routing, data loading, user interactions
 - Use MSW to mock backend responses

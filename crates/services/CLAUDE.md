@@ -43,9 +43,7 @@ All mutating DbService operations on tenant-scoped rows use `begin_tenant_txn(te
 
 ## AppService Trait
 
-Central service registry with 18 service accessors. Defined in `src/app_service/app_service.rs`. Key services:
-- `tenant_service()`, `inference_service()`, `token_service()` — newer additions not in older docs
-- All services are `Arc<dyn Trait>` with `#[mockall::automock]`
+Central service registry with 20 service accessors. Defined in `src/app_service/app_service.rs`. Includes `api_model_service()`, `download_service()`, `inference_service()`, `token_service()`, `tenant_service()`. All services are `Arc<dyn Trait>` with `#[mockall::automock]`.
 
 ## AuthScopedAppService
 
@@ -60,8 +58,9 @@ Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_sc
 - `data()` → `AuthScopedDataService` (in `models/auth_scoped_data.rs`)
 - `api_models()` → `AuthScopedApiModelService` (in `models/auth_scoped_api_models.rs`)
 - `downloads()` → `AuthScopedDownloadService` (in `models/auth_scoped_downloads.rs`)
+- `tenants()` → `AuthScopedTenantService` (in `tenants/auth_scoped.rs`)
 
-**Short-name passthrough accessors** (D1-D10): `settings()`, `tenant()`, `auth_flow()`, `network()`, `sessions()`, `db()`, `hub()`, `ai_api()`, `time()`, `inference()`.
+**Short-name passthrough accessors** (D1-D9, excluding D2 which is auth-scoped above): `settings()`, `auth_flow()`, `network()`, `sessions()`, `db()`, `hub()`, `ai_api()`, `time()`, `inference()`.
 
 **Non-auth-scoped passthrough**: `access_request_service()` — intentionally not auth-scoped (see `AccessRequestService` doc comment).
 
@@ -72,12 +71,12 @@ Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_sc
 ## Domain Module Layout
 
 Each domain module follows `*_objs.rs` pattern for types and `error.rs` for errors:
-- `auth/auth_objs.rs` — `ResourceRole`, `TokenScope`, `UserScope`, `AppRole`, `UserInfo`
-- `auth/auth_context.rs` — `AuthContext` enum, `AuthContextError`
+- `auth/auth_objs.rs` — `ResourceRole` (Anonymous/Guest/User/PowerUser/Manager/Admin), `TokenScope`, `UserScope`, `AppRole`, `UserInfo`
+- `auth/auth_context.rs` — `AuthContext` enum (Anonymous{deployment}/Session/MultiTenantSession/ApiToken/ExternalApp), `AuthContextError`. `Session.role` and `MultiTenantSession.role` are `ResourceRole` (not Option).
 - `tokens/token_objs.rs` — `TokenStatus`, `TokenDetail`, `CreateTokenRequest`, `UpdateTokenRequest`
-- `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `JsonVec`, `DownloadStatus`, `ApiModelRequest`, `UserAliasRequest`
+- `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `JsonVec`, `DownloadStatus`, `ApiModelRequest`, `ApiAliasResponse` (has `has_api_key: bool`), `UserAliasRequest`
 - `settings/setting_objs.rs` — `Setting`, `EnvType`, `AppType`, `LogLevel`
-- `tenants/tenant_objs.rs` — `AppStatus` (Setup/Ready/ResourceAdmin), `Tenant` (includes `created_by: Option<String>`)
+- `tenants/tenant_objs.rs` — `DeploymentMode` (Standalone/MultiTenant), `AppStatus` (Setup/Ready/ResourceAdmin), `Tenant` (includes `created_by: Option<String>`)
 - `tenants/spi_types.rs` — `SpiTenant`, `SpiTenantListResponse`, `SpiCreateTenantRequest`, `SpiCreateTenantResponse`
 - `mcps/mcp_objs.rs` — MCP types, `McpRequest`, `McpServerRequest` (both derive `Validate`)
 - `toolsets/toolset_objs.rs` — `Toolset`, `ToolsetRequest` (derives `Validate`)
@@ -86,32 +85,14 @@ Each domain module follows `*_objs.rs` pattern for types and `error.rs` for erro
 - `tenants/` — tenant management module
 - `inference/` — `InferenceService` trait, `LlmEndpoint`, `InferenceError`
 
-### Entity Alias Index
-
-| Domain | Alias | Entity File |
-|--------|-------|-------------|
-| Toolset | `ToolsetEntity` | `src/toolsets/toolset_entity.rs` |
-| MCP Instance | `McpEntity` | `src/mcps/mcp_entity.rs` |
-| MCP Server | `McpServerEntity` | `src/mcps/mcp_server_entity.rs` |
-| MCP Auth Header | `McpAuthHeaderEntity` | `src/mcps/mcp_auth_header_entity.rs` |
-| MCP OAuth Config | `McpOAuthConfigEntity` | `src/mcps/mcp_oauth_config_entity.rs` |
-| MCP OAuth Token | `McpOAuthTokenEntity` | `src/mcps/mcp_oauth_token_entity.rs` |
-| MCP + Server join | `McpWithServerEntity` | `src/mcps/mcp_entity.rs` |
-| API Model | `ApiModelEntity` | `src/models/api_model_alias_entity.rs` |
-| User Alias | `UserAliasEntity` | `src/models/user_alias_entity.rs` |
-| Token | `TokenEntity` | `src/tokens/api_token_entity.rs` |
-| Download | `DownloadEntity` | `src/models/download_request_entity.rs` |
-| Model Metadata | `ModelMetadataEntity` | `src/models/model_metadata_entity.rs` |
-| User Access Req | `UserAccessRequestEntity` | `src/users/access_request_entity.rs` |
-| App Access Req | `AppAccessRequestEntity` | `src/app_access_requests/app_access_request_entity.rs` |
-
-All entities follow `pub type <Domain>Entity = Model;` pattern. Standard fields: `id` (ULID), `tenant_id`, `user_id` (for user-scoped), `created_at`/`updated_at`.
+### Entity Aliases
+All entities follow `pub type <Domain>Entity = Model;` pattern. Standard fields: `id` (ULID), `tenant_id`, `user_id` (for user-scoped), `created_at`/`updated_at`. Full entity index in `PACKAGE.md`.
 
 ### CRUD Conventions
 
 **Request types** (in `*_objs.rs`): Named `*Request`, derive `Serialize, Deserialize, Validate, ToSchema`. Exclude `id`, `tenant_id`, `user_id`, timestamps.
 
-**Service layer**: Services do NOT call `form.validate()` — input assumed validated by routes. Services return Entity types; route handlers convert Entity→Response via `.into()`. Business invariants requiring service deps stay in services. DB constraints handle uniqueness/FK violations → mapped to domain errors. Exceptions: Token returns `TokenDetail` directly, ApiModel returns `ApiModelOutput`.
+**Service layer**: Services do NOT call `form.validate()` — input assumed validated by routes. Services return Entity types; route handlers convert Entity→Response via `.into()`. Business invariants requiring service deps stay in services. DB constraints handle uniqueness/FK violations → mapped to domain errors. Exceptions: Token returns `TokenDetail` directly, ApiModelService returns `ApiAliasResponse` directly.
 
 **AuthScoped services**: Inject `tenant_id`/`user_id` from `AuthContext` only — no validation, no authorization. Return Entity types (pass through). Routes MUST use auth_scoped services exclusively.
 
@@ -128,13 +109,7 @@ Single `Io(#[from] IoError)` variant per service error enum. Convenience constru
 Bridges orphan rule: `std::io::Error → IoError → DataServiceError::Io`. Signature: `impl_error_from!(source_type, target_enum::variant, intermediate_type)`.
 
 ### Auth-Scoped Service Return Types
-- `AuthScopedTokenService` → `TokenServiceError`
-- `AuthScopedMcpService` → `McpError`
-- `AuthScopedToolService` → `ToolsetError`
-- `AuthScopedUserService` → `AuthScopedUserError`
-- `AuthScopedDataService` → `DataServiceError`
-
-Blanket `From<T: AppError> for ApiError` auto-converts in route handlers.
+Each auth-scoped service returns its own domain error type (e.g., `AuthScopedTokenService` → `TokenServiceError`). Blanket `From<T: AppError> for ApiError` auto-converts in route handlers. Full mapping in `PACKAGE.md`.
 
 ## Cross-Crate Coordination
 
@@ -155,12 +130,8 @@ Blanket `From<T: AppError> for ApiError` auto-converts in route handlers.
 - `TenantService.set_client_ready(client_id, user_id)` — sets status to Ready AND created_by in one call (replaces separate `update_status` + `update_created_by`)
 - `SettingService.multitenant_client_secret()` — reads `BODHI_MULTITENANT_CLIENT_SECRET` env var
 
-### Session Keys Module
-`session_keys` module (`src/session_keys.rs`) defines session key constants and namespaced key format functions, re-exported from `services` crate:
-- `SESSION_KEY_ACTIVE_CLIENT_ID`, `SESSION_KEY_USER_ID` — global session keys
-- `DASHBOARD_ACCESS_TOKEN_KEY`, `DASHBOARD_REFRESH_TOKEN_KEY` — dashboard session keys
-- `access_token_key(client_id)` -> `"{client_id}:access_token"`
-- `refresh_token_key(client_id)` -> `"{client_id}:refresh_token"`
+### Session Keys
+Namespaced session keys in `src/session_keys.rs`. Client-scoped tokens use `{client_id}:access_token` / `{client_id}:refresh_token` format. Dashboard tokens use separate `DASHBOARD_*` keys.
 
 ### Access Request Workflow
 All requests start as drafts. Status: `draft` → `approved` | `denied` | `failed`. `requested_role` vs `approved_role` fields.
@@ -173,14 +144,7 @@ All requests start as drafts. Status: `draft` → `approved` | `denied` | `faile
 
 ## Testing
 
-### Canonical Pattern
-- `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]` for async tests
-- `#[awt]` only when `#[future]` fixture params are used
-- `assert_eq!(expected, actual)` with `use pretty_assertions::assert_eq;`
-- Error code assertions via `.code()`, never message text
-- Return `-> anyhow::Result<()>`
-
-### Key Infrastructure
+Uses shared conventions from `crates/CLAUDE.md` "Shared Testing Conventions". Key infrastructure:
 - **TestDbService**: wraps `DefaultDbService` with event broadcasting + `FrozenTimeService`. See `src/test_utils/db.rs`
 - **AppServiceStub**: builder-based full service composition. See `src/test_utils/app.rs`
 - **SeaTestContext**: dual SQLite/PG fixture. See `src/test_utils/sea.rs`

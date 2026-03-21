@@ -18,7 +18,9 @@ All commands from `crates/lib_bodhiserver_napi/`:
 
 | Command | Purpose |
 |---------|---------|
-| `npm run test:playwright` | Headless (CI default) |
+| `npm run test:playwright` | All projects, headless (CI default) |
+| `npm run test:playwright:standalone` | Standalone project only |
+| `npm run test:playwright:multi_tenant` | Multi-tenant project only |
 | `npm run test:playwright:headed` | Visible browser |
 | `npm run test:playwright:ui` | Playwright UI mode |
 | `npm run test:playwright:scheduled` | Local-only token refresh tests |
@@ -46,10 +48,14 @@ OAuth credentials from `.env.test` (see `.env.test.example`).
 
 | Service | Port |
 |---------|------|
-| Bodhi server | `51135` |
+| Bodhi standalone server (SQLite) | `51135` |
+| Bodhi multi-tenant server (PostgreSQL) | `41135` |
 | React OAuth test app | `55173` |
 | Test MCP OAuth server | `55174` |
 | Test MCP OAuth server (DCR) | `55175` |
+| Test MCP auth-header server | `55176` |
+| Test MCP auth-query server | `55177` |
+| Test MCP auth-mixed server | `55178` |
 
 ## Architecture Overview
 
@@ -57,17 +63,25 @@ OAuth credentials from `.env.test` (see `.env.test.example`).
 
 | Directory | Contents |
 |-----------|----------|
-| `specs/` | 29 test files across 12 domain folders |
-| `pages/` | 33 page objects extending `BasePage` |
+| `specs/` | 32 test files across 13 domain folders |
+| `pages/` | 28 page objects extending `BasePage` |
 | `fixtures/` | 9 test data modules (classes with static methods) |
-| `utils/` | `auth-server-client.mjs`, `bodhi-app-server.mjs`, `browser-with-extension.mjs`, `db-config.mjs`, `mock-openai-server.mjs` |
+| `utils/` | `auth-server-client.mjs`, `bodhi-app-server.mjs`, `browser-with-extension.mjs`, `db-config.mjs`, `mock-openai-server.mjs`, `api-model-helpers.mjs` |
 | `scripts/` | `start-shared-server.mjs` |
 | `data/` | Test GGUF model refs |
+
+### Dual-Project Architecture
+
+Two Playwright projects run all specs against both deployment modes:
+- **`standalone`** (SQLite, port 51135): Runs all specs except `multi-tenant/`
+- **`multi_tenant`** (PostgreSQL, port 41135): Runs all specs except `setup/`, `models/`, `request-access/`, `chat/local-models.spec.mjs`
+
+Multi-tenant requires PostgreSQL containers: `docker compose -f docker/docker-compose.test.yml up -d` (app DB on port 64320, session DB on port 54320). Project-aware fixture `sharedServerUrl` auto-selects the correct server URL via `utils/db-config.mjs`.
 
 ### Key Mechanisms
 
 - **Path alias**: `@/` maps to `tests-js/`
-- **Shared server**: Auto-started by Playwright `webServer` config on port 51135
+- **Shared servers**: Auto-started by Playwright `webServer` config (standalone on 51135, multi-tenant on 41135)
 - **Auto DB reset**: `@/fixtures.mjs` extends `test` with `autoResetDb` fixture calling `POST /dev/db-reset`
 - **Page Object Model**: All pages extend `BasePage` from `@/pages/BasePage.mjs`
 

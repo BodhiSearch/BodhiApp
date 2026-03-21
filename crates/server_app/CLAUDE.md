@@ -81,6 +81,7 @@ Full-stack tests: real HTTP server on TCP, real services, real OAuth2 via Keyclo
 | `tests/test_live_tool_calling_streamed.rs` | Streaming tool calls |
 | `tests/test_live_mcp.rs` | MCP integration |
 | `tests/test_live_agentic_chat_with_exa.rs` | Exa toolset agentic workflow |
+| `tests/test_live_multi_tenant.rs` | Multi-tenant server lifecycle |
 | `tests/test_oauth_external_token.rs` | OAuth via ExternalTokenSimulator |
 
 ### Environment Requirements
