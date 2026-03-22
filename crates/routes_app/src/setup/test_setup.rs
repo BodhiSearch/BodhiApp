@@ -669,3 +669,75 @@ async fn test_app_info_multi_tenant_session_with_client_id_returns_ready() -> an
   assert_eq!(Some("test-client".to_string()), value.client_id);
   Ok(())
 }
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_app_info_handler_encryption_error() -> anyhow::Result<()> {
+  let mut mock_tenant_svc = services::MockTenantService::new();
+  mock_tenant_svc.expect_get_standalone_app().returning(|| {
+    Err(services::TenantError::from(
+      services::DbError::EncryptionError("Decryption failed.".into()),
+    ))
+  });
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_session_service().await;
+  let app_service = Arc::new(
+    builder
+      .tenant_service(Arc::new(mock_tenant_svc) as Arc<dyn services::TenantService>)
+      .build()
+      .await?,
+  );
+  let state: Arc<dyn AppService> = app_service.clone();
+  let router = Router::new()
+    .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
+    .layer(app_service.session_service().session_layer())
+    .with_state(state);
+  let resp = router
+    .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)
+    .await?;
+  assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
+  let body = resp.json::<Value>().await?;
+  assert_eq!(
+    "db_error-encryption_error",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_setup_create_encryption_error() -> anyhow::Result<()> {
+  let payload = SetupRequest {
+    name: "Test Server Name".to_string(),
+    description: Some("Test description".to_string()),
+  };
+  let mut mock_tenant_svc = services::MockTenantService::new();
+  mock_tenant_svc.expect_get_standalone_app().returning(|| {
+    Err(services::TenantError::from(
+      services::DbError::EncryptionError("Decryption failed.".into()),
+    ))
+  });
+  let app_service = Arc::new(
+    AppServiceStubBuilder::default()
+      .tenant_service(Arc::new(mock_tenant_svc) as Arc<dyn services::TenantService>)
+      .auth_service(Arc::new(MockAuthService::new()))
+      .build()
+      .await?,
+  );
+  let state: Arc<dyn AppService> = app_service.clone();
+  let router = Router::new()
+    .route("/setup", post(setup_create))
+    .with_state(state);
+  let resp = router
+    .oneshot(Request::post("/setup").json(payload)?)
+    .await?;
+  assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
+  let body = resp.json::<Value>().await?;
+  assert_eq!(
+    "db_error-encryption_error",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}

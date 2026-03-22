@@ -382,9 +382,16 @@ async fn build_encryption_key(
   let encryption_key = encryption_key_value
     .map(|key| Ok(hash_key(&key)))
     .unwrap_or_else(|| {
-      SystemKeyringStore::new(&app_name)
+      let result = SystemKeyringStore::new(&app_name)
         .get_or_generate(SECRET_KEY)
-        .map_err(BootstrapError::from)
+        .map_err(BootstrapError::from);
+      if let Err(ref e) = result {
+        eprintln!(
+          "build_encryption_key: failed to obtain key from keychain (app_name='{}'): {}",
+          app_name, e
+        );
+      }
+      result
     })?;
   Ok(encryption_key)
 }

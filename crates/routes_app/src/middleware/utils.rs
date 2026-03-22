@@ -1,6 +1,6 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use services::{AppStatus, AuthScopedTenantService};
+use services::{AppStatus, AuthScopedTenantService, TenantError};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApiErrorResponse {
@@ -21,16 +21,17 @@ pub fn generate_random_string(length: usize) -> String {
 /// Standalone-only helper. Returns the app status of the single registered tenant,
 /// or `AppStatus::Setup` if no tenant exists. In multi-tenant mode this always
 /// returns `AppStatus::Setup` because `get_standalone_app()` returns `None`.
+/// Propagates errors (e.g., encryption key mismatch) instead of silently defaulting.
 pub async fn standalone_app_status_or_default(
   tenant_service: &AuthScopedTenantService,
-) -> AppStatus {
-  tenant_service
-    .get_standalone_app()
-    .await
-    .ok()
-    .flatten()
-    .map(|t| t.status)
-    .unwrap_or_default()
+) -> Result<AppStatus, TenantError> {
+  Ok(
+    tenant_service
+      .get_standalone_app()
+      .await?
+      .map(|t| t.status)
+      .unwrap_or_default(),
+  )
 }
 
 #[cfg(test)]
@@ -39,7 +40,7 @@ mod tests {
   use rstest::rstest;
   use services::test_utils::{test_db_service, TestDbService};
   use services::{
-    AppService, AppStatus, AuthContext, AuthScopedTenantService, DefaultTenantService,
+    AppError, AppService, AppStatus, AuthContext, AuthScopedTenantService, DefaultTenantService,
     DeploymentMode, TenantService,
   };
   use std::sync::Arc;
@@ -83,7 +84,7 @@ mod tests {
       .build()
       .await?;
     let svc = make_auth_scoped_tenant(Arc::new(app_service));
-    assert_eq!(expected, standalone_app_status_or_default(&svc).await);
+    assert_eq!(expected, standalone_app_status_or_default(&svc).await?);
     Ok(())
   }
 
@@ -104,8 +105,29 @@ mod tests {
     let svc = make_auth_scoped_tenant(Arc::new(app_service));
     assert_eq!(
       AppStatus::default(),
-      standalone_app_status_or_default(&svc).await
+      standalone_app_status_or_default(&svc).await?
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_app_status_or_default_propagates_encryption_error() -> anyhow::Result<()> {
+    let mut mock_tenant_svc = services::MockTenantService::new();
+    mock_tenant_svc.expect_get_standalone_app().returning(|| {
+      Err(services::TenantError::from(
+        services::DbError::EncryptionError("Decryption failed.".into()),
+      ))
+    });
+    let app_service = services::test_utils::AppServiceStubBuilder::default()
+      .tenant_service(Arc::new(mock_tenant_svc) as Arc<dyn TenantService>)
+      .build()
+      .await?;
+    let svc = make_auth_scoped_tenant(Arc::new(app_service));
+    let result = standalone_app_status_or_default(&svc).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code(), "db_error-encryption_error");
     Ok(())
   }
 }

@@ -64,7 +64,7 @@ pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, ApiError
     // Anonymous standalone
     AuthContext::Anonymous { .. } => {
       let tenant_svc = auth_scope.tenants();
-      let standalone_app = tenant_svc.get_standalone_app().await.ok().flatten();
+      let standalone_app = tenant_svc.get_standalone_app().await?;
       let status = standalone_app
         .as_ref()
         .map(|t| t.status.clone())
@@ -121,7 +121,7 @@ pub async fn setup_create(
   }
   let tenant_svc = auth_scope.tenants();
   let auth_flow = auth_scope.auth_flow();
-  let status = standalone_app_status_or_default(&tenant_svc).await;
+  let status = standalone_app_status_or_default(&tenant_svc).await?;
   if status != AppStatus::Setup {
     return Err(SetupRouteError::AlreadySetup)?;
   }

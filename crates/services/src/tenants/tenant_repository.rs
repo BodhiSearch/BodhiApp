@@ -47,8 +47,14 @@ impl DefaultDbService {
       model.salt_client_secret.as_deref(),
       model.nonce_client_secret.as_deref(),
     ) {
-      decrypt_api_key(&self.encryption_key, enc, salt, nonce)
-        .map_err(|e| DbError::EncryptionError(e.to_string()))?
+      decrypt_api_key(&self.encryption_key, enc, salt, nonce).map_err(|e| {
+        tracing::error!(
+          client_id = %model.client_id,
+          error = %e,
+          "decrypt_tenant_row: failed to decrypt tenant secret — encryption key mismatch?"
+        );
+        DbError::EncryptionError(e.to_string())
+      })?
     } else {
       String::new()
     };
@@ -204,7 +210,14 @@ impl TenantRepository for DefaultDbService {
       .map_err(DbError::from)?;
 
     match model {
-      Some(model) => Ok(Some(self.decrypt_tenant_row(model)?)),
+      Some(model) => {
+        tracing::info!(
+          client_id = %model.client_id,
+          app_status = %model.app_status,
+          "get_tenant (standalone): found tenant, attempting decryption"
+        );
+        Ok(Some(self.decrypt_tenant_row(model)?))
+      }
       None => Ok(None),
     }
   }

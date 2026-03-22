@@ -67,7 +67,13 @@ impl KeyringStore for SystemKeyringStore {
     match self.entry(key)?.get_password() {
       Ok(value) => Ok(Some(value)),
       Err(keyring::Error::NoEntry) => Ok(None),
-      Err(err) => Err(err.into()),
+      Err(err) => {
+        eprintln!(
+          "keyring: failed to read password for service='{}' key='{}': {}",
+          self.service_name, key, err
+        );
+        Err(err.into())
+      }
     }
   }
 
