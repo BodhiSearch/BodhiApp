@@ -51,6 +51,10 @@ pub enum HubServiceError {
     snapshot: String,
   },
 
+  #[error("Invalid filename '{filename}': filenames must not contain path traversal sequences or separators.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidFilename { filename: String },
+
   #[error("operation not supported in multi-tenant deployment mode")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   Unsupported,
@@ -99,6 +103,15 @@ pub trait HubService: std::fmt::Debug + Send + Sync {
 }
 
 impl HfHubService {
+  fn validate_filename(filename: &str) -> Result<()> {
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+      return Err(HubServiceError::InvalidFilename {
+        filename: filename.to_string(),
+      });
+    }
+    Ok(())
+  }
+
   fn hf_cache(&self) -> PathBuf {
     self.cache.path().to_path_buf()
   }
@@ -176,6 +189,7 @@ impl HubService for HfHubService {
     filename: &str,
     snapshot: Option<String>,
   ) -> Result<bool> {
+    Self::validate_filename(filename)?;
     let snapshot = snapshot.unwrap_or(SNAPSHOT_MAIN.to_string());
     let refs_file = self
       .hf_cache()
@@ -210,6 +224,7 @@ impl HubService for HfHubService {
     filename: &str,
     snapshot: Option<String>,
   ) -> Result<HubFile> {
+    Self::validate_filename(filename)?;
     let snapshot = snapshot.unwrap_or(SNAPSHOT_MAIN.to_string());
     let refs_file = self
       .hf_cache()
@@ -504,6 +519,32 @@ impl HfHubService {
     };
 
     Ok(path)
+  }
+}
+
+#[cfg(test)]
+mod test_validate_filename {
+  use super::HfHubService;
+  use rstest::rstest;
+
+  #[rstest]
+  #[case("model.gguf")]
+  #[case("my-model-v2.Q4_K_M.gguf")]
+  #[case("file.bin")]
+  #[case("tokenizer.json")]
+  fn test_allows_valid_filenames(#[case] name: &str) {
+    assert!(HfHubService::validate_filename(name).is_ok());
+  }
+
+  #[rstest]
+  #[case("..")]
+  #[case("../etc/passwd")]
+  #[case("foo/../bar")]
+  #[case("path/file")]
+  #[case("path\\file")]
+  #[case("../../.ssh/id_rsa")]
+  fn test_rejects_invalid_filenames(#[case] name: &str) {
+    assert!(HfHubService::validate_filename(name).is_err());
   }
 }
 

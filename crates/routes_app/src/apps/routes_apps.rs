@@ -61,6 +61,8 @@ pub async fn apps_create_access_request(
     return Err(AppsRouteError::MissingRedirectUrl)?;
   }
 
+  // Note: redirect_url scheme validation (XSS-VULN-01) is handled by ValidatedJson via
+  // the #[validate(custom(function = "validate_redirect_url_scheme"))] attribute on CreateAccessRequest.
   // Note: We skip fetching app client info here because:
   // 1. This endpoint is unauthenticated (no user token available)
   // 2. KC endpoint for app client info may not be implemented yet

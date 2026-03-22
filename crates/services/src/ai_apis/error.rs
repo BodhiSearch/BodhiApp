@@ -1,4 +1,4 @@
-use crate::ReqwestError;
+use crate::{ReqwestError, UrlValidationError};
 use errmeta::{impl_error_from, AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -33,6 +33,10 @@ pub enum AiApiServiceError {
   #[error("API model '{0}' not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ModelNotFound(String),
+
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::BadRequest, args_delegate = false)]
+  UrlValidation(#[from] UrlValidationError),
 }
 
 impl_error_from!(

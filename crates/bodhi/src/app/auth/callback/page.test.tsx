@@ -206,10 +206,10 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles custom URL in response by treating as external', async () => {
-    server.use(...mockAuthCallback({ location: 'invalid-url-format' }));
+    server.use(...mockAuthCallback({ location: 'https://external.example.com/callback' }));
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
-      expect(window.location.href).toBe('invalid-url-format');
+      expect(window.location.href).toBe('https://external.example.com/callback');
     });
   });
 });

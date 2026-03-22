@@ -1,9 +1,9 @@
 use super::error::{AiApiServiceError, Result};
 use crate::models::ApiAlias;
+use crate::SafeReqwest;
 use async_trait::async_trait;
 use axum::body::Body;
 use axum::response::Response;
-use reqwest::Client;
 use serde_json::Value;
 use std::time::Duration;
 
@@ -39,23 +39,17 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
 
 #[derive(Debug, Clone)]
 pub struct DefaultAiApiService {
-  client: Client,
-}
-
-impl Default for DefaultAiApiService {
-  fn default() -> Self {
-    let client = Client::builder()
-      .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
-      .build()
-      .expect("Failed to create HTTP client");
-    Self { client }
-  }
+  client: SafeReqwest,
 }
 
 impl DefaultAiApiService {
   /// Create a new AI API service with default HTTP client settings
-  pub fn new() -> Self {
-    Self::default()
+  pub fn new() -> Result<Self> {
+    let client = SafeReqwest::builder()
+      .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
+      .allow_private_ips()
+      .build()?;
+    Ok(Self { client })
   }
 
   /// Convert HTTP status to appropriate error
@@ -101,7 +95,7 @@ impl AiApiService for DefaultAiApiService {
 
     let mut request = self
       .client
-      .post(&url)
+      .post(&url)?
       .header("Content-Type", "application/json")
       .json(&request_body);
 
@@ -135,7 +129,7 @@ impl AiApiService for DefaultAiApiService {
   async fn fetch_models(&self, api_key: Option<String>, base_url: &str) -> Result<Vec<String>> {
     let url = format!("{}/models", base_url);
 
-    let mut request = self.client.get(&url);
+    let mut request = self.client.get(&url)?;
 
     // Only add Authorization header if API key is provided
     if let Some(key) = api_key {
@@ -196,7 +190,7 @@ impl AiApiService for DefaultAiApiService {
     // Forward the request to the remote API
     let mut http_request = self
       .client
-      .post(&url)
+      .post(&url)?
       .header("Content-Type", "application/json");
 
     // Only add Authorization header if API key is provided

@@ -218,7 +218,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let cache_service = Arc::new(MokaCacheService::default());
 
   // Build AI API service
-  let ai_api_service = Arc::new(DefaultAiApiService::new());
+  let ai_api_service = Arc::new(DefaultAiApiService::new()?);
 
   // Build concurrency service
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
@@ -254,7 +254,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     db_service.clone(),
     mcp_client,
     time_service.clone(),
-  ));
+  )?);
 
   // Build DefaultAppService with all services in correct order
   let token_service: Arc<dyn services::TokenService> = Arc::new(
@@ -611,7 +611,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   // Auth service uses fake URL — never called (cache is seeded by ExternalTokenSimulator)
   let auth_service = Arc::new(test_auth_service(&auth_server_url));
   let cache_service = Arc::new(MokaCacheService::default());
-  let ai_api_service = Arc::new(DefaultAiApiService::new());
+  let ai_api_service = Arc::new(DefaultAiApiService::new()?);
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
   let queue_producer: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
   let exa_service = Arc::new(DefaultExaService::new());
@@ -637,7 +637,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     db_service.clone(),
     mcp_client,
     time_service.clone(),
-  ));
+  )?);
 
   let token_service: Arc<dyn services::TokenService> = Arc::new(
     services::DefaultTokenService::new(db_service.clone(), time_service.clone()),
@@ -988,7 +988,7 @@ pub async fn setup_multitenant_app_service(
   let cache_service = Arc::new(MokaCacheService::default());
 
   // Build AI API service
-  let ai_api_service = Arc::new(DefaultAiApiService::new());
+  let ai_api_service = Arc::new(DefaultAiApiService::new()?);
 
   // Build concurrency service
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
@@ -1024,7 +1024,7 @@ pub async fn setup_multitenant_app_service(
     db_service.clone(),
     mcp_client,
     time_service.clone(),
-  ));
+  )?);
 
   // Build DefaultAppService with all services in correct order
   let token_service: Arc<dyn services::TokenService> = Arc::new(

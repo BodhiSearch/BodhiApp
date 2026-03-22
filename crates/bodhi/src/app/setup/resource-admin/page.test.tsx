@@ -219,7 +219,7 @@ describe('ResourceAdminPage', () => {
   it('handles custom URL in response by treating as external and keeping button disabled', async () => {
     server.use(
       ...mockAppInfo({ status: 'resource_admin', client_id: 'test_client_id' }),
-      ...mockAuthInitiate({ location: 'invalid-url-format' })
+      ...mockAuthInitiate({ location: 'https://external.example.com/callback' })
     );
 
     renderWithSetupProvider(<ResourceAdminPage />);
@@ -227,14 +227,14 @@ describe('ResourceAdminPage', () => {
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." and remain disabled even for invalid URLs
+    // Should show "Redirecting..." and remain disabled even for external URLs
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
     });
 
     await waitFor(() => {
-      expect(window.location.href).toBe('invalid-url-format');
+      expect(window.location.href).toBe('https://external.example.com/callback');
     });
   });
 });

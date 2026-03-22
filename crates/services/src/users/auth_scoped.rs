@@ -1,7 +1,7 @@
 use crate::auth::AuthContextError;
 use crate::auth::AuthServiceError;
 use crate::tenants::TenantError;
-use crate::{AppService, AuthContext, UserListResponse};
+use crate::{AppService, AuthContext, UserInfo, UserListResponse};
 use errmeta::AppError;
 use std::sync::Arc;
 
@@ -50,6 +50,21 @@ impl AuthScopedUserService {
         .app_service
         .auth_service()
         .list_users(token, page, page_size)
+        .await?,
+    )
+  }
+
+  /// Get a single user by ID. Injects the reviewer's token.
+  pub async fn get_user(
+    &self,
+    target_user_id: &str,
+  ) -> Result<Option<UserInfo>, AuthScopedUserError> {
+    let token = self.require_token()?;
+    Ok(
+      self
+        .app_service
+        .auth_service()
+        .get_user(token, target_user_id)
         .await?,
     )
   }

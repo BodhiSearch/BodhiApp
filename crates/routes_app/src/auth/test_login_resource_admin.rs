@@ -201,7 +201,7 @@ async fn execute_auth_callback(
   let state = app_service.clone();
   let router: Router = Router::new()
     .route("/auth/callback", post(auth_callback))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
   let request = Request::post("/auth/callback")
     .header("Cookie", format!("bodhiapp_session_id={}", id))

@@ -79,11 +79,19 @@ fn try_serve_file(dir: &'static Dir<'static>, path: &str) -> Option<Response<Bod
 }
 
 fn build_response(body: &[u8], content_type: &str) -> Response<Body> {
-  Response::builder()
+  let mut builder = Response::builder()
     .status(StatusCode::OK)
-    .header(header::CONTENT_TYPE, content_type)
-    .body(Body::from(body.to_vec()))
-    .unwrap()
+    .header(header::CONTENT_TYPE, content_type);
+
+  // Add Content-Security-Policy to HTML responses (XSS defense-in-depth)
+  if content_type.starts_with("text/html") {
+    builder = builder.header(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    );
+  }
+
+  builder.body(Body::from(body.to_vec())).unwrap()
 }
 
 fn has_extension(path: &str) -> bool {

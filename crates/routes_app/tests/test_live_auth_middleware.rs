@@ -61,7 +61,7 @@ fn create_test_router(app_service: Arc<dyn AppService>) -> Router {
         .route("/test", get(test_token_info_handler))
         .route_layer(from_fn_with_state(app_service.clone(), auth_middleware)),
     )
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(app_service)
 }
 

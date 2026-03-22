@@ -11,6 +11,7 @@ use super::{McpError, McpServerError};
 use crate::db::{encryption::encrypt_api_key, DbService, TimeService};
 use crate::mcps::McpAuthParamInput;
 use crate::new_ulid;
+use crate::{validate_outbound_url, SafeReqwest};
 use mcp_client::{McpAuthParams, McpClient, McpTool};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -228,7 +229,7 @@ pub struct DefaultMcpService {
   db_service: Arc<dyn DbService>,
   mcp_client: Arc<dyn McpClient>,
   time_service: Arc<dyn TimeService>,
-  http_client: reqwest::Client,
+  http_client: SafeReqwest,
   refresh_locks: RwLock<HashMap<String, Arc<Mutex<()>>>>,
 }
 
@@ -247,14 +248,14 @@ impl DefaultMcpService {
     db_service: Arc<dyn DbService>,
     mcp_client: Arc<dyn McpClient>,
     time_service: Arc<dyn TimeService>,
-  ) -> Self {
-    Self {
+  ) -> Result<Self, McpError> {
+    Ok(Self {
       db_service,
       mcp_client,
       time_service,
-      http_client: reqwest::Client::new(),
+      http_client: SafeReqwest::builder().allow_private_ips().build()?,
       refresh_locks: RwLock::new(HashMap::new()),
-    }
+    })
   }
 
   async fn get_refresh_lock(&self, key: &str) -> Arc<Mutex<()>> {
@@ -422,7 +423,7 @@ impl DefaultMcpService {
       );
       let resp = self
         .http_client
-        .post(&config.token_endpoint)
+        .post(&config.token_endpoint)?
         .form(&form_params)
         .send()
         .await
@@ -918,6 +919,7 @@ impl McpService for DefaultMcpService {
     let auth_params = self
       .resolve_auth_params_for_mcp(tenant_id, &existing)
       .await?;
+    validate_outbound_url(&server.url, true)?;
     let tools = self
       .mcp_client
       .fetch_tools(&server.url, auth_params)
@@ -999,6 +1001,7 @@ impl McpService for DefaultMcpService {
       None
     };
 
+    validate_outbound_url(&server.url, true)?;
     let tools = self
       .mcp_client
       .fetch_tools(&server.url, auth_params)
@@ -1040,6 +1043,7 @@ impl McpService for DefaultMcpService {
     let auth_params = self
       .resolve_auth_params_for_mcp(tenant_id, &existing)
       .await?;
+    validate_outbound_url(&server.url, true)?;
     match self
       .mcp_client
       .call_tool(&server.url, tool_name, request.params, auth_params)
@@ -1301,7 +1305,7 @@ impl McpService for DefaultMcpService {
     );
     let resp = self
       .http_client
-      .post(&config.token_endpoint)
+      .post(&config.token_endpoint)?
       .header("Accept", "application/json")
       .form(&form_params)
       .send()
@@ -1362,7 +1366,7 @@ impl McpService for DefaultMcpService {
     debug!(url, discovery_url, "Starting OAuth metadata discovery");
     let resp = self
       .http_client
-      .get(&discovery_url)
+      .get(&discovery_url)?
       .send()
       .await
       .map_err(|e| {
@@ -1411,7 +1415,7 @@ impl McpService for DefaultMcpService {
 
     let prs_url = format!("{}/.well-known/oauth-protected-resource", origin);
     debug!(prs_url, "Fetching Protected Resource Metadata");
-    let prs_resp = self.http_client.get(&prs_url).send().await.map_err(|e| {
+    let prs_resp = self.http_client.get(&prs_url)?.send().await.map_err(|e| {
       warn!(mcp_server_url, error = %e, "Protected Resource Metadata fetch failed");
       McpError::OAuthDiscoveryFailed(format!("Protected Resource Metadata fetch failed: {}", e))
     })?;
@@ -1449,7 +1453,7 @@ impl McpService for DefaultMcpService {
     debug!(as_meta_url, "Fetching Authorization Server Metadata");
     let as_resp = self
       .http_client
-      .get(&as_meta_url)
+      .get(&as_meta_url)?
       .send()
       .await
       .map_err(|e| {
@@ -1508,7 +1512,7 @@ impl McpService for DefaultMcpService {
 
     let resp = self
       .http_client
-      .post(registration_endpoint)
+      .post(registration_endpoint)?
       .json(&body)
       .send()
       .await

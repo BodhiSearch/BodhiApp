@@ -110,7 +110,7 @@ async fn build_oauth_flow_router(
       "/mcps/auth-configs/{id}/token",
       post(mcp_oauth_token_exchange),
     )
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   // Keep temp_dir alive by leaking it (tests are short-lived)

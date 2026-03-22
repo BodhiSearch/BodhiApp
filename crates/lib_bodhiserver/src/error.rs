@@ -54,6 +54,10 @@ pub enum BootstrapError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   SettingNotFound(String),
 
+  #[error("Unexpected error, code: {0}, message: {1}")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  UnexpectedError(String, String),
+
   // --- transparent service error variants ---
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]

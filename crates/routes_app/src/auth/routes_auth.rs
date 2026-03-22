@@ -22,6 +22,7 @@ use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, Redire
 use services::{extract_claims, AppStatus, Claims, CHAT_PATH};
 use sha2::{Digest, Sha256};
 use tower_sessions::Session;
+use tracing::warn;
 
 /// Start OAuth flow - returns location for OAuth provider or home
 #[utoipa::path(
@@ -283,6 +284,11 @@ pub async fn auth_callback(
       .await?;
     access_token = new_access_token;
     refresh_token = new_refresh_token.ok_or(AuthRouteError::SessionInfoNotFound)?;
+  }
+
+  // Rotate session ID to prevent session fixation attacks (AUTH-VULN-03)
+  if let Err(e) = session.cycle_id().await {
+    warn!("Failed to rotate session ID after OAuth callback: {}", e);
   }
 
   // Store user_id and tokens in session (namespaced by client_id)

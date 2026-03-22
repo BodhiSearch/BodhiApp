@@ -3,8 +3,10 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { AxiosResponse } from 'axios';
 import { RedirectResponse } from '@bodhiapp/ts-client';
+import { safeNavigate } from '@/lib/safeNavigate';
 
 import AppInitializer from '@/components/AppInitializer';
+import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +28,13 @@ function TenantRegistrationContent() {
     onSuccess: (response: AxiosResponse<RedirectResponse>) => {
       const location = response.data.location;
       if (location.startsWith('http')) {
-        window.location.href = location;
+        if (!safeNavigate(location)) {
+          toast({
+            title: 'Invalid redirect URL',
+            description: 'URL must use http:// or https:// scheme',
+            variant: 'destructive',
+          });
+        }
       } else {
         navigate({ to: location });
       }

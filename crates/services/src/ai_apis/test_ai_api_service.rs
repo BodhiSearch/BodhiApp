@@ -14,7 +14,7 @@ use serde_json::json;
 async fn test_test_prompt_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -46,7 +46,7 @@ async fn test_test_prompt_success() -> anyhow::Result<()> {
 async fn test_test_prompt_too_long() -> anyhow::Result<()> {
   let server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
 
   let long_prompt = "a".repeat(31);
   let result = service
@@ -75,7 +75,7 @@ async fn test_test_prompt_too_long() -> anyhow::Result<()> {
 async fn test_fetch_models_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
 
   let _mock = server
     .mock("GET", "/models")
@@ -107,7 +107,7 @@ async fn test_fetch_models_success() -> anyhow::Result<()> {
 async fn test_api_unauthorized_error() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -129,7 +129,7 @@ async fn test_api_unauthorized_error() -> anyhow::Result<()> {
 #[anyhow_trace]
 #[tokio::test]
 async fn test_model_not_found() -> anyhow::Result<()> {
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
   let mut server = Server::new_async().await;
   let url = server.url();
 
@@ -222,7 +222,7 @@ async fn test_forward_chat_completion_model_prefix_handling(
     .with_body(r#"{"choices":[{"message":{"content":"Hi there!"}}]}"#)
     .create_async()
     .await;
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
   let response = service
     .forward_request(
       "/chat/completions",
@@ -275,7 +275,7 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
     .create_async()
     .await;
 
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
   let response = service
     .forward_request(
       "/chat/completions",
@@ -309,7 +309,7 @@ async fn test_test_prompt_success_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -346,7 +346,7 @@ async fn test_test_prompt_failure_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -382,7 +382,7 @@ async fn test_fetch_models_success_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
 
   let _mock = server
     .mock("GET", "/models")
@@ -419,7 +419,7 @@ async fn test_fetch_models_failure_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new();
+  let service = DefaultAiApiService::new()?;
 
   let _mock = server
     .mock("GET", "/models")

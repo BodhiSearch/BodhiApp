@@ -1,5 +1,6 @@
 use crate::auth::AuthContextError;
 use crate::db::{encryption::EncryptionError, DbError};
+use crate::{ReqwestError, UrlValidationError};
 use errmeta::{AppError, EntityError, ErrorType};
 use mcp_client::McpClientError;
 
@@ -128,6 +129,10 @@ pub enum McpError {
   Forbidden(String),
 
   #[error(transparent)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  Reqwest(#[from] ReqwestError),
+
+  #[error(transparent)]
   Db(#[from] DbError),
 
   #[error(transparent)]
@@ -145,5 +150,11 @@ impl From<EntityError> for McpError {
     match e {
       EntityError::NotFound(entity) => McpError::McpNotFound(entity),
     }
+  }
+}
+
+impl From<UrlValidationError> for McpError {
+  fn from(e: UrlValidationError) -> Self {
+    McpError::OAuthDiscoveryFailed(e.to_string())
   }
 }

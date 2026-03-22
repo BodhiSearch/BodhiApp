@@ -71,7 +71,7 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let state = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   let resp = router
@@ -162,7 +162,7 @@ async fn test_auth_initiate_handler_loopback_host_detection(
   let state = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   // Request with localhost:1135 Host header
@@ -235,7 +235,7 @@ async fn test_auth_initiate_handler_network_host_usage(
   let state = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   // Request with network host header
@@ -332,7 +332,7 @@ async fn auth_initiate_handler_with_token_response(
     .route("/auth/initiate", post(auth_initiate))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
-    .layer(app_service.session_service().session_layer());
+    .layer(app_service.session_service().session_layer(false));
   let resp = router
     .oneshot(
       Request::post("/auth/initiate")
@@ -378,7 +378,7 @@ async fn test_auth_initiate_dashboard_only_session_initiates_tenant_oauth(
   let state = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   // Dashboard-only MultiTenantSession: authenticated at platform level but no resource token
@@ -441,7 +441,7 @@ async fn test_auth_initiate_full_multi_tenant_session_redirects_to_home(
   let state = app_service.clone();
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   // Full MultiTenantSession: has resource token

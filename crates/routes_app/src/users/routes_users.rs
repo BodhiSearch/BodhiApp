@@ -128,7 +128,7 @@ pub async fn users_change_role(
     tag = API_TAG_AUTH,
     operation_id = "removeUser",
     summary = "Remove user access",
-    description = "Remove a user's access to the application. Only admins can remove users.",
+    description = "Remove a user's access to the application. Only managers or above can remove users.",
     params(
         ("user_id" = String, Path, description = "User ID to remove")
     ),
@@ -137,13 +137,34 @@ pub async fn users_change_role(
         (status = 404, description = "User not found", body = OpenAIApiError),
     ),
     security(
-        ("session_auth" = ["resource_admin"])
+        ("session_auth" = ["resource_manager"])
     )
 )]
 pub async fn users_destroy(
   auth_scope: AuthScope,
   Path(user_id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
+  // Role ceiling check: caller cannot delete users with higher privilege (AUTHZ-VULN-06)
+  // Fetch the target user's role, then compare against caller's role
+  let caller_role = auth_scope
+    .auth_context()
+    .resource_role()
+    .ok_or(UsersRouteError::InsufficientPrivileges)?;
+  let target_user = auth_scope.users().get_user(&user_id).await?;
+  if let Some(target_user) = target_user {
+    if let Some(services::AppRole::Session(target_role)) = &target_user.role {
+      if !caller_role.has_access_to(target_role) {
+        warn!(
+          "Role ceiling violation: caller role {:?} cannot delete user with role {:?}",
+          caller_role, target_role
+        );
+        return Err(UsersRouteError::InsufficientPrivileges.into());
+      }
+    }
+  }
+  // target_user is None: user not found in Keycloak — proceed with deletion
+  // as orphan cleanup (by-design: stale local records should be removable)
+
   auth_scope
     .users()
     .remove_user(&user_id)

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
+import { safeNavigate } from '@/lib/safeNavigate';
+
 import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { useSearch } from '@tanstack/react-router';
 
@@ -13,6 +15,7 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/hooks/use-toast';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useGetAppAccessRequestReview, useApproveAppAccessRequest, useDenyAppAccessRequest } from '@/hooks/apps';
 import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/apps';
@@ -130,7 +133,13 @@ const ReviewContent = () => {
     if (data.flow_type === 'popup') {
       window.close();
     } else if (data.flow_type === 'redirect' && data.redirect_url) {
-      window.location.href = data.redirect_url;
+      if (!safeNavigate(data.redirect_url)) {
+        toast({
+          title: 'Invalid redirect URL',
+          description: `URL "${data.redirect_url}" must use http:// or https:// scheme`,
+          variant: 'destructive',
+        });
+      }
     }
     setActionResult(data);
   };

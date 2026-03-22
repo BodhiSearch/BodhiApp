@@ -20,6 +20,10 @@ pub enum AppsRouteError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   MissingRedirectUrl,
 
+  #[error("Invalid redirect URL '{0}': only http:// and https:// URLs are allowed.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidRedirectUrl(String),
+
   #[error("App client not found: {0}.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   AppClientNotFound(String),

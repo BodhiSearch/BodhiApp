@@ -1101,7 +1101,7 @@ pub struct ApiModelRequest {
   pub api_format: ApiFormat,
 
   /// API base URL
-  #[validate(url(message = "Base URL must be a valid URL"))]
+  #[validate(custom(function = "crate::validate_http_url"))]
   pub base_url: String,
 
   /// API key update action (Keep/Set with Some or None)
@@ -1168,7 +1168,7 @@ pub struct TestPromptRequest {
   pub creds: TestCreds,
 
   /// API base URL
-  #[validate(url)]
+  #[validate(custom(function = "crate::validate_http_url"))]
   pub base_url: String,
 
   /// Model to use for testing
@@ -1227,7 +1227,7 @@ pub struct FetchModelsRequest {
   pub creds: TestCreds,
 
   /// API base URL (required - always needed to know where to fetch models from)
-  #[validate(url)]
+  #[validate(custom(function = "crate::validate_http_url"))]
   pub base_url: String,
 }
 

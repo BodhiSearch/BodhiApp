@@ -27,7 +27,7 @@ async fn build_tenants_router(app_service: Arc<dyn AppService>) -> Router {
       &format!("{ENDPOINT_TENANTS}/{{client_id}}/activate"),
       post(tenants_activate),
     )
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state)
 }
 

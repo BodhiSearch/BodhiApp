@@ -39,7 +39,7 @@ async fn test_logout_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let router = Router::new()
     .route("/app/logout", post(auth_logout))
     .route("/test/session/new", post(create_test_session_handler))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   let mut client = TestServer::new(router)?;

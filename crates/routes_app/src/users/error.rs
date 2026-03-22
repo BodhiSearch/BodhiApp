@@ -35,6 +35,10 @@ pub enum UsersRouteError {
   #[error_meta(error_type = ErrorType::NotFound)]
   RequestNotFound(String),
 
+  #[error("Access request has already been processed.")]
+  #[error_meta(error_type = ErrorType::Conflict)]
+  AlreadyProcessed,
+
   #[error("Insufficient privileges to assign this role.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InsufficientPrivileges,

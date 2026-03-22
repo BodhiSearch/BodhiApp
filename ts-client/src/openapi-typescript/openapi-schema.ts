@@ -1373,7 +1373,7 @@ export interface paths {
         post?: never;
         /**
          * Remove user access
-         * @description Remove a user's access to the application. Only admins can remove users.
+         * @description Remove a user's access to the application. Only managers or above can remove users.
          */
         delete: operations["removeUser"];
         options?: never;

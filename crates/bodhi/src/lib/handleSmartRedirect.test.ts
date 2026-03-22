@@ -67,9 +67,10 @@ describe('handleSmartRedirect', () => {
     expect(window.location.href).toBe('https://localhost:3000/ui/chat');
   });
 
-  it('falls back to window.location.href for malformed URLs', () => {
+  it('blocks navigation for malformed URLs (XSS protection)', () => {
     handleSmartRedirect('invalid-url-format', navigateMock);
     expect(navigateMock).not.toHaveBeenCalled();
-    expect(window.location.href).toBe('invalid-url-format');
+    // safeNavigate blocks malformed URLs — location remains unchanged
+    expect(window.location.href).not.toBe('invalid-url-format');
   });
 });

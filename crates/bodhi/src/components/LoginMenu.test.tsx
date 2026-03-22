@@ -158,21 +158,21 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles custom URL in response by treating as external and keeping button disabled', async () => {
-    server.use(...mockAuthInitiate({ location: 'invalid-url-format' }));
+    server.use(...mockAuthInitiate({ location: 'https://external.example.com/callback' }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
     const loginButton = await screen.findByRole('button', { name: /login/i });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." and remain disabled even for invalid URLs
+    // Should show "Redirecting..." and remain disabled even for external URLs
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
     });
 
     await waitFor(() => {
-      expect(window.location.href).toBe('invalid-url-format');
+      expect(window.location.href).toBe('https://external.example.com/callback');
     });
   });
 

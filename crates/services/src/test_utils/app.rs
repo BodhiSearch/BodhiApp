@@ -191,11 +191,10 @@ impl AppServiceStubBuilder {
       .cloned()
       .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
     let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
-    Some(Arc::new(DefaultMcpService::new(
-      db_service,
-      mcp_client,
-      time_service,
-    )))
+    Some(Arc::new(
+      DefaultMcpService::new(db_service, mcp_client, time_service)
+        .expect("Failed to build MCP service in test"),
+    ))
   }
 
   fn default_ai_api_service(&self) -> Option<Arc<dyn AiApiService>> {

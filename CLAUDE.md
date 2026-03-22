@@ -5,6 +5,8 @@
 - `MDFILES.md` — Documentation conventions for all *.md files
 - Individual crate docs: `crates/<crate>/CLAUDE.md` for crate-specific details
 
+**IMPORTANT — Security testing:** Do read `ai-docs/func-specs/security/security.md` before performing any security assessment, it documents known accepted risks, by-design architectural decisions, and previously remediated vulnerabilities, to avoid repeat reporting of known issues.
+
 ## Development Commands
 
 ### Testing

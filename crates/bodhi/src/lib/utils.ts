@@ -3,6 +3,8 @@ import { type ClassValue, clsx } from 'clsx';
 import { customAlphabet } from 'nanoid';
 import { twMerge } from 'tailwind-merge';
 
+import { safeNavigate } from '@/lib/safeNavigate';
+
 import { BASE_PATH } from '@/lib/constants';
 
 export function cn(...inputs: ClassValue[]) {
@@ -45,10 +47,10 @@ export function handleSmartRedirect(
       const search = Object.fromEntries(redirectUrl.searchParams.entries());
       navigate({ to: pathname, ...(Object.keys(search).length > 0 && { search }) });
     } else {
-      window.location.href = location;
+      safeNavigate(location);
     }
   } catch {
-    window.location.href = location;
+    safeNavigate(location);
   }
 }
 

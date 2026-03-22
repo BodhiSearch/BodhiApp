@@ -94,6 +94,8 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
 
   async fn remove_user(&self, reviewer_token: &str, user_id: &str) -> Result<()>;
 
+  async fn get_user(&self, token: &str, user_id: &str) -> Result<Option<UserInfo>>;
+
   async fn list_users(
     &self,
     reviewer_token: &str,
@@ -691,6 +693,37 @@ impl AuthService for KeycloakAuthService {
       let error = response.json::<KeycloakError>().await?;
       log::log_http_error("POST", &endpoint, "auth_service", &error.error);
       Err(error.into())
+    }
+  }
+
+  async fn get_user(&self, token: &str, user_id: &str) -> Result<Option<UserInfo>> {
+    let endpoint = format!(
+      "{}/realms/{}/bodhi/resources/user?user_id={}",
+      self.auth_url, self.realm, user_id
+    );
+    log::log_http_request("GET", &endpoint, "auth_service", None);
+
+    let response = self
+      .client
+      .get(&endpoint)
+      .bearer_auth(token)
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    let status = response.status();
+    if status.is_success() {
+      let user_response: UserInfoResponse = response.json().await?;
+      Ok(Some(user_response.into()))
+    } else if status.as_u16() == 404 {
+      Ok(None)
+    } else {
+      let error_text = response.text().await?;
+      log::log_http_error("GET", &endpoint, "auth_service", &error_text);
+      Err(AuthServiceError::AuthServiceApiError {
+        status: status.as_u16(),
+        body: error_text,
+      })
     }
   }
 

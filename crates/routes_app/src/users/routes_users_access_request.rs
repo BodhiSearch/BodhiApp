@@ -262,6 +262,11 @@ pub async fn users_access_request_approve(
     .await?
     .ok_or_else(|| UsersRouteError::RequestNotFound(id.clone()))?;
 
+  // Status guard: only approve requests that are currently Pending (AUTHZ-VULN-10)
+  if access_request.status != UserAccessRequestStatus::Pending {
+    return Err(UsersRouteError::AlreadyProcessed.into());
+  }
+
   // Update request status to approved
   svc
     .update_request_status(

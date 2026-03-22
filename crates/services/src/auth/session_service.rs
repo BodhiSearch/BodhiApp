@@ -12,7 +12,7 @@ use tower_sessions::SessionManagerLayer;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait SessionService: Send + Sync + std::fmt::Debug {
-  fn session_layer(&self) -> SessionManagerLayer<SessionStoreBackend>;
+  fn session_layer(&self, secure: bool) -> SessionManagerLayer<SessionStoreBackend>;
   async fn clear_sessions_for_user(&self, user_id: &str) -> SessionResult<usize>;
   async fn clear_all_sessions(&self) -> SessionResult<usize>;
   async fn count_sessions_for_user(&self, user_id: &str) -> SessionResult<i32>;
@@ -183,9 +183,9 @@ impl AppSessionStoreExt for DefaultSessionService {
 
 #[async_trait]
 impl SessionService for DefaultSessionService {
-  fn session_layer(&self) -> SessionManagerLayer<SessionStoreBackend> {
+  fn session_layer(&self, secure: bool) -> SessionManagerLayer<SessionStoreBackend> {
     SessionManagerLayer::new(self.store_backend.clone())
-      .with_secure(false)
+      .with_secure(secure)
       .with_same_site(SameSite::Strict)
       .with_name("bodhiapp_session_id")
   }

@@ -302,6 +302,19 @@ async fn test_remove_user_handler_success(_temp_bodhi_home: TempDir) -> anyhow::
 
   let mut mock_auth = MockAuthService::default();
   mock_auth
+    .expect_get_user()
+    .times(1)
+    .with(always(), eq("user-to-remove"))
+    .return_once(|_, _| {
+      Ok(Some(services::UserInfo {
+        user_id: "user-to-remove".to_string(),
+        username: "target@example.com".to_string(),
+        first_name: Some("Target".to_string()),
+        last_name: Some("User".to_string()),
+        role: Some(services::AppRole::Session(services::ResourceRole::User)),
+      }))
+    });
+  mock_auth
     .expect_remove_user()
     .times(1)
     .with(always(), eq("user-to-remove"))
@@ -340,6 +353,10 @@ async fn test_remove_user_handler_auth_error(_temp_bodhi_home: TempDir) -> anyho
   let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
 
   let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_get_user()
+    .times(1)
+    .return_once(|_, _| Ok(None));
   mock_auth.expect_remove_user().times(1).return_once(|_, _| {
     Err(services::AuthServiceError::AuthServiceApiError {
       status: 404,

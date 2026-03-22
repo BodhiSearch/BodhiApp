@@ -1,8 +1,8 @@
 use crate::db::{DbService, TimeService};
 use crate::mcps::{
   CreateMcpAuthConfigRequest, DefaultMcpService, McpAuthConfigParamInput, McpAuthConfigResponse,
-  McpAuthParamInput, McpAuthParamType, McpAuthType, McpRequest, McpServerRequest, McpService,
-  RegistrationType,
+  McpAuthParamInput, McpAuthParamType, McpAuthType, McpError, McpRequest, McpServerRequest,
+  McpService, RegistrationType,
 };
 use crate::test_utils::{
   test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID, TEST_USER_ID,
@@ -16,7 +16,7 @@ fn default_time_service() -> Arc<dyn TimeService> {
   Arc::new(FrozenTimeService::default())
 }
 
-fn make_service(db: TestDbService) -> DefaultMcpService {
+fn make_service(db: TestDbService) -> Result<DefaultMcpService, McpError> {
   let db: Arc<dyn DbService> = Arc::new(db);
   let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
   DefaultMcpService::new(db, mcp_client, default_time_service())
@@ -68,7 +68,7 @@ async fn test_create_mcp_with_header_credentials(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  let service = make_service(db);
+  let service = make_service(db)?;
 
   // Create server
   service
@@ -131,7 +131,7 @@ async fn test_create_mcp_with_oauth_token(
 ) -> anyhow::Result<()> {
   let db_arc: Arc<dyn DbService> = Arc::new(db);
   let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
-  let service = DefaultMcpService::new(Arc::clone(&db_arc), mcp_client, default_time_service());
+  let service = DefaultMcpService::new(Arc::clone(&db_arc), mcp_client, default_time_service())?;
 
   // Create server
   service
@@ -219,7 +219,7 @@ async fn test_update_mcp_change_credentials(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  let service = make_service(db);
+  let service = make_service(db)?;
 
   service
     .create_mcp_server(
@@ -289,7 +289,7 @@ async fn test_update_mcp_clear_auth(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  let service = make_service(db);
+  let service = make_service(db)?;
 
   service
     .create_mcp_server(
@@ -358,7 +358,7 @@ async fn test_create_auth_config_header(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  let service = make_service(db);
+  let service = make_service(db)?;
 
   service
     .create_mcp_server(
@@ -425,7 +425,7 @@ async fn test_create_auth_config_oauth(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  let service = make_service(db);
+  let service = make_service(db)?;
 
   service
     .create_mcp_server(
@@ -500,7 +500,7 @@ async fn test_resolve_auth_params_public(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  let service = make_service(db);
+  let service = make_service(db)?;
 
   service
     .create_mcp_server(
@@ -548,7 +548,7 @@ async fn test_resolve_auth_params_header(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  let service = make_service(db);
+  let service = make_service(db)?;
 
   service
     .create_mcp_server(
@@ -604,7 +604,7 @@ async fn test_resolve_auth_params_oauth(
 ) -> anyhow::Result<()> {
   let db_arc: Arc<dyn DbService> = Arc::new(db);
   let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
-  let service = DefaultMcpService::new(Arc::clone(&db_arc), mcp_client, default_time_service());
+  let service = DefaultMcpService::new(Arc::clone(&db_arc), mcp_client, default_time_service())?;
 
   // Create server
   service

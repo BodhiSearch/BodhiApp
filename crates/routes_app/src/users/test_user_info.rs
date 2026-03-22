@@ -20,7 +20,7 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 fn test_router(app_service: Arc<dyn AppService>) -> Router {
-  let session_layer = app_service.session_service().session_layer();
+  let session_layer = app_service.session_service().session_layer(false);
   Router::new()
     .route("/app/user", get(users_info))
     .layer(session_layer)

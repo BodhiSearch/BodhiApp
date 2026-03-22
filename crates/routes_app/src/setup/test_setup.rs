@@ -48,7 +48,7 @@ async fn test_app_info_handler(
   let state: Arc<dyn services::AppService> = app_service.clone();
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
   let resp = router
     .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)
@@ -76,7 +76,7 @@ async fn test_app_info_handler_with_client_id() -> anyhow::Result<()> {
   let state: Arc<dyn services::AppService> = app_service.clone();
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   let auth_context = AuthContext::Session {
@@ -545,7 +545,7 @@ async fn test_app_info_multi_tenant_anonymous_returns_ready() -> anyhow::Result<
   let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   let auth_context = AuthContext::test_anonymous(DeploymentMode::MultiTenant);
@@ -592,7 +592,7 @@ async fn test_app_info_multi_tenant_dashboard_with_memberships_returns_ready() -
   let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   let auth_context = AuthContext::test_multi_tenant_session(TEST_USER_ID, "testuser");
@@ -619,7 +619,7 @@ async fn test_app_info_multi_tenant_dashboard_without_memberships_returns_setup(
   let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   let auth_context = AuthContext::test_multi_tenant_session(TEST_USER_ID, "testuser");
@@ -645,7 +645,7 @@ async fn test_app_info_multi_tenant_session_with_client_id_returns_ready() -> an
   let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
   let auth_context = AuthContext::test_multi_tenant_session_full(
@@ -691,7 +691,7 @@ async fn test_app_info_handler_encryption_error() -> anyhow::Result<()> {
   let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route(TEST_ENDPOINT_APP_INFO, get(setup_show))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
   let resp = router
     .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)

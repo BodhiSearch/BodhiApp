@@ -345,6 +345,10 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     }
   }
 
+  async fn is_secure_transport(&self) -> bool {
+    self.public_scheme().await == "https"
+  }
+
   async fn public_host(&self) -> String {
     let (value, source) = self.get_setting_value_with_source(BODHI_PUBLIC_HOST).await;
     match source {

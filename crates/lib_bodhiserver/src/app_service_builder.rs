@@ -16,6 +16,7 @@ use services::{
   ToolService, BODHI_APP_DB_URL, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN,
   PROD_DB,
 };
+use std::result::Result;
 use std::sync::Arc;
 
 const SECRET_KEY: &str = "secret_key";
@@ -149,7 +150,7 @@ impl AppServiceBuilder {
     let session_service = Self::build_session_service(&setting_service).await?;
     let cache_service = self.get_or_build_cache_service();
     let auth_service = Self::build_auth_service(&setting_service).await;
-    let ai_api_service = Self::build_ai_api_service(db_service.clone());
+    let ai_api_service = Self::build_ai_api_service()?;
     let concurrency_service = Self::build_concurrency_service();
     let tool_service = Self::build_tool_service(db_service.clone(), time_service.clone());
     let access_request_service = Self::build_access_request_service(
@@ -160,7 +161,7 @@ impl AppServiceBuilder {
     )
     .await;
     let network_service = Self::build_network_service();
-    let mcp_service = Self::build_mcp_service(db_service.clone(), time_service.clone());
+    let mcp_service = Self::build_mcp_service(db_service.clone(), time_service.clone())?;
 
     // Create queue and spawn refresh worker
     let queue = Arc::new(InMemoryQueue::new());
@@ -314,8 +315,10 @@ impl AppServiceBuilder {
   }
 
   /// Builds the AI API service.
-  fn build_ai_api_service(_db_service: Arc<dyn DbService>) -> Arc<dyn AiApiService> {
-    Arc::new(DefaultAiApiService::new())
+  fn build_ai_api_service() -> Result<Arc<dyn AiApiService>, BootstrapError> {
+    Ok(Arc::new(DefaultAiApiService::new().map_err(|e| {
+      BootstrapError::UnexpectedError(services::AppError::code(&e), e.to_string())
+    })?))
   }
 
   /// Builds the concurrency service.
@@ -361,9 +364,13 @@ impl AppServiceBuilder {
   fn build_mcp_service(
     db_service: Arc<dyn DbService>,
     time_service: Arc<dyn TimeService>,
-  ) -> Arc<dyn McpService> {
+  ) -> Result<Arc<dyn McpService>, BootstrapError> {
     let mcp_client = Arc::new(mcp_client::DefaultMcpClient::new());
-    Arc::new(DefaultMcpService::new(db_service, mcp_client, time_service))
+    Ok(Arc::new(
+      DefaultMcpService::new(db_service, mcp_client, time_service).map_err(|e| {
+        BootstrapError::UnexpectedError(services::AppError::code(&e), e.to_string())
+      })?,
+    ))
   }
 }
 

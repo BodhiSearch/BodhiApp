@@ -199,7 +199,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('handles custom location in auth initiate response', async () => {
-    server.use(...mockAuthInitiate({ location: 'invalid-url-format' }));
+    server.use(...mockAuthInitiate({ location: 'https://external.example.com/callback' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -208,14 +208,14 @@ describe('LoginContent with user not Logged In', () => {
     const loginButton = screen.getByRole('button', { name: 'Login' });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." and remain disabled even for invalid URLs
+    // Should show "Redirecting..." and remain disabled even for external URLs
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
     });
 
     await waitFor(() => {
-      expect(window.location.href).toBe('invalid-url-format');
+      expect(window.location.href).toBe('https://external.example.com/callback');
     });
   });
 

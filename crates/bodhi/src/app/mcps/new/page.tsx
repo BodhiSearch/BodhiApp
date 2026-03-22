@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { safeNavigate } from '@/lib/safeNavigate';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, Loader2, Unplug } from 'lucide-react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -440,7 +441,13 @@ function NewMcpPageContent() {
         id: configId,
         redirect_uri: redirectUri,
       });
-      window.location.href = loginResponse.data.authorization_url;
+      if (!safeNavigate(loginResponse.data.authorization_url)) {
+        toast({
+          title: 'Invalid authorization URL',
+          description: `URL "${loginResponse.data.authorization_url}" must use http:// or https:// scheme`,
+          variant: 'destructive',
+        });
+      }
     } catch {
       // Errors surfaced via React Query mutation state
     }

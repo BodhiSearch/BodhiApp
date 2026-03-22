@@ -13,10 +13,7 @@ use services::{
   test_utils::SettingServiceStub, SettingService, BODHI_DEV_PROXY_UI, BODHI_ENV_TYPE,
 };
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
-use tokio::{
-  net::TcpListener,
-  sync::oneshot::{channel, Sender},
-};
+use tokio::{net::TcpListener, sync::oneshot::channel};
 use tower::ServiceExt;
 
 static TEST_UI_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/src/test_spa_assets");
@@ -123,11 +120,6 @@ async fn test_ui_router_static_scenarios(
 #[rstest]
 #[tokio::test]
 async fn test_ui_router_dev_proxy() -> anyhow::Result<()> {
-  let setting_service = test_setting_service(EnvConfig {
-    is_production: false,
-    proxy_ui: Some("true".to_string()),
-  });
-
   // Start a backend that expects /ui-prefixed paths (simulates Next.js dev server with basePath)
   let listener = TcpListener::bind("127.0.0.1:0").await?;
   let addr: SocketAddr = listener.local_addr()?;

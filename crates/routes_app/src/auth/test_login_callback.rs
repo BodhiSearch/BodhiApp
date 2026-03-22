@@ -109,7 +109,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .route("/auth/callback", post(auth_callback))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
-    .layer(app_service.session_service().session_layer());
+    .layer(app_service.session_service().session_layer(false));
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();
@@ -193,7 +193,7 @@ async fn test_auth_callback_handler_state_not_in_session(
   let state: Arc<dyn AppService> = app_service.clone();
   let router = Router::new()
     .route("/auth/callback", post(auth_callback))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(state);
   let resp = router
     .oneshot(Request::post("/auth/callback").json(json! {{
@@ -287,7 +287,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     .route("/auth/callback", post(auth_callback))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
-    .layer(app_service.session_service().session_layer());
+    .layer(app_service.session_service().session_layer(false));
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();
@@ -367,7 +367,7 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
     .route("/auth/callback", post(auth_callback))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
-    .layer(app_service.session_service().session_layer());
+    .layer(app_service.session_service().session_layer(false));
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();
@@ -444,7 +444,7 @@ async fn test_auth_callback_handler_auth_service_error(
     .route("/auth/callback", post(auth_callback))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
-    .layer(app_service.session_service().session_layer());
+    .layer(app_service.session_service().session_layer(false));
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();
@@ -515,7 +515,7 @@ async fn test_auth_callback_handler_rejects_setup_status_tenant(
     .route("/auth/callback", post(auth_callback))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
-    .layer(app_service.session_service().session_layer());
+    .layer(app_service.session_service().session_layer(false));
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();

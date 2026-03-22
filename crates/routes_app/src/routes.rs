@@ -589,8 +589,9 @@ pub async fn build_routes(
     .with_state(state);
 
   let router = apply_ui_router(&app_service.setting_service(), router, static_dir).await;
+  let secure_cookie = app_service.setting_service().is_secure_transport().await;
   router
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(secure_cookie))
     .layer(from_fn_with_state(
       app_service.setting_service(),
       canonical_url_middleware,

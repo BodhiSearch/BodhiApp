@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 use services::{CreateMcpAuthConfigRequest, McpAuthParamInput, McpOAuthToken, McpTool};
 use utoipa::{IntoParams, ToSchema};
+use validator::Validate;
 
 // ============================================================================
 // MCP Server Query DTOs
@@ -67,10 +68,11 @@ pub struct McpExecuteResponse {
 // ============================================================================
 
 /// Wrapper for creating auth configs with server_id in body instead of path
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct CreateAuthConfig {
   pub mcp_server_id: String,
   #[serde(flatten)]
+  #[validate(nested)]
   pub config: CreateMcpAuthConfigRequest,
 }
 

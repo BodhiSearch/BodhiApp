@@ -165,6 +165,7 @@ pub struct CreateAccessRequest {
   /// Flow type: "redirect" or "popup"
   pub flow_type: FlowType,
   /// Redirect URL for result notification (required for redirect flow)
+  #[validate(custom(function = "validate_redirect_url_scheme"))]
   pub redirect_url: Option<String>,
   /// Role requested for the external app (scope_user_user or scope_user_power_user)
   pub requested_role: crate::UserScope,
@@ -198,4 +199,17 @@ pub struct ApproveAccessRequest {
   pub approved_role: crate::UserScope,
   /// Approved resources with selections
   pub approved: ApprovedResources,
+}
+
+// ============================================================================
+// Validator functions
+// ============================================================================
+
+fn validate_redirect_url_scheme(url: &str) -> Result<(), validator::ValidationError> {
+  match url::Url::parse(url) {
+    Ok(parsed) if parsed.scheme() == "http" || parsed.scheme() == "https" => Ok(()),
+    _ => Err(validator::ValidationError::new(
+      "invalid_redirect_url_scheme",
+    )),
+  }
 }

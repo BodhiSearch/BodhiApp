@@ -3,7 +3,7 @@ use crate::mcps::{
   OAuthTokenExchangeRequest, OAuthTokenResponse, ENDPOINT_MCPS_AUTH_CONFIGS,
 };
 use crate::middleware::generate_random_string;
-use crate::{ApiError, AuthScope, API_TAG_MCPS};
+use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_MCPS};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -33,8 +33,10 @@ use tower_sessions::Session;
 )]
 pub async fn mcp_auth_configs_create(
   auth_scope: AuthScope,
-  Json(body): Json<CreateAuthConfig>,
+  ValidatedJson(body): ValidatedJson<CreateAuthConfig>,
 ) -> Result<(StatusCode, Json<McpAuthConfigResponse>), ApiError> {
+  // URL scheme validation (XSS-VULN-02) is handled by ValidatedJson via
+  // the manual Validate impl on CreateMcpAuthConfigRequest.
   let config = auth_scope
     .mcps()
     .create_auth_config(&body.mcp_server_id, body.config)

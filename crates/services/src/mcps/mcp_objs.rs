@@ -371,6 +371,51 @@ pub enum CreateMcpAuthConfigRequest {
   },
 }
 
+impl validator::Validate for CreateMcpAuthConfigRequest {
+  fn validate(&self) -> Result<(), validator::ValidationErrors> {
+    match self {
+      CreateMcpAuthConfigRequest::Header { .. } => Ok(()),
+      CreateMcpAuthConfigRequest::Oauth {
+        authorization_endpoint,
+        token_endpoint,
+        registration_endpoint,
+        ..
+      } => {
+        let mut errors = validator::ValidationErrors::new();
+        if !is_valid_http_url(authorization_endpoint) {
+          errors.add(
+            "authorization_endpoint",
+            validator::ValidationError::new("invalid_url_scheme"),
+          );
+        }
+        if !is_valid_http_url(token_endpoint) {
+          errors.add(
+            "token_endpoint",
+            validator::ValidationError::new("invalid_url_scheme"),
+          );
+        }
+        if let Some(ep) = registration_endpoint {
+          if !is_valid_http_url(ep) {
+            errors.add(
+              "registration_endpoint",
+              validator::ValidationError::new("invalid_url_scheme"),
+            );
+          }
+        }
+        if errors.is_empty() {
+          Ok(())
+        } else {
+          Err(errors)
+        }
+      }
+    }
+  }
+}
+
+fn is_valid_http_url(url: &str) -> bool {
+  crate::validate_http_url(url).is_ok()
+}
+
 /// Discriminated union response for any type of MCP auth config.
 /// The JSON `"type"` field determines the variant: `"header"` or `"oauth"`.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -580,10 +625,7 @@ fn validate_mcp_slug_validator(slug: &str) -> Result<(), validator::ValidationEr
 }
 
 fn validate_mcp_server_url_validator(url: &str) -> Result<(), validator::ValidationError> {
-  if url::Url::parse(url).is_err() {
-    return Err(validator::ValidationError::new("invalid_mcp_server_url"));
-  }
-  Ok(())
+  crate::validate_http_url(url)
 }
 
 // ============================================================================

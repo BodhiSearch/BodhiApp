@@ -121,7 +121,7 @@ fn test_router(app_service: Arc<dyn AppService>) -> Router {
       app_service.clone(),
       optional_auth_middleware,
     )))
-    .layer(app_service.session_service().session_layer())
+    .layer(app_service.session_service().session_layer(false))
     .with_state(app_service)
 }
 
