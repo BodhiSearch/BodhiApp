@@ -1,6 +1,6 @@
 [package]
 name = "routes_app"
-version = "0.0.48-dev"
+version = "0.0.49-dev"
 edition = "2021"
 
 [dependencies]
