@@ -117,4 +117,15 @@ describe('SetupCompletePage', () => {
     expect(discordLink).toHaveAttribute('target', '_blank');
     expect(discordLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
+
+  it('should have resource links pointing to external docs', async () => {
+    await act(async () => {
+      renderWithSetupProvider(<SetupCompletePage />);
+    });
+
+    const docsLink = screen.getByText('Getting Started Guide').closest('a');
+    expect(docsLink).toHaveAttribute('href', 'https://getbodhi.app/docs/');
+    expect(docsLink).toHaveAttribute('target', '_blank');
+    expect(docsLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
 });

@@ -62,7 +62,7 @@ const resourceLinks = [
     title: 'Getting Started Guide',
     icon: <BookOpen className="h-5 w-5" />,
     description: 'Learn the basics and get up to speed quickly',
-    url: 'https://docs.getbodhi.app/getting-started',
+    url: 'https://getbodhi.app/docs/',
   },
 ];
 
@@ -162,6 +162,8 @@ function SetupCompleteContent() {
               <motion.a
                 key={link.title}
                 href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}

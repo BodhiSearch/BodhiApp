@@ -1,9 +1,12 @@
 import { ReactNode, createContext, useContext, useEffect, useMemo } from 'react';
 
 import {
+  BookOpen,
+  BookText,
   Cog,
   Database,
   Download,
+  FileJson,
   FilePlus2,
   Files,
   Key,
@@ -174,6 +177,26 @@ export const defaultNavigationItems: NavigationItem[] = [
         href: '/users/',
         description: 'Manage users and access control',
         icon: Users,
+      },
+    ],
+  },
+  {
+    title: 'Documentation',
+    icon: BookText,
+    items: [
+      {
+        title: 'App Guide',
+        href: 'https://getbodhi.app/docs/',
+        description: 'User guides and documentation',
+        icon: BookOpen,
+        target: '_blank',
+      },
+      {
+        title: 'OpenAPI Docs',
+        href: '/swagger-ui',
+        description: 'API Documentation',
+        icon: FileJson,
+        target: '_blank',
       },
     ],
   },

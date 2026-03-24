@@ -5,19 +5,13 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9._-]+:.*?## / {printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-sync.docs: ## Sync docs from embedded app
-	@npm run sync:docs
-
-sync.docs.check: ## Check if docs are in sync
-	@npm run sync:docs:check
-
 update_releases: ## Update .env.release_urls and releases.json from latest GitHub releases (desktop + Docker variants)
 	@npm run update_releases
 
 update_releases.check: ## Check latest releases (dry-run) - validates desktop and Docker variant discovery
 	@npm run update_releases:check
 
-build: ## Build website (auto-syncs docs first via prebuild)
+build: ## Build website
 	@npm run build
 
 format: ## Format code
@@ -32,9 +26,8 @@ lint.fix: ## Lint code and fix errors
 # Include shared release utilities from parent directory
 include ../Makefile.release.mk
 
-release.precheck: sync.docs.check ## Pre-release validation checks
+release.precheck: ## Pre-release validation checks
 	@echo "==> Running release prechecks..."
-	@echo "  ✓ Docs sync check passed"
 	@echo ""
 	@echo "==> Checking release URLs are up-to-date..."
 	@if ! $(MAKE) update_releases.check >/dev/null 2>&1; then \
@@ -74,7 +67,6 @@ release: release.precheck ## Create and push tag for website release
 	echo "  3. The workflow will automatically bump main branch to $$NEXT_VERSION-dev"
 
 .PHONY: help \
-	sync.docs sync.docs.check \
 	update_releases update_releases.check \
 	release.precheck release \
 	build \

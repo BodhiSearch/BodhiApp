@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { Home, Settings, Users } from 'lucide-react';
+import { BookOpen, BookText, FileJson, Home, Settings, Users } from 'lucide-react';
 import type { NavigationItem } from '@/types/navigation';
 import { createWrapper } from '@/tests/wrapper';
 
@@ -20,7 +20,7 @@ vi.mock('@tanstack/react-router', async () => {
 });
 
 // Import after mocks are setup
-import { useNavigation, NavigationProvider } from '@/hooks/navigation';
+import { useNavigation, NavigationProvider, defaultNavigationItems } from '@/hooks/navigation';
 
 describe('useNavigation', () => {
   const testNavigationItems: NavigationItem[] = [
@@ -54,6 +54,26 @@ describe('useNavigation', () => {
               skip: true,
             },
           ],
+        },
+      ],
+    },
+    {
+      title: 'Documentation',
+      icon: BookText,
+      items: [
+        {
+          title: 'App Guide',
+          href: 'https://getbodhi.app/docs/',
+          description: 'User guides and documentation',
+          icon: BookOpen,
+          target: '_blank',
+        },
+        {
+          title: 'OpenAPI Docs',
+          href: '/swagger-ui',
+          description: 'API Documentation',
+          icon: FileJson,
+          target: '_blank',
         },
       ],
     },
@@ -176,5 +196,17 @@ describe('useNavigation', () => {
       }),
       parent: null,
     });
+  });
+
+  it('should include Documentation group in default navigation items', () => {
+    const docsGroup = defaultNavigationItems.find((item) => item.title === 'Documentation');
+    expect(docsGroup).toBeDefined();
+    expect(docsGroup!.items).toHaveLength(2);
+    expect(docsGroup!.items![0].title).toBe('App Guide');
+    expect(docsGroup!.items![0].href).toBe('https://getbodhi.app/docs/');
+    expect(docsGroup!.items![0].target).toBe('_blank');
+    expect(docsGroup!.items![1].title).toBe('OpenAPI Docs');
+    expect(docsGroup!.items![1].href).toBe('/swagger-ui');
+    expect(docsGroup!.items![1].target).toBe('_blank');
   });
 });
