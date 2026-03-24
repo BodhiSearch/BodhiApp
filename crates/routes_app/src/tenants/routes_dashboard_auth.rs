@@ -14,6 +14,7 @@ use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, Redire
 use services::extract_claims;
 use services::Claims;
 use tower_sessions::Session;
+use tracing::warn;
 
 /// Start dashboard OAuth flow - returns location for OAuth provider
 #[utoipa::path(
@@ -212,6 +213,11 @@ pub async fn dashboard_auth_callback(
     .remove::<String>("dashboard_callback_url")
     .await
     .map_err(DashboardAuthRouteError::from)?;
+
+  // Rotate session ID to prevent session fixation attacks (AUTH-VULN-07)
+  if let Err(e) = session.cycle_id().await {
+    warn!("Failed to rotate session ID after dashboard OAuth callback: {}", e);
+  }
 
   // Store tokens in session with dashboard prefix
   let access_token = token_response.0.secret().to_string();

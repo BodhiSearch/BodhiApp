@@ -299,6 +299,13 @@ async fn test_create_token_handler_success(
 
   assert_eq!(StatusCode::CREATED, response.status());
 
+  // Verify Cache-Control headers prevent proxy/browser caching of raw token (AUTH-VULN-09)
+  assert_eq!(
+    response.headers().get("cache-control").unwrap(),
+    "no-store, no-cache, must-revalidate"
+  );
+  assert_eq!(response.headers().get("pragma").unwrap(), "no-cache");
+
   let token_response = response.json::<TokenCreated>().await?;
   let token_str = &token_response.token;
 

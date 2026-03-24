@@ -111,6 +111,42 @@ The SSRF risk from private IP access is accepted because:
 
 ---
 
+### Argument Injection via `context_params` (INJ-VULN-01)
+
+- **Location:** `crates/services/src/models/model_objs.rs` (`context_params: JsonVec`) → `crates/server_core/src/shared_rw.rs` (`merge_server_args`) → `Command::new().args()`
+- **Severity context:** High (requires PowerUser role)
+- **Status:** Accepted risk — PowerUser trust boundary
+
+**Reasoning:** PowerUser is an admin-granted elevated role. Users with PowerUser role can configure model aliases including `context_params`, which pass as arguments to the llama-server process. This is by design for advanced model configuration (e.g., `--ctx-size 4096`, `--n-gpu-layers 35`). No untrusted user can reach this path — Admin explicitly grants the PowerUser role. The risk of a PowerUser injecting dangerous flags (e.g., `--host`, `--model`) is accepted as part of the admin trust boundary.
+
+**Mitigation:** If the trust model changes (e.g., self-service PowerUser role), add an allowlist of permitted llama-server flags.
+
+---
+
+### API Tokens Have No Expiration (AUTH-VULN-08)
+
+- **Location:** API token table (no `expires_at` column); token validation in `crates/routes_app/src/middleware/token_service/token_service.rs`
+- **Severity context:** Medium
+- **Status:** Accepted risk — revocation mechanism exists
+
+**Reasoning:** API tokens are high-entropy machine-generated secrets (`bodhiapp_<32-random-bytes>.<client_id>`), SHA-256 hashed with `constant_time_eq` comparison. They can be revoked at any time via the token management API. Industry standard API key platforms (GitHub PATs, Stripe API keys, AWS access keys) similarly default to no forced expiry. PowerUser+ role is required to create tokens.
+
+**Mitigation:** Document token rotation best practices in the deployment guide. If compliance requirements mandate token expiry, add an optional `expires_at` field to `CreateTokenRequest` and check it during validation.
+
+---
+
+### API Model Forward Response Proxying (SSRF-VULN-06)
+
+- **Location:** `crates/server_core/src/fwd_sse.rs` — forwards full HTTP response from configured AI API endpoints
+- **Severity context:** Critical (per assessment) → Medium (with architectural context)
+- **Status:** Accepted risk — controlled endpoint forwarding
+
+**Reasoning:** The forward endpoint's purpose is to proxy AI API responses (chat completions). The app controls the forwarding path — it appends the specific API path (e.g., `/v1/chat/completions`) to the user-configured base URL, so it does not function as an open HTTP proxy. Malformed or injected requests are rejected by the upstream AI API service. The base URL is configured by authenticated users (User+ role) who already have direct network access to the same hosts.
+
+**Mitigation:** If the endpoint is extended to support arbitrary paths, add path allowlisting or response Content-Type validation.
+
+---
+
 ## By-Design Architectural Decisions
 
 ### MCP Auth-Configs Are Tenant-Level Shared Resources
@@ -161,3 +197,5 @@ The following vulnerabilities have been fixed as part of the security remediatio
 | XSS | No Content Security Policy | Basic CSP header on HTML UI responses |
 | SSRF | Outbound requests accept any URI scheme | `SafeReqwest` wrapper enforces http/https-only scheme validation |
 | Path traversal | Filesystem existence oracle via `../` in filename | Filename character rejection (reject `..`, `/`, `\`) |
+| Session security | Dashboard session fixation (no ID rotation after dashboard OAuth) | `session.cycle_id()` in dashboard auth callback |
+| Transport | Missing Cache-Control on token creation response | `Cache-Control: no-store` + `Pragma: no-cache` on `tokens_create` response |

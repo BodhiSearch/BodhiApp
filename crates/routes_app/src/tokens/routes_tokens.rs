@@ -6,7 +6,10 @@ use crate::{ApiError, OpenAIApiError, ValidatedJson};
 use crate::{AuthScope, PaginationSortParams, API_TAG_API_KEYS, ENDPOINT_TOKENS};
 use axum::{
   extract::{Path, Query},
-  http::StatusCode,
+  http::{
+    header::{CACHE_CONTROL, PRAGMA},
+    StatusCode,
+  },
   Json,
 };
 use services::{ResourceRole, TokenScope};
@@ -45,7 +48,7 @@ use services::{ResourceRole, TokenScope};
 pub async fn tokens_create(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<CreateTokenRequest>,
-) -> Result<(StatusCode, Json<TokenCreated>), ApiError> {
+) -> Result<(StatusCode, [(axum::http::HeaderName, &'static str); 2], Json<TokenCreated>), ApiError> {
   let user_role = auth_scope
     .auth_context()
     .resource_role()
@@ -72,7 +75,14 @@ pub async fn tokens_create(
   };
   let token_created = auth_scope.tokens().create_token(validated).await?;
 
-  Ok((StatusCode::CREATED, Json(token_created)))
+  Ok((
+    StatusCode::CREATED,
+    [
+      (CACHE_CONTROL, "no-store, no-cache, must-revalidate"),
+      (PRAGMA, "no-cache"),
+    ],
+    Json(token_created),
+  ))
 }
 
 /// Update an existing API token
