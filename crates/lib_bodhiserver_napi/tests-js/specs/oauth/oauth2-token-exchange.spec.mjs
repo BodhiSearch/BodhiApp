@@ -56,7 +56,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
           clientId: appClient.clientId,
           redirectUri,
           scope: testData.scopes,
-          requested: null,
+          requested: JSON.stringify({ version: '1' }),
         });
       });
 
@@ -128,7 +128,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
           redirectUri,
           scope: testData.scopes,
           requestedRole: 'scope_user_power_user',
-          requested: null,
+          requested: JSON.stringify({ version: '1' }),
         });
       });
 

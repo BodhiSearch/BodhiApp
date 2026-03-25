@@ -6,4 +6,8 @@ pub enum ToolsetRouteError {
   #[error("Validation error: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   Validation(String),
+
+  #[error("Failed to parse approved resources JSON.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  InvalidApprovedJson,
 }

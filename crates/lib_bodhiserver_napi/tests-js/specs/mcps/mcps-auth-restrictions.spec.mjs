@@ -68,7 +68,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ mcp_servers: [{ url: MCP_URL }] }),
+        requested: JSON.stringify({ version: '1', mcp_servers: [{ url: MCP_URL }] }),
       });
     });
 
@@ -164,7 +164,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: null,
+        requested: JSON.stringify({ version: '1' }),
       });
     });
 
@@ -242,7 +242,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ mcp_servers: [{ url: MCP_URL }] }),
+        requested: JSON.stringify({ version: '1', mcp_servers: [{ url: MCP_URL }] }),
       });
     });
 

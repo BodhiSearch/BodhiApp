@@ -51,9 +51,12 @@ impl AccessRequestValidator for ToolsetAccessRequestValidator {
       }
     })?;
 
-    let instance_approved = approvals.toolsets.iter().any(|a| {
-      a.status == ApprovalStatus::Approved && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
-    });
+    let instance_approved = match &approvals {
+      ApprovedResources::V1(v1) => v1.toolsets.iter().any(|a| {
+        a.status == ApprovalStatus::Approved
+          && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
+      }),
+    };
 
     if !instance_approved {
       return Err(AccessRequestAuthError::EntityNotApproved {
@@ -89,9 +92,12 @@ impl AccessRequestValidator for McpAccessRequestValidator {
       }
     })?;
 
-    let instance_approved = approvals.mcps.iter().any(|a| {
-      a.status == ApprovalStatus::Approved && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
-    });
+    let instance_approved = match &approvals {
+      ApprovedResources::V1(v1) => v1.mcps.iter().any(|a| {
+        a.status == ApprovalStatus::Approved
+          && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
+      }),
+    };
 
     if !instance_approved {
       return Err(AccessRequestAuthError::EntityNotApproved {

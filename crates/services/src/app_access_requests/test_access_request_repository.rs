@@ -22,7 +22,7 @@ fn make_request(id: &str, now: chrono::DateTime<chrono::Utc>) -> AppAccessReques
     flow_type: FlowType::Redirect,
     redirect_uri: Some("https://example.com/callback".to_string()),
     status: AppAccessRequestStatus::Draft,
-    requested: r#"{"toolset_types":[]}"#.to_string(),
+    requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
     user_id: None,
     requested_role: "scope_user_user".to_string(),
@@ -94,7 +94,7 @@ async fn test_update_approval(
   let row = make_request(&id, ctx.now);
   ctx.service.create(&row).await?;
 
-  let approved_json = r#"{"toolsets":[],"mcps":[]}"#;
+  let approved_json = r#"{"version":"1"}"#;
   let updated = ctx
     .service
     .update_approval(
@@ -187,7 +187,7 @@ async fn test_get_by_access_request_scope(
       &id,
       "user-1",
       TEST_TENANT_ID,
-      "{}",
+      r#"{"version":"1"}"#,
       "scope_user_user",
       &scope,
     )
@@ -272,7 +272,7 @@ async fn perform_update(
           id,
           "user-1",
           TEST_TENANT_ID,
-          "{}",
+          r#"{"version":"1"}"#,
           "scope_user_user",
           "scope",
         )
@@ -296,7 +296,7 @@ async fn transition_to_non_draft(
           id,
           "user-1",
           TEST_TENANT_ID,
-          "{}",
+          r#"{"version":"1"}"#,
           "scope_user_user",
           "scope",
         )

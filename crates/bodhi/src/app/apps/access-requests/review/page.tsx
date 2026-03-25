@@ -273,6 +273,7 @@ const ReviewContent = () => {
     const body: ApproveAccessRequest = {
       approved_role: approvedRole!,
       approved: {
+        version: reviewData.requested.version,
         toolsets: (reviewData.tools_info ?? []).map((tool) => ({
           toolset_type: tool.toolset_type,
           status: approvedTools[tool.toolset_type] ? 'approved' : 'denied',

@@ -177,7 +177,7 @@ async fn test_cross_client_token_exchange_success(
     flow_type: services::FlowType::Popup,
     redirect_uri: None,
     status: services::AppAccessRequestStatus::Draft,
-    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
     user_id: None,
     requested_role: "scope_user_user".to_string(),
@@ -214,7 +214,7 @@ async fn test_cross_client_token_exchange_success(
 
   // Approve the access request in DB using the KC-returned scope
   let access_request_scope = kc_response.access_request_scope;
-  let approved_json = r#"{"toolsets":[],"mcps":[]}"#;
+  let approved_json = r#"{"version":"1"}"#;
   db_service
     .update_approval(
       &access_request_id,

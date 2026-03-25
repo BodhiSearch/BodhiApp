@@ -126,20 +126,122 @@ pub struct McpInstance {
   pub id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
-pub struct ApprovedResources {
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub toolsets: Vec<ToolsetApproval>,
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub mcps: Vec<McpApproval>,
+// ============================================================================
+// Versioned resource envelopes
+// ============================================================================
+
+/// Versioned envelope for requested resources.
+/// The `version` tag is mandatory — clients must specify which version they are using.
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq)]
+#[serde(tag = "version")]
+pub enum RequestedResources {
+  #[serde(rename = "1")]
+  V1(RequestedResourcesV1),
 }
 
+impl<'de> Deserialize<'de> for RequestedResources {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    let version = value
+      .get("version")
+      .and_then(|v| v.as_str())
+      .ok_or_else(|| serde::de::Error::missing_field("version"))?;
+    match version {
+      "1" => {
+        let v1: RequestedResourcesV1 =
+          serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        Ok(Self::V1(v1))
+      }
+      unknown => Err(serde::de::Error::custom(format!(
+        "Unsupported resources version '{}'. Supported versions: [1]",
+        unknown
+      ))),
+    }
+  }
+}
+
+impl RequestedResources {
+  pub fn version(&self) -> &str {
+    match self {
+      Self::V1(_) => "1",
+    }
+  }
+}
+
+impl Default for RequestedResources {
+  fn default() -> Self {
+    Self::V1(RequestedResourcesV1::default())
+  }
+}
+
+/// Versioned envelope for approved resources.
+/// The `version` tag is mandatory and must match the corresponding `RequestedResources` version.
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq)]
+#[serde(tag = "version")]
+pub enum ApprovedResources {
+  #[serde(rename = "1")]
+  V1(ApprovedResourcesV1),
+}
+
+impl<'de> Deserialize<'de> for ApprovedResources {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    let version = value
+      .get("version")
+      .and_then(|v| v.as_str())
+      .ok_or_else(|| serde::de::Error::missing_field("version"))?;
+    match version {
+      "1" => {
+        let v1: ApprovedResourcesV1 =
+          serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        Ok(Self::V1(v1))
+      }
+      unknown => Err(serde::de::Error::custom(format!(
+        "Unsupported resources version '{}'. Supported versions: [1]",
+        unknown
+      ))),
+    }
+  }
+}
+
+impl ApprovedResources {
+  pub fn version(&self) -> &str {
+    match self {
+      Self::V1(_) => "1",
+    }
+  }
+}
+
+impl Default for ApprovedResources {
+  fn default() -> Self {
+    Self::V1(ApprovedResourcesV1::default())
+  }
+}
+
+// ============================================================================
+// V1 resource structs
+// ============================================================================
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
-pub struct RequestedResources {
+pub struct RequestedResourcesV1 {
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub toolset_types: Vec<ToolsetTypeRequest>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub mcp_servers: Vec<RequestedMcpServer>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
+pub struct ApprovedResourcesV1 {
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub toolsets: Vec<ToolsetApproval>,
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub mcps: Vec<McpApproval>,
 }
 
 // ============================================================================
@@ -154,6 +256,7 @@ pub struct RequestedResources {
     "redirect_url": "https://myapp.com/callback",
     "requested_role": "scope_user_user",
     "requested": {
+        "version": "1",
         "toolset_types": [
             {"toolset_type": "builtin-exa-search"}
         ]
@@ -170,7 +273,7 @@ pub struct CreateAccessRequest {
   /// Role requested for the external app (scope_user_user or scope_user_power_user)
   pub requested_role: crate::UserScope,
   /// Resources requested (tools, etc.)
-  pub requested: Option<RequestedResources>,
+  pub requested: RequestedResources,
 }
 
 /// Request for approving an app access request
@@ -178,6 +281,7 @@ pub struct CreateAccessRequest {
 #[schema(example = json!({
     "approved_role": "scope_user_user",
     "approved": {
+        "version": "1",
         "toolsets": [
             {
                 "toolset_type": "builtin-exa-search",

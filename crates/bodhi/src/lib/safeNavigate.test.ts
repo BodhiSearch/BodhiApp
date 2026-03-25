@@ -23,7 +23,10 @@ describe('safeNavigate', () => {
 
   it.each([
     ["javascript:alert('xss')", 'javascript: scheme'],
-    ["javascript:fetch('/dev/secrets').then(r=>r.json()).then(d=>{document.body.innerHTML='XSS'})//", 'javascript: with payload'],
+    [
+      "javascript:fetch('/dev/secrets').then(r=>r.json()).then(d=>{document.body.innerHTML='XSS'})//",
+      'javascript: with payload',
+    ],
     ['JAVASCRIPT:alert(1)', 'uppercase scheme'],
     ['jAvAsCrIpT:alert(1)', 'mixed case scheme'],
     ['  javascript:alert(1)', 'leading whitespace'],

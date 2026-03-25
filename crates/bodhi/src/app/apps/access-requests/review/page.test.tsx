@@ -828,10 +828,12 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
     // Verify body structure
     const body = capturedBody as {
       approved: {
+        version: string;
         toolsets: Array<{ toolset_type: string; status: string; instance?: { id: string } }>;
         mcps: Array<{ url: string; status: string; instance?: { id: string } }>;
       };
     };
+    expect(body.approved.version).toBe('1');
     expect(body.approved.toolsets).toHaveLength(2);
     expect(body.approved.mcps).toHaveLength(0);
 
@@ -1081,10 +1083,12 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 
     const body = capturedBody as {
       approved: {
+        version: string;
         toolsets: Array<{ toolset_type: string; status: string; instance?: { id: string } }>;
         mcps: Array<{ url: string; status: string; instance?: { id: string } }>;
       };
     };
+    expect(body.approved.version).toBe('1');
     expect(body.approved.toolsets).toHaveLength(0);
     expect(body.approved.mcps).toHaveLength(1);
     expect(body.approved.mcps[0].url).toBe('https://mcp.deepwiki.com/mcp');
@@ -1272,7 +1276,8 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
       expect(capturedBody).not.toBeNull();
     });
 
-    const body = capturedBody as { approved_role: string };
+    const body = capturedBody as { approved_role: string; approved: { version: string } };
     expect(body.approved_role).toBe('scope_user_user');
+    expect(body.approved.version).toBe('1');
   });
 });

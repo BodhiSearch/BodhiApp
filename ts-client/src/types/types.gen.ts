@@ -284,7 +284,15 @@ export type ApproveUserAccessRequest = {
     role: ResourceRole;
 };
 
-export type ApprovedResources = {
+/**
+ * Versioned envelope for approved resources.
+ * The `version` tag is mandatory and must match the corresponding `RequestedResources` version.
+ */
+export type ApprovedResources = ApprovedResourcesV1 & {
+    version: '1';
+};
+
+export type ApprovedResourcesV1 = {
     toolsets?: Array<ToolsetApproval>;
     mcps?: Array<McpApproval>;
 };
@@ -863,7 +871,10 @@ export type CreateAccessRequest = {
      * Role requested for the external app (scope_user_user or scope_user_power_user)
      */
     requested_role: UserScope;
-    requested?: null | RequestedResources;
+    /**
+     * Resources requested (tools, etc.)
+     */
+    requested: RequestedResources;
 };
 
 export type CreateAccessRequestResponse = {
@@ -2333,7 +2344,15 @@ export type RequestedMcpServer = {
     url: string;
 };
 
-export type RequestedResources = {
+/**
+ * Versioned envelope for requested resources.
+ * The `version` tag is mandatory — clients must specify which version they are using.
+ */
+export type RequestedResources = RequestedResourcesV1 & {
+    version: '1';
+};
+
+export type RequestedResourcesV1 = {
     toolset_types?: Array<ToolsetTypeRequest>;
     mcp_servers?: Array<RequestedMcpServer>;
 };

@@ -1,7 +1,8 @@
 use crate::UserScope;
 use crate::{
   app_access_requests::{
-    AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, FlowType,
+    AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, ApprovalStatus,
+    ApprovedResources, ApprovedResourcesV1, FlowType, RequestedResources, RequestedResourcesV1,
     ToolsetApproval, ToolsetTypeRequest,
   },
   test_utils::{test_db_service, TestDbService, TEST_TENANT_ID},
@@ -38,10 +39,12 @@ async fn test_create_draft_popup_valid(
       "app-client-1".to_string(),
       FlowType::Popup,
       None,
-      vec![ToolsetTypeRequest {
-        toolset_type: "builtin-exa-search".to_string(),
-      }],
-      vec![],
+      RequestedResources::V1(RequestedResourcesV1 {
+        toolset_types: vec![ToolsetTypeRequest {
+          toolset_type: "builtin-exa-search".to_string(),
+        }],
+        mcp_servers: vec![],
+      }),
       UserScope::User,
     )
     .await?;
@@ -54,6 +57,11 @@ async fn test_create_draft_popup_valid(
   assert_eq!(None, result.approved_role);
   assert_eq!(None, result.user_id);
   assert_eq!(None, result.tenant_id);
+  assert!(
+    result.requested.contains(r#""version":"1""#),
+    "Expected serialized requested to contain version tag, got: {}",
+    result.requested
+  );
 
   Ok(())
 }
@@ -83,8 +91,7 @@ async fn test_create_draft_redirect_valid(
       "app-client-2".to_string(),
       FlowType::Redirect,
       Some("https://example.com/callback".to_string()),
-      vec![],
-      vec![],
+      RequestedResources::default(),
       UserScope::PowerUser,
     )
     .await?;
@@ -124,8 +131,7 @@ async fn test_create_draft_redirect_missing_uri(
       "app-client-1".to_string(),
       FlowType::Redirect,
       None,
-      vec![],
-      vec![],
+      RequestedResources::default(),
       UserScope::User,
     )
     .await;
@@ -159,8 +165,8 @@ async fn test_approve_request_already_processed(
     flow_type: FlowType::Popup,
     redirect_uri: None,
     status: AppAccessRequestStatus::Approved,
-    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
-    approved: Some(r#"{"toolsets":[],"mcps":[]}"#.to_string()),
+    requested: r#"{"version":"1"}"#.to_string(),
+    approved: Some(r#"{"version":"1"}"#.to_string()),
     user_id: Some("user-1".to_string()),
     requested_role: "scope_user_user".to_string(),
     approved_role: Some("scope_user_user".to_string()),
@@ -189,8 +195,7 @@ async fn test_approve_request_already_processed(
       "user-2",
       TEST_TENANT_ID,
       "fake-token",
-      vec![],
-      vec![],
+      ApprovedResources::default(),
       UserScope::User,
     )
     .await;
@@ -224,7 +229,7 @@ async fn test_approve_request_threads_approved_role(
     flow_type: FlowType::Popup,
     redirect_uri: None,
     status: AppAccessRequestStatus::Draft,
-    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
     user_id: None,
     requested_role: "scope_user_user".to_string(),
@@ -264,12 +269,14 @@ async fn test_approve_request_threads_approved_role(
       "user-1",
       TEST_TENANT_ID,
       "fake-token",
-      vec![ToolsetApproval {
-        toolset_type: "builtin-exa-search".to_string(),
-        status: ApprovalStatus::Approved,
-        instance: None,
-      }],
-      vec![],
+      ApprovedResources::V1(ApprovedResourcesV1 {
+        toolsets: vec![ToolsetApproval {
+          toolset_type: "builtin-exa-search".to_string(),
+          status: ApprovalStatus::Approved,
+          instance: None,
+        }],
+        mcps: vec![],
+      }),
       UserScope::PowerUser,
     )
     .await?;
@@ -310,7 +317,7 @@ async fn test_get_request_expired_draft_returns_expired_record(
     flow_type: FlowType::Popup,
     redirect_uri: None,
     status: AppAccessRequestStatus::Draft,
-    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
     user_id: None,
     requested_role: "scope_user_user".to_string(),
@@ -363,7 +370,7 @@ async fn test_approve_request_rejects_expired_draft(
     flow_type: FlowType::Popup,
     redirect_uri: None,
     status: AppAccessRequestStatus::Draft,
-    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
     user_id: None,
     requested_role: "scope_user_user".to_string(),
@@ -393,8 +400,7 @@ async fn test_approve_request_rejects_expired_draft(
       "user-1",
       TEST_TENANT_ID,
       "fake-token",
-      vec![],
-      vec![],
+      ApprovedResources::default(),
       UserScope::User,
     )
     .await;
@@ -427,7 +433,7 @@ async fn test_deny_request_rejects_expired_draft(
     flow_type: FlowType::Popup,
     redirect_uri: None,
     status: AppAccessRequestStatus::Draft,
-    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
     user_id: None,
     requested_role: "scope_user_user".to_string(),
@@ -456,6 +462,75 @@ async fn test_deny_request_rejects_expired_draft(
   assert!(result.is_err());
   let err = result.unwrap_err();
   assert_eq!("access_request_error-expired", err.code());
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_request_unsupported_requested_version(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let now = db.now();
+  let expires_at = now + chrono::Duration::minutes(10);
+
+  // Insert a draft row with a hypothetical V2 (unsupported) requested JSON
+  let row = AppAccessRequest {
+    id: "ar-bad-version".to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
+    app_client_id: "app-client-1".to_string(),
+    app_name: None,
+    app_description: None,
+    flow_type: FlowType::Popup,
+    redirect_uri: None,
+    status: AppAccessRequestStatus::Draft,
+    requested: r#"{"version":"2"}"#.to_string(),
+    approved: None,
+    user_id: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
+    access_request_scope: None,
+    error_message: None,
+    expires_at,
+    created_at: now,
+    updated_at: now,
+  };
+  db.create(&row).await?;
+
+  let db = Arc::new(db);
+  let mock_auth = Arc::new(MockAuthService::new());
+  let time_service = Arc::new(crate::test_utils::FrozenTimeService::default());
+
+  let service = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn crate::db::DbService>,
+    mock_auth,
+    time_service.clone(),
+    "http://localhost:1135".to_string(),
+  );
+
+  let result = service
+    .approve_request(
+      "ar-bad-version",
+      "user-1",
+      TEST_TENANT_ID,
+      "fake-token",
+      ApprovedResources::default(),
+      UserScope::User,
+    )
+    .await;
+
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!("access_request_error-invalid_status", err.code());
+  assert!(
+    err.to_string().contains("Unsupported resources version"),
+    "Expected error about unsupported version, got: {}",
+    err
+  );
 
   Ok(())
 }

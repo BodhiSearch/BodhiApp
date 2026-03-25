@@ -1,3 +1,4 @@
+use crate::toolsets::error::ToolsetRouteError;
 use crate::toolsets::toolsets_api_schemas::{
   ExecuteToolsetRequest, ListToolsetTypesResponse, ListToolsetsResponse, ToolsetResponse,
 };
@@ -83,14 +84,18 @@ pub async fn toolsets_index(auth_scope: AuthScope) -> Result<Json<ListToolsetsRe
       .await?;
     let approved_ids: std::collections::HashSet<String> = request
       .and_then(|r| r.approved)
-      .and_then(|json| serde_json::from_str::<ApprovedResources>(&json).ok())
-      .map(|res| {
-        res
+      .map(|json| {
+        serde_json::from_str::<ApprovedResources>(&json)
+          .map_err(|_| ToolsetRouteError::InvalidApprovedJson)
+      })
+      .transpose()?
+      .map(|res| match res {
+        ApprovedResources::V1(v1) => v1
           .toolsets
           .into_iter()
           .filter(|a| a.status == ApprovalStatus::Approved)
           .filter_map(|a| a.instance.map(|i| i.id))
-          .collect()
+          .collect(),
       })
       .unwrap_or_default();
     toolsets

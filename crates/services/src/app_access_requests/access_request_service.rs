@@ -3,7 +3,10 @@ use chrono::Duration;
 use std::sync::Arc;
 
 use super::error::{AccessRequestError, Result};
-use super::{AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, FlowType};
+use super::{
+  AppAccessRequest, AppAccessRequestStatus, ApprovalStatus, ApprovedResources, FlowType,
+  RequestedResources,
+};
 use crate::db::{DbService, TimeService};
 use crate::new_ulid;
 use crate::AuthService;
@@ -23,14 +26,12 @@ use crate::UserScope;
 #[async_trait]
 pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
   /// Create a draft access request (tenant_id is NULL — bound at approval time)
-  #[allow(clippy::too_many_arguments)]
   async fn create_draft(
     &self,
     app_client_id: String,
     flow_type: FlowType,
     redirect_uri: Option<String>,
-    tools_requested: Vec<super::ToolsetTypeRequest>,
-    mcp_servers_requested: Vec<super::RequestedMcpServer>,
+    requested: RequestedResources,
     requested_role: UserScope,
   ) -> Result<AppAccessRequest>;
 
@@ -46,8 +47,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     user_id: &str,
     tenant_id: &str,
     user_token: &str,
-    tool_approvals: Vec<super::ToolsetApproval>,
-    mcp_approvals: Vec<super::McpApproval>,
+    approved: ApprovedResources,
     approved_role: UserScope,
   ) -> Result<AppAccessRequest>;
 
@@ -81,20 +81,20 @@ impl DefaultAccessRequestService {
     }
   }
 
-  fn generate_description(
-    &self,
-    tool_approvals: &[super::ToolsetApproval],
-    mcp_approvals: &[super::McpApproval],
-  ) -> String {
+  fn generate_description(&self, approved: &ApprovedResources) -> String {
     let mut lines = Vec::new();
-    for approval in tool_approvals {
-      if approval.status == ApprovalStatus::Approved {
-        lines.push(format!("- {}", approval.toolset_type));
-      }
-    }
-    for approval in mcp_approvals {
-      if approval.status == ApprovalStatus::Approved {
-        lines.push(format!("- MCP: {}", approval.url));
+    match approved {
+      ApprovedResources::V1(v1) => {
+        for approval in &v1.toolsets {
+          if approval.status == ApprovalStatus::Approved {
+            lines.push(format!("- {}", approval.toolset_type));
+          }
+        }
+        for approval in &v1.mcps {
+          if approval.status == ApprovalStatus::Approved {
+            lines.push(format!("- MCP: {}", approval.url));
+          }
+        }
       }
     }
     if lines.is_empty() {
@@ -112,8 +112,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     app_client_id: String,
     flow_type: FlowType,
     redirect_uri: Option<String>,
-    toolsets_requested: Vec<super::ToolsetTypeRequest>,
-    mcp_servers_requested: Vec<super::RequestedMcpServer>,
+    requested: RequestedResources,
     requested_role: UserScope,
   ) -> Result<AppAccessRequest> {
     if flow_type == FlowType::Redirect && redirect_uri.is_none() {
@@ -125,11 +124,9 @@ impl AccessRequestService for DefaultAccessRequestService {
     let now = self.time_service.utc_now();
     let expires_at = now + Duration::minutes(10);
 
-    let requested_json = serde_json::to_string(&serde_json::json!({
-      "toolset_types": toolsets_requested,
-      "mcp_servers": mcp_servers_requested,
-    }))
-    .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
+    let requested_json = serde_json::to_string(&requested).map_err(|e| {
+      AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e))
+    })?;
 
     let modified_redirect_uri = redirect_uri.map(|uri| {
       if uri.contains('?') {
@@ -175,8 +172,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     user_id: &str,
     tenant_id: &str,
     user_token: &str,
-    tool_approvals: Vec<super::ToolsetApproval>,
-    mcp_approvals: Vec<super::McpApproval>,
+    approved: ApprovedResources,
     approved_role: UserScope,
   ) -> Result<AppAccessRequest> {
     let row = self
@@ -194,7 +190,17 @@ impl AccessRequestService for DefaultAccessRequestService {
       }
     }
 
-    let description = self.generate_description(&tool_approvals, &mcp_approvals);
+    // Validate version match: approved version must equal requested version
+    let requested_resources: RequestedResources = serde_json::from_str(&row.requested)
+      .map_err(|e| AccessRequestError::InvalidStatus(format!("Invalid requested JSON: {}", e)))?;
+    if requested_resources.version() != approved.version() {
+      return Err(AccessRequestError::VersionMismatch {
+        requested_version: requested_resources.version().to_string(),
+        approved_version: approved.version().to_string(),
+      });
+    }
+
+    let description = self.generate_description(&approved);
 
     let kc_response = match self
       .auth_service
@@ -215,11 +221,9 @@ impl AccessRequestService for DefaultAccessRequestService {
       }
     };
 
-    let approved_json = serde_json::to_string(&serde_json::json!({
-      "toolsets": tool_approvals,
-      "mcps": mcp_approvals,
-    }))
-    .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
+    let approved_json = serde_json::to_string(&approved).map_err(|e| {
+      AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e))
+    })?;
 
     let updated_row = self
       .db_service

@@ -10,8 +10,8 @@ use axum::{
 };
 use serde::Deserialize;
 use services::{
-  AppAccessRequestStatus, ApprovalStatus, ApproveAccessRequest, CreateAccessRequest, FlowType,
-  RequestedMcpServer, RequestedResources, ToolsetTypeRequest,
+  AppAccessRequestStatus, ApprovalStatus, ApproveAccessRequest, ApprovedResources,
+  CreateAccessRequest, FlowType, RequestedResources,
 };
 use services::{ResourceRole, UserScope};
 use tracing::{debug, info};
@@ -72,21 +72,16 @@ pub async fn apps_create_access_request(
     request.app_client_id
   );
 
-  let tool_types: Vec<ToolsetTypeRequest> = request
-    .requested
-    .as_ref()
-    .map(|r| r.toolset_types.clone())
-    .unwrap_or_default();
+  let requested = request.requested;
 
-  let mcp_servers: Vec<RequestedMcpServer> = request
-    .requested
-    .as_ref()
-    .map(|r| r.mcp_servers.clone())
-    .unwrap_or_default();
-
+  // Validate tool types based on version
   let tools = auth_scope.tools();
-  for tool_type_req in &tool_types {
-    tools.validate_type(&tool_type_req.toolset_type)?;
+  match &requested {
+    RequestedResources::V1(v1) => {
+      for tool_type_req in &v1.toolset_types {
+        tools.validate_type(&tool_type_req.toolset_type)?;
+      }
+    }
   }
 
   let access_request_service = auth_scope.access_request_service();
@@ -95,8 +90,7 @@ pub async fn apps_create_access_request(
       request.app_client_id,
       request.flow_type,
       request.redirect_url,
-      tool_types,
-      mcp_servers,
+      requested,
       request.requested_role,
     )
     .await?;
@@ -194,7 +188,8 @@ pub async fn apps_get_access_request_review(
     .await?
     .ok_or(AppsRouteError::NotFound)?;
 
-  let requested: RequestedResources = serde_json::from_str(&request.requested).unwrap_or_default();
+  let requested: RequestedResources =
+    serde_json::from_str(&request.requested).map_err(|_| AppsRouteError::InvalidRequestedJson)?;
 
   let tools_svc = auth_scope.tools();
   let mcps_svc = auth_scope.mcps();
@@ -206,40 +201,43 @@ pub async fn apps_get_access_request_review(
     .collect();
 
   let mut tools_info = Vec::new();
-
-  for tool_type_req in &requested.toolset_types {
-    let tool_def = tools_svc
-      .get_type(&tool_type_req.toolset_type)
-      .ok_or_else(|| AppsRouteError::InvalidToolType(tool_type_req.toolset_type.clone()))?;
-
-    let instances: Vec<services::Toolset> = all_user_toolsets
-      .iter()
-      .filter(|t| t.toolset_type == tool_type_req.toolset_type)
-      .cloned()
-      .map(|e| e.into())
-      .collect();
-
-    tools_info.push(ToolTypeReviewInfo {
-      toolset_type: tool_type_req.toolset_type.clone(),
-      name: tool_def.name.clone(),
-      description: tool_def.description.clone(),
-      instances,
-    });
-  }
-
   let mut mcps_info = Vec::new();
 
-  for mcp_server_req in &requested.mcp_servers {
-    let instances = all_user_mcps
-      .iter()
-      .filter(|m| m.mcp_server.url == mcp_server_req.url)
-      .cloned()
-      .collect();
+  match &requested {
+    RequestedResources::V1(v1) => {
+      for tool_type_req in &v1.toolset_types {
+        let tool_def = tools_svc
+          .get_type(&tool_type_req.toolset_type)
+          .ok_or_else(|| AppsRouteError::InvalidToolType(tool_type_req.toolset_type.clone()))?;
 
-    mcps_info.push(crate::apps::McpServerReviewInfo {
-      url: mcp_server_req.url.clone(),
-      instances,
-    });
+        let instances: Vec<services::Toolset> = all_user_toolsets
+          .iter()
+          .filter(|t| t.toolset_type == tool_type_req.toolset_type)
+          .cloned()
+          .map(|e| e.into())
+          .collect();
+
+        tools_info.push(ToolTypeReviewInfo {
+          toolset_type: tool_type_req.toolset_type.clone(),
+          name: tool_def.name.clone(),
+          description: tool_def.description.clone(),
+          instances,
+        });
+      }
+
+      for mcp_server_req in &v1.mcp_servers {
+        let instances = all_user_mcps
+          .iter()
+          .filter(|m| m.mcp_server.url == mcp_server_req.url)
+          .cloned()
+          .collect();
+
+        mcps_info.push(crate::apps::McpServerReviewInfo {
+          url: mcp_server_req.url.clone(),
+          instances,
+        });
+      }
+    }
   }
 
   Ok(Json(AccessRequestReviewResponse {
@@ -340,73 +338,76 @@ pub async fn apps_approve_access_request(
     })?;
   }
 
-  // Validate tool instances using auth-scoped tool service (enforces ownership via user_id)
-  for approval in &approval_input.approved.toolsets {
-    if approval.status == ApprovalStatus::Approved {
-      let instance = approval.instance.as_ref().ok_or_else(|| {
-        AppsRouteError::ToolInstanceNotConfigured(format!(
-          "instance required for approved toolset_type: {}",
-          approval.toolset_type
-        ))
-      })?;
+  // Validate tool/MCP instances using auth-scoped services (enforces ownership via user_id)
+  match &approval_input.approved {
+    ApprovedResources::V1(v1) => {
+      for approval in &v1.toolsets {
+        if approval.status == ApprovalStatus::Approved {
+          let instance = approval.instance.as_ref().ok_or_else(|| {
+            AppsRouteError::ToolInstanceNotConfigured(format!(
+              "instance required for approved toolset_type: {}",
+              approval.toolset_type
+            ))
+          })?;
 
-      let toolset_entity = auth_scope
-        .tools()
-        .get(&instance.id)
-        .await?
-        .ok_or_else(|| AppsRouteError::ToolInstanceNotOwned(instance.id.clone()))?;
+          let toolset_entity = auth_scope
+            .tools()
+            .get(&instance.id)
+            .await?
+            .ok_or_else(|| AppsRouteError::ToolInstanceNotOwned(instance.id.clone()))?;
 
-      if toolset_entity.toolset_type != approval.toolset_type {
-        return Err(AppsRouteError::InvalidToolType(format!(
-          "Instance {} is not of type {}",
-          instance.id, approval.toolset_type
-        )))?;
+          if toolset_entity.toolset_type != approval.toolset_type {
+            return Err(AppsRouteError::InvalidToolType(format!(
+              "Instance {} is not of type {}",
+              instance.id, approval.toolset_type
+            )))?;
+          }
+
+          if !toolset_entity.enabled {
+            return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
+              "Instance {} is not enabled",
+              instance.id
+            )))?;
+          }
+
+          if toolset_entity.encrypted_api_key.is_none() {
+            return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
+              "Instance {} does not have API key configured",
+              instance.id
+            )))?;
+          }
+        }
       }
 
-      if !toolset_entity.enabled {
-        return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
-          "Instance {} is not enabled",
-          instance.id
-        )))?;
-      }
+      for approval in &v1.mcps {
+        if approval.status == ApprovalStatus::Approved {
+          let instance = approval.instance.as_ref().ok_or_else(|| {
+            AppsRouteError::ToolInstanceNotConfigured(format!(
+              "instance required for approved MCP: {}",
+              approval.url
+            ))
+          })?;
 
-      if toolset_entity.encrypted_api_key.is_none() {
-        return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
-          "Instance {} does not have API key configured",
-          instance.id
-        )))?;
-      }
-    }
-  }
+          let mcp_entity = auth_scope
+            .mcps()
+            .get(&instance.id)
+            .await?
+            .ok_or_else(|| AppsRouteError::ToolInstanceNotOwned(instance.id.clone()))?;
 
-  // Validate MCP instances using auth-scoped mcp service (enforces ownership via user_id)
-  for approval in &approval_input.approved.mcps {
-    if approval.status == ApprovalStatus::Approved {
-      let instance = approval.instance.as_ref().ok_or_else(|| {
-        AppsRouteError::ToolInstanceNotConfigured(format!(
-          "instance required for approved MCP: {}",
-          approval.url
-        ))
-      })?;
+          if mcp_entity.server_url != approval.url {
+            return Err(AppsRouteError::InvalidToolType(format!(
+              "MCP instance {} is not connected to server {}",
+              instance.id, approval.url
+            )))?;
+          }
 
-      let mcp_entity = auth_scope
-        .mcps()
-        .get(&instance.id)
-        .await?
-        .ok_or_else(|| AppsRouteError::ToolInstanceNotOwned(instance.id.clone()))?;
-
-      if mcp_entity.server_url != approval.url {
-        return Err(AppsRouteError::InvalidToolType(format!(
-          "MCP instance {} is not connected to server {}",
-          instance.id, approval.url
-        )))?;
-      }
-
-      if !mcp_entity.enabled {
-        return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
-          "MCP instance {} is not enabled",
-          instance.id
-        )))?;
+          if !mcp_entity.enabled {
+            return Err(AppsRouteError::ToolInstanceNotConfigured(format!(
+              "MCP instance {} is not enabled",
+              instance.id
+            )))?;
+          }
+        }
       }
     }
   }
@@ -417,8 +418,7 @@ pub async fn apps_approve_access_request(
       user_id,
       tenant_id,
       token,
-      approval_input.approved.toolsets,
-      approval_input.approved.mcps,
+      approval_input.approved,
       approved_scope,
     )
     .await?;

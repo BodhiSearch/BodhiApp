@@ -25,6 +25,13 @@ pub enum AccessRequestError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   MissingRedirectUri,
 
+  #[error("Approved resources version '{approved_version}' does not match requested version '{requested_version}'.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  VersionMismatch {
+    requested_version: String,
+    approved_version: String,
+  },
+
   #[error("Keycloak registration failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   KcRegistrationFailed(String),

@@ -163,7 +163,10 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }] }),
+        requested: JSON.stringify({
+          version: '1',
+          mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }],
+        }),
       });
     });
 
@@ -310,7 +313,10 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }] }),
+        requested: JSON.stringify({
+          version: '1',
+          mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }],
+        }),
       });
       await app.config.submitAccessRequest();
       await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);

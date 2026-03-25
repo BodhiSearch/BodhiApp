@@ -57,7 +57,7 @@ test.describe('OAuth Chat Streaming', () => {
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: null,
+        requested: JSON.stringify({ version: '1' }),
       });
 
       await app.config.submitAccessRequest();

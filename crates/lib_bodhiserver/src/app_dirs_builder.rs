@@ -7,6 +7,7 @@ use services::{
   EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_COMMIT_SHA, BODHI_DEPLOYMENT,
   BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, SETTINGS_YAML,
 };
+use std::path::Path;
 use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc};
 use tracing::{info, warn};
 
@@ -90,7 +91,7 @@ fn build_system_settings(
   app_version: Option<&str>,
   app_commit_sha: Option<&str>,
   deployment_mode: Option<&str>,
-  bodhi_home: &PathBuf,
+  bodhi_home: &Path,
   source: &SettingSource,
 ) -> Vec<Setting> {
   vec![

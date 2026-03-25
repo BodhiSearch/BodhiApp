@@ -150,7 +150,10 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ toolset_types: [{ toolset_type: TOOLSET_TYPE }] }),
+        requested: JSON.stringify({
+          version: '1',
+          toolset_types: [{ toolset_type: TOOLSET_TYPE }],
+        }),
       });
     });
 
@@ -271,7 +274,10 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: JSON.stringify({ toolset_types: [{ toolset_type: TOOLSET_TYPE }] }),
+        requested: JSON.stringify({
+          version: '1',
+          toolset_types: [{ toolset_type: TOOLSET_TYPE }],
+        }),
       });
     });
 
@@ -345,7 +351,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: null,
+        requested: JSON.stringify({ version: '1' }),
       });
     });
 
@@ -401,7 +407,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email',
-        requested: null,
+        requested: JSON.stringify({ version: '1' }),
       });
     });
 
@@ -504,7 +510,7 @@ test.describe(
           clientId: appClient.clientId,
           redirectUri,
           scope: 'openid profile email',
-          requested: null,
+          requested: JSON.stringify({ version: '1' }),
         });
       });
 

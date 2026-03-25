@@ -20,7 +20,7 @@ fn make_request(id: &str, tenant_id: &str, now: chrono::DateTime<chrono::Utc>) -
     flow_type: FlowType::Popup,
     redirect_uri: None,
     status: AppAccessRequestStatus::Draft,
-    requested: r#"{"toolset_types":[]}"#.to_string(),
+    requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
     user_id: None,
     requested_role: "scope_user_user".to_string(),

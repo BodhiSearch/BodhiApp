@@ -48,7 +48,14 @@ use services::{ResourceRole, TokenScope};
 pub async fn tokens_create(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<CreateTokenRequest>,
-) -> Result<(StatusCode, [(axum::http::HeaderName, &'static str); 2], Json<TokenCreated>), ApiError> {
+) -> Result<
+  (
+    StatusCode,
+    [(axum::http::HeaderName, &'static str); 2],
+    Json<TokenCreated>,
+  ),
+  ApiError,
+> {
   let user_role = auth_scope
     .auth_context()
     .resource_role()

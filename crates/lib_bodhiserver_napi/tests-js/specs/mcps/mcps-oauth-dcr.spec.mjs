@@ -279,7 +279,10 @@ test.describe(
           clientId: appClient.clientId,
           redirectUri,
           scope: 'openid profile email',
-          requested: JSON.stringify({ mcp_servers: [{ url: McpFixtures.OAUTH_DCR_MCP_URL }] }),
+          requested: JSON.stringify({
+            version: '1',
+            mcp_servers: [{ url: McpFixtures.OAUTH_DCR_MCP_URL }],
+          }),
         });
       });
 

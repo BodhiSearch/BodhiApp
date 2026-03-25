@@ -1770,7 +1770,8 @@ export interface components {
          *             "status": "approved",
          *             "toolset_type": "builtin-exa-search"
          *           }
-         *         ]
+         *         ],
+         *         "version": "1"
          *       },
          *       "approved_role": "scope_user_user"
          *     }
@@ -1791,7 +1792,13 @@ export interface components {
             /** @description Role to assign to the user */
             role: components["schemas"]["ResourceRole"];
         };
-        ApprovedResources: {
+        /** @description Versioned envelope for approved resources.
+         *     The `version` tag is mandatory and must match the corresponding `RequestedResources` version. */
+        ApprovedResources: components["schemas"]["ApprovedResourcesV1"] & {
+            /** @enum {string} */
+            version: "1";
+        };
+        ApprovedResourcesV1: {
             toolsets?: components["schemas"]["ToolsetApproval"][];
             mcps?: components["schemas"]["McpApproval"][];
         };
@@ -2248,7 +2255,8 @@ export interface components {
          *           {
          *             "toolset_type": "builtin-exa-search"
          *           }
-         *         ]
+         *         ],
+         *         "version": "1"
          *       },
          *       "requested_role": "scope_user_user"
          *     }
@@ -2262,7 +2270,8 @@ export interface components {
             redirect_url?: string | null;
             /** @description Role requested for the external app (scope_user_user or scope_user_power_user) */
             requested_role: components["schemas"]["UserScope"];
-            requested?: null | components["schemas"]["RequestedResources"];
+            /** @description Resources requested (tools, etc.) */
+            requested: components["schemas"]["RequestedResources"];
         };
         /** @example {
          *       "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -3509,7 +3518,13 @@ export interface components {
         RequestedMcpServer: {
             url: string;
         };
-        RequestedResources: {
+        /** @description Versioned envelope for requested resources.
+         *     The `version` tag is mandatory — clients must specify which version they are using. */
+        RequestedResources: components["schemas"]["RequestedResourcesV1"] & {
+            /** @enum {string} */
+            version: "1";
+        };
+        RequestedResourcesV1: {
             toolset_types?: components["schemas"]["ToolsetTypeRequest"][];
             mcp_servers?: components["schemas"]["RequestedMcpServer"][];
         };

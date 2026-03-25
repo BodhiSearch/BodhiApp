@@ -24,6 +24,10 @@ pub enum AppsRouteError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidRedirectUrl(String),
 
+  #[error("Failed to parse requested resources JSON.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  InvalidRequestedJson,
+
   #[error("App client not found: {0}.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   AppClientNotFound(String),

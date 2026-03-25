@@ -157,14 +157,14 @@ async fn test_missing_auth(toolset_validator: Arc<dyn AccessRequestValidator>) {
 #[rstest]
 #[case::oauth_approved_instance_in_list(
   AppAccessRequestStatus::Approved,
-  Some(r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#.to_string()),
+  Some(r#"{"version":"1","toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#.to_string()),
   StatusCode::OK,
 )]
 #[case::oauth_denied(AppAccessRequestStatus::Denied, None, StatusCode::FORBIDDEN)]
 #[case::oauth_draft(AppAccessRequestStatus::Draft, None, StatusCode::FORBIDDEN)]
 #[case::oauth_not_in_approved_list(
   AppAccessRequestStatus::Approved,
-  Some(r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"different-toolset-id"}}]}"#.to_string()),
+  Some(r#"{"version":"1","toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"different-toolset-id"}}]}"#.to_string()),
   StatusCode::FORBIDDEN,
 )]
 #[tokio::test]
@@ -190,7 +190,8 @@ async fn test_oauth_access_request_validation(
     flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status,
-    requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
+    requested: r#"{"version":"1","toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#
+      .to_string(),
     approved,
     user_id: Some("user123".to_string()),
     requested_role: "scope_user_user".to_string(),
@@ -240,9 +241,9 @@ async fn test_oauth_app_client_mismatch(toolset_validator: Arc<dyn AccessRequest
     flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
-    requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
+    requested: r#"{"version":"1","toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#
+      r#"{"version":"1","toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#
         .to_string(),
     ),
     user_id: Some("user123".to_string()),
@@ -293,9 +294,9 @@ async fn test_oauth_user_mismatch(toolset_validator: Arc<dyn AccessRequestValida
     flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
-    requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
+    requested: r#"{"version":"1","toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#
+      r#"{"version":"1","toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#
         .to_string(),
     ),
     user_id: Some("user1".to_string()),
@@ -346,7 +347,7 @@ async fn test_oauth_auto_approved_no_toolsets(toolset_validator: Arc<dyn AccessR
     flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status: AppAccessRequestStatus::Approved,
-    requested: r#"{"toolset_types":[]}"#.to_string(),
+    requested: r#"{"version":"1"}"#.to_string(),
     approved: None,
     user_id: Some("user123".to_string()),
     requested_role: "scope_user_user".to_string(),
@@ -568,13 +569,13 @@ async fn test_mcp_multi_tenant_session_passes_through(
 #[rstest]
 #[case::mcp_approved_instance_in_list(
   AppAccessRequestStatus::Approved,
-  Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#.to_string()),
+  Some(r#"{"version":"1","mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#.to_string()),
   StatusCode::OK,
 )]
 #[case::mcp_denied(AppAccessRequestStatus::Denied, None, StatusCode::FORBIDDEN)]
 #[case::mcp_not_in_approved_list(
   AppAccessRequestStatus::Approved,
-  Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"different-mcp-id"}}]}"#.to_string()),
+  Some(r#"{"version":"1","mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"different-mcp-id"}}]}"#.to_string()),
   StatusCode::FORBIDDEN,
 )]
 #[tokio::test]
@@ -600,7 +601,8 @@ async fn test_mcp_oauth_access_request_validation(
     flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
     status,
-    requested: r#"{"mcp_servers":[{"url":"https://mcp.deepwiki.com/mcp"}]}"#.to_string(),
+    requested: r#"{"version":"1","mcp_servers":[{"url":"https://mcp.deepwiki.com/mcp"}]}"#
+      .to_string(),
     approved,
     user_id: Some("user123".to_string()),
     requested_role: "scope_user_user".to_string(),

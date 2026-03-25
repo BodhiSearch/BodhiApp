@@ -88,7 +88,8 @@ async fn seed_draft_request(
     flow_type,
     redirect_uri: redirect_uri.map(|u| u.to_string()),
     status: AppAccessRequestStatus::Draft,
-    requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
+    requested: r#"{"version":"1","toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#
+      .to_string(),
     approved: None,
     user_id: None,
     requested_role: requested_role.to_string(),
@@ -199,6 +200,7 @@ async fn test_approve_access_request_success(
   let body = json!({
     "approved_role": "scope_user_user",
     "approved": {
+      "version": "1",
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
@@ -273,6 +275,7 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
   let body = json!({
     "approved_role": "scope_user_user",
     "approved": {
+      "version": "1",
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
@@ -346,6 +349,7 @@ async fn test_approve_access_request_instance_not_enabled() -> anyhow::Result<()
   let body = json!({
     "approved_role": "scope_user_user",
     "approved": {
+      "version": "1",
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
@@ -419,6 +423,7 @@ async fn test_approve_access_request_instance_no_api_key() -> anyhow::Result<()>
   let body = json!({
     "approved_role": "scope_user_user",
     "approved": {
+      "version": "1",
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
@@ -551,6 +556,7 @@ async fn test_approve_privilege_escalation_user_grants_power_user() -> anyhow::R
   let body = json!({
     "approved_role": "scope_user_power_user",
     "approved": {
+      "version": "1",
       "toolsets": [],
       "mcps": []
     }
@@ -633,6 +639,7 @@ async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result
   let body = json!({
     "approved_role": "scope_user_user",
     "approved": {
+      "version": "1",
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
@@ -697,6 +704,7 @@ async fn test_approve_privilege_escalation_approved_exceeds_requested() -> anyho
   let body = json!({
     "approved_role": "scope_user_power_user",
     "approved": {
+      "version": "1",
       "toolsets": [],
       "mcps": []
     }
@@ -721,6 +729,187 @@ async fn test_approve_privilege_escalation_approved_exceeds_requested() -> anyho
   let body = response.json::<Value>().await?;
   assert_eq!(
     "apps_route_error-privilege_escalation",
+    body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+// ============================================================================
+// Version validation tests
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_access_request_unknown_version() -> anyhow::Result<()> {
+  let mock_auth = MockAuthService::default();
+  let harness = build_test_harness(mock_auth).await?;
+
+  let router = Router::new()
+    .route(
+      crate::ENDPOINT_APPS_REQUEST_ACCESS,
+      post(crate::apps_create_access_request),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "app_client_id": "test-app-client",
+    "flow_type": "popup",
+    "requested_role": "scope_user_user",
+    "requested": {
+      "version": "99",
+      "toolset_types": []
+    }
+  });
+
+  let request = axum::http::Request::builder()
+    .method("POST")
+    .uri("/bodhi/v1/apps/request-access")
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session(
+      "user-1",
+      "user@test.com",
+      ResourceRole::User,
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "json_rejection_error",
+    body["error"]["code"].as_str().unwrap()
+  );
+  let message = body["error"]["message"].as_str().unwrap();
+  assert!(
+    message.contains("Unsupported resources version"),
+    "Expected message about unsupported version, got: {}",
+    message
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_access_request_unknown_version() -> anyhow::Result<()> {
+  let mock_auth = MockAuthService::default();
+  let harness = build_test_harness(mock_auth).await?;
+  let request_id = "ar-unknown-ver";
+  let user_id = "user-1";
+
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    FlowType::Popup,
+    None,
+    "scope_user_user",
+  )
+  .await?;
+
+  let router = Router::new()
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(apps_approve_access_request),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "approved_role": "scope_user_user",
+    "approved": {
+      "version": "99",
+      "toolsets": [],
+      "mcps": []
+    }
+  });
+
+  let request = axum::http::Request::builder()
+    .method("PUT")
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "json_rejection_error",
+    body["error"]["code"].as_str().unwrap()
+  );
+  let message = body["error"]["message"].as_str().unwrap();
+  assert!(
+    message.contains("Unsupported resources version"),
+    "Expected message about unsupported version, got: {}",
+    message
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_review_access_request_invalid_requested_json() -> anyhow::Result<()> {
+  let mock_auth = MockAuthService::default();
+  let harness = build_test_harness(mock_auth).await?;
+
+  // Seed a row with invalid JSON in the requested field
+  let now = chrono::Utc::now();
+  let row = AppAccessRequest {
+    id: "ar-bad-json".to_string(),
+    tenant_id: Some(TEST_TENANT_ID.to_string()),
+    app_client_id: "test-app-client".to_string(),
+    app_name: None,
+    app_description: None,
+    flow_type: FlowType::Popup,
+    redirect_uri: None,
+    status: AppAccessRequestStatus::Draft,
+    requested: "not-valid-json".to_string(),
+    approved: None,
+    user_id: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
+    access_request_scope: None,
+    error_message: None,
+    expires_at: now + chrono::Duration::seconds(600),
+    created_at: now,
+    updated_at: now,
+  };
+  harness.db_service.create(&row).await?;
+
+  let router = Router::new()
+    .route(
+      crate::ENDPOINT_ACCESS_REQUESTS_REVIEW,
+      axum::routing::get(crate::apps_get_access_request_review),
+    )
+    .with_state(harness.state);
+
+  let request = axum::http::Request::builder()
+    .method("GET")
+    .uri("/bodhi/v1/access-requests/ar-bad-json/review")
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session(
+      "user-1",
+      "user@test.com",
+      ResourceRole::User,
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "apps_route_error-invalid_requested_json",
     body["error"]["code"].as_str().unwrap()
   );
 

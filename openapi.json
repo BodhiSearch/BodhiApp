@@ -9625,7 +9625,8 @@
                 "status": "approved",
                 "toolset_type": "builtin-exa-search"
               }
-            ]
+            ],
+            "version": "1"
           },
           "approved_role": "scope_user_user"
         }
@@ -9647,6 +9648,32 @@
         }
       },
       "ApprovedResources": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApprovedResourcesV1"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "string",
+                    "enum": [
+                      "1"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "description": "Versioned envelope for approved resources.\nThe `version` tag is mandatory and must match the corresponding `RequestedResources` version."
+      },
+      "ApprovedResourcesV1": {
         "type": "object",
         "properties": {
           "toolsets": {
@@ -11391,7 +11418,8 @@
         "required": [
           "app_client_id",
           "flow_type",
-          "requested_role"
+          "requested_role",
+          "requested"
         ],
         "properties": {
           "app_client_id": {
@@ -11414,15 +11442,8 @@
             "description": "Role requested for the external app (scope_user_user or scope_user_power_user)"
           },
           "requested": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/RequestedResources",
-                "description": "Resources requested (tools, etc.)"
-              }
-            ]
+            "$ref": "#/components/schemas/RequestedResources",
+            "description": "Resources requested (tools, etc.)"
           }
         },
         "example": {
@@ -11434,7 +11455,8 @@
               {
                 "toolset_type": "builtin-exa-search"
               }
-            ]
+            ],
+            "version": "1"
           },
           "requested_role": "scope_user_user"
         }
@@ -15062,6 +15084,32 @@
         }
       },
       "RequestedResources": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestedResourcesV1"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "string",
+                    "enum": [
+                      "1"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "description": "Versioned envelope for requested resources.\nThe `version` tag is mandatory — clients must specify which version they are using."
+      },
+      "RequestedResourcesV1": {
         "type": "object",
         "properties": {
           "toolset_types": {

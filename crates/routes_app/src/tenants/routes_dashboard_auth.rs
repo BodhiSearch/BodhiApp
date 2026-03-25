@@ -216,7 +216,10 @@ pub async fn dashboard_auth_callback(
 
   // Rotate session ID to prevent session fixation attacks (AUTH-VULN-07)
   if let Err(e) = session.cycle_id().await {
-    warn!("Failed to rotate session ID after dashboard OAuth callback: {}", e);
+    warn!(
+      "Failed to rotate session ID after dashboard OAuth callback: {}",
+      e
+    );
   }
 
   // Store tokens in session with dashboard prefix

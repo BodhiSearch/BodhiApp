@@ -13,6 +13,7 @@ export const mockDraftReviewResponse: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }],
     mcp_servers: [],
   },
@@ -56,6 +57,7 @@ export const mockDraftNoInstancesResponse: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }],
     mcp_servers: [],
   },
@@ -80,6 +82,7 @@ export const mockApprovedReviewResponse: AccessRequestReviewResponse = {
   status: 'approved',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }],
     mcp_servers: [],
   },
@@ -114,6 +117,7 @@ export const mockFailedReviewResponse: AccessRequestReviewResponse = {
   status: 'failed',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }],
     mcp_servers: [],
   },
@@ -131,6 +135,7 @@ export const mockExpiredReviewResponse: AccessRequestReviewResponse = {
   status: 'expired',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }],
     mcp_servers: [],
   },
@@ -148,6 +153,7 @@ export const mockDeniedReviewResponse: AccessRequestReviewResponse = {
   status: 'denied',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }],
     mcp_servers: [],
   },
@@ -165,6 +171,7 @@ export const mockDraftRedirectResponse: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }],
     mcp_servers: [],
   },
@@ -199,6 +206,7 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_power_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }, { toolset_type: 'builtin-weather' }],
     mcp_servers: [],
   },
@@ -258,6 +266,7 @@ export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }, { toolset_type: 'builtin-calculator' }],
     mcp_servers: [],
   },
@@ -298,6 +307,7 @@ export const mockDraftMcpResponse: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [],
     mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
   },
@@ -336,6 +346,7 @@ export const mockDraftMixedResourcesResponse: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [{ toolset_type: 'builtin-exa-search' }],
     mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
   },
@@ -391,6 +402,7 @@ export const mockDraftMcpNoInstancesResponse: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_user',
   requested: {
+    version: '1' as const,
     toolset_types: [],
     mcp_servers: [{ url: 'https://mcp.example.com/mcp' }],
   },
@@ -413,6 +425,7 @@ export const mockDraftReviewResponsePowerUser: AccessRequestReviewResponse = {
   status: 'draft',
   requested_role: 'scope_user_power_user',
   requested: {
+    version: '1' as const,
     toolset_types: [],
     mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
   },
