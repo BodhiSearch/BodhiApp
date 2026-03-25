@@ -116,8 +116,8 @@ test.describe('API Models Setup Integration', () => {
     // Phase 4: Skip functionality
     await apiModelsPage.skipApiSetup();
 
-    // Verify navigation to tools page
-    await apiModelsPage.expectNavigationToTools();
+    // Verify navigation to browser extension page
+    await apiModelsPage.expectNavigationToBrowserExtension();
 
     // Phase 5: Direct navigation test
     await apiModelsPage.navigateAndWaitForPage('/ui/setup/api-models/');
@@ -127,7 +127,7 @@ test.describe('API Models Setup Integration', () => {
 
     // Skip setup again to complete test
     await apiModelsPage.skipApiSetup();
-    await apiModelsPage.expectNavigationToTools();
+    await apiModelsPage.expectNavigationToBrowserExtension();
   });
 
   test('API Models Setup - Happy Path Model Creation', async ({ page }) => {
@@ -150,6 +150,6 @@ test.describe('API Models Setup Integration', () => {
     await apiModelsPage.testConnectionWithRetry();
 
     // Submit the form and verify navigation to tools page
-    await apiModelsPage.createModelAndNavigateToTools();
+    await apiModelsPage.createModelAndNavigateToBrowserExtension();
   });
 });

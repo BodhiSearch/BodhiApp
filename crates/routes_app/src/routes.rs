@@ -1,7 +1,6 @@
 use crate::middleware::{
   access_request_auth_middleware, api_auth_middleware, auth_middleware, canonical_url_middleware,
   optional_auth_middleware, AccessRequestValidator, McpAccessRequestValidator,
-  ToolsetAccessRequestValidator,
 };
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_formats,
@@ -26,24 +25,20 @@ use crate::{
   ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODELS_ALIAS, ENDPOINT_MODELS_API,
   ENDPOINT_MODELS_API_FETCH_MODELS, ENDPOINT_MODELS_API_FORMATS, ENDPOINT_MODELS_API_TEST,
   ENDPOINT_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL, ENDPOINT_MODELS_REFRESH, ENDPOINT_PING,
-  ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TENANTS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS,
-  ENDPOINT_TOOLSET_TYPES, ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS,
-  ENDPOINT_USER_REQUEST_STATUS,
+  ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TENANTS, ENDPOINT_TOKENS, ENDPOINT_USERS,
+  ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use crate::{
   apps_mcps_execute_tool, apps_mcps_index, apps_mcps_refresh_tools, apps_mcps_show,
-  apps_toolsets_execute, apps_toolsets_index, mcp_auth_configs_create, mcp_auth_configs_destroy,
-  mcp_auth_configs_index, mcp_auth_configs_show, mcp_oauth_discover_as, mcp_oauth_discover_mcp,
-  mcp_oauth_dynamic_register, mcp_oauth_login, mcp_oauth_token_exchange, mcp_oauth_tokens_destroy,
-  mcp_oauth_tokens_show, mcp_servers_create, mcp_servers_index, mcp_servers_show,
-  mcp_servers_update, mcps_create, mcps_destroy, mcps_execute_tool, mcps_fetch_tools, mcps_index,
-  mcps_refresh_tools, mcps_show, mcps_update, settings_destroy, settings_index, settings_update,
-  setup_create, setup_show, toolset_types_disable, toolset_types_enable, toolset_types_index,
-  toolsets_create, toolsets_destroy, toolsets_execute, toolsets_index, toolsets_show,
-  toolsets_update, ENDPOINT_APPS_MCPS, ENDPOINT_APPS_TOOLSETS, ENDPOINT_MCPS,
-  ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCPS_OAUTH_DISCOVER_AS,
-  ENDPOINT_MCPS_OAUTH_DISCOVER_MCP, ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE,
-  ENDPOINT_MCP_SERVERS,
+  mcp_auth_configs_create, mcp_auth_configs_destroy, mcp_auth_configs_index, mcp_auth_configs_show,
+  mcp_oauth_discover_as, mcp_oauth_discover_mcp, mcp_oauth_dynamic_register, mcp_oauth_login,
+  mcp_oauth_token_exchange, mcp_oauth_tokens_destroy, mcp_oauth_tokens_show, mcp_servers_create,
+  mcp_servers_index, mcp_servers_show, mcp_servers_update, mcps_create, mcps_destroy,
+  mcps_execute_tool, mcps_fetch_tools, mcps_index, mcps_refresh_tools, mcps_show, mcps_update,
+  settings_destroy, settings_index, settings_update, setup_create, setup_show, ENDPOINT_APPS_MCPS,
+  ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_FETCH_TOOLS,
+  ENDPOINT_MCPS_OAUTH_DISCOVER_AS, ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
+  ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE, ENDPOINT_MCP_SERVERS,
 };
 use crate::{build_ui_proxy_router, build_ui_spa_router};
 use crate::{
@@ -200,16 +195,6 @@ pub async fn build_routes(
 
   // Session-only APIs (no OAuth or API tokens)
   let user_session_apis = Router::new()
-    // Toolset CRUD (session-only)
-    .route(ENDPOINT_TOOLSETS, get(toolsets_index))
-    .route(ENDPOINT_TOOLSETS, post(toolsets_create))
-    .route(ENDPOINT_TOOLSET_TYPES, get(toolset_types_index))
-    .route(&format!("{ENDPOINT_TOOLSETS}/{{id}}"), get(toolsets_show))
-    .route(&format!("{ENDPOINT_TOOLSETS}/{{id}}"), put(toolsets_update))
-    .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
-      delete(toolsets_destroy),
-    )
     // MCP CRUD (session-only)
     .route(ENDPOINT_MCPS, get(mcps_index))
     .route(ENDPOINT_MCPS, post(mcps_create))
@@ -307,35 +292,6 @@ pub async fn build_routes(
       move |state, req, next| api_auth_middleware(ResourceRole::User, None, None, state, req, next),
     ));
 
-  // Toolset execute API with access request middleware - session and OAuth tokens, NOT API tokens
-  let toolset_validator_orig: Arc<dyn AccessRequestValidator> =
-    Arc::new(ToolsetAccessRequestValidator);
-  let toolset_exec_apis = Router::new()
-    .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{id}}/tools/{{tool_name}}/execute"),
-      post(toolsets_execute),
-    )
-    .route_layer(from_fn_with_state(
-      state.clone(),
-      move |state, req, next| {
-        let v = toolset_validator_orig.clone();
-        access_request_auth_middleware(v, state, req, next)
-      },
-    ))
-    .route_layer(from_fn_with_state(
-      state.clone(),
-      move |state, req, next| {
-        api_auth_middleware(
-          ResourceRole::User,
-          None,
-          Some(UserScope::User),
-          state,
-          req,
-          next,
-        )
-      },
-    ));
-
   // MCP exec APIs with access request middleware - session and OAuth tokens, NOT API tokens
   let mcp_validator_orig: Arc<dyn AccessRequestValidator> = Arc::new(McpAccessRequestValidator);
   let mcp_exec_apis = Router::new()
@@ -370,24 +326,7 @@ pub async fn build_routes(
 
   // External app API endpoints (under /apps/ prefix, OAuth tokens only)
   // Apps list endpoints
-  let apps_list_apis = Router::new()
-    .route(ENDPOINT_APPS_TOOLSETS, get(apps_toolsets_index))
-    .route(ENDPOINT_APPS_MCPS, get(apps_mcps_index));
-
-  // Apps toolset exec (with ToolsetAccessRequestValidator)
-  let toolset_validator: Arc<dyn AccessRequestValidator> = Arc::new(ToolsetAccessRequestValidator);
-  let apps_toolset_exec = Router::new()
-    .route(
-      &format!("{ENDPOINT_APPS_TOOLSETS}/{{id}}/tools/{{tool_name}}/execute"),
-      post(apps_toolsets_execute),
-    )
-    .route_layer(from_fn_with_state(
-      state.clone(),
-      move |state, req, next| {
-        let v = toolset_validator.clone();
-        access_request_auth_middleware(v, state, req, next)
-      },
-    ));
+  let apps_list_apis = Router::new().route(ENDPOINT_APPS_MCPS, get(apps_mcps_index));
 
   // Apps MCP show + exec (with McpAccessRequestValidator)
   let mcp_validator: Arc<dyn AccessRequestValidator> = Arc::new(McpAccessRequestValidator);
@@ -412,7 +351,6 @@ pub async fn build_routes(
   // Combine all apps APIs with OAuth-accepting auth
   let apps_apis = Router::new()
     .merge(apps_list_apis)
-    .merge(apps_toolset_exec)
     .merge(apps_mcp_exec)
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -486,15 +424,6 @@ pub async fn build_routes(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       delete(settings_destroy),
     )
-    // Toolset type enable/disable (admin only)
-    .route(
-      "/bodhi/v1/toolset_types/{toolset_type}/app-config",
-      put(toolset_types_enable),
-    )
-    .route(
-      "/bodhi/v1/toolset_types/{toolset_type}/app-config",
-      delete(toolset_types_disable),
-    )
     // MCP server create/update (admin only)
     .route(ENDPOINT_MCP_SERVERS, post(mcp_servers_create))
     .route(
@@ -555,7 +484,6 @@ pub async fn build_routes(
   // API-protected routes (PERMISSIVE CORS — external tools/apps need access)
   let api_protected = Router::new()
     .merge(user_apis)
-    .merge(toolset_exec_apis)
     .merge(mcp_exec_apis)
     .merge(apps_apis)
     .merge(power_user_apis)

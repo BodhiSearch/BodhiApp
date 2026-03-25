@@ -196,7 +196,6 @@ export class AuthServerTestClient {
     const data = await response.json();
     return {
       clientId: data.client_id,
-      toolsets: data.toolsets || [],
       configVersion: data.config_version,
     };
   }

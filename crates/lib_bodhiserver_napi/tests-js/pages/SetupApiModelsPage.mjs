@@ -170,10 +170,10 @@ export class SetupApiModelsPage extends SetupBasePage {
     await this.expectNavigationToBrowserExtension();
   }
 
-  async createModelAndNavigateToTools() {
+  async createModelAndNavigateToBrowserExtension() {
     await this.page.click(this.form.selectors.createButton);
 
-    // Wait for successful navigation to tools page (setup flow)
-    await this.expectNavigationToTools();
+    // Wait for successful navigation to browser extension page (setup flow)
+    await this.expectNavigationToBrowserExtension();
   }
 }

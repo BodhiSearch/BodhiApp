@@ -1,9 +1,8 @@
 use crate::UserScope;
 use crate::{
   app_access_requests::{
-    AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, ApprovalStatus,
-    ApprovedResources, ApprovedResourcesV1, FlowType, RequestedResources, RequestedResourcesV1,
-    ToolsetApproval, ToolsetTypeRequest,
+    AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, ApprovedResources,
+    ApprovedResourcesV1, FlowType, RequestedResources, RequestedResourcesV1,
   },
   test_utils::{test_db_service, TestDbService, TEST_TENANT_ID},
   AccessRequestService, DefaultAccessRequestService, MockAuthService,
@@ -40,9 +39,6 @@ async fn test_create_draft_popup_valid(
       FlowType::Popup,
       None,
       RequestedResources::V1(RequestedResourcesV1 {
-        toolset_types: vec![ToolsetTypeRequest {
-          toolset_type: "builtin-exa-search".to_string(),
-        }],
         mcp_servers: vec![],
       }),
       UserScope::User,
@@ -269,14 +265,7 @@ async fn test_approve_request_threads_approved_role(
       "user-1",
       TEST_TENANT_ID,
       "fake-token",
-      ApprovedResources::V1(ApprovedResourcesV1 {
-        toolsets: vec![ToolsetApproval {
-          toolset_type: "builtin-exa-search".to_string(),
-          status: ApprovalStatus::Approved,
-          instance: None,
-        }],
-        mcps: vec![],
-      }),
+      ApprovedResources::V1(ApprovedResourcesV1 { mcps: vec![] }),
       UserScope::PowerUser,
     )
     .await?;

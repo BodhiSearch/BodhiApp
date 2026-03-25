@@ -40,10 +40,10 @@ export type CheckboxState = 'checked' | 'unchecked' | 'indeterminate';
 export interface UseMcpSelectionReturn {
   enabledTools: EnabledMcpTools;
   toggleTool: (mcpId: string, toolName: string) => void;
-  toggleToolset: (mcpId: string, allToolNames: string[]) => void;
-  isToolsetEnabled: (mcpId: string) => boolean;
+  toggleMcp: (mcpId: string, allToolNames: string[]) => void;
+  isMcpEnabled: (mcpId: string) => boolean;
   isToolEnabled: (mcpId: string, toolName: string) => boolean;
-  getToolsetCheckboxState: (mcpId: string, totalTools: number) => CheckboxState;
+  getMcpCheckboxState: (mcpId: string, totalTools: number) => CheckboxState;
   setEnabledTools: (tools: EnabledMcpTools) => void;
   hasChanges: boolean;
 }
@@ -91,7 +91,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     });
   }, []);
 
-  const toggleToolset = useCallback((mcpId: string, allToolNames: string[]) => {
+  const toggleMcp = useCallback((mcpId: string, allToolNames: string[]) => {
     setEnabledToolsState((prev) => {
       const currentTools = prev[mcpId] || [];
       if (currentTools.length > 0) {
@@ -103,7 +103,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     });
   }, []);
 
-  const isToolsetEnabled = useCallback(
+  const isMcpEnabled = useCallback(
     (mcpId: string) => {
       return mcpId in enabledTools && enabledTools[mcpId].length > 0;
     },
@@ -118,7 +118,7 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     [enabledTools]
   );
 
-  const getToolsetCheckboxState = useCallback(
+  const getMcpCheckboxState = useCallback(
     (mcpId: string, totalTools: number): CheckboxState => {
       const enabledCount = enabledTools[mcpId]?.length || 0;
       if (enabledCount === 0) return 'unchecked';
@@ -151,10 +151,10 @@ export function useMcpSelection(): UseMcpSelectionReturn {
   return {
     enabledTools,
     toggleTool,
-    toggleToolset,
-    isToolsetEnabled,
+    toggleMcp,
+    isMcpEnabled,
     isToolEnabled,
-    getToolsetCheckboxState,
+    getMcpCheckboxState,
     setEnabledTools,
     hasChanges,
   };

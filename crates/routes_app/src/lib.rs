@@ -19,7 +19,6 @@ mod settings;
 mod setup;
 mod tenants;
 mod tokens;
-mod toolsets;
 mod users;
 
 // -- Standalone route files
@@ -48,5 +47,4 @@ pub use shared::*;
 pub use spa_router::*;
 pub use tenants::*;
 pub use tokens::*;
-pub use toolsets::*;
 pub use users::*;

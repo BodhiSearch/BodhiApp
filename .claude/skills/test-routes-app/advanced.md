@@ -88,7 +88,6 @@ async fn test_endpoints_allow_eligible_roles(
 
 **Safe Endpoints**: Only test GET endpoints that use real services (DbService, DataService, SessionService). Skip:
 - Endpoints requiring MockAuthService expectations
-- Endpoints requiring MockToolService expectations
 - Streaming endpoints using MockSharedContext
 - POST/PUT/DELETE requiring complex request bodies or mock setup
 
@@ -105,7 +104,6 @@ When writing "allowed" tests with `build_test_router()`, you must identify **saf
 
 **Unsafe endpoints** call mock services that panic without expectations:
 - `MockAuthService`
-- `MockToolService`
 - `MockSharedContext`
 
 **Rule of thumb:**

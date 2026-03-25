@@ -629,7 +629,7 @@ fn validate_mcp_server_url_validator(url: &str) -> Result<(), validator::Validat
 }
 
 // ============================================================================
-// Validation functions (reuse toolset regex/limits pattern)
+// Validation functions
 // ============================================================================
 
 static MCP_SLUG_REGEX: Lazy<Regex> =

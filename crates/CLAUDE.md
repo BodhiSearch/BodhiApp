@@ -43,7 +43,7 @@ Sub-module docs (load when working inside these modules):
 ### Error Layer Separation
 Three layers — never mix:
 1. **errmeta**: `AppError` trait, `ErrorType`, `IoError`, `EntityError` — zero framework deps
-2. **services**: Domain errors (`TokenServiceError`, `McpError`, `ToolsetError`, `AuthContextError`) — `#[derive(ErrorMeta)]`
+2. **services**: Domain errors (`TokenServiceError`, `McpError`, `AuthContextError`) — `#[derive(ErrorMeta)]`
 3. **routes_app**: `ApiError` / `OpenAIApiError` / `ErrorBody` in `routes_app::shared` — HTTP responses
 
 Flow: service error -> `AppError` -> `ApiError` (blanket `From<T: AppError>` auto-converts). Middleware uses `MiddlewareError` (also blanket `From<T: AppError>`).
@@ -71,7 +71,7 @@ Uniform architecture across all domains. Full reference (Entity Alias Index, Req
 All mutating `DbService` operations use `begin_tenant_txn(tenant_id)` from `DbCore` trait. PostgreSQL sets RLS via `SET LOCAL app.current_tenant_id`. SQLite returns plain transaction.
 
 ### Multi-Tenant Isolation Test Pattern
-When adding new tenant-scoped tables, add isolation tests. Reference pattern: `crates/services/src/toolsets/test_toolset_repository_isolation.rs:40`. Tests create resources in two tenants, verify list/get isolation per tenant, and cross-tenant get-by-ID returns None. Run with `#[values("sqlite", "postgres")]`. Constants: `TEST_TENANT_ID`, `TEST_TENANT_B_ID`, `TEST_USER_ID` in `test_utils/db.rs`.
+When adding new tenant-scoped tables, add isolation tests. Reference pattern: `crates/services/src/mcps/test_mcp_repository_isolation.rs`. Tests create resources in two tenants, verify list/get isolation per tenant, and cross-tenant get-by-ID returns None. Run with `#[values("sqlite", "postgres")]`. Constants: `TEST_TENANT_ID`, `TEST_TENANT_B_ID`, `TEST_USER_ID` in `test_utils/db.rs`.
 
 ### Time Handling
 Never use `Utc::now()` directly. All timestamps through `TimeService`. Tests use `FrozenTimeService`.

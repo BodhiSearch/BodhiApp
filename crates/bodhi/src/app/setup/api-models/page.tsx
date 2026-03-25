@@ -7,13 +7,13 @@ import { SetupContainer, SetupFooter } from '@/app/setup/components';
 import { itemVariants } from '@/app/setup/types';
 import ApiModelForm from '@/components/api-models/ApiModelForm';
 import AppInitializer from '@/components/AppInitializer';
-import { ROUTE_SETUP_TOOLSETS } from '@/lib/constants';
+import { ROUTE_SETUP_BROWSER_EXTENSION } from '@/lib/constants';
 
 function ApiModelsSetupContent() {
   const navigate = useNavigate();
 
   const handleSkip = () => {
-    navigate({ to: ROUTE_SETUP_TOOLSETS });
+    navigate({ to: ROUTE_SETUP_BROWSER_EXTENSION });
   };
 
   return (
@@ -21,7 +21,11 @@ function ApiModelsSetupContent() {
       <div data-testid="api-models-setup-page">
         {/* Main API Model Form */}
         <motion.div variants={itemVariants}>
-          <ApiModelForm mode="setup" onSuccessRoute={ROUTE_SETUP_TOOLSETS} onCancelRoute={ROUTE_SETUP_TOOLSETS} />
+          <ApiModelForm
+            mode="setup"
+            onSuccessRoute={ROUTE_SETUP_BROWSER_EXTENSION}
+            onCancelRoute={ROUTE_SETUP_BROWSER_EXTENSION}
+          />
         </motion.div>
 
         {/* Footer with clarification and Continue button */}

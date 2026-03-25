@@ -308,23 +308,6 @@ mod tests {
       .create_user_alias(TEST_TENANT_ID, "", &user_alias)
       .await?;
 
-    // 5. Create toolset
-    let toolset = services::ToolsetEntity {
-      id: "test-toolset-id".to_string(),
-      tenant_id: TEST_TENANT_ID.to_string(),
-      user_id: "test-user".to_string(),
-      toolset_type: "builtin-exa-search".to_string(),
-      slug: "my-search".to_string(),
-      description: Some("Test toolset".to_string()),
-      enabled: true,
-      encrypted_api_key: None,
-      salt: None,
-      nonce: None,
-      created_at: app_service.time_service().utc_now(),
-      updated_at: app_service.time_service().utc_now(),
-    };
-    db_service.create_toolset(TEST_TENANT_ID, &toolset).await?;
-
     // Create API model alias
     let api_alias = services::ApiAlias {
       id: "test-api-alias".to_string(),
@@ -411,12 +394,6 @@ mod tests {
       None,
       db_service
         .get_user_alias_by_id(TEST_TENANT_ID, "", "test-alias-id")
-        .await?
-    );
-    assert_eq!(
-      None,
-      db_service
-        .get_toolset(TEST_TENANT_ID, "test-toolset-id")
         .await?
     );
     assert_eq!(

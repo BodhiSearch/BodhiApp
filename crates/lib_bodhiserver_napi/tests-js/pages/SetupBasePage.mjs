@@ -95,15 +95,11 @@ export class SetupBasePage extends BasePage {
     await this.expectNavigationToSetupStep('/ui/setup/api-models/', 4);
   }
 
-  async expectNavigationToTools() {
-    await this.expectNavigationToSetupStep('/ui/setup/toolsets/', 5);
-  }
-
   async expectNavigationToBrowserExtension() {
-    await this.expectNavigationToSetupStep('/ui/setup/browser-extension/', 6);
+    await this.expectNavigationToSetupStep('/ui/setup/browser-extension/', 5);
   }
 
   async expectNavigationToComplete() {
-    await this.expectNavigationToSetupStep('/ui/setup/complete/', 7);
+    await this.expectNavigationToSetupStep('/ui/setup/complete/', 6);
   }
 }

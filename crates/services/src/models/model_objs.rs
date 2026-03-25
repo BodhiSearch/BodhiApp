@@ -1039,7 +1039,7 @@ impl<'de> Deserialize<'de> for ApiKey {
 // ApiKeyUpdate (with serde support for both services and routes)
 // =============================================================================
 
-/// Represents an API key update operation for API model aliases and toolsets.
+/// Represents an API key update operation for API model aliases.
 // Uses tagged enum for JSON: `{"action": "keep"}` or `{"action": "set", "value": "sk-..."}`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]

@@ -14,7 +14,6 @@ export const ROUTE_SETUP_COMPLETE = '/setup/complete';
 export const ROUTE_SETUP_DOWNLOAD_MODELS = '/setup/download-models';
 export const ROUTE_SETUP_RESOURCE_ADMIN = '/setup/resource-admin';
 export const ROUTE_SETUP_API_MODELS = '/setup/api-models';
-export const ROUTE_SETUP_TOOLSETS = '/setup/toolsets';
 export const ROUTE_SETUP_BROWSER_EXTENSION = '/setup/browser-extension';
 
 // Access request routes

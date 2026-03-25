@@ -114,7 +114,7 @@ let db_service = test_db_service_with_temp_dir(shared_temp_dir.clone()).await;
 
 ## Testing Repository Traits
 
-`TestDbService` implements all repository traits (`ModelRepository`, `AccessRepository`, `TokenRepository`, `ToolsetRepository`) by delegating to a real `SqliteDbService`. This means tests exercise real SQL queries:
+`TestDbService` implements all repository traits (`ModelRepository`, `AccessRepository`, `TokenRepository`) by delegating to a real `SqliteDbService`. This means tests exercise real SQL queries:
 
 ```rust
 // ModelRepository methods
@@ -133,9 +133,6 @@ service.create_api_token(&mut token).await?;
 service.list_api_tokens(user_id, page, per_page).await?;
 service.get_api_token_by_prefix(prefix).await?;
 
-// ToolsetRepository methods
-service.create_toolset(&row).await?;
-service.list_toolsets(user_id).await?;
 ```
 
 ## Pagination Testing

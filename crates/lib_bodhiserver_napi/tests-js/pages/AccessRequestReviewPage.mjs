@@ -8,19 +8,6 @@ export class AccessRequestReviewPage extends BasePage {
     approvedRoleSelect: '[data-testid="review-approved-role-select"]',
   };
 
-  // Toolset selectors
-  toolCheckbox(toolsetType) {
-    return `[data-testid="review-tool-checkbox-${toolsetType}"]`;
-  }
-
-  instanceSelectTrigger(toolsetType) {
-    return `[data-testid="review-instance-select-${toolsetType}"]`;
-  }
-
-  instanceOption(instanceId) {
-    return `[data-testid="review-instance-option-${instanceId}"]`;
-  }
-
   // MCP selectors
   mcpToggle(url) {
     return `[data-testid="review-mcp-toggle-${url}"]`;
@@ -36,11 +23,6 @@ export class AccessRequestReviewPage extends BasePage {
 
   async waitForReviewPage() {
     await this.expectVisible(this.selectors.reviewPage);
-  }
-
-  async selectInstance(toolsetType, instanceId) {
-    await this.page.click(this.instanceSelectTrigger(toolsetType));
-    await this.page.locator(this.instanceOption(instanceId)).click();
   }
 
   async selectMcpInstance(url, instanceId) {
@@ -62,20 +44,6 @@ export class AccessRequestReviewPage extends BasePage {
   }
 
   /**
-   * Approve with specific toolset selections.
-   * @param {Array<{toolsetType: string, instanceId: string}>} selections
-   */
-  async approveWithToolsets(selections) {
-    await this.waitForReviewPage();
-
-    for (const { toolsetType, instanceId } of selections) {
-      await this.selectInstance(toolsetType, instanceId);
-    }
-
-    await this.clickApprove();
-  }
-
-  /**
    * Approve with specific MCP server selections.
    * @param {Array<{url: string, instanceId: string}>} selections
    */
@@ -90,17 +58,12 @@ export class AccessRequestReviewPage extends BasePage {
   }
 
   /**
-   * Approve with both toolset and MCP selections.
+   * Approve with MCP selections.
    * @param {Object} params
-   * @param {Array<{toolsetType: string, instanceId: string}>} [params.toolsets]
    * @param {Array<{url: string, instanceId: string}>} [params.mcps]
    */
-  async approveWithResources({ toolsets = [], mcps = [] }) {
+  async approveWithResources({ mcps = [] }) {
     await this.waitForReviewPage();
-
-    for (const { toolsetType, instanceId } of toolsets) {
-      await this.selectInstance(toolsetType, instanceId);
-    }
 
     for (const { url, instanceId } of mcps) {
       await this.selectMcpInstance(url, instanceId);
@@ -122,16 +85,11 @@ export class AccessRequestReviewPage extends BasePage {
    * Approve with a specific role and optional resource selections.
    * @param {string} role - The approved_role value to select
    * @param {Object} [resources] - Optional resource selections
-   * @param {Array<{toolsetType: string, instanceId: string}>} [resources.toolsets]
    * @param {Array<{url: string, instanceId: string}>} [resources.mcps]
    */
-  async approveWithRole(role, { toolsets = [], mcps = [] } = {}) {
+  async approveWithRole(role, { mcps = [] } = {}) {
     await this.waitForReviewPage();
     await this.selectApprovedRole(role);
-
-    for (const { toolsetType, instanceId } of toolsets) {
-      await this.selectInstance(toolsetType, instanceId);
-    }
 
     for (const { url, instanceId } of mcps) {
       await this.selectMcpInstance(url, instanceId);

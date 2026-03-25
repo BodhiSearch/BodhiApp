@@ -6,11 +6,10 @@ use crate::{
   test_utils::{test_db_service, test_db_service_with_temp_dir, SettingServiceStub, TestDbService},
   AccessRequestService, AiApiService, ApiModelService, AppService, AuthService, CacheService,
   ConcurrencyService, DataService, DefaultApiModelService, DefaultDownloadService,
-  DefaultMcpService, DefaultSessionService, DefaultTenantService, DefaultToolService,
-  DownloadService, HfHubService, HubService, LocalConcurrencyService, LocalDataService, McpService,
-  MockAuthService, MockExaService, MockHubService, MockQueueProducer, MokaCacheService,
-  NetworkService, QueueProducer, SessionService, SettingService, Tenant, TenantService,
-  TokenService, ToolService, BODHI_EXEC_LOOKUP_PATH,
+  DefaultMcpService, DefaultSessionService, DefaultTenantService, DownloadService, HfHubService,
+  HubService, LocalConcurrencyService, LocalDataService, McpService, MockAuthService,
+  MockHubService, MockQueueProducer, MokaCacheService, NetworkService, QueueProducer,
+  SessionService, SettingService, Tenant, TenantService, TokenService, BODHI_EXEC_LOOKUP_PATH,
 };
 use derive_builder::Builder;
 use rstest::fixture;
@@ -73,8 +72,6 @@ pub struct AppServiceStub {
 
   // Business logic - depends on core infrastructure
   pub data_service: Option<Arc<dyn DataService>>,
-  #[builder(default = "self.default_tool_service()")]
-  pub tool_service: Option<Arc<dyn ToolService>>,
   #[builder(default = "self.default_ai_api_service()")]
   pub ai_api_service: Option<Arc<dyn AiApiService>>,
   #[builder(default = "self.default_inference_service()")]
@@ -142,27 +139,6 @@ impl AppServiceStubBuilder {
 
   fn default_queue_producer(&self) -> Option<Arc<dyn QueueProducer>> {
     Some(Arc::new(MockQueueProducer::default()))
-  }
-
-  fn default_tool_service(&self) -> Option<Arc<dyn ToolService>> {
-    let db_service = self
-      .db_service
-      .as_ref()
-      .and_then(|o| o.as_ref())
-      .cloned()
-      .expect("db_service must be set before building tool_service");
-    let time_service: Arc<dyn TimeService> = self
-      .time_service
-      .as_ref()
-      .and_then(|o| o.as_ref())
-      .cloned()
-      .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
-    let exa_service: Arc<dyn crate::ExaService> = Arc::new(MockExaService::new());
-    Some(Arc::new(DefaultToolService::new(
-      db_service,
-      exa_service,
-      time_service,
-    )))
   }
 
   fn default_network_service(&self) -> Option<Arc<dyn NetworkService>> {
@@ -421,11 +397,6 @@ impl AppServiceStubBuilder {
     self
   }
 
-  pub fn with_tool_service(&mut self, tool_service: Arc<dyn ToolService>) -> &mut Self {
-    self.tool_service = Some(Some(tool_service));
-    self
-  }
-
   pub async fn with_live_services(&mut self) -> &mut Self {
     let _temp_home = self.setup_temp_home();
 
@@ -504,10 +475,6 @@ impl AppService for AppServiceStub {
 
   fn data_service(&self) -> Arc<dyn DataService> {
     self.data_service.clone().unwrap()
-  }
-
-  fn tool_service(&self) -> Arc<dyn ToolService> {
-    self.tool_service.clone().unwrap()
   }
 
   fn ai_api_service(&self) -> Arc<dyn AiApiService> {

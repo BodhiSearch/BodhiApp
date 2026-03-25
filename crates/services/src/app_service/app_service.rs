@@ -3,7 +3,7 @@ use crate::{
   inference::InferenceService,
   AccessRequestService, AiApiService, ApiModelService, AuthService, CacheService,
   ConcurrencyService, DataService, DownloadService, HubService, McpService, NetworkService,
-  QueueProducer, SessionService, SettingService, TenantService, TokenService, ToolService,
+  QueueProducer, SessionService, SettingService, TenantService, TokenService,
 };
 use std::sync::Arc;
 
@@ -32,8 +32,6 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService>;
 
   fn queue_producer(&self) -> Arc<dyn QueueProducer>;
-
-  fn tool_service(&self) -> Arc<dyn ToolService>;
 
   fn network_service(&self) -> Arc<dyn NetworkService>;
 
@@ -69,7 +67,6 @@ pub struct DefaultAppService {
   ai_api_service: Arc<dyn AiApiService>,
   concurrency_service: Arc<dyn ConcurrencyService>,
   queue_producer: Arc<dyn QueueProducer>,
-  tool_service: Arc<dyn ToolService>,
   network_service: Arc<dyn NetworkService>,
   access_request_service: Arc<dyn AccessRequestService>,
   mcp_service: Arc<dyn McpService>,
@@ -126,10 +123,6 @@ impl AppService for DefaultAppService {
 
   fn queue_producer(&self) -> Arc<dyn QueueProducer> {
     self.queue_producer.clone()
-  }
-
-  fn tool_service(&self) -> Arc<dyn ToolService> {
-    self.tool_service.clone()
   }
 
   fn network_service(&self) -> Arc<dyn NetworkService> {

@@ -6,7 +6,6 @@ import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { useSearch } from '@tanstack/react-router';
 
 import McpServerCard from '@/app/apps/access-requests/review/McpServerCard';
-import ToolTypeCard from '@/app/apps/access-requests/review/ToolTypeCard';
 import AppInitializer from '@/components/AppInitializer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -115,18 +114,16 @@ function computeRoleOptions(
 
 const ReviewContent = () => {
   const search = useSearch({ strict: false });
-  const id = search.id;
+  const id = search.id as string | undefined;
 
   const { showError } = useToastMessages();
-  const [selectedInstances, setSelectedInstances] = useState<Record<string, string>>({});
-  const [approvedTools, setApprovedTools] = useState<Record<string, boolean>>({});
   const [selectedMcpInstances, setSelectedMcpInstances] = useState<Record<string, string>>({});
   const [approvedMcps, setApprovedMcps] = useState<Record<string, boolean>>({});
   const [approvedRole, setApprovedRole] = useState<UserScope | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
 
-  const { data: reviewData, isLoading, error } = useGetAppAccessRequestReview(id);
+  const { data: reviewData, isLoading, error } = useGetAppAccessRequestReview(id ?? null);
   const { data: userData } = useGetUser();
 
   const handleActionSuccess = (data: AccessRequestActionResponse) => {
@@ -173,13 +170,6 @@ const ReviewContent = () => {
   }, [roleOptions]);
 
   useEffect(() => {
-    if (reviewData?.tools_info) {
-      const initial: Record<string, boolean> = {};
-      reviewData.tools_info.forEach((tool) => {
-        initial[tool.toolset_type] = true;
-      });
-      setApprovedTools(initial);
-    }
     if (reviewData?.mcps_info) {
       const initial: Record<string, boolean> = {};
       reviewData.mcps_info.forEach((mcp) => {
@@ -192,30 +182,22 @@ const ReviewContent = () => {
   const canApprove = useMemo(() => {
     if (!reviewData) return false;
     if (!approvedRole) return false;
-    const toolsValid = (reviewData.tools_info ?? []).every((tool) => {
-      if (!approvedTools[tool.toolset_type]) return true;
-      if (tool.instances.length === 0) return false;
-      const validInstances = tool.instances.filter((i) => i.enabled && i.has_api_key);
-      if (validInstances.length === 0) return false;
-      return !!selectedInstances[tool.toolset_type];
-    });
     const mcpsValid = (reviewData.mcps_info ?? []).every((mcp) => {
       if (!approvedMcps[mcp.url]) return true;
       const validInstances = mcp.instances.filter((i) => i.enabled);
       if (validInstances.length === 0) return false;
       return !!selectedMcpInstances[mcp.url];
     });
-    return toolsValid && mcpsValid;
-  }, [reviewData, selectedInstances, approvedTools, selectedMcpInstances, approvedMcps]);
+    return mcpsValid;
+  }, [reviewData, selectedMcpInstances, approvedMcps, approvedRole]);
 
   // Compute approve button label
   const approvedCount = useMemo(() => {
-    const toolsApproved = (reviewData?.tools_info ?? []).filter((t) => approvedTools[t.toolset_type]).length;
     const mcpsApproved = (reviewData?.mcps_info ?? []).filter((m) => approvedMcps[m.url]).length;
-    return toolsApproved + mcpsApproved;
-  }, [reviewData, approvedTools, approvedMcps]);
+    return mcpsApproved;
+  }, [reviewData, approvedMcps]);
 
-  const totalCount = (reviewData?.tools_info?.length ?? 0) + (reviewData?.mcps_info?.length ?? 0);
+  const totalCount = reviewData?.mcps_info?.length ?? 0;
 
   // No id query param
   if (!id) {
@@ -260,28 +242,12 @@ const ReviewContent = () => {
   }
 
   // Draft: show review form
-  const handleSelectInstance = (toolType: string, instanceId: string) => {
-    setSelectedInstances((prev) => ({ ...prev, [toolType]: instanceId }));
-  };
-
-  const handleToggleApproval = (toolType: string, approved: boolean) => {
-    setApprovedTools((prev) => ({ ...prev, [toolType]: approved }));
-  };
-
   const handleApprove = () => {
     setIsSubmitting(true);
     const body: ApproveAccessRequest = {
       approved_role: approvedRole!,
       approved: {
         version: reviewData.requested.version,
-        toolsets: (reviewData.tools_info ?? []).map((tool) => ({
-          toolset_type: tool.toolset_type,
-          status: approvedTools[tool.toolset_type] ? 'approved' : 'denied',
-          instance:
-            approvedTools[tool.toolset_type] && selectedInstances[tool.toolset_type]
-              ? { id: selectedInstances[tool.toolset_type] }
-              : undefined,
-        })),
         mcps: (reviewData.mcps_info ?? []).map((mcp) => ({
           url: mcp.url,
           status: approvedMcps[mcp.url] ? 'approved' : 'denied',
@@ -323,22 +289,6 @@ const ReviewContent = () => {
           )}
         </CardHeader>
         <CardContent>
-          {reviewData.tools_info && reviewData.tools_info.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium mb-2">Requested Tools:</h3>
-              {reviewData.tools_info.map((toolInfo) => (
-                <ToolTypeCard
-                  key={toolInfo.toolset_type}
-                  toolInfo={toolInfo}
-                  selectedInstance={selectedInstances[toolInfo.toolset_type]}
-                  isApproved={approvedTools[toolInfo.toolset_type] ?? true}
-                  onSelectInstance={handleSelectInstance}
-                  onToggleApproval={handleToggleApproval}
-                />
-              ))}
-            </div>
-          )}
-
           {reviewData.mcps_info && reviewData.mcps_info.length > 0 && (
             <div className="mb-4">
               <h3 className="text-sm font-medium mb-2">Requested MCP Servers:</h3>

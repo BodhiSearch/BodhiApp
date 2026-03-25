@@ -18,7 +18,7 @@ Returns:
 **When to use**:
 - ✅ Auth tier tests (401, 403, allow)
 - ✅ Integration tests needing full route composition
-- ❌ Tests requiring MockAuthService/MockToolService expectations (use AppServiceStubBuilder)
+- ❌ Tests requiring MockAuthService expectations (use AppServiceStubBuilder)
 - ❌ Streaming tests (use MockSharedContext with router_state_stub)
 
 ### Services Wired
@@ -31,7 +31,6 @@ Returns:
 | HubService | OfflineHubService | Downloads fail |
 | DataService | LocalDataService | Real, file-based |
 | AuthService | MockAuthService | **Panics** if called |
-| ToolService | MockToolService | **Panics** if called |
 | SharedContext | MockSharedContext | **Panics** if called |
 
 ### Creating Authenticated Sessions
@@ -88,14 +87,6 @@ let app_service = AppServiceStubBuilder::default()
   .build()?;
 ```
 
-### With injected mock service
-
-```rust
-let app_service = AppServiceStubBuilder::default()
-  .with_tool_service(Arc::new(mock_tool_service))
-  .build()?;
-```
-
 ### Composite (multiple real services)
 
 ```rust
@@ -145,16 +136,6 @@ async fn test_handler(
 Requires `#[awt]` on the test because of `#[future]`.
 
 ## Mock Service Injection
-
-### MockToolService
-
-```rust
-let mut mock = MockToolService::new();
-mock.expect_list()
-  .withf(|user_id| user_id == "user123")
-  .times(1)
-  .returning(move |_| Ok(vec![instance.clone()]));
-```
 
 ### MockSharedContext (LLM forwarding)
 

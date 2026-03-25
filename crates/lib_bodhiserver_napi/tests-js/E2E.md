@@ -19,7 +19,7 @@ Tests are **user journeys**, not unit tests. Each test tells a story: login, per
 | Scenario | Spec File |
 |----------|-----------|
 | Shared-server lifecycle | `specs/tokens/api-tokens.spec.mjs` |
-| Multi-phase with `test.step` | `specs/toolsets/toolsets-auth-restrictions.spec.mjs` |
+| Multi-phase with `test.step` | `specs/mcps/mcps-crud.spec.mjs` |
 | Dedicated server + custom config | `specs/models/model-metadata.spec.mjs` |
 | Multi-user browser contexts | `specs/request-access/multi-user-request-approval-flow.spec.mjs` |
 | Multi-step OAuth MCP | `specs/mcps/mcps-oauth-auth.spec.mjs` |

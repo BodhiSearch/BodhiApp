@@ -2,7 +2,7 @@
 
 ## Overview
 
-Services that make HTTP calls (AuthService, AiApiService, ExaService) use `mockito::Server` to mock external endpoints. The pattern creates a temporary HTTP server and passes its URL to the service under test.
+Services that make HTTP calls (AuthService, AiApiService) use `mockito::Server` to mock external endpoints. The pattern creates a temporary HTTP server and passes its URL to the service under test.
 
 ## Basic Pattern
 

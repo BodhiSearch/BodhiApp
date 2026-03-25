@@ -1,12 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import {
-  ToolsetResponse,
-  ToolsetExecutionResponse,
-  ToolDefinition,
-  Mcp,
-  McpExecuteResponse,
-} from '@bodhiapp/ts-client';
+import { Mcp, McpExecuteResponse } from '@bodhiapp/ts-client';
 
 import { CompletionResult, useChatCompletion } from './useChatCompletions';
 import { useChatDB } from './useChatDb';
@@ -14,83 +8,12 @@ import { useChatSettings } from './useChatSettings';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import apiClient from '@/lib/apiClient';
 import { encodeMcpToolName, decodeMcpToolName } from '@/lib/mcps';
-import { encodeToolName, decodeToolName } from '@/lib/toolsets';
 import { nanoid } from '@/lib/utils';
 import { Message, ToolCall } from '@/types/chat';
 
 // System message injected when max tool iterations is reached
 const MAX_ITERATIONS_MESSAGE =
   'You have reached the maximum number of tool call iterations. Please provide a final response to the user without making additional tool calls.';
-
-/**
- * Execute a single tool call via the backend API.
- * Uses name→UUID mapping to resolve toolset instance UUID from encoded tool name.
- */
-async function executeToolCall(
-  toolCall: ToolCall,
-  signal: AbortSignal,
-  headers: Record<string, string>,
-  toolsetSlugToId: Map<string, string>
-): Promise<Message> {
-  const decoded = decodeToolName(toolCall.function.name);
-  if (!decoded) {
-    return {
-      role: 'tool' as const,
-      content: JSON.stringify({ error: `Invalid tool name format: ${toolCall.function.name}` }),
-      tool_call_id: toolCall.id,
-    };
-  }
-
-  const { toolsetSlug, method } = decoded;
-  const toolsetId = toolsetSlugToId.get(toolsetSlug);
-  if (!toolsetId) {
-    return {
-      role: 'tool' as const,
-      content: JSON.stringify({ error: `Unknown toolset: ${toolsetSlug}` }),
-      tool_call_id: toolCall.id,
-    };
-  }
-
-  const baseUrl =
-    apiClient.defaults.baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
-  const url = `${baseUrl}/bodhi/v1/toolsets/${toolsetId}/tools/${method}/execute`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
-      body: JSON.stringify({
-        params: JSON.parse(toolCall.function.arguments),
-      }),
-      signal,
-    });
-
-    const result: ToolsetExecutionResponse = await response.json();
-
-    return {
-      role: 'tool' as const,
-      content: result.error ? JSON.stringify({ error: result.error }) : JSON.stringify(result.result),
-      tool_call_id: toolCall.id,
-    };
-  } catch (error) {
-    // Handle abort
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw error;
-    }
-
-    // Return error as tool result for LLM to handle
-    return {
-      role: 'tool' as const,
-      content: JSON.stringify({
-        error: error instanceof Error ? error.message : 'Tool execution failed',
-      }),
-      tool_call_id: toolCall.id,
-    };
-  }
-}
 
 /**
  * Execute a single MCP tool call via the backend API.
@@ -160,23 +83,15 @@ async function executeMcpToolCall(
 }
 
 /**
- * Execute multiple tool calls in parallel, continuing even if some fail.
+ * Execute multiple MCP tool calls in parallel, continuing even if some fail.
  */
 async function executeToolCalls(
   toolCalls: ToolCall[],
   signal: AbortSignal,
   headers: Record<string, string>,
-  toolsetSlugToId: Map<string, string>,
   mcpSlugToId: Map<string, string>
 ): Promise<Message[]> {
-  const results = await Promise.allSettled(
-    toolCalls.map((tc) => {
-      if (tc.function.name.startsWith('mcp__')) {
-        return executeMcpToolCall(tc, signal, headers, mcpSlugToId);
-      }
-      return executeToolCall(tc, signal, headers, toolsetSlugToId);
-    })
-  );
+  const results = await Promise.allSettled(toolCalls.map((tc) => executeMcpToolCall(tc, signal, headers, mcpSlugToId)));
 
   return results.map((result, index) => {
     if (result.status === 'fulfilled') {
@@ -193,39 +108,13 @@ async function executeToolCalls(
   });
 }
 
-/**
- * Build tools array for API request from enabled tools.
- * Only includes tools from available toolsets (admin enabled, user enabled, has_api_key).
- * Encodes tool names as toolset__{instanceName}__{methodName}.
- */
-function buildToolsArray(
-  enabledTools: Record<string, string[]>,
-  toolsets: ToolsetResponse[],
-  scopeEnabledMap: Map<string, boolean>
-): ToolDefinition[] {
-  const result: ToolDefinition[] = [];
-  for (const toolset of toolsets) {
-    const isAdminEnabled = scopeEnabledMap.get(toolset.toolset_type) ?? true;
-
-    // Skip unavailable toolsets
-    if (!isAdminEnabled || !toolset.enabled || !toolset.has_api_key) {
-      continue;
-    }
-
-    const enabledToolNames = enabledTools[toolset.id] || [];
-    for (const tool of toolset.tools) {
-      if (enabledToolNames.includes(tool.function.name)) {
-        result.push({
-          type: 'function',
-          function: {
-            ...tool.function,
-            name: encodeToolName(toolset.slug, tool.function.name),
-          },
-        });
-      }
-    }
-  }
-  return result;
+interface McpToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
 }
 
 /**
@@ -233,8 +122,8 @@ function buildToolsArray(
  * Only includes tools from available MCPs (server enabled, instance enabled, tools cached, filter not empty).
  * Applies tools_filter ceiling, encodes names as mcp__{slug}__{toolName}.
  */
-function buildMcpToolsArray(enabledMcpTools: Record<string, string[]>, mcps: Mcp[]): ToolDefinition[] {
-  const result: ToolDefinition[] = [];
+function buildMcpToolsArray(enabledMcpTools: Record<string, string[]>, mcps: Mcp[]): McpToolDefinition[] {
+  const result: McpToolDefinition[] = [];
   for (const mcp of mcps) {
     if (
       !mcp.mcp_server.enabled ||
@@ -258,7 +147,7 @@ function buildMcpToolsArray(enabledMcpTools: Record<string, string[]>, mcps: Mcp
           function: {
             name: encodeMcpToolName(mcp.slug, tool.name),
             description: tool.description ?? '',
-            parameters: tool.input_schema ?? {},
+            parameters: (tool.input_schema ?? {}) as Record<string, unknown>,
           },
         });
       }
@@ -268,22 +157,12 @@ function buildMcpToolsArray(enabledMcpTools: Record<string, string[]>, mcps: Mcp
 }
 
 export interface UseChatOptions {
-  enabledTools?: Record<string, string[]>;
-  toolsets?: ToolsetResponse[];
-  toolsetTypes?: { toolset_type: string; enabled: boolean }[];
   enabledMcpTools?: Record<string, string[]>;
   mcps?: Mcp[];
 }
 
 export function useChat(options?: UseChatOptions) {
-  const { enabledTools = {}, toolsets = [], toolsetTypes = [], enabledMcpTools = {}, mcps = [] } = options || {};
-
-  // Build name→UUID mapping for tool execution
-  const toolsetSlugToId = useMemo(() => {
-    const map = new Map<string, string>();
-    toolsets.forEach((t) => map.set(t.slug, t.id));
-    return map;
-  }, [toolsets]);
+  const { enabledMcpTools = {}, mcps = [] } = options || {};
 
   // Build MCP slug→UUID mapping for tool execution
   const mcpSlugToId = useMemo(() => {
@@ -291,13 +170,6 @@ export function useChat(options?: UseChatOptions) {
     mcps.forEach((m) => map.set(m.slug, m.id));
     return map;
   }, [mcps]);
-
-  // Build scope→enabled mapping from toolset types
-  const scopeEnabledMap = useMemo(() => {
-    const map = new Map<string, boolean>();
-    toolsetTypes.forEach((config) => map.set(config.toolset_type, config.enabled));
-    return map;
-  }, [toolsetTypes]);
 
   const [input, setInput] = useState('');
   const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -354,11 +226,8 @@ export function useChat(options?: UseChatOptions) {
       let iteration = 0;
       const maxIterations = chatSettings.maxToolIterations_enabled ? (chatSettings.maxToolIterations ?? 5) : 5;
 
-      // Build tools array from enabled tools (toolsets + MCPs)
-      const toolsetTools =
-        Object.keys(enabledTools).length > 0 ? buildToolsArray(enabledTools, toolsets, scopeEnabledMap) : [];
-      const mcpTools = Object.keys(enabledMcpTools).length > 0 ? buildMcpToolsArray(enabledMcpTools, mcps) : [];
-      const tools = [...toolsetTools, ...mcpTools];
+      // Build tools array from enabled MCP tools
+      const tools = Object.keys(enabledMcpTools).length > 0 ? buildMcpToolsArray(enabledMcpTools, mcps) : [];
 
       const headers: Record<string, string> = {};
       if (chatSettings.api_token_enabled) {
@@ -446,13 +315,7 @@ export function useChat(options?: UseChatOptions) {
             iteration++;
 
             // Execute tool calls in parallel
-            const toolResults = await executeToolCalls(
-              toolCalls,
-              controller.signal,
-              headers,
-              toolsetSlugToId,
-              mcpSlugToId
-            );
+            const toolResults = await executeToolCalls(toolCalls, controller.signal, headers, mcpSlugToId);
 
             if (abortedRef.current) break;
 
@@ -480,7 +343,6 @@ export function useChat(options?: UseChatOptions) {
             messages: conversationMessages,
             createdAt: chatIdRef.createdAt,
             updatedAt: Date.now(),
-            enabledTools: Object.keys(enabledTools).length > 0 ? enabledTools : undefined,
             enabledMcpTools: Object.keys(enabledMcpTools).length > 0 ? enabledMcpTools : undefined,
           });
 
@@ -517,10 +379,6 @@ export function useChat(options?: UseChatOptions) {
       showError,
       setCurrentChatId,
       resetToPreSubmissionState,
-      enabledTools,
-      toolsets,
-      toolsetSlugToId,
-      scopeEnabledMap,
       enabledMcpTools,
       mcps,
       mcpSlugToId,

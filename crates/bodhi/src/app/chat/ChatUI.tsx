@@ -4,7 +4,6 @@ import { Plus } from 'lucide-react';
 
 import { ChatMessage } from '@/app/chat/ChatMessage';
 import { McpsPopover } from '@/app/chat/McpsPopover';
-import { ToolsetsPopover } from '@/app/chat/ToolsetsPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -12,7 +11,6 @@ import { useChat, useChatDB, useChatSettings } from '@/hooks/chat';
 import { useMcpSelection, useListMcps } from '@/hooks/mcps';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useToolsetSelection, useListToolsets } from '@/hooks/toolsets';
 import { cn } from '@/lib/utils';
 import { Message } from '@/types/chat';
 
@@ -32,9 +30,6 @@ interface ChatInputProps {
   streamLoading: boolean;
   inputRef: RefObject<HTMLTextAreaElement>;
   isModelSelected: boolean;
-  enabledTools: Record<string, string[]>;
-  onToggleTool: (toolsetId: string, toolName: string) => void;
-  onToggleToolset: (toolsetId: string, allToolNames: string[]) => void;
   enabledMcpTools: Record<string, string[]>;
   onToggleMcpTool: (mcpId: string, toolName: string) => void;
   onToggleMcp: (mcpId: string, allToolNames: string[]) => void;
@@ -47,9 +42,6 @@ const ChatInput = memo(function ChatInput({
   streamLoading,
   inputRef,
   isModelSelected,
-  enabledTools,
-  onToggleTool,
-  onToggleToolset,
   enabledMcpTools,
   onToggleMcpTool,
   onToggleMcp,
@@ -80,13 +72,6 @@ const ChatInput = memo(function ChatInput({
               <Plus className="h-5 w-5" />
               <span className="sr-only">New chat</span>
             </Button>
-
-            <ToolsetsPopover
-              enabledTools={enabledTools}
-              onToggleTool={onToggleTool}
-              onToggleToolset={onToggleToolset}
-              disabled={streamLoading}
-            />
 
             <McpsPopover
               enabledMcpTools={enabledMcpTools}
@@ -232,53 +217,15 @@ export function ChatUI() {
   const { model } = useChatSettings();
   const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
 
-  // Toolset selection
-  const { enabledTools, toggleTool, toggleToolset, setEnabledTools } = useToolsetSelection();
-  const { data: toolsetsResponse } = useListToolsets();
-  const toolsets = useMemo(() => toolsetsResponse?.toolsets || [], [toolsetsResponse?.toolsets]);
-  const toolsetTypes = useMemo(() => toolsetsResponse?.toolset_types || [], [toolsetsResponse?.toolset_types]);
-
   // MCP selection
   const {
     enabledTools: enabledMcpTools,
     toggleTool: toggleMcpTool,
-    toggleToolset: toggleMcp,
+    toggleMcp,
     setEnabledTools: setEnabledMcpTools,
   } = useMcpSelection();
   const { data: mcpsResponse } = useListMcps();
   const mcps = useMemo(() => mcpsResponse?.mcps || [], [mcpsResponse?.mcps]);
-
-  // Create scope enabled map from toolset_types
-  const scopeEnabledMap = useMemo(() => {
-    const map = new Map<string, boolean>();
-    toolsetTypes.forEach((config) => map.set(config.toolset_type, config.enabled));
-    return map;
-  }, [toolsetTypes]);
-
-  // Auto-filter unavailable toolsets from selection
-  useEffect(() => {
-    if (toolsets.length === 0) return;
-
-    const availableIds = new Set(
-      toolsets
-        .filter((t) => (scopeEnabledMap.get(t.toolset_type) ?? true) && t.enabled && t.has_api_key)
-        .map((t) => t.id)
-    );
-
-    const filtered: Record<string, string[]> = {};
-    let hasUnavailable = false;
-    for (const [id, tools] of Object.entries(enabledTools)) {
-      if (availableIds.has(id)) {
-        filtered[id] = tools;
-      } else {
-        hasUnavailable = true;
-      }
-    }
-
-    if (hasUnavailable) {
-      setEnabledTools(filtered);
-    }
-  }, [toolsets, scopeEnabledMap, enabledTools, setEnabledTools]);
 
   // Auto-filter unavailable MCPs from selection
   useEffect(() => {
@@ -312,7 +259,7 @@ export function ChatUI() {
     }
   }, [mcps, enabledMcpTools, setEnabledMcpTools]);
 
-  // Chat with toolsets + MCPs support
+  // Chat with MCPs support
   const {
     input,
     setInput,
@@ -322,9 +269,6 @@ export function ChatUI() {
     assistantMessage,
     pendingToolCalls,
   } = useChat({
-    enabledTools,
-    toolsets,
-    toolsetTypes,
     enabledMcpTools,
     mcps,
   });
@@ -389,9 +333,6 @@ export function ChatUI() {
         streamLoading={streamLoading}
         inputRef={inputRef}
         isModelSelected={!!model}
-        enabledTools={enabledTools}
-        onToggleTool={toggleTool}
-        onToggleToolset={toggleToolset}
         enabledMcpTools={enabledMcpTools}
         onToggleMcpTool={toggleMcpTool}
         onToggleMcp={toggleMcp}

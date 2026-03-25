@@ -247,19 +247,6 @@ pub struct RegisterClientRequest {
   pub redirect_uris: Vec<String>,
 }
 
-/// Toolset configuration from app-client registration
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct AppClientToolset {
-  pub id: String,
-  pub scope: String,
-  /// client scope UUID for cache validation
-  #[serde(default)]
-  pub scope_id: String,
-  /// True if scope has been added to resource-client as optional scope
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub added_to_resource_client: Option<bool>,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct UserInfoResponse {
   pub user_id: String,

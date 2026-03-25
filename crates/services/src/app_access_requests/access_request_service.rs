@@ -85,11 +85,6 @@ impl DefaultAccessRequestService {
     let mut lines = Vec::new();
     match approved {
       ApprovedResources::V1(v1) => {
-        for approval in &v1.toolsets {
-          if approval.status == ApprovalStatus::Approved {
-            lines.push(format!("- {}", approval.toolset_type));
-          }
-        }
         for approval in &v1.mcps {
           if approval.status == ApprovalStatus::Approved {
             lines.push(format!("- MCP: {}", approval.url));

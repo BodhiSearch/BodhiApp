@@ -9,10 +9,7 @@ use tower::ServiceExt;
 #[case::session_tokens_get("/bodhi/v1/tokens", "GET")]
 #[case::session_settings_get("/bodhi/v1/settings", "GET")]
 #[case::session_users_get("/bodhi/v1/users", "GET")]
-#[case::session_toolset_types_get("/bodhi/v1/toolset_types", "GET")]
 #[case::session_queue_get("/bodhi/v1/queue", "GET")]
-#[case::session_toolsets_get("/bodhi/v1/toolsets", "GET")]
-#[case::session_toolsets_post("/bodhi/v1/toolsets", "POST")]
 #[case::session_mcps_get("/bodhi/v1/mcps", "GET")]
 #[case::session_mcps_post("/bodhi/v1/mcps", "POST")]
 #[tokio::test]
@@ -44,7 +41,6 @@ async fn test_cors_preflight_session_endpoints_blocked(
 #[case::health_get("/health", "GET")]
 #[case::info_get("/bodhi/v1/info", "GET")]
 #[case::models_get("/bodhi/v1/models", "GET")]
-#[case::apps_toolsets_get("/bodhi/v1/apps/toolsets", "GET")]
 #[case::apps_mcps_get("/bodhi/v1/apps/mcps", "GET")]
 #[tokio::test]
 async fn test_cors_preflight_nonsession_endpoints_allowed(

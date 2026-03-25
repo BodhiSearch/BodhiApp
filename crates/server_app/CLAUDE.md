@@ -80,7 +80,6 @@ Full-stack tests: real HTTP server on TCP, real services, real OAuth2 via Keyclo
 | `tests/test_live_tool_calling_non_streamed.rs` | Tool calling (single + multi-turn) |
 | `tests/test_live_tool_calling_streamed.rs` | Streaming tool calls |
 | `tests/test_live_mcp.rs` | MCP integration |
-| `tests/test_live_agentic_chat_with_exa.rs` | Exa toolset agentic workflow |
 | `tests/test_live_multi_tenant.rs` | Multi-tenant server lifecycle |
 | `tests/test_oauth_external_token.rs` | OAuth via ExternalTokenSimulator |
 
@@ -88,7 +87,6 @@ Full-stack tests: real HTTP server on TCP, real services, real OAuth2 via Keyclo
 - Model: `ggml-org/Qwen3-1.7B-GGUF` in `~/.cache/huggingface/hub/`
 - llama.cpp binary at `crates/llama_server_proc/bin/`
 - `tests/resources/.env.test` with Keycloak credentials
-- `INTEG_TEST_EXA_API_KEY` for agentic chat test
 
 ### server_app vs routes_app Testing Boundary
 - **server_app**: Multi-turn workflows, server lifecycle, real HTTP/TCP, OAuth code flow

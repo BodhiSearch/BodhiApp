@@ -16,7 +16,4 @@ export type {
   McpApproval,
   McpServerReviewInfo,
   RequestedResources,
-  ToolsetApproval,
-  ToolTypeReviewInfo,
-  Toolset,
 } from './useAppAccessRequests';

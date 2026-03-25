@@ -18,7 +18,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
   const [redirectUri, setRedirectUri] = useState(`${window.location.origin}/callback`);
   const [scope, setScope] = useState('openid profile email roles');
   const [requestedRole, setRequestedRole] = useState('scope_user_user');
-  const [requested, setRequested] = useState('{"version":"1","toolset_types":[{"toolset_type":"builtin-exa-search"}]}');
+  const [requested, setRequested] = useState('{"version":"1","mcp_servers":[{"url":"https://mcp.example.com/mcp"}]}');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError || null);
@@ -214,7 +214,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
             data-testid="input-requested"
             value={requested}
             onChange={(e) => setRequested(e.target.value)}
-            placeholder='{"version":"1","toolset_types":[{"toolset_type":"builtin-exa-search"}]}'
+            placeholder='{"version":"1","mcp_servers":[{"url":"https://mcp.example.com/mcp"}]}'
             rows={3}
           />
         </div>

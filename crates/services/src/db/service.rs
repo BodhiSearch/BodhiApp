@@ -7,7 +7,6 @@ use crate::models::{
 use crate::settings::SettingsRepository;
 use crate::tenants::TenantRepository;
 use crate::tokens::TokenRepository;
-use crate::toolsets::ToolsetRepository;
 use crate::users::AccessRepository;
 
 /// Super-trait that combines all repository sub-traits.
@@ -21,7 +20,6 @@ pub trait DbService:
   + AccessRequestRepository
   + TenantRepository
   + TokenRepository
-  + ToolsetRepository
   + McpServerRepository
   + McpRepository
   + UserAliasRepository
@@ -41,7 +39,6 @@ impl<T> DbService for T where
     + AccessRequestRepository
     + TenantRepository
     + TokenRepository
-    + ToolsetRepository
     + McpServerRepository
     + McpRepository
     + UserAliasRepository

@@ -272,19 +272,15 @@ let service = DefaultSettingService::new(Arc::new(env_stub), path, vec![]);
 For test data construction used across multiple tests, define module-level helper functions:
 
 ```rust
-fn test_toolset_row(id: &str, user_id: &str, name: &str) -> ToolsetRow {
-  ToolsetRow {
+fn test_token_entity(id: &str, user_id: &str, name: &str) -> TokenEntity {
+  TokenEntity {
     id: id.to_string(),
     user_id: user_id.to_string(),
-    scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
     name: name.to_string(),
-    description: Some("Test toolset".to_string()),
-    enabled: true,
-    encrypted_api_key: Some("encrypted".to_string()),
-    salt: Some("salt".to_string()),
-    nonce: Some("nonce".to_string()),
-    created_at: 1700000000,
-    updated_at: 1700000000,
+    token_hash: "hash".to_string(),
+    token_prefix: "bodhiapp_test".to_string(),
+    status: "active".to_string(),
+    ..Default::default()
   }
 }
 ```

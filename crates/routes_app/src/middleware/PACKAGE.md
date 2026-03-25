@@ -12,7 +12,7 @@ Entry point: `mod.rs` -- re-exports all public types.
 |--------|-------|---------|
 | `auth/` | `auth_middleware.rs` | `auth_middleware`, `optional_auth_middleware`, `remove_app_headers`, `AuthError` |
 | `apis/` | `api_middleware.rs` | `api_auth_middleware`, `ApiAuthError` |
-| `access_requests/` | `access_request_middleware.rs` | `access_request_auth_middleware`, `AccessRequestAuthError`, `AccessRequestValidator` trait, `ToolsetAccessRequestValidator`, `McpAccessRequestValidator` |
+| `access_requests/` | `access_request_middleware.rs` | `access_request_auth_middleware`, `AccessRequestAuthError`, `AccessRequestValidator` trait, `McpAccessRequestValidator` |
 | `error.rs` | `error.rs` | `MiddlewareError` struct with blanket `From<T: AppError>` |
 | `token_service/` | `token_service.rs` | `DefaultTokenService`, `CachedExchangeResult` |
 | `redirects/` | `canonical_url_middleware.rs` | URL normalization (301 redirect for GET/HEAD) |

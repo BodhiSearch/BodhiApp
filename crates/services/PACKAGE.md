@@ -51,14 +51,9 @@
 - `src/users/user_objs.rs` — `UserAccessRequestStatus`
 - `src/users/access_repository.rs` — User access request repository trait
 
-### AI and Tool Services (`ai_apis/`, `toolsets/`)
+### AI Services (`ai_apis/`)
 - `src/ai_apis/ai_api_service.rs` — `AiApiService` trait: external AI API integration
 - `src/ai_apis/error.rs` — `AiApiServiceError`
-- `src/toolsets/toolset_objs.rs` — `Toolset`, `ToolsetScope`, `ToolsetType`
-- `src/toolsets/tool_service.rs` — `ToolService` trait, `DefaultToolService`
-- `src/toolsets/exa_service.rs` — `ExaService`: Exa AI semantic search
-- `src/toolsets/error.rs` — `ToolsetError`, `ExaError`
-- `src/toolsets/execution.rs` — Toolset execution logic
 
 ### MCP Services (`mcps/`)
 - `src/mcps/mcp_objs.rs` — `McpServer`, `Mcp`, MCP auth config types, validation constants
@@ -110,9 +105,7 @@
 | DbService | `DbError` | (none) | `SeaOrmError`, `StrumParse`, `TokenValidation`, `EncryptionError`, `PrefixExists`, `ItemNotFound`, `MultipleAppInstance`, `Conversion` |
 | SessionService | `SessionServiceError` | (none) | `SqlxError`, `SessionStoreError`, `DbSetup` |
 | AiApiService | `AiApiServiceError` | (none) | `Reqwest`, `ApiError`, `Unauthorized`, `NotFound`, `RateLimit`, `PromptTooLong` |
-| ToolService | `ToolsetError` | (none) | `ToolsetNotFound`, `MethodNotFound`, `SlugExists`, `DbError`, `ExaError` |
 | McpService | `McpError` | (none) | `McpNotFound`, `McpUrlNotAllowed`, `McpDisabled`, `ToolNotFound`, `SlugExists`, `DbError` |
-| ExaService | `ExaError` | (none) | `RequestFailed`, `RateLimited`, `InvalidApiKey`, `Timeout` |
 | TokenService | `TokenServiceError` | (none) | service-specific variants |
 | InferenceService | `InferenceError` | (none) | `Unsupported` and other variants |
 
@@ -125,7 +118,6 @@
 
 | Domain | Alias | Entity File |
 |--------|-------|-------------|
-| Toolset | `ToolsetEntity` | `src/toolsets/toolset_entity.rs` |
 | MCP Instance | `McpEntity` | `src/mcps/mcp_entity.rs` |
 | MCP Server | `McpServerEntity` | `src/mcps/mcp_server_entity.rs` |
 | MCP Auth Param | `McpAuthParamEntity` | `src/mcps/mcp_auth_param_entity.rs` |
@@ -148,7 +140,6 @@
 |---|---|
 | `AuthScopedTokenService` | `TokenServiceError` |
 | `AuthScopedMcpService` | `McpError` |
-| `AuthScopedToolService` | `ToolsetError` |
 | `AuthScopedUserService` | `AuthScopedUserError` |
 | `AuthScopedDataService` | `DataServiceError` |
 | `AuthScopedApiModelService` | `ApiModelServiceError` |

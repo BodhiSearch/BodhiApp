@@ -80,7 +80,7 @@ Error codes are auto-generated from enum name + variant name in snake_case:
 ```rust
 // AuthServiceError::AuthServiceApiError -> "auth_service_error-auth_service_api_error"
 // DataServiceError::AliasNotExists     -> "data_service_error-alias_not_exists"
-// ToolsetError::ToolsetNotFound        -> "toolset_error-toolset_not_found"
+// McpError::McpNotFound                -> "mcp_error-mcp_not_found"
 ```
 
 **Transparent error delegation**: When a variant uses `#[error(transparent)]`:

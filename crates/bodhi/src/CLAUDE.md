@@ -92,7 +92,7 @@ Hooks organized into 12 domain subdirectories under `src/hooks/<domain>/`. Each 
 
 ### Test Fixtures (Factory Pattern)
 
-`src/test-fixtures/<domain>.ts` — fixture factories using OpenAPI-generated types from `@bodhiapp/ts-client`. Each factory accepts optional `Partial<T>` overrides. Domains: `access-requests`, `apps`, `mcps`, `models`, `tokens`, `toolsets`, `users`.
+`src/test-fixtures/<domain>.ts` — fixture factories using OpenAPI-generated types from `@bodhiapp/ts-client`. Each factory accepts optional `Partial<T>` overrides. Domains: `access-requests`, `apps`, `mcps`, `models`, `tokens`, `users`.
 
 ### Form Pattern
 
@@ -127,7 +127,7 @@ Route constants defined in `src/lib/constants.ts`.
 
 ### Setup Flow
 
-Multi-step onboarding under `src/routes/setup/`: download-models -> toolsets -> api-models -> llm-engine -> browser-extension -> complete. Layout route in `src/routes/setup/route.tsx` wraps with `SetupLayoutComponent`.
+Multi-step onboarding under `src/routes/setup/`: download-models -> api-models -> llm-engine -> browser-extension -> complete. Layout route in `src/routes/setup/route.tsx` wraps with `SetupLayoutComponent`.
 
 ## Testing
 

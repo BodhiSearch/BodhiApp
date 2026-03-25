@@ -89,7 +89,7 @@ Role hierarchy: Admin > Manager > PowerUser > User
 ### `access_request_auth_middleware` (entity-level)
 Validates entity access against approved resources in access requests.
 - `AccessRequestValidator` trait: `extract_entity_id(path)` + `validate_approved(approved_json, entity_id)`
-- Implementations: `ToolsetAccessRequestValidator`, `McpAccessRequestValidator`
+- Implementations: `McpAccessRequestValidator`
 - Session users pass through; `ExternalApp` with `access_request_id` validated against DB
 
 ## MiddlewareError

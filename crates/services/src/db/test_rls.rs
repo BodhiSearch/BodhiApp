@@ -133,8 +133,6 @@ async fn test_postgres_rls_policies_and_function_installed(_setup_env: ()) -> an
     "model_metadata",
     "user_access_requests",
     "api_tokens",
-    "toolsets",
-    "app_toolset_configs",
     "user_aliases",
     "mcp_servers",
     "mcps",

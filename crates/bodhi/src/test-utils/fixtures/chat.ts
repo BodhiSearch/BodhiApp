@@ -2,13 +2,26 @@
  * Test fixtures for chat completion testing
  * Uses types from @bodhiapp/ts-client with llama.cpp extensions
  */
-import type { CreateChatCompletionResponse, ToolDefinition } from '@bodhiapp/ts-client';
+import type { CreateChatCompletionResponse } from '@bodhiapp/ts-client';
 
 /**
- * Local replacement for ToolsetWithTools (removed from ts-client)
+ * Local tool definition type for test fixtures
  */
-interface ToolsetWithTools {
-  toolset_type: string;
+interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+/**
+ * MCP server with tools for test fixtures
+ */
+interface McpWithTools {
+  id: string;
+  slug: string;
   name: string;
   description: string;
   enabled: boolean;
@@ -127,7 +140,7 @@ export const mockStandardOpenAIResponse: CreateChatCompletionResponse = {
  */
 export const mockToolCallWebSearch = {
   id: 'call_web_search_123',
-  name: 'toolset__builtin-exa-web-search__search',
+  name: 'mcp__deepwiki__search',
   arguments: JSON.stringify({ query: 'AI news 2024', num_results: 5 }),
 };
 
@@ -136,7 +149,7 @@ export const mockToolCallWebSearch = {
  */
 export const mockToolCallCalculator = {
   id: 'call_calc_456',
-  name: 'toolset__builtin-calculator__calculate',
+  name: 'mcp__calculator__calculate',
   arguments: JSON.stringify({ expression: '2 + 2' }),
 };
 
@@ -145,7 +158,7 @@ export const mockToolCallCalculator = {
  */
 export const mockStreamingChunksWithToolCalls = [
   // First tool call - id and name
-  '{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_web_search_123","type":"function","function":{"name":"toolset__builtin-exa-web-search__search"}}]}}]}',
+  '{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_web_search_123","type":"function","function":{"name":"mcp__deepwiki__search"}}]}}]}',
   // First tool call - arguments
   '{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"query\\":"}}]}}]}',
   '{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\\"AI news 2024\\"}"}}]}}]}',
@@ -191,19 +204,20 @@ export const mockToolExecutionError = {
 };
 
 /**
- * Mock toolset with nested tools (configured and enabled)
+ * Mock MCP server with tools (configured and enabled)
  */
-export const mockToolsetWithTools: ToolsetWithTools = {
-  toolset_type: 'builtin-exa-search',
-  name: 'Exa Web Search',
-  description: 'Search the web using Exa AI',
+export const mockMcpWithTools: McpWithTools = {
+  id: 'mcp-deepwiki-001',
+  slug: 'deepwiki',
+  name: 'DeepWiki',
+  description: 'AI-powered documentation for GitHub repositories',
   enabled: true,
   tools: [
     {
       type: 'function',
       function: {
         name: 'search',
-        description: 'Search the web using Exa AI for real-time information',
+        description: 'Search documentation for a repository',
         parameters: {
           type: 'object',
           properties: {
@@ -223,56 +237,21 @@ export const mockToolsetWithTools: ToolsetWithTools = {
     {
       type: 'function',
       function: {
-        name: 'findSimilar',
-        description: 'Find similar pages to a given URL',
+        name: 'ask_question',
+        description: 'Ask a question about a repository',
         parameters: {
           type: 'object',
           properties: {
-            url: {
+            repo: {
               type: 'string',
-              description: 'URL to find similar pages for',
+              description: 'Repository in owner/name format',
             },
-            num_results: {
-              type: 'number',
-              description: 'Number of results to return (default: 5)',
-            },
-          },
-          required: ['url'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'contents',
-        description: 'Get contents of URLs',
-        parameters: {
-          type: 'object',
-          properties: {
-            urls: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'URLs to get contents for',
-            },
-          },
-          required: ['urls'],
-        },
-      },
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'answer',
-        description: 'Get an answer to a question from Exa',
-        parameters: {
-          type: 'object',
-          properties: {
-            query: {
+            question: {
               type: 'string',
-              description: 'Question to answer',
+              description: 'Question to ask',
             },
           },
-          required: ['query'],
+          required: ['repo', 'question'],
         },
       },
     },
@@ -280,13 +259,14 @@ export const mockToolsetWithTools: ToolsetWithTools = {
 };
 
 /**
- * Mock toolset not configured (missing API key)
+ * Mock MCP server not configured (disabled)
  */
-export const mockToolsetWithToolsNotConfigured: ToolsetWithTools = {
-  toolset_type: 'builtin-calculator',
+export const mockMcpWithToolsNotConfigured: McpWithTools = {
+  id: 'mcp-calculator-001',
+  slug: 'calculator',
   name: 'Calculator',
   description: 'Perform mathematical calculations',
-  enabled: true,
+  enabled: false,
   tools: [
     {
       type: 'function',

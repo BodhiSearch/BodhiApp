@@ -19,13 +19,12 @@ use services::{
     StubQueue,
   },
   AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService, DefaultAppService,
-  DefaultEnvWrapper, DefaultExaService, DefaultMcpService, DefaultSessionService,
-  DefaultSettingService, DefaultTenantService, DefaultToolService, EnvWrapper, HfHubService,
-  LocalConcurrencyService, LocalDataService, MokaCacheService, SettingService, TenantService,
-  UserIdClaims, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY,
-  BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS,
-  BODHI_MULTITENANT_CLIENT_ID, BODHI_MULTITENANT_CLIENT_SECRET, BODHI_PORT, BODHI_VERSION, HF_HOME,
-  SETTINGS_YAML,
+  DefaultEnvWrapper, DefaultMcpService, DefaultSessionService, DefaultSettingService,
+  DefaultTenantService, EnvWrapper, HfHubService, LocalConcurrencyService, LocalDataService,
+  MokaCacheService, SettingService, TenantService, UserIdClaims, BODHI_AUTH_REALM, BODHI_AUTH_URL,
+  BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME,
+  BODHI_HOST, BODHI_LOGS, BODHI_MULTITENANT_CLIENT_ID, BODHI_MULTITENANT_CLIENT_SECRET, BODHI_PORT,
+  BODHI_VERSION, HF_HOME, SETTINGS_YAML,
 };
 use services::{EnvType, KeycloakAuthService, Setting, SettingMetadata, SettingSource};
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
@@ -226,15 +225,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   // Build queue producer (StubQueue is a unit struct, no new() method)
   let queue_producer: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
 
-  // Build ExaService (needed by ToolService)
-  let exa_service = Arc::new(DefaultExaService::new());
-
-  // Build tool service
-  let tool_service = Arc::new(DefaultToolService::new(
-    db_service.clone(),
-    exa_service,
-    time_service.clone(),
-  ));
   let tenant_service: Arc<dyn TenantService> = Arc::new(tenant_service);
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
@@ -289,7 +279,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     ai_api_service,
     concurrency_service,
     queue_producer,
-    tool_service,
     network_service,
     access_request_service,
     mcp_service,
@@ -614,12 +603,6 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   let ai_api_service = Arc::new(DefaultAiApiService::new()?);
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
   let queue_producer: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
-  let exa_service = Arc::new(DefaultExaService::new());
-  let tool_service = Arc::new(DefaultToolService::new(
-    db_service.clone(),
-    exa_service,
-    time_service.clone(),
-  ));
   let tenant_service: Arc<dyn TenantService> = Arc::new(tenant_service);
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
@@ -671,7 +654,6 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     ai_api_service,
     concurrency_service,
     queue_producer,
-    tool_service,
     network_service,
     access_request_service,
     mcp_service,
@@ -996,15 +978,6 @@ pub async fn setup_multitenant_app_service(
   // Build queue producer (StubQueue is a unit struct, no new() method)
   let queue_producer: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
 
-  // Build ExaService (needed by ToolService)
-  let exa_service = Arc::new(DefaultExaService::new());
-
-  // Build tool service
-  let tool_service = Arc::new(DefaultToolService::new(
-    db_service.clone(),
-    exa_service,
-    time_service.clone(),
-  ));
   let tenant_service: Arc<dyn TenantService> = Arc::new(tenant_service);
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
@@ -1059,7 +1032,6 @@ pub async fn setup_multitenant_app_service(
     ai_api_service,
     concurrency_service,
     queue_producer,
-    tool_service,
     network_service,
     access_request_service,
     mcp_service,

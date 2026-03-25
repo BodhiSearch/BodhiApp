@@ -19,7 +19,6 @@ use crate::models::{
 };
 use crate::settings::{DbSetting, SettingsRepository};
 use crate::tokens::{TokenEntity, TokenRepository};
-use crate::toolsets::{AppToolsetConfigEntity, ToolsetEntity, ToolsetRepository};
 use crate::users::{AccessRepository, UserAccessRequestEntity};
 use crate::RawApiKeyUpdate;
 use crate::UserAccessRequestStatus;
@@ -502,137 +501,6 @@ impl TokenRepository for TestDbService {
       .update_api_token(tenant_id, user_id, token)
       .await
       .tap(|_| self.notify("update_api_token"))
-  }
-}
-
-#[async_trait::async_trait]
-impl ToolsetRepository for TestDbService {
-  async fn get_toolset(&self, tenant_id: &str, id: &str) -> Result<Option<ToolsetEntity>, DbError> {
-    self
-      .inner
-      .get_toolset(tenant_id, id)
-      .await
-      .tap(|_| self.notify("get_toolset"))
-  }
-
-  async fn get_toolset_by_slug(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-    slug: &str,
-  ) -> Result<Option<ToolsetEntity>, DbError> {
-    self
-      .inner
-      .get_toolset_by_slug(tenant_id, user_id, slug)
-      .await
-      .tap(|_| self.notify("get_toolset_by_slug"))
-  }
-
-  async fn create_toolset(
-    &self,
-    tenant_id: &str,
-    row: &ToolsetEntity,
-  ) -> Result<ToolsetEntity, DbError> {
-    self
-      .inner
-      .create_toolset(tenant_id, row)
-      .await
-      .tap(|_| self.notify("create_toolset"))
-  }
-
-  async fn update_toolset(
-    &self,
-    tenant_id: &str,
-    row: &ToolsetEntity,
-    api_key_update: RawApiKeyUpdate,
-  ) -> Result<ToolsetEntity, DbError> {
-    self
-      .inner
-      .update_toolset(tenant_id, row, api_key_update)
-      .await
-      .tap(|_| self.notify("update_toolset"))
-  }
-
-  async fn list_toolsets(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-  ) -> Result<Vec<ToolsetEntity>, DbError> {
-    self
-      .inner
-      .list_toolsets(tenant_id, user_id)
-      .await
-      .tap(|_| self.notify("list_toolsets"))
-  }
-
-  async fn list_toolsets_by_toolset_type(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-    toolset_type: &str,
-  ) -> Result<Vec<ToolsetEntity>, DbError> {
-    self
-      .inner
-      .list_toolsets_by_toolset_type(tenant_id, user_id, toolset_type)
-      .await
-      .tap(|_| self.notify("list_toolsets_by_toolset_type"))
-  }
-
-  async fn delete_toolset(&self, tenant_id: &str, id: &str) -> Result<(), DbError> {
-    self
-      .inner
-      .delete_toolset(tenant_id, id)
-      .await
-      .tap(|_| self.notify("delete_toolset"))
-  }
-
-  async fn get_toolset_api_key(
-    &self,
-    tenant_id: &str,
-    id: &str,
-  ) -> Result<Option<String>, DbError> {
-    self
-      .inner
-      .get_toolset_api_key(tenant_id, id)
-      .await
-      .tap(|_| self.notify("get_toolset_api_key"))
-  }
-
-  async fn set_app_toolset_enabled(
-    &self,
-    tenant_id: &str,
-    toolset_type: &str,
-    enabled: bool,
-    updated_by: &str,
-  ) -> Result<AppToolsetConfigEntity, DbError> {
-    self
-      .inner
-      .set_app_toolset_enabled(tenant_id, toolset_type, enabled, updated_by)
-      .await
-      .tap(|_| self.notify("set_app_toolset_enabled"))
-  }
-
-  async fn list_app_toolset_configs(
-    &self,
-    tenant_id: &str,
-  ) -> Result<Vec<AppToolsetConfigEntity>, DbError> {
-    self
-      .inner
-      .list_app_toolset_configs(tenant_id)
-      .await
-      .tap(|_| self.notify("list_app_toolset_configs"))
-  }
-
-  async fn get_app_toolset_config(
-    &self,
-    tenant_id: &str,
-    toolset_type: &str,
-  ) -> Result<Option<AppToolsetConfigEntity>, DbError> {
-    self
-      .inner
-      .get_app_toolset_config(tenant_id, toolset_type)
-      .await
-      .tap(|_| self.notify("get_app_toolset_config"))
   }
 }
 
@@ -1518,21 +1386,6 @@ mockall::mock! {
     async fn update_user_alias(&self, tenant_id: &str, user_id: &str, id: &str, alias: &UserAlias) -> Result<(), DbError>;
     async fn delete_user_alias(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
     async fn list_user_aliases(&self, tenant_id: &str, user_id: &str) -> Result<Vec<UserAlias>, DbError>;
-  }
-
-  #[async_trait::async_trait]
-  impl ToolsetRepository for DbService {
-    async fn get_toolset(&self, tenant_id: &str, id: &str) -> Result<Option<ToolsetEntity>, DbError>;
-    async fn get_toolset_by_slug(&self, tenant_id: &str, user_id: &str, slug: &str) -> Result<Option<ToolsetEntity>, DbError>;
-    async fn create_toolset(&self, tenant_id: &str, row: &ToolsetEntity) -> Result<ToolsetEntity, DbError>;
-    async fn update_toolset(&self, tenant_id: &str, row: &ToolsetEntity, api_key_update: RawApiKeyUpdate) -> Result<ToolsetEntity, DbError>;
-    async fn list_toolsets(&self, tenant_id: &str, user_id: &str) -> Result<Vec<ToolsetEntity>, DbError>;
-    async fn list_toolsets_by_toolset_type(&self, tenant_id: &str, user_id: &str, toolset_type: &str) -> Result<Vec<ToolsetEntity>, DbError>;
-    async fn delete_toolset(&self, tenant_id: &str, id: &str) -> Result<(), DbError>;
-    async fn get_toolset_api_key(&self, tenant_id: &str, id: &str) -> Result<Option<String>, DbError>;
-    async fn set_app_toolset_enabled(&self, tenant_id: &str, toolset_type: &str, enabled: bool, updated_by: &str) -> Result<AppToolsetConfigEntity, DbError>;
-    async fn list_app_toolset_configs(&self, tenant_id: &str) -> Result<Vec<AppToolsetConfigEntity>, DbError>;
-    async fn get_app_toolset_config(&self, tenant_id: &str, toolset_type: &str) -> Result<Option<AppToolsetConfigEntity>, DbError>;
   }
 
   #[async_trait::async_trait]

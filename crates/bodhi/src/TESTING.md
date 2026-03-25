@@ -31,7 +31,7 @@
 
 ### MSW Handler Files (`src/test-utils/msw-v2/handlers/`)
 
-Domain-specific mock handlers: `api-models.ts`, `apps.ts`, `auth.ts`, `chat-completions.ts`, `info.ts`, `mcps.ts`, `models.ts`, `modelfiles.ts`, `setup.ts`, `settings.ts`, `tenants.ts`, `tokens.ts`, `toolsets.ts`, `user-access-requests.ts`, `user.ts`
+Domain-specific mock handlers: `api-models.ts`, `apps.ts`, `auth.ts`, `chat-completions.ts`, `info.ts`, `mcps.ts`, `models.ts`, `modelfiles.ts`, `setup.ts`, `settings.ts`, `tenants.ts`, `tokens.ts`, `user-access-requests.ts`, `user.ts`
 
 **IMPORTANT**: Handler registration order matters for MCPs — sub-path handlers (`/mcps/servers`, `/mcps/auth-configs`) must come before wildcard `/mcps/:id` handlers.
 
@@ -39,7 +39,7 @@ Domain-specific mock handlers: `api-models.ts`, `apps.ts`, `auth.ts`, `chat-comp
 
 Factory functions using OpenAPI-generated types. Each factory accepts `Partial<T>` overrides:
 
-- `access-requests.ts`, `apps.ts`, `mcps.ts`, `models.ts`, `tokens.ts`, `toolsets.ts`, `users.ts`
+- `access-requests.ts`, `apps.ts`, `mcps.ts`, `models.ts`, `tokens.ts`, `users.ts`
 
 ### Other Test Utilities
 

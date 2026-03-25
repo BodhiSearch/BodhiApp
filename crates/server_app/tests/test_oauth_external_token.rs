@@ -1,7 +1,7 @@
 //! OAuth external token tests using ExternalTokenSimulator.
 //!
 //! Validates that external OAuth tokens (simulated via cache bypass) are correctly
-//! handled by the auth middleware for toolset endpoints.
+//! handled by the auth middleware for MCP endpoints.
 
 mod utils;
 
@@ -10,11 +10,11 @@ use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use utils::{start_test_live_server, ExternalTokenSimulator};
 
-/// External token with approved role can access GET /bodhi/v1/apps/toolsets
+/// External token with approved role can access GET /bodhi/v1/apps/mcps
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
-async fn test_oauth_token_with_role_can_list_toolsets() -> anyhow::Result<()> {
+async fn test_oauth_token_with_role_can_list_mcps() -> anyhow::Result<()> {
   let server = start_test_live_server().await?;
   let simulator = ExternalTokenSimulator::new(&server.app_service);
   let bearer_token =
@@ -22,7 +22,7 @@ async fn test_oauth_token_with_role_can_list_toolsets() -> anyhow::Result<()> {
 
   let client = reqwest::Client::new();
   let response = client
-    .get(format!("{}/bodhi/v1/apps/toolsets", server.base_url))
+    .get(format!("{}/bodhi/v1/apps/mcps", server.base_url))
     .header("Authorization", format!("Bearer {}", bearer_token))
     .send()
     .await?;
@@ -30,7 +30,7 @@ async fn test_oauth_token_with_role_can_list_toolsets() -> anyhow::Result<()> {
   assert_eq!(
     StatusCode::OK,
     response.status(),
-    "External OAuth token with approved role should access apps toolsets list endpoint"
+    "External OAuth token with approved role should access apps mcps list endpoint"
   );
 
   server.handle.shutdown().await?;
@@ -48,7 +48,7 @@ async fn test_oauth_token_without_role_is_rejected() -> anyhow::Result<()> {
 
   let client = reqwest::Client::new();
   let response = client
-    .get(format!("{}/bodhi/v1/apps/toolsets", server.base_url))
+    .get(format!("{}/bodhi/v1/apps/mcps", server.base_url))
     .header("Authorization", format!("Bearer {}", bearer_token))
     .send()
     .await?;
@@ -63,7 +63,7 @@ async fn test_oauth_token_without_role_is_rejected() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// External token is rejected on session-only endpoints (GET /toolsets/{id})
+/// External token is rejected on session-only endpoints (GET /mcps/{id})
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -75,7 +75,7 @@ async fn test_oauth_token_rejected_on_session_only_get() -> anyhow::Result<()> {
 
   let client = reqwest::Client::new();
   let response = client
-    .get(format!("{}/bodhi/v1/toolsets/some-id", server.base_url))
+    .get(format!("{}/bodhi/v1/mcps/some-id", server.base_url))
     .header("Authorization", format!("Bearer {}", bearer_token))
     .send()
     .await?;
@@ -83,7 +83,7 @@ async fn test_oauth_token_rejected_on_session_only_get() -> anyhow::Result<()> {
   assert_eq!(
     StatusCode::UNAUTHORIZED,
     response.status(),
-    "External OAuth token should be rejected on session-only endpoint GET /toolsets/{{id}}"
+    "External OAuth token should be rejected on session-only endpoint GET /mcps/{{id}}"
   );
 
   server.handle.shutdown().await?;

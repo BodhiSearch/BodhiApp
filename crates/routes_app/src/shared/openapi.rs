@@ -28,14 +28,6 @@ use crate::{
   __path_users_change_role, __path_users_destroy, __path_users_index, __path_users_info,
   __path_users_request_access, __path_users_request_status,
 };
-// Toolsets DTOs and handlers
-use crate::{
-  ExecuteToolsetRequest, ListToolsetTypesResponse, ListToolsetsResponse, ToolsetResponse,
-  __path_apps_toolsets_execute, __path_apps_toolsets_index, __path_toolset_types_disable,
-  __path_toolset_types_enable, __path_toolset_types_index, __path_toolsets_create,
-  __path_toolsets_destroy, __path_toolsets_execute, __path_toolsets_index, __path_toolsets_show,
-  __path_toolsets_update,
-};
 // MCP DTOs and handlers
 use crate::{
   CreateAuthConfig, DynamicRegisterRequest, DynamicRegisterResponse, FetchMcpToolsRequest,
@@ -67,7 +59,7 @@ use crate::{
 use crate::{
   API_TAG_API_KEYS, API_TAG_APPS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_MODELS_ALIAS,
   API_TAG_MODELS_API, API_TAG_MODELS_FILES, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS,
-  API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TENANTS, API_TAG_TOOLSETS,
+  API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TENANTS,
 };
 use async_openai::types::{
   chat::{
@@ -94,10 +86,9 @@ use services::{
   PaginatedUserAliasResponse, RefreshRequest, RefreshResponse, RefreshSource, RequestedMcpServer,
   RequestedResources, RequestedResourcesV1, ResourceRole, SettingInfo, SettingMetadata,
   SettingService, SettingSource, TestCreds, TestPromptRequest, TestPromptResponse, TokenCreated,
-  TokenDetail, TokenScope, TokenStatus, ToolDefinition, Toolset, ToolsetApproval,
-  ToolsetDefinition, ToolsetExecutionResponse, ToolsetInstance, ToolsetRequest, ToolsetTypeRequest,
-  UpdateSettingRequest, UpdateTokenRequest, UserAccessStatusResponse, UserAliasRequest,
-  UserAliasResponse, UserInfo, UserListResponse, UserScope,
+  TokenDetail, TokenScope, TokenStatus, UpdateSettingRequest, UpdateTokenRequest,
+  UserAccessStatusResponse, UserAliasRequest, UserAliasResponse, UserInfo, UserListResponse,
+  UserScope,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -143,9 +134,6 @@ make_ui_endpoint!(ENDPOINT_QUEUE, "queue");
 make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
 make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
-make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
-make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
-make_ui_endpoint!(ENDPOINT_APPS_TOOLSETS, "apps/toolsets");
 make_ui_endpoint!(ENDPOINT_APPS_MCPS, "apps/mcps");
 make_ui_endpoint!(ENDPOINT_TENANTS, "tenants");
 // MCP endpoint constants are defined in mcps/mod.rs
@@ -284,7 +272,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         (name = API_TAG_MODELS_API, description = "Remote AI API model configuration"),
         (name = API_TAG_MODELS_FILES, description = "Local model files and downloads"),
         (name = API_TAG_SETTINGS, description = "Application settings management"),
-        (name = API_TAG_TOOLSETS, description = "AI toolsets configuration and execution"),
         (name = API_TAG_MCPS, description = "MCP server management and tool execution"),
         (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
         (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
@@ -331,11 +318,8 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             RequestedResourcesV1,
             ApprovedResources,
             ApprovedResourcesV1,
-            ToolsetTypeRequest,
             RequestedMcpServer,
-            ToolsetApproval,
             McpApproval,
-            ToolsetInstance,
             McpInstance,
             // user management
             ListUsersParams,
@@ -403,16 +387,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             Embedding,
             EmbeddingInput,
             EmbeddingUsage,
-            // toolsets
-            ToolsetRequest,
-            ToolsetResponse,
-            ListToolsetsResponse,
-            ListToolsetTypesResponse,
-            ToolsetDefinition,
-            ExecuteToolsetRequest,
-            ToolDefinition,
-            Toolset,
-            ToolsetExecutionResponse,
             // mcps
             McpRequest,
             McpServerRequest,
@@ -539,17 +513,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         users_change_role,
         users_destroy,
 
-        // Toolsets endpoints
-        toolsets_index,
-        toolsets_create,
-        toolsets_show,
-        toolsets_update,
-        toolsets_destroy,
-        toolsets_execute,
-        toolset_types_index,
-        toolset_types_enable,
-        toolset_types_disable,
-
         // MCP endpoints
         mcps_index,
         mcps_create,
@@ -581,8 +544,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         mcp_oauth_tokens_destroy,
 
         // External app endpoints
-        apps_toolsets_index,
-        apps_toolsets_execute,
         apps_mcps_index,
         apps_mcps_show,
         apps_mcps_refresh_tools,

@@ -38,7 +38,6 @@ src/routes/
 │       ├── new/            # /mcps/servers/new
 │       ├── view/           # /mcps/servers/view?id=
 │       └── edit/           # /mcps/servers/edit?id=
-├── toolsets/               # /toolsets → toolset list
 ├── tokens/                 # /tokens → API tokens
 ├── settings/               # /settings → app settings
 ├── users/                  # /users → user management
@@ -47,7 +46,6 @@ src/routes/
 └── setup/                  # /setup → multi-step onboarding
     ├── route.tsx            # Layout route wrapping all setup steps
     ├── download-models/
-    ├── toolsets/
     ├── api-models/
     ├── llm-engine/
     ├── browser-extension/
@@ -86,7 +84,7 @@ src/components/
 ### Hooks (`src/hooks/`)
 
 Domain subdirectories (each with `constants.ts`, `index.ts`, hook files):
-`apps/`, `auth/`, `chat/`, `info/`, `mcps/`, `models/`, `navigation/`, `settings/`, `tenants/`, `tokens/`, `toolsets/`, `users/`
+`apps/`, `auth/`, `chat/`, `info/`, `mcps/`, `models/`, `navigation/`, `settings/`, `tenants/`, `tokens/`, `users/`
 
 Top-level hooks (not in subdirectories):
 
@@ -120,7 +118,6 @@ Top-level hooks (not in subdirectories):
 - `constants.ts` — Route constants, `BASE_PATH`
 - `roles.ts` — Role hierarchy, `meetsMinRole`, `getRoleLabel`, etc. `Role` re-exported from `ResourceRole`
 - `utils.ts` — General utilities (cn() for className merging)
-- `toolsets.ts` — Toolset utility functions
 - `mcpUtils.ts` — MCP utility functions
 - `mcps.ts` — MCP-related utilities
 - `urlUtils.ts` — URL utility functions

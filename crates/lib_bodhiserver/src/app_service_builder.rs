@@ -7,14 +7,13 @@ use services::{
   hash_key,
   inference::InferenceService,
   AccessRequestService, AiApiService, AuthService, BootstrapParts, CacheService, DataService,
-  DefaultAccessRequestService, DefaultAiApiService, DefaultAppService, DefaultExaService,
-  DefaultMcpService, DefaultNetworkService, DefaultSessionService, DefaultSettingService,
-  DefaultTenantService, DefaultToolService, DeploymentMode, ExaService, HfHubService, HubService,
-  InMemoryQueue, KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService,
-  McpService, MokaCacheService, MultiTenantDataService, NetworkService, QueueConsumer,
-  QueueProducer, RefreshWorker, SessionService, SettingService, SystemKeyringStore, TenantService,
-  ToolService, BODHI_APP_DB_URL, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN,
-  PROD_DB,
+  DefaultAccessRequestService, DefaultAiApiService, DefaultAppService, DefaultMcpService,
+  DefaultNetworkService, DefaultSessionService, DefaultSettingService, DefaultTenantService,
+  DeploymentMode, HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
+  LocalConcurrencyService, LocalDataService, McpService, MokaCacheService, MultiTenantDataService,
+  NetworkService, QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService,
+  SystemKeyringStore, TenantService, BODHI_APP_DB_URL, BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY,
+  BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
 };
 use std::result::Result;
 use std::sync::Arc;
@@ -152,7 +151,6 @@ impl AppServiceBuilder {
     let auth_service = Self::build_auth_service(&setting_service).await;
     let ai_api_service = Self::build_ai_api_service()?;
     let concurrency_service = Self::build_concurrency_service();
-    let tool_service = Self::build_tool_service(db_service.clone(), time_service.clone());
     let access_request_service = Self::build_access_request_service(
       &setting_service,
       db_service.clone(),
@@ -223,7 +221,6 @@ impl AppServiceBuilder {
       ai_api_service,
       concurrency_service,
       queue_producer,
-      tool_service,
       network_service,
       access_request_service,
       mcp_service,
@@ -324,19 +321,6 @@ impl AppServiceBuilder {
   /// Builds the concurrency service.
   fn build_concurrency_service() -> Arc<dyn services::ConcurrencyService> {
     Arc::new(LocalConcurrencyService::new())
-  }
-
-  /// Builds the tool service.
-  fn build_tool_service(
-    db_service: Arc<dyn DbService>,
-    time_service: Arc<dyn TimeService>,
-  ) -> Arc<dyn ToolService> {
-    let exa_service: Arc<dyn ExaService> = Arc::new(DefaultExaService::new());
-    Arc::new(DefaultToolService::new(
-      db_service,
-      exa_service,
-      time_service,
-    ))
   }
 
   /// Builds the access request service.

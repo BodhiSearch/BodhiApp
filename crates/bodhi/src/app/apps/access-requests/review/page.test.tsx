@@ -17,7 +17,6 @@ import {
   mockDraftReviewResponse,
   mockDraftReviewResponsePowerUser,
   mockExpiredReviewResponse,
-  mockFailedReviewResponse,
 } from '@/test-fixtures/apps';
 import {
   mockAppAccessRequestApprove,
@@ -221,66 +220,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
     expect(screen.getByTestId('review-app-description')).toHaveTextContent('A test third-party application');
   });
 
-  it('renders tool type cards with correct names and descriptions', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftReviewResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-tool-builtin-exa-search')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('Exa Web Search')).toBeInTheDocument();
-    expect(screen.getByText('Search the web using Exa AI')).toBeInTheDocument();
-  });
-
-  it('renders instance select dropdowns with available instances', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftReviewResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-instance-select-builtin-exa-search')).toBeInTheDocument();
-    });
-  });
-
-  it('shows "No instances configured" when tool type has no instances', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftNoInstancesResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-no-instances-builtin-exa-search')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(/No instances configured/)).toBeInTheDocument();
-  });
-
-  it('Approve button disabled when no valid instances exist', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftNoInstancesResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
-  });
-
-  it('Approve button disabled until all tool types have instance selected', async () => {
+  it('Approve button disabled until MCP instance is selected', async () => {
     mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
 
@@ -296,7 +236,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
     expect(screen.getByTestId('review-approve-button')).toBeDisabled();
   });
 
-  it('Approve button becomes enabled after selecting valid instance', async () => {
+  it('Approve button becomes enabled after selecting MCP instance', async () => {
     const user = userEvent.setup();
     mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftReviewResponse);
@@ -313,11 +253,11 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
     expect(screen.getByTestId('review-approve-button')).toBeDisabled();
 
     // Click the select trigger to open dropdown
-    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
+    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
 
     // Select the valid instance
-    const option = await screen.findByText('my-exa-instance');
+    const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
     // Now approve button should be enabled
@@ -351,10 +291,10 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Select instance
-    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
+    // Select MCP instance
+    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
-    const option = await screen.findByText('my-exa-instance');
+    const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
     // Click approve
@@ -389,10 +329,10 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Select instance
-    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
+    // Select MCP instance
+    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
-    const option = await screen.findByText('my-exa-instance');
+    const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
     // Click approve
@@ -431,10 +371,10 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Select instance
-    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
+    // Select MCP instance
+    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
-    const option = await screen.findByText('my-exa-instance');
+    const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
     // Click approve
@@ -607,331 +547,6 @@ describe('ReviewAccessRequestPage - Non-Draft States', () => {
 });
 
 // ============================================================================
-// Multi-Tool Type Support
-// ============================================================================
-
-describe('ReviewAccessRequestPage - Multi-Tool Types', () => {
-  it('renders multiple tool type cards', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftMultiToolResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-tool-builtin-exa-search')).toBeInTheDocument();
-      expect(screen.getByTestId('review-tool-builtin-weather')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('Exa Web Search')).toBeInTheDocument();
-    expect(screen.getByText('Weather Lookup')).toBeInTheDocument();
-  });
-});
-
-// ============================================================================
-// Partial Approve
-// ============================================================================
-
-describe('ReviewAccessRequestPage - Partial Approve', () => {
-  it('checkbox renders checked by default for each tool type', async () => {
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftReviewResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-tool-checkbox-builtin-exa-search')).toBeInTheDocument();
-    });
-
-    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
-    expect(checkbox).toHaveAttribute('data-state', 'checked');
-  });
-
-  it('unchecking checkbox grays out card content', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftReviewResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-tool-checkbox-builtin-exa-search')).toBeInTheDocument();
-    });
-
-    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
-    await user.click(checkbox);
-
-    await waitFor(() => {
-      expect(checkbox).toHaveAttribute('data-state', 'unchecked');
-    });
-
-    // The content area should have opacity-50 class
-    const card = screen.getByTestId('review-tool-builtin-exa-search');
-    const contentDiv = card.querySelector('.opacity-50');
-    expect(contentDiv).toBeInTheDocument();
-  });
-
-  it('unchecking checkbox enables Approve without instance selection', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftReviewResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
-    });
-
-    // Initially disabled (no instance selected, checkbox checked)
-    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
-
-    // Uncheck the checkbox to deny the tool
-    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
-    await user.click(checkbox);
-
-    // Now approve should be enabled (denied tool skips validation)
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
-    });
-  });
-
-  it('instance selection preserved across checkbox toggle', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftReviewResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-instance-select-builtin-exa-search')).toBeInTheDocument();
-    });
-
-    // Select an instance
-    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
-    await user.click(selectTrigger);
-    const option = await screen.findByText('my-exa-instance');
-    await user.click(option);
-
-    // Verify instance is selected
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
-    });
-
-    // Uncheck checkbox
-    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
-    await user.click(checkbox);
-
-    await waitFor(() => {
-      expect(checkbox).toHaveAttribute('data-state', 'unchecked');
-    });
-
-    // Re-check checkbox
-    await user.click(checkbox);
-
-    await waitFor(() => {
-      expect(checkbox).toHaveAttribute('data-state', 'checked');
-    });
-
-    // Instance should still be selected -- approve button still enabled
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
-    });
-  });
-
-  it('no-instances tool: checked by default, blocks Approve, unchecking enables Approve', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftNoInstancesResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
-    });
-
-    // Approve disabled (no instances, checkbox checked by default)
-    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
-
-    // Checkbox should be checked by default
-    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
-    expect(checkbox).toHaveAttribute('data-state', 'checked');
-
-    // Uncheck to deny
-    await user.click(checkbox);
-
-    // Now approve should be enabled
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
-    });
-  });
-
-  it('multi-tool partial: approve one tool, deny another via checkbox', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-
-    let capturedBody: unknown = null;
-    server.use(
-      ...mockAppInfoReady(),
-      ...mockUserLoggedIn({ role: 'resource_user' }),
-      ...mockAppAccessRequestReview(mockDraftMultiToolResponse),
-      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, {
-        onBody: (body) => {
-          capturedBody = body;
-        },
-      })
-    );
-    setupWindowClose();
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-tool-builtin-exa-search')).toBeInTheDocument();
-      expect(screen.getByTestId('review-tool-builtin-weather')).toBeInTheDocument();
-    });
-
-    // Select instance for exa-search
-    const exaSelect = screen.getByTestId('review-instance-select-builtin-exa-search');
-    await user.click(exaSelect);
-    const exaOption = await screen.findByText('my-exa-instance');
-    await user.click(exaOption);
-
-    // Uncheck weather tool to deny it
-    const weatherCheckbox = screen.getByTestId('review-tool-checkbox-builtin-weather');
-    await user.click(weatherCheckbox);
-
-    // Approve should be enabled
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
-    });
-
-    // Click approve
-    await user.click(screen.getByTestId('review-approve-button'));
-
-    // Verify the body was captured
-    await waitFor(() => {
-      expect(capturedBody).not.toBeNull();
-    });
-
-    // Verify body structure
-    const body = capturedBody as {
-      approved: {
-        version: string;
-        toolsets: Array<{ toolset_type: string; status: string; instance?: { id: string } }>;
-        mcps: Array<{ url: string; status: string; instance?: { id: string } }>;
-      };
-    };
-    expect(body.approved.version).toBe('1');
-    expect(body.approved.toolsets).toHaveLength(2);
-    expect(body.approved.mcps).toHaveLength(0);
-
-    const exaApproval = body.approved.toolsets.find((t) => t.toolset_type === 'builtin-exa-search');
-    expect(exaApproval?.status).toBe('approved');
-    expect(exaApproval?.instance?.id).toBe('instance-1');
-
-    const weatherApproval = body.approved.toolsets.find((t) => t.toolset_type === 'builtin-weather');
-    expect(weatherApproval?.status).toBe('denied');
-    expect(weatherApproval?.instance).toBeUndefined();
-  });
-
-  it('multi-tool mixed: one with instances, one without -- uncheck no-instances tool to enable Approve', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftMultiToolMixedResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-tool-builtin-exa-search')).toBeInTheDocument();
-      expect(screen.getByTestId('review-tool-builtin-calculator')).toBeInTheDocument();
-    });
-
-    // Approve initially disabled (calculator has no instances)
-    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
-
-    // Uncheck calculator (no instances, must deny)
-    const calcCheckbox = screen.getByTestId('review-tool-checkbox-builtin-calculator');
-    await user.click(calcCheckbox);
-
-    // Still disabled -- exa-search has no instance selected yet
-    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
-
-    // Select instance for exa-search
-    const exaSelect = screen.getByTestId('review-instance-select-builtin-exa-search');
-    await user.click(exaSelect);
-    const exaOption = await screen.findByText('my-exa-instance');
-    await user.click(exaOption);
-
-    // Now approve should be enabled
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
-    });
-  });
-
-  it('button shows "Approve All" when all checkboxes checked and instances selected', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftReviewResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
-    });
-
-    // Select instance
-    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
-    await user.click(selectTrigger);
-    const option = await screen.findByText('my-exa-instance');
-    await user.click(option);
-
-    // Button should say "Approve All"
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve All');
-    });
-  });
-
-  it('button shows "Approve Selected" when some checkboxes unchecked', async () => {
-    const user = userEvent.setup();
-    mockSearch = { id: MOCK_REQUEST_ID };
-    setupHandlers(mockDraftMultiToolResponse);
-
-    await act(async () => {
-      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('review-tool-builtin-weather')).toBeInTheDocument();
-    });
-
-    // Uncheck one tool
-    const weatherCheckbox = screen.getByTestId('review-tool-checkbox-builtin-weather');
-    await user.click(weatherCheckbox);
-
-    // Button should say "Approve Selected"
-    await waitFor(() => {
-      expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve Selected');
-    });
-  });
-});
-
-// ============================================================================
 // MCP Server Review
 // ============================================================================
 
@@ -1084,12 +699,10 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
     const body = capturedBody as {
       approved: {
         version: string;
-        toolsets: Array<{ toolset_type: string; status: string; instance?: { id: string } }>;
         mcps: Array<{ url: string; status: string; instance?: { id: string } }>;
       };
     };
     expect(body.approved.version).toBe('1');
-    expect(body.approved.toolsets).toHaveLength(0);
     expect(body.approved.mcps).toHaveLength(1);
     expect(body.approved.mcps[0].url).toBe('https://mcp.deepwiki.com/mcp');
     expect(body.approved.mcps[0].status).toBe('approved');
@@ -1098,11 +711,91 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
 });
 
 // ============================================================================
-// Mixed Resources (Tools + MCPs)
+// MCP Partial Approve
+// ============================================================================
+
+describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
+  it('no-instances MCP: blocks Approve, unchecking enables Approve', async () => {
+    const user = userEvent.setup();
+    mockSearch = { id: MOCK_REQUEST_ID };
+    setupHandlers(mockDraftNoInstancesResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    // Approve disabled (no instances, checkbox checked by default)
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+
+    // Uncheck the MCP to deny
+    const checkbox = screen.getByTestId('review-mcp-toggle-https://mcp.example.com/mcp');
+    await user.click(checkbox);
+
+    // Now approve should be enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+  });
+
+  it('button shows "Approve All" when all checkboxes checked and instances selected', async () => {
+    const user = userEvent.setup();
+    mockSearch = { id: MOCK_REQUEST_ID };
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    // Select MCP instance
+    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
+    await user.click(selectTrigger);
+    const option = await screen.findByText('DeepWiki (deepwiki-prod)');
+    await user.click(option);
+
+    // Button should say "Approve All"
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve All');
+    });
+  });
+
+  it('button shows "Approve Selected" when some checkboxes unchecked', async () => {
+    const user = userEvent.setup();
+    mockSearch = { id: MOCK_REQUEST_ID };
+    setupHandlers(mockDraftMultiToolResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-mcp-https://mcp.weather.com/mcp')).toBeInTheDocument();
+    });
+
+    // Uncheck one MCP
+    const weatherCheckbox = screen.getByTestId('review-mcp-toggle-https://mcp.weather.com/mcp');
+    await user.click(weatherCheckbox);
+
+    // Button should say "Approve Selected"
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve Selected');
+    });
+  });
+});
+
+// ============================================================================
+// Mixed Resources (Multiple MCPs)
 // ============================================================================
 
 describe('ReviewAccessRequestPage - Mixed Resources', () => {
-  it('renders both tool cards and MCP cards', async () => {
+  it('renders MCP cards', async () => {
     mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMixedResourcesResponse);
 
@@ -1111,15 +804,13 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('review-tool-builtin-exa-search')).toBeInTheDocument();
       expect(screen.getByTestId('review-mcp-https://mcp.deepwiki.com/mcp')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Requested Tools:')).toBeInTheDocument();
     expect(screen.getByText('Requested MCP Servers:')).toBeInTheDocument();
   });
 
-  it('Approve button requires selections for both tools and MCPs', async () => {
+  it('Approve button requires MCP instance selection', async () => {
     const user = userEvent.setup();
     mockSearch = { id: MOCK_REQUEST_ID };
     setupHandlers(mockDraftMixedResourcesResponse);
@@ -1132,15 +823,6 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
-
-    // Select tool instance only
-    const toolSelect = screen.getByTestId('review-instance-select-builtin-exa-search');
-    await user.click(toolSelect);
-    const toolOption = await screen.findByText('my-exa-instance');
-    await user.click(toolOption);
-
-    // Still disabled -- MCP instance not selected
     expect(screen.getByTestId('review-approve-button')).toBeDisabled();
 
     // Select MCP instance

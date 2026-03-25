@@ -1,4 +1,4 @@
-use services::{AccessRequestError, AuthServiceError, TenantError, ToolsetError};
+use services::{AccessRequestError, AuthServiceError, TenantError};
 use services::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -32,17 +32,17 @@ pub enum AppsRouteError {
   #[error_meta(error_type = ErrorType::NotFound)]
   AppClientNotFound(String),
 
-  #[error("Invalid tool type: {0}.")]
+  #[error("Invalid MCP type: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidToolType(String),
+  InvalidMcpType(String),
 
-  #[error("Tool instance not owned by user: {0}.")]
+  #[error("MCP instance not owned by user: {0}.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
-  ToolInstanceNotOwned(String),
+  McpInstanceNotOwned(String),
 
-  #[error("Tool instance not configured properly: {0}.")]
+  #[error("MCP instance not configured properly: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
-  ToolInstanceNotConfigured(String),
+  McpInstanceNotConfigured(String),
 
   #[error("Session role is required to approve access requests.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
@@ -60,9 +60,6 @@ pub enum AppsRouteError {
 
   #[error(transparent)]
   AuthServiceError(#[from] AuthServiceError),
-
-  #[error(transparent)]
-  ToolServiceError(#[from] ToolsetError),
 
   #[error(transparent)]
   TenantError(#[from] TenantError),

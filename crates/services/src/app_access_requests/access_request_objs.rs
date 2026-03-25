@@ -91,24 +91,6 @@ pub enum FlowType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct ToolsetTypeRequest {
-  pub toolset_type: String, // e.g., "builtin-exa-search"
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct ToolsetApproval {
-  pub toolset_type: String,
-  pub status: ApprovalStatus,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub instance: Option<ToolsetInstance>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct ToolsetInstance {
-  pub id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct RequestedMcpServer {
   pub url: String,
 }
@@ -231,15 +213,11 @@ impl Default for ApprovedResources {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
 pub struct RequestedResourcesV1 {
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub toolset_types: Vec<ToolsetTypeRequest>,
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub mcp_servers: Vec<RequestedMcpServer>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
 pub struct ApprovedResourcesV1 {
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub toolsets: Vec<ToolsetApproval>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub mcps: Vec<McpApproval>,
 }
@@ -257,8 +235,8 @@ pub struct ApprovedResourcesV1 {
     "requested_role": "scope_user_user",
     "requested": {
         "version": "1",
-        "toolset_types": [
-            {"toolset_type": "builtin-exa-search"}
+        "mcp_servers": [
+            {"url": "https://mcp.example.com/mcp"}
         ]
     }
 }))]
@@ -282,13 +260,6 @@ pub struct CreateAccessRequest {
     "approved_role": "scope_user_user",
     "approved": {
         "version": "1",
-        "toolsets": [
-            {
-                "toolset_type": "builtin-exa-search",
-                "status": "approved",
-                "instance": {"id": "instance-uuid"}
-            }
-        ],
         "mcps": [
             {
                 "url": "https://mcp.deepwiki.com/mcp",

@@ -89,7 +89,7 @@ async fn test_<handler>_<scenario>() -> anyhow::Result<()> {
 3. **Naming**: `test_<handler_name>_<scenario>` (handler) or `test_<tier>_endpoints_<behavior>` (auth)
 4. **Assertions**: `assert_eq!(expected, actual)` with `use pretty_assertions::assert_eq;`
 5. **Error codes**: Assert `body["error"]["code"]`, never message text
-6. **"Allowed" tests with build_test_router()**: Only test endpoints using real services (db_service, data_service). Skip endpoints calling MockAuthService/MockToolService/MockSharedContext.
+6. **"Allowed" tests with build_test_router()**: Only test endpoints using real services (db_service, data_service). Skip endpoints calling MockAuthService/MockSharedContext.
 
 ## Canonical Test Patterns (Uniformity Guidelines)
 
@@ -100,14 +100,14 @@ async fn test_<handler>_<scenario>() -> anyhow::Result<()> {
 - **403 (Insufficient role)**: Use `#[values]` cartesian product (roles × endpoints)
 - **Allow (Authorized)**: Use `#[values]` for eligible roles, test safe endpoints only
 
-**Safe Endpoints**: Only test endpoints using real services (DbService, DataService, SessionService) in allow tests. Skip endpoints requiring MockAuthService, MockToolService, or MockSharedContext.
+**Safe Endpoints**: Only test endpoints using real services (DbService, DataService, SessionService) in allow tests. Skip endpoints requiring MockAuthService or MockSharedContext.
 
 **Exemptions**:
 - Multi-step OAuth/session flows using `TestServer` are acceptable
 - Streaming tests using `MockSharedContext.expect_forward_request()` are acceptable
 - Document violations clearly when full-router pattern isn't feasible
 
-**Module Ownership**: Each module owns its auth tests. No cross-module auth testing (e.g., settings tests don't test toolset_types).
+**Module Ownership**: Each module owns its auth tests. No cross-module auth testing.
 
 ## Pattern Files
 
@@ -146,9 +146,7 @@ use routes_app::test_utils::{
 | Public | None | /ping, /health, /app/info, /app/setup, /logout |
 | Optional Auth | Any | /bodhi/v1/user, /bodhi/v1/auth/*, /bodhi/v1/user/request-* |
 | User | resource_user | /v1/models, /v1/chat/completions, /api/tags, /bodhi/v1/models (read) |
-| User Session | resource_user | /bodhi/v1/toolsets (CRUD) |
-| User OAuth | resource_user | /bodhi/v1/toolsets (list) |
 | PowerUser | resource_power_user | /bodhi/v1/models (write), /bodhi/v1/modelfiles/*, /bodhi/v1/api-models |
 | PowerUser Session | resource_power_user | /bodhi/v1/tokens |
-| Admin Session | resource_admin | /bodhi/v1/settings, /bodhi/v1/toolset_types |
+| Admin Session | resource_admin | /bodhi/v1/settings |
 | Manager Session | resource_manager | /bodhi/v1/access-requests/*, /bodhi/v1/users |

@@ -104,10 +104,10 @@ impl DbCore for DefaultDbService {
              _existing text[];
            BEGIN
              _tables := ARRAY[
-               'settings', 'app_access_requests', 'toolsets',
+               'settings', 'app_access_requests',
                'mcp_auth_params', 'mcp_oauth_tokens', 'mcp_oauth_config_details',
                'mcp_auth_config_params', 'mcps', 'mcp_auth_configs', 'mcp_servers',
-               'app_toolset_configs', 'user_aliases', 'model_metadata',
+               'user_aliases', 'model_metadata',
                'api_model_aliases', 'api_tokens', 'user_access_requests',
                'download_requests'
              ];
@@ -140,7 +140,6 @@ impl DbCore for DefaultDbService {
         let tables = [
           "settings",
           "app_access_requests",
-          "toolsets",
           "mcp_auth_params",
           "mcp_oauth_tokens",
           "mcp_oauth_config_details",
@@ -148,7 +147,6 @@ impl DbCore for DefaultDbService {
           "mcps",
           "mcp_auth_configs",
           "mcp_servers",
-          "app_toolset_configs",
           "user_aliases",
           "model_metadata",
           "api_model_aliases",

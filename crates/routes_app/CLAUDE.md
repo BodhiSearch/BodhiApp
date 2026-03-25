@@ -36,7 +36,6 @@ Defined in `src/routes.rs`. Two CORS tiers: **restrictive** (blocks all cross-or
 | `optional_auth` | `optional_auth_middleware` | -- | `/info`, `/user`, auth initiate/callback, dashboard auth, tenants, dev-only routes |
 | `user_apis` | `api_auth_middleware` | User / TokenScope::User / UserScope::User | OpenAI/Ollama compat, model listing, model files |
 | `power_user_apis` | `api_auth_middleware` | PowerUser / TokenScope::PowerUser / UserScope::PowerUser | Model alias CRUD, file pull/downloads |
-| `toolset_exec_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | Toolset tool execution (no API tokens) |
 | `mcp_exec_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | MCP tool refresh + execution (no API tokens) |
 | `apps_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | External app endpoints under `/bodhi/v1/apps/...` (OAuth tokens) |
 
@@ -45,9 +44,9 @@ Defined in `src/routes.rs`. Two CORS tiers: **restrictive** (blocks all cross-or
 | Group | Auth Middleware | Role | Purpose |
 |-------|---------------|------|---------|
 | `guest_endpoints` | `api_auth_middleware` | Guest | `users_request_access`, `users_request_status` |
-| `user_session_apis` | `api_auth_middleware` | User | Toolset/MCP CRUD, MCP auth configs, MCP OAuth, MCP servers (read), app access reviews, API model management |
+| `user_session_apis` | `api_auth_middleware` | User | MCP CRUD, MCP auth configs, MCP OAuth, MCP servers (read), app access reviews, API model management |
 | `power_user_session_apis` | `api_auth_middleware` | PowerUser | Token CRUD, metadata refresh, queue status |
-| `admin_session_apis` | `api_auth_middleware` | Admin | Settings CRUD, toolset type enable/disable, MCP server create/update |
+| `admin_session_apis` | `api_auth_middleware` | Admin | Settings CRUD, MCP server create/update |
 | `manager_session_apis` | `api_auth_middleware` | Manager | User access request approval/rejection, user listing, role changes, user deletion |
 
 All session-protected groups share a base `auth_middleware` layer and restrictive CORS layer.
@@ -65,7 +64,7 @@ All route handlers use `AuthScope` (`src/shared/auth_scope_extractor.rs`), a new
 Key methods on `AuthScope` (via `Deref` to `AuthScopedAppService`):
 - `auth_context()` -- raw `AuthContext` enum
 - `require_user_id()` / `require_client_id()` / `require_tenant_id()` -- return `Result<&str, AuthContextError>`
-- `tokens()`, `mcps()`, `tools()`, `users()` -- auth-scoped sub-services
+- `tokens()`, `mcps()`, `users()` -- auth-scoped sub-services
 - `inference()` -- `Arc<dyn InferenceService>`
 - `data_service()`, `setting_service()` -- passthrough accessors (no auth scoping)
 
@@ -83,7 +82,7 @@ The `models/` module has three sub-modules: `alias/`, `api/`, `files/`. Standalo
 
 Rails-style, no `_handler` suffix:
 - `<domain>_index` (list), `<domain>_show` (get), `<domain>_create`, `<domain>_update`, `<domain>_destroy`
-- Non-CRUD: descriptive names (`toolsets_execute`, `auth_initiate`, `auth_callback`)
+- Non-CRUD: descriptive names (`auth_initiate`, `auth_callback`)
 
 ## JSON Extraction Convention
 
@@ -131,7 +130,7 @@ Every new route must:
 
 **AppStatus values**: `Setup` (default), `Ready`, `ResourceAdmin`. `TenantSelection` was removed -- Anonymous{MultiTenant} and MultiTenantSession{client_id: None} with memberships now return `Ready`.
 
-**Apps API thin wrappers**: `apps_toolsets_index`, `apps_mcps_index`, etc. in the `apps_apis` group are thin wrappers that delegate to the same auth-scoped services but are mounted under `/bodhi/v1/apps/...` with permissive CORS for external OAuth app access.
+**Apps API thin wrappers**: `apps_mcps_index`, etc. in the `apps_apis` group are thin wrappers that delegate to the same auth-scoped services but are mounted under `/bodhi/v1/apps/...` with permissive CORS for external OAuth app access.
 
 ## Commands
 

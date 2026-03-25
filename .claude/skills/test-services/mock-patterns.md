@@ -9,16 +9,16 @@ The services crate uses `mockall` for generating mock implementations of service
 
 ## MockDbService (Composite Mock)
 
-`DbService` is a composite of multiple repository traits (`DbCore`, `ModelRepository`, `AccessRepository`, `TokenRepository`, `ToolsetRepository`). The mock is defined manually in `test_utils/db.rs`:
+`DbService` is a composite of multiple repository traits (`DbCore`, `ModelRepository`, `AccessRepository`, `TokenRepository`). The mock is defined manually in `test_utils/db.rs`:
 
 ```rust
 use crate::test_utils::MockDbService;
 
 let mut mock_db = MockDbService::new();
 mock_db
-  .expect_list_toolsets()
-  .with(eq("user123"))
-  .returning(|_| Ok(vec![/* ... */]));
+  .expect_list_api_tokens()
+  .with(eq("user123"), eq(1), eq(10))
+  .returning(|_, _, _| Ok((vec![/* ... */], 0)));
 ```
 
 ### Common MockDbService Expectations
@@ -34,13 +34,13 @@ mock_db
 
 // Expect method called once and return error
 mock_db
-  .expect_create_toolset()
+  .expect_create_api_token()
   .times(1)
   .returning(|_| Err(DbError::SqlxError(SqlxError(sqlx::Error::RowNotFound))));
 
 // Never expect a method to be called
 mock_db
-  .expect_delete_toolset()
+  .expect_delete_api_token()
   .never();
 ```
 
@@ -52,63 +52,17 @@ Most service traits use `#[cfg_attr(test, mockall::automock)]` for automatic moc
 // In the service definition:
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
-pub trait ExaService: Send + Sync + std::fmt::Debug {
-  async fn search(&self, api_key: &str, request: ExaSearchRequest) -> Result<ExaSearchResponse, ExaError>;
+pub trait McpService: Send + Sync + std::fmt::Debug {
+  async fn list(&self, tenant_id: &str, user_id: &str) -> Result<Vec<McpEntity>, McpError>;
 }
 
 // In tests:
-use crate::exa_service::MockExaService;
+use crate::mcps::MockMcpService;
 
-let mut mock_exa = MockExaService::new();
-mock_exa
-  .expect_search()
-  .returning(|_, _| Ok(ExaSearchResponse { /* ... */ }));
-```
-
-## ToolService Test Example (Full Pattern)
-
-Shows mocking multiple dependencies for a service:
-
-```rust
-use crate::db::MockTimeService;
-use crate::test_utils::MockDbService;
-use crate::exa_service::MockExaService;
-use crate::tool_service::{DefaultToolService, ToolService};
-use mockall::predicate::eq;
-use std::sync::Arc;
-
-// Sync test -- no #[anyhow_trace]
-#[rstest]
-fn test_list_all_tool_definitions() {
-  let db = MockDbService::new();
-  let exa = MockExaService::new();
-  let time = MockTimeService::new();
-
-  let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
-  let defs = service.list_all_tool_definitions();
-
-  assert_eq!(1, defs.len());
-  assert_eq!("builtin-exa-web-search", defs[0].function.name);
-}
-
-// Async test with expectations
-#[rstest]
-#[tokio::test]
-async fn test_list_tools_for_user() -> anyhow::Result<()> {
-  let mut db = MockDbService::new();
-  let exa = MockExaService::new();
-  let time = MockTimeService::new();
-
-  db.expect_list_toolsets()
-    .with(eq("user123"))
-    .returning(|_| Ok(vec![test_toolset_row("id1", "user123", "my-exa")]));
-
-  let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
-  let tools = service.list_tools_for_user("user123").await?;
-
-  assert_eq!(1, tools.len());
-  Ok(())
-}
+let mut mock_mcp = MockMcpService::new();
+mock_mcp
+  .expect_list()
+  .returning(|_, _| Ok(vec![/* ... */]));
 ```
 
 ## Predicate Patterns

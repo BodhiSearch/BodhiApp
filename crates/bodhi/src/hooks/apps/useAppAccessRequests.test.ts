@@ -35,7 +35,7 @@ describe('useGetAppAccessRequestReview', () => {
     expect(result.current.data?.id).toBe(MOCK_REQUEST_ID);
     expect(result.current.data?.status).toBe('draft');
     expect(result.current.data?.app_name).toBe('Test Application');
-    expect(result.current.data?.tools_info).toHaveLength(1);
+    expect(result.current.data?.mcps_info).toHaveLength(1);
   });
 
   it('does not fetch when id is null (disabled query)', async () => {
@@ -84,7 +84,7 @@ describe('useApproveAppAccessRequest', () => {
         body: {
           approved_role: 'scope_user_user',
           approved: {
-            toolsets: [{ toolset_type: 'builtin-exa-search', status: 'approved', instance: { id: 'instance-1' } }],
+            version: '1' as const,
             mcps: [],
           },
         },
@@ -119,7 +119,7 @@ describe('useApproveAppAccessRequest', () => {
           body: {
             approved_role: 'scope_user_user',
             approved: {
-              toolsets: [],
+              version: '1' as const,
               mcps: [],
             },
           },

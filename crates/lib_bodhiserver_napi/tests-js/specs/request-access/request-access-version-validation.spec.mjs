@@ -9,7 +9,7 @@ test.describe('Access Request Version Validation', { tag: ['@oauth'] }, () => {
         requested_role: 'scope_user_user',
         requested: {
           version: '99',
-          toolset_types: [{ toolset_type: 'builtin-exa-search' }],
+          mcp_servers: [{ url: 'https://example.com/mcp' }],
         },
       },
     });
@@ -27,7 +27,7 @@ test.describe('Access Request Version Validation', { tag: ['@oauth'] }, () => {
         flow_type: 'popup',
         requested_role: 'scope_user_user',
         requested: {
-          toolset_types: [{ toolset_type: 'builtin-exa-search' }],
+          mcp_servers: [{ url: 'https://example.com/mcp' }],
         },
       },
     });

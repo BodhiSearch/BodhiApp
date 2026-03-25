@@ -16,7 +16,6 @@ import {
   Settings2,
   Users,
   Play,
-  Wrench,
 } from 'lucide-react';
 import { useLocation } from '@tanstack/react-router';
 
@@ -99,35 +98,6 @@ export const defaultNavigationItems: NavigationItem[] = [
         href: '/tokens/',
         description: 'Manage API access tokens',
         icon: Key,
-      },
-      {
-        title: 'Toolsets',
-        href: '/toolsets/',
-        description: 'Configure AI toolsets',
-        icon: Wrench,
-        items: [
-          {
-            title: 'New Toolset',
-            href: '/toolsets/new/',
-            description: 'Create a new toolset',
-            icon: Wrench,
-            skip: true,
-          },
-          {
-            title: 'Edit Toolset',
-            href: '/toolsets/edit/',
-            description: 'Edit a toolset',
-            icon: Wrench,
-            skip: true,
-          },
-          {
-            title: 'Admin Toolsets',
-            href: '/toolsets/admin/',
-            description: 'Admin toolsets',
-            icon: Wrench,
-            skip: true,
-          },
-        ],
       },
       {
         title: 'MCP',

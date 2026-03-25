@@ -133,7 +133,7 @@ describe('BrowserExtensionSetupPage', () => {
 
     const setupProgress = screen.getByTestId('setup-progress');
     expect(setupProgress).toBeInTheDocument();
-    expect(setupProgress).toHaveTextContent('Step 6 of 7: Extension');
+    expect(setupProgress).toHaveTextContent('Step 5 of 6: Extension');
   });
 
   it('renders welcome section and logo', () => {

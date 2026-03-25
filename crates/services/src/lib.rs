@@ -23,8 +23,6 @@ mod tokens;
 mod ai_apis;
 pub mod inference;
 mod mcps;
-mod toolsets;
-
 // -- Model & data management
 mod models;
 
@@ -58,8 +56,6 @@ pub use tokens::*;
 // -- Re-exports: AI & external API services
 pub use ai_apis::*;
 pub use mcps::*;
-pub use toolsets::*;
-
 // -- Re-exports: model & data management
 pub use models::*;
 

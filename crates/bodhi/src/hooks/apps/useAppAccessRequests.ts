@@ -6,9 +6,6 @@ import {
   McpServerReviewInfo,
   OpenAiApiError,
   RequestedResources,
-  Toolset,
-  ToolsetApproval,
-  ToolTypeReviewInfo,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -28,9 +25,6 @@ export type {
   McpApproval,
   McpServerReviewInfo,
   RequestedResources,
-  ToolsetApproval,
-  ToolTypeReviewInfo,
-  Toolset,
 };
 
 // ============================================================================

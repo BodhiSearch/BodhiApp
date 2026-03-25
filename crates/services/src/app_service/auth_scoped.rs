@@ -4,9 +4,9 @@ use crate::{
   inference::InferenceService,
   AccessRequestService, AiApiService, AppService, AuthContext, AuthScopedApiModelService,
   AuthScopedDataService, AuthScopedDownloadService, AuthScopedMcpService, AuthScopedTenantService,
-  AuthScopedTokenService, AuthScopedToolService, AuthScopedUserAccessRequestService,
-  AuthScopedUserService, AuthService, CacheService, ConcurrencyService, DataService, HubService,
-  NetworkService, QueueProducer, SessionService, SettingService, TenantService,
+  AuthScopedTokenService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
+  CacheService, ConcurrencyService, DataService, HubService, NetworkService, QueueProducer,
+  SessionService, SettingService, TenantService,
 };
 use std::sync::Arc;
 
@@ -59,10 +59,6 @@ impl AuthScopedAppService {
 
   pub fn mcps(&self) -> AuthScopedMcpService {
     AuthScopedMcpService::new(self.app_service.clone(), self.auth_context.clone())
-  }
-
-  pub fn tools(&self) -> AuthScopedToolService {
-    AuthScopedToolService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
   pub fn users(&self) -> AuthScopedUserService {

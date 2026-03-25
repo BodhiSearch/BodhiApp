@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use services::Toolset;
 use services::{AppAccessRequestStatus, FlowType, RequestedResources, UserScope};
 use utoipa::ToSchema;
 
@@ -60,24 +59,9 @@ pub struct AccessRequestReviewResponse {
   pub requested_role: String,
   /// Resources requested
   pub requested: RequestedResources,
-  /// Tool type information with user instances
-  pub tools_info: Vec<ToolTypeReviewInfo>,
   /// MCP server information with user instances
   #[serde(default)]
   pub mcps_info: Vec<McpServerReviewInfo>,
-}
-
-// Tool type review info with user instances
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ToolTypeReviewInfo {
-  /// Tool type identifier
-  pub toolset_type: String,
-  /// Tool type display name
-  pub name: String,
-  /// Tool type description
-  pub description: String,
-  /// User's configured instances of this tool type
-  pub instances: Vec<Toolset>,
 }
 
 // MCP server review info with user instances

@@ -15,14 +15,14 @@ use services::AuthContext;
 use services::ResourceRole;
 use services::{
   test_utils::{AppServiceStubBuilder, FrozenTimeService, TEST_TENANT_ID},
-  DbService, DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService,
-  RegisterAccessRequestConsentResponse, {AppAccessRequest, FlowType},
+  DbService, DefaultAccessRequestService, MockAuthService, RegisterAccessRequestConsentResponse,
+  {AppAccessRequest, FlowType},
 };
 use std::sync::Arc;
 use tower::ServiceExt;
 
 // ============================================================================
-// Helper: build AppServiceStub with real DB, real ToolService, real AccessRequestService
+// Helper: build AppServiceStub with real DB, real AccessRequestService
 // ============================================================================
 
 struct TestHarness {
@@ -37,14 +37,6 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
   let time_service: Arc<dyn services::TimeService> = Arc::new(FrozenTimeService::default());
   let auth_service: Arc<dyn services::AuthService> = Arc::new(mock_auth);
 
-  // Real ToolService backed by same DB
-  let exa = MockExaService::new();
-  let tool_service: Arc<dyn services::ToolService> = Arc::new(DefaultToolService::new(
-    db_service.clone(),
-    Arc::new(exa),
-    time_service.clone(),
-  ));
-
   // Real AccessRequestService backed by same DB + mock auth
   builder.with_tenant(services::Tenant::test_default()).await;
   let access_request_service: Arc<dyn services::AccessRequestService> =
@@ -57,7 +49,6 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
 
   let app_service = builder
     .auth_service(auth_service)
-    .with_tool_service(tool_service)
     .access_request_service(access_request_service)
     .build()
     .await?;
@@ -68,7 +59,7 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
 }
 
 // ============================================================================
-// Helper: seed a draft access request + enabled toolset instance in DB
+// Helper: seed a draft access request in DB
 // ============================================================================
 
 async fn seed_draft_request(
@@ -88,7 +79,7 @@ async fn seed_draft_request(
     flow_type,
     redirect_uri: redirect_uri.map(|u| u.to_string()),
     status: AppAccessRequestStatus::Draft,
-    requested: r#"{"version":"1","toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#
+    requested: r#"{"version":"1","mcp_servers":[{"url":"https://mcp.example.com/mcp"}]}"#
       .to_string(),
     approved: None,
     user_id: None,
@@ -102,44 +93,6 @@ async fn seed_draft_request(
   };
   let result = db_service.create(&row).await?;
   Ok(result)
-}
-
-async fn seed_toolset_instance(
-  db_service: &dyn DbService,
-  instance_id: &str,
-  user_id: &str,
-  enabled: bool,
-  has_api_key: bool,
-) -> anyhow::Result<()> {
-  let now = chrono::Utc::now();
-  let row = services::ToolsetEntity {
-    id: instance_id.to_string(),
-    tenant_id: TEST_TENANT_ID.to_string(),
-    user_id: user_id.to_string(),
-    toolset_type: "builtin-exa-search".to_string(),
-    slug: "my-exa-instance".to_string(),
-    description: None,
-    enabled,
-    encrypted_api_key: if has_api_key {
-      Some("encrypted_key".to_string())
-    } else {
-      None
-    },
-    salt: if has_api_key {
-      Some("salt".to_string())
-    } else {
-      None
-    },
-    nonce: if has_api_key {
-      Some("nonce".to_string())
-    } else {
-      None
-    },
-    created_at: now,
-    updated_at: now,
-  };
-  db_service.create_toolset(TEST_TENANT_ID, &row).await?;
-  Ok(())
 }
 
 // ============================================================================
@@ -158,7 +111,6 @@ async fn test_approve_access_request_success(
 ) -> anyhow::Result<()> {
   let request_id = "ar-approve-ok";
   let user_id = "test-user-1";
-  let instance_id = "toolset-instance-1";
 
   let mut mock_auth = MockAuthService::default();
   mock_auth
@@ -181,14 +133,6 @@ async fn test_approve_access_request_success(
     "scope_user_user",
   )
   .await?;
-  seed_toolset_instance(
-    harness.db_service.as_ref(),
-    instance_id,
-    user_id,
-    true,
-    true,
-  )
-  .await?;
 
   let router = Router::new()
     .route(
@@ -201,11 +145,7 @@ async fn test_approve_access_request_success(
     "approved_role": "scope_user_user",
     "approved": {
       "version": "1",
-      "toolsets": [{
-        "toolset_type": "builtin-exa-search",
-        "status": "approved",
-        "instance": {"id": instance_id}
-      }]
+      "mcps": []
     }
   });
 
@@ -243,13 +183,13 @@ async fn test_approve_access_request_success(
 }
 
 // ============================================================================
-// apps_approve_access_request - error: instance not owned
+// apps_approve_access_request - error: MCP instance not owned
 // ============================================================================
 
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> {
+async fn test_approve_access_request_mcp_instance_not_owned() -> anyhow::Result<()> {
   let request_id = "ar-not-owned";
   let user_id = "test-user-2";
 
@@ -263,7 +203,7 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
     "scope_user_user",
   )
   .await?;
-  // No toolset instance seeded for this user -> "not owned"
+  // No MCP instance seeded for this user -> "not owned"
 
   let router = Router::new()
     .route(
@@ -276,8 +216,8 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
     "approved_role": "scope_user_user",
     "approved": {
       "version": "1",
-      "toolsets": [{
-        "toolset_type": "builtin-exa-search",
+      "mcps": [{
+        "url": "https://mcp.example.com/mcp",
         "status": "approved",
         "instance": {"id": "nonexistent-instance"}
       }]
@@ -301,155 +241,7 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
 
   let body = response.json::<Value>().await?;
   assert_eq!(
-    "apps_route_error-tool_instance_not_owned",
-    body["error"]["code"].as_str().unwrap()
-  );
-
-  Ok(())
-}
-
-// ============================================================================
-// apps_approve_access_request - error: instance not enabled
-// ============================================================================
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_access_request_instance_not_enabled() -> anyhow::Result<()> {
-  let request_id = "ar-not-enabled";
-  let user_id = "test-user-3";
-  let instance_id = "disabled-instance";
-
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
-  seed_toolset_instance(
-    harness.db_service.as_ref(),
-    instance_id,
-    user_id,
-    false, // not enabled
-    true,
-  )
-  .await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "1",
-      "toolsets": [{
-        "toolset_type": "builtin-exa-search",
-        "status": "approved",
-        "instance": {"id": instance_id}
-      }]
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::BAD_REQUEST, response.status());
-
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "apps_route_error-tool_instance_not_configured",
-    body["error"]["code"].as_str().unwrap()
-  );
-
-  Ok(())
-}
-
-// ============================================================================
-// apps_approve_access_request - error: instance no API key
-// ============================================================================
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_approve_access_request_instance_no_api_key() -> anyhow::Result<()> {
-  let request_id = "ar-no-key";
-  let user_id = "test-user-4";
-  let instance_id = "no-key-instance";
-
-  let mock_auth = MockAuthService::default();
-  let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(
-    harness.db_service.as_ref(),
-    request_id,
-    FlowType::Popup,
-    None,
-    "scope_user_user",
-  )
-  .await?;
-  seed_toolset_instance(
-    harness.db_service.as_ref(),
-    instance_id,
-    user_id,
-    true,
-    false, // no API key
-  )
-  .await?;
-
-  let router = Router::new()
-    .route(
-      ENDPOINT_ACCESS_REQUESTS_APPROVE,
-      put(apps_approve_access_request),
-    )
-    .with_state(harness.state);
-
-  let body = json!({
-    "approved_role": "scope_user_user",
-    "approved": {
-      "version": "1",
-      "toolsets": [{
-        "toolset_type": "builtin-exa-search",
-        "status": "approved",
-        "instance": {"id": instance_id}
-      }]
-    }
-  });
-
-  let request = axum::http::Request::builder()
-    .method("PUT")
-    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
-    .header("Content-Type", "application/json")
-    .body(Body::from(serde_json::to_string(&body)?))?
-    .with_auth_context(AuthContext::test_session_with_token(
-      user_id,
-      "user@test.com",
-      ResourceRole::User,
-      "dummy-token",
-    ));
-
-  let response = router.oneshot(request).await?;
-  assert_eq!(StatusCode::BAD_REQUEST, response.status());
-
-  let body = response.json::<Value>().await?;
-  assert_eq!(
-    "apps_route_error-tool_instance_not_configured",
+    "apps_route_error-mcp_instance_not_owned",
     body["error"]["code"].as_str().unwrap()
   );
 
@@ -557,7 +349,6 @@ async fn test_approve_privilege_escalation_user_grants_power_user() -> anyhow::R
     "approved_role": "scope_user_power_user",
     "approved": {
       "version": "1",
-      "toolsets": [],
       "mcps": []
     }
   });
@@ -597,7 +388,6 @@ async fn test_approve_privilege_escalation_user_grants_power_user() -> anyhow::R
 async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result<()> {
   let request_id = "ar-downgrade";
   let user_id = "test-user-7";
-  let instance_id = "downgrade-instance";
 
   let mut mock_auth = MockAuthService::default();
   mock_auth
@@ -620,14 +410,6 @@ async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result
     "scope_user_power_user",
   )
   .await?;
-  seed_toolset_instance(
-    harness.db_service.as_ref(),
-    instance_id,
-    user_id,
-    true,
-    true,
-  )
-  .await?;
 
   let router = Router::new()
     .route(
@@ -640,11 +422,7 @@ async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result
     "approved_role": "scope_user_user",
     "approved": {
       "version": "1",
-      "toolsets": [{
-        "toolset_type": "builtin-exa-search",
-        "status": "approved",
-        "instance": {"id": instance_id}
-      }]
+      "mcps": []
     }
   });
 
@@ -705,7 +483,6 @@ async fn test_approve_privilege_escalation_approved_exceeds_requested() -> anyho
     "approved_role": "scope_user_power_user",
     "approved": {
       "version": "1",
-      "toolsets": [],
       "mcps": []
     }
   });
@@ -759,7 +536,7 @@ async fn test_create_access_request_unknown_version() -> anyhow::Result<()> {
     "requested_role": "scope_user_user",
     "requested": {
       "version": "99",
-      "toolset_types": []
+      "mcp_servers": []
     }
   });
 
@@ -821,7 +598,6 @@ async fn test_approve_access_request_unknown_version() -> anyhow::Result<()> {
     "approved_role": "scope_user_user",
     "approved": {
       "version": "99",
-      "toolsets": [],
       "mcps": []
     }
   });

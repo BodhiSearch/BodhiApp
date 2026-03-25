@@ -34,7 +34,7 @@ All mutating DbService operations on tenant-scoped rows use `begin_tenant_txn(te
 `bodhiapp_<base64url_random>.<client_id>` — prefix lookup is cross-tenant by design; tenant resolved from `client_id` suffix after hash verification.
 
 ### Error Layer Separation
-- **Services layer**: Domain errors (`TokenServiceError`, `McpError`, `ToolsetError`, etc.) — all implement `AppError` via `errmeta_derive`
+- **Services layer**: Domain errors (`TokenServiceError`, `McpError`, etc.) — all implement `AppError` via `errmeta_derive`
 - **Auth context errors**: `AuthContextError` in `src/auth/auth_context.rs`
 - **HTTP layer**: `ApiError` / `OpenAIApiError` / `ErrorBody` live in `routes_app::shared` (NOT here)
 
@@ -52,7 +52,6 @@ Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_sc
 **Auth-aware sub-services** (co-located with their domains):
 - `tokens()` → `AuthScopedTokenService` (in `tokens/auth_scoped.rs`)
 - `mcps()` → `AuthScopedMcpService` (in `mcps/auth_scoped.rs`)
-- `tools()` → `AuthScopedToolService` (in `toolsets/auth_scoped.rs`)
 - `users()` → `AuthScopedUserService` (in `users/auth_scoped.rs`)
 - `user_access_requests()` → `AuthScopedUserAccessRequestService` (in `users/auth_scoped_access_requests.rs`)
 - `data()` → `AuthScopedDataService` (in `models/auth_scoped_data.rs`)
@@ -64,7 +63,7 @@ Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_sc
 
 **Non-auth-scoped passthrough**: `access_request_service()` — intentionally not auth-scoped (see `AccessRequestService` doc comment).
 
-**Removed passthroughs**: `token_service()`, `mcp_service()`, `tool_service()`, `data_service()` — use auth-scoped sub-services instead.
+**Removed passthroughs**: `token_service()`, `mcp_service()`, `data_service()` — use auth-scoped sub-services instead.
 
 **Architecture rule**: Route handlers use `AuthScopedAppService`. Infrastructure (bootstrap, middleware) uses `AppService` directly.
 
@@ -79,7 +78,6 @@ Each domain module follows `*_objs.rs` pattern for types and `error.rs` for erro
 - `tenants/tenant_objs.rs` — `DeploymentMode` (Standalone/MultiTenant), `AppStatus` (Setup/Ready/ResourceAdmin), `Tenant` (includes `created_by: Option<String>`)
 - `tenants/spi_types.rs` — `SpiTenant`, `SpiTenantListResponse`, `SpiCreateTenantRequest`, `SpiCreateTenantResponse`
 - `mcps/mcp_objs.rs` — MCP types, `McpRequest`, `McpServerRequest` (both derive `Validate`)
-- `toolsets/toolset_objs.rs` — `Toolset`, `ToolsetRequest` (derives `Validate`)
 - `app_access_requests/access_request_objs.rs` — `AppAccessRequest` (renamed from `AppAccessRequestRow`)
 - `shared_objs/` — `error_wrappers.rs`, `utils.rs`, `log.rs`, `token.rs` (JWT parsing)
 - `tenants/` — tenant management module
@@ -159,4 +157,4 @@ Sibling `test_*.rs` pattern for files over ~500 lines. Inline `mod tests` for sm
 `.claude/skills/test-services/SKILL.md` — quick reference and migration checklist.
 
 ## Service Initialization Order
-1. TimeService → 2. DbService → 3. SettingService → 4. AuthService → 5. SessionService → 6. TenantService → 7. HubService, DataService, CacheService → 8. ConcurrencyService, NetworkService → 9. AiApiService, ToolService, ExaService → 10. McpService → 11. TokenService → 12. InferenceService → 13. AccessRequestService → 14. QueueProducer
+1. TimeService → 2. DbService → 3. SettingService → 4. AuthService → 5. SessionService → 6. TenantService → 7. HubService, DataService, CacheService → 8. ConcurrencyService, NetworkService → 9. AiApiService → 10. McpService → 11. TokenService → 12. InferenceService → 13. AccessRequestService → 14. QueueProducer

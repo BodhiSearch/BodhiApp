@@ -17,7 +17,6 @@ Entry point: `src/lib.rs` -- re-exports all public modules with conditional `tes
 | `models/` | `ModelRouteError` | Model alias CRUD, metadata, pull, API models, local files |
 | `settings/` | `SettingsRouteError` | Settings CRUD |
 | `setup/` | `SetupRouteError` | App setup/init |
-| `toolsets/` | `ToolsetRouteError` | Toolset CRUD + execution |
 | `mcps/` | `McpRouteError` | MCP CRUD, tools, servers, OAuth |
 | `oai/` | `OAIRouteError` | OpenAI-compatible endpoints |
 | `ollama/` | `OllamaRouteError` | Ollama-compatible endpoints |
@@ -83,7 +82,6 @@ All enums use `#[error_meta(trait_to_impl = AppError)]` from `errmeta_derive`.
 | `ApiModelsRouteError` | `api_models/error.rs` | API model config errors |
 | `SettingsRouteError` | `settings/error.rs` | Settings management |
 | `SetupRouteError` | `setup/error.rs` | Setup flow errors |
-| `ToolsetRouteError` | `toolsets/error.rs` | Toolset validation |
 | `McpRouteError` | `mcps/error.rs` | MCP CRUD, OAuth validation |
 | `OAIRouteError` | `oai/error.rs` | OpenAI endpoint errors |
 | `OllamaRouteError` | `ollama/error.rs` | Ollama endpoint errors |
@@ -101,7 +99,7 @@ All enums use `#[error_meta(trait_to_impl = AppError)]` from `errmeta_derive`.
 
 Defined in `src/shared/constants.rs`, registered in `src/shared/openapi.rs`:
 
-`system`, `setup`, `auth`, `api-keys`, `api-models`, `models`, `settings`, `toolsets`, `mcps`, `openai`, `ollama`
+`system`, `setup`, `auth`, `api-keys`, `api-models`, `models`, `settings`, `mcps`, `openai`, `ollama`
 
 ## Commands
 

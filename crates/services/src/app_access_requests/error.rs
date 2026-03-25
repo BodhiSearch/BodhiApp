@@ -1,5 +1,5 @@
 use crate::db::DbError;
-use crate::{AuthServiceError, TenantError, ToolsetError};
+use crate::{AuthServiceError, TenantError};
 use errmeta::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -41,9 +41,6 @@ pub enum AccessRequestError {
 
   #[error(transparent)]
   Auth(#[from] AuthServiceError),
-
-  #[error(transparent)]
-  Tool(#[from] ToolsetError),
 
   #[error(transparent)]
   Tenant(#[from] TenantError),
