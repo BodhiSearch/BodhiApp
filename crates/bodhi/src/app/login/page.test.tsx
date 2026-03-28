@@ -343,7 +343,7 @@ describe('MultiTenantLoginContent', () => {
 
     // Verify no tenants call was made by ensuring login state is shown (not loading)
     expect(screen.getByTestId('login-page')).toBeInTheDocument();
-    expect(screen.queryByText('Select Workspace')).not.toBeInTheDocument();
+    expect(screen.queryByText('Select Organization')).not.toBeInTheDocument();
   });
 
   it('shows login button when no dashboard session (State A)', async () => {
@@ -381,7 +381,7 @@ describe('MultiTenantLoginContent', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Select Workspace')).toBeInTheDocument();
+      expect(screen.getByText('Select Organization')).toBeInTheDocument();
     });
 
     const card = screen.getByTestId('login-page').querySelector('[data-test-state="select"]');

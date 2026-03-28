@@ -21,7 +21,7 @@ The user reviews this request and decides:
 - What role level to approve (can downgrade from what was requested)
 - Whether to approve or deny entirely
 
-Future resource types will include workspaces and agents.
+Future resource types will include organizations and agents.
 
 ## API Flow
 

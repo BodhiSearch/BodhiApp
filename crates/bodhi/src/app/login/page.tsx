@@ -143,7 +143,7 @@ function MultiTenantLoginContent() {
     if (targetTenant?.logged_in) {
       // Already a member and logged in — activate and show toast
       activateTenant({ client_id: targetTenant.client_id });
-      showSuccess('Workspace', 'Already a member of this workspace');
+      showSuccess('Organization', 'Already a member of this organization');
     } else {
       // Not logged in to target tenant or tenant not in list — initiate OAuth
       sessionStorage.setItem('bodhi-return-url', '/login/');
@@ -216,7 +216,7 @@ function MultiTenantLoginContent() {
             <p>You are logged in as {userInfo.username}</p>
             {activeTenant && (
               <p className="text-sm">
-                Active workspace: <strong>{activeTenant.name}</strong>
+                Active organization: <strong>{activeTenant.name}</strong>
               </p>
             )}
           </div>
@@ -259,7 +259,7 @@ function MultiTenantLoginContent() {
     return (
       <AuthCard
         data-test-state="connect"
-        title="Connect to Workspace"
+        title="Connect to Organization"
         description={
           <div className="space-y-4">
             <p>Auto-login failed. Connect manually to continue.</p>
@@ -290,10 +290,10 @@ function MultiTenantLoginContent() {
     return (
       <AuthCard
         data-test-state="select"
-        title="Select Workspace"
+        title="Select Organization"
         description={
           <div className="space-y-4">
-            <p>Choose a workspace to continue</p>
+            <p>Choose an organization to continue</p>
             {error && <p className="text-destructive text-sm">{error}</p>}
           </div>
         }

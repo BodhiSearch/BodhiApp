@@ -72,7 +72,7 @@ The `routes_app` crate implements application-specific HTTP API endpoints for Bo
 - **Debug Endpoints**: Development and debugging utilities
 
 #### Create Routes (`routes_create.rs`)
-- **POST /api/create/workspace**: Create new workspace
+- **POST /api/create/organization**: Create new organization
 - **POST /api/create/project**: Create new project
 - **Resource Creation**: Various resource creation endpoints
 
@@ -303,7 +303,7 @@ The routes_app crate includes comprehensive testing:
 ## Future Extensions
 
 The routes_app crate is designed to support:
-- **Workspace Management**: Multi-workspace support
+- **Organization Management**: Multi-organization support
 - **Advanced Analytics**: Usage analytics and metrics
 - **Plugin System**: Extensible plugin architecture
 - **Advanced Monitoring**: System monitoring and alerting

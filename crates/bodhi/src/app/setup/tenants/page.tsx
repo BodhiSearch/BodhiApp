@@ -68,15 +68,15 @@ function TenantRegistrationContent() {
   };
 
   if (isRedirecting) {
-    return <Loading message="Setting up your workspace..." />;
+    return <Loading message="Setting up your organization..." />;
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Create Workspace</CardTitle>
-          <CardDescription>Set up your new workspace to get started with Bodhi</CardDescription>
+          <CardTitle>Create Organization</CardTitle>
+          <CardDescription>Set up your new organization to get started with Bodhi</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -86,13 +86,13 @@ function TenantRegistrationContent() {
               </Alert>
             )}
             <div className="space-y-2">
-              <Label htmlFor="name">Workspace Name</Label>
+              <Label htmlFor="name">Organization Name</Label>
               <Input
                 id="name"
                 data-testid="tenant-name-input"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Workspace"
+                placeholder="My Organization"
                 disabled={isCreating}
                 required
                 minLength={3}
@@ -105,12 +105,12 @@ function TenantRegistrationContent() {
                 data-testid="tenant-description-input"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="A brief description of your workspace"
+                placeholder="A brief description of your organization"
                 disabled={isCreating}
               />
             </div>
             <Button type="submit" data-testid="create-tenant-button" className="w-full" disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create Workspace'}
+              {isCreating ? 'Creating...' : 'Create Organization'}
             </Button>
           </form>
         </CardContent>
