@@ -1,4 +1,5 @@
 mod error;
+mod mcp_proxy;
 mod mcps_api_schemas;
 mod routes_mcps;
 mod routes_mcps_auth;
@@ -16,6 +17,7 @@ pub const ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE: &str =
   "/bodhi/v1/mcps/oauth/dynamic-register";
 
 pub use error::*;
+pub use mcp_proxy::*;
 pub use mcps_api_schemas::*;
 pub use routes_mcps::*;
 pub use routes_mcps_auth::*;

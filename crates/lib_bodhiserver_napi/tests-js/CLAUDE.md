@@ -56,6 +56,9 @@ OAuth credentials from `.env.test` (see `.env.test.example`).
 | Test MCP auth-header server | `55176` |
 | Test MCP auth-query server | `55177` |
 | Test MCP auth-mixed server | `55178` |
+| Everything MCP reference server | `55180` |
+| MCP Inspector client (UI) | `6274` |
+| MCP Inspector proxy server | `6277` |
 
 ## Architecture Overview
 
@@ -63,7 +66,7 @@ OAuth credentials from `.env.test` (see `.env.test.example`).
 
 | Directory | Contents |
 |-----------|----------|
-| `specs/` | 32 test files across 13 domain folders |
+| `specs/` | 33 test files across 13 domain folders |
 | `pages/` | 28 page objects extending `BasePage` |
 | `fixtures/` | 9 test data modules (classes with static methods) |
 | `utils/` | `auth-server-client.mjs`, `bodhi-app-server.mjs`, `browser-with-extension.mjs`, `db-config.mjs`, `mock-openai-server.mjs`, `api-model-helpers.mjs` |

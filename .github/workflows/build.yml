@@ -209,6 +209,8 @@ jobs:
           npm ci
           cd test-oauth-app && npm ci && cd ..
           cd test-mcp-oauth-server && npm ci && cd ..
+          cd test-mcp-auth-server && npm ci && cd ..
+          cd test-mcp-full-server && npm ci && cd ..
 
       - name: Verify NAPI bindings exist
         shell: bash

@@ -220,6 +220,17 @@ pub trait McpService: Debug + Send + Sync {
   ) -> Result<Option<McpAuthConfigResponse>, McpError>;
 
   async fn delete_auth_config(&self, tenant_id: &str, id: &str) -> Result<(), McpError>;
+
+  // ---- Auth params resolution ----
+
+  /// Resolve authentication parameters (headers, query params) for an MCP instance.
+  /// Used by proxy and execution endpoints to inject auth into upstream requests.
+  async fn resolve_auth_params(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<McpAuthParams>, McpError>;
 }
 
 /// Maximum number of concurrent refresh lock entries.
@@ -1673,9 +1684,8 @@ impl McpService for DefaultMcpService {
 
     let mut results = Vec::new();
     for config in configs {
-      match self.get_auth_config(tenant_id, &config.id).await? {
-        Some(resp) => results.push(resp),
-        None => {} // skip configs that can't be loaded
+      if let Some(resp) = self.get_auth_config(tenant_id, &config.id).await? {
+        results.push(resp);
       }
     }
     Ok(results)
@@ -1759,6 +1769,20 @@ impl McpService for DefaultMcpService {
       .delete_mcp_auth_config(tenant_id, id)
       .await?;
     Ok(())
+  }
+
+  async fn resolve_auth_params(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<McpAuthParams>, McpError> {
+    let (mcp_row, _server) = self
+      .get_mcp_with_server(tenant_id, user_id, id)
+      .await?
+      .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
+
+    self.resolve_auth_params_for_mcp(tenant_id, &mcp_row).await
   }
 }
 

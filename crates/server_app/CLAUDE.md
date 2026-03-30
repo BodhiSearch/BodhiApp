@@ -79,7 +79,8 @@ Full-stack tests: real HTTP server on TCP, real services, real OAuth2 via Keyclo
 |------|---------|
 | `tests/test_live_tool_calling_non_streamed.rs` | Tool calling (single + multi-turn) |
 | `tests/test_live_tool_calling_streamed.rs` | Streaming tool calls |
-| `tests/test_live_mcp.rs` | MCP integration |
+| `tests/test_live_mcp.rs` | MCP integration (tool refresh + execution) |
+| `tests/test_live_mcp_proxy.rs` | MCP proxy endpoint (6 tests: full lifecycle, tools filter, resources, prompts, disabled instance, upstream down) |
 | `tests/test_live_multi_tenant.rs` | Multi-tenant server lifecycle |
 | `tests/test_oauth_external_token.rs` | OAuth via ExternalTokenSimulator |
 
@@ -88,6 +89,14 @@ Full-stack tests: real HTTP server on TCP, real services, real OAuth2 via Keyclo
 - llama.cpp binary at `crates/llama_server_proc/bin/`
 - `tests/resources/.env.test` with Keycloak credentials
 
+### TestMcpServer (`tests/utils/test_mcp_server.rs`)
+Configurable in-process MCP server for integration tests. Builder pattern:
+- `TestMcpServer::builder().port(n).tool(TestTool{...}).resource(TestResource{...}).prompt(TestPrompt{...}).build()`
+- `TestMcpServer::start(config)` -- starts on random port (or specified), returns `TestMcpServer` with `url`, `port`, `calls_received` (observable `Arc<Mutex<Vec<ReceivedToolCall>>>`)
+- `shutdown()` -- graceful cancellation
+- Implements full rmcp `ServerHandler`: list/call tools, list/read resources, list/get prompts, complete
+- Used by `test_live_mcp_proxy.rs` tests and available for any test needing a real MCP server
+
 ### server_app vs routes_app Testing Boundary
-- **server_app**: Multi-turn workflows, server lifecycle, real HTTP/TCP, OAuth code flow
+- **server_app**: Multi-turn workflows, server lifecycle, real HTTP/TCP, OAuth code flow, MCP proxy (Streamable HTTP protocol)
 - **routes_app**: Single-turn endpoint tests via `tower::oneshot()`, no TCP listener

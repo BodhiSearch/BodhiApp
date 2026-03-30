@@ -657,4 +657,5 @@ export class McpsPage extends BasePage {
     await this.page.waitForURL(/\/ui\/mcps(?!\/playground)/);
     await this.waitForSPAReady();
   }
+
 }

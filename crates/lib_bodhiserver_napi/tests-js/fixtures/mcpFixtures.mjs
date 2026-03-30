@@ -176,4 +176,53 @@ export class McpFixtures {
       description: 'DCR-authenticated MCP instance',
     };
   }
+
+  // Everything MCP reference server (port 55180) — full MCP spec surface
+  static EVERYTHING_SERVER_PORT = process.env.TEST_MCP_EVERYTHING_PORT || '55180';
+  static EVERYTHING_SERVER_MCP_URL = `http://localhost:${McpFixtures.EVERYTHING_SERVER_PORT}/mcp`;
+  static EVERYTHING_EXPECTED_TOOLS = [
+    'echo',
+    'get-sum',
+    'get-tiny-image',
+    'get-env',
+    'get-annotated-message',
+    'get-resource-links',
+    'get-resource-reference',
+    'get-structured-content',
+    'gzip-file-as-resource',
+    'toggle-simulated-logging',
+    'toggle-subscriber-updates',
+    'trigger-long-running-operation',
+  ];
+  static EVERYTHING_EXPECTED_PROMPTS = [
+    'simple-prompt',
+    'args-prompt',
+    'completable-prompt',
+    'resource-prompt',
+  ];
+  static EVERYTHING_EXPECTED_RESOURCE_TEMPLATES = [
+    'demo://resource/dynamic/text/{resourceId}',
+    'demo://resource/dynamic/blob/{resourceId}',
+  ];
+
+  // MCP Inspector (DANGEROUSLY_OMIT_AUTH=true, no token needed)
+  static INSPECTOR_URL = 'http://localhost:6274';
+
+  static createEverythingServerData() {
+    const ts = String(Date.now()).slice(-8);
+    return {
+      url: McpFixtures.EVERYTHING_SERVER_MCP_URL,
+      name: `Everything-MCP-Server-${ts}`,
+      description: 'MCP Everything reference server',
+    };
+  }
+
+  static createEverythingInstanceData() {
+    const ts = String(Date.now()).slice(-8);
+    return {
+      name: `Everything-MCP-${ts}`,
+      slug: `ev-mcp-${ts}`,
+      description: 'Everything MCP server instance',
+    };
+  }
 }

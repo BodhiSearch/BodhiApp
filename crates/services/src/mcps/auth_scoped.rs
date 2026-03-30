@@ -3,6 +3,7 @@ use crate::{
   McpError, McpExecutionRequest, McpExecutionResponse, McpOAuthToken, McpRequest, McpServerEntity,
   McpServerError, McpServerRequest, McpTool, McpWithServerEntity,
 };
+use mcp_client::McpAuthParams;
 use std::sync::Arc;
 
 /// Auth-scoped wrapper around McpService that injects user_id and tenant_id from AuthContext.
@@ -110,6 +111,18 @@ impl AuthScopedMcpService {
       .execute(tenant_id, user_id, id, tool_name, request)
       .await?;
     Ok(response)
+  }
+
+  // ========== Auth params resolution ==========
+
+  pub async fn resolve_auth_params(&self, id: &str) -> Result<Option<McpAuthParams>, McpError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
+    let user_id = self.auth_context.require_user_id()?;
+    self
+      .app_service
+      .mcp_service()
+      .resolve_auth_params(tenant_id, user_id, id)
+      .await
   }
 
   // ========== Auth config methods (user-scoped) ==========

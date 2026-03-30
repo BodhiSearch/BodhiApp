@@ -56,9 +56,11 @@
 - `src/ai_apis/error.rs` — `AiApiServiceError`
 
 ### MCP Services (`mcps/`)
-- `src/mcps/mcp_objs.rs` — `McpServer`, `Mcp`, MCP auth config types, validation constants
-- `src/mcps/mcp_service.rs` — `McpService` trait, `DefaultMcpService`
+- `src/mcps/mcp_objs.rs` — `McpServer`, `Mcp`, MCP auth config types, `McpProxyContext`, validation constants
+- `src/mcps/mcp_service.rs` — `McpService` trait (includes `resolve_for_proxy`), `DefaultMcpService`
+- `src/mcps/auth_scoped.rs` — `AuthScopedMcpService` (includes `resolve_for_proxy` passthrough)
 - `src/mcps/error.rs` — `McpError`
+- `src/mcps/test_mcp_proxy_service.rs` — Tests for `resolve_for_proxy` (MCP not found, public auth, disabled instance, tools filter with cache, header auth)
 
 ### Access Control (`app_access_requests/`)
 - `src/app_access_requests/access_request_objs.rs` — `AppAccessRequest` (renamed from `AppAccessRequestRow`), `AppAccessResponse`, status enums

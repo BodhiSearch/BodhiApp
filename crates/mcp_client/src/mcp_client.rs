@@ -1,6 +1,13 @@
 use crate::error::McpClientError;
 use crate::mcp_objs::{McpAuthParams, McpTool};
-use rmcp::model::{CallToolRequestParams, ClientCapabilities, ClientInfo, Implementation};
+use rmcp::model::{
+  CallToolRequestParams, CallToolResult, ClientCapabilities, ClientInfo, CompleteRequestParams,
+  CompleteResult, GetPromptRequestParams, GetPromptResult, Implementation, ListPromptsResult,
+  ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, PaginatedRequestParams,
+  ReadResourceRequestParams, ReadResourceResult, SetLevelRequestParams, SubscribeRequestParams,
+  UnsubscribeRequestParams,
+};
+use rmcp::service::ServiceError;
 use rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig;
 use rmcp::transport::StreamableHttpClientTransport;
 use rmcp::ServiceExt;
@@ -10,6 +17,140 @@ use std::fmt::Debug;
 
 /// Running MCP client type alias for rmcp
 type RunningMcpClient = rmcp::service::RunningService<rmcp::RoleClient, ClientInfo>;
+
+// ============================================================================
+// PersistentMcpConnection — wrapper over a long-lived upstream MCP client
+// ============================================================================
+
+/// A persistent connection to an upstream MCP server.
+///
+/// Unlike the per-request pattern used by `fetch_tools`/`call_tool`, this
+/// connection stays open and can be used for multiple operations. The caller
+/// is responsible for managing the connection lifecycle by calling `close()`.
+pub struct PersistentMcpConnection {
+  client: RunningMcpClient,
+}
+
+impl Debug for PersistentMcpConnection {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("PersistentMcpConnection")
+      .field("closed", &self.client.is_closed())
+      .finish()
+  }
+}
+
+impl PersistentMcpConnection {
+  /// Create a new persistent connection wrapping an rmcp RunningService.
+  pub(crate) fn new(client: RunningMcpClient) -> Self {
+    Self { client }
+  }
+
+  /// Get the server info (InitializeResult) obtained during the handshake.
+  /// Returns `None` if the handshake somehow didn't capture peer info.
+  pub fn server_info(&self) -> Option<Value> {
+    self
+      .client
+      .peer_info()
+      .and_then(|info| serde_json::to_value(info).ok())
+  }
+
+  /// Whether the connection is closed or cancelled.
+  pub fn is_closed(&self) -> bool {
+    self.client.is_closed()
+  }
+
+  /// List tools on the connected MCP server.
+  pub async fn list_tools(
+    &self,
+    params: Option<PaginatedRequestParams>,
+  ) -> Result<ListToolsResult, ServiceError> {
+    self.client.list_tools(params).await
+  }
+
+  /// Call a tool on the connected MCP server.
+  pub async fn call_tool(
+    &self,
+    params: CallToolRequestParams,
+  ) -> Result<CallToolResult, ServiceError> {
+    self.client.call_tool(params).await
+  }
+
+  /// List resources on the connected MCP server.
+  pub async fn list_resources(
+    &self,
+    params: Option<PaginatedRequestParams>,
+  ) -> Result<ListResourcesResult, ServiceError> {
+    self.client.list_resources(params).await
+  }
+
+  /// Read a resource on the connected MCP server.
+  pub async fn read_resource(
+    &self,
+    params: ReadResourceRequestParams,
+  ) -> Result<ReadResourceResult, ServiceError> {
+    self.client.read_resource(params).await
+  }
+
+  /// List resource templates on the connected MCP server.
+  pub async fn list_resource_templates(
+    &self,
+    params: Option<PaginatedRequestParams>,
+  ) -> Result<ListResourceTemplatesResult, ServiceError> {
+    self.client.list_resource_templates(params).await
+  }
+
+  /// List prompts on the connected MCP server.
+  pub async fn list_prompts(
+    &self,
+    params: Option<PaginatedRequestParams>,
+  ) -> Result<ListPromptsResult, ServiceError> {
+    self.client.list_prompts(params).await
+  }
+
+  /// Get a prompt on the connected MCP server.
+  pub async fn get_prompt(
+    &self,
+    params: GetPromptRequestParams,
+  ) -> Result<GetPromptResult, ServiceError> {
+    self.client.get_prompt(params).await
+  }
+
+  /// Complete on the connected MCP server.
+  pub async fn complete(
+    &self,
+    params: CompleteRequestParams,
+  ) -> Result<CompleteResult, ServiceError> {
+    self.client.complete(params).await
+  }
+
+  /// Subscribe to resource updates on the connected MCP server.
+  pub async fn subscribe(&self, params: SubscribeRequestParams) -> Result<(), ServiceError> {
+    self.client.subscribe(params).await
+  }
+
+  /// Unsubscribe from resource updates on the connected MCP server.
+  pub async fn unsubscribe(&self, params: UnsubscribeRequestParams) -> Result<(), ServiceError> {
+    self.client.unsubscribe(params).await
+  }
+
+  /// Set logging level on the connected MCP server.
+  pub async fn set_level(&self, params: SetLevelRequestParams) -> Result<(), ServiceError> {
+    self.client.set_level(params).await
+  }
+
+  /// Gracefully close the connection.
+  pub async fn close(mut self) -> Result<(), McpClientError> {
+    self
+      .client
+      .close()
+      .await
+      .map_err(|e| McpClientError::ConnectionFailed {
+        url: String::new(),
+        reason: format!("Failed to close connection: {}", e),
+      })?;
+    Ok(())
+  }
+}
 
 /// Trait for MCP client operations (connect, list tools, call tool).
 /// Per-request connection pattern: each call creates a fresh connection.
@@ -33,6 +174,25 @@ pub trait McpClient: Debug + Send + Sync {
     args: Value,
     auth_params: Option<McpAuthParams>,
   ) -> Result<Value, McpClientError>;
+
+  /// Connect to an upstream MCP server, perform the initialize handshake,
+  /// capture the InitializeResult (server info + capabilities), disconnect,
+  /// and return the result as JSON.
+  async fn get_server_info(
+    &self,
+    url: &str,
+    auth_params: Option<McpAuthParams>,
+  ) -> Result<Value, McpClientError>;
+
+  /// Connect to an upstream MCP server and return a persistent connection.
+  /// Unlike `fetch_tools`/`call_tool`, this does NOT disconnect after one
+  /// operation. The caller is responsible for managing the connection
+  /// lifecycle via `PersistentMcpConnection::close()`.
+  async fn connect_persistent(
+    &self,
+    url: &str,
+    auth_params: Option<McpAuthParams>,
+  ) -> Result<PersistentMcpConnection, McpClientError>;
 }
 
 /// Default MCP client using rmcp with Streamable HTTP transport.
@@ -208,11 +368,171 @@ impl McpClient for DefaultMcpClient {
     let _ = client.cancel().await;
     Ok(content)
   }
+
+  async fn get_server_info(
+    &self,
+    url: &str,
+    auth_params: Option<McpAuthParams>,
+  ) -> Result<Value, McpClientError> {
+    let client = Self::connect(url, auth_params).await?;
+
+    let server_info = client
+      .peer_info()
+      .ok_or_else(|| McpClientError::ProtocolError {
+        operation: "get_server_info".to_string(),
+        reason: "Server info not available after initialize handshake".to_string(),
+      })?;
+
+    let value =
+      serde_json::to_value(server_info).map_err(|e| McpClientError::SerializationError {
+        reason: e.to_string(),
+      })?;
+
+    let _ = client.cancel().await;
+    Ok(value)
+  }
+
+  async fn connect_persistent(
+    &self,
+    url: &str,
+    auth_params: Option<McpAuthParams>,
+  ) -> Result<PersistentMcpConnection, McpClientError> {
+    let client = Self::connect(url, auth_params).await?;
+    Ok(PersistentMcpConnection::new(client))
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  // ============================================================================
+  // PersistentMcpConnection unit tests
+  // ============================================================================
+
+  #[test]
+  fn test_persistent_mcp_connection_debug_format() {
+    // PersistentMcpConnection Debug impl shows closed status
+    // We can't construct one without a real RunningService, but we can verify
+    // the Debug trait is implemented on the struct itself.
+    // This test validates the type is Debug-printable (checked at compile time).
+    fn assert_debug<T: Debug>() {}
+    assert_debug::<PersistentMcpConnection>();
+  }
+
+  // ============================================================================
+  // get_server_info / connect_persistent — connection failure tests
+  // ============================================================================
+
+  #[tokio::test]
+  async fn test_get_server_info_connection_failure() {
+    let client = DefaultMcpClient::new();
+    let result = client
+      .get_server_info("http://127.0.0.1:1/nonexistent", None)
+      .await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(
+      matches!(err, McpClientError::ConnectionFailed { .. }),
+      "Expected ConnectionFailed, got: {:?}",
+      err
+    );
+  }
+
+  #[tokio::test]
+  async fn test_connect_persistent_connection_failure() {
+    let client = DefaultMcpClient::new();
+    let result = client
+      .connect_persistent("http://127.0.0.1:1/nonexistent", None)
+      .await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(
+      matches!(err, McpClientError::ConnectionFailed { .. }),
+      "Expected ConnectionFailed, got: {:?}",
+      err
+    );
+  }
+
+  #[tokio::test]
+  async fn test_get_server_info_with_auth_params_connection_failure() {
+    let client = DefaultMcpClient::new();
+    let auth = McpAuthParams {
+      headers: vec![("Authorization".to_string(), "Bearer test".to_string())],
+      query_params: vec![("key".to_string(), "val".to_string())],
+    };
+    let result = client
+      .get_server_info("http://127.0.0.1:1/nonexistent", Some(auth))
+      .await;
+    assert!(result.is_err());
+    assert!(matches!(
+      result.unwrap_err(),
+      McpClientError::ConnectionFailed { .. }
+    ));
+  }
+
+  #[tokio::test]
+  async fn test_connect_persistent_with_auth_params_connection_failure() {
+    let client = DefaultMcpClient::new();
+    let auth = McpAuthParams {
+      headers: vec![("Authorization".to_string(), "Bearer test".to_string())],
+      query_params: vec![("key".to_string(), "val".to_string())],
+    };
+    let result = client
+      .connect_persistent("http://127.0.0.1:1/nonexistent", Some(auth))
+      .await;
+    assert!(result.is_err());
+    assert!(matches!(
+      result.unwrap_err(),
+      McpClientError::ConnectionFailed { .. }
+    ));
+  }
+
+  // ============================================================================
+  // MockMcpClient — verify new methods are mockable
+  // ============================================================================
+
+  #[tokio::test]
+  async fn test_mock_get_server_info() {
+    let mut mock = MockMcpClient::new();
+    let expected = serde_json::json!({
+      "protocolVersion": "2025-03-26",
+      "capabilities": {},
+      "serverInfo": { "name": "test-server", "version": "1.0.0" }
+    });
+    let expected_clone = expected.clone();
+    mock
+      .expect_get_server_info()
+      .returning(move |_url, _auth| Ok(expected_clone.clone()));
+
+    let result = mock.get_server_info("http://example.com/mcp", None).await;
+    assert!(result.is_ok());
+    assert_eq!(expected, result.unwrap());
+  }
+
+  #[tokio::test]
+  async fn test_mock_connect_persistent_error() {
+    let mut mock = MockMcpClient::new();
+    mock.expect_connect_persistent().returning(|url, _auth| {
+      Err(McpClientError::ConnectionFailed {
+        url: url.to_string(),
+        reason: "mock error".to_string(),
+      })
+    });
+
+    let result = mock
+      .connect_persistent("http://example.com/mcp", None)
+      .await;
+    assert!(result.is_err());
+    assert!(matches!(
+      result.unwrap_err(),
+      McpClientError::ConnectionFailed { .. }
+    ));
+  }
+
+  // ============================================================================
+  // prepare_auth tests (existing)
+  // ============================================================================
 
   #[test]
   fn test_mcp_auth_params_default() {

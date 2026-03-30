@@ -51,7 +51,7 @@ dotenv = { workspace = true, optional = true }
 maplit = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 time = { workspace = true, optional = true }
-reqwest = { workspace = true, features = ["json", "form"] }
+reqwest = { workspace = true, features = ["json", "form", "stream"] }
 
 [dev-dependencies]
 routes_app = { path = ".", features = ["test-utils"] }

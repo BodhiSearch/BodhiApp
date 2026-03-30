@@ -17,7 +17,7 @@ Entry point: `src/lib.rs` -- re-exports all public modules with conditional `tes
 | `models/` | `ModelRouteError` | Model alias CRUD, metadata, pull, API models, local files |
 | `settings/` | `SettingsRouteError` | Settings CRUD |
 | `setup/` | `SetupRouteError` | App setup/init |
-| `mcps/` | `McpRouteError` | MCP CRUD, tools, servers, OAuth |
+| `mcps/` | `McpRouteError` | MCP CRUD, tools, servers, OAuth, MCP proxy |
 | `oai/` | `OAIRouteError` | OpenAI-compatible endpoints |
 | `ollama/` | `OllamaRouteError` | Ollama-compatible endpoints |
 | `tenants/` | `DashboardAuthRouteError` | Dashboard auth, tenant CRUD, multi-tenant management |
@@ -25,6 +25,21 @@ Entry point: `src/lib.rs` -- re-exports all public modules with conditional `tes
 `models/` sub-modules: `alias/` (user-created aliases), `api/` (remote API model configs), `files/` (local model files + downloads).
 
 Standalone: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`, `spa_router.rs`
+
+### MCP Proxy (`src/mcps/mcp_proxy.rs`)
+
+Transparent HTTP reverse proxy. Single `mcp_proxy_handler` Axum handler used by both `/bodhi/v1/mcps/{id}/mcp` and `/bodhi/v1/apps/mcps/{id}/mcp`.
+
+**Handler flow:**
+1. `AuthScope` + `Path(id)` extractors
+2. `auth_scope.mcps().get(&id)` -- resolve MCP instance + server (`McpWithServerEntity`)
+3. Check `server_enabled` and `enabled` flags (`McpRouteError::McpServerDisabled` / `McpInstanceDisabled`)
+4. `auth_scope.mcps().resolve_auth_params(&id)` -- `Option<McpAuthParams>` (headers + query params, includes OAuth Bearer token with auto-refresh)
+5. Build upstream URL, append auth query params
+6. Forward headers (`content-type`, `accept`, `mcp-session-id`, `mcp-protocol-version`, `last-event-id`), inject auth headers
+7. Send via shared `reqwest::Client` (static `Lazy`, connection-pooled, no request timeout for SSE), stream response body back via `bytes_stream()` + `Body::from_stream()`
+
+`tools_filter` is NOT enforced at proxy level -- transparent pass-through.
 
 ### Middleware (`src/middleware/`)
 

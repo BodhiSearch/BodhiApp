@@ -181,5 +181,17 @@ export default defineConfig({
       timeout: 30 * 1000,
       reuseExistingServer: false,
     },
+    {
+      command: 'npm run e2e:server:everything-mcp',
+      port: 55180,
+      timeout: 30 * 1000,
+      reuseExistingServer: false,
+    },
+    {
+      command: 'npm run e2e:server:mcp-inspector',
+      url: 'http://localhost:6277/health',
+      timeout: 30 * 1000,
+      reuseExistingServer: false,
+    },
   ],
 });

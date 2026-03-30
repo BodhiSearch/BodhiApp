@@ -31,6 +31,15 @@ routes_app = { workspace = true, features = ["test-utils"] }
 llama_server_proc = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true }
 mcp_client = { workspace = true }
+rmcp = { workspace = true, features = [
+  "client",
+  "server",
+  "transport-streamable-http-client",
+  "transport-streamable-http-client-reqwest",
+  "transport-streamable-http-server",
+  "reqwest",
+] }
+tokio-util = { workspace = true }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }

@@ -36,8 +36,8 @@ Defined in `src/routes.rs`. Two CORS tiers: **restrictive** (blocks all cross-or
 | `optional_auth` | `optional_auth_middleware` | -- | `/info`, `/user`, auth initiate/callback, dashboard auth, tenants, dev-only routes |
 | `user_apis` | `api_auth_middleware` | User / TokenScope::User / UserScope::User | OpenAI/Ollama compat, model listing, model files |
 | `power_user_apis` | `api_auth_middleware` | PowerUser / TokenScope::PowerUser / UserScope::PowerUser | Model alias CRUD, file pull/downloads |
-| `mcp_exec_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | MCP tool refresh + execution (no API tokens) |
-| `apps_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | External app endpoints under `/bodhi/v1/apps/...` (OAuth tokens) |
+| `mcp_exec_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | MCP tool refresh + execution + transparent proxy (no API tokens) |
+| `apps_apis` | `api_auth_middleware` + `access_request_auth_middleware` | User / UserScope::User | External app endpoints under `/bodhi/v1/apps/...` (OAuth tokens), includes MCP transparent proxy |
 
 ### Restrictive CORS (session-protected)
 
@@ -131,6 +131,10 @@ Every new route must:
 **AppStatus values**: `Setup` (default), `Ready`, `ResourceAdmin`. `TenantSelection` was removed -- Anonymous{MultiTenant} and MultiTenantSession{client_id: None} with memberships now return `Ready`.
 
 **Apps API thin wrappers**: `apps_mcps_index`, etc. in the `apps_apis` group are thin wrappers that delegate to the same auth-scoped services but are mounted under `/bodhi/v1/apps/...` with permissive CORS for external OAuth app access.
+
+## MCP Proxy Endpoint
+
+**Endpoints**: `/bodhi/v1/mcps/{id}/mcp` and `/bodhi/v1/apps/mcps/{id}/mcp` -- transparent HTTP reverse proxy to upstream MCP server. Accepts `any()` HTTP method (POST, GET, DELETE forwarded to upstream). Auth headers/query params injected from MCP instance config (header auth + OAuth with token refresh). SSE responses streamed without buffering. `tools_filter` is NOT enforced at proxy level. See `PACKAGE.md` for handler flow details.
 
 ## Commands
 

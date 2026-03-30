@@ -32,11 +32,11 @@ use crate::{
   apps_mcps_execute_tool, apps_mcps_index, apps_mcps_refresh_tools, apps_mcps_show,
   mcp_auth_configs_create, mcp_auth_configs_destroy, mcp_auth_configs_index, mcp_auth_configs_show,
   mcp_oauth_discover_as, mcp_oauth_discover_mcp, mcp_oauth_dynamic_register, mcp_oauth_login,
-  mcp_oauth_token_exchange, mcp_oauth_tokens_destroy, mcp_oauth_tokens_show, mcp_servers_create,
-  mcp_servers_index, mcp_servers_show, mcp_servers_update, mcps_create, mcps_destroy,
-  mcps_execute_tool, mcps_fetch_tools, mcps_index, mcps_refresh_tools, mcps_show, mcps_update,
-  settings_destroy, settings_index, settings_update, setup_create, setup_show, ENDPOINT_APPS_MCPS,
-  ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_FETCH_TOOLS,
+  mcp_oauth_token_exchange, mcp_oauth_tokens_destroy, mcp_oauth_tokens_show, mcp_proxy_handler,
+  mcp_servers_create, mcp_servers_index, mcp_servers_show, mcp_servers_update, mcps_create,
+  mcps_destroy, mcps_execute_tool, mcps_fetch_tools, mcps_index, mcps_refresh_tools, mcps_show,
+  mcps_update, settings_destroy, settings_index, settings_update, setup_create, setup_show,
+  ENDPOINT_APPS_MCPS, ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_FETCH_TOOLS,
   ENDPOINT_MCPS_OAUTH_DISCOVER_AS, ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
   ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE, ENDPOINT_MCP_SERVERS,
 };
@@ -52,7 +52,7 @@ use crate::{
 use axum::{
   middleware::from_fn_with_state,
   response::Redirect,
-  routing::{delete, get, post, put},
+  routing::{any, delete, get, post, put},
   Router,
 };
 use include_dir::Dir;
@@ -72,6 +72,10 @@ fn permissive_cors() -> CorsLayer {
     .allow_origin(Any)
     .allow_methods(Any)
     .allow_headers(Any)
+    .expose_headers([
+      "mcp-session-id".parse().unwrap(),
+      "mcp-protocol-version".parse().unwrap(),
+    ])
     .allow_private_network(true)
     .allow_credentials(false)
 }
@@ -303,6 +307,10 @@ pub async fn build_routes(
       &format!("{ENDPOINT_MCPS}/{{id}}/tools/{{tool_name}}/execute"),
       post(mcps_execute_tool),
     )
+    .route(
+      &format!("{ENDPOINT_MCPS}/{{id}}/mcp"),
+      any(mcp_proxy_handler),
+    )
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -339,6 +347,10 @@ pub async fn build_routes(
     .route(
       &format!("{ENDPOINT_APPS_MCPS}/{{id}}/tools/{{tool_name}}/execute"),
       post(apps_mcps_execute_tool),
+    )
+    .route(
+      &format!("{ENDPOINT_APPS_MCPS}/{{id}}/mcp"),
+      any(mcp_proxy_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),

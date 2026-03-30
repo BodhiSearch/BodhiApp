@@ -8,6 +8,9 @@ pub(crate) mod test_helpers;
 #[path = "test_mcp_auth_repository_isolation.rs"]
 mod test_mcp_auth_repository_isolation;
 #[cfg(test)]
+#[path = "test_mcp_proxy_service.rs"]
+mod test_mcp_proxy_service;
+#[cfg(test)]
 #[path = "test_mcp_repository_isolation.rs"]
 mod test_mcp_repository_isolation;
 
@@ -24,7 +27,7 @@ mod mcp_server_repository;
 
 pub use auth_scoped::*;
 pub use error::*;
-pub use mcp_client::McpTool;
+pub use mcp_client::{McpAuthParams, McpTool};
 pub use mcp_objs::*;
 pub use mcp_service::*;
 

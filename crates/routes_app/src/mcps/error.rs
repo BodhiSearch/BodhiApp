@@ -34,4 +34,16 @@ pub enum McpRouteError {
   #[error("Failed to parse approved resources JSON.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   InvalidApprovedJson,
+
+  #[error("MCP server is disabled")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  McpServerDisabled,
+
+  #[error("MCP instance is disabled")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  McpInstanceDisabled,
+
+  #[error("Failed to connect to upstream MCP server: {0}")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  UpstreamConnectionFailed(String),
 }

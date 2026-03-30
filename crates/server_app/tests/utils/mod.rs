@@ -1,5 +1,6 @@
 mod external_token;
 mod live_server_utils;
+pub mod test_mcp_server;
 pub mod tool_call;
 
 #[allow(unused)]
