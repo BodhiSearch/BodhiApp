@@ -9,7 +9,6 @@ mod routes_mcps_servers;
 // Endpoint constants for MCP routes
 pub const ENDPOINT_MCP_SERVERS: &str = "/bodhi/v1/mcps/servers";
 pub const ENDPOINT_MCPS: &str = "/bodhi/v1/mcps";
-pub const ENDPOINT_MCPS_FETCH_TOOLS: &str = "/bodhi/v1/mcps/fetch-tools";
 pub const ENDPOINT_MCPS_AUTH_CONFIGS: &str = "/bodhi/v1/mcps/auth-configs";
 pub const ENDPOINT_MCPS_OAUTH_DISCOVER_AS: &str = "/bodhi/v1/mcps/oauth/discover-as";
 pub const ENDPOINT_MCPS_OAUTH_DISCOVER_MCP: &str = "/bodhi/v1/mcps/oauth/discover-mcp";

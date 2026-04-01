@@ -53,8 +53,8 @@ test.describe('Chat Interface - MCP Integration', () => {
   test('configure MCP → verify in popover → enable → check persistence → execute via chat @integration', async ({
     page,
   }) => {
-    const serverData = McpFixtures.createExaServerData();
-    const instanceData = McpFixtures.createExaInstanceData();
+    const serverData = McpFixtures.createEverythingServerData();
+    const instanceData = McpFixtures.createEverythingInstanceData();
     let mcpId;
 
     await test.step('Login', async () => {
@@ -65,13 +65,13 @@ test.describe('Chat Interface - MCP Integration', () => {
       await registerApiModelViaUI(modelsPage, apiModelFormPage, testApiKey);
     });
 
-    await test.step('Create Exa MCP server', async () => {
+    await test.step('Create Everything MCP server', async () => {
       await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
       const row = page.locator(`[data-test-server-name="${serverData.name}"]`).first();
       await expect(row).toBeVisible();
     });
 
-    await test.step('Create Exa MCP instance with tools', async () => {
+    await test.step('Create Everything MCP instance', async () => {
       await mcpsPage.createMcpInstance(
         serverData.name,
         instanceData.name,
@@ -101,9 +101,8 @@ test.describe('Chat Interface - MCP Integration', () => {
     });
 
     await test.step('Verify badge count', async () => {
-      // Exa has multiple tools; enableMcp toggles all on
-      const badge = page.locator(chatPage.selectors.mcpsBadge);
-      await expect(badge).toBeVisible();
+      // Wait for MCP client to connect and fetch tools
+      await chatPage.waitForMcpToolsBadge();
     });
 
     await test.step('Verify selection persists after reopening popover', async () => {
@@ -115,8 +114,7 @@ test.describe('Chat Interface - MCP Integration', () => {
     await test.step('Verify selection persists in new chat', async () => {
       await chatPage.startNewChat();
       await chatPage.waitForChatPageLoad();
-      const badge = page.locator(chatPage.selectors.mcpsBadge);
-      await expect(badge).toBeVisible();
+      await chatPage.waitForMcpToolsBadge();
       await chatPage.openMcpsPopover();
       await chatPage.expectMcpCheckboxChecked(mcpId);
       await chatPage.closeMcpsPopover();
@@ -124,7 +122,7 @@ test.describe('Chat Interface - MCP Integration', () => {
 
     await test.step('Select model and send message triggering MCP tool call', async () => {
       await chatSettingsPage.selectModel(ApiModelFixtures.OPENAI_MODEL);
-      await chatPage.sendMessage('What is the latest news about AI from San Francisco?');
+      await chatPage.sendMessage('Use the echo tool to echo the message "hello from bodhi"');
     });
 
     await test.step('Verify agentic loop: tool call → execution → response', async () => {

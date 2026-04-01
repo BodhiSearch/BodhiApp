@@ -183,7 +183,7 @@ export default defineConfig({
     },
     {
       command: 'npm run e2e:server:everything-mcp',
-      port: 55180,
+      url: 'http://localhost:55180/mcp',
       timeout: 30 * 1000,
       reuseExistingServer: false,
     },

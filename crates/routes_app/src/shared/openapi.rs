@@ -30,19 +30,17 @@ use crate::{
 };
 // MCP DTOs and handlers
 use crate::{
-  CreateAuthConfig, DynamicRegisterRequest, DynamicRegisterResponse, FetchMcpToolsRequest,
-  ListMcpServersResponse, ListMcpsResponse, McpAuth, McpExecuteRequest, McpExecuteResponse,
-  McpServerResponse, McpToolsResponse, OAuthDiscoverAsRequest, OAuthDiscoverAsResponse,
+  CreateAuthConfig, DynamicRegisterRequest, DynamicRegisterResponse, ListMcpServersResponse,
+  ListMcpsResponse, McpServerResponse, OAuthDiscoverAsRequest, OAuthDiscoverAsResponse,
   OAuthDiscoverMcpRequest, OAuthDiscoverMcpResponse, OAuthLoginRequest, OAuthLoginResponse,
-  OAuthTokenExchangeRequest, OAuthTokenResponse, __path_apps_mcps_execute_tool,
-  __path_apps_mcps_index, __path_apps_mcps_refresh_tools, __path_apps_mcps_show,
+  OAuthTokenExchangeRequest, OAuthTokenResponse, __path_apps_mcps_index, __path_apps_mcps_show,
   __path_mcp_auth_configs_create, __path_mcp_auth_configs_destroy, __path_mcp_auth_configs_index,
   __path_mcp_auth_configs_show, __path_mcp_oauth_discover_as, __path_mcp_oauth_discover_mcp,
   __path_mcp_oauth_dynamic_register, __path_mcp_oauth_login, __path_mcp_oauth_token_exchange,
-  __path_mcp_oauth_tokens_destroy, __path_mcp_oauth_tokens_show, __path_mcp_servers_create,
-  __path_mcp_servers_index, __path_mcp_servers_show, __path_mcp_servers_update, __path_mcps_create,
-  __path_mcps_destroy, __path_mcps_execute_tool, __path_mcps_fetch_tools, __path_mcps_index,
-  __path_mcps_refresh_tools, __path_mcps_show, __path_mcps_update,
+  __path_mcp_oauth_tokens_destroy, __path_mcp_oauth_tokens_show, __path_mcp_proxy_handler,
+  __path_mcp_servers_create, __path_mcp_servers_index, __path_mcp_servers_show,
+  __path_mcp_servers_update, __path_mcps_create, __path_mcps_destroy, __path_mcps_index,
+  __path_mcps_show, __path_mcps_update,
 };
 // Settings and setup DTOs and handlers
 use crate::OpenAIApiError;
@@ -80,7 +78,7 @@ use services::{
   CreateTokenRequest, DownloadRequest, DownloadStatus, FetchModelsRequest, FetchModelsResponse,
   FlowType, Mcp, McpApproval, McpAuthConfigParam, McpAuthConfigParamInput, McpAuthConfigResponse,
   McpAuthConfigType, McpAuthConfigsListResponse, McpAuthParam, McpAuthParamInput, McpAuthParamType,
-  McpAuthType, McpInstance, McpRequest, McpServer, McpServerInfo, McpServerRequest, McpTool,
+  McpAuthType, McpInstance, McpRequest, McpServer, McpServerInfo, McpServerRequest,
   ModelAliasResponse, NewDownloadRequest, OAIRequestParams, PaginatedAliasResponse,
   PaginatedDownloadResponse, PaginatedTokenResponse, PaginatedUserAccessResponse,
   PaginatedUserAliasResponse, RefreshRequest, RefreshResponse, RefreshSource, RequestedMcpServer,
@@ -391,17 +389,11 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             McpRequest,
             McpServerRequest,
             Mcp,
-            FetchMcpToolsRequest,
-            McpAuth,
             McpServerResponse,
             ListMcpsResponse,
             ListMcpServersResponse,
             McpServer,
             McpServerInfo,
-            McpTool,
-            McpToolsResponse,
-            McpExecuteRequest,
-            McpExecuteResponse,
             // unified auth configs
             CreateAuthConfig,
             McpAuthType,
@@ -519,9 +511,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         mcps_show,
         mcps_update,
         mcps_destroy,
-        mcps_fetch_tools,
-        mcps_refresh_tools,
-        mcps_execute_tool,
         // MCP server admin endpoints
         mcp_servers_index,
         mcp_servers_show,
@@ -543,11 +532,12 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         mcp_oauth_tokens_show,
         mcp_oauth_tokens_destroy,
 
+        // MCP proxy endpoint
+        mcp_proxy_handler,
+
         // External app endpoints
         apps_mcps_index,
         apps_mcps_show,
-        apps_mcps_refresh_tools,
-        apps_mcps_execute_tool,
 
         // Tenant management endpoints
         tenants_index,

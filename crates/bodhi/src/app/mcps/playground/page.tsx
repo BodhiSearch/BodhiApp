@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { AlertTriangle, ArrowLeft, Check, Copy, Loader2, RefreshCw, X } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Loader2, RefreshCw, X } from 'lucide-react';
 import { Link, useSearch } from '@tanstack/react-router';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 import AppInitializer from '@/components/AppInitializer';
 import { useTheme } from '@/components/ThemeProvider';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,9 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useExecuteMcpTool, useGetMcp, useRefreshMcpTools, type McpExecuteResponse, type McpTool } from '@/hooks/mcps';
-import { mcpKeys } from '@/hooks/mcps/constants';
-import { useQueryClient } from '@/hooks/useQuery';
+import { useGetMcp } from '@/hooks/mcps';
+import { useMcpClient, type McpClientTool, type McpToolCallResult } from '@/hooks/mcps/useMcpClient';
 import { cn } from '@/lib/utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,7 +26,7 @@ type InputSchema = { type?: string; properties?: Record<string, any>; required?:
 type ResultTab = 'response' | 'raw' | 'request';
 
 interface ExecutionResult {
-  response: McpExecuteResponse;
+  response: McpToolCallResult;
   toolName: string;
   params: Record<string, unknown>;
 }
@@ -58,40 +56,24 @@ const buildDefaultParams = (schema: InputSchema | undefined): Record<string, unk
   return params;
 };
 
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return `${diffSec}s ago`;
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
-}
-
 // ============================================================================
 // ToolSidebar
 // ============================================================================
 
 function ToolSidebar({
   tools,
-  toolsFilter,
   selectedTool,
-  updatedAt,
   onSelectTool,
   onRefresh,
   isRefreshing,
+  connectionStatus,
 }: {
-  tools: McpTool[];
-  toolsFilter: string[];
+  tools: McpClientTool[];
   selectedTool: string | null;
-  updatedAt: string;
   onSelectTool: (name: string) => void;
   onRefresh: () => void;
   isRefreshing: boolean;
+  connectionStatus: string;
 }) {
   return (
     <div className="w-64 shrink-0 border-r flex flex-col h-full" data-testid="mcp-playground-tool-sidebar">
@@ -101,29 +83,24 @@ function ToolSidebar({
             variant="ghost"
             size="sm"
             onClick={onRefresh}
-            disabled={isRefreshing}
+            disabled={isRefreshing || connectionStatus !== 'connected'}
             data-testid="mcp-playground-refresh-button"
           >
             <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
           </Button>
-          <span className="text-xs text-muted-foreground" data-testid="mcp-playground-last-refreshed">
-            {formatRelativeTime(updatedAt)}
+          <span className="text-xs text-muted-foreground" data-testid="mcp-playground-connection-status">
+            {connectionStatus}
           </span>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto" data-testid="mcp-playground-tool-list">
         {tools.map((tool) => {
-          const isWhitelisted = toolsFilter.includes(tool.name);
           const isSelected = selectedTool === tool.name;
           return (
             <button
               key={tool.name}
               onClick={() => onSelectTool(tool.name)}
-              className={cn(
-                'w-full text-left px-3 py-2 text-sm border-b transition-colors',
-                isSelected && 'bg-accent',
-                !isWhitelisted && 'opacity-50'
-              )}
+              className={cn('w-full text-left px-3 py-2 text-sm border-b transition-colors', isSelected && 'bg-accent')}
               data-testid={`mcp-playground-tool-${tool.name}`}
             >
               <div className="font-medium truncate">{tool.name}</div>
@@ -252,14 +229,14 @@ function ResultSection({
   onTabChange: (tab: ResultTab) => void;
 }) {
   const { theme } = useTheme();
-  const isSuccess = result.response.result !== undefined && !result.response.error;
+  const isSuccess = !result.response.isError;
   const [copied, setCopied] = useState(false);
 
   const getTabContent = useCallback((): string => {
     switch (activeTab) {
       case 'response':
-        if (result.response.error) return result.response.error;
-        return JSON.stringify(result.response.result, null, 2);
+        if (result.response.isError) return JSON.stringify(result.response.content, null, 2);
+        return JSON.stringify(result.response.content, null, 2);
       case 'raw':
         return JSON.stringify(result.response, null, 2);
       case 'request':
@@ -311,8 +288,10 @@ function ResultSection({
         </Button>
       </div>
       <div className="max-h-[400px] overflow-auto" data-testid="mcp-playground-result-content">
-        {activeTab === 'response' && result.response.error ? (
-          <div className="p-4 text-sm text-destructive font-mono whitespace-pre-wrap">{result.response.error}</div>
+        {activeTab === 'response' && result.response.isError ? (
+          <div className="p-4 text-sm text-destructive font-mono whitespace-pre-wrap">
+            {JSON.stringify(result.response.content, null, 2)}
+          </div>
         ) : (
           <SyntaxHighlighter
             language="json"
@@ -331,14 +310,21 @@ function ResultSection({
 // ExecutionArea
 // ============================================================================
 
-function ExecutionArea({ mcpId, tool, isWhitelisted }: { mcpId: string; tool: McpTool; isWhitelisted: boolean }) {
-  const schema = (tool.input_schema as InputSchema) || {};
+function ExecutionArea({
+  tool,
+  callTool,
+}: {
+  tool: McpClientTool;
+  callTool: (name: string, args: Record<string, unknown>) => Promise<McpToolCallResult>;
+}) {
+  const schema = (tool.inputSchema as InputSchema) || {};
   const [inputMode, setInputMode] = useState<'form' | 'json'>('form');
   const [params, setParams] = useState<Record<string, unknown>>(() => buildDefaultParams(schema));
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [result, setResult] = useState<ExecutionResult | null>(null);
   const [resultTab, setResultTab] = useState<ResultTab>('response');
+  const [isExecuting, setIsExecuting] = useState(false);
 
   useEffect(() => {
     setParams(buildDefaultParams(schema));
@@ -347,21 +333,6 @@ function ExecutionArea({ mcpId, tool, isWhitelisted }: { mcpId: string; tool: Mc
     setResult(null);
     setResultTab('response');
   }, [tool.name]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const executeMutation = useExecuteMcpTool({
-    onSuccess: (response) => {
-      setResult({ response, toolName: tool.name, params: currentParams() });
-      setResultTab('response');
-    },
-    onError: (message) => {
-      setResult({
-        response: { error: message },
-        toolName: tool.name,
-        params: currentParams(),
-      });
-      setResultTab('response');
-    },
-  });
 
   const currentParams = useCallback((): Record<string, unknown> => {
     if (inputMode === 'json') {
@@ -418,13 +389,24 @@ function ExecutionArea({ mcpId, tool, isWhitelisted }: { mcpId: string; tool: Mc
     return cleaned;
   };
 
-  const handleExecute = () => {
+  const handleExecute = async () => {
     const p = currentParams();
-    executeMutation.mutate({
-      id: mcpId,
-      toolName: tool.name,
-      params: cleanParams(p),
-    });
+    const cleaned = cleanParams(p);
+    setIsExecuting(true);
+    try {
+      const response = await callTool(tool.name, cleaned);
+      setResult({ response, toolName: tool.name, params: cleaned });
+      setResultTab('response');
+    } catch (err) {
+      setResult({
+        response: { content: err instanceof Error ? err.message : 'Execution failed', isError: true },
+        toolName: tool.name,
+        params: cleaned,
+      });
+      setResultTab('response');
+    } finally {
+      setIsExecuting(false);
+    }
   };
 
   return (
@@ -435,13 +417,6 @@ function ExecutionArea({ mcpId, tool, isWhitelisted }: { mcpId: string; tool: Mc
         </h2>
         {tool.description && <p className="text-sm text-muted-foreground mt-1">{tool.description}</p>}
       </div>
-
-      {!isWhitelisted && (
-        <Alert data-testid="mcp-playground-not-whitelisted-warning">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>This tool is not whitelisted. Execution may be rejected by the server.</AlertDescription>
-        </Alert>
-      )}
 
       <div className="flex gap-1">
         <Button
@@ -476,8 +451,8 @@ function ExecutionArea({ mcpId, tool, isWhitelisted }: { mcpId: string; tool: Mc
         </div>
       )}
 
-      <Button onClick={handleExecute} disabled={executeMutation.isPending} data-testid="mcp-playground-execute-button">
-        {executeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+      <Button onClick={handleExecute} disabled={isExecuting} data-testid="mcp-playground-execute-button">
+        {isExecuting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
         Execute
       </Button>
 
@@ -493,32 +468,27 @@ function ExecutionArea({ mcpId, tool, isWhitelisted }: { mcpId: string; tool: Mc
 function McpPlaygroundContent() {
   const search = useSearch({ strict: false });
   const id = search.id || '';
-  const queryClient = useQueryClient();
   const { data: mcp, isLoading, error } = useGetMcp(id, { enabled: !!id });
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
 
-  const refreshMutation = useRefreshMcpTools({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: mcpKeys.detail(id) });
-      toast({ title: 'Tools refreshed' });
-    },
-    onError: (message) => {
-      toast({ title: 'Failed to refresh tools', description: message, variant: 'destructive' });
-    },
-  });
+  const mcpClient = useMcpClient(mcp?.mcp_endpoint ?? null);
 
-  const tools = useMemo(() => mcp?.tools_cache || [], [mcp?.tools_cache]);
-  const toolsFilter = useMemo(() => mcp?.tools_filter || [], [mcp?.tools_filter]);
+  // Connect when mcp data is available
+  useEffect(() => {
+    if (mcp?.mcp_endpoint) {
+      mcpClient.connect();
+    }
+    return () => {
+      mcpClient.disconnect();
+    };
+  }, [mcp?.mcp_endpoint]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tools = mcpClient.tools;
 
   const selectedTool = useMemo(() => tools.find((t) => t.name === selectedToolName) || null, [tools, selectedToolName]);
 
-  const isSelectedToolWhitelisted = useMemo(
-    () => (selectedToolName ? toolsFilter.includes(selectedToolName) : true),
-    [toolsFilter, selectedToolName]
-  );
-
   const handleRefresh = () => {
-    refreshMutation.mutate({ id });
+    mcpClient.refreshTools();
   };
 
   if (!id) {
@@ -551,27 +521,24 @@ function McpPlaygroundContent() {
           </Link>
         </Button>
         <span className="text-muted-foreground">/</span>
-        <h1 className="font-semibold">{mcp.name} — Playground</h1>
+        <h1 className="font-semibold">{mcp.name} -- Playground</h1>
+        {mcpClient.status === 'error' && mcpClient.error && (
+          <span className="text-xs text-destructive ml-2">{mcpClient.error}</span>
+        )}
       </div>
 
       <div className="flex flex-1 min-h-0">
         <ToolSidebar
           tools={tools}
-          toolsFilter={toolsFilter}
           selectedTool={selectedToolName}
-          updatedAt={mcp.updated_at}
           onSelectTool={setSelectedToolName}
           onRefresh={handleRefresh}
-          isRefreshing={refreshMutation.isPending}
+          isRefreshing={mcpClient.status === 'connecting'}
+          connectionStatus={mcpClient.status}
         />
 
         {selectedTool ? (
-          <ExecutionArea
-            key={selectedTool.name}
-            mcpId={id}
-            tool={selectedTool}
-            isWhitelisted={isSelectedToolWhitelisted}
-          />
+          <ExecutionArea key={selectedTool.name} tool={selectedTool} callTool={mcpClient.callTool} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             Select a tool from the sidebar to get started

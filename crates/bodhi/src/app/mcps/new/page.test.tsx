@@ -8,14 +8,11 @@ import {
   mockAuthConfigOAuthPreReg,
   mockCreateMcp,
   mockDeleteOAuthToken,
-  mockFetchMcpTools,
-  mockFetchMcpToolsError,
   mockGetMcp,
   mockListAuthConfigs,
   mockListMcpServers,
   mockMcp,
   mockMcpServerResponse,
-  mockMcpTool,
   mockMcpWithDcr,
   mockMcpWithHeaderAuth,
   mockMcpWithOAuth,
@@ -107,12 +104,11 @@ describe('NewMcpPage - Create flow', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
       mockListAuthConfigs({ auth_configs: [] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockCreateMcp(mockMcp)
     );
   });
 
-  it('renders the page with tools section always visible', async () => {
+  it('renders the page with server selector', async () => {
     await act(async () => {
       render(<NewMcpPage />, { wrapper: createWrapper() });
     });
@@ -121,25 +117,10 @@ describe('NewMcpPage - Create flow', () => {
       expect(screen.getByTestId('new-mcp-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('mcp-tools-section')).toBeInTheDocument();
-    expect(screen.getByTestId('mcp-tools-empty-state')).toHaveTextContent(
-      'Select a server and fetch tools to see available tools.'
-    );
+    expect(screen.getByTestId('mcp-server-combobox')).toBeInTheDocument();
   });
 
-  it('disables Create MCP button until tools are fetched', async () => {
-    await act(async () => {
-      render(<NewMcpPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-create-button')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('mcp-create-button')).toBeDisabled();
-  });
-
-  it('enables Create MCP button after fetching tools', async () => {
+  it('Create MCP button is enabled after selecting server and filling form', async () => {
     const user = userEvent.setup();
     await act(async () => {
       render(<NewMcpPage />, { wrapper: createWrapper() });
@@ -150,37 +131,13 @@ describe('NewMcpPage - Create flow', () => {
     });
 
     await selectServer(user);
-    await user.click(screen.getByTestId('mcp-fetch-tools-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('mcp-tools-list')).toBeInTheDocument();
+      expect(screen.getByTestId('mcp-create-button')).not.toBeDisabled();
     });
-
-    expect(screen.getByTestId('mcp-create-button')).not.toBeDisabled();
   });
 
-  it('shows fetched tools with checkboxes', async () => {
-    const user = userEvent.setup();
-    await act(async () => {
-      render(<NewMcpPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-server-combobox')).toBeInTheDocument();
-    });
-
-    await selectServer(user);
-    await user.click(screen.getByTestId('mcp-fetch-tools-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-tool-read_wiki_structure')).toBeInTheDocument();
-    });
-
-    const toolCheckbox = screen.getByTestId('mcp-tool-checkbox-read_wiki_structure');
-    expect(toolCheckbox).toBeInTheDocument();
-  });
-
-  it('creates MCP with tools data in single POST', async () => {
+  it('creates MCP with form data in single POST', async () => {
     const user = userEvent.setup();
 
     await act(async () => {
@@ -192,36 +149,11 @@ describe('NewMcpPage - Create flow', () => {
     });
 
     await selectServer(user);
-    await user.click(screen.getByTestId('mcp-fetch-tools-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-tools-list')).toBeInTheDocument();
-    });
 
     await user.click(screen.getByTestId('mcp-create-button'));
 
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps' });
-    });
-  });
-
-  it('shows toast error when fetch tools fails', async () => {
-    const user = userEvent.setup();
-    server.use(mockFetchMcpToolsError({ message: 'Connection refused' }));
-
-    await act(async () => {
-      render(<NewMcpPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-server-combobox')).toBeInTheDocument();
-    });
-
-    await selectServer(user);
-    await user.click(screen.getByTestId('mcp-fetch-tools-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-create-button')).toBeDisabled();
     });
   });
 });
@@ -233,12 +165,11 @@ describe('NewMcpPage - Edit flow', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockGetMcp(mockMcp)
     );
   });
 
-  it('loads existing MCP and shows cached tools', async () => {
+  it('loads existing MCP and populates form fields', async () => {
     await act(async () => {
       render(<NewMcpPage />, { wrapper: createWrapper() });
     });
@@ -250,9 +181,6 @@ describe('NewMcpPage - Edit flow', () => {
     await waitFor(() => {
       expect(screen.getByTestId('mcp-name-input')).toHaveValue('Example MCP');
     });
-
-    expect(screen.getByTestId('mcp-tools-list')).toBeInTheDocument();
-    expect(screen.getByTestId('mcp-tool-read_wiki_structure')).toBeInTheDocument();
   });
 
   it('shows Update MCP button (not Create) in edit mode', async () => {
@@ -274,7 +202,6 @@ describe('NewMcpPage - Auth config dropdown', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
-      mockFetchMcpTools([mockMcpTool]),
       mockCreateMcp(mockMcp)
     );
   });
@@ -282,7 +209,6 @@ describe('NewMcpPage - Auth config dropdown', () => {
   it('renders auth config dropdown with public default when no configs exist', async () => {
     server.use(mockListAuthConfigs({ auth_configs: [] }));
 
-    const user = userEvent.setup();
     await act(async () => {
       render(<NewMcpPage />, { wrapper: createWrapper() });
     });
@@ -474,11 +400,6 @@ describe('NewMcpPage - Auth config dropdown', () => {
       expect(screen.getByTestId('auth-config-select')).toHaveAttribute('data-test-state', 'header');
     });
 
-    await user.click(screen.getByTestId('mcp-fetch-tools-button'));
-    await waitFor(() => {
-      expect(screen.getByTestId('mcp-tools-list')).toBeInTheDocument();
-    });
-
     await user.click(screen.getByTestId('mcp-create-button'));
 
     await waitFor(() => {
@@ -526,7 +447,6 @@ describe('NewMcpPage - Edit with public auth', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockUpdateMcp(mockMcp),
       mockGetMcp(mockMcp)
     );
@@ -553,7 +473,6 @@ describe('NewMcpPage - Edit with header auth', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigHeader] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockUpdateMcp(mockMcpWithHeaderAuth),
       mockGetMcp(mockMcpWithHeaderAuth)
     );
@@ -586,7 +505,6 @@ describe('NewMcpPage - Edit with OAuth auth', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockUpdateMcp(mockMcpWithOAuth),
       mockOAuthLogin(),
       mockGetMcp(mockMcpWithOAuth)
@@ -630,7 +548,6 @@ describe('NewMcpPage - Edit with DCR OAuth auth', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthDynamic] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockUpdateMcp(mockMcpWithDcr),
       mockDeleteOAuthToken(),
       mockGetMcp(mockMcpWithDcr)
@@ -679,7 +596,6 @@ describe('NewMcpPage - OAuth session restore after callback', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockDeleteOAuthToken()
     );
   });
@@ -729,7 +645,6 @@ describe('NewMcpPage - Session data takes priority over API data in edit mode', 
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockGetMcp(mockMcpWithOAuth)
     );
 
@@ -763,8 +678,6 @@ describe('NewMcpPage - OAuth Pre-Registered Client', () => {
       oauth_token_id: mockOAuthToken.id,
       server_url: mockMcpServerResponse.url,
       server_name: mockMcpServerResponse.name,
-      tools_cache: [mockMcpTool],
-      tools_filter: ['read_wiki_structure'],
     };
     sessionStorage.setItem('mcp_oauth_form_state', JSON.stringify(sessionData));
 
@@ -773,7 +686,6 @@ describe('NewMcpPage - OAuth Pre-Registered Client', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockCreateMcp(mockMcp)
     );
 
@@ -828,8 +740,7 @@ describe('NewMcpPage - OAuth disconnect flow (lazy)', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
-      mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] }),
-      mockFetchMcpTools([mockMcpTool])
+      mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] })
     );
   });
 
@@ -863,7 +774,6 @@ describe('NewMcpPage - OAuth Connect flow', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthPreReg] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockOAuthLogin()
     );
   });
@@ -902,7 +812,6 @@ describe('NewMcpPage - Edit with DCR disconnect and update', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockListAuthConfigs({ auth_configs: [mockAuthConfigOAuthDynamic] }),
-      mockFetchMcpTools([mockMcpTool]),
       mockGetMcp(mockMcpWithDcr),
       mockDeleteOAuthToken(),
       http.put(`${BODHI_API_BASE}/mcps/:id`, async ({ request }) => {

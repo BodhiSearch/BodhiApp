@@ -28,7 +28,7 @@ Standalone: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`, `spa_router.rs
 
 ### MCP Proxy (`src/mcps/mcp_proxy.rs`)
 
-Transparent HTTP reverse proxy. Single `mcp_proxy_handler` Axum handler used by both `/bodhi/v1/mcps/{id}/mcp` and `/bodhi/v1/apps/mcps/{id}/mcp`.
+Transparent HTTP reverse proxy. Single `mcp_proxy_handler` Axum handler mounted at `/bodhi/v1/apps/mcps/{id}/mcp` (OAuth token-authenticated only).
 
 **Handler flow:**
 1. `AuthScope` + `Path(id)` extractors
@@ -39,7 +39,7 @@ Transparent HTTP reverse proxy. Single `mcp_proxy_handler` Axum handler used by 
 6. Forward headers (`content-type`, `accept`, `mcp-session-id`, `mcp-protocol-version`, `last-event-id`), inject auth headers
 7. Send via shared `reqwest::Client` (static `Lazy`, connection-pooled, no request timeout for SSE), stream response body back via `bytes_stream()` + `Body::from_stream()`
 
-`tools_filter` is NOT enforced at proxy level -- transparent pass-through.
+The proxy forwards all operations transparently to upstream (tools_filter was removed from the data model).
 
 ### Middleware (`src/middleware/`)
 

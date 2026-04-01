@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { McpTool } from '@bodhiapp/ts-client';
 
 import { BASE_PATH } from '@/lib/constants';
 
@@ -10,21 +9,11 @@ interface McpFormState {
   isConnected: boolean;
   credentialValues: Record<string, string>;
 
-  fetchedTools: McpTool[];
-  selectedTools: Set<string>;
-  toolsFetched: boolean;
-
   setSelectedAuthConfig: (id: string | null, type: string | null) => void;
   completeOAuthFlow: (tokenId: string) => void;
   disconnect: () => void;
   setCredentialValue: (key: string, value: string) => void;
   clearCredentialValues: () => void;
-  setFetchedTools: (tools: McpTool[]) => void;
-  setSelectedTools: (tools: Set<string>) => void;
-  toggleTool: (toolName: string) => void;
-  selectAllTools: () => void;
-  deselectAllTools: () => void;
-  setToolsFetched: (fetched: boolean) => void;
 
   saveToSession: (formValues: Record<string, unknown>, serverInfo?: { url: string; name: string }) => void;
   restoreFromSession: () => Record<string, unknown> | null;
@@ -41,9 +30,6 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
   oauthTokenId: null,
   isConnected: false,
   credentialValues: {},
-  fetchedTools: [],
-  selectedTools: new Set<string>(),
-  toolsFetched: false,
 
   setSelectedAuthConfig: (id, type) => set({ selectedAuthConfigId: id, selectedAuthConfigType: type }),
 
@@ -67,19 +53,6 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
 
   clearCredentialValues: () => set({ credentialValues: {} }),
 
-  setFetchedTools: (tools) => set({ fetchedTools: tools }),
-  setSelectedTools: (tools) => set({ selectedTools: tools }),
-  toggleTool: (toolName) =>
-    set((state) => {
-      const next = new Set(state.selectedTools);
-      if (next.has(toolName)) next.delete(toolName);
-      else next.add(toolName);
-      return { selectedTools: next };
-    }),
-  selectAllTools: () => set((state) => ({ selectedTools: new Set(state.fetchedTools.map((t) => t.name)) })),
-  deselectAllTools: () => set({ selectedTools: new Set() }),
-  setToolsFetched: (fetched) => set({ toolsFetched: fetched }),
-
   saveToSession: (formValues, serverInfo) => {
     const state = get();
     const data = {
@@ -87,8 +60,6 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
       selected_auth_config_id: state.selectedAuthConfigId,
       selected_auth_config_type: state.selectedAuthConfigType,
       oauth_token_id: state.oauthTokenId,
-      tools_cache: state.fetchedTools.length > 0 ? state.fetchedTools : undefined,
-      tools_filter: Array.from(state.selectedTools),
       server_url: serverInfo?.url,
       server_name: serverInfo?.name,
       return_url:
@@ -127,9 +98,6 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
       oauthTokenId: null,
       isConnected: false,
       credentialValues: {},
-      fetchedTools: [],
-      selectedTools: new Set(),
-      toolsFetched: false,
     });
   },
 }));

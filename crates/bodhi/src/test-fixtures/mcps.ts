@@ -10,35 +10,12 @@ import type {
   Mcp,
   McpServerInfo,
   McpServerResponse,
-  McpTool,
   OAuthTokenResponse,
 } from '@/hooks/mcps';
 
 // Extract discriminated union variants for type-safe overrides
 type HeaderAuthConfig = Extract<McpAuthConfigResponse, { type: 'header' }>;
 type OAuthAuthConfig = Extract<McpAuthConfigResponse, { type: 'oauth' }>;
-
-// ============================================================================
-// MCP Tool Factories
-// ============================================================================
-
-/**
- * Create a mock MCP tool
- */
-export function createMockMcpTool(overrides?: Partial<McpTool>): McpTool {
-  return {
-    name: 'read_wiki_structure',
-    description: 'Read the structure of a wiki',
-    input_schema: {
-      type: 'object',
-      properties: {
-        repo_name: { type: 'string', description: 'Repository name' },
-      },
-      required: ['repo_name'],
-    },
-    ...overrides,
-  };
-}
 
 // ============================================================================
 // MCP Server Factories
@@ -92,8 +69,7 @@ export function createMockMcp(overrides?: Partial<Mcp>): Mcp {
     name: 'Example MCP',
     description: 'An example MCP server',
     enabled: true,
-    tools_cache: [createMockMcpTool()],
-    tools_filter: ['read_wiki_structure'],
+    mcp_endpoint: '/bodhi/v1/apps/mcps/mcp-uuid-1/mcp',
     auth_type: 'public',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
@@ -109,6 +85,7 @@ export function createMockMcpWithHeaderAuth(overrides?: Partial<Mcp>): Mcp {
     id: 'mcp-uuid-2',
     slug: 'header-mcp',
     name: 'Header Auth MCP',
+    mcp_endpoint: '/bodhi/v1/apps/mcps/mcp-uuid-2/mcp',
     auth_type: 'header',
     auth_config_id: 'auth-header-uuid-1',
     ...overrides,
@@ -123,6 +100,7 @@ export function createMockMcpWithOAuth(overrides?: Partial<Mcp>): Mcp {
     id: 'mcp-uuid-3',
     slug: 'oauth-mcp',
     name: 'OAuth MCP',
+    mcp_endpoint: '/bodhi/v1/apps/mcps/mcp-uuid-3/mcp',
     auth_type: 'oauth',
     auth_config_id: 'oauth-config-uuid-1',
     ...overrides,
@@ -137,6 +115,7 @@ export function createMockMcpWithDcr(overrides?: Partial<Mcp>): Mcp {
     id: 'mcp-uuid-4',
     slug: 'dcr-mcp',
     name: 'DCR MCP',
+    mcp_endpoint: '/bodhi/v1/apps/mcps/mcp-uuid-4/mcp',
     auth_type: 'oauth',
     auth_config_id: 'oauth-config-dcr-uuid-1',
     ...overrides,

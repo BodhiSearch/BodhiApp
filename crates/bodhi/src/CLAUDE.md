@@ -125,6 +125,14 @@ Route constants defined in `src/lib/constants.ts`.
 - Auth config: `McpAuthType` enum (`public`, `header`, `oauth`). OAuth distinguishes pre-registered vs dynamic via `registration_type` field
 - `src/stores/mcpFormStore.ts` uses sessionStorage; `mcpFormStore.reset()` clears it. OAuth callback validates `state` parameter
 
+### MCP Client Hooks (SDK-based)
+
+Direct MCP protocol communication via `@modelcontextprotocol/sdk` (Streamable HTTP transport):
+
+- `useMcpClient(endpoint)` -- single MCP connection. Status: `disconnected | connecting | connected | refreshing | error`. Returns `connect`, `disconnect`, `callTool`, `refreshTools`. Used by MCP playground page.
+- `useMcpClients()` -- multi-connection manager for chat. `connectAll(mcps)` does connection diffing (only connects/disconnects changed endpoints, preserves stable connections). Returns `allTools` (memoized), `callTool(mcpId, toolName, args)`. Used by `useChat` for tool calling.
+- Both hooks use `credentials: 'include'` on fetch for session cookie forwarding through the proxy endpoint.
+
 ### Setup Flow
 
 Multi-step onboarding under `src/routes/setup/`: download-models -> api-models -> llm-engine -> browser-extension -> complete. Layout route in `src/routes/setup/route.tsx` wraps with `SetupLayoutComponent`.

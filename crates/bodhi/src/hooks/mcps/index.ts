@@ -5,7 +5,6 @@ export {
   oauthTokenKeys,
   // Endpoint constants
   MCPS_ENDPOINT,
-  MCPS_FETCH_TOOLS_ENDPOINT,
   MCP_SERVERS_ENDPOINT,
   MCPS_AUTH_CONFIGS_ENDPOINT,
   MCPS_OAUTH_TOKENS_ENDPOINT,
@@ -42,13 +41,9 @@ export type {
   OAuthLoginResponse,
   OAuthTokenExchangeRequest,
 } from './useMcpOAuth';
-export { useFetchMcpTools, useRefreshMcpTools, useExecuteMcpTool } from './useMcpTools';
-export type {
-  McpTool,
-  FetchMcpToolsRequest,
-  McpToolsResponse,
-  McpExecuteRequest,
-  McpExecuteResponse,
-} from './useMcpTools';
+export { useMcpClient } from './useMcpClient';
+export type { McpConnectionStatus, McpClientTool, UseMcpClientReturn, McpToolCallResult } from './useMcpClient';
+export { useMcpClients } from './useMcpClients';
+export type { UseMcpClientsReturn } from './useMcpClients';
 export { useMcpSelection } from './useMcpSelection';
 export type { CheckboxState, UseMcpSelectionReturn } from './useMcpSelection';

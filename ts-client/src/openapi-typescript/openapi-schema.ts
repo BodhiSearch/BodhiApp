@@ -242,7 +242,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/apps/mcps/{id}/tools/refresh": {
+    "/bodhi/v1/apps/mcps/{id}/mcp": {
         parameters: {
             query?: never;
             header?: never;
@@ -251,25 +251,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Refresh tools for an MCP instance via external app */
-        post: operations["appsRefreshMcpTools"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Execute a tool on an MCP server via external app */
-        post: operations["appsExecuteMcpTool"];
+        /**
+         * Transparent MCP proxy endpoint
+         * @description Forwards MCP Streamable HTTP requests (POST/GET/DELETE) to upstream MCP server with auth injection
+         */
+        post: operations["mcpProxy"];
         delete?: never;
         options?: never;
         head?: never;
@@ -504,23 +490,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/mcps/fetch-tools": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Fetch tools from an MCP server without creating an MCP instance */
-        post: operations["fetchMcpTools"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/bodhi/v1/mcps/oauth-tokens/{token_id}": {
         parameters: {
             query?: never;
@@ -640,40 +609,6 @@ export interface paths {
         post?: never;
         /** Delete an MCP instance */
         delete: operations["deleteMcp"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/mcps/{id}/tools/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh tools by connecting to the MCP server */
-        post: operations["refreshMcpTools"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/mcps/{id}/tools/{tool_name}/execute": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Execute a tool on an MCP server */
-        post: operations["executeMcpTool"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2565,13 +2500,6 @@ export interface components {
                 [key: string]: string;
             } | null;
         };
-        FetchMcpToolsRequest: {
-            mcp_server_id: string;
-            auth?: null | components["schemas"]["McpAuth"];
-            credentials?: components["schemas"]["McpAuthParamInput"][] | null;
-            auth_config_id?: string | null;
-            oauth_token_id?: string | null;
-        };
         /**
          * @description Request to fetch available models from provider
          * @example {
@@ -2703,7 +2631,7 @@ export interface components {
             };
             metadata?: null | components["schemas"]["ModelMetadata"];
         };
-        /** @description User-owned MCP server instance with tool caching and filtering. */
+        /** @description User-owned MCP server instance. */
         Mcp: {
             /** @description Unique instance identifier (UUID) */
             id: string;
@@ -2717,10 +2645,8 @@ export interface components {
             description?: string | null;
             /** @description Whether this instance is enabled */
             enabled: boolean;
-            /** @description Cached tool schemas from the MCP server (JSON array) */
-            tools_cache?: components["schemas"]["McpTool"][] | null;
-            /** @description Whitelisted tool names (empty = block all) */
-            tools_filter?: string[] | null;
+            /** @description MCP proxy endpoint path for this instance */
+            mcp_endpoint: string;
             auth_type: components["schemas"]["McpAuthType"];
             /** @description Reference to the auth config (mcp_auth_configs.id) */
             auth_config_id?: string | null;
@@ -2741,15 +2667,6 @@ export interface components {
             url: string;
             status: components["schemas"]["ApprovalStatus"];
             instance?: null | components["schemas"]["McpInstance"];
-        };
-        McpAuth: {
-            /** @enum {string} */
-            type: "public";
-        } | {
-            header_key: string;
-            header_value: string;
-            /** @enum {string} */
-            type: "header";
         };
         McpAuthConfigParam: {
             id: string;
@@ -2818,13 +2735,6 @@ export interface components {
         McpAuthParamType: "header" | "query";
         /** @enum {string} */
         McpAuthType: "public" | "header" | "oauth";
-        McpExecuteRequest: {
-            params: unknown;
-        };
-        McpExecuteResponse: {
-            result?: unknown;
-            error?: string | null;
-        };
         McpInstance: {
             id: string;
         };
@@ -2840,10 +2750,6 @@ export interface components {
             description?: string | null;
             /** @description Whether this instance is enabled */
             enabled: boolean;
-            /** @description Cached tool schemas from the MCP server (JSON array) */
-            tools_cache?: components["schemas"]["McpTool"][] | null;
-            /** @description Whitelisted tool names */
-            tools_filter?: string[] | null;
             /** @description Authentication type */
             auth_type?: components["schemas"]["McpAuthType"];
             /** @description Reference to auth config */
@@ -2915,18 +2821,6 @@ export interface components {
             url: string;
             /** @description User's MCP instances connected to this server URL */
             instances: components["schemas"]["Mcp"][];
-        };
-        /** @description Tool schema cached from an MCP server's tools/list response. */
-        McpTool: {
-            /** @description Tool name as declared by the MCP server */
-            name: string;
-            /** @description Human-readable description of the tool */
-            description?: string | null;
-            /** @description JSON Schema for tool input parameters */
-            input_schema?: unknown;
-        };
-        McpToolsResponse: {
-            tools: components["schemas"]["McpTool"][];
         };
         Message: {
             role: string;
@@ -4779,7 +4673,7 @@ export interface operations {
             };
         };
     };
-    appsRefreshMcpTools: {
+    mcpProxy: {
         parameters: {
             query?: never;
             header?: never;
@@ -4791,14 +4685,12 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Refreshed list of tools */
+            /** @description Upstream response forwarded */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["McpToolsResponse"];
-                };
+                content?: never;
             };
             /** @description Invalid request parameters */
             400: {
@@ -4826,85 +4718,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
-            };
-            /** @description MCP not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    appsExecuteMcpTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description MCP instance UUID */
-                id: string;
-                /** @description Tool name to execute */
-                tool_name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["McpExecuteRequest"];
-            };
-        };
-        responses: {
-            /** @description Tool execution result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["McpExecuteResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description MCP or tool not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Internal server error */
             500: {
@@ -5886,73 +5699,6 @@ export interface operations {
             };
         };
     };
-    fetchMcpTools: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FetchMcpToolsRequest"];
-            };
-        };
-        responses: {
-            /** @description List of tools from MCP server */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["McpToolsResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description MCP server not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
     getMcpOAuthToken: {
         parameters: {
             query?: never;
@@ -6715,144 +6461,6 @@ export interface operations {
                 };
             };
             /** @description MCP not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    refreshMcpTools: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description MCP instance UUID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Refreshed list of tools */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["McpToolsResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description MCP not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    executeMcpTool: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description MCP instance UUID */
-                id: string;
-                /** @description Tool name to execute */
-                tool_name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["McpExecuteRequest"];
-            };
-        };
-        responses: {
-            /** @description Tool execution result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["McpExecuteResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description MCP or tool not found */
             404: {
                 headers: {
                     [name: string]: unknown;

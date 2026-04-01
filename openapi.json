@@ -1314,13 +1314,14 @@
         ]
       }
     },
-    "/bodhi/v1/apps/mcps/{id}/tools/refresh": {
+    "/bodhi/v1/apps/mcps/{id}/mcp": {
       "post": {
         "tags": [
-          "apps"
+          "mcps"
         ],
-        "summary": "Refresh tools for an MCP instance via external app",
-        "operationId": "appsRefreshMcpTools",
+        "summary": "Transparent MCP proxy endpoint",
+        "description": "Forwards MCP Streamable HTTP requests (POST/GET/DELETE) to upstream MCP server with auth injection",
+        "operationId": "mcpProxy",
         "parameters": [
           {
             "name": "id",
@@ -1334,14 +1335,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Refreshed list of tools",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpToolsResponse"
-                }
-              }
-            }
+            "description": "Upstream response forwarded"
           },
           "400": {
             "description": "Invalid request parameters",
@@ -1372,108 +1366,6 @@
                 }
               }
             }
-          },
-          "404": {
-            "description": "MCP not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_oauth_token": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute": {
-      "post": {
-        "tags": [
-          "apps"
-        ],
-        "summary": "Execute a tool on an MCP server via external app",
-        "operationId": "appsExecuteMcpTool",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "MCP instance UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "tool_name",
-            "in": "path",
-            "description": "Tool name to execute",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/McpExecuteRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Tool execution result",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpExecuteResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MCP or tool not found"
           },
           "500": {
             "description": "Internal server error",
@@ -2704,85 +2596,6 @@
         ]
       }
     },
-    "/bodhi/v1/mcps/fetch-tools": {
-      "post": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Fetch tools from an MCP server without creating an MCP instance",
-        "operationId": "fetchMcpTools",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FetchMcpToolsRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "List of tools from MCP server",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpToolsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MCP server not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
     "/bodhi/v1/mcps/oauth-tokens/{token_id}": {
       "get": {
         "tags": [
@@ -3707,185 +3520,6 @@
           },
           "404": {
             "description": "MCP not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/mcps/{id}/tools/refresh": {
-      "post": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Refresh tools by connecting to the MCP server",
-        "operationId": "refreshMcpTools",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "MCP instance UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Refreshed list of tools",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpToolsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MCP not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/mcps/{id}/tools/{tool_name}/execute": {
-      "post": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Execute a tool on an MCP server",
-        "operationId": "executeMcpTool",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "MCP instance UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "tool_name",
-            "in": "path",
-            "description": "Tool name to execute",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/McpExecuteRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Tool execution result",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpExecuteResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MCP or tool not found"
           },
           "500": {
             "description": "Internal server error",
@@ -11684,48 +11318,6 @@
           "type": "invalid_request_error"
         }
       },
-      "FetchMcpToolsRequest": {
-        "type": "object",
-        "required": [
-          "mcp_server_id"
-        ],
-        "properties": {
-          "mcp_server_id": {
-            "type": "string"
-          },
-          "auth": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/McpAuth"
-              }
-            ]
-          },
-          "credentials": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/McpAuthParamInput"
-            }
-          },
-          "auth_config_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "oauth_token_id": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
       "FetchModelsRequest": {
         "type": "object",
         "description": "Request to fetch available models from provider",
@@ -12086,13 +11678,14 @@
       },
       "Mcp": {
         "type": "object",
-        "description": "User-owned MCP server instance with tool caching and filtering.",
+        "description": "User-owned MCP server instance.",
         "required": [
           "id",
           "mcp_server",
           "slug",
           "name",
           "enabled",
+          "mcp_endpoint",
           "auth_type",
           "created_at",
           "updated_at"
@@ -12125,25 +11718,9 @@
             "type": "boolean",
             "description": "Whether this instance is enabled"
           },
-          "tools_cache": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/McpTool"
-            },
-            "description": "Cached tool schemas from the MCP server (JSON array)"
-          },
-          "tools_filter": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "description": "Whitelisted tool names (empty = block all)"
+          "mcp_endpoint": {
+            "type": "string",
+            "description": "MCP proxy endpoint path for this instance"
           },
           "auth_type": {
             "$ref": "#/components/schemas/McpAuthType"
@@ -12193,46 +11770,6 @@
             ]
           }
         }
-      },
-      "McpAuth": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "public"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "header_key",
-              "header_value",
-              "type"
-            ],
-            "properties": {
-              "header_key": {
-                "type": "string"
-              },
-              "header_value": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "header"
-                ]
-              }
-            }
-          }
-        ]
       },
       "McpAuthConfigParam": {
         "type": "object",
@@ -12488,27 +12025,6 @@
           "oauth"
         ]
       },
-      "McpExecuteRequest": {
-        "type": "object",
-        "required": [
-          "params"
-        ],
-        "properties": {
-          "params": {}
-        }
-      },
-      "McpExecuteResponse": {
-        "type": "object",
-        "properties": {
-          "result": {},
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
       "McpInstance": {
         "type": "object",
         "required": [
@@ -12554,26 +12070,6 @@
           "enabled": {
             "type": "boolean",
             "description": "Whether this instance is enabled"
-          },
-          "tools_cache": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/McpTool"
-            },
-            "description": "Cached tool schemas from the MCP server (JSON array)"
-          },
-          "tools_filter": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "description": "Whitelisted tool names"
           },
           "auth_type": {
             "$ref": "#/components/schemas/McpAuthType",
@@ -12781,43 +12277,6 @@
               "$ref": "#/components/schemas/Mcp"
             },
             "description": "User's MCP instances connected to this server URL"
-          }
-        }
-      },
-      "McpTool": {
-        "type": "object",
-        "description": "Tool schema cached from an MCP server's tools/list response.",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Tool name as declared by the MCP server"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Human-readable description of the tool"
-          },
-          "input_schema": {
-            "description": "JSON Schema for tool input parameters"
-          }
-        }
-      },
-      "McpToolsResponse": {
-        "type": "object",
-        "required": [
-          "tools"
-        ],
-        "properties": {
-          "tools": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/McpTool"
-            }
           }
         }
       },

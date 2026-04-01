@@ -121,7 +121,7 @@ Each auth-scoped service returns its own domain error type (e.g., `AuthScopedTok
 - Auth header preservation: switching auth type away from `Header` does NOT delete auth headers (admin-managed). OAuth tokens ARE cleaned up.
 - OAuth token refresh has per-key concurrency guard (keyed by `oauth_refresh:{config_id}`)
 - CASCADE FK constraints on MCP tables
-- **Auth params resolution**: `resolve_auth_params(tenant_id, user_id, id)` returns `Option<McpAuthParams>` (headers + query params for upstream requests). Used by `mcp_proxy_handler` in `routes_app` and tool execution endpoints. `AuthScopedMcpService.resolve_auth_params(id)` is the auth-scoped passthrough.
+- **Auth params resolution**: `resolve_auth_params(tenant_id, user_id, id)` returns `Option<McpAuthParams>` (headers + query params for upstream requests). Used by `mcp_proxy_handler` in `routes_app`. `AuthScopedMcpService.resolve_auth_params(id)` is the auth-scoped passthrough.
 
 ### AuthService SPI Proxy
 - `create_tenant(bearer_token, name, description, redirect_uris)` — proxy to SPI `POST /realms/{realm}/bodhi/tenants`

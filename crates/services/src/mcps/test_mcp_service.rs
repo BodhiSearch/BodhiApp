@@ -46,8 +46,6 @@ fn mcp_request(
     mcp_server_id: Some(server_id.to_string()),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type,
     auth_config_id,
     credentials,
@@ -488,7 +486,7 @@ async fn test_create_auth_config_oauth(
 }
 
 // ============================================================================
-// Resolve Auth Params Tests (via fetch_tools_for_server which uses resolve)
+// Resolve Auth Params Tests
 // ============================================================================
 
 #[rstest]

@@ -1,7 +1,7 @@
 use crate::db::{DbService, TimeService};
 use crate::mcps::{
   DefaultMcpService, McpAuthParamInput, McpAuthParamType, McpAuthType, McpError, McpRequest,
-  McpServerRequest, McpService,
+  McpServerRequest, McpService, RegistrationType,
 };
 use crate::test_utils::{
   test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID, TEST_USER_ID,
@@ -38,8 +38,6 @@ fn mcp_request(slug: &str, server_id: &str) -> McpRequest {
     mcp_server_id: Some(server_id.to_string()),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     credentials: None,
@@ -181,5 +179,84 @@ async fn test_resolve_auth_params_with_header_auth(
   assert_eq!(1, auth.headers.len());
   assert_eq!("Authorization", auth.headers[0].0);
   assert_eq!("Bearer secret-token", auth.headers[0].1);
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_resolve_auth_params_with_oauth_token(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let db_arc: Arc<dyn DbService> = Arc::new(db);
+  let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
+  let service = DefaultMcpService::new(Arc::clone(&db_arc), mcp_client, default_time_service())?;
+
+  let server = service
+    .create_mcp_server(
+      TEST_TENANT_ID,
+      "admin",
+      server_request("https://mcp.example.com", "Test Server"),
+    )
+    .await?;
+
+  // Create OAuth config
+  let oauth_config = service
+    .create_oauth_config(
+      TEST_TENANT_ID,
+      "admin",
+      "OAuth Config",
+      &server.id,
+      "client-123",
+      None,
+      "https://auth.example.com/authorize",
+      "https://auth.example.com/token",
+      None,
+      RegistrationType::PreRegistered,
+      None,
+      None,
+      None,
+      None,
+    )
+    .await?;
+
+  // Store OAuth token
+  let token = service
+    .store_oauth_token(
+      TEST_TENANT_ID,
+      TEST_USER_ID,
+      None,
+      &oauth_config.id,
+      "access-token-for-proxy",
+      Some("refresh-token-xyz".to_string()),
+      None,
+      Some(3600),
+    )
+    .await?;
+
+  // Create MCP with OAuth auth type and linked token
+  let mut request = mcp_request("proxy-oauth", &server.id);
+  request.auth_type = McpAuthType::Oauth;
+  request.oauth_token_id = Some(token.id.clone());
+  request.auth_config_id = Some(oauth_config.id.clone());
+
+  let mcp = service
+    .create(TEST_TENANT_ID, TEST_USER_ID, request)
+    .await?;
+
+  // Resolve auth params — should return OAuth bearer token
+  let auth_params = service
+    .resolve_auth_params(TEST_TENANT_ID, TEST_USER_ID, &mcp.id)
+    .await?;
+
+  assert!(auth_params.is_some());
+  let auth = auth_params.unwrap();
+  assert_eq!(1, auth.headers.len());
+  assert_eq!("Authorization", auth.headers[0].0);
+  assert_eq!("Bearer access-token-for-proxy", auth.headers[0].1);
+  assert!(auth.query_params.is_empty());
   Ok(())
 }

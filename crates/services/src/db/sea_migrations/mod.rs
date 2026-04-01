@@ -16,6 +16,7 @@ mod m20250101_000014_tenants;
 mod m20250101_000015_tenants_users;
 mod m20250101_000016_mcp_auth_redesign;
 mod m20250101_000017_drop_toolsets;
+mod m20250101_000018_drop_mcp_tools_columns;
 use sea_orm_migration::prelude::*;
 
 pub struct Migrator;
@@ -42,6 +43,7 @@ impl MigratorTrait for Migrator {
       Box::new(m20250101_000015_tenants_users::Migration),
       Box::new(m20250101_000016_mcp_auth_redesign::Migration),
       Box::new(m20250101_000017_drop_toolsets::Migration),
+      Box::new(m20250101_000018_drop_mcp_tools_columns::Migration),
     ]
   }
 }

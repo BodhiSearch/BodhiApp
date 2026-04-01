@@ -31,7 +31,9 @@
 
 ### MSW Handler Files (`src/test-utils/msw-v2/handlers/`)
 
-Domain-specific mock handlers: `api-models.ts`, `apps.ts`, `auth.ts`, `chat-completions.ts`, `info.ts`, `mcps.ts`, `models.ts`, `modelfiles.ts`, `setup.ts`, `settings.ts`, `tenants.ts`, `tokens.ts`, `user-access-requests.ts`, `user.ts`
+Domain-specific mock handlers: `api-models.ts`, `apps.ts`, `auth.ts`, `chat-completions.ts`, `info.ts`, `mcp-protocol.ts`, `mcps.ts`, `models.ts`, `modelfiles.ts`, `setup.ts`, `settings.ts`, `tenants.ts`, `tokens.ts`, `user-access-requests.ts`, `user.ts`
+
+**MCP protocol handlers** (`mcp-protocol.ts`): `createMcpProtocolHandlers(config)` simulates an MCP Streamable HTTP server at the JSON-RPC level. Handles `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, plus GET (405) and DELETE (202) for session management. Allows the real `useMcpClient` hook and MCP SDK to run end-to-end in tests. Config accepts `endpoint`, `tools`, `serverName`, `toolCallHandler`.
 
 **IMPORTANT**: Handler registration order matters for MCPs — sub-path handlers (`/mcps/servers`, `/mcps/auth-configs`) must come before wildcard `/mcps/:id` handlers.
 

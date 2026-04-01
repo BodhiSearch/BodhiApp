@@ -6,7 +6,10 @@ use reqwest::{Client, StatusCode};
 use serde_json::{json, Value};
 use utils::{
   create_test_session_for_live_server, start_test_live_server,
-  test_mcp_server::{TestMcpServer, TestPrompt, TestPromptArg, TestResource, TestTool},
+  test_mcp_server::{
+    TestMcpServer, TestMcpServerConfig, TestPrompt, TestPromptArg, TestResource, TestTool,
+  },
+  TestLiveServer,
 };
 
 // =============================================================================
@@ -69,63 +72,6 @@ async fn create_mcp_server(
   Ok(body["id"].as_str().unwrap().to_string())
 }
 
-/// Create an MCP instance via the REST API and return its ID.
-async fn create_mcp_instance(
-  client: &Client,
-  base_url: &str,
-  cookie: &str,
-  server_id: &str,
-) -> anyhow::Result<String> {
-  let resp = client
-    .post(format!("{}/bodhi/v1/mcps", base_url))
-    .header("Cookie", cookie)
-    .json(&json!({
-      "name": "Test MCP Instance",
-      "slug": "test-proxy",
-      "mcp_server_id": server_id,
-      "enabled": true
-    }))
-    .send()
-    .await?;
-  assert_eq!(
-    StatusCode::CREATED,
-    resp.status(),
-    "Failed to create MCP instance"
-  );
-  let body: Value = resp.json().await?;
-  Ok(body["id"].as_str().unwrap().to_string())
-}
-
-/// Create an MCP instance with a tools_filter via the REST API and return its ID.
-async fn create_mcp_instance_with_filter(
-  client: &Client,
-  base_url: &str,
-  cookie: &str,
-  server_id: &str,
-  slug: &str,
-  tools_filter: Vec<&str>,
-) -> anyhow::Result<String> {
-  let resp = client
-    .post(format!("{}/bodhi/v1/mcps", base_url))
-    .header("Cookie", cookie)
-    .json(&json!({
-      "name": "Filtered MCP Instance",
-      "slug": slug,
-      "mcp_server_id": server_id,
-      "enabled": true,
-      "tools_filter": tools_filter
-    }))
-    .send()
-    .await?;
-  assert_eq!(
-    StatusCode::CREATED,
-    resp.status(),
-    "Failed to create filtered MCP instance"
-  );
-  let body: Value = resp.json().await?;
-  Ok(body["id"].as_str().unwrap().to_string())
-}
-
 /// Send an MCP initialize request and return (session_id, response_json).
 ///
 /// This is the first POST to the proxy endpoint, without a Mcp-Session-Id header.
@@ -137,7 +83,7 @@ async fn mcp_initialize(
   mcp_id: &str,
 ) -> anyhow::Result<(String, Value)> {
   let resp = client
-    .post(format!("{}/bodhi/v1/mcps/{}/mcp", base_url, mcp_id))
+    .post(format!("{}/bodhi/v1/apps/mcps/{}/mcp", base_url, mcp_id))
     .header("Cookie", cookie)
     .header("Content-Type", "application/json")
     .header("Accept", "application/json, text/event-stream")
@@ -181,6 +127,37 @@ async fn mcp_initialize(
   Ok((session_id, messages[0].clone()))
 }
 
+/// Send a raw MCP initialize request and return the raw response (for error cases).
+async fn mcp_initialize_raw(
+  client: &Client,
+  base_url: &str,
+  cookie: &str,
+  mcp_id: &str,
+) -> anyhow::Result<reqwest::Response> {
+  let resp = client
+    .post(format!("{}/bodhi/v1/apps/mcps/{}/mcp", base_url, mcp_id))
+    .header("Cookie", cookie)
+    .header("Content-Type", "application/json")
+    .header("Accept", "application/json, text/event-stream")
+    .json(&json!({
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "test-client",
+          "version": "1.0"
+        }
+      }
+    }))
+    .send()
+    .await?;
+
+  Ok(resp)
+}
+
 /// Send an MCP request with session ID and return the response JSON.
 async fn mcp_request(
   client: &Client,
@@ -191,7 +168,7 @@ async fn mcp_request(
   body: Value,
 ) -> anyhow::Result<Value> {
   let resp = client
-    .post(format!("{}/bodhi/v1/mcps/{}/mcp", base_url, mcp_id))
+    .post(format!("{}/bodhi/v1/apps/mcps/{}/mcp", base_url, mcp_id))
     .header("Cookie", cookie)
     .header("Content-Type", "application/json")
     .header("Accept", "application/json, text/event-stream")
@@ -229,7 +206,7 @@ async fn mcp_notify(
   body: Value,
 ) -> anyhow::Result<StatusCode> {
   let resp = client
-    .post(format!("{}/bodhi/v1/mcps/{}/mcp", base_url, mcp_id))
+    .post(format!("{}/bodhi/v1/apps/mcps/{}/mcp", base_url, mcp_id))
     .header("Cookie", cookie)
     .header("Content-Type", "application/json")
     .header("Accept", "application/json, text/event-stream")
@@ -250,7 +227,7 @@ async fn mcp_delete_session(
   session_id: &str,
 ) -> anyhow::Result<StatusCode> {
   let resp = client
-    .delete(format!("{}/bodhi/v1/mcps/{}/mcp", base_url, mcp_id))
+    .delete(format!("{}/bodhi/v1/apps/mcps/{}/mcp", base_url, mcp_id))
     .header("Cookie", cookie)
     .header("Mcp-Session-Id", session_id)
     .send()
@@ -294,7 +271,81 @@ fn weather_tool() -> TestTool {
 }
 
 // =============================================================================
-// Test 6.1: Full lifecycle
+// Shared proxy test setup
+// =============================================================================
+
+/// Holds all handles needed by proxy integration tests.
+struct ProxyTestSetup {
+  upstream: TestMcpServer,
+  server: TestLiveServer,
+  client: Client,
+  cookie: String,
+  mcp_id: String,
+}
+
+impl ProxyTestSetup {
+  /// Convenience: the Bodhi server's base URL.
+  fn base_url(&self) -> &str {
+    &self.server.base_url
+  }
+}
+
+/// Standard proxy test setup: start upstream, start Bodhi, create session + MCP server + instance.
+///
+/// The `instance_json` controls the MCP instance payload. For a simple public instance use
+/// `json!({"name": "Test MCP Instance", "slug": "test-proxy", "enabled": true})`.
+async fn setup_proxy_test(
+  upstream_config: TestMcpServerConfig,
+  instance_json: Value,
+) -> anyhow::Result<ProxyTestSetup> {
+  let upstream = TestMcpServer::start(upstream_config).await?;
+
+  let server = start_test_live_server().await?;
+  let client = reqwest::Client::new();
+
+  let (cookie, _) =
+    create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
+
+  let server_id = create_mcp_server(&client, &server.base_url, &cookie, &upstream.url).await?;
+
+  // Build instance payload, injecting mcp_server_id
+  let mut payload = instance_json;
+  payload["mcp_server_id"] = json!(server_id);
+
+  let resp = client
+    .post(format!("{}/bodhi/v1/mcps", server.base_url))
+    .header("Cookie", &cookie)
+    .json(&payload)
+    .send()
+    .await?;
+  assert_eq!(
+    StatusCode::CREATED,
+    resp.status(),
+    "Failed to create MCP instance"
+  );
+  let body: Value = resp.json().await?;
+  let mcp_id = body["id"].as_str().unwrap().to_string();
+
+  Ok(ProxyTestSetup {
+    upstream,
+    server,
+    client,
+    cookie,
+    mcp_id,
+  })
+}
+
+/// Default public instance JSON (no auth).
+fn default_instance_json() -> Value {
+  json!({
+    "name": "Test MCP Instance",
+    "slug": "test-proxy",
+    "enabled": true
+  })
+}
+
+// =============================================================================
+// Test: Full lifecycle
 // =============================================================================
 
 /// Full proxy lifecycle: initialize -> notify -> list tools -> call tool -> delete session.
@@ -302,30 +353,23 @@ fn weather_tool() -> TestTool {
 #[tokio::test]
 #[serial_test::serial(live)]
 async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
-  // 1. Start upstream TestMcpServer with echo + weather tools
-  let upstream = TestMcpServer::start(
+  let setup = setup_proxy_test(
     TestMcpServer::builder()
       .tool(echo_tool())
       .tool(weather_tool())
       .build(),
+    default_instance_json(),
   )
   .await?;
 
-  // 2. Start Bodhi server
-  let server = start_test_live_server().await?;
-  let client = reqwest::Client::new();
-
-  // 3. Create admin session, MCP server + instance
-  let (admin_cookie, _) =
-    create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
-
-  let server_id =
-    create_mcp_server(&client, &server.base_url, &admin_cookie, &upstream.url).await?;
-  let mcp_id = create_mcp_instance(&client, &server.base_url, &admin_cookie, &server_id).await?;
-
-  // 4. Initialize MCP session
-  let (session_id, init_result) =
-    mcp_initialize(&client, &server.base_url, &admin_cookie, &mcp_id).await?;
+  // Initialize MCP session
+  let (session_id, init_result) = mcp_initialize(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
 
   assert!(
     !session_id.is_empty(),
@@ -339,12 +383,12 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     "InitializeResult should have serverInfo.name"
   );
 
-  // 5. Send notifications/initialized
+  // Send notifications/initialized
   let notify_status = mcp_notify(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({
       "jsonrpc": "2.0",
@@ -358,12 +402,12 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     "Notification should return 202"
   );
 
-  // 6. List tools
+  // List tools
   let tools_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({
       "jsonrpc": "2.0",
@@ -384,12 +428,12 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     "Should contain weather tool"
   );
 
-  // 7. Call echo tool
+  // Call echo tool
   let call_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({
       "jsonrpc": "2.0",
@@ -418,19 +462,19 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     "Echo tool should return the echoed message"
   );
 
-  // 8. Verify upstream received the call
+  // Verify upstream received the call
   {
-    let calls = upstream.calls_received.lock().await;
+    let calls = setup.upstream.calls_received.lock().await;
     assert_eq!(1, calls.len(), "Upstream should have received 1 tool call");
     assert_eq!("echo", calls[0].tool_name);
   }
 
-  // 9. Delete session
+  // Delete session
   let delete_status = mcp_delete_session(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
   )
   .await?;
@@ -442,10 +486,15 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     delete_status
   );
 
-  // 10. Post with expired session should fail
-  let resp = client
-    .post(format!("{}/bodhi/v1/mcps/{}/mcp", server.base_url, mcp_id))
-    .header("Cookie", &admin_cookie)
+  // Post with expired session should fail
+  let resp = setup
+    .client
+    .post(format!(
+      "{}/bodhi/v1/apps/mcps/{}/mcp",
+      setup.base_url(),
+      setup.mcp_id
+    ))
+    .header("Cookie", &setup.cookie)
     .header("Content-Type", "application/json")
     .header("Accept", "application/json, text/event-stream")
     .header("Mcp-Session-Id", &session_id)
@@ -463,56 +512,44 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
   );
 
   // Cleanup
-  upstream.shutdown().await;
-  server.handle.shutdown().await?;
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
   Ok(())
 }
 
 // =============================================================================
-// Test 6.2: Tools filter
+// Test: All tools forwarded
 // =============================================================================
 
-/// Transparent proxy forwards all tools regardless of tools_filter setting.
-/// tools_filter enforcement can be re-added later as JSON-level request/response inspection.
+/// Transparent proxy forwards all upstream tools.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
-async fn test_mcp_proxy_tools_filter() -> anyhow::Result<()> {
-  let upstream = TestMcpServer::start(
+async fn test_mcp_proxy_all_tools_forwarded() -> anyhow::Result<()> {
+  let setup = setup_proxy_test(
     TestMcpServer::builder()
       .tool(echo_tool())
       .tool(weather_tool())
       .build(),
-  )
-  .await?;
-
-  let server = start_test_live_server().await?;
-  let client = reqwest::Client::new();
-
-  let (admin_cookie, _) =
-    create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
-
-  let server_id =
-    create_mcp_server(&client, &server.base_url, &admin_cookie, &upstream.url).await?;
-  let mcp_id = create_mcp_instance_with_filter(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &server_id,
-    "filtered-proxy",
-    vec!["echo"],
+    default_instance_json(),
   )
   .await?;
 
   // Initialize session
-  let (session_id, _) = mcp_initialize(&client, &server.base_url, &admin_cookie, &mcp_id).await?;
+  let (session_id, _) = mcp_initialize(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
 
   // Send initialized notification
   mcp_notify(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({"jsonrpc": "2.0", "method": "notifications/initialized"}),
   )
@@ -520,10 +557,10 @@ async fn test_mcp_proxy_tools_filter() -> anyhow::Result<()> {
 
   // List tools - transparent proxy returns all upstream tools
   let tools_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}),
   )
@@ -543,10 +580,10 @@ async fn test_mcp_proxy_tools_filter() -> anyhow::Result<()> {
 
   // Call echo - should succeed
   let call_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({
       "jsonrpc": "2.0",
@@ -563,10 +600,10 @@ async fn test_mcp_proxy_tools_filter() -> anyhow::Result<()> {
 
   // Call weather - transparent proxy forwards all tools
   let weather_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({
       "jsonrpc": "2.0",
@@ -581,13 +618,13 @@ async fn test_mcp_proxy_tools_filter() -> anyhow::Result<()> {
     "Weather call should succeed through transparent proxy"
   );
 
-  upstream.shutdown().await;
-  server.handle.shutdown().await?;
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
   Ok(())
 }
 
 // =============================================================================
-// Test 6.3: Resources
+// Test: Resources
 // =============================================================================
 
 /// Proxy should forward resource list and read requests to the upstream server.
@@ -595,7 +632,7 @@ async fn test_mcp_proxy_tools_filter() -> anyhow::Result<()> {
 #[tokio::test]
 #[serial_test::serial(live)]
 async fn test_mcp_proxy_resources() -> anyhow::Result<()> {
-  let upstream = TestMcpServer::start(
+  let setup = setup_proxy_test(
     TestMcpServer::builder()
       .resource(TestResource {
         uri: "file://readme".into(),
@@ -610,26 +647,23 @@ async fn test_mcp_proxy_resources() -> anyhow::Result<()> {
         content: r#"{"key": "value"}"#.into(),
       })
       .build(),
+    default_instance_json(),
   )
   .await?;
 
-  let server = start_test_live_server().await?;
-  let client = reqwest::Client::new();
-
-  let (admin_cookie, _) =
-    create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
-
-  let server_id =
-    create_mcp_server(&client, &server.base_url, &admin_cookie, &upstream.url).await?;
-  let mcp_id = create_mcp_instance(&client, &server.base_url, &admin_cookie, &server_id).await?;
-
-  let (session_id, _) = mcp_initialize(&client, &server.base_url, &admin_cookie, &mcp_id).await?;
+  let (session_id, _) = mcp_initialize(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
 
   mcp_notify(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({"jsonrpc": "2.0", "method": "notifications/initialized"}),
   )
@@ -637,10 +671,10 @@ async fn test_mcp_proxy_resources() -> anyhow::Result<()> {
 
   // List resources
   let resources_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({"jsonrpc": "2.0", "id": 2, "method": "resources/list"}),
   )
@@ -659,10 +693,10 @@ async fn test_mcp_proxy_resources() -> anyhow::Result<()> {
 
   // Read resource
   let read_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({
       "jsonrpc": "2.0",
@@ -686,13 +720,13 @@ async fn test_mcp_proxy_resources() -> anyhow::Result<()> {
     "Resource content should match"
   );
 
-  upstream.shutdown().await;
-  server.handle.shutdown().await?;
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
   Ok(())
 }
 
 // =============================================================================
-// Test 6.4: Prompts
+// Test: Prompts
 // =============================================================================
 
 /// Proxy should forward prompt list and get requests to the upstream server.
@@ -700,7 +734,7 @@ async fn test_mcp_proxy_resources() -> anyhow::Result<()> {
 #[tokio::test]
 #[serial_test::serial(live)]
 async fn test_mcp_proxy_prompts() -> anyhow::Result<()> {
-  let upstream = TestMcpServer::start(
+  let setup = setup_proxy_test(
     TestMcpServer::builder()
       .prompt(TestPrompt {
         name: "greeting".into(),
@@ -718,26 +752,23 @@ async fn test_mcp_proxy_prompts() -> anyhow::Result<()> {
         template: "Goodbye!".into(),
       })
       .build(),
+    default_instance_json(),
   )
   .await?;
 
-  let server = start_test_live_server().await?;
-  let client = reqwest::Client::new();
-
-  let (admin_cookie, _) =
-    create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
-
-  let server_id =
-    create_mcp_server(&client, &server.base_url, &admin_cookie, &upstream.url).await?;
-  let mcp_id = create_mcp_instance(&client, &server.base_url, &admin_cookie, &server_id).await?;
-
-  let (session_id, _) = mcp_initialize(&client, &server.base_url, &admin_cookie, &mcp_id).await?;
+  let (session_id, _) = mcp_initialize(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
 
   mcp_notify(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({"jsonrpc": "2.0", "method": "notifications/initialized"}),
   )
@@ -745,10 +776,10 @@ async fn test_mcp_proxy_prompts() -> anyhow::Result<()> {
 
   // List prompts
   let prompts_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({"jsonrpc": "2.0", "id": 2, "method": "prompts/list"}),
   )
@@ -767,10 +798,10 @@ async fn test_mcp_proxy_prompts() -> anyhow::Result<()> {
 
   // Get prompt with arguments
   let get_result = mcp_request(
-    &client,
-    &server.base_url,
-    &admin_cookie,
-    &mcp_id,
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
     &session_id,
     json!({
       "jsonrpc": "2.0",
@@ -800,13 +831,13 @@ async fn test_mcp_proxy_prompts() -> anyhow::Result<()> {
     "Prompt template should be rendered with arguments"
   );
 
-  upstream.shutdown().await;
-  server.handle.shutdown().await?;
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
   Ok(())
 }
 
 // =============================================================================
-// Test 6.5: Disabled instance
+// Test: Disabled instance
 // =============================================================================
 
 /// Proxy should reject requests when the MCP instance is disabled.
@@ -814,22 +845,21 @@ async fn test_mcp_proxy_prompts() -> anyhow::Result<()> {
 #[tokio::test]
 #[serial_test::serial(live)]
 async fn test_mcp_proxy_disabled_instance() -> anyhow::Result<()> {
-  let upstream = TestMcpServer::start(TestMcpServer::builder().tool(echo_tool()).build()).await?;
-
-  let server = start_test_live_server().await?;
-  let client = reqwest::Client::new();
-
-  let (admin_cookie, _) =
-    create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
-
-  let server_id =
-    create_mcp_server(&client, &server.base_url, &admin_cookie, &upstream.url).await?;
-  let mcp_id = create_mcp_instance(&client, &server.base_url, &admin_cookie, &server_id).await?;
+  let setup = setup_proxy_test(
+    TestMcpServer::builder().tool(echo_tool()).build(),
+    default_instance_json(),
+  )
+  .await?;
 
   // Disable the instance via PUT
-  let resp = client
-    .put(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
-    .header("Cookie", &admin_cookie)
+  let resp = setup
+    .client
+    .put(format!(
+      "{}/bodhi/v1/mcps/{}",
+      setup.base_url(),
+      setup.mcp_id
+    ))
+    .header("Cookie", &setup.cookie)
     .json(&json!({
       "name": "Test MCP Instance",
       "slug": "test-proxy",
@@ -846,23 +876,13 @@ async fn test_mcp_proxy_disabled_instance() -> anyhow::Result<()> {
   assert_eq!(false, updated["enabled"].as_bool().unwrap());
 
   // Try to initialize - should fail
-  let resp = client
-    .post(format!("{}/bodhi/v1/mcps/{}/mcp", server.base_url, mcp_id))
-    .header("Cookie", &admin_cookie)
-    .header("Content-Type", "application/json")
-    .header("Accept", "application/json, text/event-stream")
-    .json(&json!({
-      "jsonrpc": "2.0",
-      "id": 1,
-      "method": "initialize",
-      "params": {
-        "protocolVersion": "2025-03-26",
-        "capabilities": {},
-        "clientInfo": {"name": "test-client", "version": "1.0"}
-      }
-    }))
-    .send()
-    .await?;
+  let resp = mcp_initialize_raw(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
 
   // The proxy may return a direct error or SSE with error
   let status = resp.status();
@@ -887,13 +907,13 @@ async fn test_mcp_proxy_disabled_instance() -> anyhow::Result<()> {
     );
   }
 
-  upstream.shutdown().await;
-  server.handle.shutdown().await?;
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
   Ok(())
 }
 
 // =============================================================================
-// Test 6.6: Upstream down
+// Test: Upstream down
 // =============================================================================
 
 /// Proxy should return an error when the upstream MCP server is unreachable.
@@ -914,26 +934,24 @@ async fn test_mcp_proxy_upstream_down() -> anyhow::Result<()> {
 
   let server_id =
     create_mcp_server(&client, &server.base_url, &admin_cookie, &upstream_url).await?;
-  let mcp_id = create_mcp_instance(&client, &server.base_url, &admin_cookie, &server_id).await?;
 
-  // Try to initialize - upstream is down, should fail during connection
   let resp = client
-    .post(format!("{}/bodhi/v1/mcps/{}/mcp", server.base_url, mcp_id))
+    .post(format!("{}/bodhi/v1/mcps", server.base_url))
     .header("Cookie", &admin_cookie)
-    .header("Content-Type", "application/json")
-    .header("Accept", "application/json, text/event-stream")
     .json(&json!({
-      "jsonrpc": "2.0",
-      "id": 1,
-      "method": "initialize",
-      "params": {
-        "protocolVersion": "2025-03-26",
-        "capabilities": {},
-        "clientInfo": {"name": "test-client", "version": "1.0"}
-      }
+      "name": "Test MCP Instance",
+      "slug": "test-proxy",
+      "mcp_server_id": server_id,
+      "enabled": true
     }))
     .send()
     .await?;
+  assert_eq!(StatusCode::CREATED, resp.status());
+  let body: Value = resp.json().await?;
+  let mcp_id = body["id"].as_str().unwrap().to_string();
+
+  // Try to initialize - upstream is down, should fail during connection
+  let resp = mcp_initialize_raw(&client, &server.base_url, &admin_cookie, &mcp_id).await?;
 
   let status = resp.status();
   let body_text = resp.text().await?;
@@ -958,5 +976,317 @@ async fn test_mcp_proxy_upstream_down() -> anyhow::Result<()> {
   }
 
   server.handle.shutdown().await?;
+  Ok(())
+}
+
+// =============================================================================
+// Test: Wrong auth headers
+// =============================================================================
+
+/// Proxy should forward upstream 401 when MCP instance has wrong credentials.
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_mcp_proxy_wrong_auth_headers() -> anyhow::Result<()> {
+  let setup = setup_proxy_test(
+    TestMcpServer::builder()
+      .tool(echo_tool())
+      .require_auth("X-Api-Key", "correct-secret")
+      .build(),
+    json!({
+      "name": "Test MCP Instance",
+      "slug": "test-proxy",
+      "enabled": true,
+      "auth_type": "header",
+      "credentials": [
+        {
+          "param_type": "header",
+          "param_key": "X-Api-Key",
+          "value": "wrong-secret"
+        }
+      ]
+    }),
+  )
+  .await?;
+
+  // Try to initialize - upstream should reject with 401
+  let resp = mcp_initialize_raw(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
+
+  let status = resp.status();
+  let body_text = resp.text().await?;
+
+  // The proxy forwards the upstream 401 status or wraps it in an error
+  assert!(
+    status == StatusCode::UNAUTHORIZED || status.is_client_error() || status.is_server_error() || {
+      // SSE with JSON-RPC error is also acceptable
+      let messages = parse_sse_jsonrpc(&body_text);
+      !messages.is_empty() && messages[0]["error"].is_object()
+    },
+    "Wrong auth should fail, got status: {}, body: {}",
+    status,
+    body_text
+  );
+
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
+  Ok(())
+}
+
+// =============================================================================
+// Test: Missing auth headers
+// =============================================================================
+
+/// Proxy should forward upstream 401 when MCP instance has no auth configured
+/// but upstream requires it.
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_mcp_proxy_missing_auth_headers() -> anyhow::Result<()> {
+  let setup = setup_proxy_test(
+    TestMcpServer::builder()
+      .tool(echo_tool())
+      .require_auth("X-Api-Key", "correct-secret")
+      .build(),
+    // Public auth (no credentials) — upstream will reject
+    default_instance_json(),
+  )
+  .await?;
+
+  // Try to initialize - upstream should reject with 401
+  let resp = mcp_initialize_raw(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
+
+  let status = resp.status();
+  let body_text = resp.text().await?;
+
+  // The proxy forwards the upstream 401 status or wraps it in an error
+  assert!(
+    status == StatusCode::UNAUTHORIZED || status.is_client_error() || status.is_server_error() || {
+      // SSE with JSON-RPC error is also acceptable
+      let messages = parse_sse_jsonrpc(&body_text);
+      !messages.is_empty() && messages[0]["error"].is_object()
+    },
+    "Missing auth should fail, got status: {}, body: {}",
+    status,
+    body_text
+  );
+
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
+  Ok(())
+}
+
+// =============================================================================
+// Test: GET SSE stream
+// =============================================================================
+
+/// After initializing an MCP session, a GET request with Mcp-Session-Id and
+/// Accept: text/event-stream should open an SSE stream (status 200).
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_mcp_proxy_get_sse_stream() -> anyhow::Result<()> {
+  let setup = setup_proxy_test(
+    TestMcpServer::builder().tool(echo_tool()).build(),
+    default_instance_json(),
+  )
+  .await?;
+
+  // Initialize session
+  let (session_id, _) = mcp_initialize(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
+
+  // Send initialized notification
+  mcp_notify(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+    &session_id,
+    json!({"jsonrpc": "2.0", "method": "notifications/initialized"}),
+  )
+  .await?;
+
+  // Open GET SSE stream
+  let resp = setup
+    .client
+    .get(format!(
+      "{}/bodhi/v1/apps/mcps/{}/mcp",
+      setup.base_url(),
+      setup.mcp_id
+    ))
+    .header("Cookie", &setup.cookie)
+    .header("Accept", "text/event-stream")
+    .header("Mcp-Session-Id", &session_id)
+    .send()
+    .await?;
+
+  assert_eq!(
+    StatusCode::OK,
+    resp.status(),
+    "GET SSE stream should return 200"
+  );
+
+  let content_type = resp
+    .headers()
+    .get("content-type")
+    .and_then(|v| v.to_str().ok())
+    .unwrap_or("");
+  assert!(
+    content_type.contains("text/event-stream"),
+    "Content-Type should include text/event-stream, got: {}",
+    content_type
+  );
+
+  // Don't try to read the full stream (it's long-lived).
+  // The connection opening successfully is the assertion.
+
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
+  Ok(())
+}
+
+// =============================================================================
+// Test: Concurrent sessions
+// =============================================================================
+
+/// Two clients initializing separate sessions to the same MCP should get
+/// distinct session IDs and both should be able to call tools independently.
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_mcp_proxy_concurrent_sessions() -> anyhow::Result<()> {
+  let setup = setup_proxy_test(
+    TestMcpServer::builder().tool(echo_tool()).build(),
+    default_instance_json(),
+  )
+  .await?;
+
+  // Client A: initialize session
+  let (session_id_a, _) = mcp_initialize(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
+
+  // Client B: initialize session
+  let (session_id_b, _) = mcp_initialize(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+  )
+  .await?;
+
+  // Sessions should be distinct
+  assert_ne!(
+    session_id_a, session_id_b,
+    "Two clients should get different session IDs"
+  );
+
+  // Send initialized notifications for both
+  mcp_notify(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+    &session_id_a,
+    json!({"jsonrpc": "2.0", "method": "notifications/initialized"}),
+  )
+  .await?;
+
+  mcp_notify(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+    &session_id_b,
+    json!({"jsonrpc": "2.0", "method": "notifications/initialized"}),
+  )
+  .await?;
+
+  // Client A: call echo tool
+  let result_a = mcp_request(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+    &session_id_a,
+    json!({
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {"name": "echo", "arguments": {"message": "from_a"}}
+    }),
+  )
+  .await?;
+  assert!(
+    result_a["result"]["content"].is_array(),
+    "Client A echo should succeed"
+  );
+
+  // Client B: call echo tool
+  let result_b = mcp_request(
+    &setup.client,
+    setup.base_url(),
+    &setup.cookie,
+    &setup.mcp_id,
+    &session_id_b,
+    json!({
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {"name": "echo", "arguments": {"message": "from_b"}}
+    }),
+  )
+  .await?;
+  assert!(
+    result_b["result"]["content"].is_array(),
+    "Client B echo should succeed"
+  );
+
+  // Verify upstream received both calls
+  {
+    let calls = setup.upstream.calls_received.lock().await;
+    assert_eq!(2, calls.len(), "Upstream should have received 2 tool calls");
+    let call_messages: Vec<&str> = calls
+      .iter()
+      .filter_map(|c| {
+        c.arguments
+          .as_ref()
+          .and_then(|a| a.get("message"))
+          .and_then(|v| v.as_str())
+      })
+      .collect();
+    assert!(
+      call_messages.contains(&"from_a"),
+      "Upstream should have received call from client A"
+    );
+    assert!(
+      call_messages.contains(&"from_b"),
+      "Upstream should have received call from client B"
+    );
+  }
+
+  setup.upstream.shutdown().await;
+  setup.server.handle.shutdown().await?;
   Ok(())
 }

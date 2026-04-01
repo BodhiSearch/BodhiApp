@@ -27,7 +27,7 @@ mod mcp_server_repository;
 
 pub use auth_scoped::*;
 pub use error::*;
-pub use mcp_client::{McpAuthParams, McpTool};
+pub use mcp_client::McpAuthParams;
 pub use mcp_objs::*;
 pub use mcp_service::*;
 

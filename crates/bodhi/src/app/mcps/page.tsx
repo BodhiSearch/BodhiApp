@@ -37,9 +37,8 @@ function McpStatus({ mcp }: { mcp: Mcp }) {
   if (!mcp.enabled) {
     return <Badge variant="secondary">Disabled</Badge>;
   }
-  const toolCount = mcp.tools_filter?.length ?? 0;
-  if (toolCount === 0) {
-    return <Badge variant="outline">No Tools</Badge>;
+  if (!mcp.mcp_server.enabled) {
+    return <Badge variant="outline">Server Disabled</Badge>;
   }
   return <Badge variant="default">Active</Badge>;
 }
@@ -73,7 +72,6 @@ function McpsPageContent() {
   };
 
   const renderRow = (mcp: Mcp) => {
-    const toolCount = mcp.tools_filter?.length ?? 0;
     const serverDisabled = !mcp.mcp_server.enabled;
 
     return [
@@ -94,9 +92,7 @@ function McpsPageContent() {
         </span>
       </TableCell>,
       <TableCell key="tools" className="hidden lg:table-cell" data-testid={`mcp-tools-${mcp.id}`}>
-        <span className="text-muted-foreground">
-          {toolCount} tool{toolCount !== 1 ? 's' : ''}
-        </span>
+        <span className="text-muted-foreground">--</span>
       </TableCell>,
       <TableCell key="status" data-testid={`mcp-status-${mcp.id}`}>
         <McpStatus mcp={mcp} />

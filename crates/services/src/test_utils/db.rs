@@ -577,18 +577,6 @@ impl McpServerRepository for TestDbService {
       .await
       .tap(|_| self.notify("count_mcps_by_server_id"))
   }
-
-  async fn clear_mcp_tools_by_server_id(
-    &self,
-    tenant_id: &str,
-    server_id: &str,
-  ) -> Result<u64, DbError> {
-    self
-      .inner
-      .clear_mcp_tools_by_server_id(tenant_id, server_id)
-      .await
-      .tap(|_| self.notify("clear_mcp_tools_by_server_id"))
-  }
 }
 
 #[async_trait::async_trait]
@@ -1396,7 +1384,6 @@ mockall::mock! {
     async fn get_mcp_server_by_url(&self, tenant_id: &str, url: &str) -> Result<Option<McpServerEntity>, DbError>;
     async fn list_mcp_servers(&self, tenant_id: &str, enabled: Option<bool>) -> Result<Vec<McpServerEntity>, DbError>;
     async fn count_mcps_by_server_id(&self, tenant_id: &str, server_id: &str) -> Result<(i64, i64), DbError>;
-    async fn clear_mcp_tools_by_server_id(&self, tenant_id: &str, server_id: &str) -> Result<u64, DbError>;
   }
 
   #[async_trait::async_trait]

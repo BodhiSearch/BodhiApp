@@ -5,6 +5,10 @@
  */
 
 export class McpFixtures {
+  // Centralized timeout constants for MCP-related waits
+  static MCP_CONNECTION_TIMEOUT = 15000;
+  static MCP_INSPECTOR_TIMEOUT = 30000;
+
   static MCP_URL = 'https://mcp.deepwiki.com/mcp';
   static EXPECTED_TOOL = 'read_wiki_structure';
   static PLAYGROUND_TOOL = 'read_wiki_structure';
@@ -31,14 +35,6 @@ export class McpFixtures {
       name: `DeepWiki-${ts}`,
       slug: `deepwiki-${ts}`,
       description: 'DeepWiki MCP instance',
-    };
-  }
-
-  static createToolDiscoveryData() {
-    const ts = Date.now();
-    return {
-      name: `DeepWiki-Tools-${ts}`,
-      slug: `dw-tools-${ts}`,
     };
   }
 

@@ -29,16 +29,15 @@ use crate::{
   ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use crate::{
-  apps_mcps_execute_tool, apps_mcps_index, apps_mcps_refresh_tools, apps_mcps_show,
-  mcp_auth_configs_create, mcp_auth_configs_destroy, mcp_auth_configs_index, mcp_auth_configs_show,
-  mcp_oauth_discover_as, mcp_oauth_discover_mcp, mcp_oauth_dynamic_register, mcp_oauth_login,
-  mcp_oauth_token_exchange, mcp_oauth_tokens_destroy, mcp_oauth_tokens_show, mcp_proxy_handler,
-  mcp_servers_create, mcp_servers_index, mcp_servers_show, mcp_servers_update, mcps_create,
-  mcps_destroy, mcps_execute_tool, mcps_fetch_tools, mcps_index, mcps_refresh_tools, mcps_show,
+  apps_mcps_index, apps_mcps_show, mcp_auth_configs_create, mcp_auth_configs_destroy,
+  mcp_auth_configs_index, mcp_auth_configs_show, mcp_oauth_discover_as, mcp_oauth_discover_mcp,
+  mcp_oauth_dynamic_register, mcp_oauth_login, mcp_oauth_token_exchange, mcp_oauth_tokens_destroy,
+  mcp_oauth_tokens_show, mcp_proxy_handler, mcp_servers_create, mcp_servers_index,
+  mcp_servers_show, mcp_servers_update, mcps_create, mcps_destroy, mcps_index, mcps_show,
   mcps_update, settings_destroy, settings_index, settings_update, setup_create, setup_show,
-  ENDPOINT_APPS_MCPS, ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_FETCH_TOOLS,
-  ENDPOINT_MCPS_OAUTH_DISCOVER_AS, ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
-  ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE, ENDPOINT_MCP_SERVERS,
+  ENDPOINT_APPS_MCPS, ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_OAUTH_DISCOVER_AS,
+  ENDPOINT_MCPS_OAUTH_DISCOVER_MCP, ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE,
+  ENDPOINT_MCP_SERVERS,
 };
 use crate::{build_ui_proxy_router, build_ui_spa_router};
 use crate::{
@@ -50,6 +49,7 @@ use crate::{
   ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
 use axum::{
+  http::HeaderName,
   middleware::from_fn_with_state,
   response::Redirect,
   routing::{any, delete, get, post, put},
@@ -73,8 +73,8 @@ fn permissive_cors() -> CorsLayer {
     .allow_methods(Any)
     .allow_headers(Any)
     .expose_headers([
-      "mcp-session-id".parse().unwrap(),
-      "mcp-protocol-version".parse().unwrap(),
+      HeaderName::from_static("mcp-session-id"),
+      HeaderName::from_static("mcp-protocol-version"),
     ])
     .allow_private_network(true)
     .allow_credentials(false)
@@ -206,8 +206,6 @@ pub async fn build_routes(
       &format!("{ENDPOINT_MCPS}/{{id}}"),
       get(mcps_show).put(mcps_update).delete(mcps_destroy),
     )
-    // MCP tool discovery (session-only)
-    .route(ENDPOINT_MCPS_FETCH_TOOLS, post(mcps_fetch_tools))
     // Unified auth config endpoints
     .route(ENDPOINT_MCPS_AUTH_CONFIGS, post(mcp_auth_configs_create))
     .route(ENDPOINT_MCPS_AUTH_CONFIGS, get(mcp_auth_configs_index))
@@ -296,42 +294,6 @@ pub async fn build_routes(
       move |state, req, next| api_auth_middleware(ResourceRole::User, None, None, state, req, next),
     ));
 
-  // MCP exec APIs with access request middleware - session and OAuth tokens, NOT API tokens
-  let mcp_validator_orig: Arc<dyn AccessRequestValidator> = Arc::new(McpAccessRequestValidator);
-  let mcp_exec_apis = Router::new()
-    .route(
-      &format!("{ENDPOINT_MCPS}/{{id}}/tools/refresh"),
-      post(mcps_refresh_tools),
-    )
-    .route(
-      &format!("{ENDPOINT_MCPS}/{{id}}/tools/{{tool_name}}/execute"),
-      post(mcps_execute_tool),
-    )
-    .route(
-      &format!("{ENDPOINT_MCPS}/{{id}}/mcp"),
-      any(mcp_proxy_handler),
-    )
-    .route_layer(from_fn_with_state(
-      state.clone(),
-      move |state, req, next| {
-        let v = mcp_validator_orig.clone();
-        access_request_auth_middleware(v, state, req, next)
-      },
-    ))
-    .route_layer(from_fn_with_state(
-      state.clone(),
-      move |state, req, next| {
-        api_auth_middleware(
-          ResourceRole::User,
-          None,
-          Some(UserScope::User),
-          state,
-          req,
-          next,
-        )
-      },
-    ));
-
   // External app API endpoints (under /apps/ prefix, OAuth tokens only)
   // Apps list endpoints
   let apps_list_apis = Router::new().route(ENDPOINT_APPS_MCPS, get(apps_mcps_index));
@@ -340,14 +302,6 @@ pub async fn build_routes(
   let mcp_validator: Arc<dyn AccessRequestValidator> = Arc::new(McpAccessRequestValidator);
   let apps_mcp_exec = Router::new()
     .route(&format!("{ENDPOINT_APPS_MCPS}/{{id}}"), get(apps_mcps_show))
-    .route(
-      &format!("{ENDPOINT_APPS_MCPS}/{{id}}/tools/refresh"),
-      post(apps_mcps_refresh_tools),
-    )
-    .route(
-      &format!("{ENDPOINT_APPS_MCPS}/{{id}}/tools/{{tool_name}}/execute"),
-      post(apps_mcps_execute_tool),
-    )
     .route(
       &format!("{ENDPOINT_APPS_MCPS}/{{id}}/mcp"),
       any(mcp_proxy_handler),
@@ -496,7 +450,6 @@ pub async fn build_routes(
   // API-protected routes (PERMISSIVE CORS — external tools/apps need access)
   let api_protected = Router::new()
     .merge(user_apis)
-    .merge(mcp_exec_apis)
     .merge(apps_apis)
     .merge(power_user_apis)
     .route_layer(from_fn_with_state(state.clone(), auth_middleware))

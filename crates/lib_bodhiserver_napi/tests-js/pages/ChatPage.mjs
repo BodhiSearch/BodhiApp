@@ -1,3 +1,4 @@
+import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
 import { BasePage } from '@/pages/BasePage.mjs';
 import { expect } from '@playwright/test';
 
@@ -603,6 +604,11 @@ export class ChatPage extends BasePage {
     const badge = this.page.locator(this.selectors.mcpsBadge);
     await expect(badge).toBeVisible();
     await expect(badge).toContainText(count.toString());
+  }
+
+  async waitForMcpToolsBadge(timeout = McpFixtures.MCP_CONNECTION_TIMEOUT) {
+    const badge = this.page.locator(this.selectors.mcpsBadge);
+    await expect(badge).toBeVisible({ timeout });
   }
 
   async expectMcpBadgeNotVisible() {

@@ -69,14 +69,6 @@ pub enum McpError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   McpDisabled,
 
-  #[error("Tool '{0}' is not in the allowed tools filter.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  ToolNotAllowed(String),
-
-  #[error("Tool '{0}' not found in MCP server tools cache.")]
-  #[error_meta(error_type = ErrorType::NotFound)]
-  ToolNotFound(String),
-
   #[error("MCP slug '{0}' already exists.")]
   #[error_meta(error_type = ErrorType::Conflict)]
   SlugExists(String),

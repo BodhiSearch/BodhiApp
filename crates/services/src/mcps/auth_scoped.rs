@@ -1,7 +1,7 @@
 use crate::{
-  AppService, AuthContext, CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpAuthParamInput,
-  McpError, McpExecutionRequest, McpExecutionResponse, McpOAuthToken, McpRequest, McpServerEntity,
-  McpServerError, McpServerRequest, McpTool, McpWithServerEntity,
+  AppService, AuthContext, CreateMcpAuthConfigRequest, McpAuthConfigResponse, McpError,
+  McpOAuthToken, McpRequest, McpServerEntity, McpServerError, McpServerRequest,
+  McpWithServerEntity,
 };
 use mcp_client::McpAuthParams;
 use std::sync::Arc;
@@ -82,35 +82,6 @@ impl AuthScopedMcpService {
       .delete(tenant_id, user_id, id)
       .await?;
     Ok(())
-  }
-
-  /// Fetch and refresh tools for an MCP instance owned by the authenticated user.
-  pub async fn fetch_tools(&self, id: &str) -> Result<Vec<McpTool>, McpError> {
-    let tenant_id = self.auth_context.require_tenant_id()?;
-    let user_id = self.auth_context.require_user_id()?;
-    let tools = self
-      .app_service
-      .mcp_service()
-      .fetch_tools(tenant_id, user_id, id)
-      .await?;
-    Ok(tools)
-  }
-
-  /// Execute a tool on an MCP instance owned by the authenticated user.
-  pub async fn execute(
-    &self,
-    id: &str,
-    tool_name: &str,
-    request: McpExecutionRequest,
-  ) -> Result<McpExecutionResponse, McpError> {
-    let tenant_id = self.auth_context.require_tenant_id()?;
-    let user_id = self.auth_context.require_user_id()?;
-    let response = self
-      .app_service
-      .mcp_service()
-      .execute(tenant_id, user_id, id, tool_name, request)
-      .await?;
-    Ok(response)
   }
 
   // ========== Auth params resolution ==========
@@ -304,30 +275,6 @@ impl AuthScopedMcpService {
       .app_service
       .mcp_service()
       .count_mcps_for_server(tenant_id, server_id)
-      .await
-  }
-
-  // ========== Tool discovery (direct delegation) ==========
-
-  /// Fetch tools from an MCP server without creating an instance.
-  pub async fn fetch_tools_for_server(
-    &self,
-    server_id: &str,
-    credentials: Option<Vec<McpAuthParamInput>>,
-    auth_config_id: Option<String>,
-    oauth_token_id: Option<String>,
-  ) -> Result<Vec<McpTool>, McpError> {
-    let tenant_id = self.auth_context.require_tenant_id()?;
-    self
-      .app_service
-      .mcp_service()
-      .fetch_tools_for_server(
-        tenant_id,
-        server_id,
-        credentials,
-        auth_config_id,
-        oauth_token_id,
-      )
       .await
   }
 

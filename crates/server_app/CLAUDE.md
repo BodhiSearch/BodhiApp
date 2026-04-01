@@ -79,8 +79,8 @@ Full-stack tests: real HTTP server on TCP, real services, real OAuth2 via Keyclo
 |------|---------|
 | `tests/test_live_tool_calling_non_streamed.rs` | Tool calling (single + multi-turn) |
 | `tests/test_live_tool_calling_streamed.rs` | Streaming tool calls |
-| `tests/test_live_mcp.rs` | MCP integration (tool refresh + execution) |
-| `tests/test_live_mcp_proxy.rs` | MCP proxy endpoint (6 tests: full lifecycle, tools filter, resources, prompts, disabled instance, upstream down) |
+| `tests/test_live_mcp.rs` | MCP CRUD, auth lifecycle, authorization |
+| `tests/test_live_mcp_proxy.rs` | MCP proxy endpoint (10 tests: full lifecycle, all tools forwarded, resources, prompts, disabled instance, upstream down, wrong auth, missing auth, GET SSE stream, concurrent sessions) |
 | `tests/test_live_multi_tenant.rs` | Multi-tenant server lifecycle |
 | `tests/test_oauth_external_token.rs` | OAuth via ExternalTokenSimulator |
 
@@ -91,7 +91,8 @@ Full-stack tests: real HTTP server on TCP, real services, real OAuth2 via Keyclo
 
 ### TestMcpServer (`tests/utils/test_mcp_server.rs`)
 Configurable in-process MCP server for integration tests. Builder pattern:
-- `TestMcpServer::builder().port(n).tool(TestTool{...}).resource(TestResource{...}).prompt(TestPrompt{...}).build()`
+- `TestMcpServer::builder().port(n).tool(TestTool{...}).resource(TestResource{...}).prompt(TestPrompt{...}).require_auth(key, value).build()`
+- `require_auth(key, value)` -- adds middleware that returns 401 for requests missing the specified header/value pair
 - `TestMcpServer::start(config)` -- starts on random port (or specified), returns `TestMcpServer` with `url`, `port`, `calls_received` (observable `Arc<Mutex<Vec<ReceivedToolCall>>>`)
 - `shutdown()` -- graceful cancellation
 - Implements full rmcp `ServerHandler`: list/call tools, list/read resources, list/get prompts, complete

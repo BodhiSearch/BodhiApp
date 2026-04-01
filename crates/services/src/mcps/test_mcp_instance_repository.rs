@@ -133,8 +133,6 @@ async fn test_update_mcp(
     slug: "updated-mcp".to_string(),
     description: Some("Now with description".to_string()),
     enabled: false,
-    tools_cache: Some("{\"tools\":[]}".to_string()),
-    tools_filter: Some("[\"tool1\"]".to_string()),
     auth_type: McpAuthType::Header,
     auth_config_id: Some("auth-1".to_string()),
     updated_at,
@@ -146,7 +144,6 @@ async fn test_update_mcp(
   assert_eq!("Updated MCP", result.name);
   assert_eq!("updated-mcp", result.slug);
   assert_eq!(false, result.enabled);
-  assert_eq!(Some("{\"tools\":[]}".to_string()), result.tools_cache);
   assert_eq!(updated_at, result.updated_at);
   Ok(())
 }

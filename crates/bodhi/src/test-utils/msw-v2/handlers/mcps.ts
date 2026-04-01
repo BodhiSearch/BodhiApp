@@ -6,15 +6,12 @@ import { http, HttpResponse } from 'msw';
 import type {
   McpAuthConfigResponse,
   McpAuthConfigsListResponse,
-  McpExecuteResponse,
   Mcp,
   McpServerResponse,
-  McpTool,
   OAuthTokenResponse,
 } from '@/hooks/mcps';
 import { BODHI_API_BASE } from '@/hooks/useQuery';
 import {
-  createMockMcpTool,
   createMockMcpServerInfo,
   createMockMcpServerResponse,
   createMockMcp,
@@ -28,10 +25,9 @@ import {
 } from '@/test-fixtures/mcps';
 
 // ============================================================================
-// Mock Data — created via fixture factories (single source of truth)
+// Mock Data -- created via fixture factories (single source of truth)
 // ============================================================================
 
-export const mockMcpTool: McpTool = createMockMcpTool();
 export const mockMcpServerInfo = createMockMcpServerInfo();
 export const mockMcpServerResponse: McpServerResponse = createMockMcpServerResponse();
 export const mockMcp: Mcp = createMockMcp();
@@ -85,33 +81,6 @@ export function mockCreateMcpServer(response: McpServerResponse = mockMcpServerR
 
 export function mockUpdateMcpServer(response: McpServerResponse = mockMcpServerResponse) {
   return http.put(`${BODHI_API_BASE}/mcps/servers/:id`, () => HttpResponse.json(response));
-}
-
-// ============================================================================
-// Handler Factories - Tools
-// ============================================================================
-
-export function mockFetchMcpTools(tools: McpTool[] = [mockMcpTool]) {
-  return http.post(`${BODHI_API_BASE}/mcps/fetch-tools`, () => HttpResponse.json({ tools }));
-}
-
-export function mockFetchMcpToolsError({
-  message = 'Failed to fetch tools',
-  code = 'internal_server_error',
-  type = 'internal_server_error',
-  status = 500,
-}: { message?: string; code?: string; type?: string; status?: number } = {}) {
-  return http.post(`${BODHI_API_BASE}/mcps/fetch-tools`, () =>
-    HttpResponse.json({ error: { message, code, type } }, { status })
-  );
-}
-
-export function mockRefreshMcpTools(tools: McpTool[] = [mockMcpTool]) {
-  return http.post(`${BODHI_API_BASE}/mcps/:id/tools/refresh`, () => HttpResponse.json({ tools }));
-}
-
-export function mockExecuteMcpTool(response: McpExecuteResponse = { result: { data: 'test' } }) {
-  return http.post(`${BODHI_API_BASE}/mcps/:id/tools/:tool_name/execute`, () => HttpResponse.json(response));
 }
 
 // ============================================================================
@@ -274,17 +243,6 @@ export function mockCreateMcpError({
   return http.post(`${BODHI_API_BASE}/mcps`, () => HttpResponse.json({ error: { message, code, type } }, { status }));
 }
 
-export function mockExecuteMcpToolError({
-  message = 'Tool not allowed',
-  code = 'bad_request',
-  type = 'bad_request',
-  status = 400,
-}: { message?: string; code?: string; type?: string; status?: number } = {}) {
-  return http.post(`${BODHI_API_BASE}/mcps/:id/tools/:tool_name/execute`, () =>
-    HttpResponse.json({ error: { message, code, type } }, { status })
-  );
-}
-
 export function mockDeleteOAuthTokenError({
   message = 'Failed to delete token',
   code = 'internal_server_error',
@@ -340,17 +298,6 @@ export function mockUpdateMcpServerError({
   );
 }
 
-export function mockRefreshMcpToolsError({
-  message = 'Failed to refresh tools',
-  code = 'internal_server_error',
-  type = 'internal_server_error',
-  status = 500,
-}: { message?: string; code?: string; type?: string; status?: number } = {}) {
-  return http.post(`${BODHI_API_BASE}/mcps/:id/tools/refresh`, () =>
-    HttpResponse.json({ error: { message, code, type } }, { status })
-  );
-}
-
 export function mockOAuthLoginError({
   message = 'Failed to initiate OAuth login',
   code = 'internal_server_error',
@@ -398,7 +345,6 @@ export const mcpsHandlers = [
   mockGetMcpServer(),
   mockCreateMcpServer(),
   mockUpdateMcpServer(),
-  mockFetchMcpTools(),
   mockDiscoverAs(),
   mockDiscoverMcp(),
   mockStandaloneDynamicRegister(),
@@ -415,6 +361,4 @@ export const mcpsHandlers = [
   mockCreateMcp(),
   mockUpdateMcp(),
   mockDeleteMcp(),
-  mockRefreshMcpTools(),
-  mockExecuteMcpTool(),
 ];

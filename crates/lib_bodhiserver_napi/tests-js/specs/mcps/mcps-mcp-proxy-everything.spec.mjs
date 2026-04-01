@@ -1,6 +1,7 @@
 import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
 import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
+import { McpInspectorPage } from '@/pages/McpInspectorPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import {
@@ -43,6 +44,7 @@ test.describe(
     }) => {
       const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       const mcpsPage = new McpsPage(page, sharedServerUrl);
+      const inspector = new McpInspectorPage(page, sharedServerUrl);
       const serverData = McpFixtures.createEverythingServerData();
       const instanceData = McpFixtures.createEverythingInstanceData();
 
@@ -112,49 +114,22 @@ test.describe(
       // ── Phase 3: Connect via MCP Inspector Direct mode ──
 
       await test.step('Open Inspector and configure Direct connection', async () => {
-        // Workaround for Playwright bug #20439/#29521: extraHTTPHeaders overrides
-        // the Accept header set by in-page fetch() at the CDP level.
-        await page.route(`${sharedServerUrl}/**/mcp`, async (route) => {
-          const headers = { ...route.request().headers() };
-          if (!headers['accept']?.includes('text/event-stream')) {
-            headers['accept'] = 'text/event-stream, application/json';
-          }
-          await route.continue({ headers });
+        await inspector.configureDirectConnection({
+          inspectorUrl: McpFixtures.INSPECTOR_URL,
+          serverUrl: sharedServerUrl,
+          mcpId,
+          accessToken,
         });
-
-        await page.goto(McpFixtures.INSPECTOR_URL);
-        await page.waitForLoadState('networkidle');
-
-        // Configure: Streamable HTTP + Direct + URL + Auth header
-        await page.getByRole('combobox', { name: 'Transport Type' }).click();
-        await page.getByRole('option', { name: 'Streamable HTTP' }).click();
-
-        await page
-          .getByRole('textbox', { name: 'URL' })
-          .fill(`${sharedServerUrl}/bodhi/v1/apps/mcps/${mcpId}/mcp`);
-
-        await page.getByRole('combobox', { name: 'Connection Type' }).click();
-        await page.getByRole('option', { name: 'Direct' }).click();
-
-        await page.getByRole('button', { name: 'Authentication' }).click();
-        await page.getByRole('textbox', { name: 'Header Value' }).fill(`Bearer ${accessToken}`);
-
-        // Ensure header toggle is enabled
-        const headerSwitch = page.getByRole('switch').first();
-        const switchState = await headerSwitch.getAttribute('data-state');
-        if (switchState !== 'checked') {
-          await headerSwitch.click();
-        }
       });
 
       await test.step('Connect to MCP proxy', async () => {
-        await page.getByRole('button', { name: 'Connect' }).click();
-        await expect(page.getByText('Connected')).toBeVisible({ timeout: 30000 });
+        await inspector.clickConnect();
+        await inspector.expectConnected();
       });
 
       await test.step('Verify initialize and logging/setLevel in history', async () => {
-        await expect(page.getByText('initialize')).toBeVisible();
-        await expect(page.getByText('logging/setLevel')).toBeVisible();
+        await inspector.expectHistoryEntry('initialize');
+        await inspector.expectHistoryEntry('logging/setLevel');
       });
 
       // ── Phase 4: Exercise MCP features via Inspector UI ──
@@ -162,101 +137,228 @@ test.describe(
       // ── Tools ──
 
       await test.step('Tools — list tools', async () => {
-        await page.getByRole('tab', { name: 'Tools' }).click();
-        await page.waitForURL(/#tools/);
-        await page.getByRole('button', { name: 'List Tools' }).click();
+        await inspector.switchToToolsTab();
+        await inspector.listTools();
         await expect(page.getByText('Echo Tool')).toBeVisible({ timeout: 10000 });
       });
 
       await test.step('Tools — call echo', async () => {
-        await page.getByText('Echo Tool').first().click();
-        await page.locator('textarea').first().fill('proxy-e2e-hello');
-        await page.getByRole('button', { name: 'Run Tool' }).click();
-        await expect(page.getByText('Success')).toBeVisible({ timeout: 10000 });
-        await expect(page.getByText('proxy-e2e-hello').nth(1)).toBeVisible();
+        await inspector.selectTool('Echo Tool');
+        await inspector.fillToolTextInput('proxy-e2e-hello');
+        await inspector.executeSelectedTool();
+        await inspector.expectToolResult('proxy-e2e-hello');
       });
 
       await test.step('Tools — call get-sum with number params', async () => {
-        await page.getByText('Returns the sum of two numbers').first().click();
-        const numberInputs = page.locator('input[type="number"]');
-        await numberInputs.first().fill('7');
-        await numberInputs.nth(1).fill('13');
-        await page.getByRole('button', { name: 'Run Tool' }).click();
-        await expect(page.getByText('Success')).toBeVisible({ timeout: 10000 });
-        await expect(page.getByText('20')).toBeVisible();
+        await inspector.selectTool('Returns the sum of two numbers');
+        await inspector.fillToolNumberInputs([7, 13]);
+        await inspector.executeSelectedTool();
+        await inspector.expectToolResult('20');
       });
 
       await test.step('Tools — call get-tiny-image returns image', async () => {
-        await page.getByText('Returns a tiny MCP logo image').first().click();
-        await page.getByRole('button', { name: 'Run Tool' }).click();
-        await expect(page.getByText('Success')).toBeVisible({ timeout: 10000 });
-        // Image content renders as an img element
-        await expect(
-          page.locator('img[src^="data:image"]').or(page.getByText('image/'))
-        ).toBeVisible();
+        await inspector.selectTool('Returns a tiny MCP logo image');
+        await inspector.executeSelectedTool();
+        await inspector.expectToolResultImage();
       });
 
       // ── Resources ──
 
       await test.step('Resources — list and read', async () => {
-        await page.getByRole('tab', { name: 'Resources' }).click();
-        await page.waitForURL(/#resources/);
-        await page.getByRole('button', { name: 'List Resources' }).click();
-        await expect(page.getByText('architecture.md').first()).toBeVisible({ timeout: 10000 });
+        await inspector.switchToResourcesTab();
+        await inspector.listResources();
+        await inspector.expectResourceContent('architecture.md');
 
         // Click a resource to read it — Inspector auto-reads on click
-        await page.getByText('architecture.md').first().click();
+        await inspector.selectResource('architecture.md');
         // Content panel shows resource mime type
-        await expect(page.getByText('text/markdown').first()).toBeVisible({ timeout: 10000 });
+        await inspector.expectResourceContent('text/markdown');
       });
 
       await test.step('Resources — list templates', async () => {
-        await page.getByRole('button', { name: 'List Templates' }).click();
+        await inspector.listTemplates();
         await expect(page.getByText('Dynamic').first()).toBeVisible({ timeout: 10000 });
       });
 
       // ── Prompts ──
 
       await test.step('Prompts — list', async () => {
-        await page.getByRole('tab', { name: 'Prompts' }).click();
-        await page.waitForURL(/#prompts/);
-        await page.getByRole('button', { name: 'List Prompts' }).click();
-        await expect(page.getByText('simple-prompt').first()).toBeVisible({ timeout: 10000 });
-        await expect(page.getByText('args-prompt').first()).toBeVisible();
+        await inspector.switchToPromptsTab();
+        await inspector.listPrompts();
+        await inspector.expectPromptContent('simple-prompt');
+        await inspector.expectPromptContent('args-prompt');
       });
 
       await test.step('Prompts — get simple-prompt', async () => {
-        await page.getByText('simple-prompt').first().click();
-        await page.getByRole('button', { name: 'Get Prompt' }).click();
+        await inspector.selectPrompt('simple-prompt');
+        await inspector.getSelectedPrompt();
         // Result shows prompt messages with role "user"
-        await expect(page.getByText('user').first()).toBeVisible({ timeout: 10000 });
+        await inspector.expectPromptContent('user');
       });
 
       await test.step('Prompts — get args-prompt with city argument', async () => {
-        await page.getByText('args-prompt').first().click();
-        // args-prompt has a 'city' combobox — click it, type value
-        const cityCombobox = page.getByRole('combobox').filter({ hasText: 'Enter city' });
-        await cityCombobox.click();
-        await page.keyboard.type('TestCity');
-        await page.getByRole('button', { name: 'Get Prompt' }).click();
-        await expect(page.getByText('TestCity')).toBeVisible({ timeout: 10000 });
+        await inspector.selectPrompt('args-prompt');
+        await inspector.fillPromptCombobox('Enter city', 'TestCity');
+        await inspector.getSelectedPrompt();
+        await inspector.expectPromptContent('TestCity');
       });
 
       // ── Ping ──
 
       await test.step('Ping — verify server responds', async () => {
-        await page.getByRole('tab', { name: 'Ping' }).click();
-        await page.waitForURL(/#ping/);
-        await page.getByRole('button', { name: 'Ping Server' }).click();
-        // Verify ping appears in history
-        await expect(page.getByText('ping').last()).toBeVisible({ timeout: 5000 });
+        await inspector.switchToPingTab();
+        await inspector.executePing();
+        await inspector.expectPingSuccess();
       });
 
       // ── Disconnect ──
 
       await test.step('Disconnect from proxy', async () => {
-        await page.getByRole('button', { name: 'Disconnect' }).click();
-        await expect(page.getByText('Disconnected')).toBeVisible({ timeout: 5000 });
+        await inspector.clickDisconnect();
+        await inspector.expectDisconnected();
+      });
+    });
+
+    test('MCP proxy — disabled instance shows error', async ({ page, sharedServerUrl }) => {
+      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
+      const inspector = new McpInspectorPage(page, sharedServerUrl);
+      const serverData = McpFixtures.createEverythingServerData();
+      const instanceData = McpFixtures.createEverythingInstanceData();
+
+      let mcpId;
+      let accessToken;
+
+      // ── Phase 1: Create MCP server + instance, then disable the instance ──
+
+      await test.step('Login and create everything MCP server + instance', async () => {
+        await loginPage.performOAuthLogin('/ui/chat/');
+        await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+        await mcpsPage.createMcpInstance(
+          serverData.name,
+          instanceData.name,
+          instanceData.slug,
+          instanceData.description
+        );
+        await mcpsPage.expectMcpsListPage();
+        mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
+        expect(mcpId).toBeTruthy();
+      });
+
+      await test.step('Disable the MCP instance via API', async () => {
+        // Use page.evaluate to PUT the update with enabled: false
+        const result = await page.evaluate(
+          async ({ baseUrl, mcpId, instanceData }) => {
+            const resp = await fetch(`${baseUrl}/bodhi/v1/mcps/${mcpId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                name: instanceData.name,
+                slug: instanceData.slug,
+                description: instanceData.description,
+                enabled: false,
+              }),
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+            return await resp.json();
+          },
+          { baseUrl: sharedServerUrl, mcpId, instanceData }
+        );
+        expect(result.enabled).toBe(false);
+      });
+
+      // ── Phase 2: Get OAuth token ──
+
+      const appClient = getPreConfiguredAppClient();
+      const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
+      const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+
+      await test.step('Obtain access token via OAuth flow', async () => {
+        await app.navigate();
+        await app.config.configureOAuthForm({
+          bodhiServerUrl: sharedServerUrl,
+          authServerUrl: authServerConfig.authUrl,
+          realm: authServerConfig.authRealm,
+          clientId: appClient.clientId,
+          redirectUri,
+          scope: 'openid profile email',
+          requested: JSON.stringify({
+            version: '1',
+            mcp_servers: [{ url: McpFixtures.EVERYTHING_SERVER_MCP_URL }],
+          }),
+        });
+        await app.config.submitAccessRequest();
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+
+        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+        await reviewPage.approveWithMcps([
+          { url: McpFixtures.EVERYTHING_SERVER_MCP_URL, instanceId: mcpId },
+        ]);
+
+        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+        await app.accessCallback.waitForLoaded();
+        await app.accessCallback.clickLogin();
+        await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+
+        await app.dashboard.navigateTo();
+        accessToken = await app.dashboard.getAccessToken();
+        expect(accessToken).toBeTruthy();
+      });
+
+      // ── Phase 3: Try to connect via Inspector — expect failure ──
+
+      await test.step('Connect to disabled MCP instance and expect error', async () => {
+        await inspector.configureDirectConnection({
+          inspectorUrl: McpFixtures.INSPECTOR_URL,
+          serverUrl: sharedServerUrl,
+          mcpId,
+          accessToken,
+        });
+        await inspector.clickConnect();
+        // The proxy returns 403 for a disabled instance; Inspector should not reach Connected
+        await inspector.expectConnectionError();
+      });
+    });
+
+    test('MCP proxy — invalid token rejected', async ({ page, sharedServerUrl }) => {
+      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
+      const inspector = new McpInspectorPage(page, sharedServerUrl);
+      const serverData = McpFixtures.createEverythingServerData();
+      const instanceData = McpFixtures.createEverythingInstanceData();
+
+      let mcpId;
+
+      // ── Phase 1: Create MCP server + instance (need a valid mcpId) ──
+
+      await test.step('Login and create everything MCP server + instance', async () => {
+        await loginPage.performOAuthLogin('/ui/chat/');
+        await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+        await mcpsPage.createMcpInstance(
+          serverData.name,
+          instanceData.name,
+          instanceData.slug,
+          instanceData.description
+        );
+        await mcpsPage.expectMcpsListPage();
+        mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
+        expect(mcpId).toBeTruthy();
+      });
+
+      // ── Phase 2: Try Inspector with garbage token — expect failure ──
+
+      await test.step('Connect with invalid token and expect error', async () => {
+        const garbageToken = 'invalid-not-a-real-jwt-token';
+        await inspector.configureDirectConnection({
+          inspectorUrl: McpFixtures.INSPECTOR_URL,
+          serverUrl: sharedServerUrl,
+          mcpId,
+          accessToken: garbageToken,
+        });
+        await inspector.clickConnect();
+        // The proxy rejects invalid tokens; Inspector should not reach Connected
+        await inspector.expectConnectionError();
       });
     });
   }

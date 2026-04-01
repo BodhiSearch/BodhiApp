@@ -1,5 +1,4 @@
 use chrono::{DateTime, Utc};
-use mcp_client::McpTool;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -192,7 +191,7 @@ pub struct McpAuthParamInput {
 // Mcp - User-owned MCP instance (public API model)
 // ============================================================================
 
-/// User-owned MCP server instance with tool caching and filtering.
+/// User-owned MCP server instance.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct Mcp {
   /// Unique instance identifier (UUID)
@@ -208,12 +207,8 @@ pub struct Mcp {
   pub description: Option<String>,
   /// Whether this instance is enabled
   pub enabled: bool,
-  /// Cached tool schemas from the MCP server (JSON array)
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tools_cache: Option<Vec<McpTool>>,
-  /// Whitelisted tool names (empty = block all)
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tools_filter: Option<Vec<String>>,
+  /// MCP proxy endpoint path for this instance
+  pub mcp_endpoint: String,
   pub auth_type: McpAuthType,
   /// Reference to the auth config (mcp_auth_configs.id)
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -278,28 +273,6 @@ pub struct McpOAuthToken {
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
-}
-
-// ============================================================================
-// McpExecutionRequest / McpExecutionResponse
-// ============================================================================
-
-/// Request to execute a tool on an MCP server instance
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct McpExecutionRequest {
-  /// Tool parameters as JSON
-  pub params: serde_json::Value,
-}
-
-/// Response from MCP tool execution
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct McpExecutionResponse {
-  /// Successful result (JSON), if any
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub result: Option<serde_json::Value>,
-  /// Error message, if execution failed
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub error: Option<String>,
 }
 
 // ============================================================================
@@ -502,15 +475,7 @@ impl From<super::mcp_server_entity::McpServerEntity> for McpServer {
 
 impl From<super::mcp_entity::McpWithServerEntity> for Mcp {
   fn from(row: super::mcp_entity::McpWithServerEntity) -> Self {
-    let tools_cache: Option<Vec<McpTool>> = row
-      .tools_cache
-      .as_ref()
-      .and_then(|tc| serde_json::from_str(tc).ok());
-    let tools_filter: Option<Vec<String>> = row
-      .tools_filter
-      .as_ref()
-      .and_then(|tf| serde_json::from_str(tf).ok());
-
+    let mcp_endpoint = format!("/bodhi/v1/apps/mcps/{}/mcp", row.id);
     Self {
       id: row.id,
       mcp_server: McpServerInfo {
@@ -523,8 +488,7 @@ impl From<super::mcp_entity::McpWithServerEntity> for Mcp {
       name: row.name,
       description: row.description,
       enabled: row.enabled,
-      tools_cache,
-      tools_filter,
+      mcp_endpoint,
       auth_type: row.auth_type,
       auth_config_id: row.auth_config_id,
       created_at: row.created_at,
@@ -561,12 +525,6 @@ pub struct McpRequest {
   pub description: Option<String>,
   /// Whether this instance is enabled
   pub enabled: bool,
-  /// Cached tool schemas from the MCP server (JSON array)
-  #[serde(default)]
-  pub tools_cache: Option<Vec<McpTool>>,
-  /// Whitelisted tool names
-  #[serde(default)]
-  pub tools_filter: Option<Vec<String>>,
   /// Authentication type
   #[serde(default)]
   pub auth_type: McpAuthType,

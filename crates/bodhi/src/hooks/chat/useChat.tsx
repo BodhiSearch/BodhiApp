@@ -1,12 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { Mcp, McpExecuteResponse } from '@bodhiapp/ts-client';
-
 import { CompletionResult, useChatCompletion } from './useChatCompletions';
 import { useChatDB } from './useChatDb';
 import { useChatSettings } from './useChatSettings';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import apiClient from '@/lib/apiClient';
+import type { McpClientTool, McpToolCallResult } from '@/hooks/mcps/useMcpClient';
 import { encodeMcpToolName, decodeMcpToolName } from '@/lib/mcps';
 import { nanoid } from '@/lib/utils';
 import { Message, ToolCall } from '@/types/chat';
@@ -15,14 +13,54 @@ import { Message, ToolCall } from '@/types/chat';
 const MAX_ITERATIONS_MESSAGE =
   'You have reached the maximum number of tool call iterations. Please provide a final response to the user without making additional tool calls.';
 
+interface McpToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
 /**
- * Execute a single MCP tool call via the backend API.
+ * Build tools array for API request from MCP client tools.
+ * Only includes tools that are enabled by the user.
+ * Encodes names as mcp__{slug}__{toolName}.
  */
-async function executeMcpToolCall(
+function buildToolsFromMcpClients(
+  enabledMcpTools: Record<string, string[]>,
+  mcpTools: Map<string, McpClientTool[]>,
+  mcpSlugs: Map<string, string>
+): McpToolDefinition[] {
+  const result: McpToolDefinition[] = [];
+  for (const [mcpId, enabledToolNames] of Object.entries(enabledMcpTools)) {
+    const tools = mcpTools.get(mcpId);
+    const slug = mcpSlugs.get(mcpId);
+    if (!tools || !slug) continue;
+
+    for (const tool of tools) {
+      if (enabledToolNames.includes(tool.name)) {
+        result.push({
+          type: 'function',
+          function: {
+            name: encodeMcpToolName(slug, tool.name),
+            description: tool.description ?? '',
+            parameters: tool.inputSchema ?? {},
+          },
+        });
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Execute a single MCP tool call via the MCP SDK client.
+ */
+async function executeMcpToolCallViaClient(
   toolCall: ToolCall,
-  signal: AbortSignal,
-  headers: Record<string, string>,
-  mcpSlugToId: Map<string, string>
+  mcpSlugToId: Map<string, string>,
+  callMcpTool: (mcpId: string, toolName: string, args: Record<string, unknown>) => Promise<McpToolCallResult>
 ): Promise<Message> {
   const decoded = decodeMcpToolName(toolCall.function.name);
   if (!decoded) {
@@ -43,61 +81,42 @@ async function executeMcpToolCall(
     };
   }
 
-  const baseUrl =
-    apiClient.defaults.baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
-  const url = `${baseUrl}/bodhi/v1/mcps/${mcpId}/tools/${toolName}/execute`;
-
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
-      body: JSON.stringify({
-        params: JSON.parse(toolCall.function.arguments),
-      }),
-      signal,
-    });
-
-    const result: McpExecuteResponse = await response.json();
-
+    const result = await callMcpTool(mcpId, toolName, JSON.parse(toolCall.function.arguments));
+    if (result.isError) {
+      return {
+        role: 'tool' as const,
+        content: JSON.stringify({ error: JSON.stringify(result.content) }),
+        tool_call_id: toolCall.id,
+      };
+    }
     return {
       role: 'tool' as const,
-      content: result.error ? JSON.stringify({ error: result.error }) : JSON.stringify(result.result),
+      content: JSON.stringify(result.content),
       tool_call_id: toolCall.id,
     };
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw error;
-    }
-
     return {
       role: 'tool' as const,
-      content: JSON.stringify({
-        error: error instanceof Error ? error.message : 'MCP tool execution failed',
-      }),
+      content: JSON.stringify({ error: error instanceof Error ? error.message : 'MCP tool execution failed' }),
       tool_call_id: toolCall.id,
     };
   }
 }
 
 /**
- * Execute multiple MCP tool calls in parallel, continuing even if some fail.
+ * Execute multiple MCP tool calls in parallel via the MCP SDK client.
  */
-async function executeToolCalls(
+async function executeToolCallsViaClient(
   toolCalls: ToolCall[],
-  signal: AbortSignal,
-  headers: Record<string, string>,
-  mcpSlugToId: Map<string, string>
+  mcpSlugToId: Map<string, string>,
+  callMcpTool: (mcpId: string, toolName: string, args: Record<string, unknown>) => Promise<McpToolCallResult>
 ): Promise<Message[]> {
-  const results = await Promise.allSettled(toolCalls.map((tc) => executeMcpToolCall(tc, signal, headers, mcpSlugToId)));
-
+  const results = await Promise.allSettled(
+    toolCalls.map((tc) => executeMcpToolCallViaClient(tc, mcpSlugToId, callMcpTool))
+  );
   return results.map((result, index) => {
-    if (result.status === 'fulfilled') {
-      return result.value;
-    }
-    // For rejected promises (e.g., abort), return error message
+    if (result.status === 'fulfilled') return result.value;
     return {
       role: 'tool' as const,
       content: JSON.stringify({
@@ -108,68 +127,26 @@ async function executeToolCalls(
   });
 }
 
-interface McpToolDefinition {
-  type: 'function';
-  function: {
-    name: string;
-    description: string;
-    parameters: Record<string, unknown>;
-  };
-}
-
-/**
- * Build tools array for API request from enabled MCP tools.
- * Only includes tools from available MCPs (server enabled, instance enabled, tools cached, filter not empty).
- * Applies tools_filter ceiling, encodes names as mcp__{slug}__{toolName}.
- */
-function buildMcpToolsArray(enabledMcpTools: Record<string, string[]>, mcps: Mcp[]): McpToolDefinition[] {
-  const result: McpToolDefinition[] = [];
-  for (const mcp of mcps) {
-    if (
-      !mcp.mcp_server.enabled ||
-      !mcp.enabled ||
-      !mcp.tools_cache ||
-      mcp.tools_cache.length === 0 ||
-      (mcp.tools_filter != null && mcp.tools_filter.length === 0)
-    ) {
-      continue;
-    }
-
-    const enabledToolNames = enabledMcpTools[mcp.id] || [];
-    // Apply tools_filter ceiling
-    const visibleTools =
-      mcp.tools_filter == null ? mcp.tools_cache : mcp.tools_cache.filter((t) => mcp.tools_filter!.includes(t.name));
-
-    for (const tool of visibleTools) {
-      if (enabledToolNames.includes(tool.name)) {
-        result.push({
-          type: 'function',
-          function: {
-            name: encodeMcpToolName(mcp.slug, tool.name),
-            description: tool.description ?? '',
-            parameters: (tool.input_schema ?? {}) as Record<string, unknown>,
-          },
-        });
-      }
-    }
-  }
-  return result;
-}
-
 export interface UseChatOptions {
   enabledMcpTools?: Record<string, string[]>;
-  mcps?: Mcp[];
+  mcpTools?: Map<string, McpClientTool[]>;
+  mcpSlugs?: Map<string, string>;
+  callMcpTool?: (mcpId: string, toolName: string, args: Record<string, unknown>) => Promise<McpToolCallResult>;
 }
 
 export function useChat(options?: UseChatOptions) {
-  const { enabledMcpTools = {}, mcps = [] } = options || {};
+  const { enabledMcpTools = {}, mcpTools, mcpSlugs, callMcpTool } = options || {};
 
-  // Build MCP slug→UUID mapping for tool execution
+  // Build MCP slug->UUID mapping for tool execution (invert mcpSlugs which is id->slug)
   const mcpSlugToId = useMemo(() => {
     const map = new Map<string, string>();
-    mcps.forEach((m) => map.set(m.slug, m.id));
+    if (mcpSlugs) {
+      for (const [id, slug] of mcpSlugs) {
+        map.set(slug, id);
+      }
+    }
     return map;
-  }, [mcps]);
+  }, [mcpSlugs]);
 
   const [input, setInput] = useState('');
   const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -227,7 +204,10 @@ export function useChat(options?: UseChatOptions) {
       const maxIterations = chatSettings.maxToolIterations_enabled ? (chatSettings.maxToolIterations ?? 5) : 5;
 
       // Build tools array from enabled MCP tools
-      const tools = Object.keys(enabledMcpTools).length > 0 ? buildMcpToolsArray(enabledMcpTools, mcps) : [];
+      const tools =
+        Object.keys(enabledMcpTools).length > 0
+          ? buildToolsFromMcpClients(enabledMcpTools, mcpTools ?? new Map(), mcpSlugs ?? new Map())
+          : [];
 
       const headers: Record<string, string> = {};
       if (chatSettings.api_token_enabled) {
@@ -311,11 +291,11 @@ export function useChat(options?: UseChatOptions) {
           conversationMessages = [...conversationMessages, assistantMsg];
 
           // Check if we need to execute tool calls
-          if (finishReason === 'tool_calls' && toolCalls && toolCalls.length > 0) {
+          if (finishReason === 'tool_calls' && toolCalls && toolCalls.length > 0 && callMcpTool) {
             iteration++;
 
-            // Execute tool calls in parallel
-            const toolResults = await executeToolCalls(toolCalls, controller.signal, headers, mcpSlugToId);
+            // Execute tool calls in parallel via MCP SDK client
+            const toolResults = await executeToolCallsViaClient(toolCalls, mcpSlugToId, callMcpTool);
 
             if (abortedRef.current) break;
 
@@ -380,8 +360,10 @@ export function useChat(options?: UseChatOptions) {
       setCurrentChatId,
       resetToPreSubmissionState,
       enabledMcpTools,
-      mcps,
+      mcpTools,
+      mcpSlugs,
       mcpSlugToId,
+      callMcpTool,
     ]
   );
 

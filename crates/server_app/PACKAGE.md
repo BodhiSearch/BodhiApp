@@ -31,7 +31,7 @@ See [CLAUDE.md](CLAUDE.md) for architectural overview and key decisions.
 | `tests/utils/live_server_utils.rs` | `setup_minimal_app_service()`, `setup_test_app_service()`, `live_server` fixture, `TestServerHandle`, `start_test_live_server()`, `create_test_session_for_live_server()`, OAuth helpers |
 | `tests/utils/external_token.rs` | `ExternalTokenSimulator` -- seeds cache to bypass Keycloak |
 | `tests/utils/tool_call.rs` | `get_weather_tool()`, `parse_streaming_tool_calls()`, `parse_streaming_content()` |
-| `tests/utils/test_mcp_server.rs` | `TestMcpServer` (builder, configurable tools/resources/prompts), `TestMcpServerHandler` (rmcp ServerHandler), `ReceivedToolCall` (observable call log) |
+| `tests/utils/test_mcp_server.rs` | `TestMcpServer` (builder, configurable tools/resources/prompts/auth), `TestMcpServerHandler` (rmcp ServerHandler), `ReceivedToolCall` (observable call log) |
 | `tests/utils/mod.rs` | Re-exports |
 | `tests/resources/.env.test` | OAuth2 credentials (gitignored) |
 | `tests/resources/.env.test.example` | Template for required env vars |

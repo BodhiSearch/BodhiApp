@@ -1,7 +1,7 @@
 use super::{
   CreateMcpAuthConfigRequest, McpAuthConfigParam, McpAuthConfigResponse, McpAuthConfigType,
-  McpAuthParamType, McpAuthType, McpExecutionRequest, McpExecutionResponse, McpOAuthConfig,
-  McpOAuthToken, McpRequest, McpServerRequest, RegistrationType,
+  McpAuthParamType, McpAuthType, McpOAuthConfig, McpOAuthToken, McpRequest, McpServerRequest,
+  RegistrationType,
 };
 use super::{
   McpAuthConfigEntity, McpAuthConfigParamEntity, McpAuthParamEntity, McpEntity,
@@ -9,10 +9,9 @@ use super::{
 };
 use super::{McpError, McpServerError};
 use crate::db::{encryption::encrypt_api_key, DbService, TimeService};
-use crate::mcps::McpAuthParamInput;
 use crate::new_ulid;
-use crate::{validate_outbound_url, SafeReqwest};
-use mcp_client::{McpAuthParams, McpClient, McpTool};
+use crate::SafeReqwest;
+use mcp_client::{McpAuthParams, McpClient};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -89,31 +88,6 @@ pub trait McpService: Debug + Send + Sync {
   ) -> Result<McpWithServerEntity, McpError>;
 
   async fn delete(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), McpError>;
-
-  async fn fetch_tools(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-    id: &str,
-  ) -> Result<Vec<McpTool>, McpError>;
-
-  async fn fetch_tools_for_server(
-    &self,
-    tenant_id: &str,
-    server_id: &str,
-    credentials: Option<Vec<McpAuthParamInput>>,
-    auth_config_id: Option<String>,
-    oauth_token_id: Option<String>,
-  ) -> Result<Vec<McpTool>, McpError>;
-
-  async fn execute(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-    id: &str,
-    tool_name: &str,
-    request: McpExecutionRequest,
-  ) -> Result<McpExecutionResponse, McpError>;
 
   // ---- MCP OAuth config operations ----
 
@@ -311,8 +285,6 @@ impl DefaultMcpService {
       slug: row.slug,
       description: row.description,
       enabled: row.enabled,
-      tools_cache: row.tools_cache,
-      tools_filter: row.tools_filter,
       auth_type: row.auth_type,
       auth_config_id: row.auth_config_id,
       created_at: row.created_at,
@@ -607,8 +579,6 @@ impl McpService for DefaultMcpService {
       }
     }
 
-    let url_changed = existing.url.to_lowercase() != trimmed_url.to_lowercase();
-
     let now = self.time_service.utc_now();
     let row = McpServerEntity {
       id: existing.id,
@@ -623,12 +593,6 @@ impl McpService for DefaultMcpService {
       updated_at: now,
     };
 
-    if url_changed {
-      self
-        .db_service
-        .clear_mcp_tools_by_server_id(tenant_id, id)
-        .await?;
-    }
     let result = self.db_service.update_mcp_server(tenant_id, &row).await?;
     Ok(result)
   }
@@ -719,15 +683,6 @@ impl McpService for DefaultMcpService {
       return Err(McpError::SlugExists(request.slug.clone()));
     }
 
-    let tools_cache_json = request
-      .tools_cache
-      .as_ref()
-      .map(|tc| serde_json::to_string(tc).expect("Vec<McpTool> serialization cannot fail"));
-    let tools_filter_json = request
-      .tools_filter
-      .as_ref()
-      .map(|tf| serde_json::to_string(tf).expect("Vec<String> serialization cannot fail"));
-
     let now = self.time_service.utc_now();
     let mcp_id = new_ulid();
     let row = McpEntity {
@@ -739,8 +694,6 @@ impl McpService for DefaultMcpService {
       slug: request.slug,
       description: request.description,
       enabled: request.enabled,
-      tools_cache: tools_cache_json,
-      tools_filter: tools_filter_json,
       auth_type: request.auth_type,
       auth_config_id: request.auth_config_id,
       created_at: now,
@@ -811,18 +764,6 @@ impl McpService for DefaultMcpService {
       return Err(McpError::SlugExists(request.slug.clone()));
     }
 
-    let resolved_filter = if let Some(filter) = request.tools_filter {
-      Some(serde_json::to_string(&filter).expect("Vec<String> serialization cannot fail"))
-    } else {
-      existing.tools_filter
-    };
-
-    let resolved_cache = if let Some(cache) = request.tools_cache {
-      Some(serde_json::to_string(&cache).expect("Vec<McpTool> serialization cannot fail"))
-    } else {
-      existing.tools_cache
-    };
-
     let new_auth_type = request.auth_type;
     let (resolved_auth_type, resolved_auth_config_id) = if existing.auth_type != new_auth_type {
       if existing.auth_type == McpAuthType::Oauth {
@@ -848,8 +789,6 @@ impl McpService for DefaultMcpService {
       slug: request.slug,
       description: request.description,
       enabled: request.enabled,
-      tools_cache: resolved_cache,
-      tools_filter: resolved_filter,
       auth_type: resolved_auth_type,
       auth_config_id: resolved_auth_config_id,
       created_at: existing.created_at,
@@ -910,165 +849,6 @@ impl McpService for DefaultMcpService {
     // Credentials are cleaned up by CASCADE FK on mcp_auth_params.mcp_id
     self.db_service.delete_mcp(tenant_id, user_id, id).await?;
     Ok(())
-  }
-
-  async fn fetch_tools(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-    id: &str,
-  ) -> Result<Vec<McpTool>, McpError> {
-    let (existing, server) = self
-      .get_mcp_with_server(tenant_id, user_id, id)
-      .await?
-      .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
-
-    if !server.enabled {
-      return Err(McpError::McpDisabled);
-    }
-
-    let auth_params = self
-      .resolve_auth_params_for_mcp(tenant_id, &existing)
-      .await?;
-    validate_outbound_url(&server.url, true)?;
-    let tools = self
-      .mcp_client
-      .fetch_tools(&server.url, auth_params)
-      .await?;
-
-    let tools_cache_json = serde_json::to_string(&tools).unwrap_or_default();
-    let tool_names: Vec<String> = tools.iter().map(|t| t.name.clone()).collect();
-
-    let tools_filter_json = if existing.tools_filter.is_none() {
-      Some(serde_json::to_string(&tool_names).unwrap_or_default())
-    } else {
-      existing.tools_filter
-    };
-
-    let now = self.time_service.utc_now();
-    let updated_row = McpEntity {
-      tools_cache: Some(tools_cache_json),
-      tools_filter: tools_filter_json,
-      updated_at: now,
-      ..existing
-    };
-
-    self.db_service.update_mcp(tenant_id, &updated_row).await?;
-    Ok(tools)
-  }
-
-  async fn fetch_tools_for_server(
-    &self,
-    tenant_id: &str,
-    server_id: &str,
-    credentials: Option<Vec<McpAuthParamInput>>,
-    _auth_config_id: Option<String>,
-    oauth_token_id: Option<String>,
-  ) -> Result<Vec<McpTool>, McpError> {
-    let server = self
-      .db_service
-      .get_mcp_server(tenant_id, server_id)
-      .await?
-      .ok_or_else(|| McpError::McpServerNotFound(server_id.to_string()))?;
-
-    if !server.enabled {
-      return Err(McpError::McpDisabled);
-    }
-
-    // Build auth params: oauth token > credentials array > none
-    let auth_params = if let Some(ref token_id) = oauth_token_id {
-      let access_token = self
-        .db_service
-        .get_decrypted_oauth_access_token(tenant_id, token_id)
-        .await?
-        .ok_or_else(|| McpError::OAuthTokenNotFound(token_id.clone()))?;
-      Some(McpAuthParams {
-        headers: vec![(
-          "Authorization".to_string(),
-          format!("Bearer {}", access_token),
-        )],
-        query_params: vec![],
-      })
-    } else if let Some(ref creds) = credentials {
-      if creds.is_empty() {
-        None
-      } else {
-        let mut headers = Vec::new();
-        let mut query_params = Vec::new();
-        for cred in creds {
-          match cred.param_type {
-            McpAuthParamType::Header => headers.push((cred.param_key.clone(), cred.value.clone())),
-            McpAuthParamType::Query => {
-              query_params.push((cred.param_key.clone(), cred.value.clone()))
-            }
-          }
-        }
-        Some(McpAuthParams {
-          headers,
-          query_params,
-        })
-      }
-    } else {
-      None
-    };
-
-    validate_outbound_url(&server.url, true)?;
-    let tools = self
-      .mcp_client
-      .fetch_tools(&server.url, auth_params)
-      .await?;
-    Ok(tools)
-  }
-
-  async fn execute(
-    &self,
-    tenant_id: &str,
-    user_id: &str,
-    id: &str,
-    tool_name: &str,
-    request: McpExecutionRequest,
-  ) -> Result<McpExecutionResponse, McpError> {
-    let (existing, server) = self
-      .get_mcp_with_server(tenant_id, user_id, id)
-      .await?
-      .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
-
-    if !server.enabled {
-      return Err(McpError::McpDisabled);
-    }
-
-    if !existing.enabled {
-      return Err(McpError::McpDisabled);
-    }
-
-    let tools_filter: Vec<String> = existing
-      .tools_filter
-      .as_ref()
-      .and_then(|tf| serde_json::from_str(tf).ok())
-      .unwrap_or_default();
-
-    if !tools_filter.iter().any(|t| t == tool_name) {
-      return Err(McpError::ToolNotAllowed(tool_name.to_string()));
-    }
-
-    let auth_params = self
-      .resolve_auth_params_for_mcp(tenant_id, &existing)
-      .await?;
-    validate_outbound_url(&server.url, true)?;
-    match self
-      .mcp_client
-      .call_tool(&server.url, tool_name, request.params, auth_params)
-      .await
-    {
-      Ok(result) => Ok(McpExecutionResponse {
-        result: Some(result),
-        error: None,
-      }),
-      Err(e) => Ok(McpExecutionResponse {
-        result: None,
-        error: Some(e.to_string()),
-      }),
-    }
   }
 
   // ---- MCP OAuth config operations ----

@@ -82,7 +82,6 @@ describe('McpsPage - Instance List Display', () => {
         {
           ...mockMcp,
           enabled: true,
-          tools_filter: ['read_wiki_structure'],
         },
       ])
     );
@@ -97,7 +96,6 @@ describe('McpsPage - Instance List Display', () => {
 
     expect(screen.getByText('Example MCP')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('1 tool')).toBeInTheDocument();
   });
 
   it('displays MCP instance with Disabled status badge', async () => {
@@ -122,13 +120,13 @@ describe('McpsPage - Instance List Display', () => {
     expect(screen.getByText('Disabled')).toBeInTheDocument();
   });
 
-  it('displays MCP instance with No Tools status badge', async () => {
+  it('displays MCP instance with Server Disabled status badge', async () => {
     server.use(
       mockListMcps([
         {
           ...mockMcp,
           enabled: true,
-          tools_filter: [],
+          mcp_server: { ...mockMcp.mcp_server, enabled: false },
         },
       ])
     );
@@ -142,7 +140,7 @@ describe('McpsPage - Instance List Display', () => {
     });
 
     expect(screen.getByText('Example MCP')).toBeInTheDocument();
-    expect(screen.getByText('No Tools')).toBeInTheDocument();
+    expect(screen.getByText('Server Disabled')).toBeInTheDocument();
   });
 
   it('displays empty state when no MCPs available', async () => {

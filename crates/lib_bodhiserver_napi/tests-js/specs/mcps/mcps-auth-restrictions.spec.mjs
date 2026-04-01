@@ -15,9 +15,9 @@ import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
  * MCP Authentication Restrictions E2E Tests
  *
  * Tests the OAuth access request flow for MCP servers:
- * 1. WITH MCP access request + WITH scope -> can list and execute MCP tools
+ * 1. WITH MCP access request + WITH scope -> can list and access MCPs
  * 2. WITHOUT MCP access request -> MCP list returns empty for OAuth token
- * 3. Approved MCP -> 200, restricted MCP -> 401 for all endpoints
+ * 3. Approved MCP -> 200, restricted MCP -> 403
  */
 
 const MCP_URL = McpFixtures.MCP_URL;
@@ -31,7 +31,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
     testCredentials = getTestCredentials();
   });
 
-  test('App WITH MCP scope + OAuth WITH scope can list MCPs and execute tools', async ({
+  test('App WITH MCP scope + OAuth WITH scope can list and access MCPs', async ({
     page,
     sharedServerUrl,
   }) => {
@@ -111,26 +111,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       expect(await app.rest.getResponseStatus()).toBe(200);
       const mcpData = await app.rest.getResponse();
       expect(mcpData.id).toBe(mcpInstanceId);
-
-      // POST /mcps/{id}/tools/refresh to refresh tools
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/refresh`,
-      });
-      expect(await app.rest.getResponseStatus()).toBe(200);
-
-      // Execute a tool on the MCP instance
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
-        body: JSON.stringify({
-          params: McpFixtures.PLAYGROUND_PARAMS,
-        }),
-      });
-
-      expect(await app.rest.getResponseStatus()).toBe(200);
-      const executeData = await app.rest.getResponse();
-      expect(executeData).toBeDefined();
     });
   });
 
@@ -218,9 +198,9 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       const approvedName = `dw-ok-${ts}`;
       const restrictedName = `dw-no-${ts}`;
 
-      await mcpsPage.createMcpInstanceWithAllTools(serverData.name, approvedName, approvedName);
+      await mcpsPage.createMcpInstance(serverData.name, approvedName, approvedName);
 
-      await mcpsPage.createMcpInstanceWithAllTools(serverData.name, restrictedName, restrictedName);
+      await mcpsPage.createMcpInstance(serverData.name, restrictedName, restrictedName);
 
       approvedInstanceId = await mcpsPage.getMcpUuidByName(approvedName);
       restrictedInstanceId = await mcpsPage.getMcpUuidByName(restrictedName);
@@ -269,21 +249,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       expect(await app.rest.getResponseStatus()).toBe(200);
       const mcpData = await app.rest.getResponse();
       expect(mcpData.id).toBe(approvedInstanceId);
-
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${approvedInstanceId}/tools/refresh`,
-      });
-      expect(await app.rest.getResponseStatus()).toBe(200);
-
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${approvedInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
-        body: JSON.stringify({ params: McpFixtures.PLAYGROUND_PARAMS }),
-      });
-      expect(await app.rest.getResponseStatus()).toBe(200);
-      const executeData = await app.rest.getResponse();
-      expect(executeData).toBeDefined();
     });
 
     await test.step('Phase 5: Verify restricted MCP denied (403)', async () => {
@@ -294,23 +259,6 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       expect(await app.rest.getResponseStatus()).toBe(403);
       const getError = await app.rest.getResponse();
       expect(getError.error.code).toBe('access_request_auth_error-entity_not_approved');
-
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${restrictedInstanceId}/tools/refresh`,
-      });
-      expect(await app.rest.getResponseStatus()).toBe(403);
-      const refreshError = await app.rest.getResponse();
-      expect(refreshError.error.code).toBe('access_request_auth_error-entity_not_approved');
-
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${restrictedInstanceId}/tools/${McpFixtures.EXPECTED_TOOL}/execute`,
-        body: JSON.stringify({ params: McpFixtures.PLAYGROUND_PARAMS }),
-      });
-      expect(await app.rest.getResponseStatus()).toBe(403);
-      const executeError = await app.rest.getResponse();
-      expect(executeError.error.code).toBe('access_request_auth_error-entity_not_approved');
     });
   });
 });

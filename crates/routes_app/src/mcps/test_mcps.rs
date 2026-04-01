@@ -1,8 +1,4 @@
-use crate::mcps::{
-  mcps_create, mcps_destroy, mcps_execute_tool, mcps_fetch_tools, mcps_index, mcps_list_tools,
-  mcps_refresh_tools, mcps_show, mcps_update, FetchMcpToolsRequest, McpAuth, McpExecuteRequest,
-  McpExecuteResponse, McpToolsResponse,
-};
+use crate::mcps::{mcps_create, mcps_destroy, mcps_index, mcps_show, mcps_update};
 use crate::test_utils::RequestAuthContextExt;
 use crate::test_utils::{build_mcp_test_state, fixed_dt};
 use crate::OpenAIApiError;
@@ -19,8 +15,7 @@ use services::McpError;
 use services::MockMcpService;
 use services::ResourceRole;
 use services::{
-  Mcp, McpAuthParamInput, McpAuthParamType, McpAuthType, McpExecutionResponse, McpRequest, McpTool,
-  McpWithServerEntity,
+  Mcp, McpAuthParamInput, McpAuthParamType, McpAuthType, McpRequest, McpWithServerEntity,
 };
 use tower::ServiceExt;
 
@@ -35,8 +30,6 @@ fn test_mcp_entity() -> McpWithServerEntity {
     name: "DeepWiki MCP".to_string(),
     description: Some("Deep wiki search".to_string()),
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     created_at: now,
@@ -53,16 +46,9 @@ async fn test_router_for_crud(mock_mcp_service: MockMcpService) -> anyhow::Resul
     Router::new()
       .route("/mcps", get(mcps_index))
       .route("/mcps", post(mcps_create))
-      .route("/mcps/fetch-tools", post(mcps_fetch_tools))
       .route("/mcps/{id}", get(mcps_show))
       .route("/mcps/{id}", put(mcps_update))
       .route("/mcps/{id}", delete(mcps_destroy))
-      .route("/mcps/{id}/tools", get(mcps_list_tools))
-      .route("/mcps/{id}/tools/refresh", post(mcps_refresh_tools))
-      .route(
-        "/mcps/{id}/tools/{tool_name}/execute",
-        post(mcps_execute_tool),
-      )
       .with_state(state),
   )
 }
@@ -101,8 +87,6 @@ async fn test_create_mcp_success(test_mcp_entity: McpWithServerEntity) -> anyhow
     mcp_server_id: Some("server-uuid-1".to_string()),
     description: Some("Deep wiki search".to_string()),
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     credentials: None,
@@ -162,8 +146,6 @@ async fn test_create_mcp_with_auth_config_id(
     mcp_server_id: Some("server-uuid-1".to_string()),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Header,
     auth_config_id: Some("auth-uuid-1".to_string()),
     credentials: None,
@@ -224,8 +206,6 @@ async fn test_update_mcp_success(test_mcp_entity: McpWithServerEntity) -> anyhow
     mcp_server_id: None,
     description: Some("Deep wiki search".to_string()),
     enabled: true,
-    tools_filter: None,
-    tools_cache: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     credentials: None,
@@ -285,8 +265,6 @@ async fn test_create_mcp_with_oauth_token_id(
     mcp_server_id: Some("server-uuid-1".to_string()),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Oauth,
     auth_config_id: Some("oauth-config-1".to_string()),
     credentials: None,
@@ -351,8 +329,6 @@ async fn test_create_mcp_with_credentials(
     mcp_server_id: Some("server-uuid-1".to_string()),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Header,
     auth_config_id: Some("auth-uuid-1".to_string()),
     credentials: Some(vec![McpAuthParamInput {
@@ -423,8 +399,6 @@ async fn test_update_mcp_change_credentials(
     mcp_server_id: None,
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Header,
     auth_config_id: Some("auth-uuid-1".to_string()),
     credentials: Some(vec![
@@ -494,8 +468,6 @@ async fn test_update_mcp_change_oauth_token(
     mcp_server_id: None,
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Oauth,
     auth_config_id: Some("oauth-config-1".to_string()),
     credentials: None,
@@ -551,8 +523,6 @@ async fn test_update_mcp_clear_auth(test_mcp_entity: McpWithServerEntity) -> any
     mcp_server_id: None,
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     credentials: None,
@@ -613,218 +583,6 @@ async fn test_delete_mcp_success() -> anyhow::Result<()> {
 }
 
 // ============================================================================
-// POST /mcps/fetch-tools
-// ============================================================================
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_fetch_mcp_tools_with_inline_auth() -> anyhow::Result<()> {
-  let mut mock = MockMcpService::new();
-
-  mock
-    .expect_fetch_tools_for_server()
-    .withf(|_, server_id, credentials, _, _| {
-      server_id == "server-uuid-1"
-        && credentials.as_ref().map(|c| {
-          c.len() == 1
-            && c[0].param_type == McpAuthParamType::Header
-            && c[0].param_key == "Authorization"
-            && c[0].value == "Bearer test-key"
-        }) == Some(true)
-    })
-    .times(1)
-    .returning(|_, _, _, _, _| {
-      Ok(vec![McpTool {
-        name: "search".to_string(),
-        description: None,
-        input_schema: None,
-      }])
-    });
-
-  let app = test_router_for_crud(mock).await?;
-
-  let body = serde_json::to_string(&FetchMcpToolsRequest {
-    mcp_server_id: "server-uuid-1".to_string(),
-    auth: Some(McpAuth::Header {
-      header_key: "Authorization".to_string(),
-      header_value: "Bearer test-key".to_string(),
-    }),
-    credentials: None,
-    auth_config_id: None,
-    oauth_token_id: None,
-  })?;
-
-  let request = Request::builder()
-    .method("POST")
-    .uri("/mcps/fetch-tools")
-    .header("content-type", "application/json")
-    .body(Body::from(body))?;
-  let request = request.with_auth_context(AuthContext::test_session(
-    "user123",
-    "testuser",
-    ResourceRole::User,
-  ));
-  let response = app.oneshot(request).await?;
-
-  assert_eq!(StatusCode::OK, response.status());
-  let body: McpToolsResponse = response.json().await?;
-  assert_eq!(1, body.tools.len());
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_fetch_mcp_tools_with_auth_config_id() -> anyhow::Result<()> {
-  let mut mock = MockMcpService::new();
-
-  mock
-    .expect_fetch_tools_for_server()
-    .withf(
-      |_, server_id, credentials, auth_config_id, oauth_token_id| {
-        server_id == "server-uuid-1"
-          && credentials.is_none()
-          && auth_config_id.as_deref() == Some("uuid-123")
-          && oauth_token_id.is_none()
-      },
-    )
-    .times(1)
-    .returning(|_, _, _, _, _| Ok(vec![]));
-
-  let app = test_router_for_crud(mock).await?;
-
-  let body = serde_json::to_string(&FetchMcpToolsRequest {
-    mcp_server_id: "server-uuid-1".to_string(),
-    auth: None,
-    credentials: None,
-    auth_config_id: Some("uuid-123".to_string()),
-    oauth_token_id: None,
-  })?;
-
-  let request = Request::builder()
-    .method("POST")
-    .uri("/mcps/fetch-tools")
-    .header("content-type", "application/json")
-    .body(Body::from(body))?;
-  let request = request.with_auth_context(AuthContext::test_session(
-    "user123",
-    "testuser",
-    ResourceRole::User,
-  ));
-  let response = app.oneshot(request).await?;
-
-  assert_eq!(StatusCode::OK, response.status());
-  Ok(())
-}
-
-// ============================================================================
-// POST /mcps/{id}/tools/{tool_name}/execute
-// ============================================================================
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_execute_mcp_tool_success() -> anyhow::Result<()> {
-  let mut mock = MockMcpService::new();
-
-  mock
-    .expect_execute()
-    .withf(|_, user_id, id, tool_name, _| {
-      user_id == "user123" && id == "mcp-uuid-1" && tool_name == "read_wiki_structure"
-    })
-    .times(1)
-    .returning(|_, _, _, _, _| {
-      Ok(McpExecutionResponse {
-        result: Some(serde_json::json!({"content": "wiki data"})),
-        error: None,
-      })
-    });
-
-  let app = test_router_for_crud(mock).await?;
-
-  let body = serde_json::to_string(&McpExecuteRequest {
-    params: serde_json::json!({"repo_name": "BodhiSearch/BodhiApp"}),
-  })?;
-
-  let request = Request::builder()
-    .method("POST")
-    .uri("/mcps/mcp-uuid-1/tools/read_wiki_structure/execute")
-    .header("content-type", "application/json")
-    .body(Body::from(body))?;
-  let request = request.with_auth_context(AuthContext::test_session(
-    "user123",
-    "testuser",
-    ResourceRole::User,
-  ));
-  let response = app.oneshot(request).await?;
-
-  assert_eq!(StatusCode::OK, response.status());
-  let body: McpExecuteResponse = response.json().await?;
-  assert!(body.result.is_some());
-  assert!(body.error.is_none());
-  Ok(())
-}
-
-// ============================================================================
-// POST /mcps/fetch-tools with oauth_token_id (Finding 5)
-// ============================================================================
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_fetch_mcp_tools_with_oauth_token_id() -> anyhow::Result<()> {
-  let mut mock = MockMcpService::new();
-
-  mock
-    .expect_fetch_tools_for_server()
-    .withf(
-      |_, server_id, credentials, auth_config_id, oauth_token_id| {
-        server_id == "server-uuid-1"
-          && credentials.is_none()
-          && auth_config_id.is_none()
-          && oauth_token_id.as_deref() == Some("token-abc-123")
-      },
-    )
-    .times(1)
-    .returning(|_, _, _, _, _| {
-      Ok(vec![McpTool {
-        name: "search".to_string(),
-        description: None,
-        input_schema: None,
-      }])
-    });
-
-  let app = test_router_for_crud(mock).await?;
-
-  let body = serde_json::to_string(&FetchMcpToolsRequest {
-    mcp_server_id: "server-uuid-1".to_string(),
-    auth: None,
-    credentials: None,
-    auth_config_id: None,
-    oauth_token_id: Some("token-abc-123".to_string()),
-  })?;
-
-  let request = Request::builder()
-    .method("POST")
-    .uri("/mcps/fetch-tools")
-    .header("content-type", "application/json")
-    .body(Body::from(body))?;
-  let request = request.with_auth_context(AuthContext::test_session(
-    "user123",
-    "testuser",
-    ResourceRole::User,
-  ));
-  let response = app.oneshot(request).await?;
-
-  assert_eq!(StatusCode::OK, response.status());
-  let body: McpToolsResponse = response.json().await?;
-  assert_eq!(1, body.tools.len());
-  assert_eq!("search", body.tools[0].name);
-  Ok(())
-}
-
-// ============================================================================
 // Error path tests for MCP create/update (Finding 14)
 // ============================================================================
 
@@ -846,8 +604,6 @@ async fn test_create_mcp_service_error_returns_correct_status() -> anyhow::Resul
     mcp_server_id: Some("bad-server".to_string()),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     credentials: None,
@@ -893,8 +649,6 @@ async fn test_create_mcp_slug_conflict_returns_409() -> anyhow::Result<()> {
     mcp_server_id: Some("server-uuid-1".to_string()),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     credentials: None,
@@ -937,8 +691,6 @@ async fn test_update_mcp_not_found_returns_404() -> anyhow::Result<()> {
     mcp_server_id: None,
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     credentials: None,

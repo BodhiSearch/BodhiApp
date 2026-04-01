@@ -9,6 +9,8 @@ import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useChat, useChatDB, useChatSettings } from '@/hooks/chat';
 import { useMcpSelection, useListMcps } from '@/hooks/mcps';
+import type { McpClientTool, McpConnectionStatus } from '@/hooks/mcps/useMcpClient';
+import { useMcpClients } from '@/hooks/mcps/useMcpClients';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { cn } from '@/lib/utils';
@@ -33,6 +35,8 @@ interface ChatInputProps {
   enabledMcpTools: Record<string, string[]>;
   onToggleMcpTool: (mcpId: string, toolName: string) => void;
   onToggleMcp: (mcpId: string, allToolNames: string[]) => void;
+  mcpTools: Map<string, McpClientTool[]>;
+  mcpConnectionStatus: Map<string, McpConnectionStatus>;
 }
 
 const ChatInput = memo(function ChatInput({
@@ -45,6 +49,8 @@ const ChatInput = memo(function ChatInput({
   enabledMcpTools,
   onToggleMcpTool,
   onToggleMcp,
+  mcpTools,
+  mcpConnectionStatus,
 }: ChatInputProps) {
   const { createNewChat } = useChatDB();
   const getTestId = useResponsiveTestId();
@@ -78,6 +84,8 @@ const ChatInput = memo(function ChatInput({
               onToggleTool={onToggleMcpTool}
               onToggleMcp={onToggleMcp}
               disabled={streamLoading}
+              mcpTools={mcpTools}
+              mcpConnectionStatus={mcpConnectionStatus}
             />
           </div>
 
@@ -227,22 +235,38 @@ export function ChatUI() {
   const { data: mcpsResponse } = useListMcps();
   const mcps = useMemo(() => mcpsResponse?.mcps || [], [mcpsResponse?.mcps]);
 
+  // MCP client lifecycle
+  const mcpClients = useMcpClients();
+
+  useEffect(() => {
+    const enabledMcps = mcps.filter((m) => m.mcp_server.enabled && m.enabled && m.mcp_endpoint);
+    mcpClients.connectAll(enabledMcps);
+    return () => {
+      mcpClients.disconnectAll();
+    };
+  }, [mcps]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Build mcpSlugs map (id -> slug)
+  const mcpSlugs = useMemo(() => {
+    const map = new Map<string, string>();
+    mcps.forEach((m) => map.set(m.id, m.slug));
+    return map;
+  }, [mcps]);
+
+  // Build connection status map
+  const mcpConnectionStatus = useMemo(() => {
+    const map = new Map<string, McpConnectionStatus>();
+    for (const [id, state] of mcpClients.clients) {
+      map.set(id, state.status);
+    }
+    return map;
+  }, [mcpClients.clients]);
+
   // Auto-filter unavailable MCPs from selection
   useEffect(() => {
     if (mcps.length === 0) return;
 
-    const availableIds = new Set(
-      mcps
-        .filter(
-          (m) =>
-            m.mcp_server.enabled &&
-            m.enabled &&
-            m.tools_cache != null &&
-            m.tools_cache.length > 0 &&
-            (m.tools_filter == null || m.tools_filter.length > 0)
-        )
-        .map((m) => m.id)
-    );
+    const availableIds = new Set(mcps.filter((m) => m.mcp_server.enabled && m.enabled).map((m) => m.id));
 
     const filtered: Record<string, string[]> = {};
     let hasUnavailable = false;
@@ -270,7 +294,9 @@ export function ChatUI() {
     pendingToolCalls,
   } = useChat({
     enabledMcpTools,
-    mcps,
+    mcpTools: mcpClients.allTools,
+    mcpSlugs,
+    callMcpTool: mcpClients.callTool,
   });
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -336,6 +362,8 @@ export function ChatUI() {
         enabledMcpTools={enabledMcpTools}
         onToggleMcpTool={toggleMcpTool}
         onToggleMcp={toggleMcp}
+        mcpTools={mcpClients.allTools}
+        mcpConnectionStatus={mcpConnectionStatus}
       />
     </div>
   );

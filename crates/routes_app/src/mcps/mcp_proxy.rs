@@ -1,4 +1,4 @@
-use crate::{ApiError, AuthScope};
+use crate::{ApiError, AuthScope, API_TAG_MCPS, ENDPOINT_APPS_MCPS};
 use axum::{
   body::Body,
   extract::Path,
@@ -44,8 +44,24 @@ const FORWARD_RESPONSE_HEADERS: &[&str] = &[
 /// back without buffering or decoding.
 ///
 /// Mounted at:
-///   `/bodhi/v1/mcps/{id}/mcp` (session-authenticated)
 ///   `/bodhi/v1/apps/mcps/{id}/mcp` (OAuth token-authenticated)
+#[utoipa::path(
+  post,
+  path = ENDPOINT_APPS_MCPS.to_owned() + "/{id}/mcp",
+  tag = API_TAG_MCPS,
+  operation_id = "mcpProxy",
+  summary = "Transparent MCP proxy endpoint",
+  description = "Forwards MCP Streamable HTTP requests (POST/GET/DELETE) to upstream MCP server with auth injection",
+  params(
+    ("id" = String, Path, description = "MCP instance UUID")
+  ),
+  responses(
+    (status = 200, description = "Upstream response forwarded"),
+    (status = 403, description = "MCP server or instance disabled"),
+    (status = 500, description = "Upstream connection failure"),
+  ),
+  security(("bearer_oauth_token" = []))
+)]
 pub async fn mcp_proxy_handler(
   auth_scope: AuthScope,
   Path(id): Path<String>,
@@ -92,10 +108,12 @@ pub async fn mcp_proxy_handler(
   );
 
   // 6. Build upstream request
-  let mut upstream_req = HTTP_CLIENT.request(
-    reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::POST),
-    upstream_url.as_str(),
-  );
+  let upstream_method =
+    reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or_else(|_| {
+      tracing::warn!(%method, "Unknown HTTP method, falling back to POST");
+      reqwest::Method::POST
+    });
+  let mut upstream_req = HTTP_CLIENT.request(upstream_method, upstream_url.as_str());
 
   // Forward selected headers from client
   for header_name in FORWARD_REQUEST_HEADERS {
@@ -104,6 +122,18 @@ pub async fn mcp_proxy_handler(
         upstream_req = upstream_req.header(*header_name, value_str);
       }
     }
+  }
+
+  // Force-set Accept header for MCP protocol compliance.
+  // Some clients or browser fetch configurations may not pass Accept correctly.
+  // reqwest::header() appends rather than replaces, so we overwrite explicitly.
+  if method == axum::http::Method::POST {
+    upstream_req = upstream_req.header(
+      reqwest::header::ACCEPT,
+      "application/json, text/event-stream",
+    );
+  } else if method == axum::http::Method::GET {
+    upstream_req = upstream_req.header(reqwest::header::ACCEPT, "text/event-stream");
   }
 
   // Inject auth headers

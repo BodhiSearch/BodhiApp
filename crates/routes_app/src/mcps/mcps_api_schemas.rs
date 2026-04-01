@@ -3,7 +3,7 @@
 // convention used by CRUD entities.
 
 use serde::{Deserialize, Serialize};
-use services::{CreateMcpAuthConfigRequest, McpAuthParamInput, McpOAuthToken, McpTool};
+use services::{CreateMcpAuthConfigRequest, McpOAuthToken};
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
@@ -14,53 +14,6 @@ use validator::Validate;
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct McpServerQuery {
   pub enabled: Option<bool>,
-}
-
-// ============================================================================
-// MCP Instance DTOs (tool discovery, execution)
-// ============================================================================
-
-#[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
-#[serde(tag = "type")]
-pub enum McpAuth {
-  #[serde(rename = "public")]
-  Public,
-  #[serde(rename = "header")]
-  Header {
-    header_key: String,
-    header_value: String,
-  },
-}
-
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct FetchMcpToolsRequest {
-  pub mcp_server_id: String,
-  #[serde(default)]
-  pub auth: Option<McpAuth>,
-  #[serde(default)]
-  pub credentials: Option<Vec<McpAuthParamInput>>,
-  #[serde(default)]
-  pub auth_config_id: Option<String>,
-  #[serde(default)]
-  pub oauth_token_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct McpToolsResponse {
-  pub tools: Vec<McpTool>,
-}
-
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct McpExecuteRequest {
-  pub params: serde_json::Value,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct McpExecuteResponse {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub result: Option<serde_json::Value>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub error: Option<String>,
 }
 
 // ============================================================================

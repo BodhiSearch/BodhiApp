@@ -46,13 +46,6 @@ pub trait McpServerRepository: Send + Sync {
     tenant_id: &str,
     server_id: &str,
   ) -> Result<(i64, i64), DbError>;
-
-  /// Clear tools_cache and tools_filter on all MCPs linked to a server
-  async fn clear_mcp_tools_by_server_id(
-    &self,
-    tenant_id: &str,
-    server_id: &str,
-  ) -> Result<u64, DbError>;
 }
 
 #[async_trait::async_trait]
@@ -239,37 +232,6 @@ impl McpServerRepository for DefaultDbService {
             Some(r) => Ok((r.enabled_count, r.disabled_count)),
             None => Ok((0, 0)),
           }
-        })
-      })
-      .await
-  }
-
-  async fn clear_mcp_tools_by_server_id(
-    &self,
-    tenant_id: &str,
-    server_id: &str,
-  ) -> Result<u64, DbError> {
-    let now = self.time_service.utc_now();
-    let server_id_owned = server_id.to_string();
-
-    self
-      .with_tenant_txn(tenant_id, |txn| {
-        Box::pin(async move {
-          let result = mcp_entity::Entity::update_many()
-            .col_expr(
-              mcp_entity::Column::ToolsCache,
-              Expr::value(sea_orm::Value::String(None)),
-            )
-            .col_expr(
-              mcp_entity::Column::ToolsFilter,
-              Expr::value(sea_orm::Value::String(None)),
-            )
-            .col_expr(mcp_entity::Column::UpdatedAt, Expr::value(now))
-            .filter(mcp_entity::Column::McpServerId.eq(&server_id_owned))
-            .exec(txn)
-            .await
-            .map_err(DbError::from)?;
-          Ok(result.rows_affected)
         })
       })
       .await

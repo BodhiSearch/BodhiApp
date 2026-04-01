@@ -41,8 +41,6 @@ pub(crate) fn make_mcp(
     slug: slug.to_string(),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Public,
     auth_config_id: None,
     created_at: now,

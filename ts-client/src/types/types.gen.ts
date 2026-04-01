@@ -1356,14 +1356,6 @@ export type ErrorBody = {
     } | null;
 };
 
-export type FetchMcpToolsRequest = {
-    mcp_server_id: string;
-    auth?: null | McpAuth;
-    credentials?: Array<McpAuthParamInput> | null;
-    auth_config_id?: string | null;
-    oauth_token_id?: string | null;
-};
-
 /**
  * Request to fetch available models from provider
  */
@@ -1526,7 +1518,7 @@ export type LocalModelResponse = {
 };
 
 /**
- * User-owned MCP server instance with tool caching and filtering.
+ * User-owned MCP server instance.
  */
 export type Mcp = {
     /**
@@ -1554,13 +1546,9 @@ export type Mcp = {
      */
     enabled: boolean;
     /**
-     * Cached tool schemas from the MCP server (JSON array)
+     * MCP proxy endpoint path for this instance
      */
-    tools_cache?: Array<McpTool> | null;
-    /**
-     * Whitelisted tool names (empty = block all)
-     */
-    tools_filter?: Array<string> | null;
+    mcp_endpoint: string;
     auth_type: McpAuthType;
     /**
      * Reference to the auth config (mcp_auth_configs.id)
@@ -1580,14 +1568,6 @@ export type McpApproval = {
     url: string;
     status: ApprovalStatus;
     instance?: null | McpInstance;
-};
-
-export type McpAuth = {
-    type: 'public';
-} | {
-    header_key: string;
-    header_value: string;
-    type: 'header';
 };
 
 export type McpAuthConfigParam = {
@@ -1660,15 +1640,6 @@ export type McpAuthParamType = 'header' | 'query';
 
 export type McpAuthType = 'public' | 'header' | 'oauth';
 
-export type McpExecuteRequest = {
-    params: unknown;
-};
-
-export type McpExecuteResponse = {
-    result?: unknown;
-    error?: string | null;
-};
-
 export type McpInstance = {
     id: string;
 };
@@ -1697,14 +1668,6 @@ export type McpRequest = {
      * Whether this instance is enabled
      */
     enabled: boolean;
-    /**
-     * Cached tool schemas from the MCP server (JSON array)
-     */
-    tools_cache?: Array<McpTool> | null;
-    /**
-     * Whitelisted tool names
-     */
-    tools_filter?: Array<string> | null;
     /**
      * Authentication type
      */
@@ -1817,28 +1780,6 @@ export type McpServerReviewInfo = {
      * User's MCP instances connected to this server URL
      */
     instances: Array<Mcp>;
-};
-
-/**
- * Tool schema cached from an MCP server's tools/list response.
- */
-export type McpTool = {
-    /**
-     * Tool name as declared by the MCP server
-     */
-    name: string;
-    /**
-     * Human-readable description of the tool
-     */
-    description?: string | null;
-    /**
-     * JSON Schema for tool input parameters
-     */
-    input_schema?: unknown;
-};
-
-export type McpToolsResponse = {
-    tools: Array<McpTool>;
 };
 
 export type Message = {
@@ -3329,7 +3270,7 @@ export type AppsGetMcpResponses = {
 
 export type AppsGetMcpResponse = AppsGetMcpResponses[keyof AppsGetMcpResponses];
 
-export type AppsRefreshMcpToolsData = {
+export type McpProxyData = {
     body?: never;
     path: {
         /**
@@ -3338,10 +3279,10 @@ export type AppsRefreshMcpToolsData = {
         id: string;
     };
     query?: never;
-    url: '/bodhi/v1/apps/mcps/{id}/tools/refresh';
+    url: '/bodhi/v1/apps/mcps/{id}/mcp';
 };
 
-export type AppsRefreshMcpToolsErrors = {
+export type McpProxyErrors = {
     /**
      * Invalid request parameters
      */
@@ -3355,75 +3296,19 @@ export type AppsRefreshMcpToolsErrors = {
      */
     403: OpenAiApiError;
     /**
-     * MCP not found
-     */
-    404: unknown;
-    /**
      * Internal server error
      */
     500: OpenAiApiError;
 };
 
-export type AppsRefreshMcpToolsError = AppsRefreshMcpToolsErrors[keyof AppsRefreshMcpToolsErrors];
+export type McpProxyError = McpProxyErrors[keyof McpProxyErrors];
 
-export type AppsRefreshMcpToolsResponses = {
+export type McpProxyResponses = {
     /**
-     * Refreshed list of tools
+     * Upstream response forwarded
      */
-    200: McpToolsResponse;
+    200: unknown;
 };
-
-export type AppsRefreshMcpToolsResponse = AppsRefreshMcpToolsResponses[keyof AppsRefreshMcpToolsResponses];
-
-export type AppsExecuteMcpToolData = {
-    body: McpExecuteRequest;
-    path: {
-        /**
-         * MCP instance UUID
-         */
-        id: string;
-        /**
-         * Tool name to execute
-         */
-        tool_name: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute';
-};
-
-export type AppsExecuteMcpToolErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * MCP or tool not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type AppsExecuteMcpToolError = AppsExecuteMcpToolErrors[keyof AppsExecuteMcpToolErrors];
-
-export type AppsExecuteMcpToolResponses = {
-    /**
-     * Tool execution result
-     */
-    200: McpExecuteResponse;
-};
-
-export type AppsExecuteMcpToolResponse = AppsExecuteMcpToolResponses[keyof AppsExecuteMcpToolResponses];
 
 export type CreateAccessRequestData = {
     /**
@@ -4038,47 +3923,6 @@ export type McpOAuthTokenExchangeResponses = {
 
 export type McpOAuthTokenExchangeResponse = McpOAuthTokenExchangeResponses[keyof McpOAuthTokenExchangeResponses];
 
-export type FetchMcpToolsData = {
-    body: FetchMcpToolsRequest;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/mcps/fetch-tools';
-};
-
-export type FetchMcpToolsErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * MCP server not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type FetchMcpToolsError = FetchMcpToolsErrors[keyof FetchMcpToolsErrors];
-
-export type FetchMcpToolsResponses = {
-    /**
-     * List of tools from MCP server
-     */
-    200: McpToolsResponse;
-};
-
-export type FetchMcpToolsResponse = FetchMcpToolsResponses[keyof FetchMcpToolsResponses];
-
 export type DeleteMcpOAuthTokenData = {
     body?: never;
     path: {
@@ -4598,102 +4442,6 @@ export type UpdateMcpResponses = {
 };
 
 export type UpdateMcpResponse = UpdateMcpResponses[keyof UpdateMcpResponses];
-
-export type RefreshMcpToolsData = {
-    body?: never;
-    path: {
-        /**
-         * MCP instance UUID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/mcps/{id}/tools/refresh';
-};
-
-export type RefreshMcpToolsErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * MCP not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type RefreshMcpToolsError = RefreshMcpToolsErrors[keyof RefreshMcpToolsErrors];
-
-export type RefreshMcpToolsResponses = {
-    /**
-     * Refreshed list of tools
-     */
-    200: McpToolsResponse;
-};
-
-export type RefreshMcpToolsResponse = RefreshMcpToolsResponses[keyof RefreshMcpToolsResponses];
-
-export type ExecuteMcpToolData = {
-    body: McpExecuteRequest;
-    path: {
-        /**
-         * MCP instance UUID
-         */
-        id: string;
-        /**
-         * Tool name to execute
-         */
-        tool_name: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/mcps/{id}/tools/{tool_name}/execute';
-};
-
-export type ExecuteMcpToolErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * MCP or tool not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ExecuteMcpToolError = ExecuteMcpToolErrors[keyof ExecuteMcpToolErrors];
-
-export type ExecuteMcpToolResponses = {
-    /**
-     * Tool execution result
-     */
-    200: McpExecuteResponse;
-};
-
-export type ExecuteMcpToolResponse = ExecuteMcpToolResponses[keyof ExecuteMcpToolResponses];
 
 export type ListAllModelsData = {
     body?: never;

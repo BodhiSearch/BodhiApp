@@ -2,6 +2,11 @@
 
 use std::{sync::Arc, time::Duration};
 
+use axum::{
+  extract::Request,
+  middleware::{self, Next},
+  response::{IntoResponse, Response},
+};
 use rmcp::{
   model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, CompleteRequestParams, CompleteResult,
@@ -71,6 +76,9 @@ pub struct TestMcpServerConfig {
   pub tools: Vec<TestTool>,
   pub resources: Vec<TestResource>,
   pub prompts: Vec<TestPrompt>,
+  /// If set, the server requires this header (key, value) for authentication.
+  /// Requests missing the header or providing the wrong value receive 401.
+  pub require_auth: Option<(String, String)>,
 }
 
 pub struct TestMcpServerBuilder {
@@ -78,6 +86,7 @@ pub struct TestMcpServerBuilder {
   tools: Vec<TestTool>,
   resources: Vec<TestResource>,
   prompts: Vec<TestPrompt>,
+  require_auth: Option<(String, String)>,
 }
 
 impl TestMcpServerBuilder {
@@ -101,12 +110,18 @@ impl TestMcpServerBuilder {
     self
   }
 
+  pub fn require_auth(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+    self.require_auth = Some((key.into(), value.into()));
+    self
+  }
+
   pub fn build(self) -> TestMcpServerConfig {
     TestMcpServerConfig {
       port: self.port,
       tools: self.tools,
       resources: self.resources,
       prompts: self.prompts,
+      require_auth: self.require_auth,
     }
   }
 }
@@ -129,6 +144,7 @@ impl TestMcpServer {
       tools: Vec::new(),
       resources: Vec::new(),
       prompts: Vec::new(),
+      require_auth: None,
     }
   }
 
@@ -156,7 +172,33 @@ impl TestMcpServer {
         },
       );
 
-    let router = axum::Router::new().nest_service("/mcp", service);
+    let router = if let Some((ref header_key, ref header_value)) = config.require_auth {
+      let expected_key = header_key.clone();
+      let expected_value = header_value.clone();
+      axum::Router::new()
+        .nest_service("/mcp", service)
+        .layer(middleware::from_fn(move |req: Request, next: Next| {
+          let expected_key = expected_key.clone();
+          let expected_value = expected_value.clone();
+          async move {
+            let actual = req
+              .headers()
+              .get(&expected_key)
+              .and_then(|v| v.to_str().ok())
+              .map(|s| s.to_string());
+            if actual.as_deref() != Some(&expected_value) {
+              return Response::builder()
+                .status(401)
+                .body(axum::body::Body::from("Unauthorized"))
+                .unwrap()
+                .into_response();
+            }
+            next.run(req).await
+          }
+        }))
+    } else {
+      axum::Router::new().nest_service("/mcp", service)
+    };
 
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", config.port)).await?;
     let port = listener.local_addr()?.port();
@@ -585,6 +627,91 @@ mod tests {
     drop(calls);
 
     // Shutdown
+    server.shutdown().await;
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn test_mcp_server_require_auth() -> anyhow::Result<()> {
+    let config = TestMcpServer::builder()
+      .tool(TestTool {
+        name: "echo".into(),
+        description: "Echoes input".into(),
+        input_schema: json!({
+          "type": "object",
+          "properties": {
+            "message": {"type": "string"}
+          }
+        }),
+        response: json!([{"type": "text", "text": "echoed: hello"}]),
+      })
+      .require_auth("X-Api-Key", "test-secret")
+      .build();
+
+    let server = TestMcpServer::start(config).await?;
+
+    // Without auth header: should get 401
+    let http = reqwest::Client::new();
+    let resp = http
+      .post(format!("{}", server.url))
+      .header("Content-Type", "application/json")
+      .header("Accept", "application/json, text/event-stream")
+      .json(&serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+          "protocolVersion": "2025-03-26",
+          "capabilities": {},
+          "clientInfo": {"name": "test", "version": "1.0"}
+        }
+      }))
+      .send()
+      .await?;
+    assert_eq!(
+      401,
+      resp.status().as_u16(),
+      "Missing auth should return 401"
+    );
+
+    // With wrong auth header: should get 401
+    let resp = http
+      .post(format!("{}", server.url))
+      .header("Content-Type", "application/json")
+      .header("Accept", "application/json, text/event-stream")
+      .header("X-Api-Key", "wrong-secret")
+      .json(&serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+          "protocolVersion": "2025-03-26",
+          "capabilities": {},
+          "clientInfo": {"name": "test", "version": "1.0"}
+        }
+      }))
+      .send()
+      .await?;
+    assert_eq!(401, resp.status().as_u16(), "Wrong auth should return 401");
+
+    // With correct auth header: should succeed
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert("X-Api-Key", "test-secret".parse().unwrap());
+    let http_client = reqwest::Client::builder()
+      .default_headers(headers)
+      .build()?;
+    let transport = StreamableHttpClientTransport::with_client(
+      http_client,
+      rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(
+        server.url.as_str(),
+      ),
+    );
+    let client = rmcp::model::ClientInfo::default().serve(transport).await?;
+
+    let tools_result = client.list_tools(None).await?;
+    assert_eq!(1, tools_result.tools.len());
+    assert_eq!("echo", tools_result.tools[0].name.as_ref());
+
     server.shutdown().await;
     Ok(())
   }

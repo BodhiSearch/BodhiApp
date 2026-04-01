@@ -68,12 +68,9 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
       await mcpsPage.expectOAuthConnected();
     });
 
-    await test.step('Fill instance details, discover tools, and create MCP', async () => {
+    await test.step('Fill instance details and create MCP', async () => {
       await mcpsPage.fillName(instanceData.name);
       await mcpsPage.fillSlug(instanceData.slug);
-      await mcpsPage.clickFetchTools();
-      await mcpsPage.expectToolsList();
-      await mcpsPage.expectToolItem(McpFixtures.OAUTH_EXPECTED_TOOL);
       await mcpsPage.clickCreate();
       await mcpsPage.expectMcpsListPage();
       mcpInstanceId = await mcpsPage.getMcpUuidByName(instanceData.name);
@@ -109,14 +106,12 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
       const shortTs = String(Date.now()).slice(-6);
       await mcpsPage.fillName(`${instanceData.name}-existing`);
       await mcpsPage.fillSlug(`oauth-ex-${shortTs}`);
-      await mcpsPage.clickFetchTools();
-      await mcpsPage.expectToolsList();
       await mcpsPage.clickCreate();
       await mcpsPage.expectMcpsListPage();
     });
   });
 
-  test('OAuth access request: 3rd party app executes tool on OAuth MCP via REST', async ({
+  test('OAuth access request: 3rd party app accesses OAuth MCP via REST', async ({
     page,
     sharedServerUrl,
   }) => {
@@ -196,20 +191,6 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
       const mcpData = await app.rest.getResponse();
       expect(mcpData.id).toBe(mcpInstanceId);
       expect(mcpData.auth_type).toBe('oauth');
-    });
-
-    await test.step('Phase 5: Execute echo tool via REST API as 3rd party', async () => {
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/apps/mcps/${mcpInstanceId}/tools/${McpFixtures.OAUTH_EXPECTED_TOOL}/execute`,
-        body: JSON.stringify({
-          params: { text: 'Hello from 3rd party' },
-        }),
-      });
-      expect(await app.rest.getResponseStatus()).toBe(200);
-      const result = await app.rest.getResponse();
-      expect(result.error).toBeUndefined();
-      expect(result.result).toBeDefined();
     });
   });
 

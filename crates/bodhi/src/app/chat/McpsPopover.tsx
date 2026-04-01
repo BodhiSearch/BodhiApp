@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { Mcp } from '@bodhiapp/ts-client';
-import { Plug, ChevronRight, ChevronDown } from 'lucide-react';
+import { Loader2, Plug, ChevronRight, ChevronDown } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useListMcps } from '@/hooks/mcps';
+import type { McpClientTool, McpConnectionStatus } from '@/hooks/mcps/useMcpClient';
 import { cn } from '@/lib/utils';
 
 interface McpsPopoverProps {
@@ -17,19 +18,15 @@ interface McpsPopoverProps {
   onToggleTool: (mcpId: string, toolName: string) => void;
   onToggleMcp: (mcpId: string, allToolNames: string[]) => void;
   disabled?: boolean;
+  mcpTools: Map<string, McpClientTool[]>;
+  mcpConnectionStatus: Map<string, McpConnectionStatus>;
 }
 
 /**
  * Check if an MCP instance is available for use in chat.
  */
 function isMcpAvailable(mcp: Mcp): boolean {
-  return (
-    mcp.mcp_server.enabled &&
-    mcp.enabled &&
-    mcp.tools_cache != null &&
-    mcp.tools_cache.length > 0 &&
-    (mcp.tools_filter == null || mcp.tools_filter.length > 0)
-  );
+  return mcp.mcp_server.enabled && mcp.enabled;
 }
 
 /**
@@ -38,18 +35,7 @@ function isMcpAvailable(mcp: Mcp): boolean {
 function getUnavailableReason(mcp: Mcp): string | null {
   if (!mcp.mcp_server.enabled) return 'Disabled by administrator';
   if (!mcp.enabled) return 'Disabled by user';
-  if (!mcp.tools_cache || mcp.tools_cache.length === 0) return 'Tools not yet discovered';
-  if (mcp.tools_filter && mcp.tools_filter.length === 0) return 'All tools blocked by filter';
   return null;
-}
-
-/**
- * Get the visible tools for an MCP, applying tools_filter ceiling.
- */
-function getVisibleTools(mcp: Mcp) {
-  if (!mcp.tools_cache) return [];
-  if (mcp.tools_filter == null) return mcp.tools_cache;
-  return mcp.tools_cache.filter((t) => mcp.tools_filter!.includes(t.name));
 }
 
 function getCheckboxState(
@@ -70,15 +56,26 @@ interface McpItemProps {
   enabledMcpTools: Record<string, string[]>;
   onToggleTool: (mcpId: string, toolName: string) => void;
   onToggleMcp: (mcpId: string, allToolNames: string[]) => void;
+  tools: McpClientTool[];
+  connectionStatus: McpConnectionStatus | undefined;
 }
 
-function McpItem({ mcp, isExpanded, onToggleExpand, enabledMcpTools, onToggleTool, onToggleMcp }: McpItemProps) {
+function McpItem({
+  mcp,
+  isExpanded,
+  onToggleExpand,
+  enabledMcpTools,
+  onToggleTool,
+  onToggleMcp,
+  tools,
+  connectionStatus,
+}: McpItemProps) {
   const unavailableReason = getUnavailableReason(mcp);
   const isAvailable = isMcpAvailable(mcp);
-  const visibleTools = getVisibleTools(mcp);
-  const allToolNames = visibleTools.map((t) => t.name);
+  const isConnecting = connectionStatus === 'connecting';
+  const allToolNames = tools.map((t) => t.name);
   const enabledCount = enabledMcpTools[mcp.id]?.length || 0;
-  const checkboxState = getCheckboxState(mcp.id, visibleTools.length, enabledMcpTools);
+  const checkboxState = getCheckboxState(mcp.id, tools.length, enabledMcpTools);
 
   const parentRow = (
     <div
@@ -124,7 +121,14 @@ function McpItem({ mcp, isExpanded, onToggleExpand, enabledMcpTools, onToggleToo
           {mcp.slug}
         </Label>
         <p className="text-xs text-muted-foreground">
-          ({enabledCount}/{visibleTools.length})
+          {isConnecting ? (
+            <span className="flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Connecting...
+            </span>
+          ) : (
+            `(${enabledCount}/${tools.length})`
+          )}
         </p>
       </div>
     </div>
@@ -148,7 +152,7 @@ function McpItem({ mcp, isExpanded, onToggleExpand, enabledMcpTools, onToggleToo
       {rowWithTooltip}
       {isExpanded && isAvailable && (
         <div className="ml-6 space-y-1 mt-1">
-          {visibleTools.map((tool) => {
+          {tools.map((tool) => {
             const isToolEnabled = enabledMcpTools[mcp.id]?.includes(tool.name) || false;
             return (
               <div
@@ -174,7 +178,14 @@ function McpItem({ mcp, isExpanded, onToggleExpand, enabledMcpTools, onToggleToo
   );
 }
 
-export function McpsPopover({ enabledMcpTools, onToggleTool, onToggleMcp, disabled = false }: McpsPopoverProps) {
+export function McpsPopover({
+  enabledMcpTools,
+  onToggleTool,
+  onToggleMcp,
+  disabled = false,
+  mcpTools,
+  mcpConnectionStatus,
+}: McpsPopoverProps) {
   const [open, setOpen] = useState(false);
   const [expandedMcps, setExpandedMcps] = useState<Set<string>>(new Set());
   const { data: mcpsResponse, isLoading } = useListMcps();
@@ -246,6 +257,8 @@ export function McpsPopover({ enabledMcpTools, onToggleTool, onToggleMcp, disabl
                   enabledMcpTools={enabledMcpTools}
                   onToggleTool={onToggleTool}
                   onToggleMcp={onToggleMcp}
+                  tools={mcpTools.get(mcp.id) || []}
+                  connectionStatus={mcpConnectionStatus.get(mcp.id)}
                 />
               ))}
             </div>

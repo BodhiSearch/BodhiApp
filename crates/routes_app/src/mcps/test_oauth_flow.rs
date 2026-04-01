@@ -58,8 +58,6 @@ fn test_mcp_with_server_entity() -> McpWithServerEntity {
     slug: "test-mcp".to_string(),
     description: None,
     enabled: true,
-    tools_cache: None,
-    tools_filter: None,
     auth_type: McpAuthType::Oauth,
     auth_config_id: Some("oauth-config-1".to_string()),
     created_at: fixed_dt(),

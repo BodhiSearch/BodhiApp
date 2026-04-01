@@ -18,12 +18,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 import {
   useCreateMcp,
   useDeleteOAuthToken,
-  useFetchMcpTools,
   useListAuthConfigs,
   useGetMcp,
   useListMcpServers,
@@ -36,7 +34,6 @@ import { useGetUser } from '@/hooks/users';
 import { isAdminRole } from '@/lib/roles';
 import { authConfigTypeLabel } from '@/lib/mcpUtils';
 import McpServerSelector from '@/app/mcps/new/McpServerSelector';
-import ToolSelection from '@/app/mcps/new/ToolSelection';
 import { useMcpFormStore } from '@/stores/mcpFormStore';
 import type { McpAuthParamInput, McpAuthType } from '@bodhiapp/ts-client';
 
@@ -217,19 +214,6 @@ function NewMcpPageContent() {
     },
   });
 
-  const fetchToolsMutation = useFetchMcpTools({
-    onSuccess: (response) => {
-      const tools = response.tools || [];
-      store.setFetchedTools(tools);
-      store.setSelectedTools(new Set(tools.map((t) => t.name)));
-      store.setToolsFetched(true);
-      toast({ title: `Fetched ${tools.length} tool${tools.length !== 1 ? 's' : ''}` });
-    },
-    onError: (message) => {
-      toast({ title: 'Failed to fetch tools', description: message, variant: 'destructive' });
-    },
-  });
-
   const form = useForm<CreateMcpFormData>({
     resolver: zodResolver(createMcpSchema),
     defaultValues: {
@@ -257,11 +241,6 @@ function NewMcpPageContent() {
           enabled: (sessionState.enabled as boolean) ?? true,
           auth_type: (sessionState.auth_type as McpAuthType) || 'public',
         });
-        if (sessionState.tools_cache) {
-          store.setFetchedTools(sessionState.tools_cache as typeof store.fetchedTools);
-          store.setSelectedTools(new Set((sessionState.tools_filter as string[]) || []));
-          store.setToolsFetched(true);
-        }
         if (sessionState.oauth_token_id) {
           store.completeOAuthFlow(sessionState.oauth_token_id as string);
         }
@@ -300,11 +279,6 @@ function NewMcpPageContent() {
         name: existingMcp.mcp_server.name,
         enabled: existingMcp.mcp_server.enabled,
       } as McpServerResponse);
-      if (existingMcp.tools_cache) {
-        store.setFetchedTools(existingMcp.tools_cache);
-        store.setSelectedTools(new Set(existingMcp.tools_filter || []));
-        store.setToolsFetched(true);
-      }
       if (existingMcp.auth_type === 'header' && existingMcp.auth_config_id) {
         store.setSelectedAuthConfig(existingMcp.auth_config_id, 'header');
       }
@@ -353,9 +327,6 @@ function NewMcpPageContent() {
         form.setValue('slug', slug);
       }
 
-      store.setFetchedTools([]);
-      store.setSelectedTools(new Set());
-      store.setToolsFetched(false);
       store.disconnect();
       store.setSelectedAuthConfig(null, null);
       form.setValue('auth_type', 'public');
@@ -396,30 +367,6 @@ function NewMcpPageContent() {
       }
     }
     return creds.length > 0 ? creds : undefined;
-  };
-
-  const handleFetchTools = () => {
-    const serverId = form.getValues('mcp_server_id');
-    if (!serverId) return;
-
-    const credentials = buildCredentials();
-    const authConfigId = store.selectedAuthConfigId || existingMcp?.auth_config_id;
-    if (credentials) {
-      fetchToolsMutation.mutate({
-        mcp_server_id: serverId,
-        credentials,
-        auth_config_id: authConfigId || undefined,
-        oauth_token_id: store.oauthTokenId || undefined,
-      });
-    } else if (authConfigId) {
-      fetchToolsMutation.mutate({
-        mcp_server_id: serverId,
-        auth_config_id: authConfigId,
-        oauth_token_id: store.oauthTokenId || undefined,
-      });
-    } else {
-      fetchToolsMutation.mutate({ mcp_server_id: serverId });
-    }
   };
 
   const handleOAuthConnect = async () => {
@@ -485,8 +432,6 @@ function NewMcpPageContent() {
       mcp_server_id: data.mcp_server_id,
       description: data.description || undefined,
       enabled: data.enabled,
-      tools_cache: store.fetchedTools.length > 0 ? store.fetchedTools : undefined,
-      tools_filter: Array.from(store.selectedTools),
     };
 
     let authPayload: { auth_type?: McpAuthType; auth_config_id?: string; oauth_token_id?: string } = {};
@@ -523,7 +468,6 @@ function NewMcpPageContent() {
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending || oauthLoginMutation.isPending;
-  const canCreate = store.toolsFetched && !isSubmitting;
 
   const dropdownValue = showNewAuthRedirect ? '__new__' : store.selectedAuthConfigId || '__public__';
 
@@ -805,40 +749,15 @@ function NewMcpPageContent() {
                 )}
               </div>
 
-              <ToolSelection
-                selectedServer={selectedServer}
-                isFetchingTools={fetchToolsMutation.isPending}
-                toolsFetched={store.toolsFetched}
-                fetchedTools={store.fetchedTools}
-                selectedTools={store.selectedTools}
-                onToolToggle={(name) => store.toggleTool(name)}
-                onSelectAll={() => store.selectAllTools()}
-                onDeselectAll={() => store.deselectAllTools()}
-                onFetchTools={handleFetchTools}
-              />
-
               <div className="flex gap-4">
                 {editId ? (
                   <Button type="submit" disabled={isSubmitting} data-testid="mcp-update-button">
                     {isSubmitting ? 'Updating...' : 'Update MCP'}
                   </Button>
                 ) : (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Button type="submit" disabled={!canCreate} data-testid="mcp-create-button">
-                            {isSubmitting ? 'Creating...' : 'Create MCP'}
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      {!canCreate && !isSubmitting && (
-                        <TooltipContent>
-                          <p>Fetch tools from server first</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Button type="submit" disabled={isSubmitting} data-testid="mcp-create-button">
+                    {isSubmitting ? 'Creating...' : 'Create MCP'}
+                  </Button>
                 )}
                 <Button
                   type="button"

@@ -1,3 +1,4 @@
+import { McpFixtures } from '@/fixtures/mcpFixtures.mjs';
 import { BasePage } from '@/pages/BasePage.mjs';
 import { expect } from '@playwright/test';
 
@@ -5,6 +6,8 @@ import { expect } from '@playwright/test';
  * Page object for MCP management on /ui/mcps and /ui/mcps/servers pages
  */
 export class McpsPage extends BasePage {
+  static MCP_CONNECTION_TIMEOUT = McpFixtures.MCP_CONNECTION_TIMEOUT;
+
   selectors = {
     // Management tabs
     managementTabs: '[data-testid="mcp-management-tabs"]',
@@ -91,18 +94,6 @@ export class McpsPage extends BasePage {
     oauthDisconnectButton: '[data-testid="oauth-disconnect-button"]',
     oauthConnectedInfo: '[data-testid="oauth-connected-info"]',
 
-    // Tools section
-    toolsSection: '[data-testid="mcp-tools-section"]',
-    fetchToolsButton: '[data-testid="mcp-fetch-tools-button"]',
-    toolsLoading: '[data-testid="mcp-tools-loading"]',
-    toolsList: '[data-testid="mcp-tools-list"]',
-    toolItem: (name) => `[data-testid="mcp-tool-${name}"]`,
-    toolCheckbox: (name) => `[data-testid="mcp-tool-checkbox-${name}"]`,
-    selectAllButton: '[data-testid="mcp-select-all-tools"]',
-    deselectAllButton: '[data-testid="mcp-deselect-all-tools"]',
-    noTools: '[data-testid="mcp-no-tools"]',
-    toolsEmptyState: '[data-testid="mcp-tools-empty-state"]',
-
     // Playground page
     mcpPlaygroundButton: (id) => `[data-testid="mcp-playground-button-${id}"]`,
     playgroundPage: '[data-testid="mcp-playground-page"]',
@@ -112,7 +103,6 @@ export class McpsPage extends BasePage {
     playgroundTool: (name) => `[data-testid="mcp-playground-tool-${name}"]`,
     playgroundRefreshButton: '[data-testid="mcp-playground-refresh-button"]',
     playgroundToolName: '[data-testid="mcp-playground-tool-name"]',
-    playgroundNotWhitelistedWarning: '[data-testid="mcp-playground-not-whitelisted-warning"]',
     playgroundInputModeForm: '[data-testid="mcp-playground-input-mode-form"]',
     playgroundInputModeJson: '[data-testid="mcp-playground-input-mode-json"]',
     playgroundParam: (name) => `[data-testid="mcp-playground-param-${name}"]`,
@@ -403,13 +393,7 @@ export class McpsPage extends BasePage {
     await this.fillSlug(slug);
     if (description) await this.fillDescription(description);
 
-    await this.clickFetchTools();
-    await this.expectToolsList();
     await this.clickCreate();
-  }
-
-  async createMcpInstanceWithAllTools(serverName, name, slug, description = '') {
-    await this.createMcpInstance(serverName, name, slug, description);
   }
 
   // ========== Auth Config Dropdown Methods ==========
@@ -493,8 +477,6 @@ export class McpsPage extends BasePage {
       await this.fillCredentialValue(cred.param_key, cred.value);
     }
 
-    await this.clickFetchTools();
-    await this.expectToolsList();
     await this.clickCreate();
   }
 
@@ -523,47 +505,24 @@ export class McpsPage extends BasePage {
 
     await this.fillName(name);
     await this.fillSlug(slug);
-    await this.clickFetchTools();
-    await this.expectToolsList();
     await this.clickCreate();
   }
 
-  // ========== Tools Section Methods ==========
+  // ========== Playground Connection Status Methods ==========
 
-  async expectToolsSection() {
-    await expect(this.page.locator(this.selectors.toolsSection)).toBeVisible();
+  async expectPlaygroundConnected(timeout = McpsPage.MCP_CONNECTION_TIMEOUT) {
+    const status = this.page.locator('[data-testid="mcp-playground-connection-status"]');
+    await expect(status).toHaveText('connected', { timeout });
   }
 
-  async clickFetchTools() {
-    await this.page.click(this.selectors.fetchToolsButton);
+  async expectPlaygroundConnectionError(timeout = McpsPage.MCP_CONNECTION_TIMEOUT) {
+    const status = this.page.locator('[data-testid="mcp-playground-connection-status"]');
+    await expect(status).toHaveText('error', { timeout });
   }
 
-  async expectToolsList() {
-    await expect(this.page.locator(this.selectors.toolsList)).toBeVisible();
-  }
-
-  async expectToolItem(toolName) {
-    await expect(this.page.locator(this.selectors.toolItem(toolName))).toBeVisible();
-  }
-
-  async toggleTool(toolName) {
-    await this.page.click(this.selectors.toolCheckbox(toolName));
-  }
-
-  async selectAllTools() {
-    await this.page.click(this.selectors.selectAllButton);
-  }
-
-  async expectToolsListNotVisible() {
-    await expect(this.page.locator(this.selectors.toolsList)).not.toBeVisible();
-  }
-
-  async expectToolsEmptyState() {
-    await expect(this.page.locator(this.selectors.toolsEmptyState)).toBeVisible();
-  }
-
-  async expectToolsLoadingHidden() {
-    await expect(this.page.locator(this.selectors.toolsLoading)).not.toBeVisible();
+  async expectPlaygroundConnecting(timeout = 5000) {
+    const status = this.page.locator('[data-testid="mcp-playground-connection-status"]');
+    await expect(status).toHaveText('connecting', { timeout });
   }
 
   // ========== Playground Page Methods ==========
@@ -585,16 +544,6 @@ export class McpsPage extends BasePage {
   async expectPlaygroundToolSelected(name) {
     const toolName = this.page.locator(this.selectors.playgroundToolName);
     await expect(toolName).toContainText(name);
-  }
-
-  async expectNotWhitelistedWarning() {
-    await expect(this.page.locator(this.selectors.playgroundNotWhitelistedWarning)).toBeVisible();
-  }
-
-  async expectNoWhitelistedWarning() {
-    await expect(
-      this.page.locator(this.selectors.playgroundNotWhitelistedWarning)
-    ).not.toBeVisible();
   }
 
   async clickPlaygroundRefresh() {
@@ -657,5 +606,4 @@ export class McpsPage extends BasePage {
     await this.page.waitForURL(/\/ui\/mcps(?!\/playground)/);
     await this.waitForSPAReady();
   }
-
 }
