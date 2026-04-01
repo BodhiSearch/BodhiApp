@@ -79,7 +79,7 @@ const mcpTools = [
 
 const mcpForPlayground: Mcp = {
   ...mockMcp,
-  mcp_endpoint: MCP_ENDPOINT,
+  path: MCP_ENDPOINT,
 };
 
 beforeEach(() => {

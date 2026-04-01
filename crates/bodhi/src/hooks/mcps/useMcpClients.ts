@@ -57,12 +57,12 @@ export function useMcpClients(): UseMcpClientsReturn {
   }, []);
 
   const connectAll = useCallback(async (mcps: Mcp[]) => {
-    const eligibleMcps = mcps.filter((m) => m.mcp_server.enabled && m.enabled && m.mcp_endpoint);
+    const eligibleMcps = mcps.filter((m) => m.mcp_server.enabled && m.enabled && m.path);
 
     // Build incoming set: id -> endpoint
     const incomingEndpoints = new Map<string, string>();
     for (const mcp of eligibleMcps) {
-      incomingEndpoints.set(mcp.id, mcp.mcp_endpoint!);
+      incomingEndpoints.set(mcp.id, mcp.path!);
     }
 
     const currentEndpoints = connectedEndpointsRef.current;
@@ -79,7 +79,7 @@ export function useMcpClients(): UseMcpClientsReturn {
     const toConnect: Mcp[] = [];
     for (const mcp of eligibleMcps) {
       const currentEndpoint = currentEndpoints.get(mcp.id);
-      if (currentEndpoint === undefined || currentEndpoint !== mcp.mcp_endpoint) {
+      if (currentEndpoint === undefined || currentEndpoint !== mcp.path) {
         toConnect.push(mcp);
       }
     }
@@ -137,7 +137,7 @@ export function useMcpClients(): UseMcpClientsReturn {
 
     const results = await Promise.allSettled(
       toConnect.map(async (mcp) => {
-        const fullUrl = baseUrl + mcp.mcp_endpoint;
+        const fullUrl = baseUrl + mcp.path;
         const client = new Client({ name: 'bodhi-app', version: '1.0.0' }, { capabilities: {} });
         const credentialFetch: typeof fetch = (url, init) => fetch(url, { ...init, credentials: 'include' });
         const transport = new StreamableHTTPClientTransport(new URL(fullUrl), {
@@ -166,7 +166,7 @@ export function useMcpClients(): UseMcpClientsReturn {
         if (result.status === 'fulfilled') {
           const { client, transport, tools } = result.value;
           connectionsRef.current.set(mcp.id, { client, transport });
-          connectedEndpointsRef.current.set(mcp.id, mcp.mcp_endpoint!);
+          connectedEndpointsRef.current.set(mcp.id, mcp.path!);
           next.set(mcp.id, { status: 'connected', tools, error: null });
         } else {
           const errorMsg = result.reason instanceof Error ? result.reason.message : 'Connection failed';

@@ -471,17 +471,17 @@ function McpPlaygroundContent() {
   const { data: mcp, isLoading, error } = useGetMcp(id, { enabled: !!id });
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
 
-  const mcpClient = useMcpClient(mcp?.mcp_endpoint ?? null);
+  const mcpClient = useMcpClient(mcp?.path ?? null);
 
   // Connect when mcp data is available
   useEffect(() => {
-    if (mcp?.mcp_endpoint) {
+    if (mcp?.path) {
       mcpClient.connect();
     }
     return () => {
       mcpClient.disconnect();
     };
-  }, [mcp?.mcp_endpoint]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mcp?.path]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tools = mcpClient.tools;
 

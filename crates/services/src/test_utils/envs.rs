@@ -13,8 +13,6 @@ use rstest::fixture;
 use std::{
   collections::HashMap,
   env::VarError,
-  fs::Permissions,
-  os::unix::fs::PermissionsExt,
   path::{Path, PathBuf},
   sync::{Arc, RwLock},
 };
@@ -135,7 +133,11 @@ impl SettingServiceStub {
     std::fs::create_dir_all(&server_exec_dir).unwrap();
     let server_exec = server_exec_dir.join(EXEC_NAME);
     std::fs::write(&server_exec, "#!/bin/sh\necho 'mock executable'\n").unwrap();
-    std::fs::set_permissions(&server_exec, Permissions::from_mode(0o755)).unwrap();
+    #[cfg(unix)]
+    {
+      use std::os::unix::fs::PermissionsExt;
+      std::fs::set_permissions(&server_exec, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
 
     let settings = HashMap::from([
       ("HOME".to_string(), home.display().to_string()),

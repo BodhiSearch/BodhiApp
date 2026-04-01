@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use crate::mcp_proxy_path;
+
 // ============================================================================
 // AppAccessRequest - Database row for app access request consent tracking
 // ============================================================================
@@ -103,9 +105,29 @@ pub struct McpApproval {
   pub instance: Option<McpInstance>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq)]
 pub struct McpInstance {
   pub id: String,
+  /// MCP proxy path for this instance (e.g. `/bodhi/v1/apps/mcps/{id}/mcp`)
+  pub path: String,
+}
+
+impl<'de> Deserialize<'de> for McpInstance {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    #[derive(Deserialize)]
+    struct Helper {
+      id: String,
+    }
+    let helper = Helper::deserialize(deserializer)?;
+    let path = mcp_proxy_path(&helper.id);
+    Ok(McpInstance {
+      id: helper.id,
+      path,
+    })
+  }
 }
 
 // ============================================================================
@@ -264,7 +286,7 @@ pub struct CreateAccessRequest {
             {
                 "url": "https://mcp.deepwiki.com/mcp",
                 "status": "approved",
-                "instance": {"id": "instance-uuid"}
+                "instance": {"id": "instance-uuid", "path": "/bodhi/v1/apps/mcps/instance-uuid/mcp"}
             }
         ]
     }

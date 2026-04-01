@@ -1546,9 +1546,9 @@ export type Mcp = {
      */
     enabled: boolean;
     /**
-     * MCP proxy endpoint path for this instance
+     * MCP proxy path for this instance
      */
-    mcp_endpoint: string;
+    path: string;
     auth_type: McpAuthType;
     /**
      * Reference to the auth config (mcp_auth_configs.id)
@@ -1642,6 +1642,10 @@ export type McpAuthType = 'public' | 'header' | 'oauth';
 
 export type McpInstance = {
     id: string;
+    /**
+     * MCP proxy path for this instance (e.g. `/bodhi/v1/apps/mcps/{id}/mcp`)
+     */
+    path: string;
 };
 
 /**

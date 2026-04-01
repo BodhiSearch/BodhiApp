@@ -8317,7 +8317,8 @@
             "mcps": [
               {
                 "instance": {
-                  "id": "instance-uuid"
+                  "id": "instance-uuid",
+                  "path": "/bodhi/v1/apps/mcps/instance-uuid/mcp"
                 },
                 "status": "approved",
                 "url": "https://mcp.deepwiki.com/mcp"
@@ -11685,7 +11686,7 @@
           "slug",
           "name",
           "enabled",
-          "mcp_endpoint",
+          "path",
           "auth_type",
           "created_at",
           "updated_at"
@@ -11718,9 +11719,9 @@
             "type": "boolean",
             "description": "Whether this instance is enabled"
           },
-          "mcp_endpoint": {
+          "path": {
             "type": "string",
-            "description": "MCP proxy endpoint path for this instance"
+            "description": "MCP proxy path for this instance"
           },
           "auth_type": {
             "$ref": "#/components/schemas/McpAuthType"
@@ -12028,11 +12029,16 @@
       "McpInstance": {
         "type": "object",
         "required": [
-          "id"
+          "id",
+          "path"
         ],
         "properties": {
           "id": {
             "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "MCP proxy path for this instance (e.g. `/bodhi/v1/apps/mcps/{id}/mcp`)"
           }
         }
       },

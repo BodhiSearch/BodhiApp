@@ -1541,7 +1541,8 @@ export interface components {
          *         "mcps": [
          *           {
          *             "instance": {
-         *               "id": "instance-uuid"
+         *               "id": "instance-uuid",
+         *               "path": "/bodhi/v1/apps/mcps/instance-uuid/mcp"
          *             },
          *             "status": "approved",
          *             "url": "https://mcp.deepwiki.com/mcp"
@@ -2645,8 +2646,8 @@ export interface components {
             description?: string | null;
             /** @description Whether this instance is enabled */
             enabled: boolean;
-            /** @description MCP proxy endpoint path for this instance */
-            mcp_endpoint: string;
+            /** @description MCP proxy path for this instance */
+            path: string;
             auth_type: components["schemas"]["McpAuthType"];
             /** @description Reference to the auth config (mcp_auth_configs.id) */
             auth_config_id?: string | null;
@@ -2737,6 +2738,8 @@ export interface components {
         McpAuthType: "public" | "header" | "oauth";
         McpInstance: {
             id: string;
+            /** @description MCP proxy path for this instance (e.g. `/bodhi/v1/apps/mcps/{id}/mcp`) */
+            path: string;
         };
         /** @description Input for creating or updating an MCP instance. */
         McpRequest: {

@@ -239,7 +239,7 @@ export function ChatUI() {
   const mcpClients = useMcpClients();
 
   useEffect(() => {
-    const enabledMcps = mcps.filter((m) => m.mcp_server.enabled && m.enabled && m.mcp_endpoint);
+    const enabledMcps = mcps.filter((m) => m.mcp_server.enabled && m.enabled && m.path);
     mcpClients.connectAll(enabledMcps);
     return () => {
       mcpClients.disconnectAll();

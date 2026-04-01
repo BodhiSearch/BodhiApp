@@ -6,6 +6,11 @@ use strum::{Display, EnumString, IntoStaticStr};
 use utoipa::ToSchema;
 use validator::Validate;
 
+/// Returns the MCP proxy path for a given instance ID (e.g. `/bodhi/v1/apps/mcps/{id}/mcp`).
+pub fn mcp_proxy_path(id: &str) -> String {
+  format!("/bodhi/v1/apps/mcps/{id}/mcp")
+}
+
 // ============================================================================
 // McpServer - Admin-managed MCP server registry (public API model)
 // ============================================================================
@@ -207,8 +212,8 @@ pub struct Mcp {
   pub description: Option<String>,
   /// Whether this instance is enabled
   pub enabled: bool,
-  /// MCP proxy endpoint path for this instance
-  pub mcp_endpoint: String,
+  /// MCP proxy path for this instance
+  pub path: String,
   pub auth_type: McpAuthType,
   /// Reference to the auth config (mcp_auth_configs.id)
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -475,7 +480,7 @@ impl From<super::mcp_server_entity::McpServerEntity> for McpServer {
 
 impl From<super::mcp_entity::McpWithServerEntity> for Mcp {
   fn from(row: super::mcp_entity::McpWithServerEntity) -> Self {
-    let mcp_endpoint = format!("/bodhi/v1/apps/mcps/{}/mcp", row.id);
+    let path = mcp_proxy_path(&row.id);
     Self {
       id: row.id,
       mcp_server: McpServerInfo {
@@ -488,7 +493,7 @@ impl From<super::mcp_entity::McpWithServerEntity> for Mcp {
       name: row.name,
       description: row.description,
       enabled: row.enabled,
-      mcp_endpoint,
+      path,
       auth_type: row.auth_type,
       auth_config_id: row.auth_config_id,
       created_at: row.created_at,
