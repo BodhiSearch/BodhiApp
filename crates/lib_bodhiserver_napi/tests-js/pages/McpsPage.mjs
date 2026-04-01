@@ -381,6 +381,10 @@ export class McpsPage extends BasePage {
     await this.waitForSPAReady();
   }
 
+  async toggleEnabled() {
+    await this.page.locator(this.selectors.enabledSwitch).click();
+  }
+
   async createMcpInstance(serverName, name, slug, description = '') {
     await this.navigateToMcpsList();
     await this.expectMcpsListPage();

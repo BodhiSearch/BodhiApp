@@ -245,30 +245,7 @@ test.describe(
         expect(mcpId).toBeTruthy();
       });
 
-      await test.step('Disable the MCP instance via API', async () => {
-        // Use page.evaluate to PUT the update with enabled: false
-        const result = await page.evaluate(
-          async ({ baseUrl, mcpId, instanceData }) => {
-            const resp = await fetch(`${baseUrl}/bodhi/v1/mcps/${mcpId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                name: instanceData.name,
-                slug: instanceData.slug,
-                description: instanceData.description,
-                enabled: false,
-              }),
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
-            return await resp.json();
-          },
-          { baseUrl: sharedServerUrl, mcpId, instanceData }
-        );
-        expect(result.enabled).toBe(false);
-      });
-
-      // ── Phase 2: Get OAuth token ──
+      // ── Phase 2: Get OAuth token (instance must be enabled for access request approval) ──
 
       const appClient = getPreConfiguredAppClient();
       const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
@@ -304,6 +281,18 @@ test.describe(
         await app.dashboard.navigateTo();
         accessToken = await app.dashboard.getAccessToken();
         expect(accessToken).toBeTruthy();
+      });
+
+      // ── Phase 2b: Disable the instance via UI AFTER approval ──
+
+      await test.step('Disable the MCP instance via UI', async () => {
+        await mcpsPage.navigateToMcpsList();
+        await mcpsPage.expectMcpsListPage();
+        await mcpsPage.clickEditById(mcpId);
+        await mcpsPage.expectNewMcpPage();
+        await mcpsPage.toggleEnabled();
+        await mcpsPage.clickUpdate();
+        await mcpsPage.expectMcpsListPage();
       });
 
       // ── Phase 3: Try to connect via Inspector — expect failure ──
