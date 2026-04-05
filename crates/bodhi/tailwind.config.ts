@@ -109,7 +109,7 @@ const config = {
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
       fontFamily: {
-        sans: ['Inter', ...fontFamily.sans],
+        sans: ['Inter Variable', 'Inter', ...fontFamily.sans],
       },
       fontSize: {
         xs: ['0.75rem', { lineHeight: '1rem' }],

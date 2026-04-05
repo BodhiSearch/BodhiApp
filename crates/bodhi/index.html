@@ -18,17 +18,8 @@
     <meta name="twitter:description" content="Bodhi App - Run LLMs Locally" />
     <link rel="manifest" href="/ui/manifest.json" />
     <link rel="icon" href="/ui/favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>Bodhi App - Run LLMs Locally</title>
-    <script>
-      let theme = window.localStorage.getItem('bodhi-ui-theme')
-      if (!theme) {
-        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-      }
-      document.documentElement.classList.add(theme)
-    </script>
+    <script src="/ui/theme-init.js"></script>
   </head>
   <body class="min-h-screen bg-background font-sans antialiased">
     <div id="root"></div>
