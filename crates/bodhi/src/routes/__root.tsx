@@ -1,6 +1,6 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router';
 import 'prismjs/themes/prism-tomorrow.css';
-import '@/app/globals.css';
+import '@/styles/globals.css';
 
 import ClientProviders from '@/components/ClientProviders';
 import { AppHeader } from '@/components/navigation/AppHeader';

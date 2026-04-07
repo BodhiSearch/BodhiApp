@@ -9,6 +9,7 @@ export default defineConfig({
     TanStackRouterVite({
       routesDirectory: './src/routes',
       generatedRouteTree: './src/routeTree.gen.ts',
+      routeFileIgnorePattern: '.*\\.test\\..*',
     }),
     react(),
   ],
@@ -20,7 +21,7 @@ export default defineConfig({
     outDir: 'out',
     emptyOutDir: true,
     sourcemap: false,
-    chunkSizeWarningLimit: 2500,
+    chunkSizeWarningLimit: 3000,
   },
   server: {
     port: 3000,

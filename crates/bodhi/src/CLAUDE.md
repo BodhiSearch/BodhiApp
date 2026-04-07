@@ -61,13 +61,19 @@ MSW handler registration order matters. Sub-path handlers (`/mcps/servers`, `/mc
 
 ### TanStack Router (File-Based Routing)
 
-Routes live in `src/routes/` using TanStack Router file conventions. Route files are thin wrappers that import page components from `src/app/` (the old Next.js page components, kept in place).
+Routes live in `src/routes/` using TanStack Router file conventions. Each route file contains both the `createFileRoute` definition and the page component implementation directly.
 
 **Route file pattern** — see `src/routes/login/index.tsx`:
 
-- `createFileRoute('/login/')` defines the route
+- `createFileRoute('/login/')` and `Route` export at the top
 - `validateSearch` with Zod schema for type-safe query params
-- `component` points to the page component from `src/app/`
+- `component` references a function defined in the same file
+
+**Sub-components** co-located in `-components/` directories (e.g., `src/routes/chat/-components/`, `src/routes/setup/-components/`). TanStack Router ignores directories prefixed with `-`.
+
+**Shared data/types** for the setup domain: `src/routes/setup/-shared/types.ts` and `constants.ts`.
+
+**Model catalog data/types**: `src/hooks/models/model-catalog-data.ts` and `model-catalog-types.ts`.
 
 **Layout routes** — `src/routes/setup/route.tsx` wraps child routes with `Outlet`.
 

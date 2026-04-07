@@ -1,5 +1,5 @@
-import { chatModelsCatalog, embeddingModelsCatalog } from '@/app/setup/download-models/data';
-import { ModelCatalog } from '@/app/setup/download-models/types';
+import { chatModelsCatalog, embeddingModelsCatalog } from './model-catalog-data';
+import { ModelCatalog } from './model-catalog-types';
 
 /**
  * Hook to get chat models catalog

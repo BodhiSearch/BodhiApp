@@ -1,7 +1,11 @@
+import React from 'react';
+
 import { createFileRoute } from '@tanstack/react-router';
+import { useSearch } from '@tanstack/react-router';
 import { z } from 'zod';
 
-import NewAliasPage from '@/app/models/alias/new/page';
+import AliasForm from '../-components/AliasForm';
+import AppInitializer from '@/components/AppInitializer';
 
 export const Route = createFileRoute('/models/alias/new/')({
   validateSearch: z.object({
@@ -9,5 +13,32 @@ export const Route = createFileRoute('/models/alias/new/')({
     filename: z.string().optional(),
     snapshot: z.string().optional(),
   }),
-  component: NewAliasPage,
+  component: NewModel,
 });
+
+function NewModelContent() {
+  const search = useSearch({ strict: false });
+
+  const initialData =
+    search.repo || search.filename
+      ? {
+          source: 'user' as const,
+          alias: '',
+          repo: search.repo || '',
+          filename: search.filename || '',
+          snapshot: search.snapshot || '',
+          request_params: {},
+          context_params: [],
+        }
+      : undefined;
+
+  return <AliasForm isEditMode={false} initialData={initialData} />;
+}
+
+export default function NewModel() {
+  return (
+    <AppInitializer allowedStatus="ready" authenticated={true}>
+      <NewModelContent />
+    </AppInitializer>
+  );
+}

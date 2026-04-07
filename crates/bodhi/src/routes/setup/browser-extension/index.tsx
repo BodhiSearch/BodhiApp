@@ -1,7 +1,64 @@
+import React, { useState } from 'react';
+
+import { motion } from 'framer-motion';
+import { useNavigate } from '@tanstack/react-router';
+
 import { createFileRoute } from '@tanstack/react-router';
 
-import BrowserExtensionPage from '@/app/setup/browser-extension/page';
+import { SetupContainer, SetupFooter } from '../-components';
+import { itemVariants } from '../-shared/types';
+import AppInitializer from '@/components/AppInitializer';
+import { BrowserExtensionCard } from '@/components/setup/BrowserExtensionCard';
+import { useBrowserDetection } from '@/hooks/use-browser-detection';
+import { useExtensionDetection } from '@/hooks/use-extension-detection';
+import type { BrowserInfo } from '@/lib/browser-utils';
+import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
 
 export const Route = createFileRoute('/setup/browser-extension/')({
-  component: BrowserExtensionPage,
+  component: BrowserExtensionSetupPage,
 });
+
+function BrowserExtensionSetupContent() {
+  const navigate = useNavigate();
+  const { detectedBrowser } = useBrowserDetection();
+  const { status: extensionStatus, refresh } = useExtensionDetection();
+  const [selectedBrowser, setSelectedBrowser] = useState<BrowserInfo | null>(null);
+
+  const handleNext = () => {
+    navigate({ to: ROUTE_SETUP_COMPLETE });
+  };
+
+  return (
+    <SetupContainer>
+      <div data-testid="browser-extension-setup-page" data-page-state={extensionStatus}>
+        {/* Main Card */}
+        <motion.div variants={itemVariants} className="mb-8">
+          <BrowserExtensionCard
+            detectedBrowser={detectedBrowser}
+            selectedBrowser={selectedBrowser}
+            onBrowserSelect={setSelectedBrowser}
+            extensionStatus={extensionStatus}
+            onRefresh={refresh}
+          />
+        </motion.div>
+
+        {/* Standard Footer */}
+        <SetupFooter
+          clarificationText="Need help? The extension enables AI features directly in your browser tabs."
+          subText="You can always install the extension later from the settings page."
+          onContinue={handleNext}
+          buttonLabel={extensionStatus === 'installed' ? 'Continue' : 'Skip for Now'}
+          buttonTestId="browser-extension-continue"
+        />
+      </div>
+    </SetupContainer>
+  );
+}
+
+export default function BrowserExtensionSetupPage() {
+  return (
+    <AppInitializer allowedStatus="ready" authenticated={true}>
+      <BrowserExtensionSetupContent />
+    </AppInitializer>
+  );
+}

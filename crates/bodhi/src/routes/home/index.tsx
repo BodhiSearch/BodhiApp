@@ -1,7 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import HomePage from '@/app/home/page';
+import AppInitializer from '@/components/AppInitializer';
 
 export const Route = createFileRoute('/home/')({
   component: HomePage,
 });
+
+export default function HomePage() {
+  return <AppInitializer />;
+}

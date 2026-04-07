@@ -1,0 +1,133 @@
+import { TokenForm } from '@/routes/tokens/-components/TokenForm';
+import { TokenCreated } from '@bodhiapp/ts-client';
+import { showSuccessParams } from '@/lib/utils.test';
+import { createWrapper } from '@/tests/wrapper';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { mockCreateToken, mockCreateTokenError } from '@/test-utils/msw-v2/handlers/tokens';
+import { describe, expect, it, vi } from 'vitest';
+
+const mockToken: TokenCreated = {
+  token: 'test-token-123',
+};
+
+const mockToast = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
+
+setupMswV2();
+
+afterEach(() => {
+  mockToast.mockClear();
+});
+
+describe('TokenForm', () => {
+  beforeEach(() => {
+    server.use(...mockCreateToken({ token: mockToken.token }));
+  });
+
+  it('renders form fields correctly', () => {
+    const onTokenCreated = vi.fn();
+    render(<TokenForm onTokenCreated={onTokenCreated} />, {
+      wrapper: createWrapper(),
+    });
+
+    expect(screen.getByLabelText('Token Name (Optional)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate Token' })).toBeInTheDocument();
+  });
+
+  it('handles form submission with name', async () => {
+    const user = userEvent.setup();
+    const onTokenCreated = vi.fn();
+
+    await act(async () => {
+      render(<TokenForm onTokenCreated={onTokenCreated} />, {
+        wrapper: createWrapper(),
+      });
+    });
+
+    await user.type(screen.getByLabelText('Token Name (Optional)'), 'Test Token');
+    await user.click(screen.getByRole('button', { name: 'Generate Token' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'API token successfully generated'));
+    });
+
+    // Check if callback was called with token
+    expect(onTokenCreated).toHaveBeenCalledWith(mockToken);
+
+    // Check if form was reset
+    expect(screen.getByLabelText('Token Name (Optional)')).toHaveValue('');
+  });
+
+  it('handles form submission without name', async () => {
+    const user = userEvent.setup();
+    const onTokenCreated = vi.fn();
+
+    render(<TokenForm onTokenCreated={onTokenCreated} />, {
+      wrapper: createWrapper(),
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Generate Token' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'API token successfully generated'));
+      expect(onTokenCreated).toHaveBeenCalledWith(mockToken);
+    });
+  });
+});
+
+describe('TokenDialog', () => {
+  it('disables form during submission', async () => {
+    const user = userEvent.setup();
+    const onTokenCreated = vi.fn();
+    server.use(...mockCreateToken({ token: 'test-token-123' }, { delayMs: 100 }));
+
+    await act(async () => {
+      render(<TokenForm onTokenCreated={onTokenCreated} />, {
+        wrapper: createWrapper(),
+      });
+    });
+
+    const submitButton = screen.getByRole('button', { name: 'Generate Token' });
+    const input = screen.getByLabelText('Token Name (Optional)');
+
+    await user.click(submitButton);
+
+    // Check if form elements are disabled during submission
+    expect(submitButton).toBeDisabled();
+    expect(input).toBeDisabled();
+    expect(screen.getByText('Generating...')).toBeInTheDocument();
+  });
+});
+
+describe('TokenDialog', () => {
+  it('handles api error', async () => {
+    const user = userEvent.setup();
+    const onTokenCreated = vi.fn();
+    server.use(
+      ...mockCreateTokenError({
+        message: 'Failed to generate token. Please try again.',
+        type: 'invalid_request_error',
+      })
+    );
+    render(<TokenForm onTokenCreated={onTokenCreated} />, {
+      wrapper: createWrapper(),
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Generate Token' }));
+
+    // Wait for error toast and console error
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Error',
+        description: 'Failed to generate token. Please try again.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+    });
+    expect(onTokenCreated).not.toHaveBeenCalled();
+  });
+});
