@@ -1,22 +1,18 @@
 use crate::inference::InferenceError;
 use crate::models::{Alias, ApiAlias};
+use axum::http::Method;
 use axum::response::Response;
 use serde_json::Value;
 
-/// The LLM endpoint type for routing inference requests
+/// Clone (not Copy) because response ID variants contain owned String.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LlmEndpoint {
   ChatCompletions,
   Embeddings,
-  /// POST /v1/responses — create a response
   Responses,
-  /// GET /v1/responses/{id} — retrieve a response
   ResponsesGet(String),
-  /// DELETE /v1/responses/{id} — delete a response
   ResponsesDelete(String),
-  /// GET /v1/responses/{id}/input_items — list input items
   ResponsesInputItems(String),
-  /// POST /v1/responses/{id}/cancel — cancel a background response
   ResponsesCancel(String),
 }
 
@@ -33,11 +29,11 @@ impl LlmEndpoint {
     }
   }
 
-  pub fn http_method(&self) -> &'static str {
+  pub fn http_method(&self) -> &'static Method {
     match self {
-      Self::ResponsesGet(_) | Self::ResponsesInputItems(_) => "GET",
-      Self::ResponsesDelete(_) => "DELETE",
-      _ => "POST",
+      Self::ResponsesGet(_) | Self::ResponsesInputItems(_) => &Method::GET,
+      Self::ResponsesDelete(_) => &Method::DELETE,
+      _ => &Method::POST,
     }
   }
 }

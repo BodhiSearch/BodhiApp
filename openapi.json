@@ -7847,7 +7847,7 @@
           "responses"
         ],
         "summary": "Retrieve Response",
-        "description": "Retrieves a previously created response by ID. Requires `model` query parameter for routing.",
+        "description": "Retrieves a previously created response by ID. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).",
         "operationId": "getResponse",
         "parameters": [
           {
@@ -7944,7 +7944,7 @@
           "responses"
         ],
         "summary": "Delete Response",
-        "description": "Deletes a stored response by ID. Requires `model` query parameter for routing.",
+        "description": "Deletes a stored response by ID. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).",
         "operationId": "deleteResponse",
         "parameters": [
           {
@@ -8036,7 +8036,7 @@
           "responses"
         ],
         "summary": "Cancel Response",
-        "description": "Cancels a background response. Requires `model` query parameter for routing.",
+        "description": "Cancels a background response. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).",
         "operationId": "cancelResponse",
         "parameters": [
           {
@@ -8135,7 +8135,7 @@
           "responses"
         ],
         "summary": "List Response Input Items",
-        "description": "Lists input items for a given response. Requires `model` query parameter for routing.",
+        "description": "Lists input items for a given response. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).",
         "operationId": "listResponseInputItems",
         "parameters": [
           {

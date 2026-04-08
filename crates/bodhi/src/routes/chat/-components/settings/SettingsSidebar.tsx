@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/chat';
 import { useListModels } from '@/hooks/models';
+import { API_FORMAT_PRESETS } from '@/schemas/apiModel';
 
 interface SettingRowProps {
   label: string;
@@ -57,6 +58,13 @@ export function SettingsSidebar() {
           <div className="space-y-6">
             <div className="space-y-2">
               <AliasSelector models={models} isLoading={isLoading} tooltip={SETTINGS_TOOLTIPS.alias} />
+              {settings.model && (
+                <div className="text-xs text-muted-foreground px-1" data-testid="api-format-label">
+                  API Format:{' '}
+                  {API_FORMAT_PRESETS[settings.apiFormat as keyof typeof API_FORMAT_PRESETS]?.name ??
+                    settings.apiFormat}
+                </div>
+              )}
             </div>
 
             <SettingRow label="Stream Response" tooltip={SETTINGS_TOOLTIPS.stream} htmlFor="stream-mode">

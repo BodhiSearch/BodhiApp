@@ -1,7 +1,10 @@
 import { createContext, useContext, useCallback, useEffect, useState } from 'react';
 
+export type ApiFormatSetting = 'openai' | 'openai_responses';
+
 interface ChatSettings {
   model: string;
+  apiFormat: ApiFormatSetting;
   stream?: boolean;
   stream_enabled: boolean;
   seed?: number;
@@ -37,6 +40,7 @@ interface ChatSettings {
 
 const defaultSettings: ChatSettings = {
   model: '',
+  apiFormat: 'openai',
   stream: true,
   temperature_enabled: false,
   top_p_enabled: false,
@@ -93,6 +97,7 @@ interface ChatSettingsContextType extends ChatSettings {
   setApiTokenEnabled: (enabled: boolean) => void;
   setMaxToolIterations: (iterations: number | undefined) => void;
   setMaxToolIterationsEnabled: (enabled: boolean) => void;
+  setApiFormat: (format: ApiFormatSetting) => void;
 }
 
 const ChatSettingsContext = createContext<ChatSettingsContextType | undefined>(undefined);
@@ -176,6 +181,10 @@ export function ChatSettingsProvider({
     },
     [setSetting]
   );
+
+  const setApiFormat = useCallback((format: ApiFormatSetting) => {
+    setSettings((prev) => ({ ...prev, apiFormat: format }));
+  }, []);
 
   const { setValue: setTemperature, setEnabled: setTemperatureEnabled } = createSetters('temperature');
   const { setValue: setTopP, setEnabled: setTopPEnabled } = createSetters('top_p');
@@ -280,6 +289,7 @@ export function ChatSettingsProvider({
         setApiTokenEnabled,
         setMaxToolIterations,
         setMaxToolIterationsEnabled,
+        setApiFormat,
         // @ts-expect-error - ignore
         getRequestSettings,
         reset,

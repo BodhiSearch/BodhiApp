@@ -199,7 +199,7 @@ pub(crate) async fn proxy_to_remote(
 ) -> Result<Response, InferenceError> {
   let method = endpoint.http_method();
   let api_path = endpoint.api_path();
-  let body = if method == "POST" {
+  let body = if *method == axum::http::Method::POST {
     Some(request)
   } else {
     None

@@ -264,6 +264,19 @@ export class ChatPage extends BasePage {
   }
 
   /**
+   * Wait for the API format label to contain the expected text.
+   * Ensures the AliasSelector's useEffect has synced the apiFormat setting
+   * from the model's configuration, preventing a race where sendMessage fires
+   * before the format propagates through React state.
+   */
+  async waitForApiFormat(expectedFormatText) {
+    await this.openSettingsPanel();
+    await expect(this.page.locator('[data-testid="api-format-label"]')).toContainText(
+      expectedFormatText
+    );
+  }
+
+  /**
    * Verify that chat is empty (shows empty state)
    */
   async verifyChatEmpty() {

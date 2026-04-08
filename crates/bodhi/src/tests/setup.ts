@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom';
 import { notifyManager } from '@tanstack/react-query';
 import { beforeAll, afterAll, vi } from 'vitest';

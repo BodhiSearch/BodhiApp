@@ -1,3 +1,12 @@
+import type {
+  TextContent as PiTextContent,
+  ThinkingContent as PiThinkingContent,
+  AssistantMessage as PiAssistantMessage,
+} from '@mariozechner/pi-ai';
+import type { AgentMessage as PiAgentMessage } from '@mariozechner/pi-agent-core';
+
+export type { PiTextContent, PiThinkingContent, PiAssistantMessage, PiAgentMessage };
+
 export interface MessageMetadata {
   model?: string;
   usage?: {
@@ -52,4 +61,36 @@ export interface ChatSettings {
   topP?: number;
   frequencyPenalty?: number;
   presencePenalty?: number;
+}
+
+export function extractTextFromAgentMessage(msg: PiAgentMessage): string {
+  if ('role' in msg) {
+    if (msg.role === 'user') {
+      return typeof msg.content === 'string'
+        ? msg.content
+        : (msg.content as PiTextContent[])
+            .filter((c): c is PiTextContent => c.type === 'text')
+            .map((c) => c.text)
+            .join('');
+    }
+    if (msg.role === 'assistant') {
+      const assistantMsg = msg as PiAssistantMessage;
+      return assistantMsg.content
+        .filter((c): c is PiTextContent => c.type === 'text')
+        .map((c) => c.text)
+        .join('');
+    }
+  }
+  return '';
+}
+
+export function extractThinkingFromAgentMessage(msg: PiAgentMessage): string {
+  if ('role' in msg && msg.role === 'assistant') {
+    const assistantMsg = msg as PiAssistantMessage;
+    return assistantMsg.content
+      .filter((c): c is PiThinkingContent => c.type === 'thinking')
+      .map((c) => c.thinking)
+      .join('\n');
+  }
+  return '';
 }

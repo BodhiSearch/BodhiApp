@@ -224,6 +224,63 @@ describe('useChatSettings', () => {
     });
   });
 
+  describe('apiFormat management', () => {
+    it('should initialize with openai as default api format', () => {
+      const { result } = renderHook(() => useChatSettings(), { wrapper });
+
+      expect(result.current.apiFormat).toBe('openai');
+    });
+
+    it('should update api format via setApiFormat', () => {
+      const { result } = renderHook(() => useChatSettings(), { wrapper });
+
+      act(() => {
+        result.current.setApiFormat('openai_responses');
+      });
+
+      expect(result.current.apiFormat).toBe('openai_responses');
+    });
+
+    it('should persist api format to localStorage', () => {
+      const { result } = renderHook(() => useChatSettings(), { wrapper });
+
+      act(() => {
+        result.current.setApiFormat('openai_responses');
+      });
+
+      const saved = JSON.parse(localStorage.getItem('chat-settings') || '{}');
+      expect(saved.apiFormat).toBe('openai_responses');
+    });
+
+    it('should load persisted api format from localStorage', () => {
+      localStorage.setItem(
+        'chat-settings',
+        JSON.stringify({
+          model: 'test',
+          apiFormat: 'openai_responses',
+        })
+      );
+
+      const { result } = renderHook(() => useChatSettings(), { wrapper });
+
+      expect(result.current.apiFormat).toBe('openai_responses');
+    });
+
+    it('should reset api format to default on reset', () => {
+      const { result } = renderHook(() => useChatSettings(), { wrapper });
+
+      act(() => {
+        result.current.setApiFormat('openai_responses');
+      });
+
+      act(() => {
+        result.current.reset();
+      });
+
+      expect(result.current.apiFormat).toBe('openai');
+    });
+  });
+
   describe('initialData handling', () => {
     it('should apply initialData over default settings', () => {
       const initialData = {

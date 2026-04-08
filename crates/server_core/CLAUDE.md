@@ -48,6 +48,8 @@ Two `InferenceService` implementations (trait defined in `services::inference`):
 - **StandaloneInferenceService**: wraps `SharedContext` for local models. Has keep-alive timer that auto-stops server after inactivity. `forward_local()` loads model via SharedContext, `forward_remote()` proxies to API.
 - **MultitenantInferenceService**: remote-only. `forward_local()` returns `InferenceError::Unsupported`. No SharedContext needed.
 
+`proxy_to_remote` uses `http::Method` for type-safe HTTP method dispatch (was `&str`). Body is only sent for `Method::POST` requests; GET/DELETE receive `None`.
+
 ### SSE Streaming
 Two distinct implementations for different use cases:
 - **DirectSse** (`direct_sse.rs`): Application-generated events. `DirectEvent` builder with `data()` and `finalize()`. BytesMut-optimized. Optional keep-alive.

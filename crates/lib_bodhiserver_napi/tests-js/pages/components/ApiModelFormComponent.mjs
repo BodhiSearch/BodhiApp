@@ -29,18 +29,27 @@ export class ApiModelFormComponent {
     successToast: '[data-state="open"]',
   };
 
+  // API format display name mapping (must match API_FORMAT_PRESETS in apiModel.ts)
+  static FORMAT_DISPLAY_NAMES = {
+    openai: 'OpenAI - Completions',
+    openai_responses: 'OpenAI - Responses',
+  };
+
+  static getFormatDisplayName(format) {
+    return ApiModelFormComponent.FORMAT_DISPLAY_NAMES[format] || format.toUpperCase();
+  }
+
   // API Format Selection
   async selectApiFormat(format = 'openai') {
     await this.page.click(this.selectors.apiFormatSelect);
 
-    // Map format to display text (options are displayed in uppercase)
-    const formatDisplayText = format === 'openai' ? 'OPENAI' : format.toUpperCase();
+    const formatDisplayText = ApiModelFormComponent.getFormatDisplayName(format);
 
-    // Use role-based selector for better reliability with Radix UI dropdowns
-    await this.page.getByRole('option', { name: formatDisplayText }).click();
+    // Use exact match to avoid ambiguity between similar option names
+    await this.page.getByRole('option', { name: formatDisplayText, exact: true }).click();
 
-    // Wait for base URL to be auto-populated (for OpenAI)
-    if (format === 'openai') {
+    // Wait for base URL to be auto-populated (for OpenAI formats)
+    if (format === 'openai' || format === 'openai_responses') {
       await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
         'https://api.openai.com/v1'
       );
@@ -317,8 +326,10 @@ export class ApiModelFormComponent {
 
   // Form Pre-population Verification
   async verifyFormPreFilled(api_format = 'openai', baseUrl = 'https://api.openai.com/v1') {
-    // API format is displayed in uppercase
-    await this.expectText(this.selectors.apiFormatSelect, api_format.toUpperCase());
+    await this.expectText(
+      this.selectors.apiFormatSelect,
+      ApiModelFormComponent.getFormatDisplayName(api_format)
+    );
     await this.expectValue(this.selectors.baseUrlInput, baseUrl);
     // API key should be empty (masked for security)
     await this.expectValue(this.selectors.apiKeyInput, '');

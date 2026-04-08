@@ -126,7 +126,6 @@ pub async fn chat_completions_handler(
   auth_scope: AuthScope,
   WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, JsonRejectionError>,
 ) -> Result<Response, ApiError> {
-  // Validate basic request structure
   validate_chat_completion_request(&request)?;
 
   let model = request
@@ -150,18 +149,7 @@ pub async fn chat_completions_handler(
       .await
       .map_err(ApiError::from)?,
     Alias::Api(ref api_alias) if api_alias.api_format != ApiFormat::OpenAIResponses => {
-      let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
-      let user_id = auth_scope
-        .auth_context()
-        .user_id()
-        .unwrap_or("")
-        .to_string();
-      let api_key = auth_scope
-        .db_service()
-        .get_api_key_for_alias(&tenant_id, &user_id, &api_alias.id)
-        .await
-        .ok()
-        .flatten();
+      let api_key = super::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
       inference
         .forward_remote(LlmEndpoint::ChatCompletions, request, api_alias, api_key)
         .await
@@ -241,18 +229,7 @@ pub async fn embeddings_handler(
       .await
       .map_err(ApiError::from)?,
     Alias::Api(ref api_alias) if api_alias.api_format != ApiFormat::OpenAIResponses => {
-      let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
-      let user_id = auth_scope
-        .auth_context()
-        .user_id()
-        .unwrap_or("")
-        .to_string();
-      let api_key = auth_scope
-        .db_service()
-        .get_api_key_for_alias(&tenant_id, &user_id, &api_alias.id)
-        .await
-        .ok()
-        .flatten();
+      let api_key = super::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
       inference
         .forward_remote(LlmEndpoint::Embeddings, request_value, api_alias, api_key)
         .await

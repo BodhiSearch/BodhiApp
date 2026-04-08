@@ -1,12 +1,10 @@
 import { createContext, useContext, useCallback, useState, useEffect } from 'react';
 
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { chatDb, ChatRecord, MessageRecord } from '@/lib/chatDb';
 import { nanoid } from '@/lib/utils';
-import { Chat } from '@/types/chat';
+import { Chat, Message } from '@/types/chat';
 
-const CHATS_STORAGE_KEY = 'chats';
-const CURRENT_CHAT_ID_KEY = 'current-chat-id';
-const MAX_CHATS = 100;
+const MAX_CHATS = 1000;
 
 interface ChatDBContextType {
   chats: Chat[];
@@ -22,128 +20,200 @@ interface ChatDBContextType {
 
 const ChatDBContext = createContext<ChatDBContextType | undefined>(undefined);
 
-export function ChatDBProvider({ children }: { children: React.ReactNode }) {
-  const [chats, setChats] = useState<Chat[]>(() => {
+function chatRecordToChat(record: ChatRecord, messages: Message[]): Chat {
+  return {
+    id: record.id,
+    title: record.title,
+    messages,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    model: record.model,
+    enabledMcpTools: record.enabledMcpTools,
+  };
+}
+
+function chatToChatRecord(chat: Chat, userId: string): ChatRecord {
+  return {
+    id: chat.id,
+    userId,
+    title: chat.title,
+    model: chat.model,
+    createdAt: chat.createdAt,
+    updatedAt: chat.updatedAt,
+    enabledMcpTools: chat.enabledMcpTools,
+  };
+}
+
+function messagesToRecords(chatId: string, messages: Message[]): MessageRecord[] {
+  const now = Date.now();
+  return messages.map((message, index) => ({
+    chatId,
+    message,
+    createdAt: now + index,
+  }));
+}
+
+export function ChatDBProvider({ children, userId = 'default' }: { children: React.ReactNode; userId?: string }) {
+  const storageKey = `current-chat-id:${userId}`;
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [currentChatId, setCurrentChatIdState] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(CHATS_STORAGE_KEY);
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
-          const savedChats = JSON.parse(saved);
-          return savedChats.slice(0, MAX_CHATS);
-        } catch (e) {
-          console.warn('Failed to parse chats from localStorage:', e);
-          return [];
+          return JSON.parse(saved);
+        } catch {
+          return null;
         }
       }
-      return [];
     }
-    return [];
+    return null;
   });
 
-  const [currentChatId, setCurrentChatId] = useLocalStorage<string | null>(CURRENT_CHAT_ID_KEY, null);
+  const setCurrentChatId = useCallback((id: string | null) => {
+    setCurrentChatIdState(id);
+    if (typeof window !== 'undefined') {
+      if (id === null) {
+        localStorage.removeItem(storageKey);
+      } else {
+        localStorage.setItem(storageKey, JSON.stringify(id));
+      }
+    }
+  }, [storageKey]);
+
+  const loadChats = useCallback(async () => {
+    const records = await chatDb.chats.where('userId').equals(userId).reverse().sortBy('updatedAt');
+
+    const chatList: Chat[] = [];
+    for (const record of records.slice(0, MAX_CHATS)) {
+      const msgRecords = await chatDb.messages.where('chatId').equals(record.id).sortBy('createdAt');
+      chatList.push(
+        chatRecordToChat(
+          record,
+          msgRecords.map((r) => r.message)
+        )
+      );
+    }
+    setChats(chatList);
+  }, [userId]);
+
+  useEffect(() => {
+    loadChats();
+  }, [loadChats]);
 
   const currentChat = currentChatId ? (chats.find((chat) => chat.id === currentChatId) ?? null) : null;
 
-  useEffect(() => {
-    localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(chats));
-  }, [chats]);
-
   const getChat = useCallback(
     async (id: string) => {
-      const chat = chats.find((c) => c.id === id);
-      if (!chat) {
+      const record = await chatDb.chats.get(id);
+      if (!record || record.userId !== userId) {
         return { data: {} as Chat, status: 404 };
       }
-      return { data: chat, status: 200 };
+      const msgRecords = await chatDb.messages.where('chatId').equals(id).sortBy('createdAt');
+      return {
+        data: chatRecordToChat(
+          record,
+          msgRecords.map((r) => r.message)
+        ),
+        status: 200,
+      };
     },
-    [chats]
+    [userId]
   );
 
-  const createOrUpdateChat = useCallback(async (chat: Chat) => {
-    setChats((prev) => {
-      const index = prev.findIndex((c) => c.id === chat.id);
-      const updatedChat = {
-        ...chat,
-        updatedAt: Date.now(),
-      };
+  const createOrUpdateChat = useCallback(
+    async (chat: Chat) => {
+      const updatedChat = { ...chat, updatedAt: Date.now() };
+      const record = chatToChatRecord(updatedChat, userId);
 
-      let newChats: Chat[];
-      if (index === -1) {
-        newChats = [updatedChat, ...prev];
-        if (newChats.length > MAX_CHATS) {
-          newChats = newChats.slice(0, MAX_CHATS);
+      await chatDb.transaction('rw', chatDb.chats, chatDb.messages, async () => {
+        await chatDb.chats.put(record);
+        await chatDb.messages.where('chatId').equals(chat.id).delete();
+        if (updatedChat.messages.length > 0) {
+          await chatDb.messages.bulkAdd(messagesToRecords(chat.id, updatedChat.messages));
         }
-      } else {
-        newChats = [updatedChat, ...prev.slice(0, index), ...prev.slice(index + 1)];
-      }
-      return newChats;
-    });
+      });
 
-    return chat.id;
-  }, []);
+      const count = await chatDb.chats.where('userId').equals(userId).count();
+      if (count > MAX_CHATS) {
+        const oldest = await chatDb.chats.where('userId').equals(userId).sortBy('updatedAt');
+        const toDelete = oldest.slice(0, count - MAX_CHATS);
+        for (const old of toDelete) {
+          await chatDb.messages.where('chatId').equals(old.id).delete();
+          await chatDb.chats.delete(old.id);
+        }
+      }
+
+      await loadChats();
+      return chat.id;
+    },
+    [userId, loadChats]
+  );
 
   const deleteChat = useCallback(
     async (id: string) => {
       if (currentChatId !== id) {
-        // If not current chat, just delete it
-        setChats((prev) => prev.filter((c) => c.id !== id));
+        await chatDb.transaction('rw', chatDb.chats, chatDb.messages, async () => {
+          await chatDb.messages.where('chatId').equals(id).delete();
+          await chatDb.chats.delete(id);
+        });
+        await loadChats();
         return;
       }
 
-      // If it's current chat, try to find an empty chat first
-      setChats((prev) => {
-        const emptyChat = prev.find((chat) => chat.id !== id && chat.messages.length === 0);
+      const emptyChat = chats.find((chat) => chat.id !== id && chat.messages.length === 0);
 
-        if (emptyChat) {
-          // Found empty chat - delete current and switch to empty
-          setCurrentChatId(emptyChat.id);
-          return prev.filter((c) => c.id !== id);
-        }
+      if (emptyChat) {
+        setCurrentChatId(emptyChat.id);
+        await chatDb.transaction('rw', chatDb.chats, chatDb.messages, async () => {
+          await chatDb.messages.where('chatId').equals(id).delete();
+          await chatDb.chats.delete(id);
+        });
+        await loadChats();
+        return;
+      }
 
-        // No empty chat found - reset current chat instead of deleting
-        return prev.map((chat) => {
-          if (chat.id === id) {
-            return {
-              ...chat,
-              title: 'New Chat',
-              messages: [],
-              updatedAt: Date.now(),
-            };
-          }
-          return chat;
+      await chatDb.transaction('rw', chatDb.chats, chatDb.messages, async () => {
+        await chatDb.messages.where('chatId').equals(id).delete();
+        await chatDb.chats.update(id, {
+          title: 'New Chat',
+          updatedAt: Date.now(),
         });
       });
+      await loadChats();
     },
-    [currentChatId, setCurrentChatId]
+    [currentChatId, chats, setCurrentChatId, loadChats]
   );
 
   const clearChats = useCallback(async () => {
-    setChats([]);
+    await chatDb.transaction('rw', chatDb.chats, chatDb.messages, async () => {
+      const userChats = await chatDb.chats.where('userId').equals(userId).toArray();
+      for (const chat of userChats) {
+        await chatDb.messages.where('chatId').equals(chat.id).delete();
+      }
+      await chatDb.chats.where('userId').equals(userId).delete();
+    });
     setCurrentChatId(null);
-  }, [setCurrentChatId]);
+    setChats([]);
+  }, [userId, setCurrentChatId]);
 
   const createNewChat = useCallback(async () => {
-    // Don't create new if current chat is empty
     if (!currentChat || currentChat.messages.length === 0) {
       return;
     }
 
-    // Try to find an empty chat
     const emptyChat = chats.find((chat) => chat.messages.length === 0);
 
     if (emptyChat) {
-      // Update the empty chat's timestamp
       const updatedChat: Chat = {
         ...emptyChat,
         updatedAt: Date.now(),
       };
-
       await createOrUpdateChat(updatedChat);
       setCurrentChatId(emptyChat.id);
       return;
     }
 
-    // Create new chat if no empty chat found
     const newChat: Chat = {
       id: nanoid(),
       title: 'New Chat',

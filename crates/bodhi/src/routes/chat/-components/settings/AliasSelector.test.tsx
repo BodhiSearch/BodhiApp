@@ -108,6 +108,7 @@ describe('AliasSelector', () => {
     vi.mocked(chatSettings.useChatSettings).mockReturnValue({
       model: '',
       setModel: vi.fn(),
+      setApiFormat: vi.fn(),
     } as any);
   });
 
@@ -141,6 +142,7 @@ describe('AliasSelector', () => {
     vi.mocked(chatSettings.useChatSettings).mockReturnValue({
       model: 'gpt-4',
       setModel: vi.fn(),
+      setApiFormat: vi.fn(),
     } as any);
 
     render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
@@ -155,6 +157,7 @@ describe('AliasSelector', () => {
     vi.mocked(chatSettings.useChatSettings).mockReturnValue({
       model: '',
       setModel: mockSetModel,
+      setApiFormat: vi.fn(),
     } as any);
 
     render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
@@ -241,6 +244,7 @@ describe('AliasSelector', () => {
       vi.mocked(chatSettings.useChatSettings).mockReturnValue({
         model: '',
         setModel: mockSetModel,
+        setApiFormat: vi.fn(),
       } as any);
 
       const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
@@ -255,7 +259,6 @@ describe('AliasSelector', () => {
       const localModelOption = screen.getByText('local-model-1');
       fireEvent.click(localModelOption);
 
-      // Should call setModel with the alias value
       expect(mockSetModel).toHaveBeenCalledWith('local-model-1');
     });
 
@@ -264,6 +267,7 @@ describe('AliasSelector', () => {
       vi.mocked(chatSettings.useChatSettings).mockReturnValue({
         model: '',
         setModel: mockSetModel,
+        setApiFormat: vi.fn(),
       } as any);
 
       const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
@@ -286,6 +290,7 @@ describe('AliasSelector', () => {
       vi.mocked(chatSettings.useChatSettings).mockReturnValue({
         model: 'claude-3-opus',
         setModel: vi.fn(),
+        setApiFormat: vi.fn(),
       } as any);
 
       const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
@@ -302,6 +307,7 @@ describe('AliasSelector', () => {
       vi.mocked(chatSettings.useChatSettings).mockReturnValue({
         model: 'local-model-2',
         setModel: vi.fn(),
+        setApiFormat: vi.fn(),
       } as any);
 
       const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
@@ -340,10 +346,76 @@ describe('AliasSelector', () => {
       expect(screen.queryByText('openai')).not.toBeInTheDocument();
     });
 
+    it('calls setApiFormat with api_format when API model is selected', () => {
+      const mockSetApiFormat = vi.fn();
+      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+        model: '',
+        setModel: vi.fn(),
+        setApiFormat: mockSetApiFormat,
+      } as any);
+
+      const apiModels = [
+        {
+          source: 'api',
+          id: 'responses-api',
+          api_format: 'openai_responses' as const,
+          base_url: 'https://api.openai.com/v1',
+          has_api_key: true,
+          models: ['gpt-4o'],
+          forward_all_with_prefix: false,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      render(<AliasSelector models={apiModels} tooltip="Select a model" />, {
+        wrapper: createWrapper(),
+      });
+
+      const select = screen.getByRole('combobox');
+      fireEvent.click(select);
+      fireEvent.click(screen.getByText('gpt-4o'));
+
+      expect(mockSetApiFormat).toHaveBeenCalledWith('openai_responses');
+    });
+
+    it('calls setApiFormat with openai when local model is selected', () => {
+      const mockSetApiFormat = vi.fn();
+      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+        model: '',
+        setModel: vi.fn(),
+        setApiFormat: mockSetApiFormat,
+      } as any);
+
+      const localModels = [
+        {
+          source: 'user',
+          alias: 'my-local-model',
+          repo: 'test/repo',
+          filename: 'model.gguf',
+          snapshot: 'abc123',
+          request_params: {},
+          context_params: [],
+          model_params: {},
+        },
+      ];
+
+      render(<AliasSelector models={localModels} tooltip="Select a model" />, {
+        wrapper: createWrapper(),
+      });
+
+      const select = screen.getByRole('combobox');
+      fireEvent.click(select);
+      fireEvent.click(screen.getByText('my-local-model'));
+
+      expect(mockSetApiFormat).toHaveBeenCalledWith('openai');
+    });
+
     it('falls back to displaying unknown selected model', () => {
       vi.mocked(chatSettings.useChatSettings).mockReturnValue({
         model: 'unknown-model-not-in-list',
         setModel: vi.fn(),
+        setApiFormat: vi.fn(),
       } as any);
 
       render(<AliasSelector models={mockUnifiedModels} tooltip="Select a model" />, {

@@ -3,6 +3,7 @@ use crate::models::{ApiAlias, ApiFormat};
 use crate::SafeReqwest;
 use async_trait::async_trait;
 use axum::body::Body;
+use axum::http::Method;
 use axum::response::Response;
 use serde_json::Value;
 use std::time::Duration;
@@ -28,20 +29,23 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
   /// API key is optional - if None, requests without authentication (API may return 401)
   async fn fetch_models(&self, api_key: Option<String>, base_url: &str) -> Result<Vec<String>>;
 
-  /// Forward request to remote API using a pre-resolved alias and optional API key.
+  /// Forward POST request to remote API using a pre-resolved alias.
   async fn forward_request(
     &self,
     api_path: &str,
     api_alias: &ApiAlias,
     api_key: Option<String>,
     request: Value,
-  ) -> Result<Response>;
+  ) -> Result<Response> {
+    self
+      .forward_request_with_method(&Method::POST, api_path, api_alias, api_key, Some(request), None)
+      .await
+  }
 
-  /// Forward request to remote API with explicit HTTP method control.
-  /// Used for Responses API which needs GET/DELETE in addition to POST.
+  /// Forward request to remote API with explicit HTTP method.
   async fn forward_request_with_method(
     &self,
-    method: &str,
+    method: &Method,
     api_path: &str,
     api_alias: &ApiAlias,
     api_key: Option<String>,
@@ -125,7 +129,6 @@ impl AiApiService for DefaultAiApiService {
       .header("Content-Type", "application/json")
       .json(&request_body);
 
-    // Only add Authorization header if API key is provided
     if let Some(key) = api_key {
       request = request.header("Authorization", format!("Bearer {}", key));
     }
@@ -174,7 +177,6 @@ impl AiApiService for DefaultAiApiService {
 
     let mut request = self.client.get(&url)?;
 
-    // Only add Authorization header if API key is provided
     if let Some(key) = api_key {
       request = request.header("Authorization", format!("Bearer {}", key));
     }
@@ -203,21 +205,9 @@ impl AiApiService for DefaultAiApiService {
     Ok(models)
   }
 
-  async fn forward_request(
-    &self,
-    api_path: &str,
-    api_alias: &ApiAlias,
-    api_key: Option<String>,
-    request: Value,
-  ) -> Result<Response> {
-    self
-      .forward_request_with_method("POST", api_path, api_alias, api_key, Some(request), None)
-      .await
-  }
-
   async fn forward_request_with_method(
     &self,
-    method: &str,
+    method: &Method,
     api_path: &str,
     api_alias: &ApiAlias,
     api_key: Option<String>,
@@ -226,7 +216,6 @@ impl AiApiService for DefaultAiApiService {
   ) -> Result<Response> {
     let url = format!("{}{}", api_alias.base_url, api_path);
 
-    // Handle prefix stripping if configured (only for POST with body containing model)
     if let Some(ref req) = request {
       if let Some(ref prefix) = api_alias.prefix {
         if let Some(model_str) = req.get("model").and_then(|v| v.as_str()) {
@@ -246,27 +235,19 @@ impl AiApiService for DefaultAiApiService {
       }
     }
 
-    // Build the HTTP request based on method
-    let mut http_request = match method {
-      "GET" => self.client.get(&url)?,
-      "DELETE" => self.client.delete(&url)?,
-      _ => self
-        .client
-        .post(&url)?
-        .header("Content-Type", "application/json"),
-    };
+    let mut http_request = self.client.request(method.clone(), &url)?;
+    if method == Method::POST {
+      http_request = http_request.header("Content-Type", "application/json");
+    }
 
-    // Add query parameters if provided
     if let Some(ref params) = query_params {
       http_request = http_request.query(params);
     }
 
-    // Only add Authorization header if API key is provided
     if let Some(key) = api_key {
       http_request = http_request.header("Authorization", format!("Bearer {}", key));
     }
 
-    // Send with or without body
     let response = if let Some(body) = request {
       http_request.json(&body).send().await?
     } else {
@@ -274,18 +255,14 @@ impl AiApiService for DefaultAiApiService {
     };
 
     let status = response.status();
-
-    // Convert reqwest::Response to axum::Response for streaming support
     let mut builder = Response::builder().status(status.as_u16());
 
-    // Copy headers
     for (key, value) in response.headers() {
       if let Ok(value_str) = value.to_str() {
         builder = builder.header(key.as_str(), value_str);
       }
     }
 
-    // Stream the body
     let body_stream = response.bytes_stream();
     let body = Body::from_stream(body_stream);
 

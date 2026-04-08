@@ -5,11 +5,8 @@ use reqwest::header::HeaderMap;
 use super::error_wrappers::ReqwestError;
 use super::url_validator::{validate_outbound_url, UrlValidationError};
 
-/// A wrapper around `reqwest::Client` that validates outbound URLs against
-/// security rules before making requests.
-///
-/// Always enforces scheme validation (http/https only, blocks javascript:/data:/file:).
-/// Private IP/hostname blocklist is configurable via `allow_private_ips`.
+/// Validates outbound URLs against security rules before making requests.
+/// Enforces scheme validation (http/https only). Private IP blocklist is configurable.
 #[derive(Debug, Clone)]
 pub struct SafeReqwest {
   inner: reqwest::Client,
@@ -21,19 +18,25 @@ impl SafeReqwest {
     SafeReqwestBuilder::default()
   }
 
-  /// Validate a URL and return a `reqwest::RequestBuilder` for a GET request.
+  pub fn request(
+    &self,
+    method: reqwest::Method,
+    url: &str,
+  ) -> Result<reqwest::RequestBuilder, UrlValidationError> {
+    validate_outbound_url(url, self.allow_private_ips)?;
+    Ok(self.inner.request(method, url))
+  }
+
   pub fn get(&self, url: &str) -> Result<reqwest::RequestBuilder, UrlValidationError> {
     validate_outbound_url(url, self.allow_private_ips)?;
     Ok(self.inner.get(url))
   }
 
-  /// Validate a URL and return a `reqwest::RequestBuilder` for a POST request.
   pub fn post(&self, url: &str) -> Result<reqwest::RequestBuilder, UrlValidationError> {
     validate_outbound_url(url, self.allow_private_ips)?;
     Ok(self.inner.post(url))
   }
 
-  /// Validate a URL and return a `reqwest::RequestBuilder` for a DELETE request.
   pub fn delete(&self, url: &str) -> Result<reqwest::RequestBuilder, UrlValidationError> {
     validate_outbound_url(url, self.allow_private_ips)?;
     Ok(self.inner.delete(url))

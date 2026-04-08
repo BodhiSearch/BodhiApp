@@ -12,23 +12,19 @@ use services::inference::LlmEndpoint;
 use services::{Alias, ApiFormat};
 use std::collections::HashMap;
 
-/// Validates basic structure of a Responses API create request
 fn validate_responses_request(request: &serde_json::Value) -> Result<(), OAIRouteError> {
-  // Validate model field exists and is a string
   if request.get("model").and_then(|v| v.as_str()).is_none() {
     return Err(OAIRouteError::InvalidRequest(
       "Field 'model' is required and must be a string.".to_string(),
     ));
   }
 
-  // Validate input field exists
   if request.get("input").is_none() {
     return Err(OAIRouteError::InvalidRequest(
       "Field 'input' is required.".to_string(),
     ));
   }
 
-  // Validate stream field is boolean if present
   if let Some(stream) = request.get("stream") {
     if !stream.is_boolean() {
       return Err(OAIRouteError::InvalidRequest(
@@ -40,7 +36,38 @@ fn validate_responses_request(request: &serde_json::Value) -> Result<(), OAIRout
   Ok(())
 }
 
-/// Resolves an API alias for the Responses API, ensuring it has openai_responses format.
+fn validate_response_id(id: &str) -> Result<(), OAIRouteError> {
+  if id.is_empty()
+    || id.len() > 256
+    || !id
+      .chars()
+      .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+  {
+    return Err(OAIRouteError::InvalidRequest(
+      "Invalid response_id format.".to_string(),
+    ));
+  }
+  Ok(())
+}
+
+pub(super) async fn resolve_api_key_for_alias(
+  auth_scope: &AuthScope,
+  api_alias_id: &str,
+) -> Option<String> {
+  let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
+  let user_id = auth_scope
+    .auth_context()
+    .user_id()
+    .unwrap_or("")
+    .to_string();
+  auth_scope
+    .db_service()
+    .get_api_key_for_alias(&tenant_id, &user_id, api_alias_id)
+    .await
+    .ok()
+    .flatten()
+}
+
 async fn resolve_responses_alias(
   auth_scope: &AuthScope,
   model: &str,
@@ -63,23 +90,10 @@ async fn resolve_responses_alias(
     }
   };
 
-  let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
-  let user_id = auth_scope
-    .auth_context()
-    .user_id()
-    .unwrap_or("")
-    .to_string();
-  let api_key = auth_scope
-    .db_service()
-    .get_api_key_for_alias(&tenant_id, &user_id, &api_alias.id)
-    .await
-    .ok()
-    .flatten();
-
+  let api_key = resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
   Ok((api_alias, api_key))
 }
 
-/// Extracts and validates the required `model` query parameter for ID-based endpoints.
 fn extract_model_param(params: &HashMap<String, String>) -> Result<String, OAIRouteError> {
   params
     .get("model")
@@ -90,16 +104,19 @@ fn extract_model_param(params: &HashMap<String, String>) -> Result<String, OAIRo
     })
 }
 
-/// Filters query params, removing `model` (consumed for routing) before forwarding upstream.
-fn upstream_query_params(params: &HashMap<String, String>) -> Vec<(String, String)> {
-  params
+fn upstream_query_params(params: &HashMap<String, String>) -> Option<Vec<(String, String)>> {
+  let filtered: Vec<_> = params
     .iter()
     .filter(|(k, _)| k.as_str() != "model")
     .map(|(k, v)| (k.clone(), v.clone()))
-    .collect()
+    .collect();
+  if filtered.is_empty() {
+    None
+  } else {
+    Some(filtered)
+  }
 }
 
-/// Create a response (OpenAI Responses API)
 #[utoipa::path(
     post,
     path = ENDPOINT_OAI_RESPONSES,
@@ -136,8 +153,8 @@ pub async fn responses_create_handler(
 
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
 
-  let inference = auth_scope.inference();
-  let response = inference
+  let response = auth_scope
+    .inference()
     .forward_remote(LlmEndpoint::Responses, request, &api_alias, api_key)
     .await
     .map_err(ApiError::from)?;
@@ -145,14 +162,13 @@ pub async fn responses_create_handler(
   Ok(response)
 }
 
-/// Retrieve a response by ID
 #[utoipa::path(
     get,
     path = ENDPOINT_OAI_RESPONSES.to_owned() + "/{response_id}",
     tag = API_TAG_RESPONSES,
     operation_id = "getResponse",
     summary = "Retrieve Response",
-    description = "Retrieves a previously created response by ID. Requires `model` query parameter for routing.",
+    description = "Retrieves a previously created response by ID. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).",
     params(
         ("response_id" = String, Path, description = "The response ID"),
         ("model" = String, Query, description = "Model name for routing to the correct upstream provider"),
@@ -171,23 +187,18 @@ pub async fn responses_get_handler(
   Path(response_id): Path<String>,
   Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response, ApiError> {
+  validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
-  let upstream_params = upstream_query_params(&params);
 
-  let inference = auth_scope.inference();
-  let query_params = if upstream_params.is_empty() {
-    None
-  } else {
-    Some(upstream_params)
-  };
-  let response = inference
+  let response = auth_scope
+    .inference()
     .forward_remote_with_params(
       LlmEndpoint::ResponsesGet(response_id),
       serde_json::Value::Null,
       &api_alias,
       api_key,
-      query_params,
+      upstream_query_params(&params),
     )
     .await
     .map_err(ApiError::from)?;
@@ -195,14 +206,13 @@ pub async fn responses_get_handler(
   Ok(response)
 }
 
-/// Delete a response by ID
 #[utoipa::path(
     delete,
     path = ENDPOINT_OAI_RESPONSES.to_owned() + "/{response_id}",
     tag = API_TAG_RESPONSES,
     operation_id = "deleteResponse",
     summary = "Delete Response",
-    description = "Deletes a stored response by ID. Requires `model` query parameter for routing.",
+    description = "Deletes a stored response by ID. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).",
     params(
         ("response_id" = String, Path, description = "The response ID"),
         ("model" = String, Query, description = "Model name for routing to the correct upstream provider"),
@@ -221,14 +231,15 @@ pub async fn responses_delete_handler(
   Path(response_id): Path<String>,
   Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response, ApiError> {
+  validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
 
-  let inference = auth_scope.inference();
-  let response = inference
+  let response = auth_scope
+    .inference()
     .forward_remote(
       LlmEndpoint::ResponsesDelete(response_id),
-      serde_json::Value::Null,
+      serde_json::json!({}),
       &api_alias,
       api_key,
     )
@@ -238,14 +249,13 @@ pub async fn responses_delete_handler(
   Ok(response)
 }
 
-/// List input items for a response
 #[utoipa::path(
     get,
     path = ENDPOINT_OAI_RESPONSES.to_owned() + "/{response_id}/input_items",
     tag = API_TAG_RESPONSES,
     operation_id = "listResponseInputItems",
     summary = "List Response Input Items",
-    description = "Lists input items for a given response. Requires `model` query parameter for routing.",
+    description = "Lists input items for a given response. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).",
     params(
         ("response_id" = String, Path, description = "The response ID"),
         ("model" = String, Query, description = "Model name for routing to the correct upstream provider"),
@@ -264,23 +274,18 @@ pub async fn responses_input_items_handler(
   Path(response_id): Path<String>,
   Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response, ApiError> {
+  validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
-  let upstream_params = upstream_query_params(&params);
 
-  let inference = auth_scope.inference();
-  let query_params = if upstream_params.is_empty() {
-    None
-  } else {
-    Some(upstream_params)
-  };
-  let response = inference
+  let response = auth_scope
+    .inference()
     .forward_remote_with_params(
       LlmEndpoint::ResponsesInputItems(response_id),
       serde_json::Value::Null,
       &api_alias,
       api_key,
-      query_params,
+      upstream_query_params(&params),
     )
     .await
     .map_err(ApiError::from)?;
@@ -288,14 +293,13 @@ pub async fn responses_input_items_handler(
   Ok(response)
 }
 
-/// Cancel a background response
 #[utoipa::path(
     post,
     path = ENDPOINT_OAI_RESPONSES.to_owned() + "/{response_id}/cancel",
     tag = API_TAG_RESPONSES,
     operation_id = "cancelResponse",
     summary = "Cancel Response",
-    description = "Cancels a background response. Requires `model` query parameter for routing.",
+    description = "Cancels a background response. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).",
     params(
         ("response_id" = String, Path, description = "The response ID"),
         ("model" = String, Query, description = "Model name for routing to the correct upstream provider"),
@@ -314,14 +318,15 @@ pub async fn responses_cancel_handler(
   Path(response_id): Path<String>,
   Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response, ApiError> {
+  validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
 
-  let inference = auth_scope.inference();
-  let response = inference
+  let response = auth_scope
+    .inference()
     .forward_remote(
       LlmEndpoint::ResponsesCancel(response_id),
-      serde_json::Value::Null,
+      serde_json::json!({}),
       &api_alias,
       api_key,
     )

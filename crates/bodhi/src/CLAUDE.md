@@ -143,6 +143,15 @@ Direct MCP protocol communication via `@modelcontextprotocol/sdk` (Streamable HT
 
 Multi-step onboarding under `src/routes/setup/`: download-models -> api-models -> llm-engine -> browser-extension -> complete. Layout route in `src/routes/setup/route.tsx` wraps with `SetupLayoutComponent`.
 
+## Chat Architecture (pi-agent-core)
+
+Chat migrated from custom `useChat`/`useChatCompletions` to `@mariozechner/pi-agent-core`:
+- `useBodhiAgent` hook wraps the `Agent` class, syncs React state with agent state via `useEffect`
+- Chat history stored in IndexedDB via Dexie (`lib/chatDb.ts`), schema version 1
+- `useMcpAgentTools` adapts MCP client tools to pi-agent-core's `AgentTool` format
+- `useChatDb` provides `ChatDBProvider` context with `MAX_CHATS=1000`, user-scoped localStorage key
+- Stop button visible during streaming, wired to `agent.abort()`
+
 ## Testing
 
 See `TESTING.md` for MSW setup, wrapper utilities, and test patterns.

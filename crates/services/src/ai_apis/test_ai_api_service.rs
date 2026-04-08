@@ -49,6 +49,43 @@ async fn test_test_prompt_success() -> anyhow::Result<()> {
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
+async fn test_test_prompt_openai_responses_success() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let _mock = server
+    .mock("POST", "/responses")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(
+      r#"{
+        "output": [{
+          "type": "message",
+          "content": [{"type": "text", "text": "Hello response"}]
+        }]
+      }"#,
+    )
+    .create_async()
+    .await;
+
+  let result = service
+    .test_prompt(
+      Some("test-key".to_string()),
+      &url,
+      "gpt-4o",
+      "Hello",
+      &ApiFormat::OpenAIResponses,
+    )
+    .await?;
+  assert_eq!("Hello response", result);
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
 async fn test_test_prompt_too_long() -> anyhow::Result<()> {
   let server = Server::new_async().await;
   let url = server.url();

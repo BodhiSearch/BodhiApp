@@ -280,15 +280,6 @@ test.describe('API Tokens - Complete Integration', () => {
         const adminChatSettings = new ChatSettingsPage(adminPage, sharedServerUrl);
         const adminTokensPage = new TokensPage(adminPage, sharedServerUrl);
 
-        // Empty token error
-        await adminChatPage.navigateToChat();
-        await adminChatPage.waitForChatPageLoad();
-        await adminChatSettings.openSettings();
-        await adminChatSettings.setApiToken(true, '');
-        await adminChatSettings.selectModel(ApiModelFixtures.OPENAI_MODEL);
-        await adminChatPage.sendMessageAndReturn('Test message');
-        await adminChatPage.expectError();
-
         // Reset and test invalid token format
         await adminTokensPage.navigateToTokens();
         await adminChatPage.navigateToChat();

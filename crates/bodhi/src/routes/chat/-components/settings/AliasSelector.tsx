@@ -1,4 +1,7 @@
+import { useEffect, useMemo } from 'react';
+
 import { AliasResponse } from '@bodhiapp/ts-client';
+import type { ApiFormatSetting } from '@/hooks/chat/useChatSettings';
 import { HelpCircle, RefreshCw } from 'lucide-react';
 
 import { ComboBoxResponsive } from '@/components/Combobox';
@@ -19,7 +22,7 @@ interface AliasSelectorProps {
 }
 
 export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelectorProps) {
-  const { model, setModel } = useChatSettings();
+  const { model, setModel, setApiFormat } = useChatSettings();
   const queryClient = useQueryClient();
 
   // Handle refresh button click
@@ -27,6 +30,32 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     // Invalidate and refetch models cache
     await queryClient.invalidateQueries({ queryKey: modelKeys.all });
   };
+
+  // Map prefixed model names back to their parent AliasResponse for api_format detection
+  const modelToAliasMap = useMemo(() => {
+    const map = new Map<string, AliasResponse>();
+    models.forEach((m) => {
+      if (isApiAlias(m)) {
+        (m.models || []).forEach((modelName: string) => {
+          map.set(formatPrefixedModel(modelName, m.prefix), m);
+        });
+      } else {
+        map.set(m.alias, m);
+      }
+    });
+    return map;
+  }, [models]);
+
+  // Sync apiFormat when the selected model changes (e.g., from URL params or chat history restore)
+  useEffect(() => {
+    if (!model || models.length === 0) return;
+    const alias = modelToAliasMap.get(model);
+    if (alias && isApiAlias(alias)) {
+      setApiFormat(alias.api_format as ApiFormatSetting);
+    } else {
+      setApiFormat('openai');
+    }
+  }, [model, modelToAliasMap, setApiFormat]);
 
   // Transform models array to match ComboBoxResponsive's Status type
   const modelStatuses = models.flatMap((m) => {
@@ -95,7 +124,16 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
         </div>
         <ComboBoxResponsive
           selectedStatus={selectedStatus}
-          setSelectedStatus={(status) => setModel(status?.value ?? '')}
+          setSelectedStatus={(status) => {
+            const value = status?.value ?? '';
+            setModel(value);
+            const alias = modelToAliasMap.get(value);
+            if (alias && isApiAlias(alias)) {
+              setApiFormat(alias.api_format as ApiFormatSetting);
+            } else {
+              setApiFormat('openai');
+            }
+          }}
           statuses={modelStatuses}
           placeholder="Select alias"
           id="model-selector"

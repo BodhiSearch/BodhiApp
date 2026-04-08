@@ -1362,14 +1362,14 @@ export interface paths {
         };
         /**
          * Retrieve Response
-         * @description Retrieves a previously created response by ID. Requires `model` query parameter for routing.
+         * @description Retrieves a previously created response by ID. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).
          */
         get: operations["getResponse"];
         put?: never;
         post?: never;
         /**
          * Delete Response
-         * @description Deletes a stored response by ID. Requires `model` query parameter for routing.
+         * @description Deletes a stored response by ID. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).
          */
         delete: operations["deleteResponse"];
         options?: never;
@@ -1388,7 +1388,7 @@ export interface paths {
         put?: never;
         /**
          * Cancel Response
-         * @description Cancels a background response. Requires `model` query parameter for routing.
+         * @description Cancels a background response. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).
          */
         post: operations["cancelResponse"];
         delete?: never;
@@ -1406,7 +1406,7 @@ export interface paths {
         };
         /**
          * List Response Input Items
-         * @description Lists input items for a given response. Requires `model` query parameter for routing.
+         * @description Lists input items for a given response. Note: `model` query parameter is required for multi-provider routing (not part of upstream OpenAI API).
          */
         get: operations["listResponseInputItems"];
         put?: never;

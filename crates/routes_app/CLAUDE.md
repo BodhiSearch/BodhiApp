@@ -131,6 +131,17 @@ Every new route must:
 
 **Apps API thin wrappers**: `apps_mcps_index`, etc. in the `apps_apis` group are thin wrappers that delegate to the same auth-scoped services but are mounted under `/bodhi/v1/apps/...` with permissive CORS for external OAuth app access.
 
+## Responses API (Pass-Through Proxy)
+
+5 endpoints under `/v1/responses` in the `user_apis` route group:
+- `POST /v1/responses` — create response (body forwarded to remote)
+- `GET /v1/responses/{response_id}` — get response
+- `POST /v1/responses/{response_id}/cancel` — cancel response
+- `GET /v1/responses/{response_id}/input_items` — list input items
+- `DELETE /v1/responses/{response_id}` — delete response
+
+`response_id` path parameter validated: alphanumeric, underscore, hyphen only. GET/DELETE/cancel/input_items require `model` query parameter for multi-provider routing (not part of upstream OpenAI API). `resolve_api_key_for_alias` shared helper in `oai` module handles API key resolution.
+
 ## MCP Proxy Endpoint
 
 **Endpoint**: `/bodhi/v1/apps/mcps/{id}/mcp` -- transparent HTTP reverse proxy to upstream MCP server (OAuth token-authenticated only). Accepts `any()` HTTP method (POST, GET, DELETE forwarded to upstream). Auth headers/query params injected from MCP instance config (header auth + OAuth with token refresh). SSE responses streamed without buffering. The proxy forwards all operations transparently to upstream (tools_filter was removed from the data model). See `PACKAGE.md` for handler flow details.

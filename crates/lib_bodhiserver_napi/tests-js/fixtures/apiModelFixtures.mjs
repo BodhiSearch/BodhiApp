@@ -4,6 +4,41 @@ export class ApiModelFixtures {
   static OPENAI_MODEL = 'gpt-4.1-nano';
   static OPENROUTER_MODEL = 'openai/gpt-4.1-nano';
 
+  // Parameterized API format configs for multi-format E2E testing.
+  // Add new formats here to automatically get test coverage.
+  static API_FORMATS = {
+    openai: {
+      format: 'openai',
+      formatDisplayName: 'OpenAI - Completions',
+      model: 'gpt-4.1-nano',
+      baseUrl: 'https://api.openai.com/v1',
+      envKey: 'INTEG_TEST_OPENAI_API_KEY',
+      chatQuestion: 'What day comes after Monday?',
+      chatExpected: 'tuesday',
+      chatEndpoint: '/v1/chat/completions',
+    },
+    openai_responses: {
+      format: 'openai_responses',
+      formatDisplayName: 'OpenAI - Responses',
+      model: 'gpt-4.1-nano',
+      baseUrl: 'https://api.openai.com/v1',
+      envKey: 'INTEG_TEST_OPENAI_API_KEY',
+      chatQuestion: 'What day comes after Monday?',
+      chatExpected: 'tuesday',
+      chatEndpoint: '/v1/responses',
+    },
+  };
+
+  static createModelDataForFormat(formatKey) {
+    const config = ApiModelFixtures.API_FORMATS[formatKey];
+    if (!config) throw new Error(`Unknown API format: ${formatKey}`);
+    return ApiModelFixtures.createModelData({
+      api_format: config.format,
+      baseUrl: config.baseUrl,
+      models: [config.model],
+    });
+  }
+
   static createModelData(overrides = {}) {
     return {
       api_format: 'openai',

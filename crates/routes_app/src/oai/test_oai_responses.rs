@@ -9,7 +9,6 @@ use axum::{
   routing::{delete, get, post},
   Router,
 };
-use mockall::predicate::eq;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use rstest::rstest;
@@ -454,6 +453,163 @@ async fn test_responses_cancel_success() -> anyhow::Result<()> {
   let response = app
     .oneshot(
       Request::post("/v1/responses/resp-abc-123/cancel?model=resp%2Fgpt-4o")
+        .body(axum::body::Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+// ============================================================================
+// response_id validation
+// ============================================================================
+
+#[rstest]
+#[case::path_traversal("..%2F..%2Fadmin")]
+#[case::slash_in_id("resp%2Fevil")]
+#[case::dot_dot("resp..test")]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/responses/{response_id}", get(responses_get_handler))
+    .route(
+      "/v1/responses/{response_id}/cancel",
+      post(responses_cancel_handler),
+    )
+    .with_state(router_state);
+
+  // GET
+  let response = app
+    .clone()
+    .oneshot(
+      Request::get(format!(
+        "/v1/responses/{}?model=resp%2Fgpt-4o",
+        response_id
+      ))
+      .body(axum::body::Body::empty())?
+      .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+    )
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  // POST cancel
+  let response = app
+    .oneshot(
+      Request::post(format!(
+        "/v1/responses/{}/cancel?model=resp%2Fgpt-4o",
+        response_id
+      ))
+      .body(axum::body::Body::empty())?
+      .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+    )
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  Ok(())
+}
+
+// ============================================================================
+// Query parameter forwarding
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_get_forwards_extra_query_params() -> anyhow::Result<()> {
+  let mut builder = AppServiceStubBuilder::default();
+  seed_responses_alias(&mut builder).await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, alias, _key, params| {
+      *endpoint == LlmEndpoint::ResponsesGet("resp-abc-123".to_string())
+        && alias.id == "resp-alias"
+        && params
+          .as_ref()
+          .map(|p| p.contains(&("limit".to_string(), "10".to_string())) && p.len() == 1)
+          .unwrap_or(false)
+    })
+    .times(1)
+    .return_once(|_, _, _, _, _| ok_response());
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/responses/{response_id}", get(responses_get_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::get("/v1/responses/resp-abc-123?model=resp%2Fgpt-4o&limit=10")
+        .body(axum::body::Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_input_items_forwards_extra_query_params() -> anyhow::Result<()> {
+  let mut builder = AppServiceStubBuilder::default();
+  seed_responses_alias(&mut builder).await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, alias, _key, params| {
+      *endpoint == LlmEndpoint::ResponsesInputItems("resp-abc-123".to_string())
+        && alias.id == "resp-alias"
+        && params
+          .as_ref()
+          .map(|p| p.contains(&("after".to_string(), "item_456".to_string())) && p.len() == 1)
+          .unwrap_or(false)
+    })
+    .times(1)
+    .return_once(|_, _, _, _, _| ok_response());
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route(
+      "/v1/responses/{response_id}/input_items",
+      get(responses_input_items_handler),
+    )
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::get("/v1/responses/resp-abc-123/input_items?model=resp%2Fgpt-4o&after=item_456")
         .body(axum::body::Body::empty())?
         .with_auth_context(AuthContext::test_session(
           TEST_USER_ID,

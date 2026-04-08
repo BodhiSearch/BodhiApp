@@ -110,7 +110,7 @@ export class McpInspectorPage extends BasePage {
 
   async expectToolResult(text, timeout = 10000) {
     await expect(this.page.getByText('Success')).toBeVisible({ timeout });
-    await expect(this.page.getByText(text)).toBeVisible();
+    await expect(this.page.locator('pre').getByText(text)).toBeVisible();
   }
 
   async expectToolResultImage(timeout = 10000) {
