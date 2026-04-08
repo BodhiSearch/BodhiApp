@@ -152,7 +152,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     onSuccess: (model) => {
       const identifier = model.source === 'api' ? model.id : model.alias;
       showSuccess('Success', `Alias ${identifier} successfully created`);
-      navigate({ to: '/models' });
+      navigate({ to: '/models/' });
     },
     onError: (message) => {
       showError('Error', message);
@@ -171,7 +171,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     onSuccess: (model) => {
       const identifier = 'alias' in model ? model.alias : 'id' in model ? model.id : '';
       showSuccess('Success', `Alias ${identifier} successfully updated`);
-      navigate({ to: '/models' });
+      navigate({ to: '/models/' });
     },
     onError: (message) => {
       showError('Error', message);

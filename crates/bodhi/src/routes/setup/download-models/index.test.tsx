@@ -84,7 +84,7 @@ describe('ModelDownloadPage Access Control', () => {
       renderWithSetupProvider(<ModelDownloadPage />);
     });
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
   });
 
   it('renders the page when app is ready and user is logged in', async () => {
@@ -111,7 +111,7 @@ describe('ModelDownloadPage Access Control', () => {
       renderWithSetupProvider(<ModelDownloadPage />);
     });
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
   });
 });
 

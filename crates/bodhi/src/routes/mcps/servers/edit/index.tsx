@@ -42,7 +42,7 @@ export const Route = createFileRoute('/mcps/servers/edit/')({
 
 function EditMcpServerContent() {
   const navigate = useNavigate();
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/mcps/servers/edit/' });
   const serverId = search.id || '';
   const { data: server, isLoading, error } = useGetMcpServer(serverId, { enabled: !!serverId });
   const { data: authConfigsData, isLoading: configsLoading } = useListAuthConfigs(serverId);
@@ -61,7 +61,7 @@ function EditMcpServerContent() {
   const updateMutation = useUpdateMcpServer({
     onSuccess: () => {
       toast({ title: 'MCP server updated' });
-      navigate({ to: `${ROUTE_MCP_SERVERS}/view/`, search: { id: serverId } });
+      navigate({ to: `${ROUTE_MCP_SERVERS}view/`, search: { id: serverId } });
     },
     onError: (message) => {
       toast({ title: 'Failed to update MCP server', description: message, variant: 'destructive' });

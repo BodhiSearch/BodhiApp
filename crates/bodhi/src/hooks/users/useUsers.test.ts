@@ -147,7 +147,7 @@ describe('User Hooks', () => {
       });
 
       expect(result.current.data).toBeUndefined();
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
 
     it('redirects to login when user auth_status is not logged_in', async () => {
@@ -162,7 +162,7 @@ describe('User Hooks', () => {
       });
 
       expect(result.current.data).toBeUndefined();
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
 
     it('does not redirect while loading', async () => {

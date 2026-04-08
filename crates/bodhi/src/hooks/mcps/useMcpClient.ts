@@ -100,7 +100,7 @@ export function useMcpClient(endpoint: string | null): UseMcpClientReturn {
 
     try {
       const result = await clientRef.current.callTool({ name, arguments: args });
-      return { content: result.content, isError: result.isError };
+      return { content: result.content, isError: result.isError as boolean };
     } catch (err) {
       return {
         content: err instanceof Error ? err.message : 'MCP tool execution failed',

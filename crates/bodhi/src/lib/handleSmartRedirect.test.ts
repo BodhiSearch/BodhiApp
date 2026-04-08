@@ -13,12 +13,12 @@ describe('handleSmartRedirect', () => {
 
   it('handles relative path without BASE_PATH', () => {
     handleSmartRedirect('/login', navigateMock);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
   });
 
   it('strips BASE_PATH from relative path', () => {
     handleSmartRedirect('/ui/chat', navigateMock);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
   });
 
   it('strips BASE_PATH to root', () => {
@@ -28,25 +28,25 @@ describe('handleSmartRedirect', () => {
 
   it('handles relative path with query params', () => {
     handleSmartRedirect('/ui/chat?model=llama', navigateMock);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat', search: { model: 'llama' } });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'llama' } });
   });
 
   it('handles relative path with query and hash (hash ignored)', () => {
     handleSmartRedirect('/ui/setup/download-models?step=1#section', navigateMock);
     expect(navigateMock).toHaveBeenCalledWith({
-      to: '/setup/download-models',
+      to: '/setup/download-models/',
       search: { step: '1' },
     });
   });
 
   it('handles same-origin absolute URL', () => {
     handleSmartRedirect('http://localhost:3000/ui/chat', navigateMock);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
   });
 
   it('handles same-origin absolute URL with query params', () => {
     handleSmartRedirect('http://localhost:3000/ui/chat?model=llama', navigateMock);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat', search: { model: 'llama' } });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'llama' } });
   });
 
   it('redirects to external URL via window.location.href', () => {

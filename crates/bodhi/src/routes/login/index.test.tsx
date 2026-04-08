@@ -240,7 +240,7 @@ describe('LoginContent with user not Logged In', () => {
 
     // Should use router.push for same-origin URLs
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
     });
   });
 });
@@ -287,7 +287,7 @@ describe('LoginContent with user Logged In', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
   });
 
@@ -319,7 +319,7 @@ describe('LoginContent access control', () => {
     await act(async () => {
       render(<LoginPage />, { wrapper: createWrapper() });
     });
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' }));
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' }));
   });
 });
 

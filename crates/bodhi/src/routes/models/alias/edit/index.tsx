@@ -15,7 +15,7 @@ export const Route = createFileRoute('/models/alias/edit/')({
 });
 
 function EditAliasContent() {
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/models/alias/edit/' });
   const id = search.id;
 
   const { data: modelData, isLoading, error } = useGetModel(id ?? '');

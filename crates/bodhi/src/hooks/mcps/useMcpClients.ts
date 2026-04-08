@@ -188,7 +188,7 @@ export function useMcpClients(): UseMcpClientsReturn {
 
       try {
         const result = await entry.client.callTool({ name: toolName, arguments: args });
-        return { content: result.content, isError: result.isError };
+        return { content: result.content, isError: result.isError as boolean };
       } catch (err) {
         return {
           content: err instanceof Error ? err.message : 'MCP tool execution failed',

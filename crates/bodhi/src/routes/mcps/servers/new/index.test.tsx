@@ -201,7 +201,7 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
 
     // Should redirect to MCP servers list
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/servers' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/servers/' });
     });
   });
 

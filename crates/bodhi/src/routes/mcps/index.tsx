@@ -108,7 +108,7 @@ function McpsPageContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate({ to: '/mcps/playground', search: { id: mcp.id } })}
+            onClick={() => navigate({ to: '/mcps/playground/', search: { id: mcp.id } })}
             title={serverDisabled ? 'MCP server is disabled' : `Playground ${mcp.name}`}
             className="h-8 w-8 p-0"
             disabled={serverDisabled}
@@ -119,7 +119,7 @@ function McpsPageContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate({ to: '/mcps/new', search: { id: mcp.id } })}
+            onClick={() => navigate({ to: '/mcps/new/', search: { id: mcp.id } })}
             title={serverDisabled ? 'MCP server is disabled' : `Edit ${mcp.name}`}
             className="h-8 w-8 p-0"
             disabled={serverDisabled}
@@ -172,7 +172,7 @@ function McpsPageContent() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">My MCPs</h1>
         <Button asChild data-testid="mcp-new-button">
-          <Link to="/mcps/new">
+          <Link to="/mcps/new/">
             <Plus className="h-4 w-4 mr-2" />
             New MCP
           </Link>
@@ -201,7 +201,7 @@ function McpsPageContent() {
         <div className="text-center py-8 text-muted-foreground">
           <p>No MCP servers configured</p>
           <Button asChild variant="link" className="mt-2">
-            <Link to="/mcps/new">Add your first MCP server</Link>
+            <Link to="/mcps/new/">Add your first MCP server</Link>
           </Button>
         </div>
       )}

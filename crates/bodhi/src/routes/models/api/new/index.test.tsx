@@ -220,7 +220,7 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify redirect to models page
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
     });
 
     it('handles server error during API model creation', async () => {

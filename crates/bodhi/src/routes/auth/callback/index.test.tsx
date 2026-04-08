@@ -54,7 +54,7 @@ describe('AuthCallbackPage', () => {
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
     });
   });
 
@@ -74,7 +74,7 @@ describe('AuthCallbackPage', () => {
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({
-        to: '/setup/download-models',
+        to: '/setup/download-models/',
         search: { step: '1' },
       });
     });
@@ -120,7 +120,7 @@ describe('AuthCallbackPage', () => {
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
     });
   });
 
@@ -142,7 +142,7 @@ describe('AuthCallbackPage', () => {
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
     });
   });
 
@@ -173,7 +173,7 @@ describe('AuthCallbackPage', () => {
       expect(screen.getByText('Processing Login...')).toBeInTheDocument();
     });
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
     });
   });
 

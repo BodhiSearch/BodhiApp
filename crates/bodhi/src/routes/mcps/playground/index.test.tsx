@@ -100,7 +100,7 @@ describe('McpPlaygroundPage - Authentication', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
     });
   });
 
@@ -112,7 +112,7 @@ describe('McpPlaygroundPage - Authentication', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
   });
 });

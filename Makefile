@@ -86,7 +86,7 @@ test: test.backend test.ui test.napi ## Run all tests (backend, UI, NAPI)
 
 format: ## Format code in all projects (Rust, Node, Python)
 	cargo fmt --all
-	cd crates/bodhi && npm run format
+	cd crates/bodhi && npm run format && npm run test:typecheck
 	cd crates/lib_bodhiserver_napi && npm run format
 	# cd openai-pysdk-compat && poetry run ruff format .
 	$(MAKE) -C getbodhi.app format

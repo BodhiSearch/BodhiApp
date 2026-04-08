@@ -148,7 +148,7 @@ function OAuthConnectedCard({
 
 function NewMcpPageContent() {
   const navigate = useNavigate();
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/mcps/new/' });
   const editId = search.id || null;
   const { data: userInfo } = useGetUser();
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
@@ -206,7 +206,7 @@ function NewMcpPageContent() {
     onSuccess: () => {
       toast({ title: 'MCP created successfully' });
       store.reset();
-      navigate({ to: '/mcps' });
+      navigate({ to: '/mcps/' });
     },
     onError: (message) => {
       toast({ title: 'Failed to create MCP', description: message, variant: 'destructive' });
@@ -217,7 +217,7 @@ function NewMcpPageContent() {
     onSuccess: () => {
       toast({ title: 'MCP updated successfully' });
       store.reset();
-      navigate({ to: '/mcps' });
+      navigate({ to: '/mcps/' });
     },
     onError: (message) => {
       toast({ title: 'Failed to update MCP', description: message, variant: 'destructive' });
@@ -750,7 +750,7 @@ function NewMcpPageContent() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate({ to: '/mcps/servers/view', search: { id: selectedServer.id } })}
+                      onClick={() => navigate({ to: '/mcps/servers/view/', search: { id: selectedServer.id } })}
                       data-testid="auth-config-new-redirect-button"
                     >
                       Go to Server Settings
@@ -772,7 +772,7 @@ function NewMcpPageContent() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate({ to: '/mcps' })}
+                  onClick={() => navigate({ to: '/mcps/' })}
                   disabled={isSubmitting}
                   data-testid="mcp-cancel-button"
                 >

@@ -22,7 +22,7 @@ export const Route = createFileRoute('/mcps/oauth/callback/')({
 
 function OAuthCallbackContent() {
   const navigate = useNavigate();
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/mcps/oauth/callback/' });
   const code = search.code;
   const state = search.state;
   const error = search.error;

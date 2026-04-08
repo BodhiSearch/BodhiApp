@@ -28,7 +28,7 @@ export type {
   CreateMcpAuthConfigRequest,
   McpAuthConfigResponse,
   McpAuthConfigsListResponse,
-  McpAuth,
+  McpAuthType,
   OAuthTokenResponse,
 } from './useMcpAuthConfigs';
 export { useDiscoverMcp, useStandaloneDynamicRegister, useOAuthLogin, useOAuthTokenExchange } from './useMcpOAuth';

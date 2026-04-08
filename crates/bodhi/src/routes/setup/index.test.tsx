@@ -88,7 +88,7 @@ describe('Setup Page', () => {
 
     // Wait for the API call and redirect
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/download-models' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/download-models/' });
     });
   });
 
@@ -109,7 +109,7 @@ describe('Setup Page', () => {
 
     // Wait for the API call and redirect
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/resource-admin' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/resource-admin/' });
     });
   });
 
@@ -268,7 +268,7 @@ describe('Setup Page', () => {
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
     await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/download-models' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/download-models/' });
     });
   });
 });

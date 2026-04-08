@@ -40,7 +40,7 @@ export const Route = createFileRoute('/mcps/servers/view/')({
 });
 
 function ServerViewContent() {
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/mcps/servers/view/' });
   const serverId = search.id || '';
 
   const {
@@ -200,7 +200,7 @@ function ServerViewContent() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{server?.name}</CardTitle>
           <Button variant="outline" size="sm" asChild>
-            <Link to={`${ROUTE_MCP_SERVERS}/edit`} search={{ id: serverId }}>
+            <Link to={`${ROUTE_MCP_SERVERS}edit/`} search={{ id: serverId }}>
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </Link>

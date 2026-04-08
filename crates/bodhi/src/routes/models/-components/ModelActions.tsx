@@ -21,7 +21,7 @@ export interface ModelActionsProps {
   onNew: (model: AliasResponse) => void;
   onChat: (model: AliasResponse) => void;
   getExternalUrl: (model: AliasResponse) => string;
-  navigate: (opts: { to: string }) => void;
+  navigate: (opts: { to: string; search?: Record<string, string> }) => void;
 }
 
 const ModelActions = ({
@@ -80,7 +80,7 @@ const ModelActions = ({
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-xs"
-                  onClick={() => navigate({ to: '/chat', search: { model: chatModel } })}
+                  onClick={() => navigate({ to: '/chat/', search: { model: chatModel } })}
                   title={`Chat with ${displayName}`}
                   data-testid={`${testIdPrefix}model-chat-button-${chatModel}`}
                 >
@@ -122,7 +122,7 @@ const ModelActions = ({
                 return (
                   <DropdownMenuItem
                     key={modelName}
-                    onClick={() => navigate({ to: '/chat', search: { model: chatModel } })}
+                    onClick={() => navigate({ to: '/chat/', search: { model: chatModel } })}
                   >
                     {displayName}
                   </DropdownMenuItem>

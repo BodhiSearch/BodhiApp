@@ -1,5 +1,6 @@
 import React from 'react';
 
+import type { AliasResponse } from '@bodhiapp/ts-client';
 import { createFileRoute } from '@tanstack/react-router';
 import { useSearch } from '@tanstack/react-router';
 import { z } from 'zod';
@@ -17,19 +18,23 @@ export const Route = createFileRoute('/models/alias/new/')({
 });
 
 function NewModelContent() {
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/models/alias/new/' });
 
   const initialData =
     search.repo || search.filename
-      ? {
-          source: 'user' as const,
+      ? ({
+          id: '',
+          source: 'user',
           alias: '',
           repo: search.repo || '',
           filename: search.filename || '',
           snapshot: search.snapshot || '',
+          model_params: {},
           request_params: {},
           context_params: [],
-        }
+          created_at: '',
+          updated_at: '',
+        } as AliasResponse)
       : undefined;
 
   return <AliasForm isEditMode={false} initialData={initialData} />;

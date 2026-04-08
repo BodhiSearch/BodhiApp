@@ -31,6 +31,9 @@ export function handleSmartRedirect(
     if (pathname.startsWith(BASE_PATH)) {
       pathname = pathname.slice(BASE_PATH.length) || '/';
     }
+    if (pathname !== '/' && !pathname.endsWith('/')) {
+      pathname += '/';
+    }
     const search = Object.fromEntries(parsed.searchParams.entries());
     navigate({ to: pathname, ...(Object.keys(search).length > 0 && { search }) });
     return;
@@ -43,6 +46,9 @@ export function handleSmartRedirect(
       let pathname = redirectUrl.pathname;
       if (pathname.startsWith(BASE_PATH)) {
         pathname = pathname.slice(BASE_PATH.length) || '/';
+      }
+      if (pathname !== '/' && !pathname.endsWith('/')) {
+        pathname += '/';
       }
       const search = Object.fromEntries(redirectUrl.searchParams.entries());
       navigate({ to: pathname, ...(Object.keys(search).length > 0 && { search }) });

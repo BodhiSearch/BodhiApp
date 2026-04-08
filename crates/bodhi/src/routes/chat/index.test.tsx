@@ -186,12 +186,17 @@ vi.mock('@/stores/mcpSelectionStore', () => {
 });
 
 const mockChatModel = {
+  id: 'test-chat-model-id',
   alias: 'test-chat-model',
-  family: 'test',
+  source: 'user',
   repo: 'test/repo',
   filename: 'model.gguf',
-  features: ['chat'],
-  chat_template: 'test-template',
+  snapshot: 'main',
+  model_params: {},
+  request_params: {},
+  context_params: [],
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
 };
 
 setupMswV2();
@@ -240,7 +245,7 @@ describe('ChatPage', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
     });
   });
 
@@ -250,7 +255,7 @@ describe('ChatPage', () => {
     render(<ChatPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
   });
 
@@ -327,8 +332,16 @@ describe('ChatPage', () => {
           api: 'openai-completions',
           provider: 'openai',
           model: 'test-chat-model',
-          usage: { inputTokens: 5, outputTokens: 3, cacheReadTokens: 0, cacheWriteTokens: 0 },
-          stopReason: 'endTurn',
+          usage: {
+            input: 5,
+            output: 3,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 8,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'stop',
+          timestamp: Date.now(),
         } as AgentMessage,
       ],
     });

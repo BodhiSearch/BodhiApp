@@ -20,7 +20,7 @@ export const Route = createFileRoute('/auth/dashboard/callback/')({
 });
 
 function DashboardCallbackContent() {
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/auth/dashboard/callback/' });
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const hasSubmitted = useRef(false);
@@ -57,7 +57,7 @@ function DashboardCallbackContent() {
             <AlertTitle>Authentication Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
-          <Button onClick={() => navigate({ to: '/login' })} className="w-full">
+          <Button onClick={() => navigate({ to: '/login/' })} className="w-full">
             Try Again
           </Button>
         </div>

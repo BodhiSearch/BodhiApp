@@ -41,7 +41,8 @@ export function useMcpAgentTools({ enabledMcpTools, allTools, slugs, callTool }:
           label: mcpTool.name,
           description: mcpTool.description ?? '',
           parameters: Type.Unsafe(mcpTool.inputSchema),
-          execute: async (_toolCallId: string, params: Record<string, unknown>): Promise<AgentToolResult<unknown>> => {
+          execute: async (_toolCallId: string, params: unknown): Promise<AgentToolResult<unknown>> => {
+            const typedParams = params as Record<string, unknown>;
             const decoded = decodeMcpToolName(encodedName);
             if (!decoded) {
               throw new Error(`Failed to decode tool name: ${encodedName}`);
@@ -52,7 +53,7 @@ export function useMcpAgentTools({ enabledMcpTools, allTools, slugs, callTool }:
               throw new Error(`Unknown MCP slug: ${decoded.mcpSlug}`);
             }
 
-            const result = await callTool(resolvedMcpId, decoded.toolName, params);
+            const result = await callTool(resolvedMcpId, decoded.toolName, typedParams);
 
             if (result.isError) {
               throw new Error(typeof result.content === 'string' ? result.content : JSON.stringify(result.content));

@@ -472,7 +472,7 @@ function ExecutionArea({
 // ============================================================================
 
 function McpPlaygroundContent() {
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/mcps/playground/' });
   const id = search.id || '';
   const { data: mcp, isLoading, error } = useGetMcp(id, { enabled: !!id });
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);

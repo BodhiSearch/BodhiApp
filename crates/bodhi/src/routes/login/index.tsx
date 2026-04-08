@@ -33,7 +33,7 @@ function MultiTenantLoginContent() {
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
   const navigate = useNavigate();
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/login/' });
 
   // 5a. Read invite parameter on mount and store in sessionStorage
   const hasInviteProcessed = useRef(false);

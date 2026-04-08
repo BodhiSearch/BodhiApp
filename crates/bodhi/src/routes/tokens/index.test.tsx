@@ -76,7 +76,7 @@ describe('TokenPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
     });
   });
 
@@ -88,7 +88,7 @@ describe('TokenPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
   });
 });

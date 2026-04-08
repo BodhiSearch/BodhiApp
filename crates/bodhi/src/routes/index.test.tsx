@@ -38,7 +38,7 @@ describe('HomePage', () => {
     render(<RootPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
     });
   });
 

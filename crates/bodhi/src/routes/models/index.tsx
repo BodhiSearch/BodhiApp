@@ -113,16 +113,16 @@ function ModelsPageContent() {
 
   const handleEdit = (model: AliasResponse) => {
     if (isApiAlias(model)) {
-      navigate({ to: '/models/api/edit', search: { id: model.id } });
+      navigate({ to: '/models/api/edit/', search: { id: model.id } });
     } else if (isUserAlias(model)) {
-      navigate({ to: '/models/alias/edit', search: { id: model.id } });
+      navigate({ to: '/models/alias/edit/', search: { id: model.id } });
     }
   };
 
   const handleNew = (model: AliasResponse) => {
     if (hasLocalFileProperties(model)) {
       navigate({
-        to: '/models/alias/new',
+        to: '/models/alias/new/',
         search: { repo: model.repo, filename: model.filename, snapshot: model.snapshot },
       });
     }
@@ -130,7 +130,7 @@ function ModelsPageContent() {
 
   const handleChat = (model: AliasResponse) => {
     const modelIdentifier = isApiAlias(model) ? model.id : model.alias;
-    navigate({ to: '/chat', search: { model: modelIdentifier } });
+    navigate({ to: '/chat/', search: { model: modelIdentifier } });
   };
 
   const handleDelete = (model: AliasResponse) => {
@@ -175,11 +175,11 @@ function ModelsPageContent() {
   };
 
   const handleNewAlias = () => {
-    navigate({ to: '/models/alias/new' });
+    navigate({ to: '/models/alias/new/' });
   };
 
   const handleNewApiModel = () => {
-    navigate({ to: '/models/api/new' });
+    navigate({ to: '/models/api/new/' });
   };
 
   const getModelDisplayRepo = (model: AliasResponse): string => {
@@ -289,7 +289,7 @@ function ModelsPageContent() {
                   variant="outline"
                   className="justify-start"
                   onClick={() => {
-                    navigate({ to: '/chat', search: { model: chatModel } });
+                    navigate({ to: '/chat/', search: { model: chatModel } });
                     setMoreModelsModal(null);
                   }}
                 >

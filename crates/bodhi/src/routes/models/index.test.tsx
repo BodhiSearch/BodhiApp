@@ -168,7 +168,7 @@ describe('ModelsPage', () => {
       });
 
       expect(navigateMock).toHaveBeenCalledWith({
-        to: '/models/alias/new',
+        to: '/models/alias/new/',
         search: { repo: 'test-repo', filename: 'test-file.bin', snapshot: 'abc123' },
       });
     });
@@ -187,7 +187,7 @@ describe('ModelsPage', () => {
         editButton.click();
       });
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/alias/edit', search: { id: 'test-uuid-1' } });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/alias/edit/', search: { id: 'test-uuid-1' } });
     });
 
     it('shows chat and huggingface buttons for all models', async () => {
@@ -205,7 +205,7 @@ describe('ModelsPage', () => {
         chatButton.click();
       });
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat', search: { model: 'test-model' } });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'test-model' } });
     });
 
     it('opens huggingface link in new tab', async () => {
@@ -236,7 +236,7 @@ describe('ModelsPage', () => {
         newApiModelButton.click();
       });
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/new' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/new/' });
     });
   });
 
@@ -269,7 +269,7 @@ describe('ModelsPage', () => {
         editButton.click();
       });
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit', search: { id: 'test-api-model' } });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit/', search: { id: 'test-api-model' } });
     });
 
     it('shows chat button for API models with model identifier', async () => {
@@ -289,7 +289,7 @@ describe('ModelsPage', () => {
         fireEvent.click(chatButton!);
       });
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat', search: { model: 'gpt-4' } });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'gpt-4' } });
     });
 
     it('does not show HuggingFace button for API models', async () => {
@@ -331,7 +331,7 @@ describe('ModelsPage', () => {
       });
 
       // Verify navigation to edit page with correct ID
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit', search: { id: 'test-api-model' } });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit/', search: { id: 'test-api-model' } });
     });
 
     it('navigates to chat page when clicking on API model for chat', async () => {
@@ -357,7 +357,7 @@ describe('ModelsPage', () => {
       });
 
       // Verify navigation to chat page with the API model ID
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat', search: { model: 'gpt-4' } });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'gpt-4' } });
     });
   });
 
@@ -379,7 +379,7 @@ describe('ModelsPage access control', () => {
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
   });
 
   it('should redirect to /login if user is not logged in', async () => {
@@ -387,7 +387,7 @@ describe('ModelsPage access control', () => {
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
   });
 });
 

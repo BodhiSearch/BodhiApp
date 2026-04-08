@@ -205,7 +205,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify redirect to models page
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
     });
   });
 

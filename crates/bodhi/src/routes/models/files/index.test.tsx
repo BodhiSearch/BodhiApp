@@ -245,7 +245,7 @@ describe('ModelFilesPage access control', () => {
     await act(async () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -254,6 +254,6 @@ describe('ModelFilesPage access control', () => {
     await act(async () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
   });
 });

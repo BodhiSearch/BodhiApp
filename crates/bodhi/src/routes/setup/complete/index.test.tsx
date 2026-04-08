@@ -99,7 +99,7 @@ describe('SetupCompletePage', () => {
       startButton.click();
     });
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
   });
 
   it('should have external links with correct attributes', async () => {

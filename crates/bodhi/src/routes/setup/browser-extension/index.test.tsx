@@ -289,7 +289,7 @@ describe('BrowserExtensionSetupPage', () => {
       const continueButton = screen.getByTestId('browser-extension-continue');
       continueButton.click();
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete/' });
     });
 
     it('continues setup when skip button is clicked (extension not installed)', () => {
@@ -316,7 +316,7 @@ describe('BrowserExtensionSetupPage', () => {
       const skipButton = screen.getByTestId('browser-extension-continue');
       skipButton.click();
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete/' });
     });
 
     it('continues setup when skip button is clicked for unsupported browsers', () => {
@@ -336,7 +336,7 @@ describe('BrowserExtensionSetupPage', () => {
       const skipButton = screen.getByTestId('browser-extension-continue');
       skipButton.click();
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/complete/' });
     });
   });
 });

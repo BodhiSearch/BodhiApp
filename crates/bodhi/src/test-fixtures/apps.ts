@@ -24,6 +24,7 @@ export const mockDraftReviewResponse: AccessRequestReviewResponse = {
           id: 'mcp-instance-1',
           name: 'DeepWiki',
           slug: 'deepwiki-prod',
+          path: '/mcp/deepwiki-prod',
           enabled: true,
           mcp_server: {
             id: 'mcp-server-1',
@@ -146,6 +147,7 @@ export const mockDraftRedirectResponse: AccessRequestReviewResponse = {
           id: 'mcp-instance-1',
           name: 'DeepWiki',
           slug: 'deepwiki-prod',
+          path: '/mcp/deepwiki-prod',
           enabled: true,
           mcp_server: {
             id: 'mcp-server-1',
@@ -183,6 +185,7 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
           id: 'mcp-instance-1',
           name: 'DeepWiki',
           slug: 'deepwiki-prod',
+          path: '/mcp/deepwiki-prod',
           enabled: true,
           mcp_server: {
             id: 'mcp-server-1',
@@ -203,6 +206,7 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
           id: 'mcp-instance-2',
           name: 'Weather',
           slug: 'weather-prod',
+          path: '/mcp/weather-prod',
           enabled: true,
           mcp_server: {
             id: 'mcp-server-2',
@@ -240,6 +244,7 @@ export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
           id: 'mcp-instance-1',
           name: 'DeepWiki',
           slug: 'deepwiki-prod',
+          path: '/mcp/deepwiki-prod',
           enabled: true,
           mcp_server: {
             id: 'mcp-server-1',
@@ -281,6 +286,7 @@ export const mockDraftMcpResponse: AccessRequestReviewResponse = {
           id: 'mcp-instance-1',
           name: 'DeepWiki',
           slug: 'deepwiki-prod',
+          path: '/mcp/deepwiki-prod',
           enabled: true,
           mcp_server: {
             id: 'mcp-server-1',
@@ -318,6 +324,7 @@ export const mockDraftMixedResourcesResponse: AccessRequestReviewResponse = {
           id: 'mcp-instance-1',
           name: 'DeepWiki',
           slug: 'deepwiki-prod',
+          path: '/mcp/deepwiki-prod',
           enabled: true,
           mcp_server: {
             id: 'mcp-server-1',
@@ -376,6 +383,7 @@ export const mockDraftReviewResponsePowerUser: AccessRequestReviewResponse = {
           id: 'mcp-instance-1',
           name: 'DeepWiki',
           slug: 'deepwiki-prod',
+          path: '/mcp/deepwiki-prod',
           enabled: true,
           mcp_server: {
             id: 'mcp-server-1',

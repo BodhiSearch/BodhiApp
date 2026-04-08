@@ -54,7 +54,7 @@ describe('McpsPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
     });
   });
 
@@ -66,7 +66,7 @@ describe('McpsPage - Authentication & Initialization', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
   });
 });
@@ -186,7 +186,7 @@ describe('McpsPage - Instance List Display', () => {
     const editButton = screen.getByTestId('mcp-edit-button-mcp-uuid-1');
     await user.click(editButton);
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/new', search: { id: 'mcp-uuid-1' } });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/new/', search: { id: 'mcp-uuid-1' } });
   });
 
   it('shows delete confirmation dialog', async () => {

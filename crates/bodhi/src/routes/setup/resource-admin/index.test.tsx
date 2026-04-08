@@ -78,7 +78,7 @@ describe('ResourceAdminPage', () => {
     renderWithSetupProvider(<ResourceAdminPage />);
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
     });
   });
 
@@ -148,7 +148,7 @@ describe('ResourceAdminPage', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
     });
   });
 

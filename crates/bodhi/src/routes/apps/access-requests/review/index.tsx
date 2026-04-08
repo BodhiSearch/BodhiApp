@@ -258,7 +258,12 @@ const ReviewContent = () => {
           url: mcp.url,
           status: approvedMcps[mcp.url] ? 'approved' : 'denied',
           instance:
-            approvedMcps[mcp.url] && selectedMcpInstances[mcp.url] ? { id: selectedMcpInstances[mcp.url] } : undefined,
+            approvedMcps[mcp.url] && selectedMcpInstances[mcp.url]
+              ? (() => {
+                  const inst = mcp.instances.find((i) => i.id === selectedMcpInstances[mcp.url]);
+                  return inst ? { id: inst.id, path: inst.path } : undefined;
+                })()
+              : undefined,
         })),
       },
     };

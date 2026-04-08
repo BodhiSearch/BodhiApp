@@ -6,7 +6,8 @@ import type { McpClientTool, McpToolCallResult } from '@/hooks/mcps/useMcpClient
 import { useMcpAgentTools, McpAgentToolsInput } from './useMcpAgentTools';
 
 describe('useMcpAgentTools', () => {
-  const mockCallTool = vi.fn<[string, string, Record<string, unknown>], Promise<McpToolCallResult>>();
+  const mockCallTool =
+    vi.fn<(mcpId: string, toolName: string, args: Record<string, unknown>) => Promise<McpToolCallResult>>();
 
   const baseTool: McpClientTool = {
     name: 'echo',

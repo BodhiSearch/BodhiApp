@@ -169,8 +169,16 @@ async function restoreMessagesForChat(): Promise<void> {
         api: apiFormatToPiApi(apiFormat),
         provider: 'openai',
         model: modelId,
-        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-        stopReason: 'endTurn' as const,
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: 'stop' as const,
+        timestamp: Date.now(),
       };
     }
   });

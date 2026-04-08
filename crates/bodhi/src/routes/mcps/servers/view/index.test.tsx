@@ -62,7 +62,7 @@ describe('ServerViewPage - Authentication', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
   });
 });
@@ -106,7 +106,7 @@ describe('ServerViewPage - Server Info', () => {
     });
 
     const editLink = screen.getByRole('link', { name: /edit/i });
-    expect(editLink).toHaveAttribute('href', '/mcps/servers/edit?id=server-uuid-1');
+    expect(editLink).toHaveAttribute('href', '/mcps/servers/edit/?id=server-uuid-1');
   });
 
   it('shows server disabled status', async () => {

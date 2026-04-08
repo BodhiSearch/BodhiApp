@@ -99,7 +99,7 @@ function Confetti() {
           ))}
         </div>
       </div>
-      <style jsx>{`
+      <style>{`
         @keyframes confetti {
           0% {
             transform: translateY(0) rotateX(0) rotateY(0);

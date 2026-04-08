@@ -14,7 +14,7 @@ export const Route = createFileRoute('/models/api/edit/')({
 });
 
 function EditApiModelContent() {
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/models/api/edit/' });
   const id = search.id;
 
   const {

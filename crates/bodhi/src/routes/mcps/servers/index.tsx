@@ -144,7 +144,7 @@ function McpServersPageContent() {
             className="h-8 w-8 p-0"
             data-testid={`server-view-button-${server.id}`}
           >
-            <Link to={`${ROUTE_MCP_SERVERS}/view`} search={{ id: server.id }} title={`View ${server.name}`}>
+            <Link to={`${ROUTE_MCP_SERVERS}view/`} search={{ id: server.id }} title={`View ${server.name}`}>
               <Eye className="h-4 w-4" />
             </Link>
           </Button>
@@ -152,7 +152,7 @@ function McpServersPageContent() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate({ to: `${ROUTE_MCP_SERVERS}/edit/`, search: { id: server.id } })}
+              onClick={() => navigate({ to: `${ROUTE_MCP_SERVERS}edit/`, search: { id: server.id } })}
               title={`Edit ${server.name}`}
               className="h-8 w-8 p-0"
               data-testid={`server-edit-button-${server.id}`}
@@ -196,7 +196,7 @@ function McpServersPageContent() {
         <h1 className="text-2xl font-bold">MCP Servers</h1>
         {isAdmin && (
           <Button asChild data-testid="mcp-server-new-button">
-            <Link to={`${ROUTE_MCP_SERVERS}/new`}>
+            <Link to={`${ROUTE_MCP_SERVERS}new/`}>
               <Plus className="h-4 w-4 mr-2" />
               New MCP Server
             </Link>
@@ -226,7 +226,7 @@ function McpServersPageContent() {
           <p>No MCP servers registered yet</p>
           {isAdmin && (
             <Button asChild variant="link" className="mt-2">
-              <Link to={`${ROUTE_MCP_SERVERS}/new`}>Register the first MCP server</Link>
+              <Link to={`${ROUTE_MCP_SERVERS}new/`}>Register the first MCP server</Link>
             </Button>
           )}
         </div>

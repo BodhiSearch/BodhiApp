@@ -5,7 +5,7 @@ import type { AgentEvent, AgentMessage, AgentTool } from '@mariozechner/pi-agent
 
 type AgentEventListener = (event: AgentEvent, signal: AbortSignal) => Promise<void> | void;
 
-const mockPrompt = vi.fn<[string | AgentMessage | AgentMessage[]], Promise<void>>();
+const mockPrompt = vi.fn<(input: string | AgentMessage | AgentMessage[]) => Promise<void>>();
 const mockAbort = vi.fn();
 let capturedAgentOptions: Record<string, unknown> = {};
 
@@ -244,8 +244,16 @@ describe('useBodhiAgent', () => {
         api: 'openai-completions',
         provider: 'openai',
         model: 'test-model',
-        usage: { inputTokens: 5, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0 },
-        stopReason: 'endTurn',
+        usage: {
+          input: 5,
+          output: 2,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 7,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: 'stop',
+        timestamp: Date.now(),
       } as AgentMessage,
     ];
 
@@ -274,8 +282,16 @@ describe('useBodhiAgent', () => {
       api: 'openai-completions',
       provider: 'openai',
       model: 'test-model',
-      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      stopReason: 'endTurn',
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: 'stop',
+      timestamp: Date.now(),
     } as AgentMessage;
 
     mockPrompt.mockImplementation(async () => {

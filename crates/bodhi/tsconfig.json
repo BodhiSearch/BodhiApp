@@ -18,7 +18,9 @@
     },
     "noImplicitAny": true,
     "strictFunctionTypes": true,
-    "noImplicitReturns": true
+    "noImplicitReturns": true,
+    "downlevelIteration": true,
+    "types": ["vitest/globals"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite-env.d.ts"],
   "exclude": ["node_modules", "old-chat-app", "out", "pending"]

@@ -96,9 +96,9 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   });
 
   it.each([
-    { status: 'setup', expectedPath: '/setup' },
+    { status: 'setup', expectedPath: '/setup/' },
     { status: 'ready', expectedPath: ROUTE_DEFAULT },
-    { status: 'resource_admin', expectedPath: '/setup/resource-admin' },
+    { status: 'resource_admin', expectedPath: '/setup/resource-admin/' },
   ])('redirects to $expectedPath when status is $status', async ({ status, expectedPath }) => {
     server.use(...mockAppInfo({ status: status as any }));
 
@@ -108,23 +108,23 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
 
   // Update the status mismatch test cases
   it.each([
-    { currentStatus: 'setup', allowedStatus: 'resource_admin', expectedPath: '/setup' },
-    { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/setup' },
-    { currentStatus: 'setup', allowedStatus: undefined, expectedPath: '/setup' },
+    { currentStatus: 'setup', allowedStatus: 'resource_admin', expectedPath: '/setup/' },
+    { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/setup/' },
+    { currentStatus: 'setup', allowedStatus: undefined, expectedPath: '/setup/' },
     {
       currentStatus: 'resource_admin',
       allowedStatus: 'setup',
-      expectedPath: '/setup/resource-admin',
+      expectedPath: '/setup/resource-admin/',
     },
     {
       currentStatus: 'resource_admin',
       allowedStatus: 'ready',
-      expectedPath: '/setup/resource-admin',
+      expectedPath: '/setup/resource-admin/',
     },
     {
       currentStatus: 'resource_admin',
       allowedStatus: undefined,
-      expectedPath: '/setup/resource-admin',
+      expectedPath: '/setup/resource-admin/',
     },
     {
       currentStatus: 'ready',
@@ -171,7 +171,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     server.use(...mockAppInfo({ status: 'ready', deployment: 'multi_tenant' }));
 
     await renderWithSetup(<AppInitializer />);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
   });
 
   it('redirects to chat when ready + multi_tenant + client_id', async () => {
@@ -185,7 +185,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     server.use(...mockAppInfo({ status: 'setup', deployment: 'multi_tenant' }));
 
     await renderWithSetup(<AppInitializer />);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/tenants' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/tenants/' });
   });
 
   it('stays on page when ready + multi_tenant + no client_id and allowedStatus=ready', async () => {
@@ -227,7 +227,7 @@ describe('AppInitializer role-based access control', () => {
         expect(screen.getByText('Protected content')).toBeInTheDocument();
         expect(navigateMock).not.toHaveBeenCalled();
       } else {
-        expect(navigateMock).toHaveBeenCalledWith({ to: '/login', search: { error: 'insufficient-role' } });
+        expect(navigateMock).toHaveBeenCalledWith({ to: '/login/', search: { error: 'insufficient-role' } });
       }
     }
   );
@@ -266,7 +266,7 @@ describe('AppInitializer role-based access control', () => {
       </AppInitializer>
     );
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access/' });
   });
 
   it('redirects to login when user has undefined roles', async () => {
@@ -284,7 +284,7 @@ describe('AppInitializer role-based access control', () => {
       </AppInitializer>
     );
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access/' });
   });
 
   it('redirects to request-access when user has guest role', async () => {
@@ -302,7 +302,7 @@ describe('AppInitializer role-based access control', () => {
       </AppInitializer>
     );
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access/' });
   });
 
   it('redirects to request-access when user has anonymous role', async () => {
@@ -320,7 +320,7 @@ describe('AppInitializer role-based access control', () => {
       </AppInitializer>
     );
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/request-access/' });
   });
 
   it('prioritizes auth check over role check', async () => {
@@ -333,7 +333,7 @@ describe('AppInitializer role-based access control', () => {
     );
 
     // Should redirect to login due to auth failure, not role failure
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
   });
 });
 
@@ -352,7 +352,7 @@ describe('AppInitializer authentication behavior', () => {
     );
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/login' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
   });
 

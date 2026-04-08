@@ -153,7 +153,7 @@ describe('NewMcpPage - Create flow', () => {
     await user.click(screen.getByTestId('mcp-create-button'));
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/' });
     });
   });
 });
@@ -714,7 +714,7 @@ describe('NewMcpPage - OAuth Pre-Registered Client', () => {
     await user.click(screen.getByTestId('mcp-create-button'));
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/' });
     });
   });
 });

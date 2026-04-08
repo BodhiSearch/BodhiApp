@@ -276,7 +276,7 @@ describe('ApiModelForm', () => {
         );
       });
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
     });
 
     it('enables fetch models button when base_url is present (regardless of API key)', async () => {
@@ -473,7 +473,7 @@ describe('ApiModelForm', () => {
         );
       });
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
     });
   });
 
@@ -767,7 +767,7 @@ describe('ApiModelForm', () => {
           );
         });
 
-        expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
+        expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
       });
     });
 
@@ -873,7 +873,7 @@ describe('ApiModelForm', () => {
         expect(capturedRequestBody).toBeDefined();
         expect(capturedRequestBody.api_key).toEqual(expectedApiKeyRequest);
 
-        expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
+        expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
       });
     });
 
@@ -1061,7 +1061,7 @@ describe('ApiModelForm', () => {
 
       await user.click(screen.getByTestId('cancel-button'));
 
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
     });
   });
 

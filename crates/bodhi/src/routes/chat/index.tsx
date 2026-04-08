@@ -113,7 +113,7 @@ function ChatWithHistory() {
   const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-settings-open', true);
   const { open, openMobile, isMobile } = useSidebar();
   const showHistoryPanel = isMobile ? openMobile : open;
-  const search = useSearch({ strict: false });
+  const search = useSearch({ from: '/chat/' });
   const model = search.model;
   const chatIdFromUrl = search.id;
   const getTestId = useResponsiveTestId();

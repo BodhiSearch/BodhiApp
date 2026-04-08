@@ -84,7 +84,7 @@ describe('RequestAccessPage Display States', () => {
     expect(screen.getByTestId('request-access-page')).toBeInTheDocument();
     // User with roles gets redirected, so should not see the AuthCard content
     expect(screen.queryByTestId('auth-card')).not.toBeInTheDocument();
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat' });
+    expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
   });
 
   it('shows request access button when user has rejected request and no roles', async () => {

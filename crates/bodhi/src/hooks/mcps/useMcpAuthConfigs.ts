@@ -3,7 +3,7 @@ import {
   CreateMcpAuthConfigRequest,
   McpAuthConfigResponse,
   McpAuthConfigsListResponse,
-  McpAuth,
+  McpAuthType,
   OAuthTokenResponse,
   OpenAiApiError,
 } from '@bodhiapp/ts-client';
@@ -145,6 +145,6 @@ export type {
   CreateMcpAuthConfigRequest,
   McpAuthConfigResponse,
   McpAuthConfigsListResponse,
-  McpAuth,
+  McpAuthType,
   OAuthTokenResponse,
 };
