@@ -703,6 +703,9 @@ pub enum ApiFormat {
   #[strum(serialize = "openai")]
   #[cfg_attr(any(test, feature = "test-utils"), default)]
   OpenAI,
+  #[serde(rename = "openai_responses")]
+  #[strum(serialize = "openai_responses")]
+  OpenAIResponses,
   #[serde(rename = "placeholder")]
   #[strum(serialize = "placeholder")]
   Placeholder,
@@ -1150,6 +1153,10 @@ impl Default for TestCreds {
   }
 }
 
+fn default_api_format_openai() -> ApiFormat {
+  ApiFormat::OpenAI
+}
+
 // =============================================================================
 // TestPromptRequest / TestPromptResponse
 // =============================================================================
@@ -1178,6 +1185,10 @@ pub struct TestPromptRequest {
   /// Test prompt (max 30 characters for cost control)
   #[validate(length(min = 1, max = 30))]
   pub prompt: String,
+
+  /// API format to use for the test request (defaults to OpenAI Chat Completions)
+  #[serde(default = "default_api_format_openai")]
+  pub api_format: ApiFormat,
 }
 
 /// Response from testing API connectivity

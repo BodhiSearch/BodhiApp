@@ -1,14 +1,13 @@
-use services::ApiFormat::OpenAI;
 use services::{
-  ApiKey, ApiKeyUpdate, ApiModelRequestBuilder, FetchModelsRequest, TestCreds, TestPromptRequest,
-  TestPromptResponse,
+  ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequestBuilder, FetchModelsRequest, TestCreds,
+  TestPromptRequest, TestPromptResponse,
 };
 use validator::Validate;
 
 #[test]
 fn test_create_api_model_form_validation() {
   let form = ApiModelRequestBuilder::default()
-    .api_format(OpenAI)
+    .api_format(ApiFormat::OpenAI)
     .base_url("not-a-url")
     .api_key(ApiKeyUpdate::Set(ApiKey::some("key".to_string()).unwrap()))
     .models(vec!["gpt-4".to_string()])
@@ -18,7 +17,7 @@ fn test_create_api_model_form_validation() {
   assert!(form.validate().is_err());
 
   let valid_form = ApiModelRequestBuilder::default()
-    .api_format(OpenAI)
+    .api_format(ApiFormat::OpenAI)
     .base_url("https://api.openai.com/v1")
     .api_key(ApiKeyUpdate::Set(
       ApiKey::some("sk-test".to_string()).unwrap(),
@@ -37,6 +36,7 @@ fn test_prompt_request_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "This prompt is way too long and exceeds the 30 character limit".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(too_long.validate().is_err());
 
@@ -45,6 +45,7 @@ fn test_prompt_request_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello, how are you?".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(valid.validate().is_ok());
 }
@@ -121,6 +122,7 @@ fn test_test_prompt_request_credentials_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(with_api_key.validate().is_ok());
 
@@ -130,6 +132,7 @@ fn test_test_prompt_request_credentials_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(no_auth.validate().is_ok());
 
@@ -139,6 +142,7 @@ fn test_test_prompt_request_credentials_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(with_id.validate().is_ok());
 }
@@ -170,7 +174,7 @@ fn test_fetch_models_request_credentials_validation() {
 #[test]
 fn test_api_model_form_validate_forward_all_with_prefix_success() {
   let form = ApiModelRequestBuilder::default()
-    .api_format(OpenAI)
+    .api_format(ApiFormat::OpenAI)
     .base_url("https://api.openai.com/v1")
     .api_key(ApiKeyUpdate::Set(
       ApiKey::some("sk-test".to_string()).unwrap(),
@@ -187,7 +191,7 @@ fn test_api_model_form_validate_forward_all_with_prefix_success() {
 #[test]
 fn test_api_model_form_validate_forward_all_without_prefix_fails() {
   let form = ApiModelRequestBuilder::default()
-    .api_format(OpenAI)
+    .api_format(ApiFormat::OpenAI)
     .base_url("https://api.openai.com/v1")
     .api_key(ApiKeyUpdate::Set(
       ApiKey::some("sk-test".to_string()).unwrap(),
@@ -204,7 +208,7 @@ fn test_api_model_form_validate_forward_all_without_prefix_fails() {
 #[test]
 fn test_api_model_form_validate_forward_all_disabled_with_models_success() {
   let form = ApiModelRequestBuilder::default()
-    .api_format(OpenAI)
+    .api_format(ApiFormat::OpenAI)
     .base_url("https://api.openai.com/v1")
     .api_key(ApiKeyUpdate::Set(
       ApiKey::some("sk-test".to_string()).unwrap(),

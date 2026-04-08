@@ -32,6 +32,12 @@ impl SafeReqwest {
     validate_outbound_url(url, self.allow_private_ips)?;
     Ok(self.inner.post(url))
   }
+
+  /// Validate a URL and return a `reqwest::RequestBuilder` for a DELETE request.
+  pub fn delete(&self, url: &str) -> Result<reqwest::RequestBuilder, UrlValidationError> {
+    validate_outbound_url(url, self.allow_private_ips)?;
+    Ok(self.inner.delete(url))
+  }
 }
 
 #[derive(Debug, Default)]

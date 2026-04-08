@@ -27,6 +27,7 @@ async-openai = { path = "async-openai/async-openai", features = [
   "chat-completion-types",
   "embedding-types",
   "model-types",
+  "response-types",
 ] }
 errmeta_derive = { path = "crates/errmeta_derive" }
 errmeta = { path = "crates/errmeta" }

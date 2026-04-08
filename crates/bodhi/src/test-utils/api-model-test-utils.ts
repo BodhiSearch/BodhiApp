@@ -1,15 +1,19 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect } from 'vitest';
+import { API_FORMAT_PRESETS, type ApiFormatPreset } from '@/schemas/apiModel';
 
 // User interaction utilities for API Format (New/Edit pages)
 export async function selectApiFormat(user: ReturnType<typeof userEvent.setup>, formatId: string) {
   const formatSelector = screen.getByTestId('api-format-selector');
   await user.click(formatSelector);
 
+  const preset = API_FORMAT_PRESETS[formatId as ApiFormatPreset];
+  const optionText = preset?.name || formatId.toUpperCase();
+
   // Wait for dropdown to open and select the option
   await waitFor(async () => {
-    const option = screen.getByRole('option', { name: formatId.toUpperCase() });
+    const option = screen.getByRole('option', { name: optionText });
     await user.click(option);
   });
 }
@@ -88,7 +92,9 @@ export async function cancelForm(user: ReturnType<typeof userEvent.setup>) {
 // Assertion utilities for API Format (New/Edit pages)
 export function expectApiFormatSelected(formatId: string) {
   const formatSelector = screen.getByTestId('api-format-selector');
-  expect(formatSelector).toHaveTextContent(formatId.toUpperCase());
+  const preset = API_FORMAT_PRESETS[formatId as ApiFormatPreset];
+  const expectedText = preset?.name || formatId.toUpperCase();
+  expect(formatSelector).toHaveTextContent(expectedText);
 }
 
 // Assertion utilities for Provider (Setup page)

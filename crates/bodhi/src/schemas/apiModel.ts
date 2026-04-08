@@ -4,9 +4,14 @@ import * as z from 'zod';
 // API format presets for AI APIs
 export const API_FORMAT_PRESETS = {
   openai: {
-    name: 'OpenAI',
+    name: 'OpenAI - Completions',
     baseUrl: 'https://api.openai.com/v1',
-    models: [] as string[], // Models will always be fetched from API
+    models: [] as string[],
+  },
+  openai_responses: {
+    name: 'OpenAI - Responses',
+    baseUrl: 'https://api.openai.com/v1',
+    models: [] as string[],
   },
 };
 

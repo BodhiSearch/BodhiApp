@@ -175,6 +175,7 @@ pub async fn api_models_test(
           payload.base_url.trim_end_matches('/'),
           &payload.model,
           &payload.prompt,
+          &payload.api_format,
         )
         .await
     }
@@ -199,6 +200,7 @@ pub async fn api_models_test(
           api_model.base_url.trim_end_matches('/'),
           &payload.model,
           &payload.prompt,
+          &payload.api_format,
         )
         .await
     }
@@ -299,7 +301,7 @@ pub async fn api_models_fetch_models(
 )]
 pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, ApiError> {
   Ok(Json(ApiFormatsResponse {
-    data: vec![ApiFormat::OpenAI],
+    data: vec![ApiFormat::OpenAI, ApiFormat::OpenAIResponses],
   }))
 }
 

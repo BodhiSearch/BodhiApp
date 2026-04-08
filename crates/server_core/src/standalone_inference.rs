@@ -131,7 +131,34 @@ impl InferenceService for StandaloneInferenceService {
     api_alias: &ApiAlias,
     api_key: Option<String>,
   ) -> Result<Response, InferenceError> {
-    proxy_to_remote(&self.ai_api_service, endpoint, request, api_alias, api_key).await
+    proxy_to_remote(
+      &self.ai_api_service,
+      endpoint,
+      request,
+      api_alias,
+      api_key,
+      None,
+    )
+    .await
+  }
+
+  async fn forward_remote_with_params(
+    &self,
+    endpoint: LlmEndpoint,
+    request: Value,
+    api_alias: &ApiAlias,
+    api_key: Option<String>,
+    query_params: Option<Vec<(String, String)>>,
+  ) -> Result<Response, InferenceError> {
+    proxy_to_remote(
+      &self.ai_api_service,
+      endpoint,
+      request,
+      api_alias,
+      api_key,
+      query_params,
+    )
+    .await
   }
 
   async fn stop(&self) -> Result<(), InferenceError> {
@@ -168,9 +195,17 @@ pub(crate) async fn proxy_to_remote(
   request: Value,
   api_alias: &ApiAlias,
   api_key: Option<String>,
+  query_params: Option<Vec<(String, String)>>,
 ) -> Result<Response, InferenceError> {
+  let method = endpoint.http_method();
+  let api_path = endpoint.api_path();
+  let body = if method == "POST" {
+    Some(request)
+  } else {
+    None
+  };
   ai_api_service
-    .forward_request(endpoint.api_path(), api_alias, api_key, request)
+    .forward_request_with_method(method, &api_path, api_alias, api_key, body, query_params)
     .await
     .map_err(InferenceError::from)
 }

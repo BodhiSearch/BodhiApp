@@ -42,7 +42,9 @@ use crate::{
 use crate::{build_ui_proxy_router, build_ui_spa_router};
 use crate::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
-  ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
+  responses_cancel_handler, responses_create_handler, responses_delete_handler,
+  responses_get_handler, responses_input_items_handler, ENDPOINT_OAI_CHAT_COMPLETIONS,
+  ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS, ENDPOINT_OAI_RESPONSES,
 };
 use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
@@ -175,6 +177,20 @@ pub async fn build_routes(
       post(chat_completions_handler),
     )
     .route(ENDPOINT_OAI_EMBEDDINGS, post(embeddings_handler))
+    // OpenAI Responses API
+    .route(ENDPOINT_OAI_RESPONSES, post(responses_create_handler))
+    .route(
+      &format!("{ENDPOINT_OAI_RESPONSES}/{{response_id}}"),
+      get(responses_get_handler).delete(responses_delete_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_OAI_RESPONSES}/{{response_id}}/input_items"),
+      get(responses_input_items_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_OAI_RESPONSES}/{{response_id}}/cancel"),
+      post(responses_cancel_handler),
+    )
     // Ollama APIs
     .route(ENDPOINT_OLLAMA_TAGS, get(ollama_models_handler))
     .route(ENDPOINT_OLLAMA_SHOW, post(ollama_model_show_handler))

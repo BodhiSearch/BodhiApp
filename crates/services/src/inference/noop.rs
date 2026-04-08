@@ -29,6 +29,17 @@ impl InferenceService for NoopInferenceService {
     Err(InferenceError::Unsupported)
   }
 
+  async fn forward_remote_with_params(
+    &self,
+    _endpoint: LlmEndpoint,
+    _request: Value,
+    _api_alias: &ApiAlias,
+    _api_key: Option<String>,
+    _query_params: Option<Vec<(String, String)>>,
+  ) -> Result<Response, InferenceError> {
+    Err(InferenceError::Unsupported)
+  }
+
   async fn stop(&self) -> Result<(), InferenceError> {
     Ok(())
   }

@@ -143,13 +143,13 @@ pub async fn chat_completions_handler(
 
   let inference = auth_scope.inference();
 
-  use services::Alias;
+  use services::{Alias, ApiFormat};
   let response = match alias {
     Alias::User(_) | Alias::Model(_) => inference
       .forward_local(LlmEndpoint::ChatCompletions, request, alias)
       .await
       .map_err(ApiError::from)?,
-    Alias::Api(ref api_alias) => {
+    Alias::Api(ref api_alias) if api_alias.api_format != ApiFormat::OpenAIResponses => {
       let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
       let user_id = auth_scope
         .auth_context()
@@ -166,6 +166,12 @@ pub async fn chat_completions_handler(
         .forward_remote(LlmEndpoint::ChatCompletions, request, api_alias, api_key)
         .await
         .map_err(ApiError::from)?
+    }
+    Alias::Api(ref api_alias) => {
+      return Err(ApiError::from(OAIRouteError::InvalidRequest(format!(
+        "Model is configured with '{}' format which does not support the chat completions endpoint. Use the responses API endpoint instead.",
+        api_alias.api_format
+      ))));
     }
   };
 
@@ -228,13 +234,13 @@ pub async fn embeddings_handler(
 
   let inference = auth_scope.inference();
 
-  use services::Alias;
+  use services::{Alias, ApiFormat};
   let response = match alias {
     Alias::User(_) | Alias::Model(_) => inference
       .forward_local(LlmEndpoint::Embeddings, request_value, alias)
       .await
       .map_err(ApiError::from)?,
-    Alias::Api(ref api_alias) => {
+    Alias::Api(ref api_alias) if api_alias.api_format != ApiFormat::OpenAIResponses => {
       let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
       let user_id = auth_scope
         .auth_context()
@@ -251,6 +257,12 @@ pub async fn embeddings_handler(
         .forward_remote(LlmEndpoint::Embeddings, request_value, api_alias, api_key)
         .await
         .map_err(ApiError::from)?
+    }
+    Alias::Api(ref api_alias) => {
+      return Err(ApiError::from(OAIRouteError::InvalidRequest(format!(
+        "Model is configured with '{}' format which does not support the embeddings endpoint.",
+        api_alias.api_format
+      ))));
     }
   };
 

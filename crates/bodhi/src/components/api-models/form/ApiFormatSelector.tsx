@@ -1,6 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { API_FORMAT_PRESETS, type ApiFormatPreset } from '@/schemas/apiModel';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const formatDisplayName = (format: string): string => {
+  const preset = API_FORMAT_PRESETS[format as ApiFormatPreset];
+  return preset?.name || format.toUpperCase();
+};
 
 interface ApiFormatSelectorProps {
   value?: string;
@@ -37,7 +43,7 @@ export function ApiFormatSelector({
         <SelectContent>
           {options.map((format) => (
             <SelectItem key={format} value={format}>
-              {format.toUpperCase()}
+              {formatDisplayName(format)}
             </SelectItem>
           ))}
         </SelectContent>

@@ -1,5 +1,5 @@
 use super::error::{AiApiServiceError, Result};
-use crate::models::ApiAlias;
+use crate::models::{ApiAlias, ApiFormat};
 use crate::SafeReqwest;
 use async_trait::async_trait;
 use axum::body::Body;
@@ -21,6 +21,7 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
     base_url: &str,
     model: &str,
     prompt: &str,
+    api_format: &ApiFormat,
   ) -> Result<String>;
 
   /// Fetch available models from provider API
@@ -34,6 +35,18 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
     api_alias: &ApiAlias,
     api_key: Option<String>,
     request: Value,
+  ) -> Result<Response>;
+
+  /// Forward request to remote API with explicit HTTP method control.
+  /// Used for Responses API which needs GET/DELETE in addition to POST.
+  async fn forward_request_with_method(
+    &self,
+    method: &str,
+    api_path: &str,
+    api_alias: &ApiAlias,
+    api_key: Option<String>,
+    request: Option<Value>,
+    query_params: Option<Vec<(String, String)>>,
   ) -> Result<Response>;
 }
 
@@ -71,6 +84,7 @@ impl AiApiService for DefaultAiApiService {
     base_url: &str,
     model: &str,
     prompt: &str,
+    api_format: &ApiFormat,
   ) -> Result<String> {
     if prompt.len() > TEST_PROMPT_MAX_LENGTH {
       return Err(AiApiServiceError::PromptTooLong {
@@ -79,19 +93,31 @@ impl AiApiService for DefaultAiApiService {
       });
     }
 
-    let request_body = serde_json::json!({
-      "model": model,
-      "messages": [
-        {
-          "role": "user",
-          "content": prompt
-        }
-      ],
-      "max_tokens": 50,
-      "temperature": 0.7
-    });
-
-    let url = format!("{}/chat/completions", base_url);
+    let (request_body, url) = match api_format {
+      ApiFormat::OpenAIResponses => (
+        serde_json::json!({
+          "model": model,
+          "input": prompt,
+          "max_output_tokens": 50,
+          "store": false
+        }),
+        format!("{}/responses", base_url),
+      ),
+      _ => (
+        serde_json::json!({
+          "model": model,
+          "messages": [
+            {
+              "role": "user",
+              "content": prompt
+            }
+          ],
+          "max_tokens": 50,
+          "temperature": 0.7
+        }),
+        format!("{}/chat/completions", base_url),
+      ),
+    };
 
     let mut request = self
       .client
@@ -114,14 +140,31 @@ impl AiApiService for DefaultAiApiService {
 
     let response_body: serde_json::Value = response.json().await?;
 
-    let content = response_body
-      .get("choices")
-      .and_then(|c| c.get(0))
-      .and_then(|choice| choice.get("message"))
-      .and_then(|msg| msg.get("content"))
-      .and_then(|c| c.as_str())
-      .unwrap_or("No response")
-      .to_string();
+    let content = match api_format {
+      ApiFormat::OpenAIResponses => response_body
+        .get("output")
+        .and_then(|o| o.as_array())
+        .and_then(|items| {
+          items
+            .iter()
+            .find(|item| item.get("type").and_then(|t| t.as_str()) == Some("message"))
+        })
+        .and_then(|msg| msg.get("content"))
+        .and_then(|c| c.as_array())
+        .and_then(|parts| parts.first())
+        .and_then(|part| part.get("text"))
+        .and_then(|t| t.as_str())
+        .unwrap_or("No response")
+        .to_string(),
+      _ => response_body
+        .get("choices")
+        .and_then(|c| c.get(0))
+        .and_then(|choice| choice.get("message"))
+        .and_then(|msg| msg.get("content"))
+        .and_then(|c| c.as_str())
+        .unwrap_or("No response")
+        .to_string(),
+    };
 
     Ok(content)
   }
@@ -165,40 +208,70 @@ impl AiApiService for DefaultAiApiService {
     api_path: &str,
     api_alias: &ApiAlias,
     api_key: Option<String>,
-    mut request: Value,
+    request: Value,
+  ) -> Result<Response> {
+    self
+      .forward_request_with_method("POST", api_path, api_alias, api_key, Some(request), None)
+      .await
+  }
+
+  async fn forward_request_with_method(
+    &self,
+    method: &str,
+    api_path: &str,
+    api_alias: &ApiAlias,
+    api_key: Option<String>,
+    mut request: Option<Value>,
+    query_params: Option<Vec<(String, String)>>,
   ) -> Result<Response> {
     let url = format!("{}{}", api_alias.base_url, api_path);
 
-    // Handle prefix stripping if configured
-    if let Some(ref prefix) = api_alias.prefix {
-      if let Some(model_str) = request.get("model").and_then(|v| v.as_str()) {
-        if model_str.starts_with(prefix) {
-          let stripped_model = model_str
-            .strip_prefix(prefix)
-            .unwrap_or(model_str)
-            .to_string();
-          if let Some(obj) = request.as_object_mut() {
-            obj.insert(
-              "model".to_string(),
-              serde_json::Value::String(stripped_model),
-            );
+    // Handle prefix stripping if configured (only for POST with body containing model)
+    if let Some(ref req) = request {
+      if let Some(ref prefix) = api_alias.prefix {
+        if let Some(model_str) = req.get("model").and_then(|v| v.as_str()) {
+          if model_str.starts_with(prefix) {
+            let stripped_model = model_str
+              .strip_prefix(prefix)
+              .unwrap_or(model_str)
+              .to_string();
+            if let Some(obj) = request.as_mut().and_then(|r| r.as_object_mut()) {
+              obj.insert(
+                "model".to_string(),
+                serde_json::Value::String(stripped_model),
+              );
+            }
           }
         }
       }
     }
 
-    // Forward the request to the remote API
-    let mut http_request = self
-      .client
-      .post(&url)?
-      .header("Content-Type", "application/json");
+    // Build the HTTP request based on method
+    let mut http_request = match method {
+      "GET" => self.client.get(&url)?,
+      "DELETE" => self.client.delete(&url)?,
+      _ => self
+        .client
+        .post(&url)?
+        .header("Content-Type", "application/json"),
+    };
+
+    // Add query parameters if provided
+    if let Some(ref params) = query_params {
+      http_request = http_request.query(params);
+    }
 
     // Only add Authorization header if API key is provided
     if let Some(key) = api_key {
       http_request = http_request.header("Authorization", format!("Bearer {}", key));
     }
 
-    let response = http_request.json(&request).send().await?;
+    // Send with or without body
+    let response = if let Some(body) = request {
+      http_request.json(&body).send().await?
+    } else {
+      http_request.send().await?
+    };
 
     let status = response.status();
 

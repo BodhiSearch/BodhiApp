@@ -232,6 +232,12 @@ impl SharedContext for DefaultSharedContext {
         let response = match endpoint {
           LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
           LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
+          _ => {
+            return Err(ContextError::Unreachable(format!(
+              "endpoint {:?} is not supported for local models",
+              endpoint
+            )))
+          }
         };
         Ok(response)
       }
@@ -254,6 +260,12 @@ impl SharedContext for DefaultSharedContext {
         let response = match endpoint {
           LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
           LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
+          _ => {
+            return Err(ContextError::Unreachable(format!(
+              "endpoint {:?} is not supported for local models",
+              endpoint
+            )))
+          }
         };
         Ok(response)
       }
@@ -276,6 +288,12 @@ impl SharedContext for DefaultSharedContext {
         let response = match endpoint {
           LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
           LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
+          _ => {
+            return Err(ContextError::Unreachable(format!(
+              "endpoint {:?} is not supported for local models",
+              endpoint
+            )))
+          }
         };
         Ok(response)
       }

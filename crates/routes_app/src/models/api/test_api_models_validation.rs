@@ -18,7 +18,7 @@ use services::{
   ApiAliasResponse, ApiKey, ApiKeyUpdate, ApiModelRequest, FetchModelsRequest, TestCreds,
   TestPromptRequest,
 };
-use services::{ApiFormat::OpenAI, ResourceRole};
+use services::{ApiFormat, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
 use validator::Validate;
@@ -112,7 +112,7 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
     .await?;
 
   let create_form = ApiModelRequest {
-    api_format: OpenAI,
+    api_format: ApiFormat::OpenAI,
     base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec!["gpt-4".to_string()],
@@ -152,7 +152,7 @@ async fn test_create_api_model_handler_validation_error_empty_models(
     .await?;
 
   let create_form = ApiModelRequest {
-    api_format: OpenAI,
+    api_format: ApiFormat::OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![], // Invalid: empty models array
@@ -191,7 +191,7 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
     .await?;
 
   let create_form = ApiModelRequest {
-    api_format: OpenAI,
+    api_format: ApiFormat::OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![], // Empty models is valid for forward_all mode
@@ -231,7 +231,7 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
     .await?;
 
   let create_form = ApiModelRequest {
-    api_format: OpenAI,
+    api_format: ApiFormat::OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![],
@@ -262,6 +262,7 @@ fn test_creds_enum_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(test_request_with_key.validate().is_ok());
 
@@ -271,6 +272,7 @@ fn test_creds_enum_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(test_request_with_id.validate().is_ok());
 
@@ -280,6 +282,7 @@ fn test_creds_enum_validation() {
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(test_request_no_auth.validate().is_ok());
 

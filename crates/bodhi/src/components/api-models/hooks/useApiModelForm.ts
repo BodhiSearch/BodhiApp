@@ -171,6 +171,7 @@ export function useApiModelForm({
       setValue('prefix', '');
       setValue('usePrefix', false);
       setValue('useApiKey', false);
+      setValue('api_key', '');
       fetchModels.clearModels();
       testConnection.resetStatus();
     }
@@ -207,6 +208,7 @@ export function useApiModelForm({
       id: !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined,
       baseUrl: watchedValues.base_url,
       model: watchedValues.models?.[0] || 'gpt-3.5-turbo',
+      apiFormat: watchedValues.api_format as import('@bodhiapp/ts-client').ApiFormat,
     });
   };
 

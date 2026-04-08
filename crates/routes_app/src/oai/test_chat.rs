@@ -409,3 +409,132 @@ async fn test_chat_completions_invalid_stream_field() -> anyhow::Result<()> {
   );
   Ok(())
 }
+
+// ============================================================================
+// Format rejection tests — openai_responses aliases must not be routed via
+// chat completions or embeddings endpoints
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_rejects_responses_format_alias() -> anyhow::Result<()> {
+  use services::test_utils::{TEST_TENANT_ID, TEST_USER_ID};
+  use services::{ApiAliasBuilder, ApiFormat};
+
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_data_service().await;
+  let db_service = builder.get_db_service().await;
+
+  // Seed an API alias with openai_responses format
+  let api_alias = ApiAliasBuilder::test_default()
+    .id("responses-alias")
+    .api_format(ApiFormat::OpenAIResponses)
+    .base_url("https://api.openai.com/v1")
+    .models(vec!["gpt-4o".to_string()])
+    .prefix("responses/".to_string())
+    .build_with_time(db_service.now())
+    .unwrap();
+
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
+    .await?;
+
+  let app_service = builder.build().await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions")
+        .json(json!({
+          "model": "responses/gpt-4o",
+          "messages": [{"role": "user", "content": "Hello"}]
+        }))?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
+  let message = body["error"]["message"].as_str().unwrap();
+  assert!(
+    message.contains("openai_responses"),
+    "Error message should mention the format: {}",
+    message
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_embeddings_rejects_responses_format_alias() -> anyhow::Result<()> {
+  use services::test_utils::{TEST_TENANT_ID, TEST_USER_ID};
+  use services::{ApiAliasBuilder, ApiFormat};
+
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_data_service().await;
+  let db_service = builder.get_db_service().await;
+
+  // Seed an API alias with openai_responses format
+  let api_alias = ApiAliasBuilder::test_default()
+    .id("responses-alias")
+    .api_format(ApiFormat::OpenAIResponses)
+    .base_url("https://api.openai.com/v1")
+    .models(vec!["text-embedding-ada-002".to_string()])
+    .prefix("responses/".to_string())
+    .build_with_time(db_service.now())
+    .unwrap();
+
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
+    .await?;
+
+  let app_service = builder.build().await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/embeddings", post(embeddings_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/embeddings")
+        .json(json!({
+          "model": "responses/text-embedding-ada-002",
+          "input": "Hello"
+        }))?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
+  let message = body["error"]["message"].as_str().unwrap();
+  assert!(
+    message.contains("openai_responses"),
+    "Error message should mention the format: {}",
+    message
+  );
+  Ok(())
+}

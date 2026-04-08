@@ -33,7 +33,13 @@ async fn test_test_prompt_success() -> anyhow::Result<()> {
     .await;
 
   let result = service
-    .test_prompt(Some("test-key".to_string()), &url, "gpt-3.5-turbo", "Hello")
+    .test_prompt(
+      Some("test-key".to_string()),
+      &url,
+      "gpt-3.5-turbo",
+      "Hello",
+      &ApiFormat::OpenAI,
+    )
     .await?;
   assert_eq!("Hello response", result);
 
@@ -55,6 +61,7 @@ async fn test_test_prompt_too_long() -> anyhow::Result<()> {
       &url,
       "gpt-3.5-turbo",
       &long_prompt,
+      &ApiFormat::OpenAI,
     )
     .await;
 
@@ -117,7 +124,13 @@ async fn test_api_unauthorized_error() -> anyhow::Result<()> {
     .await;
 
   let result = service
-    .test_prompt(Some("test-key".to_string()), &url, "gpt-3.5-turbo", "Hello")
+    .test_prompt(
+      Some("test-key".to_string()),
+      &url,
+      "gpt-3.5-turbo",
+      "Hello",
+      &ApiFormat::OpenAI,
+    )
     .await;
 
   assert!(matches!(result, Err(AiApiServiceError::Unauthorized(_))));
@@ -146,6 +159,7 @@ async fn test_model_not_found() -> anyhow::Result<()> {
       &url,
       "unknown-model",
       "Hello",
+      &ApiFormat::OpenAI,
     )
     .await;
 
@@ -326,6 +340,7 @@ async fn test_test_prompt_success_parameterized(
       &url,
       "gpt-3.5-turbo",
       "Hello",
+      &ApiFormat::OpenAI,
     )
     .await?;
 
@@ -362,6 +377,7 @@ async fn test_test_prompt_failure_parameterized(
       &url,
       "gpt-3.5-turbo",
       "Hello",
+      &ApiFormat::OpenAI,
     )
     .await;
 

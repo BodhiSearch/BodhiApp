@@ -41,7 +41,7 @@ tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "r
 once_cell = { workspace = true }
 pbkdf2 = { workspace = true, features = ["password-hash", "sha2"] }
 regex = { workspace = true }
-reqwest = { workspace = true, features = ["form"] }
+reqwest = { workspace = true, features = ["form", "query"] }
 rand = { workspace = true }
 rsa = { workspace = true, optional = true }
 rstest = { workspace = true, optional = true }

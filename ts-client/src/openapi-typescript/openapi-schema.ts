@@ -1333,6 +1333,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Response (OpenAI Responses API)
+         * @description Creates a model response using the Responses API format. Proxied to the upstream provider. Supports both streaming and non-streaming responses.
+         */
+        post: operations["createResponse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/responses/{response_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Response
+         * @description Retrieves a previously created response by ID. Requires `model` query parameter for routing.
+         */
+        get: operations["getResponse"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Response
+         * @description Deletes a stored response by ID. Requires `model` query parameter for routing.
+         */
+        delete: operations["deleteResponse"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/responses/{response_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Response
+         * @description Cancels a background response. Requires `model` query parameter for routing.
+         */
+        post: operations["cancelResponse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/responses/{response_id}/input_items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Response Input Items
+         * @description Lists input items for a given response. Requires `model` query parameter for routing.
+         */
+        get: operations["listResponseInputItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1398,6 +1482,20 @@ export interface components {
         /** @description Response envelope for model aliases - hides internal implementation details
          *     Uses untagged serialization - each variant has its own "source" field */
         AliasResponse: components["schemas"]["UserAliasResponse"] | components["schemas"]["ModelAliasResponse"] | components["schemas"]["ApiAliasResponse"];
+        /** @description An annotation that applies to a span of output text. */
+        Annotation: (components["schemas"]["FileCitationBody"] & {
+            /** @enum {string} */
+            type: "file_citation";
+        }) | (components["schemas"]["UrlCitationBody"] & {
+            /** @enum {string} */
+            type: "url_citation";
+        }) | (components["schemas"]["ContainerFileCitationBody"] & {
+            /** @enum {string} */
+            type: "container_file_citation";
+        }) | (components["schemas"]["FilePath"] & {
+            /** @enum {string} */
+            type: "file_path";
+        });
         ApiAlias: {
             id: string;
             api_format: components["schemas"]["ApiFormat"];
@@ -1433,7 +1531,7 @@ export interface components {
          * @description API format/protocol specification
          * @enum {string}
          */
-        ApiFormat: "openai" | "placeholder";
+        ApiFormat: "openai" | "openai_responses" | "placeholder";
         /**
          * @description Response containing available API formats
          * @example {
@@ -1532,6 +1630,134 @@ export interface components {
          * @enum {string}
          */
         AppStatus: "setup" | "ready" | "resource_admin";
+        /**
+         * @description Outcome values reported for apply_patch tool call outputs.
+         * @enum {string}
+         */
+        ApplyPatchCallOutputStatus: "completed" | "failed";
+        /**
+         * @description Outcome values reported for apply_patch tool call outputs.
+         * @enum {string}
+         */
+        ApplyPatchCallOutputStatusParam: "completed" | "failed";
+        /**
+         * @description Status values reported for apply_patch tool calls.
+         * @enum {string}
+         */
+        ApplyPatchCallStatus: "in_progress" | "completed";
+        /**
+         * @description Status values reported for apply_patch tool calls.
+         * @enum {string}
+         */
+        ApplyPatchCallStatusParam: "in_progress" | "completed";
+        /** @description Instruction describing how to create a file via the apply_patch tool. */
+        ApplyPatchCreateFileOperation: {
+            /** @description Path of the file to create. */
+            path: string;
+            /** @description Diff to apply. */
+            diff: string;
+        };
+        /** @description Instruction for creating a new file via the apply_patch tool. */
+        ApplyPatchCreateFileOperationParam: {
+            /** @description Path of the file to create relative to the workspace root. */
+            path: string;
+            /** @description Unified diff content to apply when creating the file. */
+            diff: string;
+        };
+        /** @description Instruction describing how to delete a file via the apply_patch tool. */
+        ApplyPatchDeleteFileOperation: {
+            /** @description Path of the file to delete. */
+            path: string;
+        };
+        /** @description Instruction for deleting an existing file via the apply_patch tool. */
+        ApplyPatchDeleteFileOperationParam: {
+            /** @description Path of the file to delete relative to the workspace root. */
+            path: string;
+        };
+        /** @description One of the create_file, delete_file, or update_file operations applied via apply_patch. */
+        ApplyPatchOperation: (components["schemas"]["ApplyPatchCreateFileOperation"] & {
+            /** @enum {string} */
+            type: "create_file";
+        }) | (components["schemas"]["ApplyPatchDeleteFileOperation"] & {
+            /** @enum {string} */
+            type: "delete_file";
+        }) | (components["schemas"]["ApplyPatchUpdateFileOperation"] & {
+            /** @enum {string} */
+            type: "update_file";
+        });
+        /** @description One of the create_file, delete_file, or update_file operations supplied to the apply_patch tool. */
+        ApplyPatchOperationParam: (components["schemas"]["ApplyPatchCreateFileOperationParam"] & {
+            /** @enum {string} */
+            type: "create_file";
+        }) | (components["schemas"]["ApplyPatchDeleteFileOperationParam"] & {
+            /** @enum {string} */
+            type: "delete_file";
+        }) | (components["schemas"]["ApplyPatchUpdateFileOperationParam"] & {
+            /** @enum {string} */
+            type: "update_file";
+        });
+        /** @description A tool call that applies file diffs by creating, deleting, or updating files. */
+        ApplyPatchToolCall: {
+            /** @description The unique ID of the apply patch tool call. Populated when this item is returned via API. */
+            id: string;
+            /** @description The unique ID of the apply patch tool call generated by the model. */
+            call_id: string;
+            /** @description The status of the apply patch tool call. One of `in_progress` or `completed`. */
+            status: components["schemas"]["ApplyPatchCallStatus"];
+            /** @description One of the create_file, delete_file, or update_file operations applied via apply_patch. */
+            operation: components["schemas"]["ApplyPatchOperation"];
+            /** @description The ID of the entity that created this tool call. */
+            created_by?: string | null;
+        };
+        /** @description A tool call representing a request to create, delete, or update files using diff patches. */
+        ApplyPatchToolCallItemParam: {
+            /** @description The unique ID of the apply patch tool call. Populated when this item is returned via API. */
+            id?: string | null;
+            /** @description The unique ID of the apply patch tool call generated by the model. */
+            call_id: string;
+            /** @description The status of the apply patch tool call. One of `in_progress` or `completed`. */
+            status: components["schemas"]["ApplyPatchCallStatusParam"];
+            /** @description The specific create, delete, or update instruction for the apply_patch tool call. */
+            operation: components["schemas"]["ApplyPatchOperationParam"];
+        };
+        /** @description The output emitted by an apply patch tool call. */
+        ApplyPatchToolCallOutput: {
+            /** @description The unique ID of the apply patch tool call output. Populated when this item is returned via API. */
+            id: string;
+            /** @description The unique ID of the apply patch tool call generated by the model. */
+            call_id: string;
+            /** @description The status of the apply patch tool call output. One of `completed` or `failed`. */
+            status: components["schemas"]["ApplyPatchCallOutputStatus"];
+            /** @description Optional textual output returned by the apply patch tool. */
+            output?: string | null;
+            /** @description The ID of the entity that created this tool call output. */
+            created_by?: string | null;
+        };
+        /** @description The streamed output emitted by an apply patch tool call. */
+        ApplyPatchToolCallOutputItemParam: {
+            /** @description The unique ID of the apply patch tool call output. Populated when this item is returned via API. */
+            id?: string | null;
+            /** @description The unique ID of the apply patch tool call generated by the model. */
+            call_id: string;
+            /** @description The status of the apply patch tool call output. One of `completed` or `failed`. */
+            status: components["schemas"]["ApplyPatchCallOutputStatusParam"];
+            /** @description Optional human-readable log text from the apply patch tool (e.g., patch results or errors). */
+            output?: string | null;
+        };
+        /** @description Instruction describing how to update a file via the apply_patch tool. */
+        ApplyPatchUpdateFileOperation: {
+            /** @description Path of the file to update. */
+            path: string;
+            /** @description Diff to apply. */
+            diff: string;
+        };
+        /** @description Instruction for updating an existing file via the apply_patch tool. */
+        ApplyPatchUpdateFileOperationParam: {
+            /** @description Path of the file to update relative to the workspace root. */
+            path: string;
+            /** @description Unified diff content to apply to the existing file. */
+            diff: string;
+        };
         /** @enum {string} */
         ApprovalStatus: "approved" | "denied";
         /**
@@ -1578,6 +1804,12 @@ export interface components {
         ApprovedResourcesV1: {
             mcps?: components["schemas"]["McpApproval"][];
         };
+        /**
+         * @description The role for an output message - always `assistant`.
+         *     This type ensures type safety by only allowing the assistant role.
+         * @enum {string}
+         */
+        AssistantRole: "assistant";
         /** @example {
          *       "code": "auth_code_123",
          *       "state": "random_state_456"
@@ -1618,6 +1850,9 @@ export interface components {
              * @example my-client-id
              */
             client_id: string;
+        };
+        Billing: {
+            payer: string;
         };
         /** @description Change user role request */
         ChangeRoleRequest: {
@@ -1666,7 +1901,7 @@ export interface components {
              *       { "type": "function", "function": { "name": "get_time" } }
              *     ]
              *     ``` */
-            tools: unknown[];
+            tools: Record<string, never>[];
         };
         ChatCompletionAllowedToolsChoice: {
             allowed_tools: components["schemas"]["ChatCompletionAllowedTools"][];
@@ -1697,7 +1932,7 @@ export interface components {
             /** @description The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/text-generation/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
              *
              *     Omitting `parameters` defines a function with an empty parameter list. */
-            parameters: unknown;
+            parameters: Record<string, never>;
         };
         ChatCompletionMessageCustomToolCall: {
             /** @description The ID of the tool call. */
@@ -1863,8 +2098,6 @@ export interface components {
             role: components["schemas"]["Role"];
             function_call?: null | components["schemas"]["FunctionCall"];
             audio?: null | components["schemas"]["ChatCompletionResponseMessageAudio"];
-            /** @description The contents of the reasoning message. */
-            reasoning_content?: string | null;
         };
         ChatCompletionResponseMessageAnnotation: {
             url_citation: components["schemas"]["UrlCitation"];
@@ -1913,8 +2146,6 @@ export interface components {
             role?: null | components["schemas"]["Role"];
             /** @description The refusal message generated by the model. */
             refusal?: string | null;
-            /** @description The contents of the chunk reasoning message. */
-            reasoning_content?: string | null;
         };
         ChatCompletionTokenLogprob: {
             /** @description The token. */
@@ -1967,6 +2198,113 @@ export interface components {
             keep_alive?: null | components["schemas"]["Duration"];
             options?: null | components["schemas"]["Options"];
         };
+        /** @enum {string} */
+        ClickButtonType: "left" | "right" | "wheel" | "back" | "forward";
+        /** @description A click action. */
+        ClickParam: {
+            /** @description Indicates which mouse button was pressed during the click. One of `left`,
+             *     `right`, `wheel`, `back`, or `forward`. */
+            button: components["schemas"]["ClickButtonType"];
+            /**
+             * Format: int32
+             * @description The x-coordinate where the click occurred.
+             */
+            x: number;
+            /**
+             * Format: int32
+             * @description The y-coordinate where the click occurred.
+             */
+            y: number;
+        };
+        /** @description Auto configuration for code interpreter container. */
+        CodeInterpreterContainerAuto: {
+            /** @description An optional list of uploaded files to make available to your code. */
+            file_ids?: string[] | null;
+            /** Format: int64 */
+            memory_limit?: number | null;
+        };
+        CodeInterpreterOutputImage: {
+            /** @description The URL of the image output from the code interpreter. */
+            url: string;
+        };
+        CodeInterpreterOutputLogs: {
+            /** @description The logs output from the code interpreter. */
+            logs: string;
+        };
+        CodeInterpreterTool: {
+            /** @description The code interpreter container. Can be a container ID or an object that
+             *     specifies uploaded file IDs to make available to your code, along with an
+             *     optional `memory_limit` setting. */
+            container: components["schemas"]["CodeInterpreterToolContainer"];
+        };
+        /** @description Output of a code interpreter request. */
+        CodeInterpreterToolCall: {
+            /** @description The code to run, or null if not available. */
+            code?: string | null;
+            /** @description ID of the container used to run the code. */
+            container_id: string;
+            /** @description The unique ID of the code interpreter tool call. */
+            id: string;
+            /** @description The outputs generated by the code interpreter, such as logs or images.
+             *     Can be null if no outputs are available. */
+            outputs?: components["schemas"]["CodeInterpreterToolCallOutput"][] | null;
+            /** @description The status of the code interpreter tool call.
+             *     Valid values are `in_progress`, `completed`, `incomplete`, `interpreting`, and `failed`. */
+            status: components["schemas"]["CodeInterpreterToolCallStatus"];
+        };
+        /** @description Individual result from a code interpreter: either logs or files. */
+        CodeInterpreterToolCallOutput: (components["schemas"]["CodeInterpreterOutputLogs"] & {
+            /** @enum {string} */
+            type: "logs";
+        }) | (components["schemas"]["CodeInterpreterOutputImage"] & {
+            /** @enum {string} */
+            type: "image";
+        });
+        /** @enum {string} */
+        CodeInterpreterToolCallStatus: "in_progress" | "completed" | "incomplete" | "interpreting" | "failed";
+        /** @description Container configuration for a code interpreter. */
+        CodeInterpreterToolContainer: (components["schemas"]["CodeInterpreterContainerAuto"] & {
+            /** @enum {string} */
+            type: "auto";
+        }) | {
+            /** @enum {string} */
+            type: "container_i_d";
+        };
+        /** @description A compaction item generated by the `/v1/responses/compact` API. */
+        CompactionBody: {
+            /** @description The unique ID of the compaction item. */
+            id: string;
+            /** @description The encrypted content that was produced by compaction. */
+            encrypted_content: string;
+            /** @description The identifier of the actor that created the item. */
+            created_by?: string | null;
+        };
+        /** @description A compaction item generated by the `/v1/responses/compact` API. */
+        CompactionSummaryItemParam: {
+            /** @description The ID of the compaction item. */
+            id?: string | null;
+            /** @description The encrypted content of the compaction summary. */
+            encrypted_content: string;
+        };
+        /** @description Single comparison filter. */
+        ComparisonFilter: {
+            /** @description Specifies the comparison operator: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`.
+             *     - `eq`: equals
+             *     - `ne`: not equal
+             *     - `gt`: greater than
+             *     - `gte`: greater than or equal
+             *     - `lt`: less than
+             *     - `lte`: less than or equal
+             *     - `in`: in
+             *     - `nin`: not in */
+            type: components["schemas"]["ComparisonType"];
+            /** @description The key to compare against the value. */
+            key: string;
+            /** @description The value to compare against the attribute key; supports string, number, or boolean types. */
+            value: Record<string, never>;
+        };
+        /** @enum {string} */
+        ComparisonType: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "nin";
         /** @description Breakdown of tokens used in a completion. */
         CompletionTokensDetails: {
             /** Format: int32 */
@@ -2011,11 +2349,195 @@ export interface components {
             prompt_tokens_details?: null | components["schemas"]["PromptTokensDetails"];
             completion_tokens_details?: null | components["schemas"]["CompletionTokensDetails"];
         };
+        /** @description Combine multiple filters using `and` or `or`. */
+        CompoundFilter: {
+            /** @description 'Type of operation: `and` or `or`.' */
+            type: components["schemas"]["CompoundType"];
+            /** @description Array of filters to combine. Items can be ComparisonFilter or CompoundFilter. */
+            filters: Record<string, never>[];
+        };
+        /** @enum {string} */
+        CompoundType: "and" | "or";
+        /** @description Represents all user‐triggered actions. */
+        ComputerAction: (components["schemas"]["ClickParam"] & {
+            /** @enum {string} */
+            type: "click";
+        }) | (components["schemas"]["DoubleClickAction"] & {
+            /** @enum {string} */
+            type: "double_click";
+        }) | (components["schemas"]["DragParam"] & {
+            /** @enum {string} */
+            type: "drag";
+        }) | (components["schemas"]["KeyPressAction"] & {
+            /** @enum {string} */
+            type: "keypress";
+        }) | (components["schemas"]["MoveParam"] & {
+            /** @enum {string} */
+            type: "move";
+        }) | {
+            /** @enum {string} */
+            type: "screenshot";
+        } | (components["schemas"]["ScrollParam"] & {
+            /** @enum {string} */
+            type: "scroll";
+        }) | (components["schemas"]["TypeParam"] & {
+            /** @enum {string} */
+            type: "type";
+        }) | {
+            /** @enum {string} */
+            type: "wait";
+        };
+        ComputerCallOutputItemParam: {
+            /** @description The ID of the computer tool call that produced the output. */
+            call_id: string;
+            /** @description A computer screenshot image used with the computer use tool. */
+            output: components["schemas"]["ComputerScreenshotImage"];
+            /** @description The safety checks reported by the API that have been acknowledged by the developer. */
+            acknowledged_safety_checks?: components["schemas"]["ComputerCallSafetyCheckParam"][] | null;
+            /** @description The unique ID of the computer tool call output. Optional when creating. */
+            id?: string | null;
+            status?: null | components["schemas"]["OutputStatus"];
+        };
+        ComputerCallSafetyCheckParam: {
+            /** @description The ID of the pending safety check. */
+            id: string;
+            /** @description The type of the pending safety check. */
+            code?: string | null;
+            /** @description Details about the pending safety check. */
+            message?: string | null;
+        };
+        /** @enum {string} */
+        ComputerEnvironment: "windows" | "mac" | "linux" | "ubuntu" | "browser";
+        /** @description A computer screenshot image used with the computer use tool. */
+        ComputerScreenshotImage: {
+            /** @description Specifies the event type. For a computer screenshot, this property is always
+             *     set to `computer_screenshot`. */
+            type: components["schemas"]["ComputerScreenshotImageType"];
+            /** @description The identifier of an uploaded file that contains the screenshot. */
+            file_id?: string | null;
+            /** @description The URL of the screenshot image. */
+            image_url?: string | null;
+        };
+        /** @enum {string} */
+        ComputerScreenshotImageType: "computer_screenshot";
+        /** @description A tool that controls a virtual computer. Learn more about the
+         *     [computer tool](https://platform.openai.com/docs/guides/tools-computer-use). */
+        ComputerTool: Record<string, never>;
+        /** @description Output from a computer tool call. */
+        ComputerToolCall: {
+            action?: null | components["schemas"]["ComputerAction"];
+            /** @description Flattened batched actions for `computer_use`. Each action includes a
+             *     `type` discriminator and action-specific fields. */
+            actions?: components["schemas"]["ComputerAction"][] | null;
+            /** @description An identifier used when responding to the tool call with output. */
+            call_id: string;
+            /** @description The unique ID of the computer call. */
+            id: string;
+            /** @description The pending safety checks for the computer call. */
+            pending_safety_checks: components["schemas"]["ComputerCallSafetyCheckParam"][];
+            /** @description The status of the item. One of `in_progress`, `completed`, or `incomplete`.
+             *     Populated when items are returned via API. */
+            status: components["schemas"]["OutputStatus"];
+        };
+        ComputerUsePreviewTool: {
+            /** @description The type of computer environment to control. */
+            environment: components["schemas"]["ComputerEnvironment"];
+            /**
+             * Format: int32
+             * @description The width of the computer display.
+             */
+            display_width: number;
+            /**
+             * Format: int32
+             * @description The height of the computer display.
+             */
+            display_height: number;
+        };
+        /** @description Automatically creates a container for the request. */
+        ContainerAutoParam: {
+            /** @description An optional list of uploaded file IDs to make available in the container. */
+            file_ids?: string[] | null;
+            network_policy?: null | components["schemas"]["ContainerNetworkPolicy"];
+            /** @description An optional list of skills to make available in the container. */
+            skills?: components["schemas"]["SkillParam"][] | null;
+        };
+        ContainerFileCitationBody: {
+            /** @description The ID of the container file. */
+            container_id: string;
+            /**
+             * Format: int32
+             * @description The index of the last character of the container file citation in the message.
+             */
+            end_index: number;
+            /** @description The ID of the file. */
+            file_id: string;
+            /** @description The filename of the container file cited. */
+            filename: string;
+            /**
+             * Format: int32
+             * @description The index of the first character of the container file citation in the message.
+             */
+            start_index: number;
+        };
+        /** @description Network access policy for a container. */
+        ContainerNetworkPolicy: {
+            /** @enum {string} */
+            type: "disabled";
+        } | (components["schemas"]["ContainerNetworkPolicyAllowlistDetails"] & {
+            /** @enum {string} */
+            type: "allowlist";
+        });
+        /** @description Details for an allowlist network policy. */
+        ContainerNetworkPolicyAllowlistDetails: {
+            /** @description A list of allowed domains. */
+            allowed_domains: string[];
+            /** @description Optional domain-scoped secrets for allowlisted domains. */
+            domain_secrets?: components["schemas"]["ContainerNetworkPolicyDomainSecretParam"][] | null;
+        };
+        /** @description A domain-scoped secret injected for allowlisted domains. */
+        ContainerNetworkPolicyDomainSecretParam: {
+            /** @description The domain associated with the secret. */
+            domain: string;
+            /** @description The name of the secret to inject for the domain. */
+            name: string;
+            /** @description The secret value to inject for the domain. */
+            value: string;
+        };
+        /** @description References a container created with the /v1/containers endpoint. */
+        ContainerReferenceParam: {
+            /** @description The ID of the referenced container. */
+            container_id: string;
+        };
+        /** @description A resource reference to a container by ID. */
+        ContainerReferenceResource: {
+            /** @description The ID of the referenced container. */
+            container_id: string;
+        };
         ContextLimits: {
             /** Format: int64 */
             max_input_tokens?: number | null;
             /** Format: int64 */
             max_output_tokens?: number | null;
+        };
+        /** @description The conversation that this response belonged to. Input items and output items from this
+         *     response were automatically added to this conversation. */
+        Conversation: {
+            /** @description The unique ID of the conversation that this response was associated with. */
+            id: string;
+        };
+        ConversationParam: string | components["schemas"]["Conversation"];
+        /** @description An x/y coordinate pair. */
+        CoordParam: {
+            /**
+             * Format: int32
+             * @description The x-coordinate.
+             */
+            x: number;
+            /**
+             * Format: int32
+             * @description The y-coordinate.
+             */
+            y: number;
         };
         CopyAliasRequest: {
             alias: string;
@@ -2230,10 +2752,6 @@ export interface components {
              */
             functions?: components["schemas"]["ChatCompletionFunctions"][] | null;
             metadata?: null | components["schemas"]["Metadata"];
-            /** @description llama.cpp compatible extra params in request */
-            chat_template_kwargs?: {
-                [key: string]: unknown;
-            } | null;
         };
         /** @description Represents a chat completion response returned by model, based on the provided input. */
         CreateChatCompletionResponse: {
@@ -2340,6 +2858,149 @@ export interface components {
             /** @enum {string} */
             type: "oauth";
         };
+        /** @description Builder for a Responses API request. */
+        CreateResponse: {
+            /** @description Whether to run the model response in the background.
+             *     [Learn more](https://platform.openai.com/docs/guides/background). */
+            background?: boolean | null;
+            conversation?: null | components["schemas"]["ConversationParam"];
+            /** @description Specify additional output data to include in the model response. Currently supported
+             *     values are:
+             *
+             *     - `web_search_call.action.sources`: Include the sources of the web search tool call.
+             *
+             *     - `code_interpreter_call.outputs`: Includes the outputs of python code execution in code
+             *       interpreter tool call items.
+             *
+             *     - `computer_call_output.output.image_url`: Include image urls from the computer call
+             *       output.
+             *
+             *     - `file_search_call.results`: Include the search results of the file search tool call.
+             *
+             *     - `message.input_image.image_url`: Include image urls from the input message.
+             *
+             *     - `message.output_text.logprobs`: Include logprobs with assistant messages.
+             *
+             *     - `reasoning.encrypted_content`: Includes an encrypted version of reasoning tokens in
+             *       reasoning item outputs. This enables reasoning items to be used in multi-turn
+             *       conversations when using the Responses API statelessly (like when the `store` parameter is
+             *       set to `false`, or when an organization is enrolled in the zero data retention program). */
+            include?: components["schemas"]["IncludeEnum"][] | null;
+            /** @description Text, image, or file inputs to the model, used to generate a response.
+             *
+             *     Learn more:
+             *     - [Text inputs and outputs](https://platform.openai.com/docs/guides/text)
+             *     - [Image inputs](https://platform.openai.com/docs/guides/images)
+             *     - [File inputs](https://platform.openai.com/docs/guides/pdf-files)
+             *     - [Conversation state](https://platform.openai.com/docs/guides/conversation-state)
+             *     - [Function calling](https://platform.openai.com/docs/guides/function-calling) */
+            input: components["schemas"]["InputParam"];
+            /** @description A system (or developer) message inserted into the model's context.
+             *
+             *     When using along with `previous_response_id`, the instructions from a previous
+             *     response will not be carried over to the next response. This makes it simple
+             *     to swap out system (or developer) messages in new responses. */
+            instructions?: string | null;
+            /**
+             * Format: int32
+             * @description An upper bound for the number of tokens that can be generated for a response, including
+             *     visible output tokens and [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).
+             */
+            max_output_tokens?: number | null;
+            /**
+             * Format: int32
+             * @description The maximum number of total calls to built-in tools that can be processed in a response. This
+             *     maximum number applies across all built-in tool calls, not per individual tool. Any further
+             *     attempts to call a tool by the model will be ignored.
+             */
+            max_tool_calls?: number | null;
+            /** @description Set of 16 key-value pairs that can be attached to an object. This can be
+             *     useful for storing additional information about the object in a structured
+             *     format, and querying for objects via API or the dashboard.
+             *
+             *     Keys are strings with a maximum length of 64 characters. Values are
+             *     strings with a maximum length of 512 characters. */
+            metadata?: {
+                [key: string]: string;
+            } | null;
+            /** @description Model ID used to generate the response, like `gpt-4o` or `o3`. OpenAI
+             *     offers a wide range of models with different capabilities, performance
+             *     characteristics, and price points. Refer to the [model guide](https://platform.openai.com/docs/models)
+             *     to browse and compare available models. */
+            model?: string | null;
+            /** @description Whether to allow the model to run tool calls in parallel. */
+            parallel_tool_calls?: boolean | null;
+            /** @description The unique ID of the previous response to the model. Use this to create multi-turn conversations.
+             *     Learn more about [conversation state](https://platform.openai.com/docs/guides/conversation-state).
+             *     Cannot be used in conjunction with `conversation`. */
+            previous_response_id?: string | null;
+            prompt?: null | components["schemas"]["Prompt"];
+            /** @description Used by OpenAI to cache responses for similar requests to optimize your cache hit rates. Replaces
+             *     the `user` field. [Learn more](https://platform.openai.com/docs/guides/prompt-caching). */
+            prompt_cache_key?: string | null;
+            prompt_cache_retention?: null | components["schemas"]["PromptCacheRetention"];
+            reasoning?: null | components["schemas"]["Reasoning"];
+            /** @description A stable identifier used to help detect users of your application that may be violating OpenAI's
+             *     usage policies.
+             *
+             *     The IDs should be a string that uniquely identifies each user. We recommend hashing their username
+             *     or email address, in order to avoid sending us any identifying information. [Learn
+             *     more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers). */
+            safety_identifier?: string | null;
+            service_tier?: null | components["schemas"]["ServiceTier"];
+            /** @description Whether to store the generated model response for later retrieval via API. */
+            store?: boolean | null;
+            /** @description If set to true, the model response data will be streamed to the client
+             *     as it is generated using [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format).
+             *     See the [Streaming section below](https://platform.openai.com/docs/api-reference/responses-streaming)
+             *     for more information. */
+            stream?: boolean | null;
+            stream_options?: null | components["schemas"]["ResponseStreamOptions"];
+            /**
+             * Format: float
+             * @description What sampling temperature to use, between 0 and 2. Higher values like 0.8
+             *     will make the output more random, while lower values like 0.2 will make it
+             *     more focused and deterministic. We generally recommend altering this or
+             *     `top_p` but not both.
+             */
+            temperature?: number | null;
+            text?: null | components["schemas"]["ResponseTextParam"];
+            tool_choice?: null | components["schemas"]["ToolChoiceParam"];
+            /** @description An array of tools the model may call while generating a response. You
+             *     can specify which tool to use by setting the `tool_choice` parameter.
+             *
+             *     We support the following categories of tools:
+             *     - **Built-in tools**: Tools that are provided by OpenAI that extend the
+             *       model's capabilities, like [web search](https://platform.openai.com/docs/guides/tools-web-search)
+             *       or [file search](https://platform.openai.com/docs/guides/tools-file-search). Learn more about
+             *       [built-in tools](https://platform.openai.com/docs/guides/tools).
+             *     - **MCP Tools**: Integrations with third-party systems via custom MCP servers
+             *       or predefined connectors such as Google Drive and SharePoint. Learn more about
+             *       [MCP Tools](https://platform.openai.com/docs/guides/tools-connectors-mcp).
+             *     - **Function calls (custom tools)**: Functions that are defined by you,
+             *       enabling the model to call your own code with strongly typed arguments
+             *       and outputs. Learn more about
+             *       [function calling](https://platform.openai.com/docs/guides/function-calling). You can also use
+             *       custom tools to call your own code. */
+            tools?: components["schemas"]["Tool"][] | null;
+            /**
+             * Format: int32
+             * @description An integer between 0 and 20 specifying the number of most likely tokens to return at each
+             *     token position, each with an associated log probability.
+             */
+            top_logprobs?: number | null;
+            /**
+             * Format: float
+             * @description An alternative to sampling with temperature, called nucleus sampling,
+             *     where the model considers the results of the tokens with top_p probability
+             *     mass. So 0.1 means only the tokens comprising the top 10% probability mass
+             *     are considered.
+             *
+             *     We generally recommend altering this or `temperature` but not both.
+             */
+            top_p?: number | null;
+            truncation?: null | components["schemas"]["Truncation"];
+        };
         CreateTenantRequest: {
             name: string;
             description?: string | null;
@@ -2376,9 +3037,48 @@ export interface components {
             /** @description The input for the custom tool call generated by the model. */
             input: string;
         };
+        CustomToolCall: {
+            /** @description An identifier used to map this custom tool call to a tool call output. */
+            call_id: string;
+            /** @description The namespace of the custom tool being called. */
+            namespace?: string | null;
+            /** @description The input for the custom tool call generated by the model. */
+            input: string;
+            /** @description The name of the custom tool being called. */
+            name: string;
+            /** @description The unique ID of the custom tool call in the OpenAI platform. */
+            id: string;
+        };
+        CustomToolCallOutput: {
+            /** @description The call ID, used to map this custom tool call output to a custom tool call. */
+            call_id: string;
+            /** @description The output from the custom tool call generated by your code.
+             *     Can be a string or an list of output content. */
+            output: components["schemas"]["CustomToolCallOutputOutput"];
+            /** @description The unique ID of the custom tool call output in the OpenAI platform. */
+            id?: string | null;
+        };
+        CustomToolCallOutputOutput: string | components["schemas"]["InputContent"][];
         CustomToolChatCompletions: {
             custom: components["schemas"]["CustomToolProperties"];
         };
+        CustomToolParam: {
+            /** @description The name of the custom tool, used to identify it in tool calls. */
+            name: string;
+            /** @description Optional description of the custom tool, used to provide more context. */
+            description?: string | null;
+            /** @description The input format for the custom tool. Default is unconstrained text. */
+            format: components["schemas"]["CustomToolParamFormat"];
+            /** @description Whether this tool should be deferred and discovered via tool search. */
+            defer_loading?: boolean | null;
+        };
+        CustomToolParamFormat: {
+            /** @enum {string} */
+            type: "text";
+        } | (components["schemas"]["CustomGrammarFormatParam"] & {
+            /** @enum {string} */
+            type: "grammar";
+        });
         CustomToolProperties: {
             /** @description The name of the custom tool, used to identify it in tool calls. */
             name: string;
@@ -2402,8 +3102,26 @@ export interface components {
             first_name?: string | null;
             last_name?: string | null;
         };
+        DeleteResponse: {
+            object: string;
+            deleted: boolean;
+            id: string;
+        };
         /** @enum {string} */
         DeploymentMode: "standalone" | "multi_tenant";
+        /** @description A double click action. */
+        DoubleClickAction: {
+            /**
+             * Format: int32
+             * @description The x-coordinate where the double click occurred.
+             */
+            x: number;
+            /**
+             * Format: int32
+             * @description The y-coordinate where the double click occurred.
+             */
+            y: number;
+        };
         DownloadRequest: {
             id: string;
             repo: string;
@@ -2423,6 +3141,11 @@ export interface components {
         };
         /** @enum {string} */
         DownloadStatus: "pending" | "completed" | "error";
+        /** @description A drag action. */
+        DragParam: {
+            /** @description An array of coordinates representing the path of the drag action. */
+            path: components["schemas"]["CoordParam"][];
+        };
         Duration: string;
         DynamicRegisterRequest: {
             registration_endpoint: string;
@@ -2436,6 +3159,23 @@ export interface components {
             client_id_issued_at?: number | null;
             token_endpoint_auth_method?: string | null;
             registration_access_token?: string | null;
+        };
+        /** @description Content for EasyInputMessage - can be a simple string or structured list. */
+        EasyInputContent: string | components["schemas"]["InputContent"][];
+        /** @description A simplified message input to the model (EasyInputMessage in the OpenAPI spec).
+         *
+         *     This is the most user-friendly way to provide messages, supporting both simple
+         *     string content and structured content. Role can include `assistant` for providing
+         *     previous assistant responses. */
+        EasyInputMessage: {
+            /** @description The type of the message input. Defaults to `message` when omitted in JSON input. */
+            type?: components["schemas"]["MessageType"];
+            /** @description The role of the message input. One of `user`, `assistant`, `system`, or `developer`. */
+            role: components["schemas"]["Role"];
+            /** @description Text, image, or audio input to the model, used to generate a response.
+             *     Can also contain previous assistant responses. */
+            content: components["schemas"]["EasyInputContent"];
+            phase?: null | components["schemas"]["MessagePhase"];
         };
         /** @description Represents an embedding vector returned by embedding endpoint. */
         Embedding: {
@@ -2501,6 +3241,13 @@ export interface components {
                 [key: string]: string;
             } | null;
         };
+        /** @description An error that occurred while generating the response. */
+        ErrorObject: {
+            /** @description A machine-readable error code that was returned. */
+            code: string;
+            /** @description A human-readable description of the error that was returned. */
+            message: string;
+        };
         /**
          * @description Request to fetch available models from provider
          * @example {
@@ -2530,6 +3277,17 @@ export interface components {
         FetchModelsResponse: {
             models: string[];
         };
+        FileCitationBody: {
+            /** @description The ID of the file. */
+            file_id: string;
+            /** @description The filename of the file cited. */
+            filename: string;
+            /**
+             * Format: int32
+             * @description The index of the file in the list of files.
+             */
+            index: number;
+        };
         FileObject: {
             /** @description The base64 encoded file data, used when passing the file to the model
              *     as a string. */
@@ -2540,6 +3298,61 @@ export interface components {
              *     string. */
             filename?: string | null;
         };
+        FilePath: {
+            /** @description The ID of the file. */
+            file_id: string;
+            /**
+             * Format: int32
+             * @description The index of the file in the list of files.
+             */
+            index: number;
+        };
+        FileSearchTool: {
+            /** @description The IDs of the vector stores to search. */
+            vector_store_ids: string[];
+            /**
+             * Format: int32
+             * @description The maximum number of results to return. This number should be between 1 and 50 inclusive.
+             */
+            max_num_results?: number | null;
+            filters?: null | components["schemas"]["Filter"];
+            ranking_options?: null | components["schemas"]["RankingOptions"];
+        };
+        /** @description File search tool call output. */
+        FileSearchToolCall: {
+            /** @description The unique ID of the file search tool call. */
+            id: string;
+            /** @description The queries used to search for files. */
+            queries: string[];
+            /** @description The status of the file search tool call. One of `in_progress`, `searching`,
+             *     `incomplete`,`failed`, or `completed`. */
+            status: components["schemas"]["FileSearchToolCallStatus"];
+            /** @description The results of the file search tool call. */
+            results?: components["schemas"]["FileSearchToolCallResult"][] | null;
+        };
+        /** @description A single result from a file search. */
+        FileSearchToolCallResult: {
+            /** @description Set of 16 key-value pairs that can be attached to an object. This can be useful for storing
+             *     additional information about the object in a structured format, and querying for objects
+             *     API or the dashboard. Keys are strings with a maximum length of 64 characters
+             *     . Values are strings with a maximum length of 512 characters, booleans, or numbers. */
+            attributes: Record<string, never>;
+            /** @description The unique ID of the file. */
+            file_id: string;
+            /** @description The name of the file. */
+            filename: string;
+            /**
+             * Format: float
+             * @description The relevance score of the file - a value between 0 and 1.
+             */
+            score: number;
+            /** @description The text that was retrieved from the file. */
+            text: string;
+        };
+        /** @enum {string} */
+        FileSearchToolCallStatus: "in_progress" | "searching" | "incomplete" | "failed" | "completed";
+        /** @description Filters for file search. */
+        Filter: components["schemas"]["ComparisonFilter"] | components["schemas"]["CompoundFilter"];
         /** @enum {string} */
         FinishReason: "stop" | "length" | "tool_calls" | "content_filter" | "function_call";
         /** @enum {string} */
@@ -2551,6 +3364,28 @@ export interface components {
             /** @description The arguments to call the function with, as generated by the model in JSON format. Note that the model does not always generate valid JSON, and may hallucinate parameters not defined by your function schema. Validate the arguments in your code before calling your function. */
             arguments: string;
         };
+        FunctionCallOutput: string | components["schemas"]["InputContent"][];
+        /** @description Output from a function call that you're providing back to the model. */
+        FunctionCallOutputItemParam: {
+            /** @description The unique ID of the function tool call generated by the model. */
+            call_id: string;
+            /** @description Text, image, or file output of the function tool call. */
+            output: components["schemas"]["FunctionCallOutput"];
+            /** @description The unique ID of the function tool call output.
+             *     Populated when this item is returned via API. */
+            id?: string | null;
+            status?: null | components["schemas"]["OutputStatus"];
+        };
+        /**
+         * @description The status of a function call output.
+         * @enum {string}
+         */
+        FunctionCallOutputStatusEnum: "in_progress" | "completed" | "incomplete";
+        /**
+         * @description The status of a function call.
+         * @enum {string}
+         */
+        FunctionCallStatus: "in_progress" | "completed" | "incomplete";
         FunctionCallStream: {
             /** @description The name of the function to call. */
             name?: string | null;
@@ -2572,20 +3407,321 @@ export interface components {
             /** @description The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/text-generation/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
              *
              *     Omitting `parameters` defines a function with an empty parameter list. */
-            parameters?: unknown;
+            parameters?: Record<string, never> | null;
             /** @description Whether to enable strict schema adherence when generating the function call. If set to true, the model will follow the exact schema defined in the `parameters` field. Only a subset of JSON Schema is supported when `strict` is `true`. Learn more about Structured Outputs in the [function calling guide](https://platform.openai.com/docs/guides/function-calling). */
             strict?: boolean | null;
+        };
+        /** @description Shell exec action
+         *     Execute a shell command. */
+        FunctionShellAction: {
+            /** @description A list of commands to run. */
+            commands: string[];
+            /**
+             * Format: int64
+             * @description Optional timeout in milliseconds for the commands.
+             */
+            timeout_ms?: number | null;
+            /**
+             * Format: int64
+             * @description Optional maximum number of characters to return from each command.
+             */
+            max_output_length?: number | null;
+        };
+        /** @description Commands and limits describing how to run the shell tool call. */
+        FunctionShellActionParam: {
+            /** @description Ordered shell commands for the execution environment to run. */
+            commands: string[];
+            /**
+             * Format: int64
+             * @description Maximum wall-clock time in milliseconds to allow the shell commands to run.
+             */
+            timeout_ms?: number | null;
+            /**
+             * Format: int64
+             * @description Maximum number of UTF-8 characters to capture from combined stdout and stderr output.
+             */
+            max_output_length?: number | null;
+        };
+        /** @description A tool call that executes one or more shell commands in a managed environment. */
+        FunctionShellCall: {
+            /** @description The unique ID of the function shell tool call. Populated when this item is returned via API. */
+            id: string;
+            /** @description The unique ID of the function shell tool call generated by the model. */
+            call_id: string;
+            /** @description The shell commands and limits that describe how to run the tool call. */
+            action: components["schemas"]["FunctionShellAction"];
+            /** @description The status of the shell call. One of `in_progress`, `completed`, or `incomplete`. */
+            status: components["schemas"]["LocalShellCallStatus"];
+            environment?: null | components["schemas"]["FunctionShellCallEnvironment"];
+            /** @description The ID of the entity that created this tool call. */
+            created_by?: string | null;
+        };
+        /** @description The environment for a shell call (response side). */
+        FunctionShellCallEnvironment: {
+            /** @enum {string} */
+            type: "local";
+        } | (components["schemas"]["ContainerReferenceResource"] & {
+            /** @enum {string} */
+            type: "container_reference";
+        });
+        /** @description The environment for a shell call item (request side). */
+        FunctionShellCallItemEnvironment: (components["schemas"]["LocalEnvironmentParam"] & {
+            /** @enum {string} */
+            type: "local";
+        }) | (components["schemas"]["ContainerReferenceParam"] & {
+            /** @enum {string} */
+            type: "container_reference";
+        });
+        /** @description A tool representing a request to execute one or more shell commands. */
+        FunctionShellCallItemParam: {
+            /** @description The unique ID of the shell tool call. Populated when this item is returned via API. */
+            id?: string | null;
+            /** @description The unique ID of the shell tool call generated by the model. */
+            call_id: string;
+            /** @description The shell commands and limits that describe how to run the tool call. */
+            action: components["schemas"]["FunctionShellActionParam"];
+            status?: null | components["schemas"]["FunctionShellCallItemStatus"];
+            environment?: null | components["schemas"]["FunctionShellCallItemEnvironment"];
+        };
+        /**
+         * @description Status values reported for shell tool calls.
+         * @enum {string}
+         */
+        FunctionShellCallItemStatus: "in_progress" | "completed" | "incomplete";
+        /** @description The output of a shell tool call that was emitted. */
+        FunctionShellCallOutput: {
+            /** @description The unique ID of the shell call output. Populated when this item is returned via API. */
+            id: string;
+            /** @description The unique ID of the shell tool call generated by the model. */
+            call_id: string;
+            /** @description An array of shell call output contents */
+            output: components["schemas"]["FunctionShellCallOutputContent"][];
+            /**
+             * Format: int64
+             * @description The maximum length of the shell command output. This is generated by the model and should be
+             *     passed back with the raw output.
+             */
+            max_output_length?: number | null;
+            /** @description The identifier of the actor that created the item. */
+            created_by?: string | null;
+        };
+        /** @description The content of a shell tool call output that was emitted. */
+        FunctionShellCallOutputContent: components["schemas"]["FunctionShellCallOutputOutcome"] & {
+            /** @description The standard output that was captured. */
+            stdout: string;
+            /** @description The standard error output that was captured. */
+            stderr: string;
+            /** @description The identifier of the actor that created the item. */
+            created_by?: string | null;
+        };
+        /** @description Captured stdout and stderr for a portion of a shell tool call output. */
+        FunctionShellCallOutputContentParam: {
+            /** @description Captured stdout output for this chunk of the shell call. */
+            stdout: string;
+            /** @description Captured stderr output for this chunk of the shell call. */
+            stderr: string;
+            /** @description The exit or timeout outcome associated with this chunk. */
+            outcome: components["schemas"]["FunctionShellCallOutputOutcomeParam"];
+        };
+        /** @description Indicates that the shell commands finished and returned an exit code. */
+        FunctionShellCallOutputExitOutcome: {
+            /**
+             * Format: int32
+             * @description Exit code from the shell process.
+             */
+            exit_code: number;
+        };
+        /** @description Indicates that the shell commands finished and returned an exit code. */
+        FunctionShellCallOutputExitOutcomeParam: {
+            /**
+             * Format: int32
+             * @description The exit code returned by the shell process.
+             */
+            exit_code: number;
+        };
+        /** @description The streamed output items emitted by a shell tool call. */
+        FunctionShellCallOutputItemParam: {
+            /** @description The unique ID of the shell tool call output. Populated when this item is returned via API. */
+            id?: string | null;
+            /** @description The unique ID of the shell tool call generated by the model. */
+            call_id: string;
+            /** @description Captured chunks of stdout and stderr output, along with their associated outcomes. */
+            output: components["schemas"]["FunctionShellCallOutputContentParam"][];
+            /**
+             * Format: int64
+             * @description The maximum number of UTF-8 characters captured for this shell call's combined output.
+             */
+            max_output_length?: number | null;
+        };
+        /** @description Function shell call outcome */
+        FunctionShellCallOutputOutcome: {
+            /** @enum {string} */
+            type: "timeout";
+        } | (components["schemas"]["FunctionShellCallOutputExitOutcome"] & {
+            /** @enum {string} */
+            type: "exit";
+        });
+        /** @description The exit or timeout outcome associated with this chunk. */
+        FunctionShellCallOutputOutcomeParam: {
+            /** @enum {string} */
+            type: "timeout";
+        } | (components["schemas"]["FunctionShellCallOutputExitOutcomeParam"] & {
+            /** @enum {string} */
+            type: "exit";
+        });
+        /** @description The execution environment for a shell tool — container or local. */
+        FunctionShellEnvironment: (components["schemas"]["ContainerAutoParam"] & {
+            /** @enum {string} */
+            type: "container_auto";
+        }) | (components["schemas"]["LocalEnvironmentParam"] & {
+            /** @enum {string} */
+            type: "local";
+        }) | (components["schemas"]["ContainerReferenceParam"] & {
+            /** @enum {string} */
+            type: "container_reference";
+        });
+        /** @description Parameters for the shell function tool. */
+        FunctionShellToolParam: {
+            environment?: null | components["schemas"]["FunctionShellEnvironment"];
+        };
+        FunctionTool: {
+            /** @description The name of the function to call. */
+            name: string;
+            /** @description A JSON schema object describing the parameters of the function. */
+            parameters?: Record<string, never> | null;
+            /** @description Whether to enforce strict parameter validation. Default `true`. */
+            strict?: boolean | null;
+            /** @description A description of the function. Used by the model to determine whether or not to call the
+             *     function. */
+            description?: string | null;
+            /** @description Whether this function is deferred and loaded via tool search. */
+            defer_loading?: boolean | null;
+        };
+        FunctionToolCall: {
+            /** @description A JSON string of the arguments to pass to the function. */
+            arguments: string;
+            /** @description The unique ID of the function tool call generated by the model. */
+            call_id: string;
+            /** @description The namespace of the function to run. */
+            namespace?: string | null;
+            /** @description The name of the function to run. */
+            name: string;
+            /** @description The unique ID of the function tool call. */
+            id?: string | null;
+            status?: null | components["schemas"]["OutputStatus"];
+        };
+        /** @description A function tool that can be used within a namespace or with tool search. */
+        FunctionToolParam: {
+            /** @description The name of the function. */
+            name: string;
+            /** @description A description of the function. */
+            description?: string | null;
+            /** @description A JSON schema object describing the parameters of the function. */
+            parameters?: Record<string, never> | null;
+            /** @description Whether to enforce strict parameter validation. */
+            strict?: boolean | null;
+            /** @description Whether this function should be deferred and discovered via tool search. */
+            defer_loading?: boolean | null;
         };
         /** @enum {string} */
         FunctionType: "function";
         /** @enum {string} */
         GrammarSyntax: "lark" | "regex";
+        HybridSearch: {
+            /**
+             * Format: float
+             * @description The weight of the embedding in the reciprocal ranking fusion.
+             */
+            embedding_weight: number;
+            /**
+             * Format: float
+             * @description The weight of the text in the reciprocal ranking fusion.
+             */
+            text_weight: number;
+        };
         /** @enum {string} */
-        ImageDetail: "auto" | "low" | "high";
+        ImageDetail: "auto" | "low" | "high" | "original";
+        /**
+         * @description Whether to generate a new image or edit an existing image.
+         * @enum {string}
+         */
+        ImageGenActionEnum: "generate" | "edit" | "auto";
+        /** @description Image generation tool definition. */
+        ImageGenTool: {
+            background?: null | components["schemas"]["ImageGenToolBackground"];
+            input_fidelity?: null | components["schemas"]["InputFidelity"];
+            input_image_mask?: null | components["schemas"]["ImageGenToolInputImageMask"];
+            /** @description The image generation model to use. Default: `gpt-image-1`. */
+            model?: string | null;
+            moderation?: null | components["schemas"]["ImageGenToolModeration"];
+            /**
+             * Format: int32
+             * @description Compression level for the output image. Default: 100.
+             */
+            output_compression?: number | null;
+            output_format?: null | components["schemas"]["ImageGenToolOutputFormat"];
+            /**
+             * Format: int32
+             * @description Number of partial images to generate in streaming mode, from 0 (default value) to 3.
+             */
+            partial_images?: number | null;
+            quality?: null | components["schemas"]["ImageGenToolQuality"];
+            size?: null | components["schemas"]["ImageGenToolSize"];
+            action?: null | components["schemas"]["ImageGenActionEnum"];
+        };
+        /** @enum {string} */
+        ImageGenToolBackground: "transparent" | "opaque" | "auto";
+        ImageGenToolCall: {
+            /** @description The unique ID of the image generation call. */
+            id: string;
+            /** @description The generated image encoded in base64. */
+            result?: string | null;
+            /** @description The status of the image generation call. */
+            status: components["schemas"]["ImageGenToolCallStatus"];
+        };
+        /** @enum {string} */
+        ImageGenToolCallStatus: "in_progress" | "completed" | "generating" | "failed";
+        ImageGenToolInputImageMask: {
+            /** @description Base64-encoded mask image. */
+            image_url?: string | null;
+            /** @description File ID for the mask image. */
+            file_id?: string | null;
+        };
+        /** @enum {string} */
+        ImageGenToolModeration: "auto" | "low";
+        /** @enum {string} */
+        ImageGenToolOutputFormat: "png" | "webp" | "jpeg";
+        /** @enum {string} */
+        ImageGenToolQuality: "low" | "medium" | "high" | "auto";
+        /** @enum {string} */
+        ImageGenToolSize: "auto" | "1024x1024" | "1024x1536" | "1536x1024";
         ImageUrl: {
             /** @description Either a URL of the image or the base64 encoded image data. */
             url: string;
             detail?: null | components["schemas"]["ImageDetail"];
+        };
+        /** @enum {string} */
+        IncludeEnum: "file_search_call.results" | "web_search_call.results" | "web_search_call.action.sources" | "message.input_image.image_url" | "computer_call_output.output.image_url" | "code_interpreter_call.outputs" | "reasoning.encrypted_content" | "message.output_text.logprobs";
+        /** @description Details about an incomplete response. */
+        IncompleteDetails: {
+            /** @description The reason why the response is incomplete. */
+            reason: string;
+        };
+        /** @description An inline skill definition. */
+        InlineSkillParam: {
+            /** @description The name of the skill. */
+            name: string;
+            /** @description The description of the skill. */
+            description: string;
+            /** @description The inline source for the skill. */
+            source: components["schemas"]["InlineSkillSourceParam"];
+        };
+        /** @description An inline skill source (base64-encoded zip). */
+        InlineSkillSourceParam: {
+            /** @description The media type. Always `"application/zip"`. */
+            media_type: string;
+            /** @description The base64-encoded skill data. */
+            data: string;
         };
         InputAudio: {
             /** @description Base64 encoded audio data. */
@@ -2595,7 +3731,182 @@ export interface components {
         };
         /** @enum {string} */
         InputAudioFormat: "wav" | "mp3";
+        /** @description Parts of a message: text, image, file, or audio. */
+        InputContent: (components["schemas"]["InputTextContent"] & {
+            /** @enum {string} */
+            type: "input_text";
+        }) | (components["schemas"]["InputImageContent"] & {
+            /** @enum {string} */
+            type: "input_image";
+        }) | (components["schemas"]["InputFileContent"] & {
+            /** @enum {string} */
+            type: "input_file";
+        });
+        /** @enum {string} */
+        InputFidelity: "high" | "low";
+        InputFileContent: {
+            /** @description The content of the file to be sent to the model. */
+            file_data?: string | null;
+            /** @description The ID of the file to be sent to the model. */
+            file_id?: string | null;
+            /** @description The URL of the file to be sent to the model. */
+            file_url?: string | null;
+            /** @description The name of the file to be sent to the model. */
+            filename?: string | null;
+        };
+        InputImageContent: {
+            /** @description The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`.
+             *     Defaults to `auto`. */
+            detail: components["schemas"]["ImageDetail"];
+            /** @description The ID of the file to be sent to the model. */
+            file_id?: string | null;
+            /** @description The URL of the image to be sent to the model. A fully qualified URL or base64 encoded image
+             *     in a data URL. */
+            image_url?: string | null;
+        };
+        /** @description Input item that can be used in the context for generating a response.
+         *
+         *     This represents the OpenAPI `InputItem` schema which is an `anyOf`:
+         *     1. `EasyInputMessage` - Simple, user-friendly message input (can use string content)
+         *     2. `Item` - Structured items with proper type discrimination (including InputMessage, OutputMessage, tool calls)
+         *     3. `ItemReferenceParam` - Reference to an existing item by ID (type can be null)
+         *
+         *     Uses untagged deserialization because these types overlap in structure.
+         *     Order matters: more specific structures are tried first.
+         *
+         *     # OpenAPI Specification
+         *     Corresponds to the `InputItem` schema: `anyOf[EasyInputMessage, Item, ItemReferenceParam]` */
+        InputItem: components["schemas"]["ItemReference"] | components["schemas"]["Item"] | components["schemas"]["EasyInputMessage"];
+        /** @description A structured message input to the model (InputMessage in the OpenAPI spec).
+         *
+         *     This variant requires structured content (not a simple string) and does not support
+         *     the `assistant` role (use OutputMessage for that). status is populated when items are returned via API. */
+        InputMessage: {
+            /** @description A list of one or many input items to the model, containing different content types. */
+            content: components["schemas"]["InputContent"][];
+            /** @description The role of the message input. One of `user`, `system`, or `developer`.
+             *     Note: `assistant` is NOT allowed here; use OutputMessage instead. */
+            role: components["schemas"]["InputRole"];
+            status?: null | components["schemas"]["OutputStatus"];
+        };
+        InputParam: string | components["schemas"]["InputItem"][];
+        /**
+         * @description The role for an input message - can only be `user`, `system`, or `developer`.
+         *     This type ensures type safety by excluding the `assistant` role (use OutputMessage for that).
+         * @enum {string}
+         */
+        InputRole: "user" | "system" | "developer";
+        InputTextContent: {
+            /** @description The text input to the model. */
+            text: string;
+        };
+        InputTokenDetails: {
+            /**
+             * Format: int32
+             * @description The number of tokens that were retrieved from the cache.
+             *     [More on prompt caching](https://platform.openai.com/docs/guides/prompt-caching).
+             */
+            cached_tokens: number;
+        };
+        Instructions: string | components["schemas"]["InputItem"][];
+        /** @description Content item used to generate a response.
+         *
+         *     This is a properly discriminated union based on the `type` field, using Rust's
+         *     type-safe enum with serde's tag attribute for efficient deserialization.
+         *
+         *     # OpenAPI Specification
+         *     Corresponds to the `Item` schema in the OpenAPI spec with a `type` discriminator. */
+        Item: (components["schemas"]["MessageItem"] & {
+            /** @enum {string} */
+            type: "message";
+        }) | (components["schemas"]["FileSearchToolCall"] & {
+            /** @enum {string} */
+            type: "file_search_call";
+        }) | (components["schemas"]["ComputerToolCall"] & {
+            /** @enum {string} */
+            type: "computer_call";
+        }) | (components["schemas"]["ComputerCallOutputItemParam"] & {
+            /** @enum {string} */
+            type: "computer_call_output";
+        }) | (components["schemas"]["WebSearchToolCall"] & {
+            /** @enum {string} */
+            type: "web_search_call";
+        }) | (components["schemas"]["FunctionToolCall"] & {
+            /** @enum {string} */
+            type: "function_call";
+        }) | (components["schemas"]["FunctionCallOutputItemParam"] & {
+            /** @enum {string} */
+            type: "function_call_output";
+        }) | (components["schemas"]["ToolSearchCallItemParam"] & {
+            /** @enum {string} */
+            type: "tool_search_call";
+        }) | (components["schemas"]["ToolSearchOutputItemParam"] & {
+            /** @enum {string} */
+            type: "tool_search_output";
+        }) | (components["schemas"]["ReasoningItem"] & {
+            /** @enum {string} */
+            type: "reasoning";
+        }) | (components["schemas"]["CompactionSummaryItemParam"] & {
+            /** @enum {string} */
+            type: "compaction";
+        }) | (components["schemas"]["ImageGenToolCall"] & {
+            /** @enum {string} */
+            type: "image_generation_call";
+        }) | (components["schemas"]["CodeInterpreterToolCall"] & {
+            /** @enum {string} */
+            type: "code_interpreter_call";
+        }) | (components["schemas"]["LocalShellToolCall"] & {
+            /** @enum {string} */
+            type: "local_shell_call";
+        }) | (components["schemas"]["LocalShellToolCallOutput"] & {
+            /** @enum {string} */
+            type: "local_shell_call_output";
+        }) | (components["schemas"]["FunctionShellCallItemParam"] & {
+            /** @enum {string} */
+            type: "shell_call";
+        }) | (components["schemas"]["FunctionShellCallOutputItemParam"] & {
+            /** @enum {string} */
+            type: "shell_call_output";
+        }) | (components["schemas"]["ApplyPatchToolCallItemParam"] & {
+            /** @enum {string} */
+            type: "apply_patch_call";
+        }) | (components["schemas"]["ApplyPatchToolCallOutputItemParam"] & {
+            /** @enum {string} */
+            type: "apply_patch_call_output";
+        }) | (components["schemas"]["MCPListTools"] & {
+            /** @enum {string} */
+            type: "mcp_list_tools";
+        }) | (components["schemas"]["MCPApprovalRequest"] & {
+            /** @enum {string} */
+            type: "mcp_approval_request";
+        }) | (components["schemas"]["MCPApprovalResponse"] & {
+            /** @enum {string} */
+            type: "mcp_approval_response";
+        }) | (components["schemas"]["MCPToolCall"] & {
+            /** @enum {string} */
+            type: "mcp_call";
+        }) | (components["schemas"]["CustomToolCallOutput"] & {
+            /** @enum {string} */
+            type: "custom_tool_call_output";
+        }) | (components["schemas"]["CustomToolCall"] & {
+            /** @enum {string} */
+            type: "custom_tool_call";
+        });
+        /** @description A reference to an existing item by ID. */
+        ItemReference: {
+            type?: null | components["schemas"]["ItemReferenceType"];
+            /** @description The ID of the item to reference. */
+            id: string;
+        };
+        /** @enum {string} */
+        ItemReferenceType: "item_reference";
         JsonVec: string[];
+        /** @description A keypress action. */
+        KeyPressAction: {
+            /** @description The combination of keys the model is requesting to be pressed.
+             *     This is an array of strings, each representing a key. */
+            keys: string[];
+        };
         ListMcpServersResponse: {
             mcp_servers: components["schemas"]["McpServerResponse"][];
         };
@@ -2620,6 +3931,11 @@ export interface components {
              */
             page_size?: number | null;
         };
+        /** @description Uses a local computer environment. */
+        LocalEnvironmentParam: {
+            /** @description An optional list of local skills. */
+            skills?: components["schemas"]["LocalSkillParam"][] | null;
+        };
         /** @description Local model file response */
         LocalModelResponse: {
             repo: string;
@@ -2632,6 +3948,162 @@ export interface components {
             };
             metadata?: null | components["schemas"]["ModelMetadata"];
         };
+        /**
+         * @description Status values reported for function shell tool calls.
+         * @enum {string}
+         */
+        LocalShellCallStatus: "in_progress" | "completed" | "incomplete";
+        /** @description Define the shape of a local shell action (exec). */
+        LocalShellExecAction: {
+            /** @description The command to run. */
+            command: string[];
+            /** @description Environment variables to set for the command. */
+            env: {
+                [key: string]: string;
+            };
+            /**
+             * Format: int64
+             * @description Optional timeout in milliseconds for the command.
+             */
+            timeout_ms?: number | null;
+            /** @description Optional user to run the command as. */
+            user?: string | null;
+            /** @description Optional working directory to run the command in. */
+            working_directory?: string | null;
+        };
+        LocalShellToolCall: {
+            /** @description Execute a shell command on the server. */
+            action: components["schemas"]["LocalShellExecAction"];
+            /** @description The unique ID of the local shell tool call generated by the model. */
+            call_id: string;
+            /** @description The unique ID of the local shell call. */
+            id: string;
+            /** @description The status of the local shell call. */
+            status: components["schemas"]["OutputStatus"];
+        };
+        /** @description Output from a local shell tool call that you're providing back to the model. */
+        LocalShellToolCallOutput: {
+            /** @description The unique ID of the local shell tool call generated by the model. */
+            id: string;
+            /** @description A JSON string of the output of the local shell tool call. */
+            output: string;
+            status?: null | components["schemas"]["OutputStatus"];
+        };
+        /** @description A local skill available in a local environment. */
+        LocalSkillParam: {
+            /** @description The name of the skill. */
+            name: string;
+            /** @description The description of the skill. */
+            description: string;
+            /** @description The path to the directory containing the skill. */
+            path: string;
+        };
+        LogProb: {
+            bytes: number[];
+            /** Format: double */
+            logprob: number;
+            token: string;
+            top_logprobs: components["schemas"]["TopLogProb"][];
+        };
+        MCPApprovalRequest: {
+            /** @description JSON string of arguments for the tool. */
+            arguments: string;
+            /** @description The unique ID of the approval request. */
+            id: string;
+            /** @description The name of the tool to run. */
+            name: string;
+            /** @description The label of the MCP server making the request. */
+            server_label: string;
+        };
+        /** @description An MCP approval response that you're providing back to the model. */
+        MCPApprovalResponse: {
+            /** @description The ID of the approval request being answered. */
+            approval_request_id: string;
+            /** @description Whether the request was approved. */
+            approve: boolean;
+            /** @description The unique ID of the approval response */
+            id?: string | null;
+            /** @description Optional reason for the decision. */
+            reason?: string | null;
+        };
+        MCPListTools: {
+            /** @description The unique ID of the list. */
+            id: string;
+            /** @description The label of the MCP server. */
+            server_label: string;
+            /** @description The tools available on the server. */
+            tools: components["schemas"]["MCPListToolsTool"][];
+            /** @description Error message if listing failed. */
+            error?: string | null;
+        };
+        MCPListToolsTool: {
+            /** @description The JSON schema describing the tool's input. */
+            input_schema: Record<string, never>;
+            /** @description The name of the tool. */
+            name: string;
+            /** @description Additional annotations about the tool. */
+            annotations?: Record<string, never> | null;
+            /** @description The description of the tool. */
+            description?: string | null;
+        };
+        MCPTool: {
+            /** @description A label for this MCP server, used to identify it in tool calls. */
+            server_label: string;
+            allowed_tools?: null | components["schemas"]["MCPToolAllowedTools"];
+            /** @description An OAuth access token that can be used with a remote MCP server, either with a custom MCP
+             *     server URL or a service connector. Your application must handle the OAuth authorization
+             *     flow and provide the token here. */
+            authorization?: string | null;
+            connector_id?: null | components["schemas"]["McpToolConnectorId"];
+            /** @description Optional HTTP headers to send to the MCP server. Use for authentication or other purposes. */
+            headers?: Record<string, never> | null;
+            require_approval?: null | components["schemas"]["MCPToolRequireApproval"];
+            /** @description Optional description of the MCP server, used to provide more context. */
+            server_description?: string | null;
+            /** @description The URL for the MCP server. One of `server_url` or `connector_id` must be provided. */
+            server_url?: string | null;
+            /** @description Whether this MCP tool is deferred and discovered via tool search. */
+            defer_loading?: boolean | null;
+        };
+        MCPToolAllowedTools: string[] | components["schemas"]["MCPToolFilter"];
+        MCPToolApprovalFilter: {
+            always?: null | components["schemas"]["MCPToolFilter"];
+            never?: null | components["schemas"]["MCPToolFilter"];
+        };
+        /** @enum {string} */
+        MCPToolApprovalSetting: "always" | "never";
+        /** @description Output of an MCP server tool invocation. */
+        MCPToolCall: {
+            /** @description A JSON string of the arguments passed to the tool. */
+            arguments: string;
+            /** @description The unique ID of the tool call. */
+            id: string;
+            /** @description The name of the tool that was run. */
+            name: string;
+            /** @description The label of the MCP server running the tool. */
+            server_label: string;
+            /** @description Unique identifier for the MCP tool call approval request. Include this value
+             *     in a subsequent `mcp_approval_response` input to approve or reject the corresponding
+             *     tool call. */
+            approval_request_id?: string | null;
+            /** @description Error message from the call, if any. */
+            error?: string | null;
+            /** @description The output from the tool call. */
+            output?: string | null;
+            status?: null | components["schemas"]["MCPToolCallStatus"];
+        };
+        /** @enum {string} */
+        MCPToolCallStatus: "in_progress" | "completed" | "incomplete" | "calling" | "failed";
+        MCPToolFilter: {
+            /** @description Indicates whether or not a tool modifies data or is read-only.
+             *     If an MCP server is annotated with [readOnlyHint](https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations-readonlyhint),
+             *     it will match this filter. */
+            read_only?: boolean | null;
+            /** @description List of allowed tool names. */
+            tool_names?: string[] | null;
+        };
+        /** @description Approval policy or filter for MCP tools. */
+        MCPToolRequireApproval: components["schemas"]["MCPToolApprovalFilter"] | components["schemas"]["MCPToolApprovalSetting"];
         /** @description User-owned MCP server instance. */
         Mcp: {
             /** @description Unique instance identifier (UUID) */
@@ -2825,11 +4297,32 @@ export interface components {
             /** @description User's MCP instances connected to this server URL */
             instances: components["schemas"]["Mcp"][];
         };
+        /** @enum {string} */
+        McpToolConnectorId: "connector_dropbox" | "connector_gmail" | "connector_googlecalendar" | "connector_googledrive" | "connector_microsoftteams" | "connector_outlookcalendar" | "connector_outlookemail" | "connector_sharepoint";
         Message: {
             role: string;
             content: string;
             images?: string[] | null;
         };
+        /** @description A message item used within the `Item` enum.
+         *
+         *     Both InputMessage and OutputMessage have `type: "message"`, so we use an untagged
+         *     enum to distinguish them based on their structure:
+         *     - OutputMessage: role=assistant, required id & status fields
+         *     - InputMessage: role=user/system/developer, content is `Vec<ContentType>`, optional id/status
+         *
+         *     Note: EasyInputMessage is NOT included here - it's a separate variant in `InputItem`,
+         *     not part of the structured `Item` enum. */
+        MessageItem: components["schemas"]["OutputMessage"] | components["schemas"]["InputMessage"];
+        /**
+         * @description Labels an `assistant` message as intermediate commentary or the final answer.
+         *     For models like `gpt-5.3-codex` and beyond, when sending follow-up requests, preserve and resend
+         *     phase on all assistant messages — dropping it can degrade performance.
+         * @enum {string}
+         */
+        MessagePhase: "commentary" | "final_answer";
+        /** @enum {string} */
+        MessageType: "message";
         /** @description Set of 16 key-value pairs that can be attached to an object.
          *     This can be useful for storing additional information about the
          *     object in a structured format, and querying for objects via API
@@ -2898,6 +4391,36 @@ export interface components {
         ModelsResponse: {
             models: components["schemas"]["OllamaModel"][];
         };
+        /** @description A mouse move action. */
+        MoveParam: {
+            /**
+             * Format: int32
+             * @description The x-coordinate to move to.
+             */
+            x: number;
+            /**
+             * Format: int32
+             * @description The y-coordinate to move to.
+             */
+            y: number;
+        };
+        /** @description Groups function/custom tools under a shared namespace. */
+        NamespaceToolParam: {
+            /** @description The namespace name used in tool calls (for example, `crm`). */
+            name: string;
+            /** @description A description of the namespace shown to the model. */
+            description: string;
+            /** @description The function/custom tools available inside this namespace. */
+            tools: components["schemas"]["NamespaceToolParamTool"][];
+        };
+        /** @description A function or custom tool that belongs to a namespace. */
+        NamespaceToolParamTool: (components["schemas"]["FunctionToolParam"] & {
+            /** @enum {string} */
+            type: "function";
+        }) | (components["schemas"]["CustomToolParam"] & {
+            /** @enum {string} */
+            type: "custom";
+        });
         /**
          * @description Request for creating a new download request
          * @example {
@@ -3051,6 +4574,108 @@ export interface components {
             /** Format: int32 */
             num_thread?: number | null;
         };
+        /** @description Output item */
+        OutputItem: (components["schemas"]["OutputMessage"] & {
+            /** @enum {string} */
+            type: "message";
+        }) | (components["schemas"]["FileSearchToolCall"] & {
+            /** @enum {string} */
+            type: "file_search_call";
+        }) | (components["schemas"]["FunctionToolCall"] & {
+            /** @enum {string} */
+            type: "function_call";
+        }) | (components["schemas"]["WebSearchToolCall"] & {
+            /** @enum {string} */
+            type: "web_search_call";
+        }) | (components["schemas"]["ComputerToolCall"] & {
+            /** @enum {string} */
+            type: "computer_call";
+        }) | (components["schemas"]["ReasoningItem"] & {
+            /** @enum {string} */
+            type: "reasoning";
+        }) | (components["schemas"]["CompactionBody"] & {
+            /** @enum {string} */
+            type: "compaction";
+        }) | (components["schemas"]["ImageGenToolCall"] & {
+            /** @enum {string} */
+            type: "image_generation_call";
+        }) | (components["schemas"]["CodeInterpreterToolCall"] & {
+            /** @enum {string} */
+            type: "code_interpreter_call";
+        }) | (components["schemas"]["LocalShellToolCall"] & {
+            /** @enum {string} */
+            type: "local_shell_call";
+        }) | (components["schemas"]["FunctionShellCall"] & {
+            /** @enum {string} */
+            type: "shell_call";
+        }) | (components["schemas"]["FunctionShellCallOutput"] & {
+            /** @enum {string} */
+            type: "shell_call_output";
+        }) | (components["schemas"]["ApplyPatchToolCall"] & {
+            /** @enum {string} */
+            type: "apply_patch_call";
+        }) | (components["schemas"]["ApplyPatchToolCallOutput"] & {
+            /** @enum {string} */
+            type: "apply_patch_call_output";
+        }) | (components["schemas"]["MCPToolCall"] & {
+            /** @enum {string} */
+            type: "mcp_call";
+        }) | (components["schemas"]["MCPListTools"] & {
+            /** @enum {string} */
+            type: "mcp_list_tools";
+        }) | (components["schemas"]["MCPApprovalRequest"] & {
+            /** @enum {string} */
+            type: "mcp_approval_request";
+        }) | (components["schemas"]["CustomToolCall"] & {
+            /** @enum {string} */
+            type: "custom_tool_call";
+        }) | (components["schemas"]["ToolSearchCall"] & {
+            /** @enum {string} */
+            type: "tool_search_call";
+        }) | (components["schemas"]["ToolSearchOutput"] & {
+            /** @enum {string} */
+            type: "tool_search_output";
+        });
+        /** @description A message generated by the model. */
+        OutputMessage: {
+            /** @description The content of the output message. */
+            content: components["schemas"]["OutputMessageContent"][];
+            /** @description The unique ID of the output message. */
+            id: string;
+            /** @description The role of the output message. Always `assistant`. */
+            role: components["schemas"]["AssistantRole"];
+            phase?: null | components["schemas"]["MessagePhase"];
+            /** @description The status of the message input. One of `in_progress`, `completed`, or
+             *     `incomplete`. Populated when input items are returned via API. */
+            status: components["schemas"]["OutputStatus"];
+        };
+        OutputMessageContent: (components["schemas"]["OutputTextContent"] & {
+            /** @enum {string} */
+            type: "output_text";
+        }) | (components["schemas"]["RefusalContent"] & {
+            /** @enum {string} */
+            type: "refusal";
+        });
+        /**
+         * @description Status of input/output items.
+         * @enum {string}
+         */
+        OutputStatus: "in_progress" | "completed" | "incomplete";
+        /** @description A simple text output from the model. */
+        OutputTextContent: {
+            /** @description The annotations of the text output. */
+            annotations: components["schemas"]["Annotation"][];
+            logprobs?: components["schemas"]["LogProb"][] | null;
+            /** @description The text output from the model. */
+            text: string;
+        };
+        OutputTokenDetails: {
+            /**
+             * Format: int32
+             * @description The number of reasoning tokens.
+             */
+            reasoning_tokens: number;
+        };
         /** @description Paginated list of all model aliases (user, model, and API) */
         PaginatedAliasResponse: {
             data: components["schemas"]["AliasResponse"][];
@@ -3159,6 +4784,18 @@ export interface components {
         };
         /** @description The content that should be matched when generating a model response. If generated tokens would match this content, the entire model response can be returned much more quickly. */
         PredictionContentContent: string | components["schemas"]["ChatCompletionRequestMessageContentPartText"][];
+        Prompt: {
+            /** @description The unique identifier of the prompt template to use. */
+            id: string;
+            /** @description Optional version of the prompt template. */
+            version?: string | null;
+            variables?: null | components["schemas"]["ResponsePromptVariables"];
+        };
+        /**
+         * @description The retention policy for the prompt cache.
+         * @enum {string}
+         */
+        PromptCacheRetention: "in_memory" | "24h";
         /** @description Breakdown of tokens used in a completion. */
         PromptTokensDetails: {
             /**
@@ -3178,7 +4815,45 @@ export interface components {
             status: string;
         };
         /** @enum {string} */
+        RankVersionType: "auto" | "default-2024-11-15";
+        /** @description Options for search result ranking. */
+        RankingOptions: {
+            hybrid_search?: null | components["schemas"]["HybridSearch"];
+            /** @description The ranker to use for the file search. */
+            ranker: components["schemas"]["RankVersionType"];
+            /**
+             * Format: float
+             * @description The score threshold for the file search, a number between 0 and 1. Numbers closer to 1 will
+             *     attempt to return only the most relevant results, but may return fewer results.
+             */
+            score_threshold?: number | null;
+        };
+        /** @description o-series reasoning settings. */
+        Reasoning: {
+            effort?: null | components["schemas"]["ReasoningEffort"];
+            summary?: null | components["schemas"]["ReasoningSummary"];
+        };
+        /** @enum {string} */
         ReasoningEffort: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+        /** @description A reasoning item representing the model's chain of thought, including summary paragraphs. */
+        ReasoningItem: {
+            /** @description Unique identifier of the reasoning content. */
+            id: string;
+            /** @description Reasoning summary content. */
+            summary: components["schemas"]["SummaryPart"][];
+            /** @description Reasoning text content. */
+            content?: components["schemas"]["ReasoningTextContent"][] | null;
+            /** @description The encrypted content of the reasoning item - populated when a response is generated with
+             *     `reasoning.encrypted_content` in the `include` parameter. */
+            encrypted_content?: string | null;
+            status?: null | components["schemas"]["OutputStatus"];
+        };
+        /** @enum {string} */
+        ReasoningSummary: "auto" | "concise" | "detailed";
+        ReasoningTextContent: {
+            /** @description The reasoning text from the model. */
+            text: string;
+        };
         /** @example {
          *       "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
          *     } */
@@ -3224,6 +4899,11 @@ export interface components {
          * @enum {string}
          */
         RefreshSource: "all" | "model";
+        /** @description A refusal explanation from the model. */
+        RefusalContent: {
+            /** @description The refusal explanation from the model. */
+            refusal: string;
+        };
         /**
          * @description OAuth 2.1 registration type: pre-registered client or dynamic client registration (DCR).
          * @enum {string}
@@ -3243,6 +4923,130 @@ export interface components {
         };
         /** @enum {string} */
         ResourceRole: "resource_anonymous" | "resource_guest" | "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
+        /** @description The complete response returned by the Responses API. */
+        Response: {
+            /** @description Whether to run the model response in the background.
+             *     [Learn more](https://platform.openai.com/docs/guides/background). */
+            background?: boolean | null;
+            billing?: null | components["schemas"]["Billing"];
+            conversation?: null | components["schemas"]["Conversation"];
+            /**
+             * Format: int64
+             * @description Unix timestamp (in seconds) when this Response was created.
+             */
+            created_at: number;
+            /**
+             * Format: int64
+             * @description Unix timestamp (in seconds) of when this Response was completed.
+             *     Only present when the status is `completed`.
+             */
+            completed_at?: number | null;
+            error?: null | components["schemas"]["ErrorObject"];
+            /** @description Unique identifier for this response. */
+            id: string;
+            incomplete_details?: null | components["schemas"]["IncompleteDetails"];
+            instructions?: null | components["schemas"]["Instructions"];
+            /**
+             * Format: int32
+             * @description An upper bound for the number of tokens that can be generated for a response,
+             *     including visible output tokens and
+             *     [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).
+             */
+            max_output_tokens?: number | null;
+            /** @description Set of 16 key-value pairs that can be attached to an object. This can be
+             *     useful for storing additional information about the object in a structured
+             *     format, and querying for objects via API or the dashboard.
+             *
+             *     Keys are strings with a maximum length of 64 characters. Values are strings
+             *     with a maximum length of 512 characters. */
+            metadata?: {
+                [key: string]: string;
+            } | null;
+            /** @description Model ID used to generate the response, like gpt-4o or o3. OpenAI offers a
+             *     wide range of models with different capabilities, performance characteristics,
+             *     and price points. Refer to the [model guide](https://platform.openai.com/docs/models) to browse and compare available models. */
+            model: string;
+            /** @description The object type of this resource - always set to `response`. */
+            object: string;
+            /** @description An array of content items generated by the model.
+             *
+             *     - The length and order of items in the output array is dependent on the model's response.
+             *     - Rather than accessing the first item in the output array and assuming it's an assistant
+             *       message with the content generated by the model, you might consider using
+             *       the `output_text` property where supported in SDKs. */
+            output: components["schemas"]["OutputItem"][];
+            /** @description SDK-only convenience property that contains the aggregated text output from all
+             *     `output_text` items in the `output` array, if any are present.
+             *     Supported in the Python and JavaScript SDKs.
+             *     Whether to allow the model to run tool calls in parallel. */
+            parallel_tool_calls?: boolean | null;
+            /** @description The unique ID of the previous response to the model. Use this to create multi-turn conversations.
+             *     Learn more about [conversation state](https://platform.openai.com/docs/guides/conversation-state).
+             *     Cannot be used in conjunction with `conversation`. */
+            previous_response_id?: string | null;
+            prompt?: null | components["schemas"]["Prompt"];
+            /** @description Used by OpenAI to cache responses for similar requests to optimize your cache hit rates. Replaces
+             *     the `user` field. [Learn more](https://platform.openai.com/docs/guides/prompt-caching). */
+            prompt_cache_key?: string | null;
+            prompt_cache_retention?: null | components["schemas"]["PromptCacheRetention"];
+            reasoning?: null | components["schemas"]["Reasoning"];
+            /** @description A stable identifier used to help detect users of your application that may be violating OpenAI's
+             *     usage policies.
+             *
+             *     The IDs should be a string that uniquely identifies each user. We recommend hashing their username
+             *     or email address, in order to avoid sending us any identifying information. [Learn
+             *     more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers). */
+            safety_identifier?: string | null;
+            service_tier?: null | components["schemas"]["ServiceTier"];
+            /** @description The status of the response generation.
+             *     One of `completed`, `failed`, `in_progress`, `cancelled`, `queued`, or `incomplete`. */
+            status: components["schemas"]["Status"];
+            /**
+             * Format: float
+             * @description What sampling temperature was used, between 0 and 2. Higher values like 0.8 make
+             *     outputs more random, lower values like 0.2 make output more focused and deterministic.
+             *
+             *     We generally recommend altering this or `top_p` but not both.
+             */
+            temperature?: number | null;
+            text?: null | components["schemas"]["ResponseTextParam"];
+            tool_choice?: null | components["schemas"]["ToolChoiceParam"];
+            /** @description An array of tools the model may call while generating a response. You
+             *     can specify which tool to use by setting the `tool_choice` parameter.
+             *
+             *     We support the following categories of tools:
+             *     - **Built-in tools**: Tools that are provided by OpenAI that extend the
+             *       model's capabilities, like [web search](https://platform.openai.com/docs/guides/tools-web-search)
+             *       or [file search](https://platform.openai.com/docs/guides/tools-file-search). Learn more about
+             *       [built-in tools](https://platform.openai.com/docs/guides/tools).
+             *     - **MCP Tools**: Integrations with third-party systems via custom MCP servers
+             *       or predefined connectors such as Google Drive and SharePoint. Learn more about
+             *       [MCP Tools](https://platform.openai.com/docs/guides/tools-connectors-mcp).
+             *     - **Function calls (custom tools)**: Functions that are defined by you,
+             *       enabling the model to call your own code with strongly typed arguments
+             *       and outputs. Learn more about
+             *       [function calling](https://platform.openai.com/docs/guides/function-calling). You can also use
+             *       custom tools to call your own code. */
+            tools?: components["schemas"]["Tool"][] | null;
+            /**
+             * Format: int32
+             * @description An integer between 0 and 20 specifying the number of most likely tokens to return at each
+             *     token position, each with an associated log probability.
+             */
+            top_logprobs?: number | null;
+            /**
+             * Format: float
+             * @description An alternative to sampling with temperature, called nucleus sampling,
+             *     where the model considers the results of the tokens with top_p probability
+             *     mass. So 0.1 means only the tokens comprising the top 10% probability mass
+             *     are considered.
+             *
+             *     We generally recommend altering this or `temperature` but not both.
+             */
+            top_p?: number | null;
+            truncation?: null | components["schemas"]["Truncation"];
+            usage?: null | components["schemas"]["ResponseUsage"];
+        };
         ResponseFormat: {
             /** @enum {string} */
             type: "text";
@@ -3261,7 +5065,7 @@ export interface components {
             name: string;
             /** @description The schema for the response format, described as a JSON Schema object.
              *     Learn how to build JSON schemas [here](https://json-schema.org/). */
-            schema?: unknown;
+            schema?: Record<string, never> | null;
             /** @description Whether to enable strict schema adherence when generating the output.
              *     If set to true, the model will always follow the exact schema defined
              *     in the `schema` field. Only a subset of JSON Schema is supported when
@@ -3279,8 +5083,90 @@ export interface components {
          * @enum {string}
          */
         ResponseModalities: "text" | "audio";
-        /** @enum {string} */
-        Role: "system" | "user" | "assistant" | "tool" | "function";
+        ResponsePromptVariables: string | components["schemas"]["InputContent"] | Record<string, never>;
+        ResponseStreamOptions: {
+            /** @description When true, stream obfuscation will be enabled. Stream obfuscation adds
+             *     random characters to an `obfuscation` field on streaming delta events to
+             *     normalize payload sizes as a mitigation to certain side-channel attacks.
+             *     These obfuscation fields are included by default, but add a small amount
+             *     of overhead to the data stream. You can set `include_obfuscation` to
+             *     false to optimize for bandwidth if you trust the network links between
+             *     your application and the OpenAI API. */
+            include_obfuscation?: boolean | null;
+        };
+        /** @description Configuration for text response format. */
+        ResponseTextParam: {
+            /** @description An object specifying the format that the model must output.
+             *
+             *     Configuring `{ "type": "json_schema" }` enables Structured Outputs,
+             *     which ensures the model will match your supplied JSON schema. Learn more in the
+             *     [Structured Outputs guide](https://platform.openai.com/docs/guides/structured-outputs).
+             *
+             *     The default format is `{ "type": "text" }` with no additional options.
+             *
+             *     **Not recommended for gpt-4o and newer models:**
+             *
+             *     Setting to `{ "type": "json_object" }` enables the older JSON mode, which
+             *     ensures the message the model generates is valid JSON. Using `json_schema`
+             *     is preferred for models that support it. */
+            format: components["schemas"]["TextResponseFormatConfiguration"];
+            verbosity?: null | components["schemas"]["Verbosity"];
+        };
+        /** @description Usage statistics for a response. */
+        ResponseUsage: {
+            /**
+             * Format: int32
+             * @description The number of input tokens.
+             */
+            input_tokens: number;
+            /** @description A detailed breakdown of the input tokens. */
+            input_tokens_details: components["schemas"]["InputTokenDetails"];
+            /**
+             * Format: int32
+             * @description The number of output tokens.
+             */
+            output_tokens: number;
+            /** @description A detailed breakdown of the output tokens. */
+            output_tokens_details: components["schemas"]["OutputTokenDetails"];
+            /**
+             * Format: int32
+             * @description The total number of tokens used.
+             */
+            total_tokens: number;
+        };
+        /**
+         * @description Role of messages in the API.
+         * @enum {string}
+         */
+        Role: "user" | "assistant" | "system" | "developer";
+        /** @description A scroll action. */
+        ScrollParam: {
+            /**
+             * Format: int32
+             * @description The horizontal scroll distance.
+             */
+            scroll_x: number;
+            /**
+             * Format: int32
+             * @description The vertical scroll distance.
+             */
+            scroll_y: number;
+            /**
+             * Format: int32
+             * @description The x-coordinate where the scroll occurred.
+             */
+            x: number;
+            /**
+             * Format: int32
+             * @description The y-coordinate where the scroll occurred.
+             */
+            y: number;
+        };
+        /**
+         * @description The type of content to search for.
+         * @enum {string}
+         */
+        SearchContentType: "text" | "image";
         /** @enum {string} */
         ServiceTier: "auto" | "default" | "flex" | "scale" | "priority";
         SettingInfo: {
@@ -3354,7 +5240,32 @@ export interface components {
             parameters: string;
             template: string;
         };
+        /** @description A skill parameter — either a reference or inline definition. */
+        SkillParam: (components["schemas"]["SkillReferenceParam"] & {
+            /** @enum {string} */
+            type: "skill_reference";
+        }) | (components["schemas"]["InlineSkillParam"] & {
+            /** @enum {string} */
+            type: "inline";
+        });
+        /** @description A skill referenced by ID. */
+        SkillReferenceParam: {
+            /** @description The ID of the skill to reference. */
+            skill_id: string;
+            /** @description An optional specific version to use. */
+            version?: string | null;
+        };
+        /** @enum {string} */
+        Status: "completed" | "failed" | "in_progress" | "cancelled" | "queued" | "incomplete";
         StopConfiguration: string | string[];
+        SummaryPart: components["schemas"]["SummaryTextContent"] & {
+            /** @enum {string} */
+            type: "summary_text";
+        };
+        SummaryTextContent: {
+            /** @description A summary of the reasoning output from the model so far. */
+            text: string;
+        };
         TenantListItem: {
             client_id: string;
             name: string;
@@ -3399,6 +5310,8 @@ export interface components {
             model: string;
             /** @description Test prompt (max 30 characters for cost control) */
             prompt: string;
+            /** @description API format to use for the test request (defaults to OpenAI Chat Completions) */
+            api_format?: components["schemas"]["ApiFormat"];
         };
         /**
          * @description Response from testing API connectivity
@@ -3413,6 +5326,16 @@ export interface components {
             response?: string | null;
             error?: string | null;
         };
+        TextResponseFormatConfiguration: {
+            /** @enum {string} */
+            type: "text";
+        } | {
+            /** @enum {string} */
+            type: "json_object";
+        } | (components["schemas"]["ResponseFormatJsonSchema"] & {
+            /** @enum {string} */
+            type: "json_schema";
+        });
         /** @example {
          *       "token": "bodhiapp_1234567890abcdef"
          *     } */
@@ -3443,14 +5366,224 @@ export interface components {
         TokenScope: "scope_token_user" | "scope_token_power_user";
         /** @enum {string} */
         TokenStatus: "active" | "inactive";
+        /** @description Definitions for model-callable tools. */
+        Tool: (components["schemas"]["FunctionTool"] & {
+            /** @enum {string} */
+            type: "function";
+        }) | (components["schemas"]["FileSearchTool"] & {
+            /** @enum {string} */
+            type: "file_search";
+        }) | (components["schemas"]["ComputerUsePreviewTool"] & {
+            /** @enum {string} */
+            type: "computer_use_preview";
+        }) | (components["schemas"]["WebSearchTool"] & {
+            /** @enum {string} */
+            type: "web_search";
+        }) | (components["schemas"]["WebSearchTool"] & {
+            /** @enum {string} */
+            type: "web_search_2025_08_26";
+        }) | (components["schemas"]["MCPTool"] & {
+            /** @enum {string} */
+            type: "mcp";
+        }) | (components["schemas"]["CodeInterpreterTool"] & {
+            /** @enum {string} */
+            type: "code_interpreter";
+        }) | (components["schemas"]["ImageGenTool"] & {
+            /** @enum {string} */
+            type: "image_generation";
+        }) | {
+            /** @enum {string} */
+            type: "local_shell";
+        } | (components["schemas"]["FunctionShellToolParam"] & {
+            /** @enum {string} */
+            type: "shell";
+        }) | (components["schemas"]["CustomToolParam"] & {
+            /** @enum {string} */
+            type: "custom";
+        }) | (components["schemas"]["ComputerTool"] & {
+            /** @enum {string} */
+            type: "computer";
+        }) | (components["schemas"]["NamespaceToolParam"] & {
+            /** @enum {string} */
+            type: "namespace";
+        }) | (components["schemas"]["ToolSearchToolParam"] & {
+            /** @enum {string} */
+            type: "tool_search";
+        }) | (components["schemas"]["WebSearchTool"] & {
+            /** @enum {string} */
+            type: "web_search_preview";
+        }) | (components["schemas"]["WebSearchTool"] & {
+            /** @enum {string} */
+            type: "web_search_preview_2025_03_11";
+        }) | {
+            /** @enum {string} */
+            type: "apply_patch";
+        };
         ToolCapabilities: {
             function_calling?: boolean | null;
             structured_output?: boolean | null;
         };
+        ToolChoiceAllowed: {
+            /** @description Constrains the tools available to the model to a pre-defined set.
+             *
+             *     `auto` allows the model to pick from among the allowed tools and generate a
+             *     message.
+             *
+             *     `required` requires the model to call one or more of the allowed tools. */
+            mode: components["schemas"]["ToolChoiceAllowedMode"];
+            /** @description A list of tool definitions that the model should be allowed to call.
+             *
+             *     For the Responses API, the list of tool definitions might look like:
+             *     ```json
+             *     [
+             *       { "type": "function", "name": "get_weather" },
+             *       { "type": "mcp", "server_label": "deepwiki" },
+             *       { "type": "image_generation" }
+             *     ]
+             *     ``` */
+            tools: Record<string, never>[];
+        };
         /** @enum {string} */
         ToolChoiceAllowedMode: "auto" | "required";
+        ToolChoiceCustom: {
+            /** @description The name of the custom tool to call. */
+            name: string;
+        };
+        ToolChoiceFunction: {
+            /** @description The name of the function to call. */
+            name: string;
+        };
+        ToolChoiceMCP: {
+            /** @description The name of the tool to call on the server. */
+            name: string;
+            /** @description The label of the MCP server to use. */
+            server_label: string;
+        };
         /** @enum {string} */
         ToolChoiceOptions: "none" | "auto" | "required";
+        ToolChoiceParam: (components["schemas"]["ToolChoiceAllowed"] & {
+            /** @enum {string} */
+            type: "allowed_tools";
+        }) | (components["schemas"]["ToolChoiceFunction"] & {
+            /** @enum {string} */
+            type: "function";
+        }) | (components["schemas"]["ToolChoiceMCP"] & {
+            /** @enum {string} */
+            type: "mcp";
+        }) | (components["schemas"]["ToolChoiceCustom"] & {
+            /** @enum {string} */
+            type: "custom";
+        }) | {
+            /** @enum {string} */
+            type: "apply_patch";
+        } | {
+            /** @enum {string} */
+            type: "shell";
+        } | (components["schemas"]["ToolChoiceTypes"] & {
+            /** @enum {string} */
+            type: "hosted";
+        }) | (components["schemas"]["ToolChoiceOptions"] & {
+            /** @enum {string} */
+            type: "mode";
+        });
+        /** @description The type of hosted tool the model should to use. Learn more about
+         *     [built-in tools](https://platform.openai.com/docs/guides/tools). */
+        ToolChoiceTypes: {
+            /** @enum {string} */
+            type: "file_search";
+        } | {
+            /** @enum {string} */
+            type: "web_search_preview";
+        } | {
+            /** @enum {string} */
+            type: "computer";
+        } | {
+            /** @enum {string} */
+            type: "computer_use_preview";
+        } | {
+            /** @enum {string} */
+            type: "computer_use";
+        } | {
+            /** @enum {string} */
+            type: "web_search_preview_2025_03_11";
+        } | {
+            /** @enum {string} */
+            type: "code_interpreter";
+        } | {
+            /** @enum {string} */
+            type: "image_generation";
+        };
+        /** @description A tool search call output item. */
+        ToolSearchCall: {
+            /** @description The unique ID of the tool search call item. */
+            id: string;
+            /** @description The unique ID of the tool search call generated by the model. */
+            call_id?: string | null;
+            /** @description Whether tool search was executed by the server or by the client. */
+            execution: components["schemas"]["ToolSearchExecutionType"];
+            /** @description Arguments used for the tool search call. */
+            arguments: Record<string, never>;
+            /** @description The status of the tool search call item. */
+            status: components["schemas"]["FunctionCallStatus"];
+            /** @description The identifier of the actor that created the item. */
+            created_by?: string | null;
+        };
+        /** @description A tool search call input item. */
+        ToolSearchCallItemParam: {
+            /** @description The unique ID of this tool search call. */
+            id?: string | null;
+            /** @description The unique ID of the tool search call generated by the model. */
+            call_id?: string | null;
+            execution?: null | components["schemas"]["ToolSearchExecutionType"];
+            /** @description The arguments supplied to the tool search call. */
+            arguments?: Record<string, never>;
+            status?: null | components["schemas"]["OutputStatus"];
+        };
+        /**
+         * @description Whether tool search was executed by the server or by the client.
+         * @enum {string}
+         */
+        ToolSearchExecutionType: "server" | "client";
+        /** @description A tool search output item. */
+        ToolSearchOutput: {
+            /** @description The unique ID of the tool search output item. */
+            id: string;
+            /** @description The unique ID of the tool search call generated by the model. */
+            call_id?: string | null;
+            /** @description Whether tool search was executed by the server or by the client. */
+            execution: components["schemas"]["ToolSearchExecutionType"];
+            /** @description The loaded tool definitions returned by tool search. */
+            tools: components["schemas"]["Tool"][];
+            /** @description The status of the tool search output item. */
+            status: components["schemas"]["FunctionCallOutputStatusEnum"];
+            /** @description The identifier of the actor that created the item. */
+            created_by?: string | null;
+        };
+        /** @description A tool search output input item. */
+        ToolSearchOutputItemParam: {
+            /** @description The unique ID of this tool search output. */
+            id?: string | null;
+            /** @description The unique ID of the tool search call generated by the model. */
+            call_id?: string | null;
+            execution?: null | components["schemas"]["ToolSearchExecutionType"];
+            /** @description The loaded tool definitions returned by the tool search output. */
+            tools: components["schemas"]["Tool"][];
+            status?: null | components["schemas"]["OutputStatus"];
+        };
+        /** @description Hosted or BYOT tool search configuration for deferred tools. */
+        ToolSearchToolParam: {
+            execution?: null | components["schemas"]["ToolSearchExecutionType"];
+            /** @description Description shown to the model for a client-executed tool search tool. */
+            description?: string | null;
+            /** @description Parameter schema for a client-executed tool search tool. */
+            parameters?: Record<string, never> | null;
+        };
+        TopLogProb: {
+            bytes: number[];
+            /** Format: double */
+            logprob: number;
+            token: string;
+        };
         TopLogprobs: {
             /** @description The token. */
             token: string;
@@ -3461,6 +5594,16 @@ export interface components {
             logprob: number;
             /** @description A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token. */
             bytes?: number[] | null;
+        };
+        /**
+         * @description Truncation strategies.
+         * @enum {string}
+         */
+        Truncation: "auto" | "disabled";
+        /** @description A typing (text entry) action. */
+        TypeParam: {
+            /** @description The text to type. */
+            text: string;
         };
         /**
          * @description Request to update a setting value
@@ -3486,6 +5629,22 @@ export interface components {
             status: components["schemas"]["TokenStatus"];
         };
         UrlCitation: {
+            /**
+             * Format: int32
+             * @description The index of the last character of the URL citation in the message.
+             */
+            end_index: number;
+            /**
+             * Format: int32
+             * @description The index of the first character of the URL citation in the message.
+             */
+            start_index: number;
+            /** @description The title of the web resource. */
+            title: string;
+            /** @description The URL of the web resource. */
+            url: string;
+        };
+        UrlCitationBody: {
             /**
              * Format: int32
              * @description The index of the last character of the URL citation in the message.
@@ -3666,10 +5825,49 @@ export interface components {
         /** @enum {string} */
         UserScope: "scope_user_user" | "scope_user_power_user";
         /**
-         * @description Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are `low`, `medium`, and `high`.
+         * @description o-series reasoning settings.
          * @enum {string}
          */
         Verbosity: "low" | "medium" | "high";
+        WebSearchActionFind: {
+            /** @description The URL of the page searched for the pattern. */
+            url: string;
+            /** @description The pattern or text to search for within the page. */
+            pattern: string;
+        };
+        WebSearchActionOpenPage: {
+            /** @description The URL opened by the model. */
+            url?: string | null;
+        };
+        WebSearchActionSearch: {
+            /** @description The search query. */
+            query: string;
+            /** @description The sources used in the search. */
+            sources?: components["schemas"]["WebSearchActionSearchSource"][] | null;
+        };
+        WebSearchActionSearchSource: {
+            /** @description The type of source. Always `url`. */
+            type: string;
+            /** @description The URL of the source. */
+            url: string;
+        };
+        /** @description Approximate user location for web search. */
+        WebSearchApproximateLocation: {
+            /** @description The type of location approximation. Defaults to `approximate` when omitted in JSON input. */
+            type?: components["schemas"]["WebSearchApproximateLocationType"];
+            /** @description Free text input for the city of the user, e.g. `San Francisco`. */
+            city?: string | null;
+            /** @description The two-letter [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1) of the user,
+             *     e.g. `US`. */
+            country?: string | null;
+            /** @description Free text input for the region of the user, e.g. `California`. */
+            region?: string | null;
+            /** @description The [IANA timezone](https://timeapi.io/documentation/iana-timezones) of the user, e.g.
+             *     `America/Los_Angeles`. */
+            timezone?: string | null;
+        };
+        /** @enum {string} */
+        WebSearchApproximateLocationType: "approximate";
         /**
          * @description The amount of context window space to use for the search.
          * @enum {string}
@@ -3691,6 +5889,47 @@ export interface components {
             search_context_size?: null | components["schemas"]["WebSearchContextSize"];
             user_location?: null | components["schemas"]["WebSearchUserLocation"];
         };
+        WebSearchTool: {
+            filters?: null | components["schemas"]["WebSearchToolFilters"];
+            user_location?: null | components["schemas"]["WebSearchApproximateLocation"];
+            search_context_size?: null | components["schemas"]["WebSearchToolSearchContextSize"];
+            /** @description The types of content to search for. */
+            search_content_types?: components["schemas"]["SearchContentType"][] | null;
+        };
+        /** @description Web search tool call output. */
+        WebSearchToolCall: {
+            /** @description An object describing the specific action taken in this web search call. Includes
+             *     details on how the model used the web (search, open_page, find, find_in_page). */
+            action: components["schemas"]["WebSearchToolCallAction"];
+            /** @description The unique ID of the web search tool call. */
+            id: string;
+            /** @description The status of the web search tool call. */
+            status: components["schemas"]["WebSearchToolCallStatus"];
+        };
+        WebSearchToolCallAction: (components["schemas"]["WebSearchActionSearch"] & {
+            /** @enum {string} */
+            type: "search";
+        }) | (components["schemas"]["WebSearchActionOpenPage"] & {
+            /** @enum {string} */
+            type: "open_page";
+        }) | (components["schemas"]["WebSearchActionFind"] & {
+            /** @enum {string} */
+            type: "find";
+        }) | (components["schemas"]["WebSearchActionFind"] & {
+            /** @enum {string} */
+            type: "find_in_page";
+        });
+        /** @enum {string} */
+        WebSearchToolCallStatus: "in_progress" | "searching" | "completed" | "failed";
+        WebSearchToolFilters: {
+            /** @description Allowed domains for the search. If not provided, all domains are allowed.
+             *     Subdomains of the provided domains are allowed as well.
+             *
+             *     Example: `["pubmed.ncbi.nlm.nih.gov"]` */
+            allowed_domains?: string[] | null;
+        };
+        /** @enum {string} */
+        WebSearchToolSearchContextSize: "low" | "medium" | "high";
         WebSearchUserLocation: {
             type: components["schemas"]["WebSearchUserLocationType"];
             approximate: components["schemas"]["WebSearchLocation"];
@@ -9546,6 +11785,319 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    createResponse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateResponse"];
+            };
+        };
+        responses: {
+            /** @description Response created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Response"];
+                };
+            };
+            /** @description Response stream (actual status is 200, using 201 to avoid OpenAPI limitation). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    getResponse: {
+        parameters: {
+            query: {
+                /** @description Model name for routing to the correct upstream provider */
+                model: string;
+            };
+            header?: never;
+            path: {
+                /** @description The response ID */
+                response_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Response"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    deleteResponse: {
+        parameters: {
+            query: {
+                /** @description Model name for routing to the correct upstream provider */
+                model: string;
+            };
+            header?: never;
+            path: {
+                /** @description The response ID */
+                response_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    cancelResponse: {
+        parameters: {
+            query: {
+                /** @description Model name for routing to the correct upstream provider */
+                model: string;
+            };
+            header?: never;
+            path: {
+                /** @description The response ID */
+                response_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Response"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    listResponseInputItems: {
+        parameters: {
+            query: {
+                /** @description Model name for routing to the correct upstream provider */
+                model: string;
+            };
+            header?: never;
+            path: {
+                /** @description The response ID */
+                response_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Input items retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };

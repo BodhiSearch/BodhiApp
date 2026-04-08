@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { TestPromptRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
+import { TestPromptRequest, TestCreds, ApiKey, ApiFormat } from '@bodhiapp/ts-client';
 
 import { useToast } from '@/hooks/use-toast';
 import { useTestApiModel } from '@/hooks/models';
@@ -17,6 +17,7 @@ interface TestConnectionData {
   baseUrl: string;
   model: string;
   id?: string;
+  apiFormat?: ApiFormat;
 }
 
 export function useTestConnection({ mode: _mode = 'create', initialData: _initialData }: UseTestConnectionProps = {}) {
@@ -62,6 +63,7 @@ export function useTestConnection({ mode: _mode = 'create', initialData: _initia
       base_url: data.baseUrl,
       model: data.model,
       prompt: DEFAULT_TEST_PROMPT,
+      api_format: data.apiFormat || ('openai' as ApiFormat),
     };
 
     try {
