@@ -11,9 +11,9 @@ import { Separator } from '@/components/ui/separator';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarHeader } from '@/components/ui/sidebar';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useChatSettings } from '@/hooks/chat';
 import { useListModels } from '@/hooks/models';
 import { API_FORMAT_PRESETS } from '@/schemas/apiModel';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
 interface SettingRowProps {
   label: string;
@@ -45,7 +45,7 @@ function SettingRow({ label, tooltip, htmlFor, children }: SettingRowProps) {
 
 export function SettingsSidebar() {
   const { data: modelsResponse, isLoading } = useListModels(1, 100, 'alias', 'asc');
-  const settings = useChatSettings();
+  const settings = useChatSettingsStore();
   const models = modelsResponse?.data || [];
 
   return (

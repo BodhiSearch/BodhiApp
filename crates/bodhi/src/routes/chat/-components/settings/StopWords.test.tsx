@@ -1,15 +1,25 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { StopWords } from '@/routes/chat/-components/settings/StopWords';
-import * as chatSettings from '@/hooks/chat';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 import userEvent from '@testing-library/user-event';
 
-// Mock useChatSettings
-vi.mock('@/hooks/chat', () => ({
-  useChatSettings: vi.fn(),
-}));
+vi.mock('@/stores/chatStore', () => {
+  const { create } = require('zustand');
+  return { useChatStore: create(() => ({ getChatSettings: vi.fn() })) };
+});
 
-// Example of mocking Input component with proper disabled state handling
+vi.mock('@/stores/chatSettingsStore', () => {
+  const { create } = require('zustand');
+  const store = create(() => ({
+    stop: [],
+    stop_enabled: true,
+    setStop: vi.fn(),
+    setStopEnabled: vi.fn(),
+  }));
+  return { useChatSettingsStore: store };
+});
+
 vi.mock('@/components/ui/input', () => ({
   Input: ({ disabled, onChange, onKeyDown, ...props }: any) => (
     <input
@@ -22,7 +32,6 @@ vi.mock('@/components/ui/input', () => ({
   ),
 }));
 
-// Mock the Switch component from shadcn
 vi.mock('@/components/ui/switch', () => ({
   Switch: ({ checked, onCheckedChange, disabled, ...props }: any) => (
     <button
@@ -37,13 +46,12 @@ vi.mock('@/components/ui/switch', () => ({
 
 describe('StopWords', () => {
   beforeEach(() => {
-    // Reset mock before each test with default values
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       stop: [],
       stop_enabled: true,
       setStop: vi.fn(),
       setStopEnabled: vi.fn(),
-    } as any);
+    });
   });
 
   describe('loading state', () => {
@@ -61,12 +69,12 @@ describe('StopWords', () => {
       const mockSetStop = vi.fn();
       const mockSetEnabled = vi.fn();
 
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      useChatSettingsStore.setState({
         stop: ['test'],
         stop_enabled: true,
         setStop: mockSetStop,
         setStopEnabled: mockSetEnabled,
-      } as any);
+      });
 
       render(<StopWords isLoading={true} />);
 
@@ -74,7 +82,6 @@ describe('StopWords', () => {
       const switchElement = screen.getByRole('switch');
       const removeButton = screen.getByLabelText('Remove test');
 
-      // Try interactions
       fireEvent.click(switchElement);
       fireEvent.click(removeButton);
       fireEvent.change(input, { target: { value: 'new' } });
@@ -87,12 +94,10 @@ describe('StopWords', () => {
 
   describe('enabled state', () => {
     it('reflects enabled state from chat settings', () => {
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      useChatSettingsStore.setState({
         stop: [],
         stop_enabled: true,
-        setStop: vi.fn(),
-        setStopEnabled: vi.fn(),
-      } as any);
+      });
 
       render(<StopWords />);
 
@@ -104,12 +109,10 @@ describe('StopWords', () => {
     });
 
     it('reflects disabled state from chat settings', () => {
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      useChatSettingsStore.setState({
         stop: [],
         stop_enabled: false,
-        setStop: vi.fn(),
-        setStopEnabled: vi.fn(),
-      } as any);
+      });
 
       render(<StopWords />);
 
@@ -122,12 +125,10 @@ describe('StopWords', () => {
   });
 
   it('displays existing stop words from chat settings', () => {
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       stop: ['word1', 'word2'],
       stop_enabled: true,
-      setStop: vi.fn(),
-      setStopEnabled: vi.fn(),
-    } as any);
+    });
 
     render(<StopWords />);
 
@@ -137,12 +138,11 @@ describe('StopWords', () => {
 
   it('adds new stop word to chat settings', () => {
     const mockSetStop = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       stop: [],
       stop_enabled: true,
       setStop: mockSetStop,
-      setStopEnabled: vi.fn(),
-    } as any);
+    });
 
     render(<StopWords />);
 
@@ -155,12 +155,11 @@ describe('StopWords', () => {
 
   it('adds to existing stop words in chat settings', () => {
     const mockSetStop = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       stop: ['existing'],
       stop_enabled: true,
       setStop: mockSetStop,
-      setStopEnabled: vi.fn(),
-    } as any);
+    });
 
     render(<StopWords />);
 
@@ -173,12 +172,11 @@ describe('StopWords', () => {
 
   it('removes stop word from chat settings', () => {
     const mockSetStop = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       stop: ['word1', 'word2'],
       stop_enabled: true,
       setStop: mockSetStop,
-      setStopEnabled: vi.fn(),
-    } as any);
+    });
 
     render(<StopWords />);
 
@@ -190,12 +188,11 @@ describe('StopWords', () => {
 
   it('sets empty array when removing last stop word', () => {
     const mockSetStop = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       stop: ['word1'],
       stop_enabled: true,
       setStop: mockSetStop,
-      setStopEnabled: vi.fn(),
-    } as any);
+    });
 
     render(<StopWords />);
 
@@ -207,12 +204,11 @@ describe('StopWords', () => {
 
   it('updates enabled state in chat settings', () => {
     const mockSetEnabled = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       stop: [],
       stop_enabled: true,
-      setStop: vi.fn(),
       setStopEnabled: mockSetEnabled,
-    } as any);
+    });
 
     render(<StopWords />);
 
@@ -225,43 +221,32 @@ describe('StopWords', () => {
   it('handles stop words consistently as arrays', async () => {
     const user = userEvent.setup();
     const mockSetStop = vi.fn();
-    let currentStop = ['existing'];
 
-    // Update mock to track state changes
     mockSetStop.mockImplementation((newStop) => {
-      currentStop = newStop;
+      useChatSettingsStore.setState({ stop: newStop });
     });
 
-    vi.mocked(chatSettings.useChatSettings).mockImplementation(
-      () =>
-        ({
-          stop: currentStop,
-          stop_enabled: true,
-          setStop: mockSetStop,
-          setStopEnabled: vi.fn(),
-        }) as any
-    );
+    useChatSettingsStore.setState({
+      stop: ['existing'],
+      stop_enabled: true,
+      setStop: mockSetStop,
+      setStopEnabled: vi.fn(),
+    });
 
     render(<StopWords />);
 
-    // Add new word using userEvent
     const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
     await user.type(input, 'test{Enter}');
 
-    // Verify first array update
     expect(mockSetStop).toHaveBeenCalledWith(['existing', 'test']);
 
-    // Re-render to get updated state
     const removeButton = screen.getByLabelText('Remove existing');
     await user.click(removeButton);
 
-    // Verify second array update
     expect(mockSetStop).toHaveBeenCalledWith(['test']);
 
-    // Add another word
     await user.type(input, 'another{Enter}');
 
-    // Verify final array state
     expect(mockSetStop).toHaveBeenCalledWith(['test', 'another']);
   });
 });

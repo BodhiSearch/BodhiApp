@@ -1,4 +1,4 @@
-import { FormEvent, RefObject, useEffect, useRef, memo, useMemo } from 'react';
+import { FormEvent, RefObject, useCallback, useEffect, useRef, memo, useMemo } from 'react';
 
 import type { AgentMessage } from '@mariozechner/pi-agent-core';
 import type { AssistantMessage as PiAssistantMessage } from '@mariozechner/pi-ai';
@@ -8,18 +8,19 @@ import { ChatMessage } from './ChatMessage';
 import { McpsPopover } from './McpsPopover';
 import { ThinkingBlock } from './ThinkingBlock';
 import { Button } from '@/components/ui/button';
-import { MemoizedReactMarkdown } from '@/components/ui/markdown';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 import { useSidebar } from '@/components/ui/sidebar';
-import { useChatDB, useChatSettings } from '@/hooks/chat';
-import { useBodhiAgent } from '@/hooks/chat/useBodhiAgent';
 import { useMcpAgentTools } from '@/hooks/chat/useMcpAgentTools';
-import { useMcpSelection, useListMcps } from '@/hooks/mcps';
+import { useListMcps } from '@/hooks/mcps';
 import type { McpClientTool, McpConnectionStatus } from '@/hooks/mcps/useMcpClient';
 import { useMcpClients } from '@/hooks/mcps/useMcpClients';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { cn } from '@/lib/utils';
+import { useAgentStore } from '@/stores/agentStore';
+import { useChatStore } from '@/stores/chatStore';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
+import { useMcpSelectionStore } from '@/stores/mcpSelectionStore';
 import { extractTextFromAgentMessage, extractThinkingFromAgentMessage, Message } from '@/types/chat';
 
 const EmptyState = () => (
@@ -60,7 +61,7 @@ const ChatInput = memo(function ChatInput({
   mcpTools,
   mcpConnectionStatus,
 }: ChatInputProps) {
-  const { createNewChat } = useChatDB();
+  const createNewChat = useChatStore((s) => s.createNewChat);
   const getTestId = useResponsiveTestId();
 
   return (
@@ -96,7 +97,12 @@ const ChatInput = memo(function ChatInput({
             />
           </div>
 
-          <form onSubmit={handleSubmit} className="flex w-full items-center" data-testid={getTestId('chat-form')}>
+          <form
+            onSubmit={handleSubmit}
+            className="flex w-full items-center"
+            data-testid={getTestId('chat-form')}
+            data-test-state={isModelSelected ? 'model-selected' : 'no-model'}
+          >
             <textarea
               ref={inputRef}
               data-testid={getTestId('chat-input')}
@@ -137,7 +143,13 @@ const ChatInput = memo(function ChatInput({
                 disabled={!input.trim() || !isModelSelected}
                 className="absolute right-2 h-8 w-8"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" className="h-4 w-4" strokeWidth="2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="h-4 w-4"
+                  strokeWidth="2"
+                >
                   <path
                     d="M.5 1.163A1 1 0 0 1 1.97.28l12.868 6.837a1 1 0 0 1 0 1.766L1.969 15.72A1 1 0 0 1 .5 14.836V10.33a1 1 0 0 1 .816-.983L8.5 8 1.316 6.653A1 1 0 0 1 .5 5.67V1.163Z"
                     fill="currentColor"
@@ -307,17 +319,15 @@ const AgentMessageList = memo(function AgentMessageList({
 });
 
 export function ChatUI() {
-  const { currentChat } = useChatDB();
   const { showError } = useToastMessages();
-  const { model } = useChatSettings();
+  const model = useChatSettingsStore((s) => s.model);
   const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
 
-  const {
-    enabledTools: enabledMcpTools,
-    toggleTool: toggleMcpTool,
-    toggleMcp,
-    setEnabledTools: setEnabledMcpTools,
-  } = useMcpSelection();
+  const enabledMcpTools = useMcpSelectionStore((s) => s.enabledTools);
+  const toggleMcpTool = useMcpSelectionStore((s) => s.toggleTool);
+  const toggleMcp = useMcpSelectionStore((s) => s.toggleMcp);
+  const setEnabledMcpTools = useMcpSelectionStore((s) => s.setEnabledTools);
+
   const { data: mcpsResponse } = useListMcps();
   const mcps = useMemo(() => mcpsResponse?.mcps || [], [mcpsResponse?.mcps]);
 
@@ -372,19 +382,20 @@ export function ChatUI() {
     callTool: mcpClients.callTool,
   });
 
-  const {
-    input,
-    setInput,
-    isStreaming: streamLoading,
-    messages: agentMessages,
-    streamingMessage,
-    pendingToolCalls,
-    append,
-    stop,
-  } = useBodhiAgent({
-    tools: agentTools,
-    enabledMcpTools,
-  });
+  const input = useAgentStore((s) => s.input);
+  const setInput = useAgentStore((s) => s.setInput);
+  const streamLoading = useAgentStore((s) => s.isStreaming);
+  const agentMessages = useAgentStore((s) => s.messages);
+  const streamingMessage = useAgentStore((s) => s.streamingMessage);
+  const pendingToolCalls = useAgentStore((s) => s.pendingToolCalls);
+  const append = useAgentStore((s) => s.append);
+  const stop = useAgentStore((s) => s.stop);
+  const syncAgentSettings = useAgentStore((s) => s.syncAgentSettings);
+
+  // Keep agent in sync with settings and tools
+  useEffect(() => {
+    syncAgentSettings(agentTools);
+  }, [syncAgentSettings, agentTools]);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const getTestId = useResponsiveTestId();
@@ -395,21 +406,31 @@ export function ChatUI() {
     }
   }, [streamLoading]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || streamLoading) return;
-    if (!model) {
-      showError('No Model Selected', 'Please select an Alias/Model from settings before sending a message.');
-      if (!openSettings) {
-        setOpenSettings(true);
-      }
-      return;
-    }
+  const handleSubmit = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      const currentInput = useAgentStore.getState().input;
+      const currentModel = useChatSettingsStore.getState().model;
+      const isStreaming = useAgentStore.getState().isStreaming;
 
-    const content = input.trim();
-    setInput('');
-    await append(content);
-  };
+      if (!currentInput.trim() || isStreaming) return;
+      if (!currentModel) {
+        showError('No Model Selected', 'Please select an Alias/Model from settings before sending a message.');
+        if (!openSettings) {
+          setOpenSettings(true);
+        }
+        return;
+      }
+
+      const content = currentInput.trim();
+      await useAgentStore.getState().append(content, {
+        tools: agentTools,
+        enabledMcpTools,
+        showError,
+      });
+    },
+    [showError, openSettings, setOpenSettings, agentTools, enabledMcpTools]
+  );
 
   const isEmpty = agentMessages.length === 0 && !streamingMessage;
 

@@ -1,17 +1,19 @@
 import { NewChatButton } from '@/routes/chat/-components/NewChatButton';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { useChatStore } from '@/stores/chatStore';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 
-// Mock hooks
 const mockCreateNewChat = vi.fn();
-vi.mock('@/hooks/chat', () => ({
-  useChatDB: () => ({
-    createNewChat: mockCreateNewChat,
-  }),
-}));
 
-// Test wrapper component
+vi.mock('@/stores/chatStore', () => {
+  const { create } = require('zustand');
+  const store = create(() => ({
+    createNewChat: vi.fn(),
+  }));
+  return { useChatStore: store };
+});
+
 const renderWithSidebar = (component: React.ReactNode) => {
   return render(<SidebarProvider>{component}</SidebarProvider>);
 };
@@ -19,6 +21,7 @@ const renderWithSidebar = (component: React.ReactNode) => {
 describe('NewChatButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useChatStore.setState({ createNewChat: mockCreateNewChat });
   });
 
   it('renders the button with icon and text', () => {

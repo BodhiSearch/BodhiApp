@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useChatSettings } from '@/hooks/chat';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
 interface SystemPromptProps {
   isLoading?: boolean;
@@ -12,7 +12,10 @@ interface SystemPromptProps {
 }
 
 export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) {
-  const { systemPrompt, systemPrompt_enabled, setSystemPrompt, setSystemPromptEnabled } = useChatSettings();
+  const systemPrompt = useChatSettingsStore((s) => s.systemPrompt);
+  const systemPrompt_enabled = useChatSettingsStore((s) => s.systemPrompt_enabled);
+  const setSystemPrompt = useChatSettingsStore((s) => s.setSystemPrompt);
+  const setSystemPromptEnabled = useChatSettingsStore((s) => s.setSystemPromptEnabled);
 
   // Determine if interactions should be disabled
   const isDisabled = isLoading || !systemPrompt_enabled;

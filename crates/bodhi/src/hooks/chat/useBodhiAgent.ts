@@ -191,27 +191,23 @@ export function useBodhiAgent(options?: UseBodhiAgentOptions): UseBodhiAgentRetu
             : extractTextFromAgentMessage(firstUserContent).slice(0, 20) || 'New Chat'
           : 'New Chat';
 
+      const chatMessages = piMessages.map((m) => {
+        if ('role' in m && m.role === 'user') {
+          return {
+            role: 'user' as const,
+            content: typeof m.content === 'string' ? m.content : extractTextFromAgentMessage(m),
+          };
+        }
+        return {
+          role: 'assistant' as const,
+          content: JSON.stringify(m),
+        };
+      });
       await createOrUpdateChat({
         id: chatIdRef.current.id,
         title: titleText,
-        messages: piMessages.map((m) => {
-          if ('role' in m && m.role === 'user') {
-            return {
-              role: 'user' as const,
-              content: typeof m.content === 'string' ? m.content : extractTextFromAgentMessage(m),
-            };
-          }
-          if ('role' in m && m.role === 'assistant') {
-            return {
-              role: 'assistant' as const,
-              content: JSON.stringify(m),
-            };
-          }
-          return {
-            role: 'assistant' as const,
-            content: JSON.stringify(m),
-          };
-        }),
+        messages: chatMessages,
+        messageCount: chatMessages.length,
         createdAt: chatIdRef.current.createdAt,
         updatedAt: Date.now(),
         enabledMcpTools: enabledMcpTools && Object.keys(enabledMcpTools).length > 0 ? enabledMcpTools : undefined,

@@ -10,6 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 
 import type { AgentMessage } from '@mariozechner/pi-agent-core';
+import { useAgentStore } from '@/stores/agentStore';
+import { useChatStore } from '@/stores/chatStore';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
 vi.mock('@/components/ui/markdown', () => ({
   MemoizedReactMarkdown: ({ children }: { children: string }) => <div>{children}</div>,
@@ -41,44 +44,6 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
-const mockChatModel = {
-  alias: 'test-chat-model',
-  family: 'test',
-  repo: 'test/repo',
-  filename: 'model.gguf',
-  features: ['chat'],
-  chat_template: 'test-template',
-};
-
-const mockPrompt = vi.fn();
-const mockAbort = vi.fn();
-
-let mockAgentMessages: AgentMessage[] = [];
-let mockIsStreaming = false;
-let mockStreamingMessage: AgentMessage | undefined = undefined;
-let mockPendingToolCalls = new Set<string>();
-let mockErrorMessage: string | undefined = undefined;
-
-vi.mock('@/hooks/chat/useBodhiAgent', () => {
-  const { useState } = require('react');
-  return {
-    useBodhiAgent: () => {
-      const [input, setInput] = useState('');
-      return {
-        input,
-        setInput,
-        isStreaming: mockIsStreaming,
-        messages: mockAgentMessages,
-        streamingMessage: mockStreamingMessage,
-        pendingToolCalls: mockPendingToolCalls,
-        errorMessage: mockErrorMessage,
-        append: mockPrompt,
-        stop: mockAbort,
-      };
-    },
-  };
-});
-
 vi.mock('@/hooks/chat/useMcpAgentTools', () => ({
   useMcpAgentTools: () => [],
 }));
@@ -94,6 +59,141 @@ vi.mock('@/hooks/mcps/useMcpClients', () => ({
   }),
 }));
 
+vi.mock('@/stores/initStores', () => ({
+  initChatStoreSubscriptions: vi.fn(),
+}));
+
+const mockPrompt = vi.fn();
+const mockAbort = vi.fn();
+
+vi.mock('@/stores/chatStore', () => {
+  const { create } = require('zustand');
+  return {
+    useChatStore: create(() => ({
+      chats: [],
+      currentChatId: null,
+      isLoaded: true,
+      userId: 'default',
+      loadChats: vi.fn(),
+      setCurrentChatId: vi.fn(),
+      createNewChat: vi.fn(),
+      createOrUpdateChat: vi.fn(),
+      deleteChat: vi.fn(),
+      clearChats: vi.fn(),
+      getChat: vi.fn(),
+      saveChatSettings: vi.fn(),
+      getChatSettings: vi.fn(),
+    })),
+  };
+});
+
+vi.mock('@/stores/chatSettingsStore', () => {
+  const { create } = require('zustand');
+  return {
+    useChatSettingsStore: create(() => ({
+      model: '',
+      apiFormat: 'openai',
+      stream: true,
+      stream_enabled: true,
+      temperature_enabled: false,
+      top_p_enabled: false,
+      n_enabled: false,
+      max_tokens_enabled: false,
+      presence_penalty_enabled: false,
+      frequency_penalty_enabled: false,
+      logit_bias_enabled: false,
+      stop_enabled: false,
+      seed_enabled: false,
+      systemPrompt_enabled: false,
+      response_format_enabled: false,
+      api_token_enabled: false,
+      maxToolIterations: 5,
+      maxToolIterations_enabled: true,
+      setModel: vi.fn(),
+      setApiFormat: vi.fn(),
+      setStream: vi.fn(),
+      setStreamEnabled: vi.fn(),
+      setTemperature: vi.fn(),
+      setTemperatureEnabled: vi.fn(),
+      setTopP: vi.fn(),
+      setTopPEnabled: vi.fn(),
+      setN: vi.fn(),
+      setNEnabled: vi.fn(),
+      setMaxTokens: vi.fn(),
+      setMaxTokensEnabled: vi.fn(),
+      setPresencePenalty: vi.fn(),
+      setPresencePenaltyEnabled: vi.fn(),
+      setFrequencyPenalty: vi.fn(),
+      setFrequencyPenaltyEnabled: vi.fn(),
+      setLogitBias: vi.fn(),
+      setLogitBiasEnabled: vi.fn(),
+      setStop: vi.fn(),
+      setStopEnabled: vi.fn(),
+      setSeed: vi.fn(),
+      setSeedEnabled: vi.fn(),
+      setSystemPrompt: vi.fn(),
+      setSystemPromptEnabled: vi.fn(),
+      setResponseFormat: vi.fn(),
+      setResponseFormatEnabled: vi.fn(),
+      setApiToken: vi.fn(),
+      setApiTokenEnabled: vi.fn(),
+      setMaxToolIterations: vi.fn(),
+      setMaxToolIterationsEnabled: vi.fn(),
+      getRequestSettings: () => ({}),
+      reset: vi.fn(),
+      loadForChat: vi.fn(),
+      saveForChat: vi.fn(),
+      setSetting: vi.fn(),
+      setEnabled: vi.fn(),
+    })),
+  };
+});
+
+vi.mock('@/stores/agentStore', () => {
+  const { create } = require('zustand');
+  return {
+    useAgentStore: create(() => ({
+      input: '',
+      isStreaming: false,
+      messages: [],
+      streamingMessage: undefined,
+      pendingToolCalls: new Set(),
+      errorMessage: undefined,
+      setInput: vi.fn(),
+      append: vi.fn(),
+      stop: vi.fn(),
+      reset: vi.fn(),
+      syncAgentSettings: vi.fn(),
+    })),
+  };
+});
+
+vi.mock('@/stores/mcpSelectionStore', () => {
+  const { create } = require('zustand');
+  return {
+    useMcpSelectionStore: create(() => ({
+      enabledTools: {},
+      hasChanges: false,
+      toggleTool: vi.fn(),
+      toggleMcp: vi.fn(),
+      isMcpEnabled: () => false,
+      isToolEnabled: () => false,
+      getMcpCheckboxState: () => 'unchecked',
+      setEnabledTools: vi.fn(),
+      loadForChat: vi.fn(),
+    })),
+  };
+});
+
+const mockChatModel = {
+  alias: 'test-chat-model',
+  family: 'test',
+  repo: 'test/repo',
+  filename: 'model.gguf',
+  features: ['chat'],
+  chat_template: 'test-template',
+};
+
 setupMswV2();
 
 beforeEach(() => {
@@ -102,11 +202,20 @@ beforeEach(() => {
   mockPrompt.mockClear();
   mockAbort.mockClear();
   localStorage.clear();
-  mockAgentMessages = [];
-  mockIsStreaming = false;
-  mockStreamingMessage = undefined;
-  mockPendingToolCalls = new Set();
-  mockErrorMessage = undefined;
+
+  useAgentStore.setState({
+    input: '',
+    isStreaming: false,
+    messages: [],
+    streamingMessage: undefined,
+    pendingToolCalls: new Set(),
+    errorMessage: undefined,
+    setInput: vi.fn((input: string) => useAgentStore.setState({ input })),
+    append: mockPrompt,
+    stop: mockAbort,
+    reset: vi.fn(),
+    syncAgentSettings: vi.fn(),
+  });
 });
 
 afterEach(() => {
@@ -174,16 +283,20 @@ describe('ChatPage', () => {
 
     mockPrompt.mockResolvedValue(undefined);
 
+    // Set model directly in settings store so handleSubmit sees it
+    useChatSettingsStore.setState({ model: mockChatModel.alias });
+
+    // Make setInput actually update the store so handleSubmit can read the input
+    useAgentStore.setState({
+      setInput: vi.fn((input: string) => useAgentStore.setState({ input })),
+      append: mockPrompt,
+    });
+
     render(<ChatPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.queryByTestId('chat-input')).toBeInTheDocument();
     });
-
-    const modelSelector = await screen.findByTestId('model-selector-trigger');
-    await user.click(modelSelector);
-    const modelOption = await screen.findByRole('option', { name: mockChatModel.alias });
-    await user.click(modelOption);
 
     const chatInput = screen.getByTestId('chat-input');
     await user.type(chatInput, 'Hello AI');
@@ -201,22 +314,24 @@ describe('ChatPage', () => {
   it('displays agent messages after prompt completes', async () => {
     setupDefaultHandlers();
 
-    mockAgentMessages = [
-      {
-        role: 'user',
-        content: 'Hello',
-        timestamp: Date.now(),
-      } as AgentMessage,
-      {
-        role: 'assistant',
-        content: [{ type: 'text', text: 'Hi there!' }],
-        api: 'openai-completions',
-        provider: 'openai',
-        model: 'test-chat-model',
-        usage: { inputTokens: 5, outputTokens: 3, cacheReadTokens: 0, cacheWriteTokens: 0 },
-        stopReason: 'endTurn',
-      } as AgentMessage,
-    ];
+    useAgentStore.setState({
+      messages: [
+        {
+          role: 'user',
+          content: 'Hello',
+          timestamp: Date.now(),
+        } as AgentMessage,
+        {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'Hi there!' }],
+          api: 'openai-completions',
+          provider: 'openai',
+          model: 'test-chat-model',
+          usage: { inputTokens: 5, outputTokens: 3, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          stopReason: 'endTurn',
+        } as AgentMessage,
+      ],
+    });
 
     render(<ChatPage />, { wrapper: createWrapper() });
 
@@ -238,30 +353,32 @@ describe('ChatPage', () => {
   it('displays metadata (usage tokens) for assistant messages', async () => {
     setupDefaultHandlers();
 
-    mockAgentMessages = [
-      {
-        role: 'user',
-        content: 'Hello',
-        timestamp: Date.now(),
-      } as AgentMessage,
-      {
-        role: 'assistant',
-        content: [{ type: 'text', text: 'Response with metadata.' }],
-        api: 'openai-completions',
-        provider: 'openai',
-        model: 'test-chat-model',
-        usage: {
-          input: 15,
-          output: 25,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 40,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-        },
-        stopReason: 'stop',
-        timestamp: Date.now(),
-      } as AgentMessage,
-    ];
+    useAgentStore.setState({
+      messages: [
+        {
+          role: 'user',
+          content: 'Hello',
+          timestamp: Date.now(),
+        } as AgentMessage,
+        {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'Response with metadata.' }],
+          api: 'openai-completions',
+          provider: 'openai',
+          model: 'test-chat-model',
+          usage: {
+            input: 15,
+            output: 25,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 40,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'stop',
+          timestamp: Date.now(),
+        } as AgentMessage,
+      ],
+    });
 
     render(<ChatPage />, { wrapper: createWrapper() });
 

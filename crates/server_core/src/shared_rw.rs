@@ -229,17 +229,7 @@ impl SharedContext for DefaultSharedContext {
       ModelLoadStrategy::Continue => {
         let server = server
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
-        let response = match endpoint {
-          LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
-          LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
-          _ => {
-            return Err(ContextError::Unreachable(format!(
-              "endpoint {:?} is not supported for local models",
-              endpoint
-            )))
-          }
-        };
-        Ok(response)
+        Ok(dispatch_local(server.as_ref(), &endpoint, &input_value).await?)
       }
       ModelLoadStrategy::DropAndLoad => {
         drop(lock);
@@ -257,17 +247,7 @@ impl SharedContext for DefaultSharedContext {
         let server = lock
           .as_ref()
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
-        let response = match endpoint {
-          LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
-          LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
-          _ => {
-            return Err(ContextError::Unreachable(format!(
-              "endpoint {:?} is not supported for local models",
-              endpoint
-            )))
-          }
-        };
-        Ok(response)
+        Ok(dispatch_local(server.as_ref(), &endpoint, &input_value).await?)
       }
       ModelLoadStrategy::Load => {
         let variant = self.exec_variant.get().await;
@@ -285,17 +265,7 @@ impl SharedContext for DefaultSharedContext {
         let server = lock
           .as_ref()
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
-        let response = match endpoint {
-          LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
-          LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
-          _ => {
-            return Err(ContextError::Unreachable(format!(
-              "endpoint {:?} is not supported for local models",
-              endpoint
-            )))
-          }
-        };
-        Ok(response)
+        Ok(dispatch_local(server.as_ref(), &endpoint, &input_value).await?)
       }
     };
     self
@@ -325,6 +295,21 @@ impl SharedContext for DefaultSharedContext {
         listener_clone.on_state_change(state_clone).await;
       });
     }
+  }
+}
+
+async fn dispatch_local(
+  server: &(dyn Server + '_),
+  endpoint: &LlmEndpoint,
+  input: &Value,
+) -> Result<reqwest::Response> {
+  match endpoint {
+    LlmEndpoint::ChatCompletions => Ok(server.chat_completions(input).await?),
+    LlmEndpoint::Embeddings => Ok(server.embeddings(input).await?),
+    _ => Err(ContextError::Unreachable(format!(
+      "endpoint {:?} is not supported for local models",
+      endpoint
+    ))),
   }
 }
 

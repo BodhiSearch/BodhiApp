@@ -25,6 +25,7 @@ function chatRecordToChat(record: ChatRecord, messages: Message[]): Chat {
     id: record.id,
     title: record.title,
     messages,
+    messageCount: messages.length,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     model: record.model,
@@ -70,16 +71,19 @@ export function ChatDBProvider({ children, userId = 'default' }: { children: Rea
     return null;
   });
 
-  const setCurrentChatId = useCallback((id: string | null) => {
-    setCurrentChatIdState(id);
-    if (typeof window !== 'undefined') {
-      if (id === null) {
-        localStorage.removeItem(storageKey);
-      } else {
-        localStorage.setItem(storageKey, JSON.stringify(id));
+  const setCurrentChatId = useCallback(
+    (id: string | null) => {
+      setCurrentChatIdState(id);
+      if (typeof window !== 'undefined') {
+        if (id === null) {
+          localStorage.removeItem(storageKey);
+        } else {
+          localStorage.setItem(storageKey, JSON.stringify(id));
+        }
       }
-    }
-  }, [storageKey]);
+    },
+    [storageKey]
+  );
 
   const loadChats = useCallback(async () => {
     const records = await chatDb.chats.where('userId').equals(userId).reverse().sortBy('updatedAt');
@@ -218,6 +222,7 @@ export function ChatDBProvider({ children, userId = 'default' }: { children: Rea
       id: nanoid(),
       title: 'New Chat',
       messages: [],
+      messageCount: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };

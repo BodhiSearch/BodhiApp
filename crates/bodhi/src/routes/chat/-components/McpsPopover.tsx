@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import { Mcp } from '@bodhiapp/ts-client';
 import { Loader2, Plug, ChevronRight, ChevronDown } from 'lucide-react';
 
+import { Link } from '@tanstack/react-router';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -238,13 +240,13 @@ export function McpsPopover({
           ) : mcps.length === 0 ? (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center" data-testid="mcps-empty-state">
               <p>No MCPs configured.</p>
-              <a
-                href="/mcps"
+              <Link
+                to="/mcps/"
                 className="text-primary hover:underline mt-2 inline-block"
                 data-testid="mcps-settings-link"
               >
                 Configure in settings
-              </a>
+              </Link>
             </div>
           ) : (
             <div className="space-y-2">

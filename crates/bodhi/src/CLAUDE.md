@@ -146,6 +146,7 @@ Multi-step onboarding under `src/routes/setup/`: download-models -> api-models -
 ## Chat Architecture (pi-agent-core)
 
 Chat migrated from custom `useChat`/`useChatCompletions` to `@mariozechner/pi-agent-core`:
+
 - `useBodhiAgent` hook wraps the `Agent` class, syncs React state with agent state via `useEffect`
 - Chat history stored in IndexedDB via Dexie (`lib/chatDb.ts`), schema version 1
 - `useMcpAgentTools` adapts MCP client tools to pi-agent-core's `AgentTool` format

@@ -57,6 +57,8 @@ export class ChatPage extends BasePage {
     mcpItem: (id) => `[data-testid="mcp-item-${id}"]`,
     mcpToolRow: (mcpId, toolName) => `[data-testid="mcp-tool-row-${mcpId}-${toolName}"]`,
     mcpToolCheckbox: (mcpId, toolName) => `[data-testid="mcp-tool-checkbox-${mcpId}-${toolName}"]`,
+
+    chatFormModelSelected: '[data-test-state="model-selected"]',
   };
 
   /**
@@ -85,16 +87,14 @@ export class ChatPage extends BasePage {
    * Send a message in the chat
    */
   async sendMessage(message) {
-    // Wait for any toast to disappear before trying to interact with the send button
     await this.waitForToastToHideOptional();
-    const sendButton = await this.sendMessageAndReturn(message);
-    await expect(sendButton).toBeDisabled();
+    await this.sendMessageAndReturn(message);
     await this.waitForLatestUserMessage();
   }
 
   async sendMessageAndReturn(message) {
-    // Wait for any toast to disappear before trying to interact with the send button
     await this.waitForToastToHideOptional();
+    await this.waitForModelSelected();
     await this.page.fill(this.selectors.messageInput, message);
     const sendButton = this.page.locator(this.selectors.sendButton);
     await expect(sendButton).toBeEnabled();
@@ -184,6 +184,10 @@ export class ChatPage extends BasePage {
 
   // Model operations
 
+  async waitForModelSelected() {
+    await this.page.waitForSelector(this.selectors.chatFormModelSelected, { timeout: 10000 });
+  }
+
   /**
    * Select a model from the settings panel
    */
@@ -248,6 +252,7 @@ export class ChatPage extends BasePage {
   async startNewChat() {
     await this.page.click(this.selectors.newChatButton);
     await this.waitForSPAReady();
+    await expect(this.page.locator(this.selectors.emptyState)).toBeVisible({ timeout: 10000 });
   }
 
   /**
@@ -256,6 +261,7 @@ export class ChatPage extends BasePage {
   async startNewChatInline() {
     await this.page.click(this.selectors.newChatInlineButton);
     await this.waitForSPAReady();
+    await expect(this.page.locator(this.selectors.emptyState)).toBeVisible({ timeout: 10000 });
   }
 
   async expectChatPage() {

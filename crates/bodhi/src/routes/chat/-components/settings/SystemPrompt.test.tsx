@@ -1,22 +1,51 @@
 import { SystemPrompt } from '@/routes/chat/-components/settings/SystemPrompt';
-import * as chatSettings from '@/hooks/chat';
+import { useChatSettingsStore, defaultSettings } from '@/stores/chatSettingsStore';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-// Mock useChatSettings
-vi.mock('@/hooks/chat', () => ({
-  useChatSettings: vi.fn(),
-}));
+vi.mock('@/stores/chatStore', () => {
+  const { create } = require('zustand');
+  return { useChatStore: create(() => ({ getChatSettings: vi.fn() })) };
+});
+
+vi.mock('@/stores/chatSettingsStore', async () => {
+  const { create } = require('zustand');
+  const defaults = {
+    model: '',
+    apiFormat: 'openai',
+    stream: true,
+    temperature_enabled: false,
+    top_p_enabled: false,
+    n_enabled: false,
+    stream_enabled: true,
+    max_tokens_enabled: false,
+    presence_penalty_enabled: false,
+    frequency_penalty_enabled: false,
+    logit_bias_enabled: false,
+    stop_enabled: false,
+    seed_enabled: false,
+    systemPrompt_enabled: false,
+    response_format_enabled: false,
+    api_token_enabled: false,
+    maxToolIterations: 5,
+    maxToolIterations_enabled: true,
+  };
+  const store = create(() => ({
+    ...defaults,
+    setSystemPrompt: vi.fn(),
+    setSystemPromptEnabled: vi.fn(),
+  }));
+  return { useChatSettingsStore: store, defaultSettings: defaults };
+});
 
 describe('SystemPrompt', () => {
   beforeEach(() => {
-    // Reset mock before each test with default values
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       systemPrompt: '',
       systemPrompt_enabled: true,
       setSystemPrompt: vi.fn(),
       setSystemPromptEnabled: vi.fn(),
-    } as any);
+    });
   });
 
   describe('loading state', () => {
@@ -33,12 +62,10 @@ describe('SystemPrompt', () => {
 
   describe('enabled state', () => {
     it('reflects enabled state from chat settings', () => {
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      useChatSettingsStore.setState({
         systemPrompt: '',
         systemPrompt_enabled: true,
-        setSystemPrompt: vi.fn(),
-        setSystemPromptEnabled: vi.fn(),
-      } as any);
+      });
 
       render(<SystemPrompt />);
 
@@ -50,12 +77,10 @@ describe('SystemPrompt', () => {
     });
 
     it('reflects disabled state from chat settings', () => {
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      useChatSettingsStore.setState({
         systemPrompt: '',
         systemPrompt_enabled: false,
-        setSystemPrompt: vi.fn(),
-        setSystemPromptEnabled: vi.fn(),
-      } as any);
+      });
 
       render(<SystemPrompt />);
 
@@ -69,12 +94,11 @@ describe('SystemPrompt', () => {
 
   it('updates system prompt in chat settings', () => {
     const mockSetSystemPrompt = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       systemPrompt: '',
       systemPrompt_enabled: true,
       setSystemPrompt: mockSetSystemPrompt,
-      setSystemPromptEnabled: vi.fn(),
-    } as any);
+    });
 
     render(<SystemPrompt />);
 
@@ -86,12 +110,11 @@ describe('SystemPrompt', () => {
 
   it('updates enabled state in chat settings', () => {
     const mockSetEnabled = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       systemPrompt: '',
       systemPrompt_enabled: true,
-      setSystemPrompt: vi.fn(),
       setSystemPromptEnabled: mockSetEnabled,
-    } as any);
+    });
 
     render(<SystemPrompt />);
 
@@ -102,12 +125,10 @@ describe('SystemPrompt', () => {
   });
 
   it('displays existing system prompt from chat settings', () => {
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       systemPrompt: 'Existing prompt',
       systemPrompt_enabled: true,
-      setSystemPrompt: vi.fn(),
-      setSystemPromptEnabled: vi.fn(),
-    } as any);
+    });
 
     render(<SystemPrompt />);
 

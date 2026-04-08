@@ -38,7 +38,14 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
     request: Value,
   ) -> Result<Response> {
     self
-      .forward_request_with_method(&Method::POST, api_path, api_alias, api_key, Some(request), None)
+      .forward_request_with_method(
+        &Method::POST,
+        api_path,
+        api_alias,
+        api_key,
+        Some(request),
+        None,
+      )
       .await
   }
 

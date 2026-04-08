@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useChatSettings } from '@/hooks/chat';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
 import { Button } from '@/components/ui/button';
 
@@ -17,7 +17,10 @@ interface StopWordsProps {
 }
 
 export function StopWords({ isLoading = false, tooltip }: StopWordsProps) {
-  const { stop, stop_enabled, setStop, setStopEnabled } = useChatSettings();
+  const stop = useChatSettingsStore((s) => s.stop);
+  const stop_enabled = useChatSettingsStore((s) => s.stop_enabled);
+  const setStop = useChatSettingsStore((s) => s.setStop);
+  const setStopEnabled = useChatSettingsStore((s) => s.setStopEnabled);
   const [inputValue, setInputValue] = useState('');
 
   const stopWords = stop || [];

@@ -496,12 +496,9 @@ async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow
   let response = app
     .clone()
     .oneshot(
-      Request::get(format!(
-        "/v1/responses/{}?model=resp%2Fgpt-4o",
-        response_id
-      ))
-      .body(axum::body::Body::empty())?
-      .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+      Request::get(format!("/v1/responses/{}?model=resp%2Fgpt-4o", response_id))
+        .body(axum::body::Body::empty())?
+        .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
     )
     .await?;
   assert_eq!(StatusCode::BAD_REQUEST, response.status());

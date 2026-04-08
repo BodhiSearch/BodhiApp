@@ -2,11 +2,11 @@ import { MessageSquare } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
-import { useChatDB } from '@/hooks/chat';
+import { useChatStore } from '@/stores/chatStore';
 import { cn } from '@/lib/utils';
 
 export const NewChatButton = () => {
-  const { createNewChat } = useChatDB();
+  const createNewChat = useChatStore((s) => s.createNewChat);
 
   return (
     <SidebarMenu>

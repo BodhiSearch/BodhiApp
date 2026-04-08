@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 
 import { AliasResponse } from '@bodhiapp/ts-client';
-import type { ApiFormatSetting } from '@/hooks/chat/useChatSettings';
 import { HelpCircle, RefreshCw } from 'lucide-react';
 
 import { ComboBoxResponsive } from '@/components/Combobox';
@@ -9,11 +8,11 @@ import { CopyButton } from '@/components/CopyButton';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useChatSettings } from '@/hooks/chat';
 import { modelKeys } from '@/hooks/models/constants';
 import { useQueryClient } from '@/hooks/useQuery';
 import { isApiAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
+import { useChatSettingsStore, type ApiFormatSetting } from '@/stores/chatSettingsStore';
 
 interface AliasSelectorProps {
   models: AliasResponse[];
@@ -22,7 +21,9 @@ interface AliasSelectorProps {
 }
 
 export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelectorProps) {
-  const { model, setModel, setApiFormat } = useChatSettings();
+  const model = useChatSettingsStore((s) => s.model);
+  const setModel = useChatSettingsStore((s) => s.setModel);
+  const setApiFormat = useChatSettingsStore((s) => s.setApiFormat);
   const queryClient = useQueryClient();
 
   // Handle refresh button click

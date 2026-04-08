@@ -2,7 +2,7 @@ import { Trash2 } from 'lucide-react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction } from '@/components/ui/sidebar';
-import { useChatDB } from '@/hooks/chat';
+import { useChatStore } from '@/stores/chatStore';
 import { cn } from '@/lib/utils';
 import { Chat } from '@/types/chat';
 
@@ -19,10 +19,13 @@ const HistoryGroup = ({ title, children }: HistoryGroupProps) => (
 );
 
 export function ChatHistory() {
-  const { chats, deleteChat, currentChatId, setCurrentChatId } = useChatDB();
+  const chats = useChatStore((s) => s.chats);
+  const deleteChat = useChatStore((s) => s.deleteChat);
+  const currentChatId = useChatStore((s) => s.currentChatId);
+  const setCurrentChatId = useChatStore((s) => s.setCurrentChatId);
 
   // Filter out empty chats
-  const nonEmptyChats = chats.filter((chat) => chat.messages.length > 0);
+  const nonEmptyChats = chats.filter((chat) => chat.messageCount > 0);
   const todayChats = nonEmptyChats.filter((chat) => chat.createdAt > new Date().setDate(new Date().getDate() - 1));
   const yesterdayChats = nonEmptyChats.filter(
     (chat) =>

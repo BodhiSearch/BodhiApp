@@ -2,6 +2,44 @@ import Dexie, { type Table } from 'dexie';
 
 import { Message } from '@/types/chat';
 
+export type ApiFormatSetting = 'openai' | 'openai_responses';
+
+export interface PersistedChatSettings {
+  model: string;
+  apiFormat: ApiFormatSetting;
+  stream?: boolean;
+  stream_enabled: boolean;
+  seed?: number;
+  seed_enabled: boolean;
+  systemPrompt?: string;
+  systemPrompt_enabled: boolean;
+  stop?: string[];
+  stop_enabled: boolean;
+  max_tokens?: number;
+  max_tokens_enabled: boolean;
+  n?: number;
+  n_enabled: boolean;
+  temperature?: number;
+  temperature_enabled: boolean;
+  top_p?: number;
+  top_p_enabled: boolean;
+  presence_penalty?: number;
+  presence_penalty_enabled: boolean;
+  frequency_penalty?: number;
+  frequency_penalty_enabled: boolean;
+  logit_bias?: Record<string, number>;
+  logit_bias_enabled: boolean;
+  response_format?: {
+    type: 'text' | 'json_object';
+    schema?: object;
+  };
+  response_format_enabled: boolean;
+  api_token?: string;
+  api_token_enabled: boolean;
+  maxToolIterations?: number;
+  maxToolIterations_enabled: boolean;
+}
+
 export interface ChatRecord {
   id: string;
   userId: string;
@@ -10,6 +48,8 @@ export interface ChatRecord {
   createdAt: number;
   updatedAt?: number;
   enabledMcpTools?: Record<string, string[]>;
+  settings?: PersistedChatSettings;
+  messageCount?: number;
 }
 
 export interface MessageRecord {

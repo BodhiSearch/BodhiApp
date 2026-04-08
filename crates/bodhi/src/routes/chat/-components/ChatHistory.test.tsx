@@ -1,17 +1,22 @@
 import { ChatHistory } from '@/routes/chat/-components/ChatHistory';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { useChatDB } from '@/hooks/chat';
+import { useChatStore } from '@/stores/chatStore';
 import { Chat } from '@/types/chat';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock dependencies
-vi.mock('@/hooks/chat', () => ({
-  useChatDB: vi.fn(),
-}));
+vi.mock('@/stores/chatStore', () => {
+  const { create } = require('zustand');
+  const store = create(() => ({
+    chats: [],
+    deleteChat: vi.fn(),
+    currentChatId: null,
+    setCurrentChatId: vi.fn(),
+  }));
+  return { useChatStore: store };
+});
 
-// Create a wrapper component with SidebarProvider
 function Wrapper({ children }: { children: React.ReactNode }) {
   return <SidebarProvider>{children}</SidebarProvider>;
 }
@@ -26,6 +31,7 @@ describe('ChatHistory', () => {
       id: '1',
       title: 'Today Chat',
       messages: [{ role: 'user', content: 'test' }],
+      messageCount: 1,
       createdAt: now,
       updatedAt: now,
     },
@@ -33,6 +39,7 @@ describe('ChatHistory', () => {
       id: '2',
       title: 'Yesterday Chat',
       messages: [{ role: 'user', content: 'test' }],
+      messageCount: 1,
       createdAt: yesterday,
       updatedAt: yesterday,
     },
@@ -40,6 +47,7 @@ describe('ChatHistory', () => {
       id: '3',
       title: 'Previous Chat',
       messages: [{ role: 'user', content: 'test' }],
+      messageCount: 1,
       createdAt: lastWeek,
       updatedAt: lastWeek,
     },
@@ -51,12 +59,12 @@ describe('ChatHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    vi.mocked(useChatDB).mockReturnValue({
+    useChatStore.setState({
       chats: mockChats,
       deleteChat: mockDeleteChat,
       currentChatId: '1',
       setCurrentChatId: mockSetCurrentChatId,
-    } as any);
+    });
   });
 
   it('renders chats in correct groups', () => {
@@ -78,17 +86,13 @@ describe('ChatHistory', () => {
         id: '4',
         title: 'Empty Chat',
         messages: [],
+        messageCount: 0,
         createdAt: now,
         updatedAt: now,
       },
     ];
 
-    vi.mocked(useChatDB).mockReturnValue({
-      chats: chatsWithEmpty,
-      deleteChat: mockDeleteChat,
-      currentChatId: '1',
-      setCurrentChatId: mockSetCurrentChatId,
-    } as any);
+    useChatStore.setState({ chats: chatsWithEmpty });
 
     render(<ChatHistory />, { wrapper: Wrapper });
     expect(screen.queryByText('Empty Chat')).not.toBeInTheDocument();

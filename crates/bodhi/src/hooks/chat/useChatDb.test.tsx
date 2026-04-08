@@ -38,6 +38,7 @@ describe('useChatDB', () => {
         id: '1',
         title: 'Test Chat',
         messages: [],
+        messageCount: 0,
         createdAt: Date.now(),
       };
 
@@ -67,6 +68,7 @@ describe('useChatDB', () => {
         id: '1',
         title: 'Test Chat',
         messages: [{ role: 'user', content: 'test' }],
+        messageCount: 1,
         createdAt: Date.now(),
       };
 
@@ -100,6 +102,7 @@ describe('useChatDB', () => {
         id: '1',
         title: 'Empty Chat',
         messages: [],
+        messageCount: 0,
         createdAt: Date.now(),
       };
 
@@ -131,12 +134,14 @@ describe('useChatDB', () => {
           id: '1',
           title: 'Chat 1',
           messages: [{ role: 'user', content: 'test' }],
+          messageCount: 1,
           createdAt: Date.now(),
         },
         {
           id: '2',
           title: 'Chat 2',
           messages: [],
+          messageCount: 0,
           createdAt: Date.now(),
         },
       ];
@@ -172,6 +177,7 @@ describe('useChatDB', () => {
         id: '1',
         title: 'Test Chat',
         messages: [],
+        messageCount: 0,
         createdAt: Date.now(),
       };
 
@@ -214,6 +220,7 @@ describe('useChatDB', () => {
           id: 'chat-u1',
           title: 'User 1 Chat',
           messages: [{ role: 'user', content: 'hello from user 1' }],
+          messageCount: 1,
           createdAt: Date.now(),
         });
       });
@@ -239,6 +246,7 @@ describe('useChatDB', () => {
           { role: 'user', content: 'hello' },
           { role: 'assistant', content: 'hi there' },
         ],
+        messageCount: 2,
         createdAt: Date.now(),
       };
 

@@ -17,10 +17,12 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { ChatDBProvider, ChatSettingsProvider, useChatDB } from '@/hooks/chat';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
+import { useChatStore } from '@/stores/chatStore';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
+import { initChatStoreSubscriptions, hydrateStoresForCurrentChat } from '@/stores/initStores';
 
 export const Route = createFileRoute('/chat/')({
   validateSearch: z.object({
@@ -30,13 +32,11 @@ export const Route = createFileRoute('/chat/')({
   component: ChatPage,
 });
 
-// Define custom CSS properties for TypeScript
 const sidebarStyles = {
   '--sidebar-width': '260px',
   '--sidebar-width-mobile': '90vw',
 } as React.CSSProperties;
 
-// Settings sidebar should keep original width
 const settingsSidebarStyles = {
   '--sidebar-width': '24rem',
   '--sidebar-width-mobile': '90vw',
@@ -78,12 +78,15 @@ function ChatWithSettings() {
 }
 
 function ChatUrlSync({ chatIdFromUrl, model }: { chatIdFromUrl?: string; model?: string }) {
-  const { currentChatId, setCurrentChatId, chats } = useChatDB();
+  const currentChatId = useChatStore((s) => s.currentChatId);
+  const isLoaded = useChatStore((s) => s.isLoaded);
+  const chats = useChatStore((s) => s.chats);
+  const setCurrentChatId = useChatStore((s) => s.setCurrentChatId);
   const navigate = useNavigate();
   const isInitialSync = useRef(true);
 
-  // On mount: if URL has a chat ID, load that chat
   useEffect(() => {
+    if (!isLoaded) return;
     if (chatIdFromUrl && isInitialSync.current) {
       const chatExists = chats.some((c) => c.id === chatIdFromUrl);
       if (chatExists) {
@@ -91,9 +94,8 @@ function ChatUrlSync({ chatIdFromUrl, model }: { chatIdFromUrl?: string; model?:
       }
     }
     isInitialSync.current = false;
-  }, [chatIdFromUrl, chats, setCurrentChatId]);
+  }, [chatIdFromUrl, chats, setCurrentChatId, isLoaded]);
 
-  // Sync currentChatId changes to URL
   useEffect(() => {
     if (isInitialSync.current) return;
 
@@ -114,8 +116,14 @@ function ChatWithHistory() {
   const search = useSearch({ strict: false });
   const model = search.model;
   const chatIdFromUrl = search.id;
-  const initialData = model ? { model: model } : undefined;
   const getTestId = useResponsiveTestId();
+
+  // Apply model from URL to settings store on initial load
+  useEffect(() => {
+    if (model) {
+      useChatSettingsStore.getState().setModel(model);
+    }
+  }, [model]);
 
   return (
     <>
@@ -142,17 +150,15 @@ function ChatWithHistory() {
           >
             {showHistoryPanel ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
           </SidebarTrigger>
-          <ChatSettingsProvider initialData={initialData}>
-            <SidebarProvider
-              inner
-              style={settingsSidebarStyles}
-              className="flex-1 flex flex-col overflow-hidden"
-              open={isSidebarOpen}
-              onOpenChange={setIsSidebarOpen}
-            >
-              <ChatWithSettings />
-            </SidebarProvider>
-          </ChatSettingsProvider>
+          <SidebarProvider
+            inner
+            style={settingsSidebarStyles}
+            className="flex-1 flex flex-col overflow-hidden"
+            open={isSidebarOpen}
+            onOpenChange={setIsSidebarOpen}
+          >
+            <ChatWithSettings />
+          </SidebarProvider>
         </div>
       </div>
     </>
@@ -161,12 +167,20 @@ function ChatWithHistory() {
 
 function ChatPageContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-history-open', true);
+  const loadChats = useChatStore((s) => s.loadChats);
+
+  useEffect(() => {
+    initChatStoreSubscriptions();
+    const result = loadChats();
+    if (result && typeof result.then === 'function') {
+      result.then(() => hydrateStoresForCurrentChat());
+    }
+  }, [loadChats]);
+
   return (
-    <ChatDBProvider>
-      <SidebarProvider style={sidebarStyles} open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-        <ChatWithHistory />
-      </SidebarProvider>
-    </ChatDBProvider>
+    <SidebarProvider style={sidebarStyles} open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+      <ChatWithHistory />
+    </SidebarProvider>
   );
 }
 

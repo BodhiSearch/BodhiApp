@@ -44,6 +44,7 @@ export interface Chat {
   id: string;
   title: string;
   messages: Message[];
+  messageCount: number;
   createdAt: number;
   updatedAt?: number;
   model?: string;

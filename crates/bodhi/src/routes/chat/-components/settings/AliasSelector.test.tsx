@@ -2,19 +2,15 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { AliasSelector } from '@/routes/chat/-components/settings/AliasSelector';
 import { createWrapper } from '@/tests/wrapper';
-import * as chatSettings from '@/hooks/chat';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
-// Mock useMediaQuery hook
 vi.mock('@/hooks/use-media-query', () => ({
-  useMediaQuery: (query: string) => {
-    return true;
-  },
+  useMediaQuery: () => true,
 }));
 vi.mock('@/components/CopyButton', () => ({
   CopyButton: () => <div>Copy Button</div>,
 }));
 
-// Mock required HTMLElement methods and styles for Radix UI and Vaul components
 Object.assign(window.HTMLElement.prototype, {
   scrollIntoView: vi.fn(),
   releasePointerCapture: vi.fn(),
@@ -32,10 +28,21 @@ Object.assign(window.HTMLElement.prototype, {
   }),
 });
 
-// Mock useChatSettings
-vi.mock('@/hooks/chat', () => ({
-  useChatSettings: vi.fn(),
-}));
+vi.mock('@/stores/chatStore', () => {
+  const { create } = require('zustand');
+  return { useChatStore: create(() => ({ getChatSettings: vi.fn() })) };
+});
+
+vi.mock('@/stores/chatSettingsStore', () => {
+  const { create } = require('zustand');
+  const store = create(() => ({
+    model: '',
+    apiFormat: 'openai',
+    setModel: vi.fn(),
+    setApiFormat: vi.fn(),
+  }));
+  return { useChatSettingsStore: store, ApiFormatSetting: {} };
+});
 
 const mockModels = [
   {
@@ -104,12 +111,11 @@ const mockUnifiedModels = [
 
 describe('AliasSelector', () => {
   beforeEach(() => {
-    // Reset mock before each test
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+    useChatSettingsStore.setState({
       model: '',
       setModel: vi.fn(),
       setApiFormat: vi.fn(),
-    } as any);
+    });
   });
 
   it('renders in disabled state when loading', () => {
@@ -139,11 +145,7 @@ describe('AliasSelector', () => {
   });
 
   it('displays the current model from chat settings', () => {
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-      model: 'gpt-4',
-      setModel: vi.fn(),
-      setApiFormat: vi.fn(),
-    } as any);
+    useChatSettingsStore.setState({ model: 'gpt-4' });
 
     render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
       wrapper: createWrapper(),
@@ -154,11 +156,7 @@ describe('AliasSelector', () => {
 
   it('calls setModel when selection changes', () => {
     const mockSetModel = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-      model: '',
-      setModel: mockSetModel,
-      setApiFormat: vi.fn(),
-    } as any);
+    useChatSettingsStore.setState({ model: '', setModel: mockSetModel });
 
     render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
       wrapper: createWrapper(),
@@ -186,7 +184,6 @@ describe('AliasSelector', () => {
     });
   });
 
-  // New tests for unified model support (local + API models)
   describe('Unified Model Support', () => {
     it('expands API models to show individual model names with api_format labels', () => {
       const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
@@ -198,7 +195,6 @@ describe('AliasSelector', () => {
       const select = screen.getByRole('combobox');
       fireEvent.click(select);
 
-      // Should show individual API models without api_format labels
       expect(screen.getByText('gpt-4')).toBeInTheDocument();
       expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument();
       expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
@@ -215,7 +211,6 @@ describe('AliasSelector', () => {
       const select = screen.getByRole('combobox');
       fireEvent.click(select);
 
-      // Should show local models with their alias names
       expect(screen.getByText('local-model-1')).toBeInTheDocument();
       expect(screen.getByText('local-model-2')).toBeInTheDocument();
     });
@@ -228,11 +223,9 @@ describe('AliasSelector', () => {
       const select = screen.getByRole('combobox');
       fireEvent.click(select);
 
-      // Should show local models with their alias names
       expect(screen.getByText('local-model-1')).toBeInTheDocument();
       expect(screen.getByText('local-model-2')).toBeInTheDocument();
 
-      // Should show expanded API models without api_format labels
       expect(screen.getByText('gpt-4')).toBeInTheDocument();
       expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument();
       expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
@@ -241,11 +234,7 @@ describe('AliasSelector', () => {
 
     it('calls setModel with correct value when local model is selected', () => {
       const mockSetModel = vi.fn();
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-        model: '',
-        setModel: mockSetModel,
-        setApiFormat: vi.fn(),
-      } as any);
+      useChatSettingsStore.setState({ model: '', setModel: mockSetModel });
 
       const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
 
@@ -264,11 +253,7 @@ describe('AliasSelector', () => {
 
     it('calls setModel with correct value when API model is selected', () => {
       const mockSetModel = vi.fn();
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-        model: '',
-        setModel: mockSetModel,
-        setApiFormat: vi.fn(),
-      } as any);
+      useChatSettingsStore.setState({ model: '', setModel: mockSetModel });
 
       const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
 
@@ -282,16 +267,11 @@ describe('AliasSelector', () => {
       const apiModelOption = screen.getByText('gpt-4');
       fireEvent.click(apiModelOption);
 
-      // Should call setModel with the actual model name (not the API id)
       expect(mockSetModel).toHaveBeenCalledWith('gpt-4');
     });
 
     it('correctly identifies and displays currently selected API model', () => {
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-        model: 'claude-3-opus',
-        setModel: vi.fn(),
-        setApiFormat: vi.fn(),
-      } as any);
+      useChatSettingsStore.setState({ model: 'claude-3-opus' });
 
       const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
 
@@ -299,16 +279,11 @@ describe('AliasSelector', () => {
         wrapper: createWrapper(),
       });
 
-      // Should show the selected API model without api_format label
       expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
     });
 
     it('correctly identifies and displays currently selected local model', () => {
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-        model: 'local-model-2',
-        setModel: vi.fn(),
-        setApiFormat: vi.fn(),
-      } as any);
+      useChatSettingsStore.setState({ model: 'local-model-2' });
 
       const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
 
@@ -316,7 +291,6 @@ describe('AliasSelector', () => {
         wrapper: createWrapper(),
       });
 
-      // Should show the selected local model
       expect(screen.getByText('local-model-2')).toBeInTheDocument();
     });
 
@@ -342,17 +316,12 @@ describe('AliasSelector', () => {
       const select = screen.getByRole('combobox');
       fireEvent.click(select);
 
-      // Should not show any options for API models with no models
       expect(screen.queryByText('openai')).not.toBeInTheDocument();
     });
 
     it('calls setApiFormat with api_format when API model is selected', () => {
       const mockSetApiFormat = vi.fn();
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-        model: '',
-        setModel: vi.fn(),
-        setApiFormat: mockSetApiFormat,
-      } as any);
+      useChatSettingsStore.setState({ model: '', setModel: vi.fn(), setApiFormat: mockSetApiFormat });
 
       const apiModels = [
         {
@@ -381,11 +350,7 @@ describe('AliasSelector', () => {
 
     it('calls setApiFormat with openai when local model is selected', () => {
       const mockSetApiFormat = vi.fn();
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-        model: '',
-        setModel: vi.fn(),
-        setApiFormat: mockSetApiFormat,
-      } as any);
+      useChatSettingsStore.setState({ model: '', setModel: vi.fn(), setApiFormat: mockSetApiFormat });
 
       const localModels = [
         {
@@ -412,17 +377,12 @@ describe('AliasSelector', () => {
     });
 
     it('falls back to displaying unknown selected model', () => {
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-        model: 'unknown-model-not-in-list',
-        setModel: vi.fn(),
-        setApiFormat: vi.fn(),
-      } as any);
+      useChatSettingsStore.setState({ model: 'unknown-model-not-in-list' });
 
       render(<AliasSelector models={mockUnifiedModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
-      // Should show the unknown model name as fallback
       expect(screen.getByText('unknown-model-not-in-list')).toBeInTheDocument();
     });
   });
