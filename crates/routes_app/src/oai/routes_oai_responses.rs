@@ -3,7 +3,9 @@ use super::ENDPOINT_OAI_RESPONSES;
 use crate::shared::AuthScope;
 use crate::API_TAG_RESPONSES;
 use crate::{ApiError, JsonRejectionError};
-use async_openai::types::responses::{CreateResponse, Response as OaiResponse};
+use async_openai::types::responses::{
+  CreateResponse, DeleteResponse as OaiDeleteResponse, Response as OaiResponse,
+};
 use axum::extract::{Path, Query};
 use axum::response::Response;
 use axum::Json;
@@ -61,11 +63,13 @@ pub(super) async fn resolve_api_key_for_alias(
     .unwrap_or("")
     .to_string();
   auth_scope
-    .db_service()
+    .db()
     .get_api_key_for_alias(&tenant_id, &user_id, api_alias_id)
     .await
-    .ok()
-    .flatten()
+    .unwrap_or_else(|e| {
+      tracing::warn!("Failed to fetch API key for alias {}: {}", api_alias_id, e);
+      None
+    })
 }
 
 async fn resolve_responses_alias(
@@ -148,7 +152,7 @@ pub async fn responses_create_handler(
   let model = request
     .get("model")
     .and_then(|v| v.as_str())
-    .unwrap()
+    .expect("validated by validate_responses_request")
     .to_string();
 
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
@@ -218,7 +222,7 @@ pub async fn responses_get_handler(
         ("model" = String, Query, description = "Model name for routing to the correct upstream provider"),
     ),
     responses(
-        (status = 200, description = "Response deleted"),
+        (status = 200, description = "Response deleted", body = OaiDeleteResponse),
     ),
     security(
         ("bearer_api_token" = ["scope_token_user"]),
@@ -239,7 +243,7 @@ pub async fn responses_delete_handler(
     .inference()
     .forward_remote(
       LlmEndpoint::ResponsesDelete(response_id),
-      serde_json::json!({}),
+      serde_json::Value::Null,
       &api_alias,
       api_key,
     )
@@ -326,7 +330,7 @@ pub async fn responses_cancel_handler(
     .inference()
     .forward_remote(
       LlmEndpoint::ResponsesCancel(response_id),
-      serde_json::json!({}),
+      serde_json::Value::Null,
       &api_alias,
       api_key,
     )

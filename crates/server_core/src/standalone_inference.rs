@@ -124,24 +124,6 @@ impl InferenceService for StandaloneInferenceService {
     result
   }
 
-  async fn forward_remote(
-    &self,
-    endpoint: LlmEndpoint,
-    request: Value,
-    api_alias: &ApiAlias,
-    api_key: Option<String>,
-  ) -> Result<Response, InferenceError> {
-    proxy_to_remote(
-      &self.ai_api_service,
-      endpoint,
-      request,
-      api_alias,
-      api_key,
-      None,
-    )
-    .await
-  }
-
   async fn forward_remote_with_params(
     &self,
     endpoint: LlmEndpoint,
@@ -199,7 +181,7 @@ pub(crate) async fn proxy_to_remote(
 ) -> Result<Response, InferenceError> {
   let method = endpoint.http_method();
   let api_path = endpoint.api_path();
-  let body = if *method == axum::http::Method::POST {
+  let body = if *method == axum::http::Method::POST && request != Value::Null {
     Some(request)
   } else {
     None
@@ -209,6 +191,10 @@ pub(crate) async fn proxy_to_remote(
     .await
     .map_err(InferenceError::from)
 }
+
+#[cfg(test)]
+#[path = "test_standalone_inference.rs"]
+mod test_standalone_inference;
 
 pub(crate) fn convert_reqwest_to_axum(
   reqwest_response: reqwest::Response,

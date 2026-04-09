@@ -27,24 +27,6 @@ impl InferenceService for MultitenantInferenceService {
     Err(InferenceError::Unsupported)
   }
 
-  async fn forward_remote(
-    &self,
-    endpoint: LlmEndpoint,
-    request: Value,
-    api_alias: &ApiAlias,
-    api_key: Option<String>,
-  ) -> Result<Response, InferenceError> {
-    proxy_to_remote(
-      &self.ai_api_service,
-      endpoint,
-      request,
-      api_alias,
-      api_key,
-      None,
-    )
-    .await
-  }
-
   async fn forward_remote_with_params(
     &self,
     endpoint: LlmEndpoint,

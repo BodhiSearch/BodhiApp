@@ -308,22 +308,12 @@ export class ChatPage extends BasePage {
    * Verify that a message exists in chat history
    */
   async verifyMessageInHistory(role, expectedContent) {
-    const messages = this.page.locator(`[data-testid="${role}-message"]`);
-    let found = false;
-
-    const count = await messages.count();
-    for (let i = 0; i < count; i++) {
-      const messageContent = await messages
-        .nth(i)
+    await expect(
+      this.page
         .locator(`[data-testid="${role}-message-content"]`)
-        .textContent();
-      if (messageContent?.includes(expectedContent)) {
-        found = true;
-        break;
-      }
-    }
-
-    expect(found).toBe(true);
+        .filter({ hasText: expectedContent })
+        .first()
+    ).toBeVisible();
   }
 
   // Validation and error handling

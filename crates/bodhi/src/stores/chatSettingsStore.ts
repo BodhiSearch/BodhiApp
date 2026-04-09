@@ -7,7 +7,55 @@ export type { ApiFormatSetting };
 
 export type ChatSettings = PersistedChatSettings;
 
-export const defaultSettings: ChatSettings = {
+// Session-only fields (persisted to sessionStorage, not IndexedDB)
+interface SessionOnlySettings {
+  api_token?: string;
+  api_token_enabled: boolean;
+}
+
+const SESSION_TOKEN_KEY = 'bodhi:api_token';
+const SESSION_TOKEN_ENABLED_KEY = 'bodhi:api_token_enabled';
+
+function loadSessionToken(): Partial<SessionOnlySettings> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const token = sessionStorage.getItem(SESSION_TOKEN_KEY) ?? undefined;
+    const enabled = sessionStorage.getItem(SESSION_TOKEN_ENABLED_KEY) === 'true';
+    return { api_token: token, api_token_enabled: enabled };
+  } catch {
+    return {};
+  }
+}
+
+function persistSessionToken(token: string | undefined, enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (token !== undefined) {
+      sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+    } else {
+      sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    }
+    sessionStorage.setItem(SESSION_TOKEN_ENABLED_KEY, String(enabled));
+  } catch {
+    // sessionStorage unavailable
+  }
+}
+
+function clearSessionToken(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_TOKEN_ENABLED_KEY);
+  } catch {
+    // sessionStorage unavailable
+  }
+}
+
+const defaultSessionSettings: SessionOnlySettings = {
+  api_token_enabled: false,
+};
+
+export const defaultSettings: ChatSettings & SessionOnlySettings = {
   model: '',
   apiFormat: 'openai',
   stream: true,
@@ -23,18 +71,19 @@ export const defaultSettings: ChatSettings = {
   seed_enabled: false,
   systemPrompt_enabled: false,
   response_format_enabled: false,
-  api_token_enabled: false,
   maxToolIterations: 5,
   maxToolIterations_enabled: true,
+  ...defaultSessionSettings,
 };
 
-type SettingKey = keyof Omit<ChatSettings, `${string}_enabled`>;
-type EnabledKey = `${string}_enabled` & keyof ChatSettings;
+type AllSettings = ChatSettings & SessionOnlySettings;
+type SettingKey = keyof Omit<AllSettings, `${string}_enabled`>;
+type EnabledKey = `${string}_enabled` & keyof AllSettings;
 
-export interface ChatSettingsStoreState extends ChatSettings {
+export interface ChatSettingsStoreState extends ChatSettings, SessionOnlySettings {
   setModel: (model: string) => void;
   setApiFormat: (format: ApiFormatSetting) => void;
-  setSetting: <K extends SettingKey>(key: K, value: ChatSettings[K] | undefined) => void;
+  setSetting: <K extends SettingKey>(key: K, value: AllSettings[K] | undefined) => void;
   setEnabled: (key: EnabledKey, enabled: boolean) => void;
 
   setTemperature: (temp: number | undefined) => void;
@@ -86,6 +135,7 @@ function createEnabledSetter(key: EnabledKey) {
 
 export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) => ({
   ...defaultSettings,
+  ...loadSessionToken(),
 
   setModel: (model) => set({ model }),
 
@@ -143,8 +193,15 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
   setSystemPromptEnabled: createEnabledSetter('systemPrompt_enabled'),
   setResponseFormat: createSettingSetter('response_format') as (v: ChatSettings['response_format'] | undefined) => void,
   setResponseFormatEnabled: createEnabledSetter('response_format_enabled'),
-  setApiToken: createSettingSetter('api_token') as (v: string | undefined) => void,
-  setApiTokenEnabled: createEnabledSetter('api_token_enabled'),
+  setApiToken: (token: string | undefined) => {
+    set({ api_token: token, api_token_enabled: token !== undefined });
+    persistSessionToken(token, token !== undefined);
+  },
+  setApiTokenEnabled: (enabled: boolean) => {
+    set({ api_token_enabled: enabled });
+    const token = get().api_token;
+    persistSessionToken(token, enabled);
+  },
   setMaxToolIterations: createSettingSetter('maxToolIterations') as (v: number | undefined) => void,
   setMaxToolIterationsEnabled: createEnabledSetter('maxToolIterations_enabled'),
 
@@ -184,6 +241,7 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
 
   reset: (preserveModel) => {
     const currentModel = get().model;
+    clearSessionToken();
     set({
       ...defaultSettings,
       ...(preserveModel ? { model: currentModel } : {}),
@@ -191,13 +249,23 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
   },
 
   loadForChat: async (chatId) => {
+    const sessionToken = loadSessionToken();
     if (!chatId) {
-      set({ ...defaultSettings });
+      // New chat: preserve the last active model/apiFormat so the user
+      // continues with the same alias after deleting a chat or starting fresh.
+      const currentModel = get().model;
+      const currentApiFormat = get().apiFormat;
+      set({
+        ...defaultSettings,
+        model: currentModel,
+        apiFormat: currentApiFormat,
+        ...sessionToken,
+      });
       return;
     }
     const settings = await useChatStore.getState().getChatSettings(chatId);
     if (settings) {
-      set({ ...defaultSettings, ...settings });
+      set({ ...defaultSettings, ...settings, ...sessionToken });
     } else {
       const currentModel = get().model;
       const currentApiFormat = get().apiFormat;
@@ -205,6 +273,7 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
         ...defaultSettings,
         model: currentModel,
         apiFormat: currentApiFormat,
+        ...sessionToken,
       });
     }
   },
@@ -238,8 +307,6 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
       logit_bias_enabled: state.logit_bias_enabled,
       response_format: state.response_format,
       response_format_enabled: state.response_format_enabled,
-      api_token: state.api_token,
-      api_token_enabled: state.api_token_enabled,
       maxToolIterations: state.maxToolIterations,
       maxToolIterations_enabled: state.maxToolIterations_enabled,
     };

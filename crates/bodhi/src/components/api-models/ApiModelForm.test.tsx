@@ -938,22 +938,13 @@ describe('ApiModelForm', () => {
 
   describe('Button states', () => {
     describe('Create Mode', () => {
-      it('fetch button enabled with default base_url, test button disabled without models', async () => {
+      it('fetch button and test button both enabled with default base_url', async () => {
         await renderCreateFormWithoutApiKey();
 
         const fetchButton = screen.getByTestId('fetch-models-button');
         const testButton = screen.getByTestId('test-connection-button');
 
         expect(fetchButton).not.toBeDisabled();
-        expect(testButton).toBeDisabled();
-      });
-
-      it('enables test button after selecting model', async () => {
-        const user = await renderCreateFormWithoutApiKey();
-        await fetchModelsAndWait(user);
-        await selectModel(user, 'gpt-4');
-
-        const testButton = screen.getByTestId('test-connection-button');
         expect(testButton).not.toBeDisabled();
       });
     });

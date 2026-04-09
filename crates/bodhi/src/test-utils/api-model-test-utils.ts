@@ -114,10 +114,8 @@ export function expectApiKeyVisible() {
 }
 
 export function expectConnectionSuccess() {
-  // Just check that the test connection button exists and was clickable
-  // The real verification is that the MSW handler was called successfully
   const testButton = screen.getByTestId('test-connection-button');
-  expect(testButton).toBeInTheDocument();
+  expect(testButton).toHaveAttribute('data-status', 'success');
 }
 
 export function expectConnectionError(errorMessage?: string) {

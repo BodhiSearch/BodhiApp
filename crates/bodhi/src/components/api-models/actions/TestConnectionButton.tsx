@@ -76,6 +76,7 @@ export function TestConnectionButton({
       onClick={onTest}
       disabled={isDisabled}
       data-testid={testId}
+      data-status={status}
       className={cn('min-w-[140px]', status !== 'idle' && getStatusColor(), className)}
     >
       <span className="mr-2">{getStatusIcon()}</span>

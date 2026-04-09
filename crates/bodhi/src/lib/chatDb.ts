@@ -1,8 +1,10 @@
 import Dexie, { type Table } from 'dexie';
 
+import { ApiFormat } from '@bodhiapp/ts-client';
+
 import { Message } from '@/types/chat';
 
-export type ApiFormatSetting = 'openai' | 'openai_responses';
+export type ApiFormatSetting = Exclude<ApiFormat, 'placeholder'>;
 
 export interface PersistedChatSettings {
   model: string;
@@ -34,8 +36,6 @@ export interface PersistedChatSettings {
     schema?: object;
   };
   response_format_enabled: boolean;
-  api_token?: string;
-  api_token_enabled: boolean;
   maxToolIterations?: number;
   maxToolIterations_enabled: boolean;
 }

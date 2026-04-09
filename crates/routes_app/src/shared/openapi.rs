@@ -71,7 +71,7 @@ use async_openai::types::{
     CreateEmbeddingRequest, CreateEmbeddingResponse, Embedding, EmbeddingInput, EmbeddingUsage,
   },
   models::{ListModelResponse, Model},
-  responses::{CreateResponse, Response as OaiResponse, DeleteResponse as OaiDeleteResponse},
+  responses::{CreateResponse, DeleteResponse as OaiDeleteResponse, Response as OaiResponse},
 };
 use services::{
   Alias, AliasResponse, ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiKey, ApiKeyUpdate,

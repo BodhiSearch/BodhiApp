@@ -54,10 +54,6 @@ export function ApiFormatSelector({
           {error}
         </p>
       )}
-
-      {!error && options.length === 1 && (
-        <p className="text-xs text-muted-foreground">Currently supporting OpenAI-compatible APIs</p>
-      )}
     </div>
   );
 }

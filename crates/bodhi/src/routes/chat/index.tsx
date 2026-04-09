@@ -168,14 +168,25 @@ function ChatWithHistory() {
 function ChatPageContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-history-open', true);
   const loadChats = useChatStore((s) => s.loadChats);
+  const search = useSearch({ from: '/chat/' });
+  const urlModel = search.model;
+  const urlChatId = search.id;
 
   useEffect(() => {
     initChatStoreSubscriptions();
     const result = loadChats();
     if (result && typeof result.then === 'function') {
-      result.then(() => hydrateStoresForCurrentChat());
+      result.then(() => {
+        if (urlModel && !urlChatId) {
+          // URL has ?model=X without ?id=Y — start fresh with that model
+          // Don't hydrate previous chat's settings which would overwrite the URL model
+          useChatSettingsStore.getState().setModel(urlModel);
+        } else {
+          hydrateStoresForCurrentChat();
+        }
+      });
     }
-  }, [loadChats]);
+  }, [loadChats, urlModel, urlChatId]);
 
   return (
     <SidebarProvider style={sidebarStyles} open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>

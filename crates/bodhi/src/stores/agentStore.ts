@@ -58,6 +58,8 @@ export interface AgentStoreState {
   streamingMessage: AgentMessage | undefined;
   pendingToolCalls: ReadonlySet<string>;
   errorMessage: string | undefined;
+  /** Tracks the chat record the current agent session is writing to. */
+  chatIdRef: { id: string; createdAt: number } | null;
 
   setInput: (input: string) => void;
   append: (
@@ -73,9 +75,12 @@ export interface AgentStoreState {
   syncAgentSettings: (tools?: AgentTool[]) => void;
 }
 
+// Module-level singleton: one Agent instance per app session.
+// Lives outside Zustand state because the Agent class manages its own
+// internal streaming state and event subscriptions and cannot be serialized.
+// Reset via the store's reset() action.
 let _agent: Agent | null = null;
 let _agentUnsubscribe: (() => void) | null = null;
-let _chatIdRef: { id: string; createdAt: number } | null = null;
 
 function getOrCreateAgent(): Agent {
   if (!_agent) {
@@ -184,8 +189,10 @@ async function restoreMessagesForChat(): Promise<void> {
   });
 
   agent.state.messages = restored;
-  _chatIdRef = { id: currentChat.id, createdAt: currentChat.createdAt };
-  useAgentStore.setState({ messages: [...restored] });
+  useAgentStore.setState({
+    messages: [...restored],
+    chatIdRef: { id: currentChat.id, createdAt: currentChat.createdAt },
+  });
 }
 
 export const useAgentStore = create<AgentStoreState>((set, get) => ({
@@ -195,6 +202,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   streamingMessage: undefined,
   pendingToolCalls: new Set<string>(),
   errorMessage: undefined,
+  chatIdRef: null,
 
   setInput: (input) => set({ input }),
 
@@ -218,14 +226,16 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     agent.state.systemPrompt =
       settingsStore.systemPrompt_enabled && settingsStore.systemPrompt ? settingsStore.systemPrompt : '';
 
-    if (!_chatIdRef) {
+    if (!get().chatIdRef) {
       const currentChat = chatStore.currentChatId
         ? (chatStore.chats.find((c) => c.id === chatStore.currentChatId) ?? null)
         : null;
-      _chatIdRef = {
-        id: currentChat?.id ?? nanoid(),
-        createdAt: currentChat?.createdAt ?? Date.now(),
-      };
+      set({
+        chatIdRef: {
+          id: currentChat?.id ?? nanoid(),
+          createdAt: currentChat?.createdAt ?? Date.now(),
+        },
+      });
     }
 
     // Restore messages if switching to existing chat and agent is empty
@@ -248,7 +258,8 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
         set({ messages: [...agent.state.messages] });
       } else {
         // Save chat
-        if (_chatIdRef) {
+        const ref = get().chatIdRef;
+        if (ref) {
           const piMessages = agent.state.messages;
           const firstUserContent = piMessages.find((m) => 'role' in m && m.role === 'user');
           const titleText =
@@ -271,21 +282,21 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
             };
           });
           await chatStore.createOrUpdateChat({
-            id: _chatIdRef.id,
+            id: ref.id,
             title: titleText,
             messages: chatMessages,
             messageCount: chatMessages.length,
-            createdAt: _chatIdRef.createdAt,
+            createdAt: ref.createdAt,
             updatedAt: Date.now(),
             enabledMcpTools: enabledMcpTools && Object.keys(enabledMcpTools).length > 0 ? enabledMcpTools : undefined,
           });
 
           // Save settings BEFORE setting currentChatId, so the cross-store
           // subscription that fires on setCurrentChatId finds persisted settings.
-          await useChatSettingsStore.getState().saveForChat(_chatIdRef.id);
+          await useChatSettingsStore.getState().saveForChat(ref.id);
 
-          if (!chatStore.currentChatId || chatStore.currentChatId !== _chatIdRef.id) {
-            chatStore.setCurrentChatId(_chatIdRef.id);
+          if (!chatStore.currentChatId || chatStore.currentChatId !== ref.id) {
+            chatStore.setCurrentChatId(ref.id);
           }
         }
       }
@@ -308,7 +319,6 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     _agent?.abort();
     _agent = null;
     _agentUnsubscribe = null;
-    _chatIdRef = null;
     set({
       input: '',
       isStreaming: false,
@@ -316,6 +326,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       streamingMessage: undefined,
       pendingToolCalls: new Set(),
       errorMessage: undefined,
+      chatIdRef: null,
     });
 
     void restoreMessagesForChat();

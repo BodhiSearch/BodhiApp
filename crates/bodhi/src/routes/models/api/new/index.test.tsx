@@ -133,16 +133,45 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       // Verify API key field is password type initially (hidden)
       expectApiKeyHidden();
 
-      // Verify button states - fetch enabled (base_url present), test disabled (no models yet)
+      // Verify button states - both enabled when base_url is set
       const testConnectionButton = screen.getByTestId('test-connection-button');
       const fetchModelsButton = screen.getByTestId('fetch-models-button');
-      expect(testConnectionButton).toBeDisabled();
+      expect(testConnectionButton).not.toBeDisabled();
       expect(fetchModelsButton).not.toBeDisabled();
 
       // Verify submit button shows create mode text and initial state
       const submitButton = screen.getByTestId('create-api-model-button');
       expect(submitButton).toHaveTextContent(/create/i);
       expect(submitButton).not.toBeDisabled(); // Form allows submission (validation happens on submit)
+    });
+
+    it('can select openai_responses format and updates form correctly', async () => {
+      const user = userEvent.setup();
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
+
+      render(<NewApiModel />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
+      });
+
+      // Default should be OpenAI - Completions
+      expectApiFormatSelected('openai');
+
+      // Switch to OpenAI - Responses
+      await selectApiFormat(user, 'openai_responses');
+      expectApiFormatSelected('openai_responses');
+
+      // Base URL should still be OpenAI (both presets use same base URL)
+      const baseUrlInput = screen.getByTestId('base-url-input');
+      expect(baseUrlInput).toHaveValue('https://api.openai.com/v1');
     });
 
     it('Form validation prevents submission with empty required fields', async () => {

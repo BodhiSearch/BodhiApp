@@ -81,6 +81,10 @@ export interface ChatStoreState {
   getChatSettings: (chatId: string) => Promise<PersistedChatSettings | undefined>;
 }
 
+// Two-phase initialization: the store starts with userId='default' and reads
+// currentChatId from the 'default' localStorage key. Callers MUST call
+// loadChats(realUserId) before invoking setCurrentChatId(), otherwise
+// persistence writes to the wrong key. ChatPageContent does this in useEffect.
 export const useChatStore = create<ChatStoreState>((set, get) => ({
   chats: [],
   currentChatId: loadCurrentChatId('default'),
@@ -190,23 +194,10 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       return;
     }
 
-    const emptyChat = chats.find((chat) => chat.id !== id && chat.messageCount === 0);
-    if (emptyChat) {
-      get().setCurrentChatId(emptyChat.id);
-      await chatDb.transaction('rw', chatDb.chats, chatDb.messages, async () => {
-        await chatDb.messages.where('chatId').equals(id).delete();
-        await chatDb.chats.delete(id);
-      });
-      await get().loadChats();
-      return;
-    }
-
+    get().setCurrentChatId(null);
     await chatDb.transaction('rw', chatDb.chats, chatDb.messages, async () => {
       await chatDb.messages.where('chatId').equals(id).delete();
-      await chatDb.chats.update(id, {
-        title: 'New Chat',
-        updatedAt: Date.now(),
-      });
+      await chatDb.chats.delete(id);
     });
     await get().loadChats();
   },

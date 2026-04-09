@@ -45,5 +45,3 @@ export { useMcpClient } from './useMcpClient';
 export type { McpConnectionStatus, McpClientTool, UseMcpClientReturn, McpToolCallResult } from './useMcpClient';
 export { useMcpClients } from './useMcpClients';
 export type { UseMcpClientsReturn } from './useMcpClients';
-export { useMcpSelection } from './useMcpSelection';
-export type { CheckboxState, UseMcpSelectionReturn } from './useMcpSelection';

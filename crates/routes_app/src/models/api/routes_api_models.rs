@@ -286,11 +286,11 @@ pub async fn api_models_fetch_models(
     tag = API_TAG_MODELS_API,
     operation_id = "getApiFormats",
     summary = "Get Available API Formats",
-    description = "Retrieves list of supported API formats/protocols (e.g., OpenAI).",
+    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions) and 'openai_responses' (Responses API).",
     responses(
         (status = 200, description = "API formats retrieved successfully", body = ApiFormatsResponse,
          example = json!({
-             "data": ["openai"]
+             "data": ["openai", "openai_responses"]
          })),
     ),
     security(

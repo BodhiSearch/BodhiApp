@@ -2,11 +2,11 @@ use super::{AiApiService, AiApiServiceError, DefaultAiApiService};
 use crate::models::{ApiAlias, ApiFormat};
 use crate::test_utils::fixed_dt;
 use anyhow_trace::anyhow_trace;
-use axum::http::StatusCode;
+use axum::http::{Method, StatusCode};
 use mockito::Server;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use serde_json::json;
+use serde_json::{json, Value};
 
 #[rstest]
 #[anyhow_trace]
@@ -54,8 +54,17 @@ async fn test_test_prompt_openai_responses_success() -> anyhow::Result<()> {
   let url = server.url();
   let service = DefaultAiApiService::new()?;
 
+  let expected_body = json!({
+    "model": "gpt-4o",
+    "input": "Hello",
+    "max_output_tokens": 50,
+    "store": false
+  });
   let _mock = server
     .mock("POST", "/responses")
+    .match_body(mockito::Matcher::JsonString(serde_json::to_string(
+      &expected_body,
+    )?))
     .with_status(200)
     .with_header("content-type", "application/json")
     .with_body(
@@ -486,6 +495,150 @@ async fn test_fetch_models_failure_parameterized(
     .await;
 
   assert!(result.is_err());
+
+  Ok(())
+}
+
+// =============================================================================
+// test_prompt — OpenAIResponses format error paths
+// =============================================================================
+
+#[rstest]
+#[case::unauthorized(401, "Unauthorized", AiApiServiceError::Unauthorized("".to_string()))]
+#[case::not_found(404, "Not Found", AiApiServiceError::NotFound("".to_string()))]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_test_prompt_openai_responses_errors(
+  #[case] status_code: u16,
+  #[case] response_body: &str,
+  #[case] expected_error: AiApiServiceError,
+) -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let _mock = server
+    .mock("POST", "/responses")
+    .with_status(status_code as usize)
+    .with_body(response_body)
+    .create_async()
+    .await;
+
+  let result = service
+    .test_prompt(
+      Some("test-key".to_string()),
+      &url,
+      "gpt-4o",
+      "Hello",
+      &ApiFormat::OpenAIResponses,
+    )
+    .await;
+
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!(
+    std::mem::discriminant(&expected_error),
+    std::mem::discriminant(&err)
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_test_prompt_openai_responses_malformed_output() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  // output array has no item with type == "message" → falls back to "No response"
+  let _mock = server
+    .mock("POST", "/responses")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"output": [{"type": "tool_call", "content": []}]}"#)
+    .create_async()
+    .await;
+
+  let result = service
+    .test_prompt(
+      Some("test-key".to_string()),
+      &url,
+      "gpt-4o",
+      "Hello",
+      &ApiFormat::OpenAIResponses,
+    )
+    .await?;
+
+  assert_eq!("No response", result);
+
+  Ok(())
+}
+
+// =============================================================================
+// forward_request_with_method — GET / DELETE / POST method dispatch
+// =============================================================================
+
+fn make_api_alias(url: &str) -> ApiAlias {
+  ApiAlias::new(
+    "test-api",
+    ApiFormat::OpenAI,
+    url,
+    vec!["gpt-4".to_string()],
+    None,
+    false,
+    fixed_dt(),
+  )
+}
+
+#[rstest]
+#[case::get_no_body(Method::GET, None, None, false)]
+#[case::delete_no_body(Method::DELETE, None, None, false)]
+#[case::post_with_body(Method::POST, Some(json!({"model": "gpt-4", "messages": []})), None, true)]
+#[case::get_with_query_params(
+  Method::GET,
+  None,
+  Some(vec![("after".to_string(), "ts_123".to_string())]),
+  false
+)]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_forward_request_with_method_dispatch(
+  #[case] method: Method,
+  #[case] body: Option<Value>,
+  #[case] query_params: Option<Vec<(String, String)>>,
+  #[case] expect_content_type: bool,
+) -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let api_alias = make_api_alias(&url);
+  let service = DefaultAiApiService::new()?;
+
+  let path = if query_params.is_some() {
+    "/responses?after=ts_123"
+  } else {
+    "/responses"
+  };
+
+  let mut mock = server.mock(method.as_str(), path);
+
+  if expect_content_type {
+    mock = mock.match_header("content-type", "application/json");
+  }
+
+  let _mock = mock
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"id":"resp-123"}"#)
+    .create_async()
+    .await;
+
+  let response = service
+    .forward_request_with_method(&method, "/responses", &api_alias, None, body, query_params)
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::OK, response.status());
 
   Ok(())
 }

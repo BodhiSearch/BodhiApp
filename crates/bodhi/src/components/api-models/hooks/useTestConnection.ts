@@ -1,23 +1,13 @@
 import { useState } from 'react';
 
-import { TestPromptRequest, TestCreds, ApiKey, ApiFormat } from '@bodhiapp/ts-client';
+import { TestPromptRequest } from '@bodhiapp/ts-client';
 
 import { useToast } from '@/hooks/use-toast';
 import { useTestApiModel } from '@/hooks/models';
 
-import { DEFAULT_TEST_PROMPT } from '../providers/constants';
-
 interface UseTestConnectionProps {
   mode?: 'create' | 'edit' | 'setup';
   initialData?: { id: string };
-}
-
-interface TestConnectionData {
-  apiKey?: string;
-  baseUrl: string;
-  model: string;
-  id?: string;
-  apiFormat?: ApiFormat;
 }
 
 export function useTestConnection({ mode: _mode = 'create', initialData: _initialData }: UseTestConnectionProps = {}) {
@@ -25,18 +15,18 @@ export function useTestConnection({ mode: _mode = 'create', initialData: _initia
   const testMutation = useTestApiModel();
   const { toast, dismiss } = useToast();
 
-  const canTest = (data: TestConnectionData) => {
-    return Boolean(data.baseUrl && data.model);
+  const canTest = (data: Pick<TestPromptRequest, 'base_url' | 'model'>) => {
+    return Boolean(data.base_url && data.model);
   };
 
-  const getMissingRequirements = (data: TestConnectionData) => {
+  const getMissingRequirements = (data: Pick<TestPromptRequest, 'base_url' | 'model'>) => {
     const missing = [];
-    if (!data.baseUrl) missing.push('base URL');
+    if (!data.base_url) missing.push('base URL');
     if (!data.model) missing.push('at least one model');
     return `You need to add ${missing.join(', ')} to test connection`;
   };
 
-  const testConnection = async (data: TestConnectionData) => {
+  const testConnection = async (data: TestPromptRequest) => {
     if (!canTest(data)) {
       return;
     }
@@ -44,30 +34,8 @@ export function useTestConnection({ mode: _mode = 'create', initialData: _initia
     dismiss();
     setStatus('testing');
 
-    // Build TestCreds discriminated union based on what's available
-    let creds: TestCreds | undefined;
-
-    if (data.apiKey) {
-      // Use provided API key directly
-      creds = { type: 'api_key' as const, value: data.apiKey as ApiKey };
-    } else if (data.id) {
-      // Look up stored credentials by ID
-      creds = { type: 'id' as const, value: data.id };
-    } else {
-      // No authentication (public API)
-      creds = { type: 'api_key' as const, value: null };
-    }
-
-    const testData: TestPromptRequest = {
-      creds,
-      base_url: data.baseUrl,
-      model: data.model,
-      prompt: DEFAULT_TEST_PROMPT,
-      api_format: data.apiFormat || ('openai' as ApiFormat),
-    };
-
     try {
-      const response = await testMutation.mutateAsync(testData);
+      const response = await testMutation.mutateAsync(data);
       if (response.data.success) {
         setStatus('success');
         toast({

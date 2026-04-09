@@ -95,13 +95,13 @@ test.describe('API Models Setup Integration', () => {
     // Verify fetch models button becomes enabled (only requires API key + base URL)
     await apiModelsPage.form.expectFetchModelsButtonEnabled();
 
-    // Test connection button should still be disabled (requires models to be selected)
-    await apiModelsPage.form.expectTestConnectionButtonDisabled();
+    // Test connection button is enabled (only requires base_url)
+    await apiModelsPage.form.expectTestConnectionButtonEnabled();
 
     // Phase 3: Test validation and error states
     // Clear API key - with optional API key, Fetch Models should remain enabled
     await apiModelsPage.form.clearApiKey();
-    await apiModelsPage.form.expectTestConnectionButtonDisabled();
+    await apiModelsPage.form.expectTestConnectionButtonEnabled();
     await apiModelsPage.form.expectFetchModelsButtonEnabled();
 
     // Fill API key again for submission test

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { ApiAliasResponse } from '@bodhiapp/ts-client';
+import { ApiAliasResponse, ApiFormat, ApiKey, TestCreds } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
@@ -15,7 +15,7 @@ import {
   API_FORMAT_PRESETS,
 } from '@/schemas/apiModel';
 
-import { ApiProvider, API_PROVIDERS } from '../providers/constants';
+import { ApiProvider, API_PROVIDERS, DEFAULT_TEST_PROMPT } from '../providers/constants';
 
 import { useFetchModels } from './useFetchModels';
 import { useTestConnection } from './useTestConnection';
@@ -146,34 +146,19 @@ export function useApiModelForm({
     }
   }, [watchedValues.api_format, mode, selectedProvider]);
 
-  // Provider selection handler
-  const handleProviderSelect = (provider: ApiProvider | null) => {
-    if (provider) {
-      setSelectedProvider(provider);
-      setValue('api_format', provider.format);
-      setValue('base_url', provider.baseUrl);
-      setValue('models', []);
-      setValue('prefix', '');
-      setValue('usePrefix', false);
-      setValue('useApiKey', false);
-      fetchModels.clearModels();
-      testConnection.resetStatus();
-    }
-  };
-
   // API format change handler
   const handleApiFormatChange = (apiFormat: string) => {
     const preset = API_FORMAT_PRESETS[apiFormat as keyof typeof API_FORMAT_PRESETS];
+    setValue('api_format', apiFormat);
+    setValue('models', []);
+    setValue('prefix', '');
+    setValue('usePrefix', false);
+    setValue('useApiKey', false);
+    setValue('api_key', '');
+    fetchModels.clearModels();
+    testConnection.resetStatus();
     if (preset) {
-      setValue('api_format', apiFormat);
       setValue('base_url', preset.baseUrl);
-      setValue('models', []);
-      setValue('prefix', '');
-      setValue('usePrefix', false);
-      setValue('useApiKey', false);
-      setValue('api_key', '');
-      fetchModels.clearModels();
-      testConnection.resetStatus();
     }
   };
 
@@ -199,16 +184,27 @@ export function useApiModelForm({
     setValue('models', allModels);
   };
 
-  // Test connection wrapper
+  // Test connection wrapper — build TestPromptRequest from form state
   const handleTestConnection = async () => {
     if (!watchedValues.base_url) return;
 
+    let creds: TestCreds | undefined;
+    const apiKey = watchedValues.useApiKey ? watchedValues.api_key : undefined;
+    const id = !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined;
+    if (apiKey) {
+      creds = { type: 'api_key' as const, value: apiKey as ApiKey };
+    } else if (id) {
+      creds = { type: 'id' as const, value: id };
+    } else {
+      creds = { type: 'api_key' as const, value: null };
+    }
+
     await testConnection.testConnection({
-      apiKey: watchedValues.useApiKey ? watchedValues.api_key : undefined,
-      id: !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined,
-      baseUrl: watchedValues.base_url,
+      creds,
+      base_url: watchedValues.base_url,
       model: watchedValues.models?.[0] || 'gpt-3.5-turbo',
-      apiFormat: watchedValues.api_format as import('@bodhiapp/ts-client').ApiFormat,
+      prompt: DEFAULT_TEST_PROMPT,
+      api_format: watchedValues.api_format as ApiFormat,
     });
   };
 
@@ -243,7 +239,7 @@ export function useApiModelForm({
   };
 
   // Computed values
-  const canTest = Boolean(watchedValues.base_url && watchedValues.models?.length > 0);
+  const canTest = Boolean(watchedValues.base_url);
 
   const canFetch = Boolean(watchedValues.base_url);
 
@@ -260,7 +256,6 @@ export function useApiModelForm({
 
     // Provider state
     selectedProvider,
-    handleProviderSelect,
 
     // API formats
     apiFormatsData: apiFormatsData?.data || ['openai'],
@@ -278,8 +273,7 @@ export function useApiModelForm({
       isLoading: testConnection.isLoading,
       status: testConnection.status,
       disabledReason: testConnection.getMissingRequirements({
-        apiKey: watchedValues.api_key,
-        baseUrl: watchedValues.base_url || '',
+        base_url: watchedValues.base_url || '',
         model: watchedValues.models?.[0] || '',
       }),
     },

@@ -485,10 +485,17 @@ async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
-    .route("/v1/responses/{response_id}", get(responses_get_handler))
+    .route(
+      "/v1/responses/{response_id}",
+      get(responses_get_handler).delete(responses_delete_handler),
+    )
     .route(
       "/v1/responses/{response_id}/cancel",
       post(responses_cancel_handler),
+    )
+    .route(
+      "/v1/responses/{response_id}/input_items",
+      get(responses_input_items_handler),
     )
     .with_state(router_state);
 
@@ -503,11 +510,36 @@ async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow
     .await?;
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
+  // DELETE
+  let response = app
+    .clone()
+    .oneshot(
+      Request::delete(format!("/v1/responses/{}?model=resp%2Fgpt-4o", response_id))
+        .body(axum::body::Body::empty())?
+        .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+    )
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
   // POST cancel
   let response = app
+    .clone()
     .oneshot(
       Request::post(format!(
         "/v1/responses/{}/cancel?model=resp%2Fgpt-4o",
+        response_id
+      ))
+      .body(axum::body::Body::empty())?
+      .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+    )
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  // GET input_items
+  let response = app
+    .oneshot(
+      Request::get(format!(
+        "/v1/responses/{}/input_items?model=resp%2Fgpt-4o",
         response_id
       ))
       .body(axum::body::Body::empty())?
@@ -617,5 +649,150 @@ async fn test_responses_input_items_forwards_extra_query_params() -> anyhow::Res
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+// ============================================================================
+// validate_responses_request — stream field validation
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_create_invalid_stream_field() -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/responses", post(responses_create_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/responses")
+        .json(json!({"model": "gpt-4o", "input": "hello", "stream": "yes"}))?
+        .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+// ============================================================================
+// Missing model query param — ID-based endpoints
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_delete_missing_model_param() -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route(
+      "/v1/responses/{response_id}",
+      delete(responses_delete_handler),
+    )
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::delete("/v1/responses/resp-abc-123")
+        .body(axum::body::Body::empty())?
+        .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_input_items_missing_model_param() -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route(
+      "/v1/responses/{response_id}/input_items",
+      get(responses_input_items_handler),
+    )
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::get("/v1/responses/resp-abc-123/input_items")
+        .body(axum::body::Body::empty())?
+        .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_cancel_missing_model_param() -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route(
+      "/v1/responses/{response_id}/cancel",
+      post(responses_cancel_handler),
+    )
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/responses/resp-abc-123/cancel")
+        .body(axum::body::Body::empty())?
+        .with_auth_context(AuthContext::test_session("u", "u", ResourceRole::User)),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
   Ok(())
 }

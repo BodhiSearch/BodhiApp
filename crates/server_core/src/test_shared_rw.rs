@@ -262,3 +262,63 @@ async fn test_chat_completions_drop_and_load_strategy(
   shared_ctx.stop().await?;
   Ok(())
 }
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[serial(BodhiServerContext)]
+#[anyhow_trace]
+async fn test_forward_request_api_alias_returns_unreachable(
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
+  bin_path: TempDir,
+) -> anyhow::Result<()> {
+  let app_service_stub = app_service_stub_builder
+    .with_settings(HashMap::from([
+      (BODHI_EXEC_VARIANT, DEFAULT_VARIANT),
+      (BODHI_EXEC_TARGET, BUILD_TARGET),
+      (BODHI_EXEC_VARIANTS, BUILD_VARIANTS.join(",").as_str()),
+      (BODHI_EXEC_NAME, EXEC_NAME),
+      (
+        BODHI_EXEC_LOOKUP_PATH,
+        bin_path.path().display().to_string().as_str(),
+      ),
+    ]))
+    .await
+    .build()
+    .await
+    .unwrap();
+  let raw_mock = MockServer::default();
+  let server_factory = ServerFactoryStub::new(Box::new(raw_mock));
+  let shared_ctx = DefaultSharedContext::with_args(
+    app_service_stub.hub_service(),
+    app_service_stub.setting_service(),
+    Box::new(server_factory),
+  )
+  .await;
+
+  let api_alias = services::ApiAlias::new(
+    "test-api",
+    services::ApiFormat::OpenAI,
+    "https://api.example.com/v1",
+    vec!["gpt-4".to_string()],
+    None,
+    false,
+    services::test_utils::fixed_dt(),
+  );
+  let result = shared_ctx
+    .forward_request(
+      LlmEndpoint::Responses,
+      json!({"model": "gpt-4", "input": "hello"}),
+      Alias::Api(api_alias),
+    )
+    .await;
+
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert!(
+    matches!(err, crate::ContextError::Unreachable(_)),
+    "Expected ContextError::Unreachable, got: {:?}",
+    err
+  );
+  Ok(())
+}

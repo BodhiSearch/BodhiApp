@@ -22,8 +22,7 @@ impl LlmEndpoint {
       Self::ChatCompletions => "/chat/completions".to_string(),
       Self::Embeddings => "/embeddings".to_string(),
       Self::Responses => "/responses".to_string(),
-      Self::ResponsesGet(id) => format!("/responses/{}", id),
-      Self::ResponsesDelete(id) => format!("/responses/{}", id),
+      Self::ResponsesGet(id) | Self::ResponsesDelete(id) => format!("/responses/{}", id),
       Self::ResponsesInputItems(id) => format!("/responses/{}/input_items", id),
       Self::ResponsesCancel(id) => format!("/responses/{}/cancel", id),
     }
@@ -49,14 +48,19 @@ pub trait InferenceService: Send + Sync + std::fmt::Debug {
     alias: Alias,
   ) -> Result<Response, InferenceError>;
 
-  /// Forward a request to a remote API provider
+  /// Forward a request to a remote API provider.
+  /// Default implementation delegates to `forward_remote_with_params` with no query params.
   async fn forward_remote(
     &self,
     endpoint: LlmEndpoint,
     request: Value,
     api_alias: &ApiAlias,
     api_key: Option<String>,
-  ) -> Result<Response, InferenceError>;
+  ) -> Result<Response, InferenceError> {
+    self
+      .forward_remote_with_params(endpoint, request, api_alias, api_key, None)
+      .await
+  }
 
   /// Forward a request to a remote API provider with optional query parameters.
   /// Used by Responses API GET endpoints that need to forward query params upstream.
