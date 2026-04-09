@@ -217,6 +217,27 @@ describe('agentStore', () => {
       );
     });
 
+    it('routes anthropic format via pi-ai anthropic-messages provider with /anthropic baseUrl', async () => {
+      mockPrompt.mockResolvedValueOnce(undefined);
+      useChatSettingsStore.setState({
+        model: 'claude-3-5-sonnet-20241022',
+        apiFormat: 'anthropic',
+      });
+
+      await act(async () => {
+        await useAgentStore.getState().append('hi');
+      });
+
+      expect(mockModelSetter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'claude-3-5-sonnet-20241022',
+          api: 'anthropic-messages',
+          provider: 'anthropic',
+          baseUrl: expect.stringMatching(/\/anthropic$/),
+        })
+      );
+    });
+
     it('configures system prompt on agent', async () => {
       mockPrompt.mockResolvedValueOnce(undefined);
       useChatSettingsStore.setState({ systemPrompt: 'You are helpful', systemPrompt_enabled: true });

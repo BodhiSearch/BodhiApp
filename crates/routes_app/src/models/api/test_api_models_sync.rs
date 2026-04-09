@@ -77,8 +77,9 @@ async fn test_sync_models_handler_success(
     .with(
       predicate::eq(Some("sk-test123".to_string())),
       predicate::eq("https://api.openai.com/v1"),
+      predicate::eq(services::ApiFormat::OpenAI),
     )
-    .returning(|_, _| {
+    .returning(|_, _, _| {
       Ok(vec![
         "gpt-4".to_string(),
         "gpt-3.5-turbo".to_string(),

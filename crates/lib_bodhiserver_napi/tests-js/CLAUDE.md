@@ -69,7 +69,7 @@ OAuth credentials from `.env.test` (see `.env.test.example`).
 | `specs/` | 33 test files across 13 domain folders |
 | `pages/` | 28 page objects extending `BasePage` |
 | `fixtures/` | 9 test data modules (classes with static methods) |
-| `utils/` | `auth-server-client.mjs`, `bodhi-app-server.mjs`, `browser-with-extension.mjs`, `db-config.mjs`, `mock-openai-server.mjs`, `api-model-helpers.mjs` |
+| `utils/` | `auth-server-client.mjs`, `bodhi-app-server.mjs`, `browser-with-extension.mjs`, `db-config.mjs`, `api-model-helpers.mjs` |
 | `scripts/` | `start-shared-server.mjs` |
 | `data/` | Test GGUF model refs |
 

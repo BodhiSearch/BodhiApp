@@ -33,6 +33,7 @@ export class ApiModelFormComponent {
   static FORMAT_DISPLAY_NAMES = {
     openai: 'OpenAI - Completions',
     openai_responses: 'OpenAI - Responses',
+    anthropic: 'Anthropic',
   };
 
   static getFormatDisplayName(format) {
@@ -48,10 +49,14 @@ export class ApiModelFormComponent {
     // Use exact match to avoid ambiguity between similar option names
     await this.page.getByRole('option', { name: formatDisplayText, exact: true }).click();
 
-    // Wait for base URL to be auto-populated (for OpenAI formats)
+    // Wait for base URL to be auto-populated for known formats
     if (format === 'openai' || format === 'openai_responses') {
       await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
         'https://api.openai.com/v1'
+      );
+    } else if (format === 'anthropic') {
+      await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
+        'https://api.anthropic.com/v1'
       );
     }
   }

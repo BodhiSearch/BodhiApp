@@ -481,6 +481,71 @@ async fn test_chat_completions_rejects_responses_format_alias() -> anyhow::Resul
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
+async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Result<()> {
+  use services::test_utils::{TEST_TENANT_ID, TEST_USER_ID};
+  use services::{ApiAliasBuilder, ApiFormat};
+
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_data_service().await;
+  let db_service = builder.get_db_service().await;
+
+  // Anthropic's less-advertised /v1/chat/completions endpoint accepts
+  // OpenAI-compatible format. The opaque proxy pipeline already injects
+  // x-api-key + anthropic-version auth for ApiFormat::Anthropic, so no
+  // handler-level transformation is needed — forward as-is.
+  let api_alias = ApiAliasBuilder::test_default()
+    .id("anthropic-alias")
+    .api_format(ApiFormat::Anthropic)
+    .base_url("https://api.anthropic.com/v1")
+    .models(vec!["claude-3-5-sonnet-20241022".to_string()])
+    .build_with_time(db_service.now())
+    .unwrap();
+
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
+    .await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_remote()
+    .withf(|endpoint, _req, alias, _key| {
+      *endpoint == LlmEndpoint::ChatCompletions && alias.id == "anthropic-alias"
+    })
+    .times(1)
+    .return_once(|_, _, _, _| non_streamed_axum_response());
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions")
+        .json(json!({
+          "model": "claude-3-5-sonnet-20241022",
+          "messages": [{"role": "user", "content": "Hello"}]
+        }))?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
 async fn test_embeddings_rejects_responses_format_alias() -> anyhow::Result<()> {
   use services::test_utils::{TEST_TENANT_ID, TEST_USER_ID};
   use services::{ApiAliasBuilder, ApiFormat};

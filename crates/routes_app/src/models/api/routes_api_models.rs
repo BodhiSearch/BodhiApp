@@ -252,6 +252,7 @@ pub async fn api_models_fetch_models(
         .fetch_models(
           api_key.as_option().map(|s| s.to_string()),
           payload.base_url.trim_end_matches('/'),
+          &payload.api_format,
         )
         .await?
     }
@@ -271,7 +272,11 @@ pub async fn api_models_fetch_models(
       let stored_key = db.get_api_key_for_alias(tenant_id, user_id, id).await?;
 
       ai_api
-        .fetch_models(stored_key, api_model.base_url.trim_end_matches('/'))
+        .fetch_models(
+          stored_key,
+          api_model.base_url.trim_end_matches('/'),
+          &payload.api_format,
+        )
         .await?
     }
   };
@@ -286,11 +291,11 @@ pub async fn api_models_fetch_models(
     tag = API_TAG_MODELS_API,
     operation_id = "getApiFormats",
     summary = "Get Available API Formats",
-    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions) and 'openai_responses' (Responses API).",
+    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), and 'anthropic' (Messages API).",
     responses(
         (status = 200, description = "API formats retrieved successfully", body = ApiFormatsResponse,
          example = json!({
-             "data": ["openai", "openai_responses"]
+             "data": ["openai", "openai_responses", "anthropic"]
          })),
     ),
     security(
@@ -301,7 +306,11 @@ pub async fn api_models_fetch_models(
 )]
 pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, ApiError> {
   Ok(Json(ApiFormatsResponse {
-    data: vec![ApiFormat::OpenAI, ApiFormat::OpenAIResponses],
+    data: vec![
+      ApiFormat::OpenAI,
+      ApiFormat::OpenAIResponses,
+      ApiFormat::Anthropic,
+    ],
   }))
 }
 

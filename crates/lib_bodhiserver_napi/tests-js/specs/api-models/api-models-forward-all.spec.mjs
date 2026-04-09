@@ -5,7 +5,12 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+
+// Tests for the `forward_all_with_prefix` API model mode.
+//
+// The sync-models endpoint (POST /bodhi/v1/models/api/{id}/sync-models) requires a
+// browser session cookie, so page.evaluate with credentials:'include' is intentional
+// here — it reuses the authenticated session rather than a Bearer token.
 
 test.describe('API Models Forward All With Prefix', () => {
   let loginPage;
@@ -15,15 +20,12 @@ test.describe('API Models Forward All With Prefix', () => {
   let testData;
 
   test.beforeAll(async () => {
-    // Verify environment setup
     const { apiKey } = ApiModelFixtures.getRequiredEnvVars();
-
-    // Server setup
-    const authServerConfig = getAuthServerConfig();
-    const testCredentials = getTestCredentials();
-
-    // Use shared server started by Playwright webServer
-    testData = { apiKey, authServerConfig, testCredentials };
+    testData = {
+      apiKey,
+      authServerConfig: getAuthServerConfig(),
+      testCredentials: getTestCredentials(),
+    };
   });
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
@@ -38,61 +40,43 @@ test.describe('API Models Forward All With Prefix', () => {
     chatPage = new ChatPage(page, sharedServerUrl);
   });
 
-  test('forward_all_with_prefix lifecycle: create, list models, chat, prefix uniqueness, delete', async ({
+  test('forward_all_with_prefix: create, sync models, chat, prefix uniqueness, delete', async ({
     page,
   }) => {
-    // ===== SETUP: Login and navigate =====
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
 
-    // ===== SCENARIO A: Create model with forward_all_with_prefix =====
+    // Create the forward_all model with prefix 'fwd/'
     await modelsPage.clickNewApiModel();
     await formPage.form.waitForFormReady();
-
-    // Fill basic info with OpenAI
-    await formPage.form.fillBasicInfoWithPrefix(
-      testData.apiKey,
-      'fwd/', // prefix for forward all
-      'https://api.openai.com/v1'
-    );
-
-    // Enable forward all mode (should disable model selection)
+    await formPage.form.fillBasicInfoWithPrefix(testData.apiKey, 'fwd/', 'https://api.openai.com/v1');
     await formPage.form.enableForwardAll();
-
-    // Verify model selection is disabled
     await formPage.form.expectModelSelectionState('disabled');
-
-    // Create model and capture ID
     const forwardAllModelId = await formPage.createModelAndCaptureId();
 
-    // Synchronously populate cache by calling sync-models endpoint
-    // Also trigger a /v1/models call to populate frontend cache
+    // Synchronously populate the model cache via the sync-models endpoint.
+    // Uses page.evaluate with credentials:'include' because this endpoint
+    // requires a browser session cookie, not a Bearer token.
     const syncResult = await page.evaluate(async (modelId) => {
-      const response = await fetch(`/bodhi/v1/models/api/${modelId}/sync-models`, {
+      const syncResp = await fetch(`/bodhi/v1/models/api/${modelId}/sync-models`, {
         method: 'POST',
         credentials: 'include',
       });
-      if (!response.ok) {
-        throw new Error(`Failed to sync models: ${response.status}`);
+      if (!syncResp.ok) {
+        throw new Error(`sync-models failed: ${syncResp.status}`);
       }
-      const result = await response.json();
-
-      const modelsResponse = await fetch('/v1/models', { credentials: 'include' });
-      const modelsData = await modelsResponse.json();
-
-      return {
-        sync: result,
-        models: modelsData.data,
-      };
+      const sync = await syncResp.json();
+      const modelsResp = await fetch('/v1/models', { credentials: 'include' });
+      const modelsData = await modelsResp.json();
+      return { sync, models: modelsData.data };
     }, forwardAllModelId);
 
-    // Assert on sync result
     expect(syncResult.sync.id).toBe(forwardAllModelId);
     expect(syncResult.sync.prefix).toBe('fwd/');
     expect(syncResult.sync.forward_all_with_prefix).toBe(true);
     expect(syncResult.models.some((m) => m.id.startsWith('fwd/'))).toBe(true);
 
-    // ===== SCENARIO B: Verify model in list with prefix and forward_all columns =====
+    // Verify the model row in the list
     await modelsPage.navigateToModels();
     const apiModel = await modelsPage.getModelRow(forwardAllModelId);
     expect(apiModel).toMatchObject({
@@ -103,99 +87,73 @@ test.describe('API Models Forward All With Prefix', () => {
       forward_all: 'Yes',
     });
 
-    // ===== SCENARIO B2: Verify edit page shows correct radio button selection =====
-    // Navigate to edit page for the forward_all model
+    // Verify edit page reflects the correct radio selection
     await modelsPage.editModel(forwardAllModelId);
-
-    // Verify forward_all radio button is selected
     await formPage.form.verifyForwardAllModeSelected();
-    // Verify prefix input shows correct value
     await formPage.form.verifyPrefixValue('fwd/');
 
-    // Navigate to chat and verify prefixed models appear
+    // Chat page shows prefixed models from the synced cache
     await chatPage.navigateToChat();
     await chatPage.waitForChatPageLoad();
-
-    // Open model combobox and verify prefixed models appear
     await chatPage.toggleModelCombobox();
     await chatPage.expectModelOptionVisible(`fwd/${ApiModelFixtures.OPENAI_MODEL}`);
     await chatPage.toggleModelCombobox();
 
-    // ===== SCENARIO C: Chat with forward_all prefixed model =====
+    // Send a message via the prefixed model
     const prefixedModel = `fwd/${ApiModelFixtures.OPENAI_MODEL}`;
     await chatPage.selectModel(prefixedModel);
-
     await chatPage.sendMessage('What is 1+1?');
     await chatPage.waitForResponseComplete();
     const response = await chatPage.getLastAssistantMessage();
     expect(response.length).toBeGreaterThan(0);
     expect(response.toLowerCase()).toContain('2');
 
-    // ===== SCENARIO D: Prefix uniqueness - try creating model with same prefix =====
+    // Prefix uniqueness: a second model with the same prefix should fail
     await modelsPage.navigateToModels();
     await modelsPage.clickNewApiModel();
     await formPage.form.waitForFormReady();
-
-    await formPage.form.fillBasicInfoWithPrefix(
-      testData.apiKey,
-      'fwd/', // Same prefix - should fail
-      'https://api.openai.com/v1'
-    );
+    await formPage.form.fillBasicInfoWithPrefix(testData.apiKey, 'fwd/', 'https://api.openai.com/v1');
     await formPage.form.enableForwardAll();
-
-    // Try to create - should show error
     await page.click('[data-testid="create-api-model-button"]');
     await formPage.form.waitForToast(/Prefix.*already.*used/i);
 
-    // ===== SCENARIO E: Delete forward_all model =====
+    // Cleanup
     await modelsPage.navigateToModels();
     await modelsPage.deleteModel(forwardAllModelId);
 
-    // ===== SCENARIO F: Verify models removed from chat =====
+    // Verify prefixed models disappear from chat after deletion
     await chatPage.navigateToChat();
     await chatPage.waitForChatPageLoad();
-
-    // Open model combobox and verify prefixed models are no longer visible
     await chatPage.toggleModelCombobox();
     await chatPage.expectModelOptionNotVisible(`fwd/${ApiModelFixtures.OPENAI_MODEL}`);
   });
 
   test('toggle between forward_all and selected_models modes', async ({ page }) => {
-    // ===== Test UI behavior of switching modes =====
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
     await modelsPage.clickNewApiModel();
     await formPage.form.waitForFormReady();
 
-    // Initially forward_all should be disabled (no prefix)
+    // Without prefix, forward_all is disabled
     await formPage.form.expectForwardAllDisabled();
 
-    // Enable prefix
+    // Adding a prefix enables the forward_all radio
     await formPage.form.setPrefix('test/');
-
-    // Now forward_all should be enabled
     await formPage.form.expectForwardAllEnabled();
 
-    // Enable forward_all mode
+    // Enable forward_all → model selection disabled
     await formPage.form.enableForwardAll();
-
-    // Model selection should be disabled
     await formPage.form.expectModelSelectionState('disabled');
 
-    // Switch back to selected models mode
+    // Switch back to selected_models → model selection enabled
     await formPage.form.selectModelsMode();
-
-    // Model selection should be enabled again
     await formPage.form.expectModelSelectionState('enabled');
 
     // Fetch and select models normally
     await formPage.form.fillApiKey(testData.apiKey);
     await formPage.form.fetchAndSelectModels([ApiModelFixtures.OPENAI_MODEL]);
 
-    // Create with selected models mode
     const selectedModeModelId = await formPage.createModelAndCaptureId();
-
-    // Cleanup
     await modelsPage.navigateToModels();
     await modelsPage.deleteModel(selectedModeModelId);
   });

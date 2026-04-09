@@ -562,7 +562,7 @@ export function mockApiModelsEmpty() {
  */
 export function mockApiFormatsDefault() {
   return mockApiFormats({
-    data: ['openai', 'openai_responses', 'placeholder'],
+    data: ['openai', 'openai_responses', 'anthropic', 'placeholder'],
   });
 }
 

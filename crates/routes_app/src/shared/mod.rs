@@ -1,3 +1,4 @@
+mod anthropic_error;
 mod api_error;
 mod auth_scope_extractor;
 mod common;
@@ -13,6 +14,7 @@ mod validated_json;
 #[cfg(test)]
 mod test_openapi;
 
+pub use anthropic_error::{AnthropicApiError, AnthropicErrorBody, AnthropicErrorResponse};
 pub use api_error::*;
 pub use auth_scope_extractor::*;
 pub use common::*;

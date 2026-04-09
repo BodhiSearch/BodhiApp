@@ -3,9 +3,14 @@ export class ApiModelFixtures {
   // Update these when models are deprecated.
   static OPENAI_MODEL = 'gpt-4.1-nano';
   static OPENROUTER_MODEL = 'openai/gpt-4.1-nano';
+  static ANTHROPIC_MODEL = 'claude-3-haiku-20240307';
 
   // Parameterized API format configs for multi-format E2E testing.
   // Add new formats here to automatically get test coverage.
+  // Each entry must define:
+  //   primaryEndpoints   – BodhiApp endpoint(s) that speak the format's native protocol
+  //   buildPrimaryBody   – builds the request body for a primaryEndpoint call
+  //   extractPrimaryResponse – extracts the text reply from a primaryEndpoint response
   static API_FORMATS = {
     openai: {
       format: 'openai',
@@ -16,6 +21,20 @@ export class ApiModelFixtures {
       chatQuestion: 'What day comes after Monday?',
       chatExpected: 'tuesday',
       chatEndpoint: '/v1/chat/completions',
+      mockResponse: 'David Smith is from Chicago',
+      // Native endpoint(s) this format is served on
+      primaryEndpoints: ['/v1/chat/completions'],
+      buildPrimaryBody: (model, question) => ({
+        model,
+        messages: [{ role: 'user', content: question }],
+      }),
+      extractPrimaryResponse: (data) => data.choices?.[0]?.message?.content ?? '',
+      // Prefix used when multiple formats are registered simultaneously to avoid
+      // model-name collisions (e.g. both openai and openai_responses use gpt-4.1-nano).
+      // The effective model ID becomes `${multiTestPrefix}${model}`.
+      multiTestPrefix: 'oai/',
+      // BodhiApp routes /v1/chat/completions to OpenAI | Placeholder | Anthropic aliases only.
+      supportsUniversalChatCompletions: true,
     },
     openai_responses: {
       format: 'openai_responses',
@@ -26,6 +45,54 @@ export class ApiModelFixtures {
       chatQuestion: 'What day comes after Monday?',
       chatExpected: 'tuesday',
       chatEndpoint: '/v1/responses',
+      mockResponse: 'David Smith is from Chicago',
+      primaryEndpoints: ['/v1/responses'],
+      buildPrimaryBody: (model, question) => ({
+        model,
+        input: question,
+      }),
+      extractPrimaryResponse: (data) => {
+        // Responses API: output[].content[].text
+        if (Array.isArray(data.output)) {
+          for (const item of data.output) {
+            if (Array.isArray(item.content)) {
+              for (const c of item.content) {
+                if (c.text) return c.text;
+              }
+            }
+          }
+        }
+        return '';
+      },
+      multiTestPrefix: 'res/',
+      // BodhiApp rejects openai_responses aliases on /v1/chat/completions (format mismatch).
+      // Use /v1/responses instead (the native endpoint for this format).
+      supportsUniversalChatCompletions: false,
+    },
+    anthropic: {
+      format: 'anthropic',
+      formatDisplayName: 'Anthropic',
+      model: ApiModelFixtures.ANTHROPIC_MODEL,
+      baseUrl: 'https://api.anthropic.com/v1',
+      envKey: 'INTEG_TEST_ANTHROPIC_API_KEY',
+      chatQuestion: 'What day comes after Monday?',
+      chatExpected: 'tuesday',
+      chatEndpoint: '/v1/messages',
+      mockResponse: 'David Smith is from Chicago',
+      // BodhiApp exposes the Anthropic protocol on two paths:
+      //   /v1/messages            – for clients that set base_url to http://bodhi-server/
+      //   /anthropic/v1/messages  – for Anthropic SDK clients (base_url = http://bodhi-server/anthropic/)
+      primaryEndpoints: ['/v1/messages', '/anthropic/v1/messages'],
+      buildPrimaryBody: (model, question) => ({
+        model,
+        max_tokens: 50,
+        messages: [{ role: 'user', content: question }],
+      }),
+      extractPrimaryResponse: (data) => data.content?.[0]?.text ?? '',
+      // Claude model name is already unique; no prefix needed for disambiguation.
+      multiTestPrefix: '',
+      // Anthropic format IS supported by /v1/chat/completions (routes to api.anthropic.com/v1/chat/completions).
+      supportsUniversalChatCompletions: true,
     },
   };
 
@@ -44,50 +111,21 @@ export class ApiModelFixtures {
       api_format: 'openai',
       baseUrl: 'https://api.openai.com/v1',
       models: [ApiModelFixtures.OPENAI_MODEL],
-      prefix: null, // Default no prefix
+      prefix: null,
       ...overrides,
     };
   }
 
   static createTestSuite(count = 3) {
-    return Array.from({ length: count }, (_, i) => ApiModelFixtures.createModelData());
+    return Array.from({ length: count }, () => ApiModelFixtures.createModelData());
   }
 
   static getRequiredEnvVars() {
     const apiKey = process.env.INTEG_TEST_OPENAI_API_KEY;
-    const openrouterApiKey = process.env.INTEG_TEST_OPENROUTER_API_KEY;
     if (!apiKey) {
       throw new Error('INTEG_TEST_OPENAI_API_KEY environment variable not set');
     }
-    if (!openrouterApiKey) {
-      throw new Error('INTEG_TEST_OPENROUTER_API_KEY environment variable not set');
-    }
-    return { apiKey, openrouterApiKey };
-  }
-
-  // Predefined test scenarios
-  static createLifecycleTestData() {
-    return ApiModelFixtures.createModelData();
-  }
-
-  static createMobileTestData() {
-    return ApiModelFixtures.createModelData();
-  }
-
-  static createTabletTestData() {
-    return ApiModelFixtures.createModelData();
-  }
-
-  static createEditTestData() {
-    return ApiModelFixtures.createModelData();
-  }
-
-  static createCustomAliasData(baseUrl, models) {
-    return ApiModelFixtures.createModelData({
-      api_format: 'openai',
-      baseUrl,
-      models,
-    });
+    return { apiKey };
   }
 
   // Test data validation
@@ -110,68 +148,52 @@ export class ApiModelFixtures {
     return true;
   }
 
-  // Cleanup utilities
-  static createTemporaryModel() {
-    return ApiModelFixtures.createModelData();
-  }
-
   // Common test scenarios
   static scenarios = {
-    BASIC_OPENAI: () => this.createModelData(),
+    BASIC_OPENAI: () => ApiModelFixtures.createModelData(),
 
-    FULL_OPENAI: () => this.createModelData(),
+    FULL_OPENAI: () => ApiModelFixtures.createModelData(),
 
-    MINIMAL_CONFIG: () => this.createModelData(),
-
-    // Prefix-specific scenarios with separators
-    OPENROUTER: () =>
-      this.createModelData({
-        api_format: 'openai',
-        baseUrl: 'https://openrouter.ai/api/v1',
-        models: [this.OPENROUTER_MODEL],
-        prefix: 'openrouter/',
-      }),
+    MINIMAL_CONFIG: () => ApiModelFixtures.createModelData(),
 
     OPENAI_PREFIX: () =>
-      this.createModelData({
+      ApiModelFixtures.createModelData({
         api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
         prefix: 'openai:',
       }),
 
     CUSTOM_PREFIX: () =>
-      this.createModelData({
+      ApiModelFixtures.createModelData({
         api_format: 'openai',
-        baseUrl: 'https://openrouter.ai/api/v1',
-        models: [this.OPENROUTER_MODEL],
+        baseUrl: 'https://api.openai.com/v1',
         prefix: 'custom-',
       }),
 
     NO_PREFIX: () =>
-      this.createModelData({
+      ApiModelFixtures.createModelData({
         api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
         prefix: null,
       }),
 
     EMPTY_PREFIX: () =>
-      this.createModelData({
+      ApiModelFixtures.createModelData({
         api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
         prefix: '',
       }),
 
     FORWARD_ALL_OPENAI: () =>
-      this.createModelData({
+      ApiModelFixtures.createModelData({
         api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
         prefix: 'fwd/',
         forward_all_with_prefix: true,
-        models: [], // Empty models list for forward_all mode
+        models: [],
       }),
   };
 
-  // Environment setup helpers
   static checkEnvironment() {
     try {
       ApiModelFixtures.getRequiredEnvVars();
@@ -185,7 +207,6 @@ export class ApiModelFixtures {
   static getTestEnvironment() {
     return {
       hasApiKey: !!process.env.INTEG_TEST_OPENAI_API_KEY,
-      hasOpenRouterApiKey: !!process.env.INTEG_TEST_OPENROUTER_API_KEY,
       isCI: !!process.env.CI,
       testMode: process.env.NODE_ENV || 'test',
     };

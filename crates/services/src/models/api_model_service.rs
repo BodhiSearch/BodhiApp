@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use crate::db::{DbError, DbService, TimeService};
-use crate::models::{ApiAlias, ApiAliasResponse, ApiKeyUpdate, ApiModelRequest};
+use crate::models::{ApiAlias, ApiAliasResponse, ApiFormat, ApiKeyUpdate, ApiModelRequest};
 use crate::new_ulid;
 use crate::AiApiService;
 use errmeta::{AppError, EntityError, ErrorType};
@@ -151,6 +151,7 @@ impl ApiModelService for DefaultApiModelService {
         user_id.to_string(),
         api_alias.id.clone(),
         api_alias.base_url.clone(),
+        api_alias.api_format.clone(),
       );
     }
 
@@ -209,6 +210,7 @@ impl ApiModelService for DefaultApiModelService {
         user_id.to_string(),
         api_alias.id.clone(),
         api_alias.base_url.clone(),
+        api_alias.api_format.clone(),
       );
     }
 
@@ -285,7 +287,7 @@ impl ApiModelService for DefaultApiModelService {
     // Fetch models from remote API synchronously
     let models = self
       .ai_api_service
-      .fetch_models(api_key.clone(), &api_alias.base_url)
+      .fetch_models(api_key.clone(), &api_alias.base_url, &api_alias.api_format)
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -321,6 +323,7 @@ fn spawn_cache_refresh(
   user_id: String,
   alias_id: String,
   base_url: String,
+  api_format: ApiFormat,
 ) {
   tokio::spawn(async move {
     let api_key = db_service
@@ -328,7 +331,10 @@ fn spawn_cache_refresh(
       .await
       .ok()
       .flatten();
-    if let Ok(models) = ai_api_service.fetch_models(api_key, &base_url).await {
+    if let Ok(models) = ai_api_service
+      .fetch_models(api_key, &base_url, &api_format)
+      .await
+    {
       let now = time_service.utc_now();
       let _ = db_service
         .update_api_model_cache(&tenant_id, &alias_id, models, now)

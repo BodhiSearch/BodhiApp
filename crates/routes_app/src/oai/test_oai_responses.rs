@@ -297,11 +297,11 @@ async fn test_responses_get_success() -> anyhow::Result<()> {
   let mut mock_inference = MockInferenceService::new();
   mock_inference
     .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params| {
+    .withf(|endpoint, _req, alias, _key, _params, _headers| {
       *endpoint == LlmEndpoint::ResponsesGet("resp-abc-123".to_string()) && alias.id == "resp-alias"
     })
     .times(1)
-    .return_once(|_, _, _, _, _| ok_response());
+    .return_once(|_, _, _, _, _, _| ok_response());
 
   let app_service = builder
     .inference_service(Arc::new(mock_inference))
@@ -385,12 +385,12 @@ async fn test_responses_input_items_success() -> anyhow::Result<()> {
   let mut mock_inference = MockInferenceService::new();
   mock_inference
     .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params| {
+    .withf(|endpoint, _req, alias, _key, _params, _headers| {
       *endpoint == LlmEndpoint::ResponsesInputItems("resp-abc-123".to_string())
         && alias.id == "resp-alias"
     })
     .times(1)
-    .return_once(|_, _, _, _, _| ok_response());
+    .return_once(|_, _, _, _, _, _| ok_response());
 
   let app_service = builder
     .inference_service(Arc::new(mock_inference))
@@ -566,7 +566,7 @@ async fn test_responses_get_forwards_extra_query_params() -> anyhow::Result<()> 
   let mut mock_inference = MockInferenceService::new();
   mock_inference
     .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, params| {
+    .withf(|endpoint, _req, alias, _key, params, _headers| {
       *endpoint == LlmEndpoint::ResponsesGet("resp-abc-123".to_string())
         && alias.id == "resp-alias"
         && params
@@ -575,7 +575,7 @@ async fn test_responses_get_forwards_extra_query_params() -> anyhow::Result<()> 
           .unwrap_or(false)
     })
     .times(1)
-    .return_once(|_, _, _, _, _| ok_response());
+    .return_once(|_, _, _, _, _, _| ok_response());
 
   let app_service = builder
     .inference_service(Arc::new(mock_inference))
@@ -613,7 +613,7 @@ async fn test_responses_input_items_forwards_extra_query_params() -> anyhow::Res
   let mut mock_inference = MockInferenceService::new();
   mock_inference
     .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, params| {
+    .withf(|endpoint, _req, alias, _key, params, _headers| {
       *endpoint == LlmEndpoint::ResponsesInputItems("resp-abc-123".to_string())
         && alias.id == "resp-alias"
         && params
@@ -622,7 +622,7 @@ async fn test_responses_input_items_forwards_extra_query_params() -> anyhow::Res
           .unwrap_or(false)
     })
     .times(1)
-    .return_once(|_, _, _, _, _| ok_response());
+    .return_once(|_, _, _, _, _, _| ok_response());
 
   let app_service = builder
     .inference_service(Arc::new(mock_inference))

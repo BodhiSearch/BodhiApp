@@ -290,12 +290,14 @@ fn test_creds_enum_validation() {
   let fetch_request_with_key = FetchModelsRequest {
     creds: TestCreds::ApiKey(ApiKey::some("sk-direct-key".to_string()).unwrap()),
     base_url: "https://api.openai.com/v1".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(fetch_request_with_key.validate().is_ok());
 
   let fetch_request_with_id = FetchModelsRequest {
     creds: TestCreds::Id("stored-model-id".to_string()),
     base_url: "https://api.openai.com/v1".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(fetch_request_with_id.validate().is_ok());
 }

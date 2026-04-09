@@ -13,10 +13,21 @@ import { extractTextFromAgentMessage } from '@/types/chat';
 
 const DUMMY_API_KEY = 'bodhi-proxy';
 
-type PiApi = 'openai-completions' | 'openai-responses';
+type PiApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
 
 function apiFormatToPiApi(apiFormat: ApiFormatSetting): PiApi {
-  return apiFormat === 'openai_responses' ? 'openai-responses' : 'openai-completions';
+  switch (apiFormat) {
+    case 'openai_responses':
+      return 'openai-responses';
+    case 'anthropic':
+      return 'anthropic-messages';
+    default:
+      return 'openai-completions';
+  }
+}
+
+function apiFormatToProvider(apiFormat: ApiFormatSetting): string {
+  return apiFormat === 'anthropic' ? 'anthropic' : 'openai';
 }
 
 function buildModel(modelId: string, baseUrl: string, apiFormat: ApiFormatSetting = 'openai'): Model<PiApi> {
@@ -24,31 +35,42 @@ function buildModel(modelId: string, baseUrl: string, apiFormat: ApiFormatSettin
     id: modelId,
     name: modelId,
     api: apiFormatToPiApi(apiFormat),
-    provider: 'openai',
+    provider: apiFormatToProvider(apiFormat),
     baseUrl,
     reasoning: false,
     input: ['text'],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128000,
-    maxTokens: 4096,
+    maxTokens: 0,
   };
 }
 
 function createBodhiStreamFn(getApiToken: () => string | undefined): StreamFn {
   return (model, context, options) => {
     const apiToken = getApiToken();
+    const settings = useChatSettingsStore.getState();
     const headers =
       apiToken !== undefined
         ? { ...model.headers, Authorization: `Bearer ${apiToken}` }
         : { ...model.headers, Authorization: null as unknown as string };
     const patchedModel = { ...model, headers };
-    return streamSimple(patchedModel, context, options);
+    const maxTokens =
+      settings.max_tokens_enabled && settings.max_tokens != null ? settings.max_tokens : undefined;
+    return streamSimple(
+      patchedModel,
+      context,
+      maxTokens !== undefined ? { ...options, maxTokens } : options
+    );
   };
 }
 
-function getBaseUrl(): string {
+function getBaseUrl(apiFormat: ApiFormatSetting = 'openai'): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-  return `${origin}/v1`;
+  // pi-ai's Anthropic provider uses the official @anthropic-ai/sdk which
+  // appends `/v1/messages` to the configured baseURL, so we point it at
+  // `/anthropic` so the final URL lands on BodhiApp's proxy endpoint
+  // `/anthropic/v1/messages`.
+  return apiFormat === 'anthropic' ? `${origin}/anthropic` : `${origin}/v1`;
 }
 
 export interface AgentStoreState {
@@ -172,7 +194,7 @@ async function restoreMessagesForChat(): Promise<void> {
         role: 'assistant' as const,
         content: [{ type: 'text' as const, text: m.content }],
         api: apiFormatToPiApi(apiFormat),
-        provider: 'openai',
+        provider: apiFormatToProvider(apiFormat),
         model: modelId,
         usage: {
           input: 0,
@@ -218,7 +240,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     }
 
     const agent = getOrCreateAgent();
-    const baseUrl = getBaseUrl();
+    const baseUrl = getBaseUrl(settingsStore.apiFormat);
     const model = buildModel(modelId, baseUrl, settingsStore.apiFormat);
 
     agent.state.model = model;
@@ -335,7 +357,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   syncAgentSettings: (tools) => {
     const agent = getOrCreateAgent();
     const settings = useChatSettingsStore.getState();
-    const baseUrl = getBaseUrl();
+    const baseUrl = getBaseUrl(settings.apiFormat);
     if (settings.model) {
       agent.state.model = buildModel(settings.model, baseUrl, settings.apiFormat);
     }

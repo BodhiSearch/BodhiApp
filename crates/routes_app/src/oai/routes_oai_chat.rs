@@ -148,7 +148,12 @@ pub async fn chat_completions_handler(
       .forward_local(LlmEndpoint::ChatCompletions, request, alias)
       .await
       .map_err(OaiApiError::from)?,
-    Alias::Api(ref api_alias) if api_alias.api_format != ApiFormat::OpenAIResponses => {
+    Alias::Api(ref api_alias)
+      if matches!(
+        api_alias.api_format,
+        ApiFormat::OpenAI | ApiFormat::Placeholder | ApiFormat::Anthropic
+      ) =>
+    {
       let api_key = super::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
       inference
         .forward_remote(LlmEndpoint::ChatCompletions, request, api_alias, api_key)

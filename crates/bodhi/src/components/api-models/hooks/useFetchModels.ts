@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
-import { FetchModelsRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
+import { ApiFormat, FetchModelsRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
 
-import { useToast } from '@/hooks/use-toast';
 import { useFetchApiModels } from '@/hooks/models';
+import { useToast } from '@/hooks/use-toast';
 
 import { ApiProvider } from '../providers/constants';
 
@@ -19,6 +19,7 @@ interface FetchModelsData {
   apiKey?: string;
   baseUrl: string;
   id?: string;
+  apiFormat: ApiFormat;
 }
 
 export function useFetchModels({
@@ -65,6 +66,7 @@ export function useFetchModels({
     const fetchData: FetchModelsRequest = {
       creds,
       base_url: data.baseUrl,
+      api_format: data.apiFormat,
     };
 
     try {

@@ -203,6 +203,7 @@ pub async fn responses_get_handler(
       &api_alias,
       api_key,
       upstream_query_params(&params),
+      None,
     )
     .await
     .map_err(ApiError::from)?;
@@ -290,6 +291,7 @@ pub async fn responses_input_items_handler(
       &api_alias,
       api_key,
       upstream_query_params(&params),
+      None,
     )
     .await
     .map_err(ApiError::from)?;

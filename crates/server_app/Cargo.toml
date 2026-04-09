@@ -50,6 +50,7 @@ dotenv = { workspace = true }
 fs_extra = { workspace = true }
 maplit = { workspace = true }
 mockall = { workspace = true }
+mockito = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
 rstest = { workspace = true }

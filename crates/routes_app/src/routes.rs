@@ -1,6 +1,15 @@
 use crate::middleware::{
-  access_request_auth_middleware, api_auth_middleware, auth_middleware, canonical_url_middleware,
-  optional_auth_middleware, AccessRequestValidator, McpAccessRequestValidator,
+  access_request_auth_middleware, anthropic_auth_middleware, api_auth_middleware, auth_middleware,
+  canonical_url_middleware, optional_auth_middleware, AccessRequestValidator,
+  McpAccessRequestValidator,
+};
+use crate::{
+  anthropic_messages_create_handler, anthropic_models_get_handler, anthropic_models_list_handler,
+  chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
+  responses_cancel_handler, responses_create_handler, responses_delete_handler,
+  responses_get_handler, responses_input_items_handler, ENDPOINT_ANTHROPIC_MESSAGES,
+  ENDPOINT_ANTHROPIC_MODELS, ENDPOINT_MESSAGES, ENDPOINT_OAI_CHAT_COMPLETIONS,
+  ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS, ENDPOINT_OAI_RESPONSES,
 };
 use crate::{
   api_models_create, api_models_destroy, api_models_fetch_models, api_models_formats,
@@ -41,18 +50,12 @@ use crate::{
 };
 use crate::{build_ui_proxy_router, build_ui_spa_router};
 use crate::{
-  chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
-  responses_cancel_handler, responses_create_handler, responses_delete_handler,
-  responses_get_handler, responses_input_items_handler, ENDPOINT_OAI_CHAT_COMPLETIONS,
-  ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS, ENDPOINT_OAI_RESPONSES,
-};
-use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
   ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
 use axum::{
   http::HeaderName,
-  middleware::from_fn_with_state,
+  middleware::{from_fn, from_fn_with_state},
   response::Redirect,
   routing::{any, delete, get, post, put},
   Router,
@@ -68,6 +71,11 @@ use tower_http::{
 use tracing::{debug, info, Level};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
+
+/// Static OpenAPI spec for the Anthropic Messages proxy. Embedded at compile
+/// time from the checked-in resource file (refresh procedure documented in
+/// `crates/routes_app/resources/README.md`).
+const ANTHROPIC_OPENAPI_JSON: &str = include_str!("../resources/openapi-anthropic.json");
 
 fn permissive_cors() -> CorsLayer {
   CorsLayer::new()
@@ -199,6 +207,37 @@ pub async fn build_routes(
     .route(ENDPOINT_MODELS, get(models_index))
     .route(&format!("{ENDPOINT_MODELS}/{{id}}"), get(models_show))
     .route(ENDPOINT_MODELS_FILES, get(modelfiles_index))
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| {
+        api_auth_middleware(
+          ResourceRole::User,
+          Some(TokenScope::User),
+          Some(UserScope::User),
+          state,
+          req,
+          next,
+        )
+      },
+    ));
+
+  // Anthropic-compatible APIs at /anthropic/v1/*. Accepts `x-api-key` as an
+  // alternative to `Authorization: Bearer` via the anthropic_auth_middleware
+  // (scoped to this group only). Uses the same User-level auth as user_apis.
+  let anthropic_apis = Router::new()
+    .route(ENDPOINT_MESSAGES, post(anthropic_messages_create_handler))
+    .route(
+      ENDPOINT_ANTHROPIC_MESSAGES,
+      post(anthropic_messages_create_handler),
+    )
+    .route(
+      ENDPOINT_ANTHROPIC_MODELS,
+      get(anthropic_models_list_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_ANTHROPIC_MODELS}/{{model_id}}"),
+      get(anthropic_models_get_handler),
+    )
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -466,9 +505,13 @@ pub async fn build_routes(
   // API-protected routes (PERMISSIVE CORS — external tools/apps need access)
   let api_protected = Router::new()
     .merge(user_apis)
+    .merge(anthropic_apis)
     .merge(apps_apis)
     .merge(power_user_apis)
     .route_layer(from_fn_with_state(state.clone(), auth_middleware))
+    // Outermost layer: runs first, before auth_middleware.
+    // Rewrites x-api-key -> Authorization: Bearer for Anthropic paths only.
+    .route_layer(from_fn(anthropic_auth_middleware))
     .layer(permissive_cors());
 
   // Public + optional auth (PERMISSIVE CORS)
@@ -495,6 +538,34 @@ pub async fn build_routes(
     .await;
   GlobalErrorResponses::oai().modify(&mut openapi_oai);
 
+  // Anthropic spec is a checked-in static asset (filtered upstream of BodhiApp)
+  // — see crates/routes_app/resources/README.md. We use OpenAPI 3.1.0 from
+  // upstream, which `utoipa::openapi` does not parse strictly, so we serve
+  // it as a `serde_json::Value` via `external_url_unchecked` (swagger-ui
+  // bypasses utoipa validation).
+  //
+  // Two patches at boot time:
+  //   1. Inject `info.version` if missing (the upstream filter omits it).
+  //   2. Override `servers` so swagger-ui prepends `/anthropic` to all
+  //      relative paths, making "Try it out" calls land on BodhiApp's proxy
+  //      endpoints.
+  let openapi_anthropic: serde_json::Value = {
+    let mut doc: serde_json::Value = serde_json::from_str(ANTHROPIC_OPENAPI_JSON)
+      .expect("checked-in anthropic openapi spec must be valid JSON");
+    if let Some(info) = doc.get_mut("info").and_then(|v| v.as_object_mut()) {
+      info
+        .entry("version")
+        .or_insert_with(|| serde_json::Value::String("1.0.0".to_string()));
+    }
+    if let Some(obj) = doc.as_object_mut() {
+      obj.insert(
+        "servers".to_string(),
+        serde_json::json!([{"url": "/anthropic"}]),
+      );
+    }
+    doc
+  };
+
   // Build final router — NO global CorsLayer
   let router = Router::<Arc<dyn AppService>>::new()
     .merge(public_router)
@@ -503,7 +574,8 @@ pub async fn build_routes(
     .merge(
       SwaggerUi::new("/swagger-ui")
         .url("/api-docs/openapi.json", openapi)
-        .url("/api-docs/openapi-oai.json", openapi_oai),
+        .url("/api-docs/openapi-oai.json", openapi_oai)
+        .external_url_unchecked("/api-docs/openapi-anthropic.json", openapi_anthropic),
     )
     .with_state(state);
 

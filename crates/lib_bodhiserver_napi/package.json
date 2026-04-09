@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@copilotkit/aimock": "^1.11.0",
     "@modelcontextprotocol/inspector": "0.21.1",
     "@modelcontextprotocol/server-everything": "2026.1.26",
     "@napi-rs/cli": "^2.18.4",

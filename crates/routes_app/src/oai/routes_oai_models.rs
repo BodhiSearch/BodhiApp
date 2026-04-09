@@ -102,7 +102,10 @@ pub async fn oai_models_handler(
                 .await
                 .ok()
                 .flatten();
-              if let Ok(models) = ai_api.fetch_models(api_key, &alias.base_url).await {
+              if let Ok(models) = ai_api
+                .fetch_models(api_key, &alias.base_url, &alias.api_format)
+                .await
+              {
                 let now = time_svc.utc_now();
                 let _ = db
                   .update_api_model_cache(&refresh_tenant_id, &alias_id, models, now)

@@ -105,7 +105,7 @@ Default timeout (120s, configurable via `PLAYWRIGHT_TIMEOUT`) handles variable l
 | `auth-server-client.mjs` | `getAuthServerConfig()`, `getTestCredentials()`, `getPreConfiguredResourceClient()`, `getPreConfiguredAppClient()`, `AuthServerTestClient` |
 | `bodhi-app-server.mjs` | `createServerManager()` |
 | `browser-with-extension.mjs` | `BrowserWithExtension` |
-| `mock-openai-server.mjs` | `MockOpenAIServer` |
+| `@copilotkit/aimock` | `LLMock` — mock LLM server for OpenAI, Responses, Anthropic; request journal with `getRequests()`, `getLastRequest()`, `clearRequests()` |
 | `test-helpers.mjs` | `SHARED_STATIC_SERVER_URL`, `loadBindings()`, `createTestServer()`, `resetDatabase()`, `randomPort()` |
 | `fixtures.mjs` | `test` (extended with `sharedServerUrl` + `autoResetDb`), `expect` |
 | `utils/db-config.mjs` | `getDbConfig(projectName)`, `getServerUrl(projectName)` |

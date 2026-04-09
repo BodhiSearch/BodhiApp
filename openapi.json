@@ -3908,7 +3908,7 @@
           "models-api"
         ],
         "summary": "Get Available API Formats",
-        "description": "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions) and 'openai_responses' (Responses API).",
+        "description": "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), and 'anthropic' (Messages API).",
         "operationId": "getApiFormats",
         "responses": {
           "200": {
@@ -3921,7 +3921,8 @@
                 "example": {
                   "data": [
                     "openai",
-                    "openai_responses"
+                    "openai_responses",
+                    "anthropic"
                   ]
                 }
               }
@@ -7246,6 +7247,7 @@
         "enum": [
           "openai",
           "openai_responses",
+          "anthropic",
           "placeholder"
         ]
       },
@@ -8151,9 +8153,14 @@
           "base_url": {
             "type": "string",
             "description": "API base URL (required - always needed to know where to fetch models from)"
+          },
+          "api_format": {
+            "$ref": "#/components/schemas/ApiFormat",
+            "description": "API format to use for fetching models (defaults to OpenAI Chat Completions)"
           }
         },
         "example": {
+          "api_format": "openai",
           "base_url": "http://localhost:8080/v1",
           "creds": {
             "type": "api_key",

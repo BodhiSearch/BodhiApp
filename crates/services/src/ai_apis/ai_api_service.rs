@@ -27,7 +27,12 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
 
   /// Fetch available models from provider API
   /// API key is optional - if None, requests without authentication (API may return 401)
-  async fn fetch_models(&self, api_key: Option<String>, base_url: &str) -> Result<Vec<String>>;
+  async fn fetch_models(
+    &self,
+    api_key: Option<String>,
+    base_url: &str,
+    api_format: &ApiFormat,
+  ) -> Result<Vec<String>>;
 
   /// Forward POST request to remote API using a pre-resolved alias.
   async fn forward_request(
@@ -45,6 +50,7 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
         api_key,
         Some(request),
         None,
+        None,
       )
       .await
   }
@@ -58,6 +64,7 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
     api_key: Option<String>,
     request: Option<Value>,
     query_params: Option<Vec<(String, String)>>,
+    client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response>;
 }
 
@@ -114,6 +121,14 @@ impl AiApiService for DefaultAiApiService {
         }),
         format!("{}/responses", base_url),
       ),
+      ApiFormat::Anthropic => (
+        serde_json::json!({
+          "model": model,
+          "max_tokens": 50,
+          "messages": [{"role": "user", "content": prompt}]
+        }),
+        format!("{}/messages", base_url),
+      ),
       _ => (
         serde_json::json!({
           "model": model,
@@ -136,8 +151,18 @@ impl AiApiService for DefaultAiApiService {
       .header("Content-Type", "application/json")
       .json(&request_body);
 
-    if let Some(key) = api_key {
-      request = request.header("Authorization", format!("Bearer {}", key));
+    match api_format {
+      ApiFormat::Anthropic => {
+        if let Some(key) = api_key {
+          request = request.header("x-api-key", key);
+        }
+        request = request.header("anthropic-version", "2023-06-01");
+      }
+      _ => {
+        if let Some(key) = api_key {
+          request = request.header("Authorization", format!("Bearer {}", key));
+        }
+      }
     }
 
     let response = request.send().await?;
@@ -166,6 +191,14 @@ impl AiApiService for DefaultAiApiService {
         .and_then(|t| t.as_str())
         .unwrap_or("No response")
         .to_string(),
+      ApiFormat::Anthropic => response_body
+        .get("content")
+        .and_then(|c| c.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|b| b.get("text"))
+        .and_then(|t| t.as_str())
+        .unwrap_or("No response")
+        .to_string(),
       _ => response_body
         .get("choices")
         .and_then(|c| c.get(0))
@@ -179,37 +212,71 @@ impl AiApiService for DefaultAiApiService {
     Ok(content)
   }
 
-  async fn fetch_models(&self, api_key: Option<String>, base_url: &str) -> Result<Vec<String>> {
-    let url = format!("{}/models", base_url);
+  async fn fetch_models(
+    &self,
+    api_key: Option<String>,
+    base_url: &str,
+    api_format: &ApiFormat,
+  ) -> Result<Vec<String>> {
+    let mut all_ids: Vec<String> = Vec::new();
+    let mut before_id: Option<String> = None;
 
-    let mut request = self.client.get(&url)?;
+    loop {
+      let url = match &before_id {
+        Some(bid) => format!("{}/models?before_id={}", base_url, bid),
+        None => format!("{}/models", base_url),
+      };
 
-    if let Some(key) = api_key {
-      request = request.header("Authorization", format!("Bearer {}", key));
+      let mut request = self.client.get(&url)?;
+
+      match api_format {
+        ApiFormat::Anthropic => {
+          if let Some(ref key) = api_key {
+            request = request.header("x-api-key", key);
+          }
+          request = request.header("anthropic-version", "2023-06-01");
+        }
+        _ => {
+          if let Some(ref key) = api_key {
+            request = request.header("Authorization", format!("Bearer {}", key));
+          }
+        }
+      }
+
+      let response = request.send().await?;
+
+      let status = response.status();
+      if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        return Err(Self::status_to_error(status, body));
+      }
+
+      let response_body: serde_json::Value = response.json().await?;
+
+      let page_ids: Vec<String> = response_body
+        .get("data")
+        .and_then(|data| data.as_array())
+        .map(|models| {
+          models
+            .iter()
+            .filter_map(|model| model.get("id").and_then(|id| id.as_str()).map(String::from))
+            .collect()
+        })
+        .unwrap_or_default();
+
+      before_id = page_ids.last().cloned();
+      all_ids.extend(page_ids);
+
+      let has_more = response_body
+        .get("has_more")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+      if !has_more {
+        break;
+      }
     }
 
-    let response = request.send().await?;
-
-    let status = response.status();
-    if !status.is_success() {
-      let body = response.text().await.unwrap_or_default();
-      return Err(Self::status_to_error(status, body));
-    }
-
-    let response_body: serde_json::Value = response.json().await?;
-
-    let models = response_body
-      .get("data")
-      .and_then(|data| data.as_array())
-      .map(|models| {
-        models
-          .iter()
-          .filter_map(|model| model.get("id").and_then(|id| id.as_str()).map(String::from))
-          .collect()
-      })
-      .unwrap_or_default();
-
-    Ok(models)
+    Ok(all_ids)
   }
 
   async fn forward_request_with_method(
@@ -220,6 +287,7 @@ impl AiApiService for DefaultAiApiService {
     api_key: Option<String>,
     mut request: Option<Value>,
     query_params: Option<Vec<(String, String)>>,
+    client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response> {
     let url = format!("{}{}", api_alias.base_url, api_path);
 
@@ -251,8 +319,32 @@ impl AiApiService for DefaultAiApiService {
       http_request = http_request.query(params);
     }
 
-    if let Some(key) = api_key {
-      http_request = http_request.header("Authorization", format!("Bearer {}", key));
+    match api_alias.api_format {
+      ApiFormat::Anthropic => {
+        if let Some(key) = api_key {
+          http_request = http_request.header("x-api-key", key);
+        }
+        // Inject default only when client didn't supply their own version;
+        // client preference wins to avoid duplicate headers (reqwest appends, not replaces).
+        let client_has_version = client_headers
+          .as_ref()
+          .map(|hdrs| hdrs.iter().any(|(k, _)| k.eq_ignore_ascii_case("anthropic-version")))
+          .unwrap_or(false);
+        if !client_has_version {
+          http_request = http_request.header("anthropic-version", "2023-06-01");
+        }
+      }
+      _ => {
+        if let Some(key) = api_key {
+          http_request = http_request.header("Authorization", format!("Bearer {}", key));
+        }
+      }
+    }
+
+    if let Some(hdrs) = client_headers {
+      for (k, v) in hdrs {
+        http_request = http_request.header(k, v);
+      }
     }
 
     let response = if let Some(body) = request {

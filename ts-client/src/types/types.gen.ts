@@ -127,7 +127,7 @@ export type ApiAliasResponse = {
 /**
  * API format/protocol specification
  */
-export type ApiFormat = 'openai' | 'openai_responses' | 'placeholder';
+export type ApiFormat = 'openai' | 'openai_responses' | 'anthropic' | 'placeholder';
 
 /**
  * Response containing available API formats
@@ -482,6 +482,10 @@ export type FetchModelsRequest = {
      * API base URL (required - always needed to know where to fetch models from)
      */
     base_url: string;
+    /**
+     * API format to use for fetching models (defaults to OpenAI Chat Completions)
+     */
+    api_format?: ApiFormat;
 };
 
 /**

@@ -197,6 +197,7 @@ fn test_user_alias_serde_roundtrip() {
 #[rstest]
 #[case::openai(ApiFormat::OpenAI, r#""openai""#)]
 #[case::openai_responses(ApiFormat::OpenAIResponses, r#""openai_responses""#)]
+#[case::anthropic(ApiFormat::Anthropic, r#""anthropic""#)]
 #[case::placeholder(ApiFormat::Placeholder, r#""placeholder""#)]
 fn test_api_format_serde_roundtrip(#[case] format: ApiFormat, #[case] expected_json: &str) {
   let serialized = serde_json::to_string(&format).expect("serialize");

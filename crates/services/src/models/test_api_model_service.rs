@@ -43,7 +43,7 @@ async fn test_create_forward_all_triggers_cache_refresh(
   mock_ai
     .expect_fetch_models()
     .times(1)
-    .returning(|_, _| Ok(vec!["model-a".to_string(), "model-b".to_string()]));
+    .returning(|_, _, _| Ok(vec!["model-a".to_string(), "model-b".to_string()]));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -127,7 +127,7 @@ async fn test_update_forward_all_triggers_cache_refresh(
   mock_ai
     .expect_fetch_models()
     .times(1)
-    .returning(|_, _| Ok(vec!["remote-1".to_string(), "remote-2".to_string()]));
+    .returning(|_, _, _| Ok(vec!["remote-1".to_string(), "remote-2".to_string()]));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));

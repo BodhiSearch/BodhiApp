@@ -131,6 +131,7 @@ impl InferenceService for StandaloneInferenceService {
     api_alias: &ApiAlias,
     api_key: Option<String>,
     query_params: Option<Vec<(String, String)>>,
+    client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response, InferenceError> {
     proxy_to_remote(
       &self.ai_api_service,
@@ -139,6 +140,7 @@ impl InferenceService for StandaloneInferenceService {
       api_alias,
       api_key,
       query_params,
+      client_headers,
     )
     .await
   }
@@ -178,6 +180,7 @@ pub(crate) async fn proxy_to_remote(
   api_alias: &ApiAlias,
   api_key: Option<String>,
   query_params: Option<Vec<(String, String)>>,
+  client_headers: Option<Vec<(String, String)>>,
 ) -> Result<Response, InferenceError> {
   let method = endpoint.http_method();
   let api_path = endpoint.api_path();
@@ -187,7 +190,15 @@ pub(crate) async fn proxy_to_remote(
     None
   };
   ai_api_service
-    .forward_request_with_method(method, &api_path, api_alias, api_key, body, query_params)
+    .forward_request_with_method(
+      method,
+      &api_path,
+      api_alias,
+      api_key,
+      body,
+      query_params,
+      client_headers,
+    )
     .await
     .map_err(InferenceError::from)
 }

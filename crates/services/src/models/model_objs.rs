@@ -706,6 +706,9 @@ pub enum ApiFormat {
   #[serde(rename = "openai_responses")]
   #[strum(serialize = "openai_responses")]
   OpenAIResponses,
+  #[serde(rename = "anthropic")]
+  #[strum(serialize = "anthropic")]
+  Anthropic,
   #[serde(rename = "placeholder")]
   #[strum(serialize = "placeholder")]
   Placeholder,
@@ -1230,7 +1233,8 @@ impl TestPromptResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
     "creds": {"type": "api_key", "value": null},
-    "base_url": "http://localhost:8080/v1"
+    "base_url": "http://localhost:8080/v1",
+    "api_format": "openai"
 }))]
 pub struct FetchModelsRequest {
   /// Credentials to use for fetching models
@@ -1240,6 +1244,10 @@ pub struct FetchModelsRequest {
   /// API base URL (required - always needed to know where to fetch models from)
   #[validate(custom(function = "crate::validate_http_url"))]
   pub base_url: String,
+
+  /// API format to use for fetching models (defaults to OpenAI Chat Completions)
+  #[serde(default = "default_api_format_openai")]
+  pub api_format: ApiFormat,
 }
 
 /// Response containing available models from provider

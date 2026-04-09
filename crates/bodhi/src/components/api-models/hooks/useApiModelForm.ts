@@ -214,6 +214,7 @@ export function useApiModelForm({
       apiKey: watchedValues.useApiKey ? watchedValues.api_key : undefined,
       id: !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined,
       baseUrl: watchedValues.base_url || '',
+      apiFormat: watchedValues.api_format as ApiFormat,
     });
   };
 
@@ -288,6 +289,7 @@ export function useApiModelForm({
       disabledReason: fetchModels.getFetchDisabledReason({
         apiKey: watchedValues.api_key,
         baseUrl: watchedValues.base_url || '',
+        apiFormat: watchedValues.api_format as ApiFormat,
       }),
     },
 

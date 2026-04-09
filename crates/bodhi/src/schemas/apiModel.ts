@@ -13,6 +13,11 @@ export const API_FORMAT_PRESETS = {
     baseUrl: 'https://api.openai.com/v1',
     models: [] as string[],
   },
+  anthropic: {
+    name: 'Anthropic',
+    baseUrl: 'https://api.anthropic.com/v1',
+    models: [] as string[],
+  },
 };
 
 export type ApiFormatPreset = keyof typeof API_FORMAT_PRESETS;

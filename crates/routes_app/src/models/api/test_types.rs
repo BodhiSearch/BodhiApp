@@ -55,12 +55,14 @@ fn test_fetch_models_request_validation() {
   let invalid = FetchModelsRequest {
     creds: TestCreds::ApiKey(ApiKey::none()),
     base_url: "not-a-url".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(invalid.validate().is_err());
 
   let valid = FetchModelsRequest {
     creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
     base_url: "https://api.openai.com/v1".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(valid.validate().is_ok());
 }
@@ -153,6 +155,7 @@ fn test_fetch_models_request_credentials_validation() {
   let with_api_key = FetchModelsRequest {
     creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
     base_url: "https://api.openai.com/v1".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(with_api_key.validate().is_ok());
 
@@ -160,6 +163,7 @@ fn test_fetch_models_request_credentials_validation() {
   let no_auth = FetchModelsRequest {
     creds: TestCreds::ApiKey(ApiKey::none()),
     base_url: "https://api.openai.com/v1".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(no_auth.validate().is_ok());
 
@@ -167,6 +171,7 @@ fn test_fetch_models_request_credentials_validation() {
   let with_id = FetchModelsRequest {
     creds: TestCreds::Id("openai-model".to_string()),
     base_url: "https://api.openai.com/v1".to_string(),
+    api_format: ApiFormat::OpenAI,
   };
   assert!(with_id.validate().is_ok());
 }

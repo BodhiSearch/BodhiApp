@@ -14,6 +14,9 @@ pub enum LlmEndpoint {
   ResponsesDelete(String),
   ResponsesInputItems(String),
   ResponsesCancel(String),
+  AnthropicMessages,
+  AnthropicModels,
+  AnthropicModel(String),
 }
 
 impl LlmEndpoint {
@@ -25,22 +28,48 @@ impl LlmEndpoint {
       Self::ResponsesGet(id) | Self::ResponsesDelete(id) => format!("/responses/{}", id),
       Self::ResponsesInputItems(id) => format!("/responses/{}/input_items", id),
       Self::ResponsesCancel(id) => format!("/responses/{}/cancel", id),
+      Self::AnthropicMessages => "/messages".to_string(),
+      Self::AnthropicModels => "/models".to_string(),
+      Self::AnthropicModel(id) => format!("/models/{}", id),
     }
   }
 
   pub fn http_method(&self) -> &'static Method {
     match self {
       Self::ResponsesGet(_) | Self::ResponsesInputItems(_) => &Method::GET,
+      Self::AnthropicModels | Self::AnthropicModel(_) => &Method::GET,
       Self::ResponsesDelete(_) => &Method::DELETE,
       _ => &Method::POST,
     }
   }
 }
 
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use rstest::rstest;
+
+  #[rstest]
+  #[case(LlmEndpoint::AnthropicMessages, "/messages", &Method::POST)]
+  #[case(LlmEndpoint::AnthropicModels, "/models", &Method::GET)]
+  #[case(
+    LlmEndpoint::AnthropicModel("claude-3-5-sonnet".to_string()),
+    "/models/claude-3-5-sonnet",
+    &Method::GET
+  )]
+  fn test_anthropic_endpoint_paths(
+    #[case] endpoint: LlmEndpoint,
+    #[case] expected_path: &str,
+    #[case] expected_method: &Method,
+  ) {
+    assert_eq!(expected_path, endpoint.api_path());
+    assert_eq!(expected_method, endpoint.http_method());
+  }
+}
+
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait InferenceService: Send + Sync + std::fmt::Debug {
-  /// Forward a request to a local model via SharedContext
   async fn forward_local(
     &self,
     endpoint: LlmEndpoint,
@@ -48,8 +77,6 @@ pub trait InferenceService: Send + Sync + std::fmt::Debug {
     alias: Alias,
   ) -> Result<Response, InferenceError>;
 
-  /// Forward a request to a remote API provider.
-  /// Default implementation delegates to `forward_remote_with_params` with no query params.
   async fn forward_remote(
     &self,
     endpoint: LlmEndpoint,
@@ -58,12 +85,10 @@ pub trait InferenceService: Send + Sync + std::fmt::Debug {
     api_key: Option<String>,
   ) -> Result<Response, InferenceError> {
     self
-      .forward_remote_with_params(endpoint, request, api_alias, api_key, None)
+      .forward_remote_with_params(endpoint, request, api_alias, api_key, None, None)
       .await
   }
 
-  /// Forward a request to a remote API provider with optional query parameters.
-  /// Used by Responses API GET endpoints that need to forward query params upstream.
   async fn forward_remote_with_params(
     &self,
     endpoint: LlmEndpoint,
@@ -71,6 +96,7 @@ pub trait InferenceService: Send + Sync + std::fmt::Debug {
     api_alias: &ApiAlias,
     api_key: Option<String>,
     query_params: Option<Vec<(String, String)>>,
+    client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response, InferenceError>;
 
   /// Stop the LLM server process (no-op for multi-tenant/remote deployments)

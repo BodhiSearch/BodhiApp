@@ -26,6 +26,7 @@ impl InferenceService for NoopInferenceService {
     _api_alias: &ApiAlias,
     _api_key: Option<String>,
     _query_params: Option<Vec<(String, String)>>,
+    _client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response, InferenceError> {
     Err(InferenceError::Unsupported)
   }

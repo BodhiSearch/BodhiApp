@@ -669,7 +669,7 @@ export interface paths {
         };
         /**
          * Get Available API Formats
-         * @description Retrieves list of supported API formats/protocols: 'openai' (Chat Completions) and 'openai_responses' (Responses API).
+         * @description Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), and 'anthropic' (Messages API).
          */
         get: operations["getApiFormats"];
         put?: never;
@@ -1293,7 +1293,7 @@ export interface components {
          * @description API format/protocol specification
          * @enum {string}
          */
-        ApiFormat: "openai" | "openai_responses" | "placeholder";
+        ApiFormat: "openai" | "openai_responses" | "anthropic" | "placeholder";
         /**
          * @description Response containing available API formats
          * @example {
@@ -1675,6 +1675,7 @@ export interface components {
         /**
          * @description Request to fetch available models from provider
          * @example {
+         *       "api_format": "openai",
          *       "base_url": "http://localhost:8080/v1",
          *       "creds": {
          *         "type": "api_key",
@@ -1687,6 +1688,8 @@ export interface components {
             creds?: components["schemas"]["TestCreds"];
             /** @description API base URL (required - always needed to know where to fetch models from) */
             base_url: string;
+            /** @description API format to use for fetching models (defaults to OpenAI Chat Completions) */
+            api_format?: components["schemas"]["ApiFormat"];
         };
         /**
          * @description Response containing available models from provider
@@ -5567,7 +5570,8 @@ export interface operations {
                     /** @example {
                      *       "data": [
                      *         "openai",
-                     *         "openai_responses"
+                     *         "openai_responses",
+                     *         "anthropic"
                      *       ]
                      *     } */
                     "application/json": components["schemas"]["ApiFormatsResponse"];

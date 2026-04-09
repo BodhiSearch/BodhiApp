@@ -74,7 +74,7 @@ async fn test_proxy_to_remote_method_dispatch(
   let mut mock_ai = MockAiApiService::new();
   mock_ai
     .expect_forward_request_with_method()
-    .withf(move |method, _path, _alias, _key, body, params| {
+    .withf(move |method, _path, _alias, _key, body, params, _headers| {
       let method_ok = *method == expected_method_cl;
       let body_ok = if expect_body {
         body.as_ref() == Some(&request_cl)
@@ -85,7 +85,7 @@ async fn test_proxy_to_remote_method_dispatch(
       method_ok && body_ok && params_ok
     })
     .times(1)
-    .return_once(|_, _, _, _, _, _| Ok(ok_response()));
+    .return_once(|_, _, _, _, _, _, _| Ok(ok_response()));
 
   let ai_service: Arc<dyn services::AiApiService> = Arc::new(mock_ai);
   let api_alias = make_test_api_alias();
@@ -97,6 +97,7 @@ async fn test_proxy_to_remote_method_dispatch(
     &api_alias,
     Some("test-key".to_string()),
     query_params,
+    None,
   )
   .await;
 

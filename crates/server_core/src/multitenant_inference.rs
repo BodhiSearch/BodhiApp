@@ -34,6 +34,7 @@ impl InferenceService for MultitenantInferenceService {
     api_alias: &ApiAlias,
     api_key: Option<String>,
     query_params: Option<Vec<(String, String)>>,
+    client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response, InferenceError> {
     proxy_to_remote(
       &self.ai_api_service,
@@ -42,6 +43,7 @@ impl InferenceService for MultitenantInferenceService {
       api_alias,
       api_key,
       query_params,
+      client_headers,
     )
     .await
   }

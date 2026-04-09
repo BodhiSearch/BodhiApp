@@ -147,7 +147,7 @@ async fn test_fetch_models_success() -> anyhow::Result<()> {
     .await;
 
   let models = service
-    .fetch_models(Some("test-key".to_string()), &url)
+    .fetch_models(Some("test-key".to_string()), &url, &ApiFormat::OpenAI)
     .await?;
   assert_eq!(vec!["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"], models);
 
@@ -455,7 +455,7 @@ async fn test_fetch_models_success_parameterized(
     .await;
 
   let result = service
-    .fetch_models(api_key.map(|s| s.to_string()), &url)
+    .fetch_models(api_key.map(|s| s.to_string()), &url, &ApiFormat::OpenAI)
     .await?;
 
   assert_eq!(
@@ -491,7 +491,7 @@ async fn test_fetch_models_failure_parameterized(
     .await;
 
   let result = service
-    .fetch_models(api_key.map(|s| s.to_string()), &url)
+    .fetch_models(api_key.map(|s| s.to_string()), &url, &ApiFormat::OpenAI)
     .await;
 
   assert!(result.is_err());
@@ -635,10 +635,376 @@ async fn test_forward_request_with_method_dispatch(
     .await;
 
   let response = service
-    .forward_request_with_method(&method, "/responses", &api_alias, None, body, query_params)
+    .forward_request_with_method(
+      &method,
+      "/responses",
+      &api_alias,
+      None,
+      body,
+      query_params,
+      None,
+    )
     .await?;
 
   assert_eq!(axum::http::StatusCode::OK, response.status());
 
+  Ok(())
+}
+
+// =============================================================================
+// Anthropic format
+// =============================================================================
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_test_prompt_anthropic_success() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let expected_body = json!({
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 50,
+    "messages": [{"role": "user", "content": "Hello"}]
+  });
+
+  let _mock = server
+    .mock("POST", "/messages")
+    .match_header("x-api-key", "test-key")
+    .match_header("anthropic-version", "2023-06-01")
+    .match_body(mockito::Matcher::JsonString(serde_json::to_string(
+      &expected_body,
+    )?))
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"content": [{"type": "text", "text": "Hi there!"}]}"#)
+    .create_async()
+    .await;
+
+  let result = service
+    .test_prompt(
+      Some("test-key".to_string()),
+      &url,
+      "claude-3-5-sonnet-20241022",
+      "Hello",
+      &ApiFormat::Anthropic,
+    )
+    .await?;
+  assert_eq!("Hi there!", result);
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_test_prompt_anthropic_malformed_response() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let _mock = server
+    .mock("POST", "/messages")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"content": []}"#)
+    .create_async()
+    .await;
+
+  let result = service
+    .test_prompt(
+      Some("test-key".to_string()),
+      &url,
+      "claude-3-5-sonnet-20241022",
+      "Hello",
+      &ApiFormat::Anthropic,
+    )
+    .await?;
+  assert_eq!("No response", result);
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_fetch_models_anthropic_success() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let _mock = server
+    .mock("GET", "/models")
+    .match_header("x-api-key", "test-key")
+    .match_header("anthropic-version", "2023-06-01")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(
+      r#"{
+        "data": [
+          {"id": "claude-3-5-sonnet-20241022"},
+          {"id": "claude-3-opus-20240229"}
+        ],
+        "has_more": false
+      }"#,
+    )
+    .create_async()
+    .await;
+
+  let models = service
+    .fetch_models(Some("test-key".to_string()), &url, &ApiFormat::Anthropic)
+    .await?;
+  assert_eq!(
+    vec!["claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
+    models
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
+  // Two-page response: first page has has_more=true, second has has_more=false.
+  // All IDs across both pages must be returned.
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let _mock_page1 = server
+    .mock("GET", "/models")
+    .match_header("x-api-key", "test-key")
+    .match_header("anthropic-version", "2023-06-01")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(
+      r#"{
+        "data": [
+          {"id": "claude-3-5-sonnet-20241022"},
+          {"id": "claude-3-opus-20240229"}
+        ],
+        "has_more": true
+      }"#,
+    )
+    .create_async()
+    .await;
+
+  let _mock_page2 = server
+    .mock("GET", "/models?before_id=claude-3-opus-20240229")
+    .match_header("x-api-key", "test-key")
+    .match_header("anthropic-version", "2023-06-01")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(
+      r#"{
+        "data": [
+          {"id": "claude-3-haiku-20240307"}
+        ],
+        "has_more": false
+      }"#,
+    )
+    .create_async()
+    .await;
+
+  let models = service
+    .fetch_models(Some("test-key".to_string()), &url, &ApiFormat::Anthropic)
+    .await?;
+  assert_eq!(
+    vec![
+      "claude-3-5-sonnet-20241022",
+      "claude-3-opus-20240229",
+      "claude-3-haiku-20240307"
+    ],
+    models
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_forward_request_with_method_anthropic_headers() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let api_alias = ApiAlias::new(
+    "anthropic-api",
+    ApiFormat::Anthropic,
+    &url,
+    vec!["claude-3-5-sonnet-20241022".to_string()],
+    None,
+    false,
+    fixed_dt(),
+  );
+
+  let _mock = server
+    .mock("POST", "/messages")
+    .match_header("x-api-key", "test-key")
+    .match_header("anthropic-version", "2023-06-01")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"id":"msg_123","content":[{"type":"text","text":"Hi"}]}"#)
+    .create_async()
+    .await;
+
+  let response = service
+    .forward_request_with_method(
+      &Method::POST,
+      "/messages",
+      &api_alias,
+      Some("test-key".to_string()),
+      Some(json!({"model":"claude-3-5-sonnet-20241022","max_tokens":1,"messages":[]})),
+      None,
+      None,
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_forward_request_with_method_client_headers_forwarded() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let api_alias = ApiAlias::new(
+    "anthropic-api",
+    ApiFormat::Anthropic,
+    &url,
+    vec!["claude-3-5-sonnet-20241022".to_string()],
+    None,
+    false,
+    fixed_dt(),
+  );
+
+  let _mock = server
+    .mock("POST", "/messages")
+    .match_header("x-api-key", "test-key")
+    .match_header("anthropic-beta", "test-beta-flag")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"id":"msg_123","content":[{"type":"text","text":"Hi"}]}"#)
+    .create_async()
+    .await;
+
+  let response = service
+    .forward_request_with_method(
+      &Method::POST,
+      "/messages",
+      &api_alias,
+      Some("test-key".to_string()),
+      Some(json!({"model":"claude-3-5-sonnet-20241022","max_tokens":1,"messages":[]})),
+      None,
+      Some(vec![(
+        "anthropic-beta".to_string(),
+        "test-beta-flag".to_string(),
+      )]),
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_forward_request_client_anthropic_version_used_not_default() -> anyhow::Result<()> {
+  // When client supplies anthropic-version, it must appear exactly once upstream
+  // (the default must NOT be injected — reqwest appends, not replaces).
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let api_alias = ApiAlias::new(
+    "anthropic-api",
+    ApiFormat::Anthropic,
+    &url,
+    vec!["claude-3-5-sonnet-20241022".to_string()],
+    None,
+    false,
+    fixed_dt(),
+  );
+
+  let _mock = server
+    .mock("POST", "/messages")
+    .match_header("x-api-key", "test-key")
+    .match_header("anthropic-version", "2023-06-01")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"id":"msg_123","content":[{"type":"text","text":"Hi"}]}"#)
+    .create_async()
+    .await;
+
+  let response = service
+    .forward_request_with_method(
+      &Method::POST,
+      "/messages",
+      &api_alias,
+      Some("test-key".to_string()),
+      Some(json!({"model":"claude-3-5-sonnet-20241022","max_tokens":1,"messages":[]})),
+      None,
+      Some(vec![(
+        "anthropic-version".to_string(),
+        "2023-06-01".to_string(),
+      )]),
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_forward_request_default_anthropic_version_injected_when_absent() -> anyhow::Result<()>
+{
+  // When client does not supply anthropic-version, BodhiApp injects the default.
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+
+  let api_alias = ApiAlias::new(
+    "anthropic-api",
+    ApiFormat::Anthropic,
+    &url,
+    vec!["claude-3-5-sonnet-20241022".to_string()],
+    None,
+    false,
+    fixed_dt(),
+  );
+
+  let _mock = server
+    .mock("POST", "/messages")
+    .match_header("x-api-key", "test-key")
+    .match_header("anthropic-version", "2023-06-01")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"id":"msg_123","content":[{"type":"text","text":"Hi"}]}"#)
+    .create_async()
+    .await;
+
+  let response = service
+    .forward_request_with_method(
+      &Method::POST,
+      "/messages",
+      &api_alias,
+      Some("test-key".to_string()),
+      Some(json!({"model":"claude-3-5-sonnet-20241022","max_tokens":1,"messages":[]})),
+      None,
+      None, // no client_headers — default must be injected
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::OK, response.status());
   Ok(())
 }

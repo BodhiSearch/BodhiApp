@@ -25,6 +25,17 @@ export const API_PROVIDERS: ApiProvider[] = [
     category: 'popular',
   },
   {
+    id: 'anthropic',
+    name: 'Anthropic',
+    format: 'anthropic' as ApiFormat,
+    baseUrl: 'https://api.anthropic.com/v1',
+    description: 'Access Claude 3.5 Sonnet, Claude 3 Opus, and other Anthropic models',
+    docUrl: 'https://console.anthropic.com/settings/keys',
+    commonModels: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
+    icon: '🎭',
+    category: 'popular',
+  },
+  {
     id: 'openai-compatible',
     name: 'OpenAI Compatible',
     format: 'openai' as ApiFormat,
