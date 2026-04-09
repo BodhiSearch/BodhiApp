@@ -1,4 +1,9 @@
-import { OpenAiApiError, PaginatedUserAccessResponse, Role, UserAccessStatusResponse } from '@bodhiapp/ts-client';
+import {
+  OpenAiApiError,
+  PaginatedUserAccessResponse,
+  ResourceRole,
+  UserAccessStatusResponse,
+} from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
@@ -97,7 +102,7 @@ export function useApproveRequest(options?: {
       },
     },
     {
-      transformBody: ({ role }) => ({ role: role as Role }),
+      transformBody: ({ role }) => ({ role: role as ResourceRole }),
     }
   );
 }

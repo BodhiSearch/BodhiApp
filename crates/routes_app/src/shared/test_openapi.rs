@@ -1,7 +1,7 @@
 use crate::{
-  BodhiOpenAPIDoc, GlobalErrorResponses, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT,
-  ENDPOINT_MODELS, ENDPOINT_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL, ENDPOINT_PING,
-  ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+  BodhiOAIOpenAPIDoc, BodhiOpenAPIDoc, GlobalErrorResponses, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
+  ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL,
+  ENDPOINT_PING, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
 };
 use pretty_assertions::assert_eq;
 use serde_json::json;
@@ -10,10 +10,20 @@ use utoipa::{
   Modify, OpenApi,
 };
 
-/// Helper function to get OpenAPI spec with GlobalErrorResponses modifier applied
-/// This ensures tests validate against the same spec used in production
+/// Helper function to get the BodhiApp management OpenAPI spec with
+/// GlobalErrorResponses modifier applied. This ensures tests validate against
+/// the same spec used in production.
 fn get_openapi_with_modifiers() -> OpenApiSpec {
   let mut spec = BodhiOpenAPIDoc::openapi();
+  let modifier = GlobalErrorResponses;
+  modifier.modify(&mut spec);
+  spec
+}
+
+/// Helper function to get the OpenAI-compatible OpenAPI spec with
+/// GlobalErrorResponses modifier applied.
+fn get_openapi_oai_with_modifiers() -> OpenApiSpec {
+  let mut spec = BodhiOAIOpenAPIDoc::openapi();
   let modifier = GlobalErrorResponses;
   modifier.modify(&mut spec);
   spec
@@ -25,7 +35,7 @@ fn test_openapi_basic_info() {
 
   // Test API Info
   let info = &api_doc.info;
-  assert_eq!(info.title, "Bodhi App APIs");
+  assert_eq!(info.title, "Bodhi App - Management API");
 
   // Test Contact Info
   let contact = info.contact.as_ref().unwrap();
@@ -613,7 +623,8 @@ fn test_update_token_endpoint() {
 
 #[test]
 fn test_oai_models_endpoint() {
-  let api_doc = get_openapi_with_modifiers();
+  // OAI endpoints now live in the dedicated BodhiOAIOpenAPIDoc spec
+  let api_doc = get_openapi_oai_with_modifiers();
   let paths = &api_doc.paths;
 
   // Verify endpoint
@@ -708,6 +719,48 @@ fn test_all_endpoints_match_spec() {
     runtime_paths.len(),
     generated_paths.len(),
     "Number of paths mismatch: runtime={}, generated={}",
+    runtime_paths.len(),
+    generated_paths.len()
+  );
+}
+
+/// Test that runtime OAI OpenAPI spec matches the generated openapi-oai.json file
+#[test]
+fn test_oai_endpoints_match_spec() {
+  let runtime_spec = BodhiOAIOpenAPIDoc::openapi();
+  let runtime_value = serde_json::to_value(&runtime_spec).unwrap();
+
+  let spec_content = include_str!("../../../../openapi-oai.json");
+  let generated_spec: serde_json::Value = serde_json::from_str(spec_content).unwrap();
+
+  assert_eq!(
+    runtime_value["info"]["title"], generated_spec["info"]["title"],
+    "OAI API title mismatch between runtime and generated spec"
+  );
+
+  let runtime_paths = runtime_value["paths"].as_object().unwrap();
+  let generated_paths = generated_spec["paths"].as_object().unwrap();
+
+  for (path, _) in runtime_paths {
+    assert!(
+      generated_paths.contains_key(path),
+      "Path '{}' exists in runtime OAI spec but missing from generated openapi-oai.json",
+      path
+    );
+  }
+
+  for (path, _) in generated_paths {
+    assert!(
+      runtime_paths.contains_key(path),
+      "Path '{}' exists in generated openapi-oai.json but missing from runtime OAI spec",
+      path
+    );
+  }
+
+  assert_eq!(
+    runtime_paths.len(),
+    generated_paths.len(),
+    "Number of OAI paths mismatch: runtime={}, generated={}",
     runtime_paths.len(),
     generated_paths.len()
   );

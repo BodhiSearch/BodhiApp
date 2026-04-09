@@ -1,12 +1,3 @@
-use crate::oai::{
-  __path_chat_completions_handler, __path_embeddings_handler, __path_oai_model_handler,
-  __path_oai_models_handler, __path_responses_cancel_handler, __path_responses_create_handler,
-  __path_responses_delete_handler, __path_responses_get_handler,
-  __path_responses_input_items_handler,
-};
-use crate::ollama::{
-  __path_ollama_model_chat_handler, __path_ollama_model_show_handler, __path_ollama_models_handler,
-};
 use crate::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
   AuthCallbackRequest, AuthInitiateRequest, CreateAccessRequestResponse, LocalModelResponse,
@@ -58,20 +49,8 @@ use crate::{
 };
 use crate::{
   API_TAG_API_KEYS, API_TAG_APPS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_MODELS_ALIAS,
-  API_TAG_MODELS_API, API_TAG_MODELS_FILES, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_RESPONSES,
-  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TENANTS,
-};
-use async_openai::types::{
-  chat::{
-    ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
-    CompletionUsage, CreateChatCompletionRequest, CreateChatCompletionResponse,
-    CreateChatCompletionStreamResponse,
-  },
-  embeddings::{
-    CreateEmbeddingRequest, CreateEmbeddingResponse, Embedding, EmbeddingInput, EmbeddingUsage,
-  },
-  models::{ListModelResponse, Model},
-  responses::{CreateResponse, DeleteResponse as OaiDeleteResponse, Response as OaiResponse},
+  API_TAG_MODELS_API, API_TAG_MODELS_FILES, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
+  API_TAG_TENANTS,
 };
 use services::{
   Alias, AliasResponse, ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiKey, ApiKeyUpdate,
@@ -150,7 +129,7 @@ pub const ENDPOINT_DEV_TENANTS_CLEANUP: &str = "/dev/tenants/cleanup";
 #[derive(OpenApi)]
 #[openapi(
     info(
-        title = "Bodhi App APIs",
+        title = "Bodhi App - Management API",
         version = env!("CARGO_PKG_VERSION"),
         contact(
             name = "Bodhi API Support",
@@ -274,9 +253,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         (name = API_TAG_MODELS_FILES, description = "Local model files and downloads"),
         (name = API_TAG_SETTINGS, description = "Application settings management"),
         (name = API_TAG_MCPS, description = "MCP server management and tool execution"),
-        (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
-        (name = API_TAG_RESPONSES, description = "OpenAI Responses API proxy endpoints"),
-        (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
         (name = API_TAG_APPS, description = "External app API endpoints (OAuth token required)"),
         (name = API_TAG_TENANTS, description = "Tenant management endpoints"),
     ),
@@ -373,26 +349,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             SettingMetadata,
             SettingSource,
             UpdateSettingRequest,
-            // openai
-            ListModelResponse,
-            Model,
-            CreateChatCompletionRequest,
-            CreateChatCompletionResponse,
-            CreateChatCompletionStreamResponse,
-            ChatCompletionRequestMessage,
-            ChatCompletionResponseMessage,
-            ChatChoice,
-            ChatChoiceStream,
-            CompletionUsage,
-            CreateEmbeddingRequest,
-            CreateEmbeddingResponse,
-            Embedding,
-            EmbeddingInput,
-            EmbeddingUsage,
-            // responses api
-            CreateResponse,
-            OaiResponse,
-            OaiDeleteResponse,
             // mcps
             McpRequest,
             McpServerRequest,
@@ -481,24 +437,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         settings_index,
         settings_update,
         settings_destroy,
-
-        // OpenAI endpoints
-        oai_models_handler,
-        oai_model_handler,
-        chat_completions_handler,
-        embeddings_handler,
-
-        // Responses API endpoints
-        responses_create_handler,
-        responses_get_handler,
-        responses_delete_handler,
-        responses_input_items_handler,
-        responses_cancel_handler,
-
-        // Ollama endpoints
-        ollama_models_handler,
-        ollama_model_show_handler,
-        ollama_model_chat_handler,
 
         // User request endpoints
         users_request_access,

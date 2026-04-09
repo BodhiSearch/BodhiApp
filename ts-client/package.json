@@ -5,22 +5,38 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./openai": {
+      "types": "./dist/openai.d.ts",
+      "import": "./dist/openai.mjs",
+      "require": "./dist/openai.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist"
   ],
   "scripts": {
     "build": "npm run generate && npm run bundle",
-    "build:openapi": "npm run generate:types && npm run generate:msw-types && npm run bundle",
-    "generate": "npm run generate:openapi && npm run generate:types && npm run generate:msw-types",
+    "build:openapi": "npm run generate:types && npm run generate:types-oai && npm run generate:msw-types && npm run generate:msw-types-oai && npm run bundle",
+    "generate": "npm run generate:openapi && npm run generate:openapi-oai && npm run generate:types && npm run generate:types-oai && npm run generate:msw-types && npm run generate:msw-types-oai",
     "generate:openapi": "cd .. && cargo run --package xtask openapi",
+    "generate:openapi-oai": "cd .. && cargo run --package xtask openapi-oai",
     "generate:types": "openapi-ts",
+    "generate:types-oai": "openapi-ts --file openapi-ts-oai.config.ts",
     "generate:msw-types": "openapi-typescript ../openapi.json -o src/openapi-typescript/openapi-schema.ts",
+    "generate:msw-types-oai": "openapi-typescript ../openapi-oai.json -o src/openapi-typescript/openapi-schema-oai.ts",
     "bundle": "npm run bundle:types && npm run bundle:esm && npm run bundle:cjs",
-    "bundle:types": "tsc --emitDeclarationOnly --outDir dist && cpy 'src/types/**' 'dist/types' && cpy 'src/openapi-typescript/**' 'dist/openapi-typescript'",
-    "bundle:esm": "esbuild src/index.ts --bundle --platform=neutral --format=esm --outfile=dist/index.mjs --external:./types --allow-overwrite",
-    "bundle:cjs": "esbuild src/index.ts --bundle --platform=neutral --format=cjs --outfile=dist/index.js --external:./types --allow-overwrite",
+    "bundle:types": "tsc --emitDeclarationOnly --outDir dist && cpy 'src/types/**' 'dist/types' && cpy 'src/types-oai/**' 'dist/types-oai' && cpy 'src/openapi-typescript/**' 'dist/openapi-typescript'",
+    "bundle:esm": "esbuild src/index.ts src/openai.ts --bundle --platform=neutral --format=esm --outdir=dist --out-extension:.js=.mjs --external:./types --external:./types-oai --allow-overwrite",
+    "bundle:cjs": "esbuild src/index.ts src/openai.ts --bundle --platform=neutral --format=cjs --outdir=dist --external:./types --external:./types-oai --allow-overwrite",
     "test": "vitest run",
-    "clean": "rm -rf dist && rm -rf src/types && rm -rf src/openapi-typescript"
+    "clean": "rm -rf dist && rm -rf src/types && rm -rf src/types-oai && rm -rf src/openapi-typescript"
   },
   "keywords": [
     "bodhi",

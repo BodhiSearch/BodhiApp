@@ -15,9 +15,9 @@ use crate::{
   tenants_index, tokens_create, tokens_index, tokens_update, users_access_request_approve,
   users_access_request_reject, users_access_requests_index, users_access_requests_pending,
   users_change_role, users_destroy, users_index, users_info, users_request_access,
-  users_request_status, BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier,
-  ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
-  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW,
+  users_request_status, BodhiOAIOpenAPIDoc, BodhiOpenAPIDoc, GlobalErrorResponses,
+  OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE,
+  ENDPOINT_ACCESS_REQUESTS_DENY, ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW,
   ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
   ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
   ENDPOINT_DASHBOARD_AUTH_CALLBACK, ENDPOINT_DASHBOARD_AUTH_INITIATE, ENDPOINT_DEV_CLIENTS_DAG,
@@ -489,12 +489,22 @@ pub async fn build_routes(
     .await;
   GlobalErrorResponses.modify(&mut openapi);
 
+  let mut openapi_oai = BodhiOAIOpenAPIDoc::openapi();
+  OpenAPIEnvModifier::new(app_service.setting_service())
+    .modify(&mut openapi_oai)
+    .await;
+  GlobalErrorResponses.modify(&mut openapi_oai);
+
   // Build final router — NO global CorsLayer
   let router = Router::<Arc<dyn AppService>>::new()
     .merge(public_router)
     .merge(session_protected)
     .merge(api_protected)
-    .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi))
+    .merge(
+      SwaggerUi::new("/swagger-ui")
+        .url("/api-docs/openapi.json", openapi)
+        .url("/api-docs/openapi-oai.json", openapi_oai),
+    )
     .with_state(state);
 
   let router = apply_ui_router(&app_service.setting_service(), router, static_dir).await;
