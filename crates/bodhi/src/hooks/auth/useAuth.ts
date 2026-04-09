@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 
 // Type imports
-import { AuthCallbackRequest, AuthInitiateRequest, RedirectResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { AuthCallbackRequest, AuthInitiateRequest, RedirectResponse, BodhiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseMutationResult } from '@/hooks/useQuery';
@@ -20,7 +20,7 @@ import {
 } from './constants';
 
 // Type alias
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // OAuth Initiate Hook
 interface UseOAuthInitiateOptions {

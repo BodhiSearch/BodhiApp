@@ -2,7 +2,7 @@ use super::error::OAIRouteError;
 use super::ENDPOINT_OAI_RESPONSES;
 use crate::shared::AuthScope;
 use crate::API_TAG_RESPONSES;
-use crate::{ApiError, JsonRejectionError};
+use crate::{ApiError, JsonRejectionError, OaiApiError};
 use async_openai::types::responses::{
   CreateResponse, DeleteResponse as OaiDeleteResponse, Response as OaiResponse,
 };
@@ -146,7 +146,7 @@ fn upstream_query_params(params: &HashMap<String, String>) -> Option<Vec<(String
 pub async fn responses_create_handler(
   auth_scope: AuthScope,
   WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, JsonRejectionError>,
-) -> Result<Response, ApiError> {
+) -> Result<Response, OaiApiError> {
   validate_responses_request(&request)?;
 
   let model = request
@@ -190,7 +190,7 @@ pub async fn responses_get_handler(
   auth_scope: AuthScope,
   Path(response_id): Path<String>,
   Query(params): Query<HashMap<String, String>>,
-) -> Result<Response, ApiError> {
+) -> Result<Response, OaiApiError> {
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
@@ -234,7 +234,7 @@ pub async fn responses_delete_handler(
   auth_scope: AuthScope,
   Path(response_id): Path<String>,
   Query(params): Query<HashMap<String, String>>,
-) -> Result<Response, ApiError> {
+) -> Result<Response, OaiApiError> {
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
@@ -277,7 +277,7 @@ pub async fn responses_input_items_handler(
   auth_scope: AuthScope,
   Path(response_id): Path<String>,
   Query(params): Query<HashMap<String, String>>,
-) -> Result<Response, ApiError> {
+) -> Result<Response, OaiApiError> {
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
@@ -321,7 +321,7 @@ pub async fn responses_cancel_handler(
   auth_scope: AuthScope,
   Path(response_id): Path<String>,
   Query(params): Query<HashMap<String, String>>,
-) -> Result<Response, ApiError> {
+) -> Result<Response, OaiApiError> {
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;

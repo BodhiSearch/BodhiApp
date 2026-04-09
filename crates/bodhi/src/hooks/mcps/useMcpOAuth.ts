@@ -7,7 +7,7 @@ import {
   OAuthLoginResponse,
   OAuthTokenExchangeRequest,
   OAuthTokenResponse,
-  OpenAiApiError,
+  BodhiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -20,7 +20,7 @@ import {
   MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE_ENDPOINT,
 } from './constants';
 
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // ============================================================================
 // Mutation Hooks - OAuth Discovery & Login & Token

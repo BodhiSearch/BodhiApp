@@ -15,8 +15,7 @@ use utoipa::{
 /// the same spec used in production.
 fn get_openapi_with_modifiers() -> OpenApiSpec {
   let mut spec = BodhiOpenAPIDoc::openapi();
-  let modifier = GlobalErrorResponses;
-  modifier.modify(&mut spec);
+  GlobalErrorResponses::bodhi().modify(&mut spec);
   spec
 }
 
@@ -24,8 +23,7 @@ fn get_openapi_with_modifiers() -> OpenApiSpec {
 /// GlobalErrorResponses modifier applied.
 fn get_openapi_oai_with_modifiers() -> OpenApiSpec {
   let mut spec = BodhiOAIOpenAPIDoc::openapi();
-  let modifier = GlobalErrorResponses;
-  modifier.modify(&mut spec);
+  GlobalErrorResponses::oai().modify(&mut spec);
   spec
 }
 

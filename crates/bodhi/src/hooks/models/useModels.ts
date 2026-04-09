@@ -1,5 +1,5 @@
 // External imports
-import { Alias, OpenAiApiError, PaginatedAliasResponse, UserAliasRequest } from '@bodhiapp/ts-client';
+import { Alias, BodhiApiError, PaginatedAliasResponse, UserAliasRequest } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 // Internal imports
@@ -8,7 +8,7 @@ import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@
 import { modelKeys, ENDPOINT_MODELS, ENDPOINT_ALIAS } from './constants';
 
 // Type alias
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // Model-related hooks
 

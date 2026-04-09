@@ -1,4 +1,4 @@
-import { TokenCreated, PaginatedTokenResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { TokenCreated, PaginatedTokenResponse, BodhiApiError } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -230,7 +230,7 @@ describe('useCreateToken', () => {
       try {
         await result.current.mutateAsync({ name: 'Test Token', scope: 'scope_token_user' });
       } catch (error) {
-        const axiosError = error as AxiosError<OpenAiApiError>;
+        const axiosError = error as AxiosError<BodhiApiError>;
         expect(axiosError.response?.status).toBe(400);
         expect(axiosError.response?.data.error?.message).toBe('Invalid token name');
       }
@@ -282,7 +282,7 @@ describe('useUpdateToken', () => {
       expect(result.current.isError).toBe(true);
     });
 
-    const error = result.current.error as AxiosError<OpenAiApiError>;
+    const error = result.current.error as AxiosError<BodhiApiError>;
     expect(error.response?.data.error?.message).toBe('Invalid token status');
   });
 });

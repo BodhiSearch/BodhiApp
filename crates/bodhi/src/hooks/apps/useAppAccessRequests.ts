@@ -4,7 +4,7 @@ import {
   ApproveAccessRequest,
   McpApproval,
   McpServerReviewInfo,
-  OpenAiApiError,
+  BodhiApiError,
   RequestedResources,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
@@ -15,7 +15,7 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 import { appAccessRequestKeys, ENDPOINT_ACCESS_REQUESTS } from './constants';
 
 // Type alias for compatibility
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // Re-export types for consumers
 export type {

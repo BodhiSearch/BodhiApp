@@ -288,6 +288,34 @@ export type AuthInitiateRequest = {
     client_id: string;
 };
 
+export type BodhiApiError = {
+    /**
+     * Error details following OpenAI API error format
+     */
+    error: BodhiErrorBody;
+};
+
+export type BodhiErrorBody = {
+    /**
+     * Human-readable error message describing what went wrong
+     */
+    message: string;
+    /**
+     * Error type categorizing the kind of error that occurred
+     */
+    type: string;
+    /**
+     * Specific error code for programmatic error handling
+     */
+    code?: string | null;
+    /**
+     * Additional error parameters as key-value pairs (for validation errors)
+     */
+    param?: {
+        [key: string]: string;
+    } | null;
+};
+
 /**
  * Change user role request
  */
@@ -440,27 +468,6 @@ export type DynamicRegisterResponse = {
     client_id_issued_at?: number | null;
     token_endpoint_auth_method?: string | null;
     registration_access_token?: string | null;
-};
-
-export type ErrorBody = {
-    /**
-     * Human-readable error message describing what went wrong
-     */
-    message: string;
-    /**
-     * Error type categorizing the kind of error that occurred
-     */
-    type: string;
-    /**
-     * Specific error code for programmatic error handling
-     */
-    code?: string | null;
-    /**
-     * Additional error parameters as key-value pairs (for validation errors)
-     */
-    param?: {
-        [key: string]: string;
-    } | null;
 };
 
 /**
@@ -902,13 +909,6 @@ export type OAuthTokenResponse = {
     user_id: string;
     created_at: string;
     updated_at: string;
-};
-
-export type OpenAiApiError = {
-    /**
-     * Error details following OpenAI API error format
-     */
-    error: ErrorBody;
 };
 
 /**
@@ -1420,19 +1420,19 @@ export type ListAllAccessRequestsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListAllAccessRequestsError = ListAllAccessRequestsErrors[keyof ListAllAccessRequestsErrors];
@@ -1474,19 +1474,19 @@ export type ListPendingAccessRequestsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListPendingAccessRequestsError = ListPendingAccessRequestsErrors[keyof ListPendingAccessRequestsErrors];
@@ -1519,23 +1519,23 @@ export type ApproveAccessRequestErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Request not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ApproveAccessRequestError = ApproveAccessRequestErrors[keyof ApproveAccessRequestErrors];
@@ -1566,27 +1566,27 @@ export type ApproveAppsAccessRequestErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Already processed
      */
-    409: OpenAiApiError;
+    409: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ApproveAppsAccessRequestError = ApproveAppsAccessRequestErrors[keyof ApproveAppsAccessRequestErrors];
@@ -1616,27 +1616,27 @@ export type DenyAccessRequestErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Already processed
      */
-    409: OpenAiApiError;
+    409: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type DenyAccessRequestError = DenyAccessRequestErrors[keyof DenyAccessRequestErrors];
@@ -1666,23 +1666,23 @@ export type RejectAccessRequestErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Request not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type RejectAccessRequestError = RejectAccessRequestErrors[keyof RejectAccessRequestErrors];
@@ -1710,27 +1710,27 @@ export type GetAccessRequestReviewErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Request expired
      */
-    410: OpenAiApiError;
+    410: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetAccessRequestReviewError = GetAccessRequestReviewErrors[keyof GetAccessRequestReviewErrors];
@@ -1765,23 +1765,23 @@ export type GetAccessRequestStatusErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found or app_client_id mismatch
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetAccessRequestStatusError = GetAccessRequestStatusErrors[keyof GetAccessRequestStatusErrors];
@@ -1806,19 +1806,19 @@ export type AppsListMcpsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type AppsListMcpsError = AppsListMcpsErrors[keyof AppsListMcpsErrors];
@@ -1848,15 +1848,15 @@ export type AppsGetMcpErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * MCP not found
      */
@@ -1864,7 +1864,7 @@ export type AppsGetMcpErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type AppsGetMcpError = AppsGetMcpErrors[keyof AppsGetMcpErrors];
@@ -1894,19 +1894,19 @@ export type McpProxyErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type McpProxyError = McpProxyErrors[keyof McpProxyErrors];
@@ -1932,23 +1932,23 @@ export type CreateAccessRequestErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * App client not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type CreateAccessRequestError = CreateAccessRequestErrors[keyof CreateAccessRequestErrors];
@@ -1976,23 +1976,23 @@ export type CompleteOAuthFlowErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * OAuth error, invalid request parameters, or state mismatch
      */
-    422: OpenAiApiError;
+    422: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type CompleteOAuthFlowError = CompleteOAuthFlowErrors[keyof CompleteOAuthFlowErrors];
@@ -2020,19 +2020,19 @@ export type CompleteDashboardOAuthFlowErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type CompleteDashboardOAuthFlowError = CompleteDashboardOAuthFlowErrors[keyof CompleteDashboardOAuthFlowErrors];
@@ -2057,19 +2057,19 @@ export type InitiateDashboardOAuthFlowErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type InitiateDashboardOAuthFlowError = InitiateDashboardOAuthFlowErrors[keyof InitiateDashboardOAuthFlowErrors];
@@ -2101,19 +2101,19 @@ export type InitiateOAuthFlowErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type InitiateOAuthFlowError = InitiateOAuthFlowErrors[keyof InitiateOAuthFlowErrors];
@@ -2142,11 +2142,11 @@ export type GetAppInfoErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetAppInfoError = GetAppInfoErrors[keyof GetAppInfoErrors];
@@ -2171,19 +2171,19 @@ export type LogoutUserErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type LogoutUserError = LogoutUserErrors[keyof LogoutUserErrors];
@@ -2208,19 +2208,19 @@ export type ListMcpsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListMcpsError = ListMcpsErrors[keyof ListMcpsErrors];
@@ -2245,19 +2245,19 @@ export type CreateMcpErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type CreateMcpError = CreateMcpErrors[keyof CreateMcpErrors];
@@ -2284,19 +2284,19 @@ export type ListMcpAuthConfigsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListMcpAuthConfigsError = ListMcpAuthConfigsErrors[keyof ListMcpAuthConfigsErrors];
@@ -2321,19 +2321,19 @@ export type CreateMcpAuthConfigErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type CreateMcpAuthConfigError = CreateMcpAuthConfigErrors[keyof CreateMcpAuthConfigErrors];
@@ -2363,15 +2363,15 @@ export type DeleteMcpAuthConfigErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
@@ -2379,7 +2379,7 @@ export type DeleteMcpAuthConfigErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type DeleteMcpAuthConfigError = DeleteMcpAuthConfigErrors[keyof DeleteMcpAuthConfigErrors];
@@ -2409,15 +2409,15 @@ export type GetMcpAuthConfigErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
@@ -2425,7 +2425,7 @@ export type GetMcpAuthConfigErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetMcpAuthConfigError = GetMcpAuthConfigErrors[keyof GetMcpAuthConfigErrors];
@@ -2455,15 +2455,15 @@ export type McpOAuthLoginErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Auth config not found
      */
@@ -2471,7 +2471,7 @@ export type McpOAuthLoginErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type McpOAuthLoginError = McpOAuthLoginErrors[keyof McpOAuthLoginErrors];
@@ -2501,15 +2501,15 @@ export type McpOAuthTokenExchangeErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Auth config not found
      */
@@ -2517,7 +2517,7 @@ export type McpOAuthTokenExchangeErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type McpOAuthTokenExchangeError = McpOAuthTokenExchangeErrors[keyof McpOAuthTokenExchangeErrors];
@@ -2547,15 +2547,15 @@ export type DeleteMcpOAuthTokenErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
@@ -2563,7 +2563,7 @@ export type DeleteMcpOAuthTokenErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type DeleteMcpOAuthTokenError = DeleteMcpOAuthTokenErrors[keyof DeleteMcpOAuthTokenErrors];
@@ -2593,15 +2593,15 @@ export type GetMcpOAuthTokenErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
@@ -2609,7 +2609,7 @@ export type GetMcpOAuthTokenErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetMcpOAuthTokenError = GetMcpOAuthTokenErrors[keyof GetMcpOAuthTokenErrors];
@@ -2634,19 +2634,19 @@ export type McpOAuthDiscoverAsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type McpOAuthDiscoverAsError = McpOAuthDiscoverAsErrors[keyof McpOAuthDiscoverAsErrors];
@@ -2671,19 +2671,19 @@ export type McpOAuthDiscoverMcpErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type McpOAuthDiscoverMcpError = McpOAuthDiscoverMcpErrors[keyof McpOAuthDiscoverMcpErrors];
@@ -2708,19 +2708,19 @@ export type McpOAuthDynamicRegisterStandaloneErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type McpOAuthDynamicRegisterStandaloneError = McpOAuthDynamicRegisterStandaloneErrors[keyof McpOAuthDynamicRegisterStandaloneErrors];
@@ -2750,19 +2750,19 @@ export type ListMcpServersErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListMcpServersError = ListMcpServersErrors[keyof ListMcpServersErrors];
@@ -2787,15 +2787,15 @@ export type CreateMcpServerErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * URL already exists
      */
@@ -2803,7 +2803,7 @@ export type CreateMcpServerErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type CreateMcpServerError = CreateMcpServerErrors[keyof CreateMcpServerErrors];
@@ -2833,15 +2833,15 @@ export type GetMcpServerErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
@@ -2849,7 +2849,7 @@ export type GetMcpServerErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetMcpServerError = GetMcpServerErrors[keyof GetMcpServerErrors];
@@ -2879,15 +2879,15 @@ export type UpdateMcpServerErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Not found
      */
@@ -2899,7 +2899,7 @@ export type UpdateMcpServerErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type UpdateMcpServerError = UpdateMcpServerErrors[keyof UpdateMcpServerErrors];
@@ -2929,15 +2929,15 @@ export type DeleteMcpErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * MCP not found
      */
@@ -2945,7 +2945,7 @@ export type DeleteMcpErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type DeleteMcpError = DeleteMcpErrors[keyof DeleteMcpErrors];
@@ -2975,15 +2975,15 @@ export type GetMcpErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * MCP not found
      */
@@ -2991,7 +2991,7 @@ export type GetMcpErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetMcpError = GetMcpErrors[keyof GetMcpErrors];
@@ -3021,15 +3021,15 @@ export type UpdateMcpErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * MCP not found
      */
@@ -3037,7 +3037,7 @@ export type UpdateMcpErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type UpdateMcpError = UpdateMcpErrors[keyof UpdateMcpErrors];
@@ -3079,19 +3079,19 @@ export type ListAllModelsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListAllModelsError = ListAllModelsErrors[keyof ListAllModelsErrors];
@@ -3116,19 +3116,19 @@ export type ModelsAliasCreateErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ModelsAliasCreateError = ModelsAliasCreateErrors[keyof ModelsAliasCreateErrors];
@@ -3158,15 +3158,15 @@ export type ModelsAliasDestroyErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Alias not found
      */
@@ -3174,7 +3174,7 @@ export type ModelsAliasDestroyErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ModelsAliasDestroyError = ModelsAliasDestroyErrors[keyof ModelsAliasDestroyErrors];
@@ -3202,19 +3202,19 @@ export type ModelsAliasUpdateErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ModelsAliasUpdateError = ModelsAliasUpdateErrors[keyof ModelsAliasUpdateErrors];
@@ -3244,15 +3244,15 @@ export type ModelsAliasCopyErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Source alias not found
      */
@@ -3260,7 +3260,7 @@ export type ModelsAliasCopyErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ModelsAliasCopyError = ModelsAliasCopyErrors[keyof ModelsAliasCopyErrors];
@@ -3285,23 +3285,23 @@ export type CreateApiModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Alias already exists
      */
-    409: OpenAiApiError;
+    409: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type CreateApiModelError = CreateApiModelErrors[keyof CreateApiModelErrors];
@@ -3326,19 +3326,19 @@ export type FetchApiModelsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type FetchApiModelsError = FetchApiModelsErrors[keyof FetchApiModelsErrors];
@@ -3363,19 +3363,19 @@ export type GetApiFormatsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetApiFormatsError = GetApiFormatsErrors[keyof GetApiFormatsErrors];
@@ -3400,19 +3400,19 @@ export type TestApiModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type TestApiModelError = TestApiModelErrors[keyof TestApiModelErrors];
@@ -3442,23 +3442,23 @@ export type DeleteApiModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * API model not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type DeleteApiModelError = DeleteApiModelErrors[keyof DeleteApiModelErrors];
@@ -3488,23 +3488,23 @@ export type GetApiModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * API model with specified ID not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetApiModelError = GetApiModelErrors[keyof GetApiModelErrors];
@@ -3534,23 +3534,23 @@ export type UpdateApiModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * API model not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type UpdateApiModelError = UpdateApiModelErrors[keyof UpdateApiModelErrors];
@@ -3580,15 +3580,15 @@ export type SyncModelsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * API model not found
      */
@@ -3596,7 +3596,7 @@ export type SyncModelsErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type SyncModelsError = SyncModelsErrors[keyof SyncModelsErrors];
@@ -3638,19 +3638,19 @@ export type ListModelFilesErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListModelFilesError = ListModelFilesErrors[keyof ListModelFilesErrors];
@@ -3692,19 +3692,19 @@ export type ListDownloadsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListDownloadsError = ListDownloadsErrors[keyof ListDownloadsErrors];
@@ -3732,19 +3732,19 @@ export type PullModelFileErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type PullModelFileError = PullModelFileErrors[keyof PullModelFileErrors];
@@ -3778,23 +3778,23 @@ export type GetDownloadStatusErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Download request not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetDownloadStatusError = GetDownloadStatusErrors[keyof GetDownloadStatusErrors];
@@ -3822,15 +3822,15 @@ export type RefreshModelMetadataErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Model alias not found for specified repo/filename/snapshot
      */
@@ -3838,7 +3838,7 @@ export type RefreshModelMetadataErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type RefreshModelMetadataError = RefreshModelMetadataErrors[keyof RefreshModelMetadataErrors];
@@ -3872,23 +3872,23 @@ export type GetAliasErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Alias not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetAliasError = GetAliasErrors[keyof GetAliasErrors];
@@ -3913,19 +3913,19 @@ export type GetQueueStatusErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetQueueStatusError = GetQueueStatusErrors[keyof GetQueueStatusErrors];
@@ -3950,19 +3950,19 @@ export type ListSettingsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListSettingsError = ListSettingsErrors[keyof ListSettingsErrors];
@@ -3992,23 +3992,23 @@ export type DeleteSettingErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Setting not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type DeleteSettingError = DeleteSettingErrors[keyof DeleteSettingErrors];
@@ -4046,23 +4046,23 @@ export type UpdateSettingErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Setting not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type UpdateSettingError = UpdateSettingErrors[keyof UpdateSettingErrors];
@@ -4090,11 +4090,11 @@ export type SetupAppErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type SetupAppError = SetupAppErrors[keyof SetupAppErrors];
@@ -4119,19 +4119,19 @@ export type TenantsListErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type TenantsListError = TenantsListErrors[keyof TenantsListErrors];
@@ -4159,19 +4159,19 @@ export type TenantsCreateErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type TenantsCreateError = TenantsCreateErrors[keyof TenantsCreateErrors];
@@ -4201,19 +4201,19 @@ export type TenantsActivateErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type TenantsActivateError = TenantsActivateErrors[keyof TenantsActivateErrors];
@@ -4253,19 +4253,19 @@ export type ListApiTokensErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListApiTokensError = ListApiTokensErrors[keyof ListApiTokensErrors];
@@ -4293,19 +4293,19 @@ export type CreateApiTokenErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type CreateApiTokenError = CreateApiTokenErrors[keyof CreateApiTokenErrors];
@@ -4338,23 +4338,23 @@ export type UpdateApiTokenErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Token not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type UpdateApiTokenError = UpdateApiTokenErrors[keyof UpdateApiTokenErrors];
@@ -4379,19 +4379,19 @@ export type GetCurrentUserErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetCurrentUserError = GetCurrentUserErrors[keyof GetCurrentUserErrors];
@@ -4416,27 +4416,27 @@ export type RequestUserAccessErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Pending request already exists
      */
-    409: OpenAiApiError;
+    409: BodhiApiError;
     /**
      * User already has role
      */
-    422: OpenAiApiError;
+    422: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type RequestUserAccessError = RequestUserAccessErrors[keyof RequestUserAccessErrors];
@@ -4459,23 +4459,23 @@ export type GetUserAccessStatusErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Request not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type GetUserAccessStatusError = GetUserAccessStatusErrors[keyof GetUserAccessStatusErrors];
@@ -4509,19 +4509,19 @@ export type ListUsersErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ListUsersError = ListUsersErrors[keyof ListUsersErrors];
@@ -4551,23 +4551,23 @@ export type RemoveUserErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * User not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type RemoveUserError = RemoveUserErrors[keyof RemoveUserErrors];
@@ -4595,23 +4595,23 @@ export type ChangeUserRoleErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: BodhiApiError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: BodhiApiError;
     /**
      * User not found
      */
-    404: OpenAiApiError;
+    404: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type ChangeUserRoleError = ChangeUserRoleErrors[keyof ChangeUserRoleErrors];
@@ -4634,11 +4634,11 @@ export type HealthCheckErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type HealthCheckError = HealthCheckErrors[keyof HealthCheckErrors];
@@ -4663,11 +4663,11 @@ export type PingServerErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: BodhiApiError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: BodhiApiError;
 };
 
 export type PingServerError = PingServerErrors[keyof PingServerErrors];

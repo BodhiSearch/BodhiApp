@@ -487,13 +487,13 @@ pub async fn build_routes(
   OpenAPIEnvModifier::new(app_service.setting_service())
     .modify(&mut openapi)
     .await;
-  GlobalErrorResponses.modify(&mut openapi);
+  GlobalErrorResponses::bodhi().modify(&mut openapi);
 
   let mut openapi_oai = BodhiOAIOpenAPIDoc::openapi();
   OpenAPIEnvModifier::new(app_service.setting_service())
     .modify(&mut openapi_oai)
     .await;
-  GlobalErrorResponses.modify(&mut openapi_oai);
+  GlobalErrorResponses::oai().modify(&mut openapi_oai);
 
   // Build final router — NO global CorsLayer
   let router = Router::<Arc<dyn AppService>>::new()

@@ -36,7 +36,7 @@ use crate::{
   __path_mcps_show, __path_mcps_update,
 };
 // Settings and setup DTOs and handlers
-use crate::OpenAIApiError;
+use crate::BodhiApiError;
 use crate::{
   SetupRequest, SetupResponse, __path_settings_destroy, __path_settings_index,
   __path_settings_update, __path_setup_create, __path_setup_show,
@@ -259,7 +259,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
     components(
         schemas(
             // common
-            OpenAIApiError,
+            BodhiApiError,
             AppStatus,
             RedirectResponse,
             // system
@@ -591,9 +591,33 @@ impl Modify for SecurityModifier {
   }
 }
 
-/// Modifies OpenAPI documentation to add common error responses to all endpoints
+/// Modifies OpenAPI documentation to add common error responses to all endpoints.
+///
+/// Each spec provides its own error schema name — the management spec uses
+/// `BodhiApiError`, the OpenAI-compat spec uses async-openai's `openai.WrappedError`
+/// envelope — because the two surfaces have different wire formats.
 #[derive(Debug)]
-pub struct GlobalErrorResponses;
+pub struct GlobalErrorResponses {
+  error_schema_name: &'static str,
+}
+
+impl GlobalErrorResponses {
+  pub const fn new(error_schema_name: &'static str) -> Self {
+    Self { error_schema_name }
+  }
+
+  /// Default variant for the BodhiApp management spec.
+  pub const fn bodhi() -> Self {
+    Self::new("BodhiApiError")
+  }
+
+  /// Variant for the OpenAI-compatible spec that references async-openai's
+  /// `WrappedError` envelope. The wire format matches OpenAI's native error
+  /// envelope: `{"error": {"message", "type", "param", "code"}}`.
+  pub const fn oai() -> Self {
+    Self::new("WrappedError")
+  }
+}
 
 impl Modify for GlobalErrorResponses {
   fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
@@ -606,6 +630,8 @@ impl Modify for GlobalErrorResponses {
       ENDPOINT_APP_INFO,
       ENDPOINT_APP_SETUP,
     ];
+
+    let schema_name = self.error_schema_name;
 
     for (path, path_item) in openapi.paths.paths.iter_mut() {
       // Check if this is a public endpoint
@@ -632,7 +658,7 @@ impl Modify for GlobalErrorResponses {
               .content(
                 "application/json",
                 ContentBuilder::new()
-                  .schema(Some(Ref::from_schema_name("OpenAIApiError")))
+                  .schema(Some(Ref::from_schema_name(schema_name)))
                   .build(),
               )
               .build(),
@@ -649,7 +675,7 @@ impl Modify for GlobalErrorResponses {
                 .content(
                   "application/json",
                   ContentBuilder::new()
-                    .schema(Some(Ref::from_schema_name("OpenAIApiError")))
+                    .schema(Some(Ref::from_schema_name(schema_name)))
                     .build(),
                 )
                 .build(),
@@ -664,7 +690,7 @@ impl Modify for GlobalErrorResponses {
                 .content(
                   "application/json",
                   ContentBuilder::new()
-                    .schema(Some(Ref::from_schema_name("OpenAIApiError")))
+                    .schema(Some(Ref::from_schema_name(schema_name)))
                     .build(),
                 )
                 .build(),
@@ -681,7 +707,7 @@ impl Modify for GlobalErrorResponses {
               .content(
                 "application/json",
                 ContentBuilder::new()
-                  .schema(Some(Ref::from_schema_name("OpenAIApiError")))
+                  .schema(Some(Ref::from_schema_name(schema_name)))
                   .build(),
               )
               .build(),

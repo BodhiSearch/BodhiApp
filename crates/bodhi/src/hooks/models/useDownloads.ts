@@ -1,5 +1,5 @@
 // External imports
-import { DownloadRequest, NewDownloadRequest, OpenAiApiError, PaginatedDownloadResponse } from '@bodhiapp/ts-client';
+import { DownloadRequest, NewDownloadRequest, BodhiApiError, PaginatedDownloadResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 // Internal imports
@@ -8,7 +8,7 @@ import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@
 import { downloadKeys, ENDPOINT_MODEL_FILES_PULL } from './constants';
 
 // Type alias
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 export function useListDownloads(page: number, pageSize: number, options?: { enablePolling?: boolean }) {
   return useQuery<PaginatedDownloadResponse>(

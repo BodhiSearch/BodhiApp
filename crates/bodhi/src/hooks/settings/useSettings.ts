@@ -1,5 +1,5 @@
 // External imports
-import { SettingInfo, OpenAiApiError } from '@bodhiapp/ts-client';
+import { SettingInfo, BodhiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 // Internal imports
@@ -8,7 +8,7 @@ import { UseMutationResult, UseQueryResult, useQuery, useMutationQuery, useQuery
 import { settingKeys, ENDPOINT_SETTINGS } from './constants';
 
 // Type alias
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // Settings hooks
 export function useListSettings(): UseQueryResult<SettingInfo[], AxiosError<ErrorResponse>> {

@@ -1,4 +1,4 @@
-import { Mcp, McpRequest, ListMcpsResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { Mcp, McpRequest, ListMcpsResponse, BodhiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
@@ -6,7 +6,7 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 import { mcpKeys, MCPS_ENDPOINT } from './constants';
 
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // ============================================================================
 // Query Hooks - MCP Instance CRUD

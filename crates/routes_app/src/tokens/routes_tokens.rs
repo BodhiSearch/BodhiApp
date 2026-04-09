@@ -2,7 +2,7 @@ use crate::tokens::error::TokenRouteError;
 use crate::tokens::tokens_api_schemas::{
   CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail, UpdateTokenRequest,
 };
-use crate::{ApiError, OpenAIApiError, ValidatedJson};
+use crate::{ApiError, BodhiApiError, ValidatedJson};
 use crate::{AuthScope, PaginationSortParams, API_TAG_API_KEYS, ENDPOINT_TOKENS};
 use axum::{
   extract::{Path, Query},
@@ -39,7 +39,7 @@ use services::{ResourceRole, TokenScope};
          example = json!({
              "token": "bodhiapp_1234567890abcdef"
          })),
-        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot create tokens)", body = OpenAIApiError),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot create tokens)", body = BodhiApiError),
     ),
     security(
         ("session_auth" = ["resource_power_user"])
@@ -127,7 +127,7 @@ pub async fn tokens_create(
              "created_at": "2024-11-10T04:52:06.786Z",
              "updated_at": "2024-11-10T04:52:06.786Z"
          })),
-        (status = 404, description = "Token not found", body = OpenAIApiError,
+        (status = 404, description = "Token not found", body = BodhiApiError,
          example = json!({
              "error": {
                  "message": "Token not found",
@@ -135,7 +135,7 @@ pub async fn tokens_create(
                  "code": "entity_error-not_found"
              }
          })),
-        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot manage tokens)", body = OpenAIApiError),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot manage tokens)", body = BodhiApiError),
     ),
     security(
         ("session_auth" = ["resource_power_user"])
@@ -191,7 +191,7 @@ pub async fn tokens_update(
              "page": 1,
              "page_size": 10
          })),
-        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot list tokens)", body = OpenAIApiError),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot list tokens)", body = BodhiApiError),
     ),
     security(
         ("session_auth" = ["resource_power_user"])

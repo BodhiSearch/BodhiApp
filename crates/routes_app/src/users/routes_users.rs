@@ -1,6 +1,6 @@
 use crate::users::error::UsersRouteError;
 use crate::users::users_api_schemas::ListUsersParams;
-use crate::{ApiError, AuthScope, OpenAIApiError, ValidatedJson, API_TAG_AUTH};
+use crate::{ApiError, AuthScope, BodhiApiError, ValidatedJson, API_TAG_AUTH};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -59,7 +59,7 @@ pub async fn users_index(
     request_body = ChangeRoleRequest,
     responses(
         (status = 200, description = "Role changed successfully"),
-        (status = 404, description = "User not found", body = OpenAIApiError),
+        (status = 404, description = "User not found", body = BodhiApiError),
     ),
     security(
         ("session_auth" = ["resource_manager"])
@@ -134,7 +134,7 @@ pub async fn users_change_role(
     ),
     responses(
         (status = 200, description = "User removed successfully"),
-        (status = 404, description = "User not found", body = OpenAIApiError),
+        (status = 404, description = "User not found", body = BodhiApiError),
     ),
     security(
         ("session_auth" = ["resource_manager"])

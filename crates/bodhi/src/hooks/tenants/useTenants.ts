@@ -1,5 +1,5 @@
 // External imports
-import { TenantListResponse, CreateTenantRequest, CreateTenantResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { TenantListResponse, CreateTenantRequest, CreateTenantResponse, BodhiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 // Internal imports
@@ -10,7 +10,7 @@ import { userKeys } from '@/hooks/users/constants';
 import { tenantKeys, ENDPOINT_TENANTS } from './constants';
 
 // Type alias
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // List tenants
 export function useListTenants(options?: { enabled?: boolean }) {

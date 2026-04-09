@@ -3,7 +3,7 @@ use crate::middleware::{
   SESSION_KEY_USER_ID,
 };
 use crate::shared::{utils::extract_request_host, AuthScope};
-use crate::{ApiError, OpenAIApiError};
+use crate::{ApiError, BodhiApiError};
 use crate::{
   AuthCallbackRequest, AuthInitiateRequest, AuthRouteError, RedirectResponse, API_TAG_AUTH,
   ENDPOINT_LOGOUT,
@@ -164,7 +164,7 @@ pub async fn auth_initiate(
          example = json!({
              "location": "https://app.example.com/dashboard"
          })),
-        (status = 422, description = "OAuth error, invalid request parameters, or state mismatch", body = OpenAIApiError,
+        (status = 422, description = "OAuth error, invalid request parameters, or state mismatch", body = BodhiApiError,
          example = json!({
              "error": {
                  "message": "State parameter mismatch",

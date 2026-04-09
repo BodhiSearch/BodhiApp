@@ -1,4 +1,4 @@
-import { OpenAiApiError } from '@bodhiapp/ts-client';
+import { BodhiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import {
   useMutation,
@@ -17,7 +17,7 @@ import apiClient from '@/lib/apiClient';
 export { BODHI_API_BASE };
 
 // Type alias for compatibility
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 export function useQuery<T>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

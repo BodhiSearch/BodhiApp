@@ -88,7 +88,7 @@ export function mockSettingsError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -176,7 +176,7 @@ export function mockUpdateSettingError(
     type = 'invalid_request_error',
     status = 400,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -295,7 +295,7 @@ export function mockDeleteSettingError(
     type = 'not_found_error',
     status = 404,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;

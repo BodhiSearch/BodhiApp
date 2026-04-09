@@ -7,8 +7,8 @@ use crate::oai::{
 use crate::ollama::{
   __path_ollama_model_chat_handler, __path_ollama_model_show_handler, __path_ollama_models_handler,
 };
-use crate::OpenAIApiError;
 use crate::{API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_RESPONSES};
+use async_openai::error::{ApiError as OaiErrorBody, WrappedError as OaiWrappedError};
 use async_openai::types::{
   chat::{
     ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
@@ -59,8 +59,10 @@ For BodhiApp management endpoints (auth, settings, model aliases, MCPs, tokens, 
     ),
     components(
         schemas(
-            // shared error type used in 4xx/5xx responses
-            OpenAIApiError,
+            // OpenAI-native error envelope used in 4xx/5xx responses
+            // (emitted as `openai.WrappedError` + `openai.ApiError` in the spec)
+            OaiWrappedError,
+            OaiErrorBody,
             // openai
             ListModelResponse,
             Model,

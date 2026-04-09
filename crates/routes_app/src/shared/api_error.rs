@@ -1,4 +1,5 @@
-use crate::shared::error_oai::{ErrorBody, OpenAIApiError};
+use crate::shared::error_oai::{BodhiApiError, BodhiErrorBody};
+use async_openai::error::{ApiError as OaiErrorBody, WrappedError as OaiWrappedError};
 use axum::{
   body::Body,
   response::{IntoResponse, Response},
@@ -36,7 +37,7 @@ impl<T: AppError + 'static> From<T> for ApiError {
   }
 }
 
-impl From<ApiError> for OpenAIApiError {
+impl From<ApiError> for BodhiApiError {
   fn from(value: ApiError) -> Self {
     let ApiError {
       name,
@@ -46,8 +47,8 @@ impl From<ApiError> for OpenAIApiError {
       args,
     } = value;
     let param = if args.is_empty() { None } else { Some(args) };
-    OpenAIApiError {
-      error: ErrorBody {
+    BodhiApiError {
+      error: BodhiErrorBody {
         message: name,
         r#type: error_type,
         code: Some(code),
@@ -60,11 +61,85 @@ impl From<ApiError> for OpenAIApiError {
 
 impl IntoResponse for ApiError {
   fn into_response(self) -> Response {
-    let openai_error: OpenAIApiError = self.into();
+    let openai_error: BodhiApiError = self.into();
     Response::builder()
       .status(openai_error.status)
       .header("Content-Type", "application/json")
       .body(Body::from(serde_json::to_string(&openai_error).unwrap()))
+      .unwrap()
+  }
+}
+
+/// Wire-format error type for OpenAI- and Ollama-compatible endpoints.
+///
+/// Wraps the internal [`ApiError`] but serializes to OpenAI's native error
+/// envelope (async-openai's `WrappedError { error: ApiError }`) on the wire,
+/// so OpenAI SDK clients can parse 4xx/5xx responses correctly. Use this as
+/// the return type for any handler exposed by the OAI spec:
+///
+/// ```ignore
+/// pub async fn chat_completions_handler(...) -> Result<Json<Response>, OaiApiError> { ... }
+/// ```
+///
+/// Unlike [`BodhiApiError`], the `param` field is a single `Option<String>`
+/// (joining any key=value pairs from the internal args map) to match OpenAI's
+/// wire format exactly.
+#[derive(Debug)]
+pub struct OaiApiError(pub ApiError);
+
+impl From<ApiError> for OaiApiError {
+  fn from(value: ApiError) -> Self {
+    Self(value)
+  }
+}
+
+impl<T: AppError + 'static> From<T> for OaiApiError {
+  fn from(value: T) -> Self {
+    Self(ApiError::from(value))
+  }
+}
+
+impl From<OaiApiError> for OaiWrappedError {
+  fn from(value: OaiApiError) -> Self {
+    let ApiError {
+      name,
+      error_type,
+      status: _,
+      code,
+      args,
+    } = value.0;
+    // OpenAI's native `param` is Option<String>. Join multi-arg validation
+    // details as "key=value, key2=value2" so callers still get the context.
+    let param = if args.is_empty() {
+      None
+    } else {
+      Some(
+        args
+          .iter()
+          .map(|(k, v)| format!("{}={}", k, v))
+          .collect::<Vec<_>>()
+          .join(", "),
+      )
+    };
+    OaiWrappedError {
+      error: OaiErrorBody {
+        message: name,
+        r#type: Some(error_type),
+        param,
+        code: Some(code),
+      },
+    }
+  }
+}
+
+impl IntoResponse for OaiApiError {
+  fn into_response(self) -> Response {
+    let status = self.0.status;
+    let wrapped: OaiWrappedError = self.into();
+    Response::builder()
+      .status(status)
+      .header("Content-Type", "application/json")
+      .body(Body::from(serde_json::to_string(&wrapped).unwrap()))
       .unwrap()
   }
 }

@@ -1,4 +1,4 @@
-use crate::{ApiError, AuthScope, OpenAIApiError};
+use crate::{ApiError, AuthScope, BodhiApiError};
 use crate::{
   PaginationSortParams, UsersRouteError, API_TAG_AUTH, ENDPOINT_ACCESS_REQUESTS_ALL,
   ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
@@ -27,8 +27,8 @@ use tracing::{debug, error, info};
     description = "Authenticated users without roles can request access to the system. Only one pending request is allowed per user.",
     responses(
         (status = 201, description = "Access request created successfully"),
-        (status = 409, description = "Pending request already exists", body = OpenAIApiError),
-        (status = 422, description = "User already has role", body = OpenAIApiError),
+        (status = 409, description = "Pending request already exists", body = BodhiApiError),
+        (status = 422, description = "User already has role", body = BodhiApiError),
     ),
     security(
         (),
@@ -97,7 +97,7 @@ pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, A
     description = "Check the status of the current user's access request.",
     responses(
         (status = 200, description = "Request status retrieved", body = UserAccessStatusResponse),
-        (status = 404, description = "Request not found", body = OpenAIApiError),
+        (status = 404, description = "Request not found", body = BodhiApiError),
     ),
     security(
         (),
@@ -216,7 +216,7 @@ pub async fn users_access_requests_index(
     ),
     responses(
         (status = 200, description = "Request approved successfully"),
-        (status = 404, description = "Request not found", body = OpenAIApiError),
+        (status = 404, description = "Request not found", body = BodhiApiError),
     ),
     security(
         ("session_auth" = ["resource_manager"])
@@ -309,7 +309,7 @@ pub async fn users_access_request_approve(
     ),
     responses(
         (status = 200, description = "Request rejected successfully"),
-        (status = 404, description = "Request not found", body = OpenAIApiError)
+        (status = 404, description = "Request not found", body = BodhiApiError)
     ),
     security(
         ("session_auth" = ["resource_manager"])

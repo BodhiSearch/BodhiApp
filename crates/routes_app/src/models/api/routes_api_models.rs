@@ -1,5 +1,5 @@
 use crate::shared::AuthScope;
-use crate::{ApiError, OpenAIApiError, ValidatedJson};
+use crate::{ApiError, BodhiApiError, ValidatedJson};
 use crate::{
   API_TAG_MODELS_API, ENDPOINT_MODELS_API, ENDPOINT_MODELS_API_FETCH_MODELS,
   ENDPOINT_MODELS_API_FORMATS, ENDPOINT_MODELS_API_TEST,
@@ -30,7 +30,7 @@ use services::{
              "has_api_key": true,
              "models": ["gpt-4"]
          })),
-        (status = 404, description = "API model with specified ID not found", body = OpenAIApiError,
+        (status = 404, description = "API model with specified ID not found", body = BodhiApiError,
          example = json!({
              "error": {
                  "message": "API model 'invalid-model' not found",
@@ -62,7 +62,7 @@ pub async fn api_models_show(
     request_body = ApiModelRequest,
     responses(
         (status = 201, description = "API model created", body = ApiAliasResponse),
-        (status = 409, description = "Alias already exists", body = OpenAIApiError),
+        (status = 409, description = "Alias already exists", body = BodhiApiError),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -90,7 +90,7 @@ pub async fn api_models_create(
     request_body = ApiModelRequest,
     responses(
         (status = 200, description = "API model updated", body = ApiAliasResponse),
-        (status = 404, description = "API model not found", body = OpenAIApiError),
+        (status = 404, description = "API model not found", body = BodhiApiError),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -118,7 +118,7 @@ pub async fn api_models_update(
     ),
     responses(
         (status = 204, description = "API model deleted"),
-        (status = 404, description = "API model not found", body = OpenAIApiError),
+        (status = 404, description = "API model not found", body = BodhiApiError),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -148,7 +148,7 @@ pub async fn api_models_destroy(
     request_body = TestPromptRequest,
     responses(
         (status = 200, description = "Test result", body = TestPromptResponse),
-        (status = 400, description = "Invalid request", body = OpenAIApiError),
+        (status = 400, description = "Invalid request", body = BodhiApiError),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -227,7 +227,7 @@ pub async fn api_models_test(
     request_body = FetchModelsRequest,
     responses(
         (status = 200, description = "Available models", body = FetchModelsResponse),
-        (status = 400, description = "Invalid request", body = OpenAIApiError),
+        (status = 400, description = "Invalid request", body = BodhiApiError),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),

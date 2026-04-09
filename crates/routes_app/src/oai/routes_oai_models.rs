@@ -1,7 +1,8 @@
 use super::ENDPOINT_OAI_MODELS;
 use crate::shared::AuthScope;
+use crate::OaiApiError;
 use crate::API_TAG_OPENAI;
-use crate::{ApiError, OpenAIApiError};
+use async_openai::error::WrappedError as OaiWrappedError;
 use async_openai::types::models::{ListModelResponse, Model};
 use axum::{extract::Path, Json};
 use services::DataServiceError;
@@ -45,7 +46,7 @@ use std::{collections::HashSet, sync::Arc};
 )]
 pub async fn oai_models_handler(
   auth_scope: AuthScope,
-) -> Result<Json<ListModelResponse>, ApiError> {
+) -> Result<Json<ListModelResponse>, OaiApiError> {
   // tenant_id for cache refresh (optional for anonymous/unauthenticated contexts)
   let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
   let setting_service = auth_scope.setting_service();
@@ -55,7 +56,7 @@ pub async fn oai_models_handler(
     .data()
     .list_aliases()
     .await
-    .map_err(ApiError::from)?;
+    .map_err(OaiApiError::from)?;
 
   // Use HashSet to track model IDs and prevent duplicates
   let mut seen_models = HashSet::new();
@@ -142,7 +143,7 @@ pub async fn oai_models_handler(
              "created": 1677610602,
              "owned_by": "system"
          })),
-        (status = 404, description = "Model not found", body = OpenAIApiError,
+        (status = 404, description = "Model not found", body = OaiWrappedError,
          example = json!({
              "error": {
                  "message": "Model 'unknown:model' not found",
@@ -160,7 +161,7 @@ pub async fn oai_models_handler(
 pub async fn oai_model_handler(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<Model>, ApiError> {
+) -> Result<Json<Model>, OaiApiError> {
   let setting_service = auth_scope.setting_service();
   let time_service = auth_scope.time_service();
   // Use auth-scoped DataService.find_alias
@@ -176,7 +177,7 @@ pub async fn oai_model_handler(
       }
     }
   } else {
-    Err(ApiError::from(DataServiceError::AliasNotFound(id)))
+    Err(OaiApiError::from(DataServiceError::AliasNotFound(id)))
   }
 }
 

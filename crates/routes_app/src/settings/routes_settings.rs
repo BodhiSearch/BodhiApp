@@ -1,6 +1,6 @@
 use crate::settings::error::SettingsRouteError;
 use crate::shared::AuthScope;
-use crate::{ApiError, OpenAIApiError, ValidatedJson};
+use crate::{ApiError, BodhiApiError, ValidatedJson};
 use crate::{API_TAG_SETTINGS, ENDPOINT_SETTINGS};
 use axum::{extract::Path, Json};
 use services::SettingInfo;
@@ -42,7 +42,7 @@ use services::{UpdateSettingRequest, BODHI_HOME, EDIT_SETTINGS_ALLOWED, LLM_SETT
                  }
              }
          ])),
-        (status = 403, description = "Forbidden - Admin session authentication required", body = OpenAIApiError),
+        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiApiError),
     ),
     security(
         ("session_auth" = ["resource_admin"])
@@ -86,7 +86,7 @@ pub async fn settings_index(auth_scope: AuthScope) -> Result<Json<Vec<SettingInf
                  "options": ["error", "warn", "info", "debug", "trace"]
              }
          })),
-        (status = 404, description = "Setting not found", body = OpenAIApiError,
+        (status = 404, description = "Setting not found", body = BodhiApiError,
          example = json!({
              "error": {
                  "message": "Setting not found: INVALID_KEY",
@@ -94,7 +94,7 @@ pub async fn settings_index(auth_scope: AuthScope) -> Result<Json<Vec<SettingInf
                  "code": "settings_route_error-not_found"
              }
          })),
-        (status = 403, description = "Forbidden - Admin session authentication required", body = OpenAIApiError)
+        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiApiError)
     ),
     security(
         ("session_auth" = ["resource_admin"])
@@ -163,7 +163,7 @@ pub async fn settings_update(
                  "options": ["error", "warn", "info", "debug", "trace"]
              }
          })),
-        (status = 404, description = "Setting not found", body = OpenAIApiError,
+        (status = 404, description = "Setting not found", body = BodhiApiError,
          example = json!({
              "error": {
                  "message": "Setting not found: INVALID_KEY",
@@ -171,7 +171,7 @@ pub async fn settings_update(
                  "code": "settings_route_error-not_found"
              }
          })),
-        (status = 403, description = "Forbidden - Admin session authentication required", body = OpenAIApiError)
+        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiApiError)
     ),
     security(
         ("session_auth" = ["resource_admin"])

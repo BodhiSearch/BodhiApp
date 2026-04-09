@@ -88,7 +88,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -98,7 +98,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -108,7 +108,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -131,7 +131,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -210,7 +210,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -220,7 +220,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -230,7 +230,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -253,7 +253,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -320,7 +320,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -330,7 +330,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -340,7 +340,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -350,7 +350,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -479,7 +479,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -489,7 +489,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -499,7 +499,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -509,7 +509,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -591,7 +591,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -601,7 +601,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -611,7 +611,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -621,7 +621,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -687,7 +687,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -697,7 +697,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -707,7 +707,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -717,7 +717,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -784,7 +784,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -794,7 +794,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -804,7 +804,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -814,7 +814,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 },
                 "example": {
                   "error": {
@@ -831,7 +831,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -898,7 +898,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -908,7 +908,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -918,7 +918,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -928,7 +928,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -997,7 +997,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1007,7 +1007,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1017,7 +1017,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1027,7 +1027,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1094,7 +1094,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1104,7 +1104,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1114,7 +1114,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1124,7 +1124,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1193,7 +1193,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1203,7 +1203,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1213,7 +1213,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1223,7 +1223,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1285,7 +1285,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1295,7 +1295,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1305,7 +1305,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1315,7 +1315,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
+                  "$ref": "#/components/schemas/WrappedError"
                 }
               }
             }
@@ -1439,6 +1439,36 @@
           }
         ],
         "description": "An annotation that applies to a span of output text."
+      },
+      "ApiError": {
+        "type": "object",
+        "description": "OpenAI API returns error object on failure",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "param": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "ApplyPatchCallOutputStatus": {
         "type": "string",
@@ -5680,59 +5710,6 @@
           "base64"
         ]
       },
-      "ErrorBody": {
-        "type": "object",
-        "required": [
-          "message",
-          "type"
-        ],
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message describing what went wrong",
-            "example": "Validation failed: name is required"
-          },
-          "type": {
-            "type": "string",
-            "description": "Error type categorizing the kind of error that occurred",
-            "example": "invalid_request_error"
-          },
-          "code": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Specific error code for programmatic error handling",
-            "example": "validation_error"
-          },
-          "param": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "description": "Additional error parameters as key-value pairs (for validation errors)",
-            "additionalProperties": {
-              "type": "string"
-            },
-            "propertyNames": {
-              "type": "string"
-            },
-            "example": {
-              "field": "name",
-              "value": "invalid"
-            }
-          }
-        },
-        "example": {
-          "code": "validation_error",
-          "message": "Validation failed: name is required",
-          "param": {
-            "field": "name",
-            "value": "invalid"
-          },
-          "type": "invalid_request_error"
-        }
-      },
       "ErrorObject": {
         "type": "object",
         "description": "An error that occurred while generating the response.",
@@ -8941,26 +8918,6 @@
           },
           "details": {
             "$ref": "#/components/schemas/ModelDetails"
-          }
-        }
-      },
-      "OpenAIApiError": {
-        "type": "object",
-        "required": [
-          "error"
-        ],
-        "properties": {
-          "error": {
-            "$ref": "#/components/schemas/ErrorBody",
-            "description": "Error details following OpenAI API error format"
-          }
-        },
-        "example": {
-          "error": {
-            "code": "validation_error",
-            "message": "Validation failed: name is required",
-            "param": "name",
-            "type": "invalid_request_error"
           }
         }
       },
@@ -12328,6 +12285,18 @@
         "enum": [
           "approximate"
         ]
+      },
+      "WrappedError": {
+        "type": "object",
+        "description": "Wrapper to deserialize the error object nested in \"error\" JSON key",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiError"
+          }
+        }
       }
     },
     "securitySchemes": {

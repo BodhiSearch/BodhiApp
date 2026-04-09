@@ -4,7 +4,7 @@ import {
   CreateTokenRequest,
   PaginatedTokenResponse,
   UpdateTokenRequest,
-  OpenAiApiError,
+  BodhiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosResponse, AxiosError } from 'axios';
 
@@ -14,7 +14,7 @@ import { UseMutationResult } from '@/hooks/useQuery';
 import { tokenKeys, API_TOKENS_ENDPOINT } from './constants';
 
 // Type alias for compatibility
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // Hooks
 export function useListTokens(page: number = 1, pageSize: number = 10, options?: { enabled?: boolean }) {

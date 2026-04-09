@@ -1,5 +1,5 @@
 use crate::shared::AuthScope;
-use crate::{ApiError, OpenAIApiError};
+use crate::{ApiError, BodhiApiError};
 use crate::{PaginationSortParams, API_TAG_MODELS, ENDPOINT_MODELS};
 use axum::{
   extract::{Path, Query},
@@ -207,7 +207,7 @@ fn get_alias_source(alias: &Alias) -> &str {
     ),
     responses(
         (status = 200, description = "Model alias details", body = UserAliasResponse),
-        (status = 404, description = "Alias not found", body = OpenAIApiError,
+        (status = 404, description = "Alias not found", body = BodhiApiError,
          example = json!({
              "error": {
                  "message": "Alias 'unknown:model' not found",

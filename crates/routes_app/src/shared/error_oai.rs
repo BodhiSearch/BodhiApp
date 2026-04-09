@@ -9,7 +9,7 @@ use utoipa::ToSchema;
     "code": "validation_error",
     "param": {"field": "name", "value": "invalid"}
 }))]
-pub struct ErrorBody {
+pub struct BodhiErrorBody {
   /// Human-readable error message describing what went wrong
   #[schema(example = "Validation failed: name is required")]
   pub message: String,
@@ -37,9 +37,9 @@ pub struct ErrorBody {
         "param": "name"
     }
 }))]
-pub struct OpenAIApiError {
+pub struct BodhiApiError {
   /// Error details following OpenAI API error format
-  pub error: ErrorBody,
+  pub error: BodhiErrorBody,
 
   /// HTTP status code (not serialized in response)
   #[serde(skip)]
@@ -47,7 +47,7 @@ pub struct OpenAIApiError {
   pub status: u16,
 }
 
-impl std::fmt::Display for OpenAIApiError {
+impl std::fmt::Display for BodhiApiError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,

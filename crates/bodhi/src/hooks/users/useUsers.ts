@@ -1,7 +1,7 @@
 // External imports
 import { useEffect } from 'react';
 
-import { UserInfo, UserInfoEnvelope, UserResponse, UserListResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { UserInfo, UserInfoEnvelope, UserResponse, UserListResponse, BodhiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useNavigate } from '@tanstack/react-router';
 
@@ -13,7 +13,7 @@ import { userKeys, ENDPOINT_USER_INFO, ENDPOINT_USERS } from './constants';
 
 // Types
 export type AuthenticatedUser = UserInfo & { auth_status: 'logged_in' };
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // Basic user info hook
 export function useGetUser(options?: { enabled?: boolean }) {

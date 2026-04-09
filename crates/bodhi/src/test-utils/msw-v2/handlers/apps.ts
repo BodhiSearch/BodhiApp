@@ -43,7 +43,7 @@ export function mockAppAccessRequestReviewError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 410 | 500 } = {},
+  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 404 | 410 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -110,7 +110,7 @@ export function mockAppAccessRequestApproveError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 409 | 500 } = {},
+  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 404 | 409 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -170,7 +170,7 @@ export function mockAppAccessRequestDenyError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 409 | 500 } = {},
+  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 404 | 409 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;

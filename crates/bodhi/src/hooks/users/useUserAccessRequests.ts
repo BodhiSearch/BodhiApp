@@ -1,5 +1,5 @@
 import {
-  OpenAiApiError,
+  BodhiApiError,
   PaginatedUserAccessResponse,
   ResourceRole,
   UserAccessStatusResponse,
@@ -18,7 +18,7 @@ import {
 } from './constants';
 
 // Type alias for compatibility
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // User request status
 export function useGetRequestStatus(): UseQueryResult<UserAccessStatusResponse, AxiosError<ErrorResponse>> {

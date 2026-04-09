@@ -14,6 +14,16 @@ export type Annotation = (FileCitationBody & {
 });
 
 /**
+ * OpenAI API returns error object on failure
+ */
+export type ApiError = {
+    message: string;
+    type?: string | null;
+    param?: string | null;
+    code?: string | null;
+};
+
+/**
  * Outcome values reported for apply_patch tool call outputs.
  */
 export type ApplyPatchCallOutputStatus = 'completed' | 'failed';
@@ -1856,27 +1866,6 @@ export type EmbeddingUsage = {
 
 export type EncodingFormat = 'float' | 'base64';
 
-export type ErrorBody = {
-    /**
-     * Human-readable error message describing what went wrong
-     */
-    message: string;
-    /**
-     * Error type categorizing the kind of error that occurred
-     */
-    type: string;
-    /**
-     * Specific error code for programmatic error handling
-     */
-    code?: string | null;
-    /**
-     * Additional error parameters as key-value pairs (for validation errors)
-     */
-    param?: {
-        [key: string]: string;
-    } | null;
-};
-
 /**
  * An error that occurred while generating the response.
  */
@@ -3189,13 +3178,6 @@ export type OllamaModel = {
     details: ModelDetails;
 };
 
-export type OpenAiApiError = {
-    /**
-     * Error details following OpenAI API error format
-     */
-    error: ErrorBody;
-};
-
 export type Options = {
     num_keep?: number | null;
     seed?: number | null;
@@ -4305,6 +4287,13 @@ export type WebSearchUserLocation = {
 
 export type WebSearchUserLocationType = 'approximate';
 
+/**
+ * Wrapper to deserialize the error object nested in "error" JSON key
+ */
+export type WrappedError = {
+    error: ApiError;
+};
+
 export type ChatOllamaModelData = {
     /**
      * Chat request in Ollama format
@@ -4319,15 +4308,15 @@ export type ChatOllamaModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Model not found
      */
@@ -4335,7 +4324,7 @@ export type ChatOllamaModelErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type ChatOllamaModelError = ChatOllamaModelErrors[keyof ChatOllamaModelErrors];
@@ -4361,15 +4350,15 @@ export type ShowOllamaModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Model not found
      */
@@ -4377,7 +4366,7 @@ export type ShowOllamaModelErrors = {
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type ShowOllamaModelError = ShowOllamaModelErrors[keyof ShowOllamaModelErrors];
@@ -4402,19 +4391,19 @@ export type ListOllamaModelsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type ListOllamaModelsError = ListOllamaModelsErrors[keyof ListOllamaModelsErrors];
@@ -4439,19 +4428,19 @@ export type CreateChatCompletionErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type CreateChatCompletionError = CreateChatCompletionErrors[keyof CreateChatCompletionErrors];
@@ -4480,19 +4469,19 @@ export type CreateEmbeddingErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type CreateEmbeddingError = CreateEmbeddingErrors[keyof CreateEmbeddingErrors];
@@ -4517,19 +4506,19 @@ export type ListModelsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type ListModelsError = ListModelsErrors[keyof ListModelsErrors];
@@ -4559,23 +4548,23 @@ export type GetModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Model not found
      */
-    404: OpenAiApiError;
+    404: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type GetModelError = GetModelErrors[keyof GetModelErrors];
@@ -4600,19 +4589,19 @@ export type CreateResponseErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type CreateResponseError = CreateResponseErrors[keyof CreateResponseErrors];
@@ -4651,19 +4640,19 @@ export type DeleteResponseErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type DeleteResponseError = DeleteResponseErrors[keyof DeleteResponseErrors];
@@ -4698,19 +4687,19 @@ export type GetResponseErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type GetResponseError = GetResponseErrors[keyof GetResponseErrors];
@@ -4745,19 +4734,19 @@ export type CancelResponseErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type CancelResponseError = CancelResponseErrors[keyof CancelResponseErrors];
@@ -4792,19 +4781,19 @@ export type ListResponseInputItemsErrors = {
     /**
      * Invalid request parameters
      */
-    400: OpenAiApiError;
+    400: WrappedError;
     /**
      * Not authenticated
      */
-    401: OpenAiApiError;
+    401: WrappedError;
     /**
      * Insufficient permissions
      */
-    403: OpenAiApiError;
+    403: WrappedError;
     /**
      * Internal server error
      */
-    500: OpenAiApiError;
+    500: WrappedError;
 };
 
 export type ListResponseInputItemsError = ListResponseInputItemsErrors[keyof ListResponseInputItemsErrors];

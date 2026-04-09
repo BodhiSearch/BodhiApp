@@ -1,6 +1,6 @@
 use crate::models::error::ModelRouteError;
 use crate::shared::AuthScope;
-use crate::{ApiError, OpenAIApiError, ValidatedJson};
+use crate::{ApiError, BodhiApiError, ValidatedJson};
 use crate::{PaginationSortParams, API_TAG_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL};
 use axum::http::StatusCode;
 use axum::{
@@ -183,7 +183,7 @@ pub async fn models_pull_create(
              "created_at": "2024-11-10T04:52:06.786Z",
              "updated_at": "2024-01-20T12:00:10Z"
          })),
-        (status = 404, description = "Download request not found", body = OpenAIApiError,
+        (status = 404, description = "Download request not found", body = BodhiApiError,
          example = json!({
              "error": {
                  "message": "item '550e8400-e29b-41d4-a716-446655440000' of type 'download_requests' not found in db",

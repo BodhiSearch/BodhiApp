@@ -92,7 +92,7 @@ export function mockAppInfoError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 500 } = {},
+  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;

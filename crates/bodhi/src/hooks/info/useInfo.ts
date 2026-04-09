@@ -1,5 +1,5 @@
 // External imports
-import { AppInfo, SetupRequest, SetupResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { AppInfo, SetupRequest, SetupResponse, BodhiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 // Internal imports
@@ -9,7 +9,7 @@ import { userKeys } from '@/hooks/users/constants';
 import { appInfoKeys, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP } from './constants';
 
 // Type alias
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 export function useGetAppInfo() {
   return useQuery<AppInfo>(appInfoKeys.all, ENDPOINT_APP_INFO);

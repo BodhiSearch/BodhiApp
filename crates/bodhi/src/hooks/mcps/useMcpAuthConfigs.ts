@@ -5,7 +5,7 @@ import {
   McpAuthConfigsListResponse,
   McpAuthType,
   OAuthTokenResponse,
-  OpenAiApiError,
+  BodhiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -20,7 +20,7 @@ import {
   MCPS_OAUTH_TOKENS_ENDPOINT,
 } from './constants';
 
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // ============================================================================
 // Query Hooks - Unified Auth Configs

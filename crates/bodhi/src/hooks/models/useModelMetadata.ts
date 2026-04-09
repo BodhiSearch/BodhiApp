@@ -1,11 +1,11 @@
-import { OpenAiApiError, AliasResponse, RefreshResponse } from '@bodhiapp/ts-client';
+import { BodhiApiError, AliasResponse, RefreshResponse } from '@bodhiapp/ts-client';
 import { AxiosError } from 'axios';
 
 import { useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 import { modelKeys, modelFileKeys, ENDPOINT_MODELS_REFRESH } from './constants';
 
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 /**
  * Hook to trigger metadata refresh for all local models (async bulk mode)

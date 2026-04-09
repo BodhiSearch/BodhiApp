@@ -3,7 +3,7 @@ import {
   McpServerRequest,
   McpServerInfo,
   ListMcpServersResponse,
-  OpenAiApiError,
+  BodhiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -12,7 +12,7 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 import { mcpServerKeys, MCP_SERVERS_ENDPOINT } from './constants';
 
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 // ============================================================================
 // Query Hooks - MCP Servers

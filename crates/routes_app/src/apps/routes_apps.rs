@@ -2,7 +2,7 @@ use crate::apps::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
   AppsRouteError, CreateAccessRequestResponse,
 };
-use crate::{ApiError, AuthScope, OpenAIApiError, ValidatedJson, API_TAG_AUTH};
+use crate::{ApiError, AuthScope, BodhiApiError, ValidatedJson, API_TAG_AUTH};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -42,8 +42,8 @@ pub struct AccessRequestStatusQuery {
     ),
     responses(
         (status = 201, description = "Access request created", body = CreateAccessRequestResponse),
-        (status = 400, description = "Invalid request", body = OpenAIApiError),
-        (status = 404, description = "App client not found", body = OpenAIApiError),
+        (status = 400, description = "Invalid request", body = BodhiApiError),
+        (status = 404, description = "App client not found", body = BodhiApiError),
     ),
     security(())
 )]
@@ -114,7 +114,7 @@ pub async fn apps_create_access_request(
     ),
     responses(
         (status = 200, description = "Status retrieved", body = AccessRequestStatusResponse),
-        (status = 404, description = "Not found or app_client_id mismatch", body = OpenAIApiError),
+        (status = 404, description = "Not found or app_client_id mismatch", body = BodhiApiError),
     ),
     security(())
 )]
@@ -161,8 +161,8 @@ pub async fn apps_get_access_request_status(
     ),
     responses(
         (status = 200, description = "Review data retrieved", body = AccessRequestReviewResponse),
-        (status = 404, description = "Not found", body = OpenAIApiError),
-        (status = 410, description = "Request expired", body = OpenAIApiError),
+        (status = 404, description = "Not found", body = BodhiApiError),
+        (status = 410, description = "Request expired", body = BodhiApiError),
     ),
     security(
         ("session_auth" = [])
@@ -237,9 +237,9 @@ pub async fn apps_get_access_request_review(
     ),
     responses(
         (status = 200, description = "Request approved", body = AccessRequestActionResponse),
-        (status = 400, description = "Invalid request", body = OpenAIApiError),
-        (status = 404, description = "Not found", body = OpenAIApiError),
-        (status = 409, description = "Already processed", body = OpenAIApiError),
+        (status = 400, description = "Invalid request", body = BodhiApiError),
+        (status = 404, description = "Not found", body = BodhiApiError),
+        (status = 409, description = "Already processed", body = BodhiApiError),
     ),
     security(
         ("session_auth" = [])
@@ -371,8 +371,8 @@ pub async fn apps_approve_access_request(
     ),
     responses(
         (status = 200, description = "Request denied", body = AccessRequestActionResponse),
-        (status = 404, description = "Not found", body = OpenAIApiError),
-        (status = 409, description = "Already processed", body = OpenAIApiError),
+        (status = 404, description = "Not found", body = BodhiApiError),
+        (status = 409, description = "Already processed", body = BodhiApiError),
     ),
     security(
         ("session_auth" = [])

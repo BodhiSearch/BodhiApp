@@ -6,7 +6,7 @@ import {
   FetchModelsRequest,
   FetchModelsResponse,
   ApiFormatsResponse,
-  OpenAiApiError,
+  BodhiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -24,7 +24,7 @@ import {
 } from './constants';
 
 // Type alias for compatibility
-type ErrorResponse = OpenAiApiError;
+type ErrorResponse = BodhiApiError;
 
 /**
  * Hook to fetch a single API model by id
