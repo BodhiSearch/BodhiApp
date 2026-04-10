@@ -10,6 +10,7 @@ include Makefile.website.mk
 	test.deps.up test.deps.down \
 	dev.deps.up dev.deps.down dev.deps.clear \
 	build build.native build.ui build.ui-clean build.ui-rebuild build.ts-client \
+	openapi.anthropic \
 	format format.all \
 	run run.native app.clear app.run app.run.pg app.run.live app.run.live.stop \
 	test.extension-download test.model-download \
@@ -22,7 +23,7 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^test[a-zA-Z0-9._-]*:.*?## / {printf "  \033[36m%-30s\033[0m %s \033[90m(%s)\033[0m\n", $$1, $$2, FILENAME}' $(MAKEFILE_LIST)
 	@echo ''
 	@echo '=== Building ==='
-	@awk 'BEGIN {FS = ":.*?## "} /^build[a-zA-Z0-9._-]*:.*?## / {printf "  \033[36m%-30s\033[0m %s \033[90m(%s)\033[0m\n", $$1, $$2, FILENAME}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^(build|openapi)[a-zA-Z0-9._-]*:.*?## / {printf "  \033[36m%-30s\033[0m %s \033[90m(%s)\033[0m\n", $$1, $$2, FILENAME}' $(MAKEFILE_LIST)
 	@echo ''
 	@echo '=== Formatting ==='
 	@awk 'BEGIN {FS = ":.*?## "} /^format[a-zA-Z0-9._-]*:.*?## / {printf "  \033[36m%-30s\033[0m %s \033[90m(%s)\033[0m\n", $$1, $$2, FILENAME}' $(MAKEFILE_LIST)
@@ -119,6 +120,11 @@ build.ts-client: ## Build the TypeScript client package
 	@echo "==> Building ts-client package"
 	@cd ts-client && npm install && npm run build && npm run test && npm run bundle
 	@echo "✓ ts-client package built successfully"
+
+openapi.anthropic: ## Download and filter Anthropic OpenAPI spec, generate types
+	@echo "==> Syncing Anthropic OpenAPI spec"
+	@cd ts-client && npm install && node scripts/sync-anthropic-openapi.mjs
+	@echo "✓ Anthropic OpenAPI spec synced"
 
 run: ## Run command line app
 	cargo run --bin bodhi -- serve --port 1135

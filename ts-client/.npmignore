@@ -7,6 +7,7 @@ package-lock.json
 # Development and build tools
 node_modules/
 tests/
+scripts/
 *.test.ts
 *.test.js
 *.spec.ts
@@ -17,6 +18,12 @@ tsconfig.json
 openapi-ts.config.ts
 *.config.js
 *.config.ts
+
+# Anthropic OpenAPI sync artifacts
+anthropic-openapi-filter.yaml
+.anthropic-openapi-meta.json
+.anthropic-openapi-full.yml
+openapi-anthropic.json
 
 # Development files
 .vscode/

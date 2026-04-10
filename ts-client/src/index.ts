@@ -9,3 +9,7 @@ export type {
   paths as pathsOai,
   components as componentsOai,
 } from './openapi-typescript/openapi-schema-oai';
+export type {
+  paths as pathsAnthropic,
+  components as componentsAnthropic,
+} from './openapi-typescript/openapi-schema-anthropic';

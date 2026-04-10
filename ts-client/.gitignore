@@ -9,6 +9,9 @@ dist/
 # Generated files
 src/types/*.d.ts
 
+# Temp download from sync-anthropic-openapi.mjs
+.anthropic-openapi-full.yml
+
 # Logs
 *.log
 npm-debug.log*

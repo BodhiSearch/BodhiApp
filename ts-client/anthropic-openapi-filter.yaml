@@ -1,0 +1,9 @@
+inverseOperationIds:
+  - messages_post
+  - models_list
+  - models_get
+unusedComponents:
+  - schemas
+  - parameters
+  - examples
+  - headers
