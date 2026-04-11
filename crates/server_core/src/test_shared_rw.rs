@@ -300,7 +300,14 @@ async fn test_forward_request_api_alias_returns_unreachable(
     "test-api",
     services::ApiFormat::OpenAI,
     "https://api.example.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![services::ApiModel::OpenAI(
+      async_openai::types::models::Model {
+        id: "gpt-4".to_string(),
+        object: "model".to_string(),
+        created: 0,
+        owned_by: "openai".to_string(),
+      },
+    )],
     None,
     false,
     services::test_utils::fixed_dt(),

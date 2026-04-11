@@ -1,8 +1,8 @@
-use crate::models::{Alias, ApiAlias, ApiAliasRepository, ApiFormat};
+use crate::models::{Alias, ApiAlias, ApiAliasRepository, ApiFormat, ApiModel};
 use crate::{
   test_utils::{
-    test_data_service, test_db_service, test_hf_service, TestDataService, TestDbService,
-    TestHfService, TEST_TENANT_ID, TEST_USER_ID,
+    openai_model, test_data_service, test_db_service, test_hf_service, TestDataService,
+    TestDbService, TestHfService, TEST_TENANT_ID, TEST_USER_ID,
   },
   DataService, LocalDataService,
 };
@@ -67,7 +67,7 @@ async fn test_find_alias_api_by_model_name(
     "openai-api",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+    vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
     None,
     false,
     db_service.now(),
@@ -112,7 +112,7 @@ async fn test_find_alias_priority_cases(
     "test-api",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     None,
     false,
     db_service.now(),
@@ -165,7 +165,7 @@ async fn test_find_alias_user_priority_over_api(
     "conflicting-api",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["testalias-exists:instruct".to_string()], // Same name as user alias
+    vec![openai_model("testalias-exists:instruct")], // Same name as user alias
     None,
     false,
     db_service.now(),
@@ -288,8 +288,8 @@ async fn test_local_data_service_copy_alias(
 }
 
 #[rstest]
-#[case("azure/gpt-4", Some("azure/".to_string()), vec!["gpt-4".to_string()], "azure-openai")]
-#[case("gpt-4", None, vec!["gpt-4".to_string()], "legacy-api")]
+#[case("azure/gpt-4", Some("azure/".to_string()), vec![openai_model("gpt-4")], "azure-openai")]
+#[case("gpt-4", None, vec![openai_model("gpt-4")], "legacy-api")]
 #[tokio::test]
 #[anyhow_trace]
 #[awt]
@@ -298,7 +298,7 @@ async fn test_find_alias_with_prefix_matches(
   #[future] test_db_service: TestDbService,
   #[case] search_term: &str,
   #[case] api_prefix: Option<String>,
-  #[case] api_models: Vec<String>,
+  #[case] api_models: Vec<ApiModel>,
   #[case] expected_id: &str,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(test_db_service);
@@ -343,7 +343,7 @@ async fn test_find_alias_with_non_matching_prefix_returns_none(
     "azure-openai",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     Some("azure/".to_string()),
     false,
     db_service.now(),
@@ -374,7 +374,7 @@ async fn test_find_alias_without_prefix_does_not_match_prefixed_api(
     "azure-openai",
     ApiFormat::OpenAI,
     "https://api.azure.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     Some("azure/".to_string()),
     false,
     db_service.now(),

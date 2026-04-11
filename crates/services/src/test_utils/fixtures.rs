@@ -1,8 +1,32 @@
 use super::ModelMetadataEntityBuilder;
 use crate::models::{
-  AliasSource, ApiAlias, ApiAliasBuilder, ContextLimits, ModelCapabilities, ToolCapabilities,
-  UserAlias,
+  AliasSource, ApiAlias, ApiAliasBuilder, ApiModel, ContextLimits, ModelCapabilities,
+  ToolCapabilities, UserAlias,
 };
+use async_openai::types::models::Model as OpenAIModel;
+
+pub fn openai_model(id: &str) -> ApiModel {
+  ApiModel::OpenAI(OpenAIModel {
+    id: id.to_string(),
+    object: "model".to_string(),
+    created: 0,
+    owned_by: "openai".to_string(),
+  })
+}
+
+pub fn anthropic_model(id: &str) -> ApiModel {
+  use crate::models::AnthropicModel;
+  ApiModel::Anthropic(AnthropicModel {
+    id: id.to_string(),
+    display_name: id.to_string(),
+    created_at: "2024-01-01T00:00:00Z".to_string(),
+    capabilities: None,
+    max_input_tokens: None,
+    max_tokens: None,
+    model_type: "model".to_string(),
+  })
+}
+
 use crate::{AppStatus, Tenant};
 use chrono::{DateTime, Utc};
 use rstest::fixture;
@@ -61,7 +85,7 @@ pub fn tenant() -> Tenant {
 /// Create a test ApiModelAlias with incrementing timestamps for sorting tests
 pub fn create_test_api_model_alias(
   alias: &str,
-  models: Vec<String>,
+  models: Vec<ApiModel>,
   created_at: DateTime<Utc>,
 ) -> ApiAlias {
   ApiAliasBuilder::test_default()
@@ -75,7 +99,7 @@ pub fn create_test_api_model_alias(
 /// Create a test ApiModelAlias with prefix for prefix-based routing tests
 pub fn create_test_api_model_alias_with_prefix(
   alias: &str,
-  models: Vec<String>,
+  models: Vec<ApiModel>,
   prefix: Option<String>,
   created_at: DateTime<Utc>,
 ) -> ApiAlias {
@@ -106,37 +130,37 @@ pub async fn seed_test_api_models_for_user(
   user_id: &str,
 ) -> anyhow::Result<Vec<ApiAlias>> {
   let aliases = vec![
-    create_test_api_model_alias("openai-gpt4", vec!["gpt-4".to_string()], base_time),
+    create_test_api_model_alias("openai-gpt4", vec![openai_model("gpt-4")], base_time),
     create_test_api_model_alias(
       "openai-gpt35-turbo",
-      vec!["gpt-3.5-turbo".to_string()],
+      vec![openai_model("gpt-3.5-turbo")],
       base_time - chrono::Duration::seconds(10),
     ),
     create_test_api_model_alias(
       "openai-gpt4-turbo",
-      vec!["gpt-4-turbo".to_string()],
+      vec![openai_model("gpt-4-turbo")],
       base_time - chrono::Duration::seconds(20),
     ),
     create_test_api_model_alias(
       "openai-gpt4-vision",
-      vec!["gpt-4-vision-preview".to_string()],
+      vec![openai_model("gpt-4-vision-preview")],
       base_time - chrono::Duration::seconds(30),
     ),
     create_test_api_model_alias(
       "openai-multi-model",
-      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
       base_time - chrono::Duration::seconds(40),
     ),
     // Add prefix test data with separators
     create_test_api_model_alias_with_prefix(
       "azure-openai",
-      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
       Some("azure/".to_string()),
       base_time - chrono::Duration::seconds(50),
     ),
     create_test_api_model_alias_with_prefix(
       "custom-alias",
-      vec!["custom-model-1".to_string()],
+      vec![openai_model("custom-model-1")],
       Some("my.custom_".to_string()),
       base_time - chrono::Duration::seconds(60),
     ),

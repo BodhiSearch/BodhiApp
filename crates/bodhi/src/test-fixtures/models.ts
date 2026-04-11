@@ -39,6 +39,34 @@ export function createMockUserAlias(overrides?: Partial<UserAliasResponse>): Use
 }
 
 /**
+ * Create an OpenAI ApiModel fixture
+ */
+export function createMockOpenAIModel(id: string, overrides?: Record<string, unknown>) {
+  return {
+    id,
+    object: 'model' as const,
+    created: 0,
+    owned_by: 'openai',
+    provider: 'openai' as const,
+    ...overrides,
+  };
+}
+
+/**
+ * Create an Anthropic ApiModel fixture
+ */
+export function createMockAnthropicModel(id: string, overrides?: Record<string, unknown>) {
+  return {
+    id,
+    display_name: id,
+    created_at: '2024-01-01T00:00:00Z',
+    type: 'model' as const,
+    provider: 'anthropic' as const,
+    ...overrides,
+  };
+}
+
+/**
  * Create an API-source alias (remote API model)
  */
 export function createMockApiAlias(overrides?: Partial<ApiAliasResponse>): ApiAliasResponse {
@@ -48,7 +76,10 @@ export function createMockApiAlias(overrides?: Partial<ApiAliasResponse>): ApiAl
     api_format: 'openai',
     base_url: 'https://api.openai.com/v1',
     has_api_key: true,
-    models: ['gpt-4', 'gpt-3.5-turbo'],
+    models: [
+      createMockOpenAIModel('gpt-4'),
+      createMockOpenAIModel('gpt-3.5-turbo'),
+    ],
     forward_all_with_prefix: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',

@@ -49,7 +49,11 @@ test.describe('API Models Forward All With Prefix', () => {
     // Create the forward_all model with prefix 'fwd/'
     await modelsPage.clickNewApiModel();
     await formPage.form.waitForFormReady();
-    await formPage.form.fillBasicInfoWithPrefix(testData.apiKey, 'fwd/', 'https://api.openai.com/v1');
+    await formPage.form.fillBasicInfoWithPrefix(
+      testData.apiKey,
+      'fwd/',
+      'https://api.openai.com/v1'
+    );
     await formPage.form.enableForwardAll();
     await formPage.form.expectModelSelectionState('disabled');
     const forwardAllModelId = await formPage.createModelAndCaptureId();
@@ -112,7 +116,11 @@ test.describe('API Models Forward All With Prefix', () => {
     await modelsPage.navigateToModels();
     await modelsPage.clickNewApiModel();
     await formPage.form.waitForFormReady();
-    await formPage.form.fillBasicInfoWithPrefix(testData.apiKey, 'fwd/', 'https://api.openai.com/v1');
+    await formPage.form.fillBasicInfoWithPrefix(
+      testData.apiKey,
+      'fwd/',
+      'https://api.openai.com/v1'
+    );
     await formPage.form.enableForwardAll();
     await page.click('[data-testid="create-api-model-button"]');
     await formPage.form.waitForToast(/Prefix.*already.*used/i);

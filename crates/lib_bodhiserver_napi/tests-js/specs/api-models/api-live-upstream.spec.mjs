@@ -113,7 +113,12 @@ test.describe('Live upstream - API token', () => {
 
     // Mint one BodhiApp API token shared across all format tests
     await test.step('Mint API token', async () => {
-      apiToken = await mintApiToken(tokensPage, page, 'live-upstream-api-token', 'scope_token_user');
+      apiToken = await mintApiToken(
+        tokensPage,
+        page,
+        'live-upstream-api-token',
+        'scope_token_user'
+      );
       expect(apiToken).toMatch(/^bodhiapp_/);
     });
 

@@ -7133,6 +7133,100 @@
         ],
         "description": "Response envelope for model aliases - hides internal implementation details\nUses untagged serialization - each variant has its own \"source\" field"
       },
+      "AnthropicModel": {
+        "type": "object",
+        "description": "Mirrors Anthropic's `ModelInfo` schema — full model metadata returned by\n`GET /anthropic/v1/models` and stored alongside model IDs in `ApiAlias.models`.\n\n**IMPORTANT**: Do NOT add `#[serde(skip_serializing_if = \"Option::is_none\")]` on the\n`Option` fields below. The Anthropic API spec marks `capabilities`, `max_input_tokens`,\nand `max_tokens` as **required** (nullable via `anyOf [T, null]`). They must serialize\nas `null` when absent, not be omitted from the JSON output.",
+        "required": [
+          "id",
+          "display_name",
+          "created_at",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "RFC 3339 datetime string representing the model's release date."
+          },
+          "capabilities": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AnthropicModelCapabilities"
+              }
+            ]
+          },
+          "max_input_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "max_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "type": {
+            "type": "string",
+            "description": "Always `\"model\"` — included for Anthropic API compatibility."
+          }
+        }
+      },
+      "AnthropicModelCapabilities": {
+        "type": "object",
+        "description": "Model capability information (Anthropic ModelCapabilities schema).",
+        "required": [
+          "batch",
+          "citations",
+          "code_execution",
+          "context_management",
+          "effort",
+          "image_input",
+          "pdf_input",
+          "structured_outputs",
+          "thinking"
+        ],
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "citations": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "code_execution": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "context_management": {
+            "$ref": "#/components/schemas/ContextManagementCapability"
+          },
+          "effort": {
+            "$ref": "#/components/schemas/EffortCapability"
+          },
+          "image_input": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "pdf_input": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "structured_outputs": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "thinking": {
+            "$ref": "#/components/schemas/ThinkingCapability"
+          }
+        }
+      },
       "ApiAlias": {
         "type": "object",
         "required": [
@@ -7141,8 +7235,6 @@
           "base_url",
           "models",
           "forward_all_with_prefix",
-          "models_cache",
-          "cache_fetched_at",
           "created_at",
           "updated_at"
         ],
@@ -7157,7 +7249,7 @@
             "type": "string"
           },
           "models": {
-            "$ref": "#/components/schemas/JsonVec"
+            "$ref": "#/components/schemas/ApiModelVec"
           },
           "prefix": {
             "type": [
@@ -7167,13 +7259,6 @@
           },
           "forward_all_with_prefix": {
             "type": "boolean"
-          },
-          "models_cache": {
-            "$ref": "#/components/schemas/JsonVec"
-          },
-          "cache_fetched_at": {
-            "type": "string",
-            "format": "date-time"
           },
           "created_at": {
             "type": "string",
@@ -7218,9 +7303,9 @@
           "models": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ApiModel"
             },
-            "description": "Models available through this alias (merged from cache for forward_all)"
+            "description": "Models available through this alias with full provider metadata"
           },
           "prefix": {
             "type": [
@@ -7247,8 +7332,7 @@
         "enum": [
           "openai",
           "openai_responses",
-          "anthropic",
-          "placeholder"
+          "anthropic"
         ]
       },
       "ApiFormatsResponse": {
@@ -7318,6 +7402,53 @@
         ],
         "description": "Represents an API key update operation for API model aliases."
       },
+      "ApiModel": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Model"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "provider"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "openai"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnthropicModel"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "provider"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "anthropic"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "description": "Discriminated union of provider-specific model metadata.\nStored as JSON in `api_model_aliases.models`."
+      },
       "ApiModelRequest": {
         "type": "object",
         "description": "Input request for creating or updating an API model configuration.",
@@ -7371,6 +7502,13 @@
           ],
           "prefix": "openai"
         }
+      },
+      "ApiModelVec": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ApiModel"
+        },
+        "description": "DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns."
       },
       "AppAccessRequestStatus": {
         "type": "string",
@@ -7686,6 +7824,18 @@
           "type": "invalid_request_error"
         }
       },
+      "CapabilitySupport": {
+        "type": "object",
+        "description": "Whether a single capability is supported by the model.",
+        "required": [
+          "supported"
+        ],
+        "properties": {
+          "supported": {
+            "type": "boolean"
+          }
+        }
+      },
       "ChangeRoleRequest": {
         "type": "object",
         "description": "Change user role request",
@@ -7717,6 +7867,42 @@
             ],
             "format": "int64",
             "minimum": 0
+          }
+        }
+      },
+      "ContextManagementCapability": {
+        "type": "object",
+        "description": "Context management capability details.",
+        "properties": {
+          "clear_thinking_20251015": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CapabilitySupport"
+              }
+            ]
+          },
+          "clear_tool_uses_20250919": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CapabilitySupport"
+              }
+            ]
+          },
+          "compact_20260112": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CapabilitySupport"
+              }
+            ]
           }
         }
       },
@@ -8139,6 +8325,26 @@
           }
         }
       },
+      "EffortCapability": {
+        "type": "object",
+        "description": "Effort (reasoning_effort) capability details.",
+        "required": [
+          "high",
+          "low",
+          "max"
+        ],
+        "properties": {
+          "high": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "low": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "max": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          }
+        }
+      },
       "FetchModelsRequest": {
         "type": "object",
         "description": "Request to fetch available models from provider",
@@ -8170,7 +8376,7 @@
       },
       "FetchModelsResponse": {
         "type": "object",
-        "description": "Response containing available models from provider",
+        "description": "Returns model IDs only (not full metadata) to minimize information exposure —\nthe endpoint accepts an API key parameter. Full metadata is stored on create/update.",
         "required": [
           "models"
         ],
@@ -8908,6 +9114,36 @@
               "$ref": "#/components/schemas/Mcp"
             },
             "description": "User's MCP instances connected to this server URL"
+          }
+        }
+      },
+      "Model": {
+        "type": "object",
+        "description": "Describes an OpenAI model offering that can be used with the API.",
+        "required": [
+          "id",
+          "object",
+          "created",
+          "owned_by"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The model identifier, which can be referenced in the API endpoints."
+          },
+          "object": {
+            "type": "string",
+            "description": "The object type, which is always \"model\"."
+          },
+          "created": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The Unix timestamp (in seconds) when the model was created.",
+            "minimum": 0
+          },
+          "owned_by": {
+            "type": "string",
+            "description": "The organization that owns the model."
           }
         }
       },
@@ -10081,6 +10317,38 @@
           "error": null,
           "response": "Hello! I'm doing well, thank you.",
           "success": true
+        }
+      },
+      "ThinkingCapability": {
+        "type": "object",
+        "description": "Thinking capability and supported type configurations.",
+        "required": [
+          "supported",
+          "types"
+        ],
+        "properties": {
+          "supported": {
+            "type": "boolean"
+          },
+          "types": {
+            "$ref": "#/components/schemas/ThinkingTypes"
+          }
+        }
+      },
+      "ThinkingTypes": {
+        "type": "object",
+        "description": "Supported thinking type configurations.",
+        "required": [
+          "adaptive",
+          "enabled"
+        ],
+        "properties": {
+          "adaptive": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          },
+          "enabled": {
+            "$ref": "#/components/schemas/CapabilitySupport"
+          }
         }
       },
       "TokenCreated": {

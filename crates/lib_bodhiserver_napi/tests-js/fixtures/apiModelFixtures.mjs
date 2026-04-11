@@ -33,7 +33,7 @@ export class ApiModelFixtures {
       // model-name collisions (e.g. both openai and openai_responses use gpt-4.1-nano).
       // The effective model ID becomes `${multiTestPrefix}${model}`.
       multiTestPrefix: 'oai/',
-      // BodhiApp routes /v1/chat/completions to OpenAI | Placeholder | Anthropic aliases only.
+      // BodhiApp routes /v1/chat/completions to OpenAI | Anthropic aliases only.
       supportsUniversalChatCompletions: true,
     },
     openai_responses: {

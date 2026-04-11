@@ -52,26 +52,6 @@ fn validate_response_id(id: &str) -> Result<(), OAIRouteError> {
   Ok(())
 }
 
-pub(super) async fn resolve_api_key_for_alias(
-  auth_scope: &AuthScope,
-  api_alias_id: &str,
-) -> Option<String> {
-  let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
-  let user_id = auth_scope
-    .auth_context()
-    .user_id()
-    .unwrap_or("")
-    .to_string();
-  auth_scope
-    .db()
-    .get_api_key_for_alias(&tenant_id, &user_id, api_alias_id)
-    .await
-    .unwrap_or_else(|e| {
-      tracing::warn!("Failed to fetch API key for alias {}: {}", api_alias_id, e);
-      None
-    })
-}
-
 async fn resolve_responses_alias(
   auth_scope: &AuthScope,
   model: &str,
@@ -94,7 +74,7 @@ async fn resolve_responses_alias(
     }
   };
 
-  let api_key = resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
+  let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
   Ok((api_alias, api_key))
 }
 

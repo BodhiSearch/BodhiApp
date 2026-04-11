@@ -37,8 +37,8 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     const map = new Map<string, AliasResponse>();
     models.forEach((m) => {
       if (isApiAlias(m)) {
-        (m.models || []).forEach((modelName: string) => {
-          map.set(formatPrefixedModel(modelName, m.prefix), m);
+        (m.models || []).forEach((apiModel) => {
+          map.set(formatPrefixedModel(apiModel.id, m.prefix), m);
         });
       } else {
         map.set(m.alias, m);
@@ -62,8 +62,8 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
   const modelStatuses = models.flatMap((m) => {
     if (isApiAlias(m)) {
       // For API models, create entries for each individual model with prefix if exists
-      return (m.models || []).map((modelName: string) => {
-        const prefixedModelName = formatPrefixedModel(modelName, m.prefix);
+      return (m.models || []).map((apiModel) => {
+        const prefixedModelName = formatPrefixedModel(apiModel.id, m.prefix);
         return {
           value: prefixedModelName,
           label: prefixedModelName,

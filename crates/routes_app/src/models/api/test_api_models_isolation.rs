@@ -17,9 +17,9 @@ use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::AuthContext;
 use services::{
   db::DbService,
-  test_utils::{sea_context, AppServiceStubBuilder, SeaTestContext, TEST_TENANT_B_ID},
-  ApiAliasResponse, ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, AppService, ResourceRole,
-  Tenant,
+  test_utils::{openai_model, sea_context, AppServiceStubBuilder, SeaTestContext, TEST_TENANT_B_ID},
+  ApiAliasResponse, ApiFormat, ApiKey, ApiKeyUpdate, ApiModel, ApiModelRequest, AppService,
+  MockAiApiService, ResourceRole, Tenant,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -30,9 +30,14 @@ async fn isolation_router(
 ) -> anyhow::Result<(Router, Arc<dyn AppService>, SeaTestContext)> {
   let ctx = sea_context(db_type).await;
   let db_svc: Arc<dyn DbService> = Arc::new(ctx.service.clone());
+  let mut mock_ai = MockAiApiService::new();
+  mock_ai
+    .expect_fetch_models()
+    .returning(|_, _, _| Ok(vec![openai_model("gpt-4")]));
   let mut builder = AppServiceStubBuilder::default();
   builder
     .db_service(db_svc.clone())
+    .ai_api_service(Arc::new(mock_ai))
     .with_tenant_service()
     .await;
   let app_service: Arc<dyn AppService> = Arc::new(builder.build().await?);

@@ -313,11 +313,17 @@ mod tests {
       id: "test-api-alias".to_string(),
       api_format: ApiFormat::OpenAI,
       base_url: "http://localhost".to_string(),
-      models: vec!["model1".to_string()].into(),
+      models: vec![services::ApiModel::OpenAI(
+        async_openai::types::models::Model {
+          id: "model1".to_string(),
+          object: "model".to_string(),
+          created: 0,
+          owned_by: "openai".to_string(),
+        },
+      )]
+      .into(),
       prefix: Some("test-".to_string()),
       forward_all_with_prefix: false,
-      models_cache: vec![].into(),
-      cache_fetched_at: app_service.time_service().utc_now(),
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };

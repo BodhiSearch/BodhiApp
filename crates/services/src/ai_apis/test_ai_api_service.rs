@@ -1,6 +1,6 @@
 use super::{AiApiService, AiApiServiceError, DefaultAiApiService};
-use crate::models::{ApiAlias, ApiFormat};
-use crate::test_utils::fixed_dt;
+use crate::models::{ApiAlias, ApiFormat, ApiModel};
+use crate::test_utils::{fixed_dt, openai_model};
 use anyhow_trace::anyhow_trace;
 use axum::http::{Method, StatusCode};
 use mockito::Server;
@@ -137,9 +137,9 @@ async fn test_fetch_models_success() -> anyhow::Result<()> {
     .with_body(
       r#"{
         "data": [
-          {"id": "gpt-3.5-turbo"},
-          {"id": "gpt-4"},
-          {"id": "gpt-4-turbo"}
+          {"id": "gpt-3.5-turbo", "object": "model", "created": 0, "owned_by": "openai"},
+          {"id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"},
+          {"id": "gpt-4-turbo", "object": "model", "created": 0, "owned_by": "openai"}
         ]
       }"#,
     )
@@ -149,7 +149,14 @@ async fn test_fetch_models_success() -> anyhow::Result<()> {
   let models = service
     .fetch_models(Some("test-key".to_string()), &url, &ApiFormat::OpenAI)
     .await?;
-  assert_eq!(vec!["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"], models);
+  assert_eq!(
+    vec![
+      openai_model("gpt-3.5-turbo"),
+      openai_model("gpt-4"),
+      openai_model("gpt-4-turbo"),
+    ],
+    models
+  );
 
   Ok(())
 }
@@ -218,7 +225,7 @@ async fn test_model_not_found() -> anyhow::Result<()> {
 #[case::strips_prefix(
   "azure-openai",
   ApiFormat::OpenAI,
-  vec!["gpt-4".to_string()],
+  vec![openai_model("gpt-4")],
   Some("azure/".to_string()),
   "azure/gpt-4",
   "gpt-4"
@@ -226,7 +233,7 @@ async fn test_model_not_found() -> anyhow::Result<()> {
 #[case::no_prefix_unchanged(
   "openai-api",
   ApiFormat::OpenAI,
-  vec!["gpt-4".to_string()],
+  vec![openai_model("gpt-4")],
   None,
   "gpt-4",
   "gpt-4"
@@ -234,7 +241,7 @@ async fn test_model_not_found() -> anyhow::Result<()> {
 #[case::strips_nested_prefix(
   "openrouter-api",
   ApiFormat::OpenAI,
-  vec!["openai/gpt-4".to_string()],
+  vec![openai_model("openai/gpt-4")],
   Some("openrouter/".to_string()),
   "openrouter/openai/gpt-4",
   "openai/gpt-4"
@@ -244,7 +251,7 @@ async fn test_model_not_found() -> anyhow::Result<()> {
 async fn test_forward_chat_completion_model_prefix_handling(
   #[case] api_id: &str,
   #[case] api_format: ApiFormat,
-  #[case] models: Vec<String>,
+  #[case] models: Vec<ApiModel>,
   #[case] prefix: Option<String>,
   #[case] input_model: &str,
   #[case] expected_model: &str,
@@ -307,7 +314,7 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
     api_id,
     ApiFormat::OpenAI,
     &url,
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     None,
     false,
     fixed_dt(),
@@ -433,14 +440,22 @@ async fn test_test_prompt_failure_parameterized(
 }
 
 #[rstest]
-#[case::with_api_key(Some("test-key"), r#"{"data": [{"id": "gpt-4"}, {"id": "gpt-3.5-turbo"}]}"#, vec!["gpt-4", "gpt-3.5-turbo"])]
-#[case::without_api_key(None, r#"{"data": [{"id": "gpt-4"}, {"id": "gpt-3.5-turbo"}]}"#, vec!["gpt-4", "gpt-3.5-turbo"])]
+#[case::with_api_key(
+  Some("test-key"),
+  r#"{"data": [{"id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"}, {"id": "gpt-3.5-turbo", "object": "model", "created": 0, "owned_by": "openai"}]}"#,
+  vec!["gpt-4", "gpt-3.5-turbo"]
+)]
+#[case::without_api_key(
+  None,
+  r#"{"data": [{"id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"}, {"id": "gpt-3.5-turbo", "object": "model", "created": 0, "owned_by": "openai"}]}"#,
+  vec!["gpt-4", "gpt-3.5-turbo"]
+)]
 #[anyhow_trace]
 #[tokio::test]
 async fn test_fetch_models_success_parameterized(
   #[case] api_key: Option<&str>,
   #[case] response_body: &str,
-  #[case] expected_models: Vec<&str>,
+  #[case] expected_model_ids: Vec<&str>,
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
@@ -458,13 +473,8 @@ async fn test_fetch_models_success_parameterized(
     .fetch_models(api_key.map(|s| s.to_string()), &url, &ApiFormat::OpenAI)
     .await?;
 
-  assert_eq!(
-    expected_models
-      .iter()
-      .map(|s| s.to_string())
-      .collect::<Vec<String>>(),
-    result
-  );
+  let result_ids: Vec<&str> = result.iter().map(|m| m.id()).collect();
+  assert_eq!(expected_model_ids, result_ids);
 
   Ok(())
 }
@@ -585,7 +595,7 @@ fn make_api_alias(url: &str) -> ApiAlias {
     "test-api",
     ApiFormat::OpenAI,
     url,
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     None,
     false,
     fixed_dt(),
@@ -743,8 +753,8 @@ async fn test_fetch_models_anthropic_success() -> anyhow::Result<()> {
     .with_body(
       r#"{
         "data": [
-          {"id": "claude-3-5-sonnet-20241022"},
-          {"id": "claude-3-opus-20240229"}
+          {"id": "claude-3-5-sonnet-20241022", "display_name": "Claude 3.5 Sonnet", "created_at": "2024-10-22T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null},
+          {"id": "claude-3-opus-20240229", "display_name": "Claude 3 Opus", "created_at": "2024-02-29T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
         ],
         "has_more": false
       }"#,
@@ -755,9 +765,10 @@ async fn test_fetch_models_anthropic_success() -> anyhow::Result<()> {
   let models = service
     .fetch_models(Some("test-key".to_string()), &url, &ApiFormat::Anthropic)
     .await?;
+  let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
   assert_eq!(
     vec!["claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
-    models
+    model_ids
   );
 
   Ok(())
@@ -782,8 +793,8 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
     .with_body(
       r#"{
         "data": [
-          {"id": "claude-3-5-sonnet-20241022"},
-          {"id": "claude-3-opus-20240229"}
+          {"id": "claude-3-5-sonnet-20241022", "display_name": "Claude 3.5 Sonnet", "created_at": "2024-10-22T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null},
+          {"id": "claude-3-opus-20240229", "display_name": "Claude 3 Opus", "created_at": "2024-02-29T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
         ],
         "has_more": true
       }"#,
@@ -800,7 +811,7 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
     .with_body(
       r#"{
         "data": [
-          {"id": "claude-3-haiku-20240307"}
+          {"id": "claude-3-haiku-20240307", "display_name": "Claude 3 Haiku", "created_at": "2024-03-07T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
         ],
         "has_more": false
       }"#,
@@ -811,13 +822,14 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
   let models = service
     .fetch_models(Some("test-key".to_string()), &url, &ApiFormat::Anthropic)
     .await?;
+  let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
   assert_eq!(
     vec![
       "claude-3-5-sonnet-20241022",
       "claude-3-opus-20240229",
       "claude-3-haiku-20240307"
     ],
-    models
+    model_ids
   );
 
   Ok(())
@@ -835,7 +847,7 @@ async fn test_forward_request_with_method_anthropic_headers() -> anyhow::Result<
     "anthropic-api",
     ApiFormat::Anthropic,
     &url,
-    vec!["claude-3-5-sonnet-20241022".to_string()],
+    vec![openai_model("claude-3-5-sonnet-20241022")],
     None,
     false,
     fixed_dt(),
@@ -879,7 +891,7 @@ async fn test_forward_request_with_method_client_headers_forwarded() -> anyhow::
     "anthropic-api",
     ApiFormat::Anthropic,
     &url,
-    vec!["claude-3-5-sonnet-20241022".to_string()],
+    vec![openai_model("claude-3-5-sonnet-20241022")],
     None,
     false,
     fixed_dt(),
@@ -928,7 +940,7 @@ async fn test_forward_request_client_anthropic_version_used_not_default() -> any
     "anthropic-api",
     ApiFormat::Anthropic,
     &url,
-    vec!["claude-3-5-sonnet-20241022".to_string()],
+    vec![openai_model("claude-3-5-sonnet-20241022")],
     None,
     false,
     fixed_dt(),
@@ -977,7 +989,7 @@ async fn test_forward_request_default_anthropic_version_injected_when_absent() -
     "anthropic-api",
     ApiFormat::Anthropic,
     &url,
-    vec!["claude-3-5-sonnet-20241022".to_string()],
+    vec![openai_model("claude-3-5-sonnet-20241022")],
     None,
     false,
     fixed_dt(),

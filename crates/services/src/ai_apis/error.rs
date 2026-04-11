@@ -39,6 +39,18 @@ pub enum AiApiServiceError {
   UrlValidation(#[from] UrlValidationError),
 }
 
+impl AiApiServiceError {
+  /// Convert an HTTP status code and body into the appropriate error variant.
+  pub fn status_to_error(status: reqwest::StatusCode, body: String) -> Self {
+    match status {
+      reqwest::StatusCode::UNAUTHORIZED => Self::Unauthorized(body),
+      reqwest::StatusCode::NOT_FOUND => Self::NotFound(body),
+      reqwest::StatusCode::TOO_MANY_REQUESTS => Self::RateLimit(body),
+      _ => Self::ApiError(format!("Status {}: {}", status, body)),
+    }
+  }
+}
+
 impl_error_from!(
   reqwest::Error,
   AiApiServiceError::Reqwest,

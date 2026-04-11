@@ -1,7 +1,7 @@
 use crate::{
-  models::{ApiAlias, ApiAliasRepository, ApiFormat},
+  models::{ApiAlias, ApiAliasRepository, ApiFormat, ApiModel},
   new_ulid,
-  test_utils::{sea_context, setup_env},
+  test_utils::{openai_model, sea_context, setup_env},
 };
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
@@ -23,11 +23,9 @@ async fn test_api_model_alias_crud(
     id: new_ulid(),
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com".to_string(),
-    models: vec!["gpt-4".to_string()].into(),
+    models: vec![openai_model("gpt-4")].into(),
     prefix: Some("test".to_string()),
     forward_all_with_prefix: false,
-    models_cache: vec![].into(),
-    cache_fetched_at: ctx.now,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -70,11 +68,9 @@ async fn test_update_api_model_alias(
     id: new_ulid(),
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com".to_string(),
-    models: vec!["gpt-4".to_string()].into(),
+    models: vec![openai_model("gpt-4")].into(),
     prefix: Some("orig".to_string()),
     forward_all_with_prefix: false,
-    models_cache: vec![].into(),
-    cache_fetched_at: ctx.now,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -87,7 +83,7 @@ async fn test_update_api_model_alias(
   // Update model fields + replace API key
   let mut updated = alias.clone();
   updated.base_url = "https://api.updated.com".to_string();
-  updated.models = vec!["gpt-4o".to_string()].into();
+  updated.models = vec![openai_model("gpt-4o")].into();
   updated.prefix = Some("upd".to_string());
 
   ctx
@@ -107,7 +103,7 @@ async fn test_update_api_model_alias(
     .await?
     .expect("should exist");
   assert_eq!("https://api.updated.com", fetched.base_url);
-  assert_eq!(&vec!["gpt-4o".to_string()], &*fetched.models);
+  assert_eq!(&vec![openai_model("gpt-4o")], &*fetched.models);
   assert_eq!(Some("upd".to_string()), fetched.prefix);
 
   let api_key = ctx.service.get_api_key_for_alias("", "", &alias.id).await?;
@@ -162,8 +158,6 @@ async fn test_update_api_model_alias_prefix_conflict(
     models: vec![].into(),
     prefix: Some("pfx-one".to_string()),
     forward_all_with_prefix: false,
-    models_cache: vec![].into(),
-    cache_fetched_at: ctx.now,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -174,8 +168,6 @@ async fn test_update_api_model_alias_prefix_conflict(
     models: vec![].into(),
     prefix: Some("pfx-two".to_string()),
     forward_all_with_prefix: false,
-    models_cache: vec![].into(),
-    cache_fetched_at: ctx.now,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -203,13 +195,13 @@ async fn test_update_api_model_alias_prefix_conflict(
   Ok(())
 }
 
-// ===== update_api_model_cache =====
+// ===== update_api_model_models =====
 
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_update_api_model_cache(
+async fn test_update_api_model_models(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -218,11 +210,9 @@ async fn test_update_api_model_cache(
     id: new_ulid(),
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com".to_string(),
-    models: vec!["gpt-4".to_string()].into(),
-    prefix: None,
-    forward_all_with_prefix: false,
-    models_cache: vec![].into(),
-    cache_fetched_at: ctx.now,
+    models: vec![openai_model("gpt-4")].into(),
+    prefix: Some("fwd/".to_string()),
+    forward_all_with_prefix: true,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -232,10 +222,10 @@ async fn test_update_api_model_cache(
     .create_api_model_alias("", "", &alias, None)
     .await?;
 
-  let cached_models = vec!["gpt-4".to_string(), "gpt-4o".to_string()];
+  let new_models = vec![openai_model("gpt-4"), openai_model("gpt-4o")];
   ctx
     .service
-    .update_api_model_cache("", &alias.id, cached_models.clone(), ctx.now)
+    .update_api_model_models("", &alias.id, new_models.clone())
     .await?;
 
   let fetched = ctx
@@ -243,8 +233,7 @@ async fn test_update_api_model_cache(
     .get_api_model_alias("", "", &alias.id)
     .await?
     .expect("should exist");
-  assert_eq!(&cached_models, &*fetched.models_cache);
-  assert_eq!(ctx.now, fetched.cache_fetched_at);
+  assert_eq!(&new_models, &*fetched.models);
 
   Ok(())
 }

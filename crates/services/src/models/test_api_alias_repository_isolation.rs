@@ -16,8 +16,6 @@ fn make_alias(id: &str, prefix: &str, now: DateTime<Utc>) -> ApiAlias {
     models: Default::default(),
     prefix: Some(prefix.to_string()),
     forward_all_with_prefix: false,
-    models_cache: Default::default(),
-    cache_fetched_at: now,
     created_at: now,
     updated_at: now,
   }

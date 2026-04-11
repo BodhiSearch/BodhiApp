@@ -54,13 +54,8 @@ function createBodhiStreamFn(getApiToken: () => string | undefined): StreamFn {
         ? { ...model.headers, Authorization: `Bearer ${apiToken}` }
         : { ...model.headers, Authorization: null as unknown as string };
     const patchedModel = { ...model, headers };
-    const maxTokens =
-      settings.max_tokens_enabled && settings.max_tokens != null ? settings.max_tokens : undefined;
-    return streamSimple(
-      patchedModel,
-      context,
-      maxTokens !== undefined ? { ...options, maxTokens } : options
-    );
+    const maxTokens = settings.max_tokens_enabled && settings.max_tokens != null ? settings.max_tokens : undefined;
+    return streamSimple(patchedModel, context, maxTokens !== undefined ? { ...options, maxTokens } : options);
   };
 }
 

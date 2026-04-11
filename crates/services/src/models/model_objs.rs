@@ -1,4 +1,6 @@
+use crate::models::anthropic_model::AnthropicModel;
 use crate::shared_objs::{is_default, to_safe_filename};
+use async_openai::types::models::Model as OpenAIModel;
 use chrono::{DateTime, Utc};
 use derive_builder::UninitializedFieldError;
 use errmeta::{AppError, ErrorType};
@@ -110,6 +112,73 @@ impl From<JsonVec> for Vec<String> {
 
 impl FromIterator<String> for JsonVec {
   fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {
+    Self(iter.into_iter().collect())
+  }
+}
+
+// =============================================================================
+// ApiModel + ApiModelVec
+// =============================================================================
+
+/// Discriminated union of provider-specific model metadata.
+/// Stored as JSON in `api_model_aliases.models`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, FromJsonQueryResult)]
+#[serde(tag = "provider")]
+pub enum ApiModel {
+  #[serde(rename = "openai")]
+  OpenAI(OpenAIModel),
+  #[serde(rename = "anthropic")]
+  Anthropic(AnthropicModel),
+}
+
+impl ApiModel {
+  pub fn id(&self) -> &str {
+    match self {
+      ApiModel::OpenAI(m) => &m.id,
+      ApiModel::Anthropic(m) => &m.id,
+    }
+  }
+}
+
+/// DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns.
+#[derive(
+  Clone, Debug, PartialEq, Default, Serialize, Deserialize, FromJsonQueryResult, ToSchema,
+)]
+pub struct ApiModelVec(Vec<ApiModel>);
+
+impl ApiModelVec {
+  pub fn is_empty(&self) -> bool {
+    self.0.is_empty()
+  }
+}
+
+impl Deref for ApiModelVec {
+  type Target = Vec<ApiModel>;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl DerefMut for ApiModelVec {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0
+  }
+}
+
+impl From<Vec<ApiModel>> for ApiModelVec {
+  fn from(v: Vec<ApiModel>) -> Self {
+    Self(v)
+  }
+}
+
+impl From<ApiModelVec> for Vec<ApiModel> {
+  fn from(v: ApiModelVec) -> Self {
+    v.0
+  }
+}
+
+impl FromIterator<ApiModel> for ApiModelVec {
+  fn from_iter<I: IntoIterator<Item = ApiModel>>(iter: I) -> Self {
     Self(iter.into_iter().collect())
   }
 }
@@ -679,9 +748,6 @@ impl std::fmt::Display for ModelAlias {
 // ApiFormat + ApiAlias
 // =============================================================================
 
-/// TTL for API model cache (24 hours)
-pub const CACHE_TTL_HOURS: i64 = 24;
-
 /// API format/protocol specification
 #[derive(
   Debug,
@@ -709,9 +775,6 @@ pub enum ApiFormat {
   #[serde(rename = "anthropic")]
   #[strum(serialize = "anthropic")]
   Anthropic,
-  #[serde(rename = "placeholder")]
-  #[strum(serialize = "placeholder")]
-  Placeholder,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder)]
@@ -722,16 +785,11 @@ pub struct ApiAlias {
   pub api_format: ApiFormat,
   pub base_url: String,
   #[builder(default)]
-  pub models: JsonVec,
+  pub models: ApiModelVec,
   #[builder(default)]
   pub prefix: Option<String>,
   #[builder(default)]
   pub forward_all_with_prefix: bool,
-  #[builder(default)]
-  pub models_cache: JsonVec,
-  #[schema(value_type = String, format = "date-time")]
-  #[builder(setter(skip))]
-  pub cache_fetched_at: chrono::DateTime<chrono::Utc>,
   #[schema(value_type = String, format = "date-time")]
   #[builder(setter(skip))]
   pub created_at: chrono::DateTime<chrono::Utc>,
@@ -740,16 +798,12 @@ pub struct ApiAlias {
   pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-fn epoch_sentinel() -> chrono::DateTime<chrono::Utc> {
-  chrono::DateTime::UNIX_EPOCH
-}
-
 impl ApiAlias {
   pub fn new(
     id: impl Into<String>,
     api_format: ApiFormat,
     base_url: impl Into<String>,
-    models: impl Into<JsonVec>,
+    models: impl Into<ApiModelVec>,
     prefix: Option<String>,
     forward_all_with_prefix: bool,
     created_at: chrono::DateTime<chrono::Utc>,
@@ -761,8 +815,6 @@ impl ApiAlias {
       models: models.into(),
       prefix,
       forward_all_with_prefix,
-      models_cache: JsonVec::default(),
-      cache_fetched_at: epoch_sentinel(),
       created_at,
       updated_at: created_at,
     }
@@ -773,29 +825,18 @@ impl ApiAlias {
     self
   }
 
-  /// Returns the appropriate models list based on the forward_all_with_prefix flag.
-  /// - If forward_all_with_prefix=true: returns models_cache (unprefixed cached models)
-  /// - If forward_all_with_prefix=false: returns models (user-specified models)
-  pub fn get_models(&self) -> &[String] {
-    if self.forward_all_with_prefix {
-      &self.models_cache
-    } else {
-      &self.models
-    }
+  /// Returns the models list. All models (whether user-selected or all provider models
+  /// for forward_all) are stored in the `models` field.
+  pub fn get_models(&self) -> &[ApiModel] {
+    &self.models
   }
 
   pub fn matchable_models(&self) -> Vec<String> {
     let prefix = self.prefix.as_deref().unwrap_or("");
-
-    let source: &[String] = if self.forward_all_with_prefix {
-      &self.models_cache
-    } else {
-      &self.models
-    };
-
-    source
+    self
+      .models
       .iter()
-      .map(|model| format!("{}{}", prefix, model))
+      .map(|model| format!("{}{}", prefix, model.id()))
       .collect()
   }
 
@@ -809,16 +850,6 @@ impl ApiAlias {
     } else {
       self.matchable_models().contains(&model.to_string())
     }
-  }
-
-  /// Check if the cache is stale (older than TTL).
-  pub fn is_cache_stale(&self, now: chrono::DateTime<chrono::Utc>) -> bool {
-    now - self.cache_fetched_at > chrono::Duration::hours(CACHE_TTL_HOURS)
-  }
-
-  /// Check if the cache is empty.
-  pub fn is_cache_empty(&self) -> bool {
-    self.models_cache.is_empty()
   }
 }
 
@@ -847,8 +878,6 @@ impl ApiAliasBuilder {
       models: self.models.clone().unwrap_or_default(),
       prefix: self.prefix.clone().unwrap_or_default(),
       forward_all_with_prefix: self.forward_all_with_prefix.unwrap_or_default(),
-      models_cache: self.models_cache.clone().unwrap_or_default(),
-      cache_fetched_at: epoch_sentinel(),
       created_at: timestamp,
       updated_at: timestamp,
     })
@@ -1250,7 +1279,8 @@ pub struct FetchModelsRequest {
   pub api_format: ApiFormat,
 }
 
-/// Response containing available models from provider
+/// Returns model IDs only (not full metadata) to minimize information exposure —
+/// the endpoint accepts an API key parameter. Full metadata is stored on create/update.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "models": ["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"]
@@ -1441,8 +1471,8 @@ pub struct ApiAliasResponse {
   pub api_format: ApiFormat,
   pub base_url: String,
   pub has_api_key: bool,
-  /// Models available through this alias (merged from cache for forward_all)
-  pub models: Vec<String>,
+  /// Models available through this alias with full provider metadata
+  pub models: Vec<ApiModel>,
   pub prefix: Option<String>,
   pub forward_all_with_prefix: bool,
   #[schema(value_type = String, format = "date-time")]

@@ -132,3 +132,23 @@ have no live test counterpart:
 
 **Fix path**: Extend `crates/server_app/tests/test_live_anthropic.rs` with
 streaming and error-forwarding cases.
+
+## 6. Remove `AiApiService` wrapper — expose `AIProviderClient` directly
+
+**Severity**: Low — code works, just an unnecessary indirection layer.
+
+`AiApiService` trait (`crates/services/src/ai_apis/ai_api_service.rs`) is now
+a thin wrapper that delegates every method to `AIProviderClient`. Each method
+is 2-4 lines: construct `AIProviderClient::new(...)`, call the corresponding
+method. The only logic it retains is the `test_prompt` length check.
+
+Downstream code (routes, `server_core`) mocks `AiApiService` via
+`mockall::automock`. Removing `AiApiService` requires updating all call sites
+and mock setups to work with `AIProviderClient` directly.
+
+**Fix path**:
+1. Move `PromptTooLong` validation into callers or a standalone function.
+2. Replace `Arc<dyn AiApiService>` in `SharedContext` / service containers
+   with direct `AIProviderClient` construction at call sites.
+3. Update mockall mocks in `routes_app` and `server_app` tests.
+4. Delete `ai_api_service.rs` and the `AiApiService` trait.

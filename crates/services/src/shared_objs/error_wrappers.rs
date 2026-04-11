@@ -21,6 +21,10 @@ pub enum ObjValidationError {
   #[error("Prefix is required when forwarding all requests.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   ForwardAllRequiresPrefix,
+
+  #[error("Sync models is only available for aliases with forward_all_with_prefix enabled.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  SyncRequiresForwardAll,
 }
 
 #[derive(Debug)]

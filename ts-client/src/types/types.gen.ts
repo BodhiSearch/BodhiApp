@@ -92,15 +92,53 @@ export type Alias = (UserAlias & {
  */
 export type AliasResponse = UserAliasResponse | ModelAliasResponse | ApiAliasResponse;
 
+/**
+ * Mirrors Anthropic's `ModelInfo` schema — full model metadata returned by
+ * `GET /anthropic/v1/models` and stored alongside model IDs in `ApiAlias.models`.
+ *
+ * **IMPORTANT**: Do NOT add `#[serde(skip_serializing_if = "Option::is_none")]` on the
+ * `Option` fields below. The Anthropic API spec marks `capabilities`, `max_input_tokens`,
+ * and `max_tokens` as **required** (nullable via `anyOf [T, null]`). They must serialize
+ * as `null` when absent, not be omitted from the JSON output.
+ */
+export type AnthropicModel = {
+    id: string;
+    display_name: string;
+    /**
+     * RFC 3339 datetime string representing the model's release date.
+     */
+    created_at: string;
+    capabilities?: null | AnthropicModelCapabilities;
+    max_input_tokens?: number | null;
+    max_tokens?: number | null;
+    /**
+     * Always `"model"` — included for Anthropic API compatibility.
+     */
+    type: string;
+};
+
+/**
+ * Model capability information (Anthropic ModelCapabilities schema).
+ */
+export type AnthropicModelCapabilities = {
+    batch: CapabilitySupport;
+    citations: CapabilitySupport;
+    code_execution: CapabilitySupport;
+    context_management: ContextManagementCapability;
+    effort: EffortCapability;
+    image_input: CapabilitySupport;
+    pdf_input: CapabilitySupport;
+    structured_outputs: CapabilitySupport;
+    thinking: ThinkingCapability;
+};
+
 export type ApiAlias = {
     id: string;
     api_format: ApiFormat;
     base_url: string;
-    models: JsonVec;
+    models: ApiModelVec;
     prefix?: string | null;
     forward_all_with_prefix: boolean;
-    models_cache: JsonVec;
-    cache_fetched_at: string;
     created_at: string;
     updated_at: string;
 };
@@ -115,9 +153,9 @@ export type ApiAliasResponse = {
     base_url: string;
     has_api_key: boolean;
     /**
-     * Models available through this alias (merged from cache for forward_all)
+     * Models available through this alias with full provider metadata
      */
-    models: Array<string>;
+    models: Array<ApiModel>;
     prefix?: string | null;
     forward_all_with_prefix: boolean;
     created_at: string;
@@ -127,7 +165,7 @@ export type ApiAliasResponse = {
 /**
  * API format/protocol specification
  */
-export type ApiFormat = 'openai' | 'openai_responses' | 'anthropic' | 'placeholder';
+export type ApiFormat = 'openai' | 'openai_responses' | 'anthropic';
 
 /**
  * Response containing available API formats
@@ -153,6 +191,16 @@ export type ApiKeyUpdate = {
     value: ApiKey;
     action: 'set';
 };
+
+/**
+ * Discriminated union of provider-specific model metadata.
+ * Stored as JSON in `api_model_aliases.models`.
+ */
+export type ApiModel = (Model & {
+    provider: 'openai';
+}) | (AnthropicModel & {
+    provider: 'anthropic';
+});
 
 /**
  * Input request for creating or updating an API model configuration.
@@ -183,6 +231,11 @@ export type ApiModelRequest = {
      */
     forward_all_with_prefix?: boolean;
 };
+
+/**
+ * DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns.
+ */
+export type ApiModelVec = Array<ApiModel>;
 
 export type AppAccessRequestStatus = 'draft' | 'approved' | 'denied' | 'failed' | 'expired';
 
@@ -317,6 +370,13 @@ export type BodhiErrorBody = {
 };
 
 /**
+ * Whether a single capability is supported by the model.
+ */
+export type CapabilitySupport = {
+    supported: boolean;
+};
+
+/**
  * Change user role request
  */
 export type ChangeRoleRequest = {
@@ -329,6 +389,15 @@ export type ChangeRoleRequest = {
 export type ContextLimits = {
     max_input_tokens?: number | null;
     max_output_tokens?: number | null;
+};
+
+/**
+ * Context management capability details.
+ */
+export type ContextManagementCapability = {
+    clear_thinking_20251015?: null | CapabilitySupport;
+    clear_tool_uses_20250919?: null | CapabilitySupport;
+    compact_20260112?: null | CapabilitySupport;
 };
 
 export type CopyAliasRequest = {
@@ -471,6 +540,15 @@ export type DynamicRegisterResponse = {
 };
 
 /**
+ * Effort (reasoning_effort) capability details.
+ */
+export type EffortCapability = {
+    high: CapabilitySupport;
+    low: CapabilitySupport;
+    max: CapabilitySupport;
+};
+
+/**
  * Request to fetch available models from provider
  */
 export type FetchModelsRequest = {
@@ -489,7 +567,8 @@ export type FetchModelsRequest = {
 };
 
 /**
- * Response containing available models from provider
+ * Returns model IDs only (not full metadata) to minimize information exposure —
+ * the endpoint accepts an API key parameter. Full metadata is stored on create/update.
  */
 export type FetchModelsResponse = {
     models: Array<string>;
@@ -795,6 +874,28 @@ export type McpServerReviewInfo = {
      * User's MCP instances connected to this server URL
      */
     instances: Array<Mcp>;
+};
+
+/**
+ * Describes an OpenAI model offering that can be used with the API.
+ */
+export type Model = {
+    /**
+     * The model identifier, which can be referenced in the API endpoints.
+     */
+    id: string;
+    /**
+     * The object type, which is always "model".
+     */
+    object: string;
+    /**
+     * The Unix timestamp (in seconds) when the model was created.
+     */
+    created: number;
+    /**
+     * The organization that owns the model.
+     */
+    owned_by: string;
 };
 
 export type ModelAlias = {
@@ -1206,6 +1307,22 @@ export type TestPromptResponse = {
     success: boolean;
     response?: string | null;
     error?: string | null;
+};
+
+/**
+ * Thinking capability and supported type configurations.
+ */
+export type ThinkingCapability = {
+    supported: boolean;
+    types: ThinkingTypes;
+};
+
+/**
+ * Supported thinking type configurations.
+ */
+export type ThinkingTypes = {
+    adaptive: CapabilitySupport;
+    enabled: CapabilitySupport;
 };
 
 export type TokenCreated = {

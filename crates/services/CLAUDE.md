@@ -61,7 +61,11 @@ Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_sc
 
 **Short-name passthrough accessors** (D1-D9, excluding D2 which is auth-scoped above): `settings()`, `auth_flow()`, `network()`, `sessions()`, `db()`, `hub()`, `ai_api()`, `time()`, `inference()`.
 
-**AiApiService**: `forward_request_with_method(method, url, body, api_key)` uses `http::Method` for type-safe HTTP method dispatch. `SafeReqwest` provides `request(method, url)` as a generic method alongside `get`/`post`/`delete`.
+**AiApiService**: `forward_request_with_method(method, url, body, api_key)` uses `http::Method` for type-safe HTTP method dispatch. `SafeReqwest` provides `request(method, url)` as a generic method alongside `get`/`post`/`delete`. `fetch_models` returns `Vec<ApiModel>` and delegates to `AIProviderClient` strategy pattern.
+
+**AIProviderClient** (`ai_apis/ai_provider_client.rs`): Strategy trait for multi-provider model fetching. `OpenAIProviderClient` and `AnthropicProviderClient` implementations. Instantiated directly in `DefaultAiApiService` methods based on `ApiFormat`.
+
+**ApiModelService**: `create()`/`update()` validate model IDs against the remote provider (fetches model list). `ModelNotFoundAtProvider` error if a requested model doesn't exist at the provider.
 
 **Non-auth-scoped passthrough**: `access_request_service()` — intentionally not auth-scoped (see `AccessRequestService` doc comment).
 
@@ -75,7 +79,8 @@ Each domain module follows `*_objs.rs` pattern for types and `error.rs` for erro
 - `auth/auth_objs.rs` — `ResourceRole` (Anonymous/Guest/User/PowerUser/Manager/Admin), `TokenScope`, `UserScope`, `AppRole`, `UserInfo`
 - `auth/auth_context.rs` — `AuthContext` enum (Anonymous{deployment}/Session/MultiTenantSession/ApiToken/ExternalApp), `AuthContextError`. `Session.role` and `MultiTenantSession.role` are `ResourceRole` (not Option).
 - `tokens/token_objs.rs` — `TokenStatus`, `TokenDetail`, `CreateTokenRequest`, `UpdateTokenRequest`
-- `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `JsonVec`, `DownloadStatus`, `ApiModelRequest`, `ApiAliasResponse` (has `has_api_key: bool`), `UserAliasRequest`, `ApiFormat` enum (`OpenAIChat`, `OpenAIResponses`)
+- `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `DownloadStatus`, `ApiModelRequest`, `ApiAliasResponse` (has `has_api_key: bool`), `UserAliasRequest`, `ApiFormat` enum (`OpenAI`, `OpenAIResponses`, `Anthropic`), `ApiModel` discriminated enum (`#[serde(tag="provider")]` with `OpenAI`/`Anthropic` variants), `ApiModelVec` newtype (DB-storable `Vec<ApiModel>`)
+- `models/anthropic_model.rs` — `AnthropicModel` struct (full Anthropic ModelInfo schema with capabilities)
 - `settings/setting_objs.rs` — `Setting`, `EnvType`, `AppType`, `LogLevel`
 - `tenants/tenant_objs.rs` — `DeploymentMode` (Standalone/MultiTenant), `AppStatus` (Setup/Ready/ResourceAdmin), `Tenant` (includes `created_by: Option<String>`)
 - `tenants/spi_types.rs` — `SpiTenant`, `SpiTenantListResponse`, `SpiCreateTenantRequest`, `SpiCreateTenantResponse`

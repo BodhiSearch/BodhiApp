@@ -26,7 +26,9 @@ const ModelTableRow = ({
   <TableCell key="combined" className="sm:hidden" data-testid={`combined-cell-${getItemId(model)}`}>
     <div className="flex flex-col gap-2">
       <CopyableContent text={isApiAlias(model) ? model.id : model.alias} className="font-medium" />
-      {isApiAlias(model) && <div className="text-xs text-muted-foreground">Models: {model.models.join(', ')}</div>}
+      {isApiAlias(model) && (
+        <div className="text-xs text-muted-foreground">Models: {model.models.map((m) => m.id).join(', ')}</div>
+      )}
 
       <CopyableContent text={getModelDisplayRepo(model)} className="text-sm" />
 
@@ -50,7 +52,10 @@ const ModelTableRow = ({
       <CopyableContent text={isApiAlias(model) ? model.id : model.alias} className="font-medium" />
       {isApiAlias(model) && (
         <div className="text-xs text-muted-foreground truncate">
-          {model.models.slice(0, 2).join(', ')}
+          {model.models
+            .slice(0, 2)
+            .map((m) => m.id)
+            .join(', ')}
           {model.models.length > 2 ? '...' : ''}
         </div>
       )}

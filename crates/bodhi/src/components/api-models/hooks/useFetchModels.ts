@@ -71,13 +71,13 @@ export function useFetchModels({
 
     try {
       const response = await fetchModelsMutation.mutateAsync(fetchData);
-      const models = response.data.models;
-      setAvailableModels(models);
+      const modelIds = response.data.models;
+      setAvailableModels(modelIds);
       setStatus('success');
 
       // Auto-select common models if enabled and provider available
       if (autoSelectCommon && provider?.commonModels.length && onModelsUpdated) {
-        const commonModelsAvailable = provider.commonModels.filter((model) => models.includes(model));
+        const commonModelsAvailable = provider.commonModels.filter((model) => modelIds.includes(model));
         if (commonModelsAvailable.length > 0) {
           onModelsUpdated(commonModelsAvailable.slice(0, 3)); // Select up to 3 common models
         }
@@ -85,7 +85,7 @@ export function useFetchModels({
 
       toast({
         title: 'Models Fetched Successfully',
-        description: `Found ${models.length} available models`,
+        description: `Found ${modelIds.length} available models`,
       });
     } catch (error: unknown) {
       setStatus('error');

@@ -281,7 +281,8 @@ pub async fn api_models_fetch_models(
     }
   };
 
-  Ok(Json(FetchModelsResponse { models }))
+  let model_ids: Vec<String> = models.iter().map(|m| m.id().to_string()).collect();
+  Ok(Json(FetchModelsResponse { models: model_ids }))
 }
 
 /// Get available API formats
@@ -354,7 +355,7 @@ pub async fn api_models_sync(
   auth_scope: AuthScope,
   Path(id): Path<String>,
 ) -> Result<Json<ApiAliasResponse>, ApiError> {
-  let result = auth_scope.api_models().sync_cache(&id).await?;
+  let result = auth_scope.api_models().sync_models(&id).await?;
   Ok(Json(result))
 }
 

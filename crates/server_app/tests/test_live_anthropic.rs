@@ -55,6 +55,13 @@ async fn create_anthropic_alias(
 #[serial_test::serial(live)]
 async fn test_anthropic_messages_proxy_injects_auth_headers() -> anyhow::Result<()> {
   let mut mock_server = MockServer::new_async().await;
+  mock_server
+    .mock("GET", "/models")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"data":[{"id":"claude-3-5-sonnet-20241022","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"}],"has_more":false}"#)
+    .create_async()
+    .await;
   let mock = mock_server
     .mock("POST", "/messages")
     .match_header("x-api-key", "sk-ant-test-key")
@@ -107,6 +114,13 @@ async fn test_anthropic_messages_proxy_injects_auth_headers() -> anyhow::Result<
 #[serial_test::serial(live)]
 async fn test_anthropic_messages_proxy_forwards_anthropic_beta_header() -> anyhow::Result<()> {
   let mut mock_server = MockServer::new_async().await;
+  mock_server
+    .mock("GET", "/models")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"data":[{"id":"claude-3-5-sonnet-20241022","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"}],"has_more":false}"#)
+    .create_async()
+    .await;
   let mock = mock_server
     .mock("POST", "/messages")
     .match_header("x-api-key", "sk-ant-test-key")
@@ -155,6 +169,15 @@ async fn test_anthropic_messages_proxy_forwards_anthropic_beta_header() -> anyho
 #[tokio::test]
 #[serial_test::serial(live)]
 async fn test_anthropic_messages_proxy_rejects_wrong_format() -> anyhow::Result<()> {
+  let mut mock_openai_server = MockServer::new_async().await;
+  mock_openai_server
+    .mock("GET", "/models")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"object":"list","data":[{"id":"gpt-4o","object":"model","created":0,"owned_by":"openai"}]}"#)
+    .create_async()
+    .await;
+
   let server = start_test_live_server().await?;
   let client = reqwest::Client::new();
   let (cookie, _user_id) =
@@ -166,7 +189,7 @@ async fn test_anthropic_messages_proxy_rejects_wrong_format() -> anyhow::Result<
     .header("Cookie", &cookie)
     .json(&json!({
       "api_format": "openai",
-      "base_url": "https://api.openai.com/v1",
+      "base_url": mock_openai_server.url(),
       "api_key": {"action": "set", "value": "sk-test"},
       "models": ["gpt-4o"],
     }))
@@ -197,8 +220,17 @@ async fn test_anthropic_messages_proxy_rejects_wrong_format() -> anyhow::Result<
 #[tokio::test]
 #[serial_test::serial(live)]
 async fn test_anthropic_models_list_aggregates_from_db() -> anyhow::Result<()> {
-  // mockito server is created but never hit — we assert no upstream call was made.
-  let mock_server = MockServer::new_async().await;
+  let mut mock_server = MockServer::new_async().await;
+  // Mock the /models endpoint called during create (fetch_models validates model IDs).
+  // Use expect(2) because two aliases are created.
+  mock_server
+    .mock("GET", "/models")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"data":[{"id":"claude-3-5-sonnet-20241022","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"},{"id":"claude-3-opus-20240229","display_name":"Claude 3 Opus","created_at":"2024-02-29T00:00:00Z","type":"model"},{"id":"claude-3-haiku-20240307","display_name":"Claude 3 Haiku","created_at":"2024-03-07T00:00:00Z","type":"model"}],"has_more":false}"#)
+    .expect(2)
+    .create_async()
+    .await;
 
   let server = start_test_live_server().await?;
   let client = reqwest::Client::new();

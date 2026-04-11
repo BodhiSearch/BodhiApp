@@ -2,10 +2,11 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use crate::db::{DbError, DbService, TimeService};
-use crate::models::{ApiAlias, ApiAliasResponse, ApiFormat, ApiKeyUpdate, ApiModelRequest};
+use crate::models::{ApiAlias, ApiAliasResponse, ApiKeyUpdate, ApiModel, ApiModelRequest};
 use crate::new_ulid;
 use crate::AiApiService;
 use errmeta::{AppError, EntityError, ErrorType};
+use std::collections::HashSet;
 
 // =============================================================================
 // ApiModelServiceError
@@ -33,6 +34,10 @@ pub enum ApiModelServiceError {
   #[error("AI API error: {0}")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   AiApi(String),
+
+  #[error("Model '{0}' not found in the provider's model list. Verify the model ID is correct.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ModelNotFoundAtProvider(String),
 }
 
 // =============================================================================
@@ -75,8 +80,8 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     id: &str,
   ) -> Result<ApiAliasResponse, ApiModelServiceError>;
 
-  /// Synchronously fetch and cache models for an API model alias
-  async fn sync_cache(
+  /// Synchronously fetch and update models for a forward_all_with_prefix API model alias
+  async fn sync_models(
     &self,
     tenant_id: &str,
     user_id: &str,
@@ -108,28 +113,48 @@ impl ApiModelService for DefaultApiModelService {
     let now = self.time_service.utc_now();
     let id = new_ulid();
 
-    // Reset models to empty if forward_all_with_prefix is true
-    let models = if form.forward_all_with_prefix {
-      Vec::new()
-    } else {
-      form.models
-    };
-
-    let api_alias = ApiAlias::new(
-      id,
-      form.api_format,
-      form.base_url.trim_end_matches('/').to_string(),
-      models,
-      form.prefix,
-      form.forward_all_with_prefix,
-      now,
-    );
-
     // Extract API key from form
     let api_key_option = match form.api_key {
       ApiKeyUpdate::Set(key) => key.into_inner(),
       ApiKeyUpdate::Keep => None, // For create, Keep means no key
     };
+
+    let base_url = form.base_url.trim_end_matches('/').to_string();
+
+    // Fetch all models from provider and validate/filter based on mode
+    let provider_models = self
+      .ai_api_service
+      .fetch_models(api_key_option.clone(), &base_url, &form.api_format)
+      .await
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+
+    let models: Vec<ApiModel> = if form.forward_all_with_prefix {
+      provider_models
+    } else {
+      let provider_ids: HashSet<&str> = provider_models.iter().map(|m| m.id()).collect();
+      for selected_id in &form.models {
+        if !provider_ids.contains(selected_id.as_str()) {
+          return Err(ApiModelServiceError::ModelNotFoundAtProvider(
+            selected_id.clone(),
+          ));
+        }
+      }
+      let selected_ids: HashSet<&str> = form.models.iter().map(|s| s.as_str()).collect();
+      provider_models
+        .into_iter()
+        .filter(|m| selected_ids.contains(m.id()))
+        .collect()
+    };
+
+    let api_alias = ApiAlias::new(
+      id,
+      form.api_format,
+      base_url,
+      models,
+      form.prefix,
+      form.forward_all_with_prefix,
+      now,
+    );
 
     self
       .db_service
@@ -141,19 +166,6 @@ impl ApiModelService for DefaultApiModelService {
       .get_api_key_for_alias(tenant_id, user_id, &api_alias.id)
       .await?
       .is_some();
-
-    if api_alias.forward_all_with_prefix {
-      spawn_cache_refresh(
-        self.db_service.clone(),
-        self.ai_api_service.clone(),
-        self.time_service.clone(),
-        tenant_id.to_string(),
-        user_id.to_string(),
-        api_alias.id.clone(),
-        api_alias.base_url.clone(),
-        api_alias.api_format.clone(),
-      );
-    }
 
     Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
   }
@@ -174,10 +186,51 @@ impl ApiModelService for DefaultApiModelService {
       .await?
       .ok_or_else(|| EntityError::NotFound(format!("API model '{}' not found", id)))?;
 
+    // Convert ApiKeyUpdate to the raw form for repository
+    let api_key_update = form.api_key.into_raw_update();
+
+    let base_url = form.base_url.trim_end_matches('/').to_string();
+
+    // Resolve API key for model fetching (use updated key if provided, else existing)
+    let fetch_key = match &api_key_update {
+      crate::RawApiKeyUpdate::Set(key_opt) => key_opt.clone(),
+      crate::RawApiKeyUpdate::Keep => {
+        self
+          .db_service
+          .get_api_key_for_alias(tenant_id, user_id, id)
+          .await?
+      }
+    };
+
+    // Fetch all models from provider and validate/filter based on mode
+    let provider_models = self
+      .ai_api_service
+      .fetch_models(fetch_key, &base_url, &form.api_format)
+      .await
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+
+    let models: Vec<ApiModel> = if form.forward_all_with_prefix {
+      provider_models
+    } else {
+      let provider_ids: HashSet<&str> = provider_models.iter().map(|m| m.id()).collect();
+      for selected_id in &form.models {
+        if !provider_ids.contains(selected_id.as_str()) {
+          return Err(ApiModelServiceError::ModelNotFoundAtProvider(
+            selected_id.clone(),
+          ));
+        }
+      }
+      let selected_ids: HashSet<&str> = form.models.iter().map(|s| s.as_str()).collect();
+      provider_models
+        .into_iter()
+        .filter(|m| selected_ids.contains(m.id()))
+        .collect()
+    };
+
     // Update all fields
     api_alias.api_format = form.api_format;
-    api_alias.base_url = form.base_url.trim_end_matches('/').to_string();
-    api_alias.models = form.models.into();
+    api_alias.base_url = base_url;
+    api_alias.models = models.into();
     api_alias.prefix = if form.prefix.as_ref().is_some_and(|p| p.is_empty()) {
       None
     } else {
@@ -185,9 +238,6 @@ impl ApiModelService for DefaultApiModelService {
     };
     api_alias.forward_all_with_prefix = form.forward_all_with_prefix;
     api_alias.updated_at = self.time_service.utc_now();
-
-    // Convert ApiKeyUpdate to the raw form for repository
-    let api_key_update = form.api_key.into_raw_update();
 
     self
       .db_service
@@ -200,19 +250,6 @@ impl ApiModelService for DefaultApiModelService {
       .get_api_key_for_alias(tenant_id, user_id, id)
       .await?
       .is_some();
-
-    if api_alias.forward_all_with_prefix {
-      spawn_cache_refresh(
-        self.db_service.clone(),
-        self.ai_api_service.clone(),
-        self.time_service.clone(),
-        tenant_id.to_string(),
-        user_id.to_string(),
-        api_alias.id.clone(),
-        api_alias.base_url.clone(),
-        api_alias.api_format.clone(),
-      );
-    }
 
     Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
   }
@@ -264,7 +301,7 @@ impl ApiModelService for DefaultApiModelService {
     Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
   }
 
-  async fn sync_cache(
+  async fn sync_models(
     &self,
     tenant_id: &str,
     user_id: &str,
@@ -275,6 +312,12 @@ impl ApiModelService for DefaultApiModelService {
       .get_api_model_alias(tenant_id, user_id, id)
       .await?
       .ok_or_else(|| EntityError::NotFound(format!("API model '{}' not found", id)))?;
+
+    if !api_alias.forward_all_with_prefix {
+      return Err(ApiModelServiceError::Validation(
+        crate::ObjValidationError::SyncRequiresForwardAll,
+      ));
+    }
 
     // Get API key (optional)
     let api_key = self
@@ -291,11 +334,10 @@ impl ApiModelService for DefaultApiModelService {
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
-    // Update cache in DB
-    let now = self.time_service.utc_now();
+    // Update models in DB
     self
       .db_service
-      .update_api_model_cache(tenant_id, id, models.clone(), now)
+      .update_api_model_models(tenant_id, id, models.clone())
       .await?;
 
     // Get refreshed alias
@@ -314,34 +356,6 @@ impl ApiModelService for DefaultApiModelService {
 // =============================================================================
 // Shared validation helper
 // =============================================================================
-
-fn spawn_cache_refresh(
-  db_service: Arc<dyn DbService>,
-  ai_api_service: Arc<dyn AiApiService>,
-  time_service: Arc<dyn TimeService>,
-  tenant_id: String,
-  user_id: String,
-  alias_id: String,
-  base_url: String,
-  api_format: ApiFormat,
-) {
-  tokio::spawn(async move {
-    let api_key = db_service
-      .get_api_key_for_alias(&tenant_id, &user_id, &alias_id)
-      .await
-      .ok()
-      .flatten();
-    if let Ok(models) = ai_api_service
-      .fetch_models(api_key, &base_url, &api_format)
-      .await
-    {
-      let now = time_service.utc_now();
-      let _ = db_service
-        .update_api_model_cache(&tenant_id, &alias_id, models, now)
-        .await;
-    }
-  });
-}
 
 fn validate_forward_all(form: &ApiModelRequest) -> Result<(), ApiModelServiceError> {
   if form.forward_all_with_prefix {

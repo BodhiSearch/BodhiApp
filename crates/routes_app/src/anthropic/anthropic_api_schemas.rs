@@ -1,4 +1,4 @@
-use crate::shared::api_error::ApiError;
+use crate::ApiError;
 use axum::{
   body::Body,
   response::{IntoResponse, Response},
@@ -109,5 +109,5 @@ impl IntoResponse for AnthropicApiError {
 }
 
 #[cfg(test)]
-#[path = "test_anthropic_error.rs"]
-mod test_anthropic_error;
+#[path = "test_anthropic_api_schemas.rs"]
+mod test_anthropic_api_schemas;

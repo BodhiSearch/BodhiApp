@@ -47,8 +47,6 @@ use std::{collections::HashSet, sync::Arc};
 pub async fn oai_models_handler(
   auth_scope: AuthScope,
 ) -> Result<Json<ListModelResponse>, OaiApiError> {
-  // tenant_id for cache refresh (optional for anonymous/unauthenticated contexts)
-  let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
   let setting_service = auth_scope.setting_service();
   let time_service = auth_scope.time_service();
   // Get all aliases from auth-scoped DataService
@@ -76,43 +74,11 @@ pub async fn oai_models_handler(
         }
       }
       Alias::Api(api_alias) => {
-        // Use matchable_models() which returns from models_cache when forward_all=true
+        // Use matchable_models() which returns prefixed model IDs
         for model_id in api_alias.matchable_models() {
           if seen_models.insert(model_id.clone()) {
             models.push(api_model_to_oai_model(model_id, &api_alias));
           }
-        }
-
-        // If forward_all and cache is empty/stale, spawn async refresh
-        if api_alias.forward_all_with_prefix
-          && (api_alias.is_cache_empty() || api_alias.is_cache_stale(time_service.utc_now()))
-        {
-          let db = auth_scope.db_service();
-          let ai_api = auth_scope.ai_api_service();
-          let time_svc = time_service.clone();
-          let alias_id = api_alias.id.clone();
-          let refresh_tenant_id = tenant_id.clone();
-          tokio::spawn(async move {
-            if let Ok(Some(alias)) = db
-              .get_api_model_alias(&refresh_tenant_id, "", &alias_id)
-              .await
-            {
-              let api_key = db
-                .get_api_key_for_alias(&refresh_tenant_id, "", &alias_id)
-                .await
-                .ok()
-                .flatten();
-              if let Ok(models) = ai_api
-                .fetch_models(api_key, &alias.base_url, &alias.api_format)
-                .await
-              {
-                let now = time_svc.utc_now();
-                let _ = db
-                  .update_api_model_cache(&refresh_tenant_id, &alias_id, models, now)
-                  .await;
-              }
-            }
-          });
         }
       }
     }

@@ -1,3 +1,4 @@
+pub mod anthropic_model;
 mod api_alias_repository;
 pub(crate) mod api_model_alias_entity;
 mod api_model_service;
@@ -45,6 +46,7 @@ mod test_user_alias_repository_isolation;
 pub(crate) mod user_alias_entity;
 mod user_alias_repository;
 
+pub use anthropic_model::*;
 pub use api_alias_repository::ApiAliasRepository;
 pub use api_model_service::*;
 pub use auth_scoped_api_models::*;

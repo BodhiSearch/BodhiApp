@@ -151,10 +151,10 @@ pub async fn chat_completions_handler(
     Alias::Api(ref api_alias)
       if matches!(
         api_alias.api_format,
-        ApiFormat::OpenAI | ApiFormat::Placeholder | ApiFormat::Anthropic
+        ApiFormat::OpenAI | ApiFormat::Anthropic
       ) =>
     {
-      let api_key = super::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
+      let api_key = crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
       inference
         .forward_remote(LlmEndpoint::ChatCompletions, request, api_alias, api_key)
         .await
@@ -234,7 +234,7 @@ pub async fn embeddings_handler(
       .await
       .map_err(OaiApiError::from)?,
     Alias::Api(ref api_alias) if api_alias.api_format != ApiFormat::OpenAIResponses => {
-      let api_key = super::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
+      let api_key = crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
       inference
         .forward_remote(LlmEndpoint::Embeddings, request_value, api_alias, api_key)
         .await

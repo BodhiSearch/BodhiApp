@@ -1,4 +1,4 @@
-use crate::models::{ApiFormat, JsonVec};
+use crate::models::{ApiFormat, ApiModelVec};
 use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
 use sea_orm::FromQueryResult;
@@ -13,13 +13,10 @@ pub struct Model {
   pub api_format: ApiFormat,
   pub base_url: String,
   #[sea_orm(column_type = "JsonBinary")]
-  pub models: JsonVec,
+  pub models: ApiModelVec,
   pub prefix: Option<String>,
   #[sea_orm(default_value = "0")]
   pub forward_all_with_prefix: bool,
-  #[sea_orm(column_type = "JsonBinary")]
-  pub models_cache: JsonVec,
-  pub cache_fetched_at: DateTime<Utc>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
   // DB-only encryption fields
@@ -43,11 +40,9 @@ pub struct ApiAliasView {
   pub user_id: String,
   pub api_format: ApiFormat,
   pub base_url: String,
-  pub models: JsonVec,
+  pub models: ApiModelVec,
   pub prefix: Option<String>,
   pub forward_all_with_prefix: bool,
-  pub models_cache: JsonVec,
-  pub cache_fetched_at: DateTime<Utc>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -61,8 +56,6 @@ impl From<ApiAliasView> for crate::models::ApiAlias {
       models: v.models,
       prefix: v.prefix,
       forward_all_with_prefix: v.forward_all_with_prefix,
-      models_cache: v.models_cache,
-      cache_fetched_at: v.cache_fetched_at,
       created_at: v.created_at,
       updated_at: v.updated_at,
     }

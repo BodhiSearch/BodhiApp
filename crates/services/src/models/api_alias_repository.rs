@@ -3,9 +3,9 @@ use crate::db::{
   DbError, DefaultDbService,
 };
 use crate::models::api_model_alias_entity::{self as api_model_alias, ApiAliasView};
-use crate::models::ApiAlias;
+use crate::models::{ApiAlias, ApiModel};
 use crate::RawApiKeyUpdate;
-use chrono::{DateTime, Utc};
+
 use sea_orm::prelude::*;
 use sea_orm::{PaginatorTrait, QueryOrder, Set};
 
@@ -35,12 +35,11 @@ pub trait ApiAliasRepository: Send + Sync {
     api_key: RawApiKeyUpdate,
   ) -> Result<(), DbError>;
 
-  async fn update_api_model_cache(
+  async fn update_api_model_models(
     &self,
     tenant_id: &str,
     id: &str,
-    models: Vec<String>,
-    fetched_at: DateTime<Utc>,
+    models: Vec<ApiModel>,
   ) -> Result<(), DbError>;
 
   async fn delete_api_model_alias(
@@ -120,8 +119,6 @@ impl ApiAliasRepository for DefaultDbService {
             models: Set(alias.models.clone()),
             prefix: Set(alias.prefix.clone()),
             forward_all_with_prefix: Set(alias.forward_all_with_prefix),
-            models_cache: Set(alias.models_cache.clone()),
-            cache_fetched_at: Set(alias.cache_fetched_at),
             encrypted_api_key: Set(encrypted_api_key),
             salt: Set(salt),
             nonce: Set(nonce),
@@ -248,19 +245,19 @@ impl ApiAliasRepository for DefaultDbService {
       .await
   }
 
-  async fn update_api_model_cache(
+  async fn update_api_model_models(
     &self,
     tenant_id: &str,
     id: &str,
-    models: Vec<String>,
-    fetched_at: DateTime<Utc>,
+    models: Vec<ApiModel>,
   ) -> Result<(), DbError> {
     let id = id.to_string();
+    let now = self.time_service.utc_now();
 
     let active = api_model_alias::ActiveModel {
       id: Set(id),
-      models_cache: Set(models.into()),
-      cache_fetched_at: Set(fetched_at),
+      models: Set(models.into()),
+      updated_at: Set(now),
       ..Default::default()
     };
 

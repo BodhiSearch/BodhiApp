@@ -75,7 +75,7 @@ Falls back to `AuthContext::Anonymous { deployment: DeploymentMode::Standalone }
 
 Flat naming (no `routes_` prefix in module names). Each module has: `error.rs` (single `<Domain>RouteError`), `<domain>_api_schemas.rs` (request/response types), `routes_<domain>.rs` (handlers), `mod.rs` (declarations only). Full module index in `PACKAGE.md`.
 
-The `models/` module has three sub-modules: `alias/`, `api/`, `files/`. Standalone files: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`, `spa_router.rs`.
+The `models/` module has three sub-modules: `alias/`, `api/`, `files/`. The `anthropic/` module handles Anthropic-specific API routes and error schemas (moved from `oai/` and `shared/`). The `providers/` module has shared utilities for multi-provider routing (e.g., `resolve_api_key_for_alias`). Standalone files: `routes_ping.rs`, `routes_dev.rs`, `routes_proxy.rs`, `spa_router.rs`.
 
 ## Handler Naming Convention
 
@@ -140,7 +140,13 @@ Every new route must:
 - `GET /v1/responses/{response_id}/input_items` — list input items
 - `DELETE /v1/responses/{response_id}` — delete response
 
-`response_id` path parameter validated: alphanumeric, underscore, hyphen only. GET/DELETE/cancel/input_items require `model` query parameter for multi-provider routing (not part of upstream OpenAI API). `resolve_api_key_for_alias` shared helper in `oai` module handles API key resolution.
+`response_id` path parameter validated: alphanumeric, underscore, hyphen only. GET/DELETE/cancel/input_items require `model` query parameter for multi-provider routing (not part of upstream OpenAI API). `resolve_api_key_for_alias` shared helper in `providers/` module handles API key resolution (moved from `oai/`).
+
+## Anthropic API (Pass-Through Proxy)
+
+Routes in `src/anthropic/`: `routes_anthropic.rs` (handlers), `anthropic_api_schemas.rs` (AnthropicApiError types, moved from `shared/anthropic_error.rs`). `anthropic_models_list_handler` returns full Anthropic metadata (display_name, created_at, capabilities) from stored `ApiModel::Anthropic` data. Error types follow Anthropic's error format (distinct from OpenAI's `ErrorBody`).
+
+Anthropic endpoints use a pre-built `openapi-anthropic.json` spec (in `resources/` and `ts-client/`) synced from the official Anthropic API to maintain format consistency. These routes intentionally do NOT use `#[utoipa::path]` annotations — the Anthropic API spec is kept separate from the Bodhi management API OpenAPI spec to avoid overloading it. Do not manually edit `openapi-anthropic.json`; re-sync from Anthropic when the upstream spec changes.
 
 ## MCP Proxy Endpoint
 

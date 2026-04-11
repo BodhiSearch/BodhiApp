@@ -1258,16 +1258,45 @@ export interface components {
         /** @description Response envelope for model aliases - hides internal implementation details
          *     Uses untagged serialization - each variant has its own "source" field */
         AliasResponse: components["schemas"]["UserAliasResponse"] | components["schemas"]["ModelAliasResponse"] | components["schemas"]["ApiAliasResponse"];
+        /** @description Mirrors Anthropic's `ModelInfo` schema — full model metadata returned by
+         *     `GET /anthropic/v1/models` and stored alongside model IDs in `ApiAlias.models`.
+         *
+         *     **IMPORTANT**: Do NOT add `#[serde(skip_serializing_if = "Option::is_none")]` on the
+         *     `Option` fields below. The Anthropic API spec marks `capabilities`, `max_input_tokens`,
+         *     and `max_tokens` as **required** (nullable via `anyOf [T, null]`). They must serialize
+         *     as `null` when absent, not be omitted from the JSON output. */
+        AnthropicModel: {
+            id: string;
+            display_name: string;
+            /** @description RFC 3339 datetime string representing the model's release date. */
+            created_at: string;
+            capabilities?: null | components["schemas"]["AnthropicModelCapabilities"];
+            /** Format: int64 */
+            max_input_tokens?: number | null;
+            /** Format: int64 */
+            max_tokens?: number | null;
+            /** @description Always `"model"` — included for Anthropic API compatibility. */
+            type: string;
+        };
+        /** @description Model capability information (Anthropic ModelCapabilities schema). */
+        AnthropicModelCapabilities: {
+            batch: components["schemas"]["CapabilitySupport"];
+            citations: components["schemas"]["CapabilitySupport"];
+            code_execution: components["schemas"]["CapabilitySupport"];
+            context_management: components["schemas"]["ContextManagementCapability"];
+            effort: components["schemas"]["EffortCapability"];
+            image_input: components["schemas"]["CapabilitySupport"];
+            pdf_input: components["schemas"]["CapabilitySupport"];
+            structured_outputs: components["schemas"]["CapabilitySupport"];
+            thinking: components["schemas"]["ThinkingCapability"];
+        };
         ApiAlias: {
             id: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
-            models: components["schemas"]["JsonVec"];
+            models: components["schemas"]["ApiModelVec"];
             prefix?: string | null;
             forward_all_with_prefix: boolean;
-            models_cache: components["schemas"]["JsonVec"];
-            /** Format: date-time */
-            cache_fetched_at: string;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1280,8 +1309,8 @@ export interface components {
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
             has_api_key: boolean;
-            /** @description Models available through this alias (merged from cache for forward_all) */
-            models: string[];
+            /** @description Models available through this alias with full provider metadata */
+            models: components["schemas"]["ApiModel"][];
             prefix?: string | null;
             forward_all_with_prefix: boolean;
             /** Format: date-time */
@@ -1293,7 +1322,7 @@ export interface components {
          * @description API format/protocol specification
          * @enum {string}
          */
-        ApiFormat: "openai" | "openai_responses" | "anthropic" | "placeholder";
+        ApiFormat: "openai" | "openai_responses" | "anthropic";
         /**
          * @description Response containing available API formats
          * @example {
@@ -1317,6 +1346,15 @@ export interface components {
             /** @enum {string} */
             action: "set";
         };
+        /** @description Discriminated union of provider-specific model metadata.
+         *     Stored as JSON in `api_model_aliases.models`. */
+        ApiModel: (components["schemas"]["Model"] & {
+            /** @enum {string} */
+            provider: "openai";
+        }) | (components["schemas"]["AnthropicModel"] & {
+            /** @enum {string} */
+            provider: "anthropic";
+        });
         /**
          * @description Input request for creating or updating an API model configuration.
          * @example {
@@ -1347,6 +1385,8 @@ export interface components {
             /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
             forward_all_with_prefix?: boolean;
         };
+        /** @description DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns. */
+        ApiModelVec: components["schemas"]["ApiModel"][];
         /** @enum {string} */
         AppAccessRequestStatus: "draft" | "approved" | "denied" | "failed" | "expired";
         /**
@@ -1527,6 +1567,10 @@ export interface components {
                 [key: string]: string;
             } | null;
         };
+        /** @description Whether a single capability is supported by the model. */
+        CapabilitySupport: {
+            supported: boolean;
+        };
         /** @description Change user role request */
         ChangeRoleRequest: {
             /** @description Role to assign to the user */
@@ -1537,6 +1581,12 @@ export interface components {
             max_input_tokens?: number | null;
             /** Format: int64 */
             max_output_tokens?: number | null;
+        };
+        /** @description Context management capability details. */
+        ContextManagementCapability: {
+            clear_thinking_20251015?: null | components["schemas"]["CapabilitySupport"];
+            clear_tool_uses_20250919?: null | components["schemas"]["CapabilitySupport"];
+            compact_20260112?: null | components["schemas"]["CapabilitySupport"];
         };
         CopyAliasRequest: {
             alias: string;
@@ -1672,6 +1722,12 @@ export interface components {
             token_endpoint_auth_method?: string | null;
             registration_access_token?: string | null;
         };
+        /** @description Effort (reasoning_effort) capability details. */
+        EffortCapability: {
+            high: components["schemas"]["CapabilitySupport"];
+            low: components["schemas"]["CapabilitySupport"];
+            max: components["schemas"]["CapabilitySupport"];
+        };
         /**
          * @description Request to fetch available models from provider
          * @example {
@@ -1692,7 +1748,8 @@ export interface components {
             api_format?: components["schemas"]["ApiFormat"];
         };
         /**
-         * @description Response containing available models from provider
+         * @description Returns model IDs only (not full metadata) to minimize information exposure —
+         *     the endpoint accepts an API key parameter. Full metadata is stored on create/update.
          * @example {
          *       "models": [
          *         "gpt-4",
@@ -1931,6 +1988,20 @@ export interface components {
             url: string;
             /** @description User's MCP instances connected to this server URL */
             instances: components["schemas"]["Mcp"][];
+        };
+        /** @description Describes an OpenAI model offering that can be used with the API. */
+        Model: {
+            /** @description The model identifier, which can be referenced in the API endpoints. */
+            id: string;
+            /** @description The object type, which is always "model". */
+            object: string;
+            /**
+             * Format: int32
+             * @description The Unix timestamp (in seconds) when the model was created.
+             */
+            created: number;
+            /** @description The organization that owns the model. */
+            owned_by: string;
         };
         ModelAlias: {
             alias: string;
@@ -2328,6 +2399,16 @@ export interface components {
             success: boolean;
             response?: string | null;
             error?: string | null;
+        };
+        /** @description Thinking capability and supported type configurations. */
+        ThinkingCapability: {
+            supported: boolean;
+            types: components["schemas"]["ThinkingTypes"];
+        };
+        /** @description Supported thinking type configurations. */
+        ThinkingTypes: {
+            adaptive: components["schemas"]["CapabilitySupport"];
+            enabled: components["schemas"]["CapabilitySupport"];
         };
         /** @example {
          *       "token": "bodhiapp_1234567890abcdef"

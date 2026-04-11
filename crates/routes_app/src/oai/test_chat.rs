@@ -27,8 +27,8 @@ use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::{
   inference::{InferenceError, LlmEndpoint, MockInferenceService},
-  test_utils::AppServiceStubBuilder,
-  Alias, AuthContext, ResourceRole,
+  test_utils::{openai_model, AppServiceStubBuilder},
+  Alias, ApiModel, AuthContext, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -432,7 +432,7 @@ async fn test_chat_completions_rejects_responses_format_alias() -> anyhow::Resul
     .id("responses-alias")
     .api_format(ApiFormat::OpenAIResponses)
     .base_url("https://api.openai.com/v1")
-    .models(vec!["gpt-4o".to_string()])
+    .models(vec![openai_model("gpt-4o")])
     .prefix("responses/".to_string())
     .build_with_time(db_service.now())
     .unwrap();
@@ -497,7 +497,7 @@ async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Resu
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
-    .models(vec!["claude-3-5-sonnet-20241022".to_string()])
+    .models(vec![services::test_utils::anthropic_model("claude-3-5-sonnet-20241022")])
     .build_with_time(db_service.now())
     .unwrap();
 
@@ -559,7 +559,7 @@ async fn test_embeddings_rejects_responses_format_alias() -> anyhow::Result<()> 
     .id("responses-alias")
     .api_format(ApiFormat::OpenAIResponses)
     .base_url("https://api.openai.com/v1")
-    .models(vec!["text-embedding-ada-002".to_string()])
+    .models(vec![openai_model("text-embedding-ada-002")])
     .prefix("responses/".to_string())
     .build_with_time(db_service.now())
     .unwrap();

@@ -1,49 +1,32 @@
 use crate::models::{
-  ApiAliasRepository, ApiFormat, ApiKeyUpdate, ApiModelRequest, ApiModelService,
+  ApiAliasRepository, ApiFormat, ApiKeyUpdate, ApiModel, ApiModelRequest, ApiModelService,
   DefaultApiModelService,
 };
 use crate::test_utils::{
-  test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID, TEST_USER_ID,
+  openai_model, test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID, TEST_USER_ID,
 };
 use crate::MockAiApiService;
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use std::{sync::Arc, time::Duration};
-
-macro_rules! wait_for_event {
-  ($rx:expr, $event_name:expr, $timeout:expr) => {{
-    loop {
-      tokio::select! {
-          event = $rx.recv() => {
-              match event {
-                  Ok(e) if e == $event_name => break true,
-                  _ => continue
-              }
-          }
-          _ = tokio::time::sleep($timeout) => break false
-      }
-    }
-  }};
-}
+use std::sync::Arc;
 
 #[rstest]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_create_forward_all_triggers_cache_refresh(
+async fn test_create_forward_all_stores_all_models(
   #[future]
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mut rx = db_service.subscribe();
   let db_service = Arc::new(db_service);
 
   let mut mock_ai = MockAiApiService::new();
   mock_ai
     .expect_fetch_models()
     .times(1)
-    .returning(|_, _, _| Ok(vec!["model-a".to_string(), "model-b".to_string()]));
+    .returning(|_, _, _| Ok(vec![openai_model("model-a"), openai_model("model-b")]));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -59,21 +42,19 @@ async fn test_create_forward_all_triggers_cache_refresh(
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(result.forward_all_with_prefix);
-
-  let event_received = wait_for_event!(rx, "update_api_model_cache", Duration::from_millis(500));
-  assert!(
-    event_received,
-    "Timed out waiting for update_api_model_cache event"
+  assert_eq!(
+    vec![openai_model("model-a"), openai_model("model-b")],
+    result.models
   );
 
-  // Verify cache was populated in DB
+  // Verify models stored in DB
   let alias = db_service
     .get_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &result.id)
     .await?
     .expect("alias should exist");
   assert_eq!(
-    vec!["model-a".to_string(), "model-b".to_string()],
-    alias.models_cache.to_vec()
+    vec![openai_model("model-a"), openai_model("model-b")],
+    alias.models.to_vec()
   );
 
   Ok(())
@@ -83,7 +64,7 @@ async fn test_create_forward_all_triggers_cache_refresh(
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_create_non_forward_all_does_not_trigger_cache_refresh(
+async fn test_create_non_forward_all_validates_and_filters(
   #[future]
   #[from(test_db_service)]
   db_service: TestDbService,
@@ -91,7 +72,10 @@ async fn test_create_non_forward_all_does_not_trigger_cache_refresh(
   let db_service = Arc::new(db_service);
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai.expect_fetch_models().times(0);
+  mock_ai
+    .expect_fetch_models()
+    .times(1)
+    .returning(|_, _, _| Ok(vec![openai_model("gpt-4"), openai_model("gpt-3.5")]));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -107,6 +91,7 @@ async fn test_create_non_forward_all_does_not_trigger_cache_refresh(
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(!result.forward_all_with_prefix);
+  assert_eq!(vec![openai_model("gpt-4")], result.models);
 
   Ok(())
 }
@@ -115,37 +100,35 @@ async fn test_create_non_forward_all_does_not_trigger_cache_refresh(
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_update_forward_all_triggers_cache_refresh(
+async fn test_update_forward_all_stores_all_models(
   #[future]
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mut rx = db_service.subscribe();
   let db_service = Arc::new(db_service);
 
   let mut mock_ai = MockAiApiService::new();
+  // create() fetches once, update() fetches once
   mock_ai
     .expect_fetch_models()
-    .times(1)
-    .returning(|_, _, _| Ok(vec!["remote-1".to_string(), "remote-2".to_string()]));
+    .times(2)
+    .returning(|_, _, _| Ok(vec![openai_model("remote-1"), openai_model("remote-2")]));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
-  // First create a non-forward_all model
   let create_form = ApiModelRequest {
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com/v1".to_string(),
     api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
+    models: vec![],
+    prefix: Some("initial".to_string()),
+    forward_all_with_prefix: true,
   };
   let created = service
     .create(TEST_TENANT_ID, TEST_USER_ID, create_form)
     .await?;
 
-  // Now update to forward_all
   let update_form = ApiModelRequest {
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com/v1".to_string(),
@@ -158,21 +141,9 @@ async fn test_update_forward_all_triggers_cache_refresh(
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
   assert!(result.forward_all_with_prefix);
-
-  let event_received = wait_for_event!(rx, "update_api_model_cache", Duration::from_millis(500));
-  assert!(
-    event_received,
-    "Timed out waiting for update_api_model_cache event"
-  );
-
-  // Verify cache was populated in DB
-  let alias = db_service
-    .get_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &result.id)
-    .await?
-    .expect("alias should exist");
   assert_eq!(
-    vec!["remote-1".to_string(), "remote-2".to_string()],
-    alias.models_cache.to_vec()
+    vec![openai_model("remote-1"), openai_model("remote-2")],
+    result.models
   );
 
   Ok(())
@@ -182,7 +153,7 @@ async fn test_update_forward_all_triggers_cache_refresh(
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_update_non_forward_all_does_not_trigger_cache_refresh(
+async fn test_update_non_forward_all_validates_and_filters(
   #[future]
   #[from(test_db_service)]
   db_service: TestDbService,
@@ -190,12 +161,15 @@ async fn test_update_non_forward_all_does_not_trigger_cache_refresh(
   let db_service = Arc::new(db_service);
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai.expect_fetch_models().times(0);
+  // create() calls fetch_models once, update() calls fetch_models once
+  mock_ai
+    .expect_fetch_models()
+    .times(2)
+    .returning(|_, _, _| Ok(vec![openai_model("gpt-4"), openai_model("gpt-3.5")]));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
-  // Create a non-forward_all model
   let create_form = ApiModelRequest {
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com/v1".to_string(),
@@ -208,7 +182,6 @@ async fn test_update_non_forward_all_does_not_trigger_cache_refresh(
     .create(TEST_TENANT_ID, TEST_USER_ID, create_form)
     .await?;
 
-  // Update without forward_all
   let update_form = ApiModelRequest {
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com/v2".to_string(),
@@ -221,6 +194,9 @@ async fn test_update_non_forward_all_does_not_trigger_cache_refresh(
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
   assert!(!result.forward_all_with_prefix);
+  let mut model_ids: Vec<&str> = result.models.iter().map(|m| m.id()).collect();
+  model_ids.sort();
+  assert_eq!(vec!["gpt-3.5", "gpt-4"], model_ids);
 
   Ok(())
 }

@@ -11,9 +11,9 @@ use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
-use services::test_utils::TEST_TENANT_ID;
+use services::test_utils::{openai_model, TEST_TENANT_ID};
 use services::{test_utils::AppServiceStubBuilder, AppService};
-use services::{ApiAlias, ApiFormat, AuthContext, ResourceRole};
+use services::{ApiAlias, ApiFormat, ApiModel, AuthContext, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -144,7 +144,7 @@ async fn test_oai_models_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     "openai-gpt4",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+    vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
     Some("openai/".to_string()),
     false,
     Utc::now(),
@@ -206,7 +206,7 @@ async fn test_oai_models_handler_api_alias_without_prefix() -> anyhow::Result<()
     "openai-gpt4",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     None,
     false,
     Utc::now(),
@@ -267,7 +267,7 @@ async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     "openai-gpt4",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     Some("openai/".to_string()),
     false,
     Utc::now(),
@@ -328,7 +328,7 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
     "openai-gpt4",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     None,
     false,
     Utc::now(),

@@ -66,14 +66,14 @@ impl AuthScopedApiModelService {
       .await
   }
 
-  /// Synchronously fetch and cache models for an API model alias
-  pub async fn sync_cache(&self, id: &str) -> Result<ApiAliasResponse, ApiModelServiceError> {
+  /// Synchronously fetch and update models for a forward_all_with_prefix alias
+  pub async fn sync_models(&self, id: &str) -> Result<ApiAliasResponse, ApiModelServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
     self
       .app_service
       .api_model_service()
-      .sync_cache(tenant_id, user_id, id)
+      .sync_models(tenant_id, user_id, id)
       .await
   }
 }

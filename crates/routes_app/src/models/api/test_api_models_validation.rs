@@ -184,9 +184,13 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Create app service with clean database
+  let mut mock_ai = services::MockAiApiService::new();
+  mock_ai
+    .expect_fetch_models()
+    .returning(|_, _, _| Ok(vec![]));
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
+    .ai_api_service(Arc::new(mock_ai))
     .build()
     .await?;
 
@@ -210,7 +214,7 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
   let response_body = response.json::<ApiAliasResponse>().await?;
   assert_eq!(response_body.forward_all_with_prefix, true);
   assert_eq!(response_body.prefix, Some("fwd/".to_string()));
-  assert_eq!(response_body.models, Vec::<String>::new());
+  assert!(response_body.models.is_empty());
 
   Ok(())
 }

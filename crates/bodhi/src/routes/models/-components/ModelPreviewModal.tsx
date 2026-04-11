@@ -235,9 +235,9 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
                   <div className="pt-2">
                     <span className="text-sm text-muted-foreground">Available Models:</span>
                     <div className="flex flex-wrap gap-1 mt-2" data-testid="preview-api-models">
-                      {model.models.slice(0, 10).map((m: string) => (
-                        <Badge key={m} variant="outline" className="text-xs">
-                          {m}
+                      {model.models.slice(0, 10).map((m) => (
+                        <Badge key={m.id} variant="outline" className="text-xs">
+                          {m.id}
                         </Badge>
                       ))}
                       {model.models.length > 10 && (

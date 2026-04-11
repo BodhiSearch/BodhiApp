@@ -71,12 +71,12 @@ const ModelActions = ({
         </Button>
         <div className="hidden sm:flex items-center gap-1">
           {model.models
-            .map((modelName) => {
-              const displayName = formatPrefixedModel(modelName, model.prefix);
-              const chatModel = formatPrefixedModel(modelName, model.prefix);
+            .map((m) => {
+              const displayName = formatPrefixedModel(m.id, model.prefix);
+              const chatModel = formatPrefixedModel(m.id, model.prefix);
               return (
                 <Button
-                  key={`${model.id}-${modelName}`}
+                  key={`${model.id}-${m.id}`}
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-xs"
@@ -94,7 +94,13 @@ const ModelActions = ({
               variant="ghost"
               size="sm"
               className="h-8 px-2 text-xs text-muted-foreground"
-              onClick={() => onShowMoreModels(model.models, model.id, model.prefix)}
+              onClick={() =>
+                onShowMoreModels(
+                  model.models.map((m) => m.id),
+                  model.id,
+                  model.prefix
+                )
+              }
               title="Show more models"
               data-testid={`${testIdPrefix}more-models-button-${model.id}`}
             >
@@ -116,14 +122,11 @@ const ModelActions = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {model.models.map((modelName) => {
-                const displayName = formatPrefixedModel(modelName, model.prefix);
-                const chatModel = formatPrefixedModel(modelName, model.prefix);
+              {model.models.map((m) => {
+                const displayName = formatPrefixedModel(m.id, model.prefix);
+                const chatModel = formatPrefixedModel(m.id, model.prefix);
                 return (
-                  <DropdownMenuItem
-                    key={modelName}
-                    onClick={() => navigate({ to: '/chat/', search: { model: chatModel } })}
-                  >
+                  <DropdownMenuItem key={m.id} onClick={() => navigate({ to: '/chat/', search: { model: chatModel } })}>
                     {displayName}
                   </DropdownMenuItem>
                 );

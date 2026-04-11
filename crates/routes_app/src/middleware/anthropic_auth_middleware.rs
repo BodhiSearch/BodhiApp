@@ -142,10 +142,7 @@ mod tests {
       .await
       .unwrap();
     let body_str = String::from_utf8_lossy(&body);
-    assert_eq!(
-      "auth=Bearer bodhiapp_existing|x-api-key=",
-      body_str
-    );
+    assert_eq!("auth=Bearer bodhiapp_existing|x-api-key=", body_str);
   }
 
   #[tokio::test]

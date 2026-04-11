@@ -15,8 +15,8 @@ use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::{
   inference::{InferenceError, LlmEndpoint, MockInferenceService},
-  test_utils::{AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
-  ApiAliasBuilder, ApiFormat, AuthContext, ResourceRole,
+  test_utils::{anthropic_model, openai_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
+  ApiAliasBuilder, ApiFormat, ApiModel, AuthContext, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -42,7 +42,7 @@ async fn seed_anthropic_alias(
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
-    .models(vec!["claude-3-5-sonnet-20241022".to_string()])
+    .models(vec![anthropic_model("claude-3-5-sonnet-20241022")])
     .build_with_time(db_service.now())
     .unwrap();
   db_service
@@ -152,7 +152,7 @@ async fn test_messages_create_rejects_non_anthropic_alias() -> anyhow::Result<()
     .id("openai-alias")
     .api_format(ApiFormat::OpenAI)
     .base_url("https://api.openai.com/v1")
-    .models(vec!["gpt-4o".to_string()])
+    .models(vec![openai_model("gpt-4o")])
     .build_with_time(db_service.now())
     .unwrap();
   db_service
@@ -472,8 +472,8 @@ async fn test_models_list_aggregates_from_all_anthropic_aliases() -> anyhow::Res
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
     .models(vec![
-      "claude-3-5-sonnet-20241022".to_string(),
-      "claude-3-opus-20240229".to_string(),
+      anthropic_model("claude-3-5-sonnet-20241022"),
+      anthropic_model("claude-3-opus-20240229"),
     ])
     .build_with_time(db_service.now())
     .unwrap();
@@ -482,8 +482,8 @@ async fn test_models_list_aggregates_from_all_anthropic_aliases() -> anyhow::Res
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
     .models(vec![
-      "claude-3-5-sonnet-20241022".to_string(), // duplicate
-      "claude-3-haiku-20240307".to_string(),
+      anthropic_model("claude-3-5-sonnet-20241022"), // duplicate
+      anthropic_model("claude-3-haiku-20240307"),
     ])
     .build_with_time(db_service.now())
     .unwrap();
@@ -541,14 +541,14 @@ async fn test_models_list_excludes_non_anthropic_aliases() -> anyhow::Result<()>
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
-    .models(vec!["claude-3-5-sonnet-20241022".to_string()])
+    .models(vec![anthropic_model("claude-3-5-sonnet-20241022")])
     .build_with_time(db_service.now())
     .unwrap();
   let openai_alias = ApiAliasBuilder::test_default()
     .id("openai-alias")
     .api_format(ApiFormat::OpenAI)
     .base_url("https://api.openai.com/v1")
-    .models(vec!["gpt-4o".to_string()])
+    .models(vec![openai_model("gpt-4o")])
     .build_with_time(db_service.now())
     .unwrap();
   db_service
@@ -590,31 +590,18 @@ async fn test_models_list_excludes_non_anthropic_aliases() -> anyhow::Result<()>
 }
 
 // ============================================================================
-// Single model GET — proxy to upstream
+// Single model GET — served from local cache
 // ============================================================================
 
 #[rstest]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_models_get_by_path_param_proxies_to_upstream() -> anyhow::Result<()> {
+async fn test_models_get_by_path_param_returns_cached_model() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_anthropic_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::AnthropicModel("claude-3-5-sonnet-20241022".to_string())
-        && alias.id == "anthropic-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
-  let app_service = builder
-    .inference_service(Arc::new(mock_inference))
-    .build()
-    .await?;
+  let app_service = builder.build().await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route(
@@ -636,6 +623,13 @@ async fn test_models_get_by_path_param_proxies_to_upstream() -> anyhow::Result<(
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!("claude-3-5-sonnet-20241022", body["id"].as_str().unwrap());
+  assert_eq!("model", body["type"].as_str().unwrap());
+  assert_eq!(
+    "claude-3-5-sonnet-20241022",
+    body["display_name"].as_str().unwrap()
+  );
   Ok(())
 }
 
@@ -696,26 +690,14 @@ async fn test_models_get_valid_id_with_dots_and_hyphens() -> anyhow::Result<()> 
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
-    .models(vec!["claude-3.5-sonnet".to_string()])
+    .models(vec![anthropic_model("claude-3.5-sonnet")])
     .build_with_time(db_service.now())
     .unwrap();
   db_service
     .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
     .await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, _alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::AnthropicModel("claude-3.5-sonnet".to_string())
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
-  let app_service = builder
-    .inference_service(Arc::new(mock_inference))
-    .build()
-    .await?;
+  let app_service = builder.build().await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route(
@@ -737,5 +719,7 @@ async fn test_models_get_valid_id_with_dots_and_hyphens() -> anyhow::Result<()> 
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!("claude-3.5-sonnet", body["id"].as_str().unwrap());
   Ok(())
 }

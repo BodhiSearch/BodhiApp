@@ -36,6 +36,27 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         response: { content: MOCK_RESPONSE },
       });
     }
+    // Mount a /v1/models handler so the backend can validate model IDs on create/update.
+    // Returns Anthropic-format when anthropic-version header is present, OpenAI-format otherwise.
+    sharedMockServer.mount('/v1', {
+      async handleRequest(req, res, pathname) {
+        if (pathname === '/models' && req.method === 'GET') {
+          const isAnthropic = !!req.headers['anthropic-version'];
+          const data = MOCK_MODELS.map((id) =>
+            isAnthropic
+              ? { id, display_name: id, created_at: '2024-01-01T00:00:00Z', type: 'model' }
+              : { id, object: 'model', created: 0, owned_by: 'mock' }
+          );
+          const body = JSON.stringify(
+            isAnthropic ? { data, has_more: false } : { object: 'list', data }
+          );
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(body);
+          return true;
+        }
+        return false;
+      },
+    });
     await sharedMockServer.start();
   });
 

@@ -12,12 +12,24 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
-use services::test_utils::{test_db_service, AppServiceStubBuilder, TestDbService};
+use services::test_utils::{openai_model, test_db_service, AppServiceStubBuilder, TestDbService};
 use services::AuthContext;
-use services::{ApiAliasResponse, ApiKeyUpdate, ApiModelRequest};
+use services::{ApiAliasResponse, ApiKeyUpdate, ApiModel, ApiModelRequest, MockAiApiService};
 use services::{ApiFormat::OpenAI, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
+
+fn make_mock_ai() -> MockAiApiService {
+  let mut mock_ai = MockAiApiService::new();
+  mock_ai.expect_fetch_models().returning(|_, _, _| {
+    Ok(vec![
+      openai_model("gpt-4"),
+      openai_model("gpt-3.5-turbo"),
+      openai_model("claude-3"),
+    ])
+  });
+  mock_ai
+}
 
 fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
   Router::new()
@@ -75,7 +87,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "has_api_key": true,
-    "models": ["gpt-4"],
+    "models": [{"provider": "openai", "id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"}],
     "prefix": null,
     "forward_all_with_prefix": false,
     "created_at": "2024-01-01T00:00:00Z",
@@ -102,7 +114,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "has_api_key": true,
-    "models": ["gpt-4"],
+    "models": [{"provider": "openai", "id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"}],
     "prefix": "azure/",
     "forward_all_with_prefix": false,
     "created_at": "2024-01-01T00:00:00Z",
@@ -129,7 +141,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "has_api_key": true,
-    "models": ["gpt-4"],
+    "models": [{"provider": "openai", "id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"}],
     "prefix": null,
     "forward_all_with_prefix": false,
     "created_at": "2024-01-01T00:00:00Z",
@@ -156,7 +168,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "has_api_key": true,
-    "models": ["gpt-4"],
+    "models": [{"provider": "openai", "id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"}],
     "prefix": "openai:",
     "forward_all_with_prefix": false,
     "created_at": "2024-01-01T00:00:00Z",
@@ -183,7 +195,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "has_api_key": true,
-    "models": ["gpt-4"],
+    "models": [{"provider": "openai", "id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"}],
     "prefix": null,
     "forward_all_with_prefix": false,
     "created_at": "2024-01-01T00:00:00Z",
@@ -210,7 +222,10 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "api_format": "openai",
     "base_url": "https://api.openai.com/v2",
     "has_api_key": true,
-    "models": ["gpt-4", "gpt-3.5-turbo"],
+    "models": [
+      {"provider": "openai", "id": "gpt-4", "object": "model", "created": 0, "owned_by": "openai"},
+      {"provider": "openai", "id": "gpt-3.5-turbo", "object": "model", "created": 0, "owned_by": "openai"}
+    ],
     "prefix": null,
     "forward_all_with_prefix": false,
     "created_at": "2024-01-01T00:00:00Z",
@@ -238,6 +253,7 @@ async fn test_api_model_prefix_lifecycle(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
+      .ai_api_service(Arc::new(make_mock_ai()))
       .build()
       .await?,
   );
@@ -342,6 +358,7 @@ async fn test_create_api_model_duplicate_prefix_error(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
+      .ai_api_service(Arc::new(make_mock_ai()))
       .build()
       .await?,
   );
@@ -398,6 +415,7 @@ async fn test_update_api_model_duplicate_prefix_error(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
+      .ai_api_service(Arc::new(make_mock_ai()))
       .build()
       .await?,
   );

@@ -9,11 +9,18 @@ use services::{ApiAlias, ApiFormat, MockAiApiService};
 use std::sync::Arc;
 
 fn make_test_api_alias() -> ApiAlias {
+  use async_openai::types::models::Model as OpenAIModel;
+  use services::ApiModel;
   ApiAlias::new(
     "test-api",
     ApiFormat::OpenAI,
     "https://api.example.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![ApiModel::OpenAI(OpenAIModel {
+      id: "gpt-4".to_string(),
+      object: "model".to_string(),
+      created: 0,
+      owned_by: "openai".to_string(),
+    })],
     None,
     false,
     fixed_dt(),

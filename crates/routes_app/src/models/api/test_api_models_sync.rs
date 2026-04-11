@@ -15,12 +15,12 @@ use rstest::rstest;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::AuthContext;
 use services::{
-  test_utils::{test_db_service, AppServiceStubBuilder, TestDbService, TEST_TENANT_ID},
+  test_utils::{openai_model, test_db_service, AppServiceStubBuilder, TestDbService, TEST_TENANT_ID},
   ApiAliasRepository,
 };
 use services::{
-  ApiAliasBuilder, ApiAliasResponse, ApiFormat::OpenAI, ApiKey, ApiKeyUpdate, ApiModelRequest,
-  ResourceRole,
+  ApiAliasBuilder, ApiAliasResponse, ApiFormat::OpenAI, ApiKey, ApiKeyUpdate, ApiModel,
+  ApiModelRequest, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -81,9 +81,9 @@ async fn test_sync_models_handler_success(
     )
     .returning(|_, _, _| {
       Ok(vec![
-        "gpt-4".to_string(),
-        "gpt-3.5-turbo".to_string(),
-        "gpt-4-turbo".to_string(),
+        openai_model("gpt-4"),
+        openai_model("gpt-3.5-turbo"),
+        openai_model("gpt-4-turbo"),
       ])
     });
 
@@ -131,10 +131,8 @@ async fn test_sync_models_handler_success(
   assert_eq!(create_response.id, sync_body.id);
   assert_eq!(OpenAI, sync_body.api_format);
   // Models should be returned without prefix - UI applies prefix
-  assert_eq!(
-    vec!["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"],
-    sync_body.models
-  );
+  let model_ids: Vec<&str> = sync_body.models.iter().map(|m| m.id()).collect();
+  assert_eq!(vec!["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"], model_ids);
   assert_eq!(Some("fwd/".to_string()), sync_body.prefix);
   assert_eq!(true, sync_body.forward_all_with_prefix);
 
@@ -160,7 +158,7 @@ async fn test_create_api_model_success(
     .id(test_id.clone())
     .api_format(OpenAI)
     .base_url("https://api.openai.com/v1")
-    .models(vec!["gpt-4".to_string()])
+    .models(vec![openai_model("gpt-4")])
     .build_with_time(now)?;
 
   db_service
@@ -204,7 +202,7 @@ async fn test_delete_api_model(
     .id("to-delete")
     .api_format(OpenAI)
     .base_url("https://api.openai.com/v1")
-    .models(vec!["gpt-4".to_string()])
+    .models(vec![openai_model("gpt-4")])
     .build_with_time(now)?;
 
   db_service
@@ -227,6 +225,66 @@ async fn test_delete_api_model(
     .get_api_model_alias(TEST_TENANT_ID, "", "to-delete")
     .await?
     .is_none());
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_sync_models_rejects_non_forward_all(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  // Mock AI returns models for the create validation call; sync should not reach it
+  let mut mock_ai = services::MockAiApiService::new();
+  mock_ai
+    .expect_fetch_models()
+    .with(
+      predicate::eq(Some("sk-test123".to_string())),
+      predicate::eq("https://api.openai.com/v1"),
+      predicate::eq(services::ApiFormat::OpenAI),
+    )
+    .returning(|_, _, _| Ok(vec![openai_model("gpt-4")]));
+
+  let app_service = Arc::new(
+    AppServiceStubBuilder::default()
+      .db_service(Arc::new(db_service))
+      .ai_api_service(Arc::new(mock_ai))
+      .build()
+      .await?,
+  );
+
+  // Create a non-forward_all alias with explicit models
+  let create_form = ApiModelRequest {
+    api_format: OpenAI,
+    base_url: "https://api.openai.com/v1".to_string(),
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123".to_string())?),
+    models: vec!["gpt-4".to_string()],
+    prefix: None,
+    forward_all_with_prefix: false,
+  };
+
+  let create_response = test_router(app_service.clone())
+    .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
+    .await?
+    .json::<ApiAliasResponse>()
+    .await?;
+
+  // Attempt sync on non-forward_all alias -> expect 400
+  let sync_response = test_router(app_service)
+    .oneshot(
+      Request::post(format!(
+        "/bodhi/v1/models/api/{}/sync-models",
+        create_response.id
+      ))
+      .body(Body::empty())?,
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, sync_response.status());
 
   Ok(())
 }

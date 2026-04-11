@@ -16,8 +16,8 @@ use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::{
   inference::{InferenceError, LlmEndpoint, MockInferenceService},
-  test_utils::{AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
-  ApiAliasBuilder, ApiFormat, AuthContext, ResourceRole,
+  test_utils::{openai_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
+  ApiAliasBuilder, ApiFormat, ApiModel, AuthContext, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -149,7 +149,7 @@ async fn test_responses_create_wrong_format() -> anyhow::Result<()> {
     .id("openai-alias")
     .api_format(ApiFormat::OpenAI)
     .base_url("https://api.openai.com/v1")
-    .models(vec!["gpt-4o".to_string()])
+    .models(vec![openai_model("gpt-4o")])
     .prefix("openai/".to_string())
     .build_with_time(db_service.now())
     .unwrap();
@@ -202,7 +202,7 @@ async fn seed_responses_alias(
     .id("resp-alias")
     .api_format(ApiFormat::OpenAIResponses)
     .base_url("https://api.openai.com/v1")
-    .models(vec!["gpt-4o".to_string()])
+    .models(vec![openai_model("gpt-4o")])
     .prefix("resp/".to_string())
     .build_with_time(db_service.now())
     .unwrap();

@@ -14,8 +14,8 @@ use crate::mcps::{
   McpServerRepository, McpWithServerEntity,
 };
 use crate::models::{
-  ApiAlias, ApiAliasRepository, DownloadRepository, DownloadRequestEntity, ModelMetadataEntity,
-  ModelMetadataRepository, UserAlias, UserAliasRepository,
+  ApiAlias, ApiAliasRepository, ApiModel, DownloadRepository, DownloadRequestEntity,
+  ModelMetadataEntity, ModelMetadataRepository, UserAlias, UserAliasRepository,
 };
 use crate::settings::{DbSetting, SettingsRepository};
 use crate::tokens::{TokenEntity, TokenRepository};
@@ -271,18 +271,17 @@ impl ApiAliasRepository for TestDbService {
       .tap(|_| self.notify("list_api_model_aliases"))
   }
 
-  async fn update_api_model_cache(
+  async fn update_api_model_models(
     &self,
     tenant_id: &str,
     id: &str,
-    models: Vec<String>,
-    fetched_at: DateTime<Utc>,
+    models: Vec<ApiModel>,
   ) -> Result<(), DbError> {
     self
       .inner
-      .update_api_model_cache(tenant_id, id, models, fetched_at)
+      .update_api_model_models(tenant_id, id, models)
       .await
-      .tap(|_| self.notify("update_api_model_cache"))
+      .tap(|_| self.notify("update_api_model_models"))
   }
 
   async fn get_api_key_for_alias(
@@ -1307,7 +1306,7 @@ mockall::mock! {
     async fn create_api_model_alias(&self, tenant_id: &str, user_id: &str, alias: &ApiAlias, api_key: Option<String>) -> Result<(), DbError>;
     async fn get_api_model_alias(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<ApiAlias>, DbError>;
     async fn update_api_model_alias(&self, tenant_id: &str, user_id: &str, id: &str, model: &ApiAlias, api_key: RawApiKeyUpdate) -> Result<(), DbError>;
-    async fn update_api_model_cache(&self, tenant_id: &str, id: &str, models: Vec<String>, fetched_at: DateTime<Utc>) -> Result<(), DbError>;
+    async fn update_api_model_models(&self, tenant_id: &str, id: &str, models: Vec<ApiModel>) -> Result<(), DbError>;
     async fn delete_api_model_alias(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
     async fn list_api_model_aliases(&self, tenant_id: &str, user_id: &str) -> Result<Vec<ApiAlias>, DbError>;
     async fn get_api_key_for_alias(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<String>, DbError>;

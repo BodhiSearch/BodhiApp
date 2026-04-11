@@ -9,12 +9,14 @@ pub mod middleware;
 mod shared;
 
 // -- Domain route modules (folders)
+pub mod anthropic;
 mod apps;
 mod auth;
 mod mcps;
 mod models;
 pub mod oai;
 pub mod ollama;
+mod providers;
 mod settings;
 mod setup;
 mod tenants;
@@ -31,6 +33,7 @@ mod spa_router;
 // -- Test modules
 
 // -- Re-exports
+pub use anthropic::*;
 pub use apps::*;
 pub use auth::*;
 pub use mcps::*;

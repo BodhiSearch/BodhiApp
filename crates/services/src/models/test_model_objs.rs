@@ -1,5 +1,7 @@
-use crate::models::{Alias, ApiAlias, ApiFormat, ModelAlias, OAIRequestParams, Repo, UserAlias};
-use crate::test_utils::fixed_dt;
+use crate::models::{
+  Alias, ApiAlias, ApiFormat, ApiModel, ModelAlias, OAIRequestParams, Repo, UserAlias,
+};
+use crate::test_utils::{fixed_dt, openai_model};
 use crate::UserAliasBuilder;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
@@ -40,7 +42,7 @@ fn test_alias_can_serve_api(#[case] model: &str, #[case] expected: bool) {
     "openai-api",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
-    vec!["gpt-4".to_string()],
+    vec![openai_model("gpt-4")],
     None,
     false,
     fixed_dt(),
@@ -63,7 +65,7 @@ fn test_alias_can_serve_api(#[case] model: &str, #[case] expected: bool) {
 fn test_api_alias_supports_model(
   #[case] model: &str,
   #[case] prefix: Option<&str>,
-  #[case] models: Vec<&str>,
+  #[case] model_ids: Vec<&str>,
   #[case] forward_all: bool,
   #[case] expected: bool,
 ) {
@@ -71,33 +73,15 @@ fn test_api_alias_supports_model(
     "test-api",
     ApiFormat::OpenAI,
     "https://api.example.com/v1",
-    models
+    model_ids
       .into_iter()
-      .map(|s| s.to_string())
+      .map(|id| openai_model(id))
       .collect::<Vec<_>>(),
     prefix.map(|s| s.to_string()),
     forward_all,
     fixed_dt(),
   );
   assert_eq!(expected, api_alias.supports_model(model));
-}
-
-// =============================================================================
-// ApiAlias new() initializes cache_fetched_at to UNIX_EPOCH
-// =============================================================================
-
-#[rstest]
-fn test_api_alias_new_epoch_sentinel() {
-  let api_alias = ApiAlias::new(
-    "test-api",
-    ApiFormat::OpenAI,
-    "https://api.example.com/v1",
-    vec!["gpt-4".to_string()],
-    None,
-    false,
-    fixed_dt(),
-  );
-  assert_eq!(chrono::DateTime::UNIX_EPOCH, api_alias.cache_fetched_at);
 }
 
 // =============================================================================
@@ -158,7 +142,7 @@ fn test_oai_request_params_apply_to_value_does_not_override_existing() {
 fn test_api_alias_matchable_models(
   #[case] _label: &str,
   #[case] prefix: Option<&str>,
-  #[case] models: Vec<&str>,
+  #[case] model_ids: Vec<&str>,
   #[case] forward_all: bool,
   #[case] expected: Vec<&str>,
 ) {
@@ -166,9 +150,9 @@ fn test_api_alias_matchable_models(
     "test-api",
     ApiFormat::OpenAI,
     "https://api.example.com/v1",
-    models
+    model_ids
       .into_iter()
-      .map(|s| s.to_string())
+      .map(|id| openai_model(id))
       .collect::<Vec<_>>(),
     prefix.map(|s| s.to_string()),
     forward_all,
@@ -198,7 +182,6 @@ fn test_user_alias_serde_roundtrip() {
 #[case::openai(ApiFormat::OpenAI, r#""openai""#)]
 #[case::openai_responses(ApiFormat::OpenAIResponses, r#""openai_responses""#)]
 #[case::anthropic(ApiFormat::Anthropic, r#""anthropic""#)]
-#[case::placeholder(ApiFormat::Placeholder, r#""placeholder""#)]
 fn test_api_format_serde_roundtrip(#[case] format: ApiFormat, #[case] expected_json: &str) {
   let serialized = serde_json::to_string(&format).expect("serialize");
   assert_eq!(expected_json, serialized);

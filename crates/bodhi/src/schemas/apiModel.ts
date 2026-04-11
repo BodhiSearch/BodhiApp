@@ -1,4 +1,4 @@
-import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, ApiAliasResponse } from '@bodhiapp/ts-client';
+import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, ApiAliasResponse, ApiModel } from '@bodhiapp/ts-client';
 import * as z from 'zod';
 
 // API format presets for AI APIs
@@ -28,7 +28,7 @@ export const createApiModelSchema = z
     api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
     base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
     api_key: z.string().optional(),
-    models: z.array(z.string().min(1, 'Model name cannot be empty')).max(20, 'Maximum 20 models allowed'),
+    models: z.array(z.string().min(1, 'Model name cannot be empty')).max(1000, 'Maximum 1000 models allowed'),
     prefix: z.string().optional(),
     usePrefix: z.boolean().default(false),
     useApiKey: z.boolean().default(false),
@@ -85,7 +85,7 @@ export const updateApiModelSchema = z
     api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
     base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
     api_key: z.string().optional(),
-    models: z.array(z.string().min(1, 'Model name cannot be empty')).max(20, 'Maximum 20 models allowed'),
+    models: z.array(z.string().min(1, 'Model name cannot be empty')).max(1000, 'Maximum 1000 models allowed'),
     prefix: z.string().optional(),
     usePrefix: z.boolean().default(false),
     useApiKey: z.boolean().default(false),
@@ -211,7 +211,7 @@ export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData =>
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',
-  models: apiData.models,
+  models: apiData.models.map((m) => m.id),
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
   useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
@@ -232,7 +232,7 @@ export const convertApiToUpdateForm = (apiData: ApiAliasResponse): UpdateApiMode
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',
-  models: apiData.models,
+  models: apiData.models.map((m) => m.id),
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
   useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked

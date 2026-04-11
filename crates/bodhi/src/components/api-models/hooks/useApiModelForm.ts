@@ -53,7 +53,7 @@ export function useApiModelForm({
           api_format: initialData?.api_format || 'openai',
           base_url: initialData?.base_url || 'https://api.openai.com/v1',
           api_key: '',
-          models: initialData?.models || [],
+          models: initialData?.models?.map((m) => m.id) || [],
           prefix: initialData?.prefix || '',
           usePrefix: Boolean(initialData?.prefix),
           useApiKey: initialData?.has_api_key === true, // true = has key, checkbox checked

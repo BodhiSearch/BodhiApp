@@ -1,5 +1,5 @@
-use crate::shared::anthropic_error::AnthropicApiError;
-use crate::shared::api_error::ApiError;
+use crate::anthropic::anthropic_api_schemas::AnthropicApiError;
+use crate::ApiError;
 use axum::body::to_bytes;
 use axum::response::IntoResponse;
 use errmeta_derive::ErrorMeta;

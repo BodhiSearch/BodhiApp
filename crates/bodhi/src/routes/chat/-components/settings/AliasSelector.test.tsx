@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { AliasResponse } from '@bodhiapp/ts-client';
 import { AliasSelector } from '@/routes/chat/-components/settings/AliasSelector';
 import { createWrapper } from '@/tests/wrapper';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
@@ -67,9 +68,10 @@ const mockModels = [
   },
 ];
 
-const mockUnifiedModels = [
+const mockUnifiedModels: AliasResponse[] = [
   {
     source: 'user',
+    id: 'local-1',
     alias: 'local-model-1',
     repo: 'user/repo1',
     filename: 'model1.gguf',
@@ -77,6 +79,8 @@ const mockUnifiedModels = [
     request_params: {},
     context_params: [],
     model_params: {},
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   },
   {
     source: 'model',
@@ -91,7 +95,10 @@ const mockUnifiedModels = [
     api_format: 'openai' as const,
     base_url: 'https://api.openai.com/v1',
     has_api_key: true,
-    models: ['gpt-4', 'gpt-3.5-turbo'],
+    models: [
+      { id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
+      { id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
+    ],
     forward_all_with_prefix: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
@@ -99,10 +106,13 @@ const mockUnifiedModels = [
   {
     source: 'api',
     id: 'anthropic-api',
-    api_format: 'openai' as const,
+    api_format: 'anthropic' as const,
     base_url: 'https://api.anthropic.com/v1',
     has_api_key: true,
-    models: ['claude-3-opus', 'claude-3-sonnet'],
+    models: [
+      { id: 'claude-3-opus', display_name: 'Claude 3 Opus', created_at: '2024-01-01T00:00:00Z', type: 'model', provider: 'anthropic' as const },
+      { id: 'claude-3-sonnet', display_name: 'Claude 3 Sonnet', created_at: '2024-01-01T00:00:00Z', type: 'model', provider: 'anthropic' as const },
+    ],
     forward_all_with_prefix: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
@@ -319,18 +329,34 @@ describe('AliasSelector', () => {
       expect(screen.queryByText('openai')).not.toBeInTheDocument();
     });
 
-    it('calls setApiFormat with api_format when API model is selected', () => {
+    it.each([
+      {
+        apiFormat: 'openai' as const,
+        modelId: 'gpt-4',
+        models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
+      },
+      {
+        apiFormat: 'openai_responses' as const,
+        modelId: 'gpt-4o',
+        models: [{ id: 'gpt-4o', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
+      },
+      {
+        apiFormat: 'anthropic' as const,
+        modelId: 'claude-3-opus',
+        models: [{ id: 'claude-3-opus', display_name: 'Claude 3 Opus', created_at: '2024-01-01T00:00:00Z', type: 'model', provider: 'anthropic' as const }],
+      },
+    ])('calls setApiFormat with $apiFormat when API model is selected', ({ apiFormat, modelId, models }) => {
       const mockSetApiFormat = vi.fn();
       useChatSettingsStore.setState({ model: '', setModel: vi.fn(), setApiFormat: mockSetApiFormat });
 
       const apiModels = [
         {
           source: 'api',
-          id: 'responses-api',
-          api_format: 'openai_responses' as const,
-          base_url: 'https://api.openai.com/v1',
+          id: 'test-api',
+          api_format: apiFormat,
+          base_url: 'https://api.example.com/v1',
           has_api_key: true,
-          models: ['gpt-4o'],
+          models,
           forward_all_with_prefix: false,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
@@ -343,9 +369,9 @@ describe('AliasSelector', () => {
 
       const select = screen.getByRole('combobox');
       fireEvent.click(select);
-      fireEvent.click(screen.getByText('gpt-4o'));
+      fireEvent.click(screen.getByText(modelId));
 
-      expect(mockSetApiFormat).toHaveBeenCalledWith('openai_responses');
+      expect(mockSetApiFormat).toHaveBeenCalledWith(apiFormat);
     });
 
     it('calls setApiFormat with openai when local model is selected', () => {
