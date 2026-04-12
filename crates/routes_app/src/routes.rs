@@ -1,7 +1,7 @@
 use crate::middleware::{
   access_request_auth_middleware, anthropic_auth_middleware, api_auth_middleware, auth_middleware,
-  canonical_url_middleware, optional_auth_middleware, AccessRequestValidator,
-  McpAccessRequestValidator,
+  canonical_url_middleware, openai_auth_middleware, optional_auth_middleware,
+  AccessRequestValidator, McpAccessRequestValidator,
 };
 use crate::{
   anthropic_messages_create_handler, anthropic_models_get_handler, anthropic_models_list_handler,
@@ -509,9 +509,12 @@ pub async fn build_routes(
     .merge(apps_apis)
     .merge(power_user_apis)
     .route_layer(from_fn_with_state(state.clone(), auth_middleware))
-    // Outermost layer: runs first, before auth_middleware.
-    // Rewrites x-api-key -> Authorization: Bearer for Anthropic paths only.
+    // Outermost layers: run first, before auth_middleware.
+    // Rewrites x-api-key -> Authorization: Bearer for Anthropic paths only,
+    // and strips BodhiApp's chat-UI sentinel from auth headers on /v1/*
+    // (OpenAI-compat) so session-cookie auth can fall through.
     .route_layer(from_fn(anthropic_auth_middleware))
+    .route_layer(from_fn(openai_auth_middleware))
     .layer(permissive_cors());
 
   // Public + optional auth (PERMISSIVE CORS)

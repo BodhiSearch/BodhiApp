@@ -12,14 +12,18 @@ use axum::{
 use mockall::predicate;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
+use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::AuthContext;
 use services::{
-  test_utils::{openai_model, test_db_service, AppServiceStubBuilder, TestDbService, TEST_TENANT_ID},
+  test_utils::{
+    anthropic_model, openai_model, test_db_service, AppServiceStubBuilder, TestDbService,
+    TEST_TENANT_ID,
+  },
   ApiAliasRepository,
 };
 use services::{
-  ApiAliasBuilder, ApiAliasResponse, ApiFormat::OpenAI, ApiKey, ApiKeyUpdate, ApiModel,
+  ApiAliasBuilder, ApiAliasResponse, ApiFormat, ApiFormat::OpenAI, ApiKey, ApiKeyUpdate,
   ApiModelRequest, ResourceRole,
 };
 use std::sync::Arc;
@@ -78,8 +82,10 @@ async fn test_sync_models_handler_success(
       predicate::eq(Some("sk-test123".to_string())),
       predicate::eq("https://api.openai.com/v1"),
       predicate::eq(services::ApiFormat::OpenAI),
+      predicate::eq(None),
+      predicate::eq(None),
     )
-    .returning(|_, _, _| {
+    .returning(|_, _, _, _, _| {
       Ok(vec![
         openai_model("gpt-4"),
         openai_model("gpt-3.5-turbo"),
@@ -104,6 +110,8 @@ async fn test_sync_models_handler_success(
     models: vec![],
     prefix: Some("fwd/".to_string()),
     forward_all_with_prefix: true,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let create_response = test_router(app_service.clone())
@@ -246,8 +254,10 @@ async fn test_sync_models_rejects_non_forward_all(
       predicate::eq(Some("sk-test123".to_string())),
       predicate::eq("https://api.openai.com/v1"),
       predicate::eq(services::ApiFormat::OpenAI),
+      predicate::eq(None),
+      predicate::eq(None),
     )
-    .returning(|_, _, _| Ok(vec![openai_model("gpt-4")]));
+    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4")]));
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
@@ -265,6 +275,8 @@ async fn test_sync_models_rejects_non_forward_all(
     models: vec!["gpt-4".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let create_response = test_router(app_service.clone())
@@ -285,6 +297,85 @@ async fn test_sync_models_rejects_non_forward_all(
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, sync_response.status());
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_sync_models_anthropic_oauth_passes_extra_headers(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let extra_headers = json!({"anthropic-beta": "claude-code-20250219,oauth-2025-04-20"});
+  let extra_body = json!({"system": [{"type": "text", "text": "You are Claude Code..."}]});
+
+  let expected_extra_headers = extra_headers.clone();
+  let expected_extra_body = extra_body.clone();
+
+  // Set up mock AI API service: expect fetch_models to receive the alias's extra fields
+  let mut mock_ai = services::MockAiApiService::new();
+  mock_ai
+    .expect_fetch_models()
+    .withf(move |_, _, api_format, eh, eb| {
+      *api_format == ApiFormat::AnthropicOAuth
+        && eh.as_ref() == Some(&expected_extra_headers)
+        && eb.as_ref() == Some(&expected_extra_body)
+    })
+    .returning(|_, _, _, _, _| {
+      Ok(vec![
+        anthropic_model("claude-3-5-sonnet-20241022"),
+        anthropic_model("claude-3-haiku-20240307"),
+      ])
+    });
+
+  let app_service = Arc::new(
+    AppServiceStubBuilder::default()
+      .db_service(Arc::new(db_service))
+      .ai_api_service(Arc::new(mock_ai))
+      .build()
+      .await?,
+  );
+
+  // Create an AnthropicOAuth alias with extra fields via the create endpoint
+  let create_form = ApiModelRequest {
+    api_format: ApiFormat::AnthropicOAuth,
+    base_url: "https://api.anthropic.com/v1".to_string(),
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string())?),
+    models: vec![],
+    prefix: Some("oauth/".to_string()),
+    forward_all_with_prefix: true,
+    extra_headers: Some(extra_headers),
+    extra_body: Some(extra_body),
+  };
+
+  let create_response = test_router(app_service.clone())
+    .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
+    .await?
+    .json::<ApiAliasResponse>()
+    .await?;
+
+  // Sync models — mock verifies extra_headers and extra_body are passed through
+  let sync_response = test_router(app_service)
+    .oneshot(
+      Request::post(format!(
+        "/bodhi/v1/models/api/{}/sync-models",
+        create_response.id
+      ))
+      .body(axum::body::Body::empty())?,
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, sync_response.status());
+
+  let sync_body = sync_response.json::<ApiAliasResponse>().await?;
+  assert_eq!(ApiFormat::AnthropicOAuth, sync_body.api_format);
+  let model_ids: Vec<&str> = sync_body.models.iter().map(|m| m.id()).collect();
+  assert!(model_ids.contains(&"claude-3-5-sonnet-20241022"));
+  assert!(model_ids.contains(&"claude-3-haiku-20240307"));
 
   Ok(())
 }

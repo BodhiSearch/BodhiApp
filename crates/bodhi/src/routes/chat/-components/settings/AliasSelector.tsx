@@ -10,9 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { modelKeys } from '@/hooks/models/constants';
 import { useQueryClient } from '@/hooks/useQuery';
+import type { ApiFormat } from '@bodhiapp/ts-client';
 import { isApiAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
-import { useChatSettingsStore, type ApiFormatSetting } from '@/stores/chatSettingsStore';
+import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
 interface AliasSelectorProps {
   models: AliasResponse[];
@@ -52,7 +53,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     if (!model || models.length === 0) return;
     const alias = modelToAliasMap.get(model);
     if (alias && isApiAlias(alias)) {
-      setApiFormat(alias.api_format as ApiFormatSetting);
+      setApiFormat(alias.api_format as ApiFormat);
     } else {
       setApiFormat('openai');
     }
@@ -130,7 +131,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
             setModel(value);
             const alias = modelToAliasMap.get(value);
             if (alias && isApiAlias(alias)) {
-              setApiFormat(alias.api_format as ApiFormatSetting);
+              setApiFormat(alias.api_format as ApiFormat);
             } else {
               setApiFormat('openai');
             }

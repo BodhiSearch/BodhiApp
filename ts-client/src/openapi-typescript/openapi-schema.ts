@@ -669,7 +669,7 @@ export interface paths {
         };
         /**
          * Get Available API Formats
-         * @description Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), and 'anthropic' (Messages API).
+         * @description Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), and 'anthropic_oauth' (Anthropic via OAuth Bearer token).
          */
         get: operations["getApiFormats"];
         put?: never;
@@ -1297,6 +1297,8 @@ export interface components {
             models: components["schemas"]["ApiModelVec"];
             prefix?: string | null;
             forward_all_with_prefix: boolean;
+            extra_headers?: unknown;
+            extra_body?: unknown;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1313,6 +1315,8 @@ export interface components {
             models: components["schemas"]["ApiModel"][];
             prefix?: string | null;
             forward_all_with_prefix: boolean;
+            extra_headers?: unknown;
+            extra_body?: unknown;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1322,7 +1326,7 @@ export interface components {
          * @description API format/protocol specification
          * @enum {string}
          */
-        ApiFormat: "openai" | "openai_responses" | "anthropic";
+        ApiFormat: "openai" | "openai_responses" | "anthropic" | "anthropic_oauth";
         /**
          * @description Response containing available API formats
          * @example {
@@ -1384,6 +1388,10 @@ export interface components {
             prefix?: string | null;
             /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
             forward_all_with_prefix?: boolean;
+            /** @description Optional extra HTTP headers to send upstream (e.g., for OAuth or custom auth) */
+            extra_headers?: unknown;
+            /** @description Optional extra fields to merge into the request body sent upstream */
+            extra_body?: unknown;
         };
         /** @description DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns. */
         ApiModelVec: components["schemas"]["ApiModel"][];
@@ -1746,6 +1754,10 @@ export interface components {
             base_url: string;
             /** @description API format to use for fetching models (defaults to OpenAI Chat Completions) */
             api_format?: components["schemas"]["ApiFormat"];
+            /** @description Optional extra HTTP headers for the upstream request */
+            extra_headers?: unknown;
+            /** @description Optional extra fields to merge into the request body */
+            extra_body?: unknown;
         };
         /**
          * @description Returns model IDs only (not full metadata) to minimize information exposure —
@@ -2386,6 +2398,10 @@ export interface components {
             prompt: string;
             /** @description API format to use for the test request (defaults to OpenAI Chat Completions) */
             api_format?: components["schemas"]["ApiFormat"];
+            /** @description Optional extra HTTP headers for the upstream request */
+            extra_headers?: unknown;
+            /** @description Optional extra fields to merge into the request body */
+            extra_body?: unknown;
         };
         /**
          * @description Response from testing API connectivity
@@ -5652,7 +5668,8 @@ export interface operations {
                      *       "data": [
                      *         "openai",
                      *         "openai_responses",
-                     *         "anthropic"
+                     *         "anthropic",
+                     *         "anthropic_oauth"
                      *       ]
                      *     } */
                     "application/json": components["schemas"]["ApiFormatsResponse"];

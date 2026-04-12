@@ -1,9 +1,8 @@
 import { create } from 'zustand';
+import type { ApiFormat } from '@bodhiapp/ts-client';
 
 import { useChatStore } from './chatStore';
-import type { ApiFormatSetting, PersistedChatSettings } from '@/lib/chatDb';
-
-export type { ApiFormatSetting };
+import type { PersistedChatSettings } from '@/lib/chatDb';
 
 export type ChatSettings = PersistedChatSettings;
 
@@ -82,7 +81,7 @@ type EnabledKey = `${string}_enabled` & keyof AllSettings;
 
 export interface ChatSettingsStoreState extends ChatSettings, SessionOnlySettings {
   setModel: (model: string) => void;
-  setApiFormat: (format: ApiFormatSetting) => void;
+  setApiFormat: (format: ApiFormat) => void;
   setSetting: <K extends SettingKey>(key: K, value: AllSettings[K] | undefined) => void;
   setEnabled: (key: EnabledKey, enabled: boolean) => void;
 

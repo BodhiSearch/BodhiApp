@@ -20,6 +20,8 @@ interface FetchModelsData {
   baseUrl: string;
   id?: string;
   apiFormat: ApiFormat;
+  extraHeaders?: unknown;
+  extraBody?: unknown;
 }
 
 export function useFetchModels({
@@ -67,6 +69,8 @@ export function useFetchModels({
       creds,
       base_url: data.baseUrl,
       api_format: data.apiFormat,
+      ...(data.extraHeaders !== null && data.extraHeaders !== undefined ? { extra_headers: data.extraHeaders } : {}),
+      ...(data.extraBody !== null && data.extraBody !== undefined ? { extra_body: data.extraBody } : {}),
     };
 
     try {

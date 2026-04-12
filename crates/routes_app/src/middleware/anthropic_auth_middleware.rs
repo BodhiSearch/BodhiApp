@@ -3,25 +3,18 @@ use axum::http::HeaderValue;
 use axum::middleware::Next;
 use axum::response::Response;
 
-/// Applied at the `api_protected` level (outside `auth_middleware`) so it can rewrite
-/// `x-api-key` to `Authorization: Bearer` before `auth_middleware` processes the token.
-///
-/// Path-scoped: only activates for Anthropic endpoints (`/anthropic/*` and `/v1/messages`).
-/// All other paths pass through unchanged.
-///
-/// Auth rewrite logic (`x-api-key` is never forwarded upstream):
-/// - `x-api-key` absent → request passes through unchanged.
-/// - `x-api-key` present, `Authorization` absent → strips `x-api-key`, sets
-///   `Authorization: Bearer <value>` so native Anthropic SDK clients work unchanged.
-/// - `x-api-key` present, `Authorization` present → strips `x-api-key` only;
-///   existing `Authorization` header takes precedence.
-///
-/// Token validation is handled by downstream `api_auth_middleware` — no BYOK.
+use crate::middleware::{SENTINEL_API_KEY, SENTINEL_BEARER_LOWER};
+
+/// Anthropic-path auth normalization. Runs before `auth_middleware` on
+/// `/anthropic/*` and `/v1/messages`. First strips the chat-UI sentinel from
+/// `x-api-key` / `Authorization`, then rewrites any remaining `x-api-key` to
+/// `Authorization: Bearer <value>`. Existing `Authorization` wins over `x-api-key`.
 pub async fn anthropic_auth_middleware(mut req: Request, next: Next) -> Response {
   let path = req.uri().path();
   if path.starts_with("/anthropic/") || path == "/v1/messages" {
+    strip_sentinel_headers(&mut req);
     if let Some(key) = req.headers().get("x-api-key").cloned() {
-      req.headers_mut().remove("x-api-key"); // always strip — never forward upstream
+      req.headers_mut().remove("x-api-key");
       if req.headers().get("authorization").is_none() {
         if let Ok(key_str) = key.to_str() {
           let bearer = format!("Bearer {}", key_str);
@@ -35,9 +28,29 @@ pub async fn anthropic_auth_middleware(mut req: Request, next: Next) -> Response
   next.run(req).await
 }
 
+/// Drops `x-api-key` / `Authorization` whose value is the chat-UI sentinel.
+/// Bearer-scheme match is case-insensitive.
+pub(crate) fn strip_sentinel_headers(req: &mut Request) {
+  if let Some(key) = req.headers().get("x-api-key") {
+    if key.to_str().ok() == Some(SENTINEL_API_KEY) {
+      req.headers_mut().remove("x-api-key");
+    }
+  }
+  if let Some(auth) = req.headers().get("authorization") {
+    if auth
+      .to_str()
+      .ok()
+      .map(|s| s.eq_ignore_ascii_case(SENTINEL_BEARER_LOWER))
+      .unwrap_or(false)
+    {
+      req.headers_mut().remove("authorization");
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use crate::middleware::{anthropic_auth_middleware, SENTINEL_API_KEY};
   use axum::body::Body;
   use axum::http::{Request, StatusCode};
   use axum::middleware::from_fn;
@@ -145,10 +158,46 @@ mod tests {
     assert_eq!("auth=Bearer bodhiapp_existing|x-api-key=", body_str);
   }
 
+  #[rstest::rstest]
+  #[case::xapikey_anthropic_path("/anthropic/v1/messages", vec![("x-api-key", SENTINEL_API_KEY.to_string())], "auth=|x-api-key=")]
+  #[case::bearer_anthropic_path("/anthropic/v1/messages", vec![("authorization", format!("Bearer {}", SENTINEL_API_KEY))], "auth=|x-api-key=")]
+  #[case::bearer_lowercase_anthropic_path("/anthropic/v1/messages", vec![("authorization", format!("bearer {}", SENTINEL_API_KEY))], "auth=|x-api-key=")]
+  #[case::sentinel_plus_real_auth_strip_xapikey_keep_auth(
+    "/anthropic/v1/messages",
+    vec![("x-api-key", SENTINEL_API_KEY.to_string()), ("authorization", "Bearer real-token".to_string())],
+    "auth=Bearer real-token|x-api-key="
+  )]
+  #[case::xapikey_v1_messages("/v1/messages", vec![("x-api-key", SENTINEL_API_KEY.to_string())], "auth=|x-api-key=")]
+  #[case::bearer_v1_messages("/v1/messages", vec![("authorization", format!("Bearer {}", SENTINEL_API_KEY))], "auth=|x-api-key=")]
+  #[tokio::test]
+  async fn test_sentinel_stripped_on_anthropic(
+    #[case] path: &str,
+    #[case] headers: Vec<(&str, String)>,
+    #[case] expected: &str,
+  ) {
+    let mut builder = Request::get(path);
+    for (k, v) in &headers {
+      builder = builder.header(*k, v);
+    }
+    let response = test_app()
+      .oneshot(builder.body(Body::empty()).unwrap())
+      .await
+      .unwrap();
+    assert_eq!(StatusCode::OK, response.status());
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+      .await
+      .unwrap();
+    assert_eq!(expected, String::from_utf8_lossy(&body));
+  }
+
   #[tokio::test]
   async fn test_no_auth_headers_passes_through_unchanged() {
     let response = test_app()
-      .oneshot(Request::get("/anthropic/v1/messages").body(Body::empty()).unwrap())
+      .oneshot(
+        Request::get("/anthropic/v1/messages")
+          .body(Body::empty())
+          .unwrap(),
+      )
       .await
       .unwrap();
     assert_eq!(StatusCode::OK, response.status());

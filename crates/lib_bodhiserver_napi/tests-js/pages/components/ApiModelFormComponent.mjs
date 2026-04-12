@@ -34,6 +34,7 @@ export class ApiModelFormComponent {
     openai: 'OpenAI - Completions',
     openai_responses: 'OpenAI - Responses',
     anthropic: 'Anthropic',
+    anthropic_oauth: 'Anthropic (Claude Code OAuth)',
   };
 
   static getFormatDisplayName(format) {
@@ -54,7 +55,7 @@ export class ApiModelFormComponent {
       await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
         'https://api.openai.com/v1'
       );
-    } else if (format === 'anthropic') {
+    } else if (format === 'anthropic' || format === 'anthropic_oauth') {
       await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
         'https://api.anthropic.com/v1'
       );
@@ -100,6 +101,60 @@ export class ApiModelFormComponent {
   async fillBasicInfo(apiKey, baseUrl = 'https://api.openai.com/v1') {
     await this.fillBaseUrl(baseUrl);
     await this.fillApiKey(apiKey);
+  }
+
+  // Extra Headers / Extra Body methods
+  async fillExtraHeaders(jsonString) {
+    const locator = this.page.locator('[data-testid="extra-headers-input"]');
+    await locator.clear();
+    await locator.fill(jsonString);
+  }
+
+  async fillExtraBody(jsonString) {
+    const locator = this.page.locator('[data-testid="extra-body-input"]');
+    await locator.clear();
+    await locator.fill(jsonString);
+  }
+
+  async getExtraHeaders() {
+    return await this.page.locator('[data-testid="extra-headers-input"]').inputValue();
+  }
+
+  async getExtraBody() {
+    return await this.page.locator('[data-testid="extra-body-input"]').inputValue();
+  }
+
+  async expectExtraHeadersError(substring) {
+    await expect(this.page.locator('[data-testid="extra-headers-input-error"]')).toContainText(
+      substring
+    );
+  }
+
+  async expectExtraBodyError(substring) {
+    await expect(this.page.locator('[data-testid="extra-body-input-error"]')).toContainText(
+      substring
+    );
+  }
+
+  async expectExtrasVisible(visible = true) {
+    const headersLocator = this.page.locator('[data-testid="extra-headers-input"]');
+    const bodyLocator = this.page.locator('[data-testid="extra-body-input"]');
+    if (visible) {
+      await expect(headersLocator).toBeVisible();
+      await expect(bodyLocator).toBeVisible();
+    } else {
+      await expect(headersLocator).toBeHidden();
+      await expect(bodyLocator).toBeHidden();
+    }
+  }
+
+  async expectExtrasPrefilledFor(formatConfig) {
+    const headersValue = await this.getExtraHeaders();
+    const bodyValue = await this.getExtraBody();
+    const parsedHeaders = JSON.parse(headersValue);
+    const parsedBody = JSON.parse(bodyValue);
+    expect(parsedHeaders).toEqual(formatConfig.extraHeaders);
+    expect(parsedBody).toEqual(formatConfig.extraBody);
   }
 
   // Prefix-related methods
@@ -180,6 +235,13 @@ export class ApiModelFormComponent {
 
   async expectFetchSuccess() {
     await this.waitForToast(/Models Fetched Successfully/i);
+  }
+
+  // Guard after expectFetchSuccess: makes empty-list upstream failures produce a
+  // clear assertion instead of an obscure selector error in searchAndSelectModel.
+  async expectAtLeastOneModelFetched() {
+    const firstModel = this.page.locator('[data-testid^="available-model-"]').first();
+    await expect(firstModel).toBeVisible();
   }
 
   async fetchAndSelectModels(models = ['gpt-4', 'gpt-3.5-turbo'], maxRetries = 1) {

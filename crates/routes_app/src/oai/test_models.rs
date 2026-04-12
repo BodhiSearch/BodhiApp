@@ -6,14 +6,13 @@ use axum::{
   http::{Request, StatusCode},
   Router,
 };
-use chrono::Utc;
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
-use services::test_utils::{openai_model, TEST_TENANT_ID};
+use services::test_utils::{anthropic_model, openai_model, TEST_TENANT_ID};
 use services::{test_utils::AppServiceStubBuilder, AppService};
-use services::{ApiAlias, ApiFormat, ApiModel, AuthContext, ResourceRole};
+use services::{ApiAlias, ApiFormat, AuthContext, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -147,7 +146,9 @@ async fn test_oai_models_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
     Some("openai/".to_string()),
     false,
-    Utc::now(),
+    db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias(
@@ -209,7 +210,9 @@ async fn test_oai_models_handler_api_alias_without_prefix() -> anyhow::Result<()
     vec![openai_model("gpt-4")],
     None,
     false,
-    Utc::now(),
+    db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias(
@@ -270,7 +273,9 @@ async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     vec![openai_model("gpt-4")],
     Some("openai/".to_string()),
     false,
-    Utc::now(),
+    db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias(
@@ -331,7 +336,9 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
     vec![openai_model("gpt-4")],
     None,
     false,
-    Utc::now(),
+    db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias(
@@ -368,6 +375,66 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
     response
   );
 
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oai_models_handler_anthropic_oauth_alias_included() -> anyhow::Result<()> {
+  let service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .with_db_service()
+    .await
+    .build()
+    .await?;
+  let db_service = service.db_service();
+
+  let api_alias = ApiAlias::new(
+    "anthropic-oauth-alias",
+    ApiFormat::AnthropicOAuth,
+    "https://api.anthropic.com",
+    vec![anthropic_model("claude-3-5-sonnet-20241022")],
+    Some("anthropic/".to_string()),
+    false,
+    db_service.now(),
+    None,
+    None,
+  );
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, "test-user", &api_alias, None)
+    .await?;
+
+  let app = create_router(Arc::new(service));
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let response = response.json::<Value>().await?;
+  let data = response["data"]
+    .as_array()
+    .expect("expected data to be an array");
+  let model_ids: Vec<&str> = data
+    .iter()
+    .map(|m| m["id"].as_str().expect("expected id to be a string"))
+    .collect();
+  assert!(
+    model_ids.contains(&"anthropic/claude-3-5-sonnet-20241022"),
+    "anthropic_oauth alias models should be included in /v1/models; got: {:?}",
+    model_ids
+  );
   Ok(())
 }
 

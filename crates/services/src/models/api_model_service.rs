@@ -109,6 +109,7 @@ impl ApiModelService for DefaultApiModelService {
     form: ApiModelRequest,
   ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     validate_forward_all(&form)?;
+    validate_extra_headers(&form.extra_headers)?;
 
     let now = self.time_service.utc_now();
     let id = new_ulid();
@@ -124,7 +125,13 @@ impl ApiModelService for DefaultApiModelService {
     // Fetch all models from provider and validate/filter based on mode
     let provider_models = self
       .ai_api_service
-      .fetch_models(api_key_option.clone(), &base_url, &form.api_format)
+      .fetch_models(
+        api_key_option.clone(),
+        &base_url,
+        &form.api_format,
+        form.extra_headers.clone(),
+        form.extra_body.clone(),
+      )
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -154,6 +161,8 @@ impl ApiModelService for DefaultApiModelService {
       form.prefix,
       form.forward_all_with_prefix,
       now,
+      form.extra_headers,
+      form.extra_body,
     );
 
     self
@@ -178,6 +187,7 @@ impl ApiModelService for DefaultApiModelService {
     form: ApiModelRequest,
   ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     validate_forward_all(&form)?;
+    validate_extra_headers(&form.extra_headers)?;
 
     // Get existing API model
     let mut api_alias = self
@@ -185,6 +195,14 @@ impl ApiModelService for DefaultApiModelService {
       .get_api_model_alias(tenant_id, user_id, id)
       .await?
       .ok_or_else(|| EntityError::NotFound(format!("API model '{}' not found", id)))?;
+
+    // Changing api_format invalidates the stored api_key (different provider).
+    // Require callers to supply a new key — rejecting `Keep` binds frontend/backend.
+    if form.api_format != api_alias.api_format && matches!(form.api_key, ApiKeyUpdate::Keep) {
+      return Err(ApiModelServiceError::Validation(
+        crate::ObjValidationError::ApiFormatChangedRequiresNewKey,
+      ));
+    }
 
     // Convert ApiKeyUpdate to the raw form for repository
     let api_key_update = form.api_key.into_raw_update();
@@ -205,7 +223,13 @@ impl ApiModelService for DefaultApiModelService {
     // Fetch all models from provider and validate/filter based on mode
     let provider_models = self
       .ai_api_service
-      .fetch_models(fetch_key, &base_url, &form.api_format)
+      .fetch_models(
+        fetch_key,
+        &base_url,
+        &form.api_format,
+        form.extra_headers.clone(),
+        form.extra_body.clone(),
+      )
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -237,6 +261,8 @@ impl ApiModelService for DefaultApiModelService {
       form.prefix
     };
     api_alias.forward_all_with_prefix = form.forward_all_with_prefix;
+    api_alias.extra_headers = form.extra_headers;
+    api_alias.extra_body = form.extra_body;
     api_alias.updated_at = self.time_service.utc_now();
 
     self
@@ -330,7 +356,13 @@ impl ApiModelService for DefaultApiModelService {
     // Fetch models from remote API synchronously
     let models = self
       .ai_api_service
-      .fetch_models(api_key.clone(), &api_alias.base_url, &api_alias.api_format)
+      .fetch_models(
+        api_key.clone(),
+        &api_alias.base_url,
+        &api_alias.api_format,
+        api_alias.extra_headers.clone(),
+        api_alias.extra_body.clone(),
+      )
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -373,6 +405,29 @@ fn validate_forward_all(form: &ApiModelRequest) -> Result<(), ApiModelServiceErr
     return Err(ApiModelServiceError::Validation(
       crate::ObjValidationError::ValidationErrors(errors),
     ));
+  }
+  Ok(())
+}
+
+/// Defense-in-depth wrapper around `validate_extra_headers_no_auth` that maps the
+/// `validator::ValidationError` into `ApiModelServiceError`. Keeps enforcement at
+/// the service layer in addition to DTO-level validation.
+pub(crate) fn validate_extra_headers(
+  extra_headers: &Option<serde_json::Value>,
+) -> Result<(), ApiModelServiceError> {
+  let Some(value) = extra_headers else {
+    return Ok(());
+  };
+  let Some(map) = value.as_object() else {
+    return Ok(());
+  };
+  for key in map.keys() {
+    let lower = key.to_ascii_lowercase();
+    if lower == "authorization" || lower == "x-api-key" {
+      return Err(ApiModelServiceError::Validation(
+        crate::ObjValidationError::ExtraHeadersForbiddenKey(key.clone()),
+      ));
+    }
   }
   Ok(())
 }

@@ -1,4 +1,4 @@
-import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, ApiAliasResponse, ApiModel } from '@bodhiapp/ts-client';
+import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, ApiAliasResponse } from '@bodhiapp/ts-client';
 import * as z from 'zod';
 
 // API format presets for AI APIs
@@ -18,9 +18,59 @@ export const API_FORMAT_PRESETS = {
     baseUrl: 'https://api.anthropic.com/v1',
     models: [] as string[],
   },
+  anthropic_oauth: {
+    name: 'Anthropic (Claude Code OAuth)',
+    baseUrl: 'https://api.anthropic.com/v1',
+    models: [] as string[],
+    defaultHeaders: {
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'claude-code-20250219,oauth-2025-04-20',
+      'user-agent': 'claude-cli/2.1.80 (external, cli)',
+    },
+    defaultBody: {
+      max_tokens: 4096,
+      system: [{ type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." }],
+    },
+  },
 };
 
 export type ApiFormatPreset = keyof typeof API_FORMAT_PRESETS;
+
+const FORBIDDEN_EXTRA_HEADER_KEYS = ['authorization', 'x-api-key'];
+
+const validateJsonObjectField = (value: string | undefined, fieldName: string, ctx: z.RefinementCtx) => {
+  if (!value || value.trim() === '') return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [fieldName],
+      message: `${fieldName === 'extra_headers' ? 'Extra Headers' : 'Extra Body'} must be valid JSON`,
+    });
+    return;
+  }
+  if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [fieldName],
+      message: `${fieldName === 'extra_headers' ? 'Extra Headers' : 'Extra Body'} must be a JSON object`,
+    });
+    return;
+  }
+  if (fieldName === 'extra_headers') {
+    const keys = Object.keys(parsed as Record<string, unknown>);
+    const forbidden = keys.find((k) => FORBIDDEN_EXTRA_HEADER_KEYS.includes(k.toLowerCase()));
+    if (forbidden) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [fieldName],
+        message: `Cannot have pass-through authorization headers. '${forbidden}' is not allowed in extra_headers.`,
+      });
+    }
+  }
+};
 
 // Zod schema for creating API models
 export const createApiModelSchema = z
@@ -33,6 +83,8 @@ export const createApiModelSchema = z
     usePrefix: z.boolean().default(false),
     useApiKey: z.boolean().default(false),
     forward_all_with_prefix: z.boolean().default(false),
+    extra_headers: z.string().optional(),
+    extra_body: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     // Only validate API key when useApiKey checkbox is checked
@@ -77,6 +129,9 @@ export const createApiModelSchema = z
         message: 'At least one model must be selected',
       });
     }
+    // Validate extra_headers and extra_body as valid JSON objects when non-empty
+    validateJsonObjectField(data.extra_headers, 'extra_headers', ctx);
+    validateJsonObjectField(data.extra_body, 'extra_body', ctx);
   });
 
 // Zod schema for updating API models
@@ -90,6 +145,8 @@ export const updateApiModelSchema = z
     usePrefix: z.boolean().default(false),
     useApiKey: z.boolean().default(false),
     forward_all_with_prefix: z.boolean().default(false),
+    extra_headers: z.string().optional(),
+    extra_body: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     // Only validate API key when useApiKey checkbox is checked AND user provided a value
@@ -125,6 +182,9 @@ export const updateApiModelSchema = z
         message: 'At least one model must be selected',
       });
     }
+    // Validate extra_headers and extra_body as valid JSON objects when non-empty
+    validateJsonObjectField(data.extra_headers, 'extra_headers', ctx);
+    validateJsonObjectField(data.extra_body, 'extra_body', ctx);
   });
 
 // Form data types
@@ -140,6 +200,15 @@ export type UpdateApiModelFormData = z.infer<typeof updateApiModelSchema>;
  * Note: When useApiKey is false, we send {action: 'set', value: null} to explicitly
  * indicate "no API key" for public APIs
  */
+export const parseJsonField = (value: string | undefined): unknown | null => {
+  if (!value || value.trim() === '') return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
 export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModelRequest => ({
   api_format: formData.api_format as ApiFormat,
   base_url: formData.base_url,
@@ -150,6 +219,8 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModel
   models: formData.models,
   prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
   forward_all_with_prefix: formData.forward_all_with_prefix,
+  extra_headers: parseJsonField(formData.extra_headers),
+  extra_body: parseJsonField(formData.extra_body),
 });
 
 /**
@@ -195,6 +266,8 @@ export const convertFormToUpdateRequest = (
   models: formData.models,
   prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
   forward_all_with_prefix: formData.forward_all_with_prefix,
+  extra_headers: parseJsonField(formData.extra_headers),
+  extra_body: parseJsonField(formData.extra_body),
 });
 
 /**
@@ -207,6 +280,11 @@ export const convertFormToUpdateRequest = (
  * - true: API key is stored → checkbox CHECKED (has key)
  * - false: No API key stored → checkbox UNCHECKED (no key)
  */
+export const serializeJsonField = (value: unknown | null | undefined): string => {
+  if (value === null || value === undefined) return '';
+  return JSON.stringify(value, null, 2);
+};
+
 export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData => ({
   api_format: apiData.api_format,
   base_url: apiData.base_url,
@@ -216,6 +294,8 @@ export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData =>
   usePrefix: Boolean(apiData.prefix),
   useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
   forward_all_with_prefix: apiData.forward_all_with_prefix || false,
+  extra_headers: serializeJsonField(apiData.extra_headers),
+  extra_body: serializeJsonField(apiData.extra_body),
 });
 
 /**
@@ -237,6 +317,8 @@ export const convertApiToUpdateForm = (apiData: ApiAliasResponse): UpdateApiMode
   usePrefix: Boolean(apiData.prefix),
   useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
   forward_all_with_prefix: apiData.forward_all_with_prefix || false,
+  extra_headers: serializeJsonField(apiData.extra_headers),
+  extra_body: serializeJsonField(apiData.extra_body),
 });
 
 // Helper function to mask API key for display

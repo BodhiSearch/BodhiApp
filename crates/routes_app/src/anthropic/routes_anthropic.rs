@@ -54,11 +54,18 @@ async fn resolve_anthropic_alias(
     })?;
 
   let api_alias = match alias {
-    Alias::Api(api_alias) if api_alias.api_format == ApiFormat::Anthropic => api_alias,
+    Alias::Api(api_alias)
+      if matches!(
+        api_alias.api_format,
+        ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
+      ) =>
+    {
+      api_alias
+    }
     _ => {
       return Err(
         OAIRouteError::InvalidRequest(format!(
-          "Model '{}' is not configured for Anthropic Messages API format. Configure an alias with 'anthropic' format.",
+          "Model '{}' is not configured for Anthropic Messages API format. Configure an alias with 'anthropic' or 'anthropic_oauth' format.",
           model
         ))
         .into(),
@@ -80,7 +87,14 @@ async fn list_user_anthropic_aliases(auth_scope: &AuthScope) -> Result<Vec<ApiAl
     aliases
       .into_iter()
       .filter_map(|alias| match alias {
-        Alias::Api(api_alias) if api_alias.api_format == ApiFormat::Anthropic => Some(api_alias),
+        Alias::Api(api_alias)
+          if matches!(
+            api_alias.api_format,
+            ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
+          ) =>
+        {
+          Some(api_alias)
+        }
         _ => None,
       })
       .collect(),
@@ -192,5 +206,13 @@ pub async fn anthropic_models_get_handler(
 }
 
 #[cfg(test)]
-#[path = "test_anthropic.rs"]
-mod test_anthropic;
+#[path = "test_anthropic_messages.rs"]
+mod test_anthropic_messages;
+
+#[cfg(test)]
+#[path = "test_anthropic_models.rs"]
+mod test_anthropic_models;
+
+#[cfg(test)]
+#[path = "test_anthropic_oauth_routing.rs"]
+mod test_anthropic_oauth_routing;

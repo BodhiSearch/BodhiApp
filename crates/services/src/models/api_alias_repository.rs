@@ -119,6 +119,8 @@ impl ApiAliasRepository for DefaultDbService {
             models: Set(alias.models.clone()),
             prefix: Set(alias.prefix.clone()),
             forward_all_with_prefix: Set(alias.forward_all_with_prefix),
+            extra_headers: Set(alias.extra_headers.clone()),
+            extra_body: Set(alias.extra_body.clone()),
             encrypted_api_key: Set(encrypted_api_key),
             salt: Set(salt),
             nonce: Set(nonce),
@@ -184,6 +186,8 @@ impl ApiAliasRepository for DefaultDbService {
       models: Set(model.models.clone()),
       prefix: Set(model.prefix.clone()),
       forward_all_with_prefix: Set(model.forward_all_with_prefix),
+      extra_headers: Set(model.extra_headers.clone()),
+      extra_body: Set(model.extra_body.clone()),
       updated_at: Set(now),
       ..Default::default()
     };

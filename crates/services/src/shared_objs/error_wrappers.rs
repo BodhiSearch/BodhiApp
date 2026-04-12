@@ -25,6 +25,16 @@ pub enum ObjValidationError {
   #[error("Sync models is only available for aliases with forward_all_with_prefix enabled.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   SyncRequiresForwardAll,
+
+  #[error(
+    "Cannot have pass-through authorization headers. '{0}' is not allowed in extra_headers."
+  )]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ExtraHeadersForbiddenKey(String),
+
+  #[error("Changing api_format requires a new api_key; cannot keep the existing key.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ApiFormatChangedRequiresNewKey,
 }
 
 #[derive(Debug)]

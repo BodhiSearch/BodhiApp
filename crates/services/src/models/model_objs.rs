@@ -775,6 +775,9 @@ pub enum ApiFormat {
   #[serde(rename = "anthropic")]
   #[strum(serialize = "anthropic")]
   Anthropic,
+  #[serde(rename = "anthropic_oauth")]
+  #[strum(serialize = "anthropic_oauth")]
+  AnthropicOAuth,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder)]
@@ -790,6 +793,10 @@ pub struct ApiAlias {
   pub prefix: Option<String>,
   #[builder(default)]
   pub forward_all_with_prefix: bool,
+  #[builder(default)]
+  pub extra_headers: Option<serde_json::Value>,
+  #[builder(default)]
+  pub extra_body: Option<serde_json::Value>,
   #[schema(value_type = String, format = "date-time")]
   #[builder(setter(skip))]
   pub created_at: chrono::DateTime<chrono::Utc>,
@@ -807,6 +814,8 @@ impl ApiAlias {
     prefix: Option<String>,
     forward_all_with_prefix: bool,
     created_at: chrono::DateTime<chrono::Utc>,
+    extra_headers: Option<serde_json::Value>,
+    extra_body: Option<serde_json::Value>,
   ) -> Self {
     Self {
       id: id.into(),
@@ -815,6 +824,8 @@ impl ApiAlias {
       models: models.into(),
       prefix,
       forward_all_with_prefix,
+      extra_headers,
+      extra_body,
       created_at,
       updated_at: created_at,
     }
@@ -878,6 +889,8 @@ impl ApiAliasBuilder {
       models: self.models.clone().unwrap_or_default(),
       prefix: self.prefix.clone().unwrap_or_default(),
       forward_all_with_prefix: self.forward_all_with_prefix.unwrap_or_default(),
+      extra_headers: self.extra_headers.clone().unwrap_or_default(),
+      extra_body: self.extra_body.clone().unwrap_or_default(),
       created_at: timestamp,
       updated_at: timestamp,
     })
@@ -1156,6 +1169,18 @@ pub struct ApiModelRequest {
   #[serde(default)]
   #[builder(default)]
   pub forward_all_with_prefix: bool,
+
+  /// Optional extra HTTP headers to send upstream. Cannot include `Authorization`
+  /// or `x-api-key` — those are owned by provider clients.
+  #[serde(default)]
+  #[builder(default)]
+  #[validate(custom(function = "crate::validate_extra_headers_no_auth"))]
+  pub extra_headers: Option<serde_json::Value>,
+
+  /// Optional extra fields to merge into the request body sent upstream
+  #[serde(default)]
+  #[builder(default)]
+  pub extra_body: Option<serde_json::Value>,
 }
 
 fn default_api_key_keep() -> ApiKeyUpdate {
@@ -1221,6 +1246,15 @@ pub struct TestPromptRequest {
   /// API format to use for the test request (defaults to OpenAI Chat Completions)
   #[serde(default = "default_api_format_openai")]
   pub api_format: ApiFormat,
+
+  /// Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden.
+  #[serde(default)]
+  #[validate(custom(function = "crate::validate_extra_headers_no_auth"))]
+  pub extra_headers: Option<serde_json::Value>,
+
+  /// Optional extra fields to merge into the request body
+  #[serde(default)]
+  pub extra_body: Option<serde_json::Value>,
 }
 
 /// Response from testing API connectivity
@@ -1277,6 +1311,15 @@ pub struct FetchModelsRequest {
   /// API format to use for fetching models (defaults to OpenAI Chat Completions)
   #[serde(default = "default_api_format_openai")]
   pub api_format: ApiFormat,
+
+  /// Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden.
+  #[serde(default)]
+  #[validate(custom(function = "crate::validate_extra_headers_no_auth"))]
+  pub extra_headers: Option<serde_json::Value>,
+
+  /// Optional extra fields to merge into the request body
+  #[serde(default)]
+  pub extra_body: Option<serde_json::Value>,
 }
 
 /// Returns model IDs only (not full metadata) to minimize information exposure —
@@ -1475,6 +1518,10 @@ pub struct ApiAliasResponse {
   pub models: Vec<ApiModel>,
   pub prefix: Option<String>,
   pub forward_all_with_prefix: bool,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub extra_headers: Option<serde_json::Value>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub extra_body: Option<serde_json::Value>,
   #[schema(value_type = String, format = "date-time")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time")]
@@ -1493,6 +1540,8 @@ impl From<ApiAlias> for ApiAliasResponse {
       models,
       prefix: alias.prefix,
       forward_all_with_prefix: alias.forward_all_with_prefix,
+      extra_headers: alias.extra_headers,
+      extra_body: alias.extra_body,
       created_at: alias.created_at,
       updated_at: alias.updated_at,
     }

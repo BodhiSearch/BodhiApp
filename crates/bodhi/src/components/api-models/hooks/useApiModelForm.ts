@@ -12,6 +12,8 @@ import {
   updateApiModelSchema,
   convertFormToCreateRequest,
   convertFormToUpdateRequest,
+  parseJsonField,
+  serializeJsonField,
   API_FORMAT_PRESETS,
 } from '@/schemas/apiModel';
 
@@ -58,6 +60,8 @@ export function useApiModelForm({
           usePrefix: Boolean(initialData?.prefix),
           useApiKey: initialData?.has_api_key === true, // true = has key, checkbox checked
           forward_all_with_prefix: initialData?.forward_all_with_prefix || false,
+          extra_headers: serializeJsonField(initialData?.extra_headers),
+          extra_body: serializeJsonField(initialData?.extra_body),
         }
       : mode === 'setup'
         ? {
@@ -69,6 +73,8 @@ export function useApiModelForm({
             usePrefix: false,
             useApiKey: false,
             forward_all_with_prefix: false,
+            extra_headers: '',
+            extra_body: '',
           }
         : {
             api_format: 'openai',
@@ -79,6 +85,8 @@ export function useApiModelForm({
             usePrefix: false,
             useApiKey: false,
             forward_all_with_prefix: false,
+            extra_headers: '',
+            extra_body: '',
           },
   });
 
@@ -153,12 +161,27 @@ export function useApiModelForm({
     setValue('models', []);
     setValue('prefix', '');
     setValue('usePrefix', false);
-    setValue('useApiKey', false);
+    // In edit mode, switching api_format away from the stored format invalidates
+    // the stored credentials — force the user to supply a new key (backend
+    // rejects ApiKeyUpdate::Keep when api_format differs).
+    const formatChangedInEdit = isEditMode && initialData && apiFormat !== initialData.api_format;
+    setValue('useApiKey', formatChangedInEdit ? true : false);
     setValue('api_key', '');
     fetchModels.clearModels();
     testConnection.resetStatus();
     if (preset) {
       setValue('base_url', preset.baseUrl);
+      // Auto-populate extras from preset defaults when they exist
+      if ('defaultHeaders' in preset && preset.defaultHeaders) {
+        setValue('extra_headers', JSON.stringify(preset.defaultHeaders, null, 2));
+      } else {
+        setValue('extra_headers', '');
+      }
+      if ('defaultBody' in preset && preset.defaultBody) {
+        setValue('extra_body', JSON.stringify(preset.defaultBody, null, 2));
+      } else {
+        setValue('extra_body', '');
+      }
     }
   };
 
@@ -199,12 +222,17 @@ export function useApiModelForm({
       creds = { type: 'api_key' as const, value: null };
     }
 
+    const extraHeaders = parseJsonField(watchedValues.extra_headers);
+    const extraBody = parseJsonField(watchedValues.extra_body);
+
     await testConnection.testConnection({
       creds,
       base_url: watchedValues.base_url,
       model: watchedValues.models?.[0] || 'gpt-3.5-turbo',
       prompt: DEFAULT_TEST_PROMPT,
       api_format: watchedValues.api_format as ApiFormat,
+      ...(extraHeaders !== null ? { extra_headers: extraHeaders } : {}),
+      ...(extraBody !== null ? { extra_body: extraBody } : {}),
     });
   };
 
@@ -215,6 +243,8 @@ export function useApiModelForm({
       id: !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined,
       baseUrl: watchedValues.base_url || '',
       apiFormat: watchedValues.api_format as ApiFormat,
+      extraHeaders: parseJsonField(watchedValues.extra_headers),
+      extraBody: parseJsonField(watchedValues.extra_body),
     });
   };
 
@@ -244,6 +274,14 @@ export function useApiModelForm({
 
   const canFetch = Boolean(watchedValues.base_url);
 
+  // Show extras section when the preset declares defaults for either field.
+  const showExtras = Boolean(
+    watchedValues.api_format &&
+      API_FORMAT_PRESETS[watchedValues.api_format as keyof typeof API_FORMAT_PRESETS] &&
+      ('defaultHeaders' in API_FORMAT_PRESETS[watchedValues.api_format as keyof typeof API_FORMAT_PRESETS] ||
+        'defaultBody' in API_FORMAT_PRESETS[watchedValues.api_format as keyof typeof API_FORMAT_PRESETS])
+  );
+
   return {
     // Form state
     form,
@@ -254,6 +292,7 @@ export function useApiModelForm({
     errors,
     isSubmitting,
     watchedValues,
+    showExtras,
 
     // Provider state
     selectedProvider,

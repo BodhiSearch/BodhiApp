@@ -324,6 +324,8 @@ mod tests {
       .into(),
       prefix: Some("test-".to_string()),
       forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };

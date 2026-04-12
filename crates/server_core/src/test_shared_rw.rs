@@ -311,6 +311,8 @@ async fn test_forward_request_api_alias_returns_unreachable(
     None,
     false,
     services::test_utils::fixed_dt(),
+    None,
+    None,
   );
   let result = shared_ctx
     .forward_request(

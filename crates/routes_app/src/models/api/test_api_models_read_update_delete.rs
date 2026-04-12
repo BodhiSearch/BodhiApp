@@ -23,7 +23,6 @@ use services::{
 use services::{ApiFormat::OpenAI, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
-use ulid::Ulid;
 
 /// Create expected ApiAliasResponse for testing
 fn create_expected_response(
@@ -46,6 +45,8 @@ fn create_expected_response(
     models,
     prefix,
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
     created_at,
     updated_at,
   }
@@ -85,116 +86,6 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
       ResourceRole::PowerUser,
     )))
     .with_state(app_service)
-}
-
-#[rstest]
-#[case::no_trailing_slash("https://api.openai.com/v1", "https://api.openai.com/v1")]
-#[case::single_trailing_slash("https://api.openai.com/v1/", "https://api.openai.com/v1")]
-#[case::multiple_trailing_slashes("https://api.openai.com/v1///", "https://api.openai.com/v1")]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_api_model_handler_success(
-  #[case] input_url: &str,
-  #[case] expected_url: &str,
-
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
-) -> anyhow::Result<()> {
-  let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _| Ok(vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")]));
-  // Create app service with clean database
-  let app_service = AppServiceStubBuilder::default()
-    .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
-    .build()
-    .await?;
-
-  let create_form = ApiModelRequest {
-    api_format: OpenAI,
-    base_url: input_url.to_string(),
-    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
-    models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-  };
-
-  // Make POST request to create API model
-  let response = test_router(Arc::new(app_service))
-    .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
-    .await?;
-
-  // Verify response status
-  assert_eq!(response.status(), StatusCode::CREATED);
-
-  // Verify response body
-  let api_response = response.json::<ApiAliasResponse>().await?;
-
-  // Verify the response structure (note: ID is now auto-generated ULID)
-  assert_eq!(api_response.api_format, services::ApiFormat::OpenAI);
-  assert_eq!(api_response.base_url, expected_url);
-  assert!(api_response.has_api_key);
-  let model_ids: Vec<&str> = api_response.models.iter().map(|m| m.id()).collect();
-  assert_eq!(model_ids, vec!["gpt-4", "gpt-3.5-turbo"]);
-  assert_eq!(api_response.prefix, None);
-
-  // Verify that ID is a valid ULID
-  assert!(Ulid::from_string(&api_response.id).is_ok());
-
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_api_model_handler_generates_uuid(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
-) -> anyhow::Result<()> {
-  let base_time = db_service.now();
-
-  // Seed database with existing API model
-  seed_test_api_models(&db_service, base_time).await?;
-
-  let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _| Ok(vec![openai_model("gpt-4")]));
-
-  // Create app service with seeded database
-  let app_service = AppServiceStubBuilder::default()
-    .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
-    .build()
-    .await?;
-
-  let create_form = ApiModelRequest {
-    api_format: OpenAI,
-    base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
-    models: vec!["gpt-4".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-  };
-
-  // Make POST request to create API model (should succeed since ULIDs are unique)
-  let response = test_router(Arc::new(app_service))
-    .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
-    .await?;
-
-  // Verify response status is 201 Created (no duplicate ID issue with ULIDs)
-  assert_eq!(response.status(), StatusCode::CREATED);
-
-  // Verify response structure
-  let api_response = response.json::<ApiAliasResponse>().await?;
-  assert!(Ulid::from_string(&api_response.id).is_ok());
-
-  Ok(())
 }
 
 #[rstest]
@@ -301,7 +192,7 @@ async fn test_update_api_model_handler_success(
   let mut mock_ai = MockAiApiService::new();
   mock_ai
     .expect_fetch_models()
-    .returning(|_, _, _| Ok(vec![openai_model("gpt-4-turbo"), openai_model("gpt-4")]));
+    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4-turbo"), openai_model("gpt-4")]));
 
   // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()
@@ -317,6 +208,8 @@ async fn test_update_api_model_handler_success(
     models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
     prefix: Some("openai".to_string()),
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   // Make PUT request to update existing API model
@@ -369,6 +262,8 @@ async fn test_update_api_model_handler_not_found(
     models: vec!["gpt-4-turbo".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   // Make PUT request to update non-existent API model

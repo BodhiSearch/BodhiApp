@@ -217,12 +217,12 @@ describe('agentStore', () => {
       );
     });
 
-    it('routes anthropic format via pi-ai anthropic-messages provider with /anthropic baseUrl', async () => {
+    it.each([
+      ['anthropic' as const, 'claude-3-5-sonnet-20241022'],
+      ['anthropic_oauth' as const, 'claude-3-haiku-20240307'],
+    ])('routes %s format via pi-ai anthropic-messages provider with /anthropic baseUrl', async (apiFormat, modelId) => {
       mockPrompt.mockResolvedValueOnce(undefined);
-      useChatSettingsStore.setState({
-        model: 'claude-3-5-sonnet-20241022',
-        apiFormat: 'anthropic',
-      });
+      useChatSettingsStore.setState({ model: modelId, apiFormat });
 
       await act(async () => {
         await useAgentStore.getState().append('hi');
@@ -230,7 +230,7 @@ describe('agentStore', () => {
 
       expect(mockModelSetter).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: 'claude-3-5-sonnet-20241022',
+          id: modelId,
           api: 'anthropic-messages',
           provider: 'anthropic',
           baseUrl: expect.stringMatching(/\/anthropic$/),

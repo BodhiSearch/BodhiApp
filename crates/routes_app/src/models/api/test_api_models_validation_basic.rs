@@ -14,11 +14,10 @@ use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::{test_db_service, AppServiceStubBuilder, TestDbService};
 use services::AuthContext;
+use services::{ApiAliasResponse, ApiFormat, ResourceRole};
 use services::{
-  ApiAliasResponse, ApiKey, ApiKeyUpdate, ApiModelRequest, FetchModelsRequest, TestCreds,
-  TestPromptRequest,
+  ApiKey, ApiKeyUpdate, ApiModelRequest, FetchModelsRequest, TestCreds, TestPromptRequest,
 };
-use services::{ApiFormat, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
 use validator::Validate;
@@ -118,6 +117,8 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
     models: vec!["gpt-4".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(Arc::new(app_service))
@@ -158,6 +159,8 @@ async fn test_create_api_model_handler_validation_error_empty_models(
     models: vec![], // Invalid: empty models array
     prefix: None,
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(Arc::new(app_service))
@@ -187,7 +190,7 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
   let mut mock_ai = services::MockAiApiService::new();
   mock_ai
     .expect_fetch_models()
-    .returning(|_, _, _| Ok(vec![]));
+    .returning(|_, _, _, _, _| Ok(vec![]));
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .ai_api_service(Arc::new(mock_ai))
@@ -201,6 +204,8 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
     models: vec![], // Empty models is valid for forward_all mode
     prefix: Some("fwd/".to_string()),
     forward_all_with_prefix: true,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(Arc::new(app_service))
@@ -241,6 +246,8 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
     models: vec![],
     prefix: None, // Invalid: forward_all_with_prefix requires a prefix
     forward_all_with_prefix: true,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(Arc::new(app_service))
@@ -267,6 +274,8 @@ fn test_creds_enum_validation() {
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(test_request_with_key.validate().is_ok());
 
@@ -277,6 +286,8 @@ fn test_creds_enum_validation() {
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(test_request_with_id.validate().is_ok());
 
@@ -287,6 +298,8 @@ fn test_creds_enum_validation() {
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(test_request_no_auth.validate().is_ok());
 
@@ -295,6 +308,8 @@ fn test_creds_enum_validation() {
     creds: TestCreds::ApiKey(ApiKey::some("sk-direct-key".to_string()).unwrap()),
     base_url: "https://api.openai.com/v1".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(fetch_request_with_key.validate().is_ok());
 
@@ -302,6 +317,126 @@ fn test_creds_enum_validation() {
     creds: TestCreds::Id("stored-model-id".to_string()),
     base_url: "https://api.openai.com/v1".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(fetch_request_with_id.validate().is_ok());
+}
+
+#[rstest]
+fn test_anthropic_oauth_format_accepted_by_api_model_request() {
+  // ApiFormat::AnthropicOAuth must deserialize and validate without errors.
+  let extra_headers = serde_json::json!({"anthropic-beta": "oauth-2025-04-20"});
+  let extra_body =
+    serde_json::json!({"system": [{"type": "text", "text": "You are Claude Code."}]});
+
+  let request = ApiModelRequest {
+    api_format: ApiFormat::AnthropicOAuth,
+    base_url: "https://api.anthropic.com/v1".to_string(),
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string()).unwrap()),
+    models: vec!["claude-3-5-sonnet".to_string()],
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: Some(extra_headers),
+    extra_body: Some(extra_body),
+  };
+
+  assert!(request.validate().is_ok());
+
+  // Verify serde roundtrip preserves anthropic_oauth format name
+  let serialized = serde_json::to_value(&request.api_format).unwrap();
+  assert_eq!("anthropic_oauth", serialized.as_str().unwrap());
+}
+
+#[rstest]
+#[case::authorization_lowercase(serde_json::json!({"authorization": "Bearer x"}), "authorization")]
+#[case::authorization_capitalized(serde_json::json!({"Authorization": "Bearer x"}), "Authorization")]
+#[case::x_api_key_lowercase(serde_json::json!({"x-api-key": "sk-x"}), "x-api-key")]
+#[case::x_api_key_camel(serde_json::json!({"X-Api-Key": "sk-x"}), "X-Api-Key")]
+fn test_api_model_request_rejects_pass_through_auth_in_extra_headers(
+  #[case] extra_headers: serde_json::Value,
+  #[case] forbidden_key: &str,
+) {
+  let request = ApiModelRequest {
+    api_format: ApiFormat::AnthropicOAuth,
+    base_url: "https://api.anthropic.com/v1".to_string(),
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-token".to_string()).unwrap()),
+    models: vec!["claude-3".to_string()],
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: Some(extra_headers),
+    extra_body: None,
+  };
+  let errs = request.validate().unwrap_err();
+  let msg = format!("{}", errs);
+  assert!(
+    msg.contains("Cannot have pass-through authorization headers") && msg.contains(forbidden_key),
+    "expected forbidden-key error for `{}`, got: {}",
+    forbidden_key,
+    msg
+  );
+}
+
+#[rstest]
+fn test_test_prompt_request_rejects_pass_through_auth() {
+  let request = TestPromptRequest {
+    creds: TestCreds::ApiKey(ApiKey::some("sk-ant-token".to_string()).unwrap()),
+    base_url: "https://api.anthropic.com/v1".to_string(),
+    model: "claude-3".to_string(),
+    prompt: "hi".to_string(),
+    api_format: ApiFormat::AnthropicOAuth,
+    extra_headers: Some(serde_json::json!({"authorization": "Bearer x"})),
+    extra_body: None,
+  };
+  assert!(request.validate().is_err());
+}
+
+#[rstest]
+fn test_fetch_models_request_rejects_pass_through_auth() {
+  let request = FetchModelsRequest {
+    creds: TestCreds::ApiKey(ApiKey::some("sk-ant-token".to_string()).unwrap()),
+    base_url: "https://api.anthropic.com/v1".to_string(),
+    api_format: ApiFormat::AnthropicOAuth,
+    extra_headers: Some(serde_json::json!({"x-api-key": "sk-x"})),
+    extra_body: None,
+  };
+  assert!(request.validate().is_err());
+}
+
+// Router-level counterpart to `test_api_model_request_rejects_pass_through_auth_in_extra_headers`:
+// asserts the HTTP response body's `error.code` (what clients parse), not just the display message.
+#[rstest]
+#[case::authorization(json!({"authorization": "Bearer x"}))]
+#[case::x_api_key(json!({"x-api-key": "sk-x"}))]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_api_model_http_error_code_for_pass_through_auth(
+  #[case] extra_headers: serde_json::Value,
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .build()
+    .await?;
+  let create_form = ApiModelRequest {
+    api_format: ApiFormat::AnthropicOAuth,
+    base_url: "https://api.anthropic.com/v1".to_string(),
+    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-token".to_string())?),
+    models: vec!["claude-3".to_string()],
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: Some(extra_headers),
+    extra_body: None,
+  };
+  let response = test_router(Arc::new(app_service))
+    .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let error = response.json::<serde_json::Value>().await?;
+  let code = error["error"]["code"].as_str().unwrap_or("");
+  assert_eq!("validation_error", code);
+  Ok(())
 }

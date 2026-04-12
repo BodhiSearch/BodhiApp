@@ -1,6 +1,4 @@
-use crate::models::{
-  Alias, ApiAlias, ApiFormat, ApiModel, ModelAlias, OAIRequestParams, Repo, UserAlias,
-};
+use crate::models::{Alias, ApiAlias, ApiFormat, ModelAlias, OAIRequestParams, Repo, UserAlias};
 use crate::test_utils::{fixed_dt, openai_model};
 use crate::UserAliasBuilder;
 use pretty_assertions::assert_eq;
@@ -46,6 +44,8 @@ fn test_alias_can_serve_api(#[case] model: &str, #[case] expected: bool) {
     None,
     false,
     fixed_dt(),
+    None,
+    None,
   );
   let alias = Alias::Api(api_alias);
   assert_eq!(expected, alias.can_serve(model));
@@ -80,6 +80,8 @@ fn test_api_alias_supports_model(
     prefix.map(|s| s.to_string()),
     forward_all,
     fixed_dt(),
+    None,
+    None,
   );
   assert_eq!(expected, api_alias.supports_model(model));
 }
@@ -157,6 +159,8 @@ fn test_api_alias_matchable_models(
     prefix.map(|s| s.to_string()),
     forward_all,
     fixed_dt(),
+    None,
+    None,
   );
   let matchable: Vec<String> = expected.into_iter().map(|s| s.to_string()).collect();
   assert_eq!(matchable, api_alias.matchable_models());
@@ -182,6 +186,7 @@ fn test_user_alias_serde_roundtrip() {
 #[case::openai(ApiFormat::OpenAI, r#""openai""#)]
 #[case::openai_responses(ApiFormat::OpenAIResponses, r#""openai_responses""#)]
 #[case::anthropic(ApiFormat::Anthropic, r#""anthropic""#)]
+#[case::anthropic_oauth(ApiFormat::AnthropicOAuth, r#""anthropic_oauth""#)]
 fn test_api_format_serde_roundtrip(#[case] format: ApiFormat, #[case] expected_json: &str) {
   let serialized = serde_json::to_string(&format).expect("serialize");
   assert_eq!(expected_json, serialized);

@@ -14,14 +14,14 @@ use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::{openai_model, test_db_service, AppServiceStubBuilder, TestDbService};
 use services::AuthContext;
-use services::{ApiAliasResponse, ApiKeyUpdate, ApiModel, ApiModelRequest, MockAiApiService};
+use services::{ApiAliasResponse, ApiKeyUpdate, ApiModelRequest, MockAiApiService};
 use services::{ApiFormat::OpenAI, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
 
 fn make_mock_ai() -> MockAiApiService {
   let mut mock_ai = MockAiApiService::new();
-  mock_ai.expect_fetch_models().returning(|_, _, _| {
+  mock_ai.expect_fetch_models().returning(|_, _, _, _, _| {
     Ok(vec![
       openai_model("gpt-4"),
       openai_model("gpt-3.5-turbo"),
@@ -326,6 +326,8 @@ async fn test_create_api_model_forward_all_requires_prefix(
     models: vec!["gpt-4".to_string()],
     prefix: None,                  // No prefix provided
     forward_all_with_prefix: true, // But forward_all is enabled
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(app_service)
@@ -371,6 +373,8 @@ async fn test_create_api_model_duplicate_prefix_error(
     models: vec!["gpt-4".to_string()],
     prefix: Some("azure/".to_string()),
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(app_service.clone())
@@ -387,6 +391,8 @@ async fn test_create_api_model_duplicate_prefix_error(
     models: vec!["claude-3".to_string()],
     prefix: Some("azure/".to_string()), // Same prefix
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(app_service)
@@ -428,6 +434,8 @@ async fn test_update_api_model_duplicate_prefix_error(
     models: vec!["gpt-4".to_string()],
     prefix: Some("azure/".to_string()),
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(app_service.clone())
@@ -444,6 +452,8 @@ async fn test_update_api_model_duplicate_prefix_error(
     models: vec!["claude-3".to_string()],
     prefix: Some("anthropic/".to_string()),
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(app_service.clone())
@@ -462,6 +472,8 @@ async fn test_update_api_model_duplicate_prefix_error(
     models: vec!["claude-3".to_string()],
     prefix: Some("azure/".to_string()), // Trying to use existing prefix
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   };
 
   let response = test_router(app_service)

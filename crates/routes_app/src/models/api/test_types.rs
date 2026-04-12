@@ -37,6 +37,8 @@ fn test_prompt_request_validation() {
     model: "gpt-4".to_string(),
     prompt: "This prompt is way too long and exceeds the 30 character limit".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(too_long.validate().is_err());
 
@@ -46,6 +48,8 @@ fn test_prompt_request_validation() {
     model: "gpt-4".to_string(),
     prompt: "Hello, how are you?".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(valid.validate().is_ok());
 }
@@ -56,6 +60,8 @@ fn test_fetch_models_request_validation() {
     creds: TestCreds::ApiKey(ApiKey::none()),
     base_url: "not-a-url".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(invalid.validate().is_err());
 
@@ -63,6 +69,8 @@ fn test_fetch_models_request_validation() {
     creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
     base_url: "https://api.openai.com/v1".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(valid.validate().is_ok());
 }
@@ -125,6 +133,8 @@ fn test_test_prompt_request_credentials_validation() {
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(with_api_key.validate().is_ok());
 
@@ -135,6 +145,8 @@ fn test_test_prompt_request_credentials_validation() {
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(no_auth.validate().is_ok());
 
@@ -145,6 +157,8 @@ fn test_test_prompt_request_credentials_validation() {
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(with_id.validate().is_ok());
 }
@@ -156,6 +170,8 @@ fn test_fetch_models_request_credentials_validation() {
     creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
     base_url: "https://api.openai.com/v1".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(with_api_key.validate().is_ok());
 
@@ -164,6 +180,8 @@ fn test_fetch_models_request_credentials_validation() {
     creds: TestCreds::ApiKey(ApiKey::none()),
     base_url: "https://api.openai.com/v1".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(no_auth.validate().is_ok());
 
@@ -172,6 +190,8 @@ fn test_fetch_models_request_credentials_validation() {
     creds: TestCreds::Id("openai-model".to_string()),
     base_url: "https://api.openai.com/v1".to_string(),
     api_format: ApiFormat::OpenAI,
+    extra_headers: None,
+    extra_body: None,
   };
   assert!(with_id.validate().is_ok());
 }

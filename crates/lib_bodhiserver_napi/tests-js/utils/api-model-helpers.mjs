@@ -22,6 +22,10 @@ export async function registerApiModelViaUI(modelsPage, formPage, apiKey, format
   await modelsPage.clickNewApiModel();
   await formPage.form.waitForFormReady();
   await formPage.form.selectApiFormat(config.format);
+  // If the format defines extra headers/body defaults, verify the form pre-populates them.
+  if (config.extraHeaders || config.extraBody) {
+    await formPage.form.expectExtrasPrefilledFor(config);
+  }
   await formPage.form.fillBasicInfo(apiKey, modelData.baseUrl);
   await formPage.form.fetchAndSelectModels([config.model]);
   await formPage.form.testConnection();

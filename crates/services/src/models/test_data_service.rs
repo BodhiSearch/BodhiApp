@@ -71,6 +71,8 @@ async fn test_find_alias_api_by_model_name(
     None,
     false,
     db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias("", "", &api_alias, Some("test-key".to_string()))
@@ -116,6 +118,8 @@ async fn test_find_alias_priority_cases(
     None,
     false,
     db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias(
@@ -169,6 +173,8 @@ async fn test_find_alias_user_priority_over_api(
     None,
     false,
     db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias(
@@ -312,6 +318,8 @@ async fn test_find_alias_with_prefix_matches(
     api_prefix,
     false,
     db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias("", "", &test_alias, Some("test-key".to_string()))
@@ -347,6 +355,8 @@ async fn test_find_alias_with_non_matching_prefix_returns_none(
     Some("azure/".to_string()),
     false,
     db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias("", "", &test_alias, Some("test-key".to_string()))
@@ -378,6 +388,8 @@ async fn test_find_alias_without_prefix_does_not_match_prefixed_api(
     Some("azure/".to_string()),
     false,
     db_service.now(),
+    None,
+    None,
   );
   db_service
     .create_api_model_alias("", "", &prefixed_alias, Some("test-key".to_string()))

@@ -114,3 +114,11 @@ pub async fn models_copy(
 #[cfg(test)]
 #[path = "test_aliases_crud.rs"]
 mod test_aliases_crud;
+
+#[cfg(test)]
+#[path = "test_aliases_index.rs"]
+mod test_aliases_index;
+
+#[cfg(test)]
+#[path = "test_aliases_api_formats.rs"]
+mod test_aliases_api_formats;

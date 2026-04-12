@@ -17,9 +17,11 @@ use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::AuthContext;
 use services::{
   db::DbService,
-  test_utils::{openai_model, sea_context, AppServiceStubBuilder, SeaTestContext, TEST_TENANT_B_ID},
-  ApiAliasResponse, ApiFormat, ApiKey, ApiKeyUpdate, ApiModel, ApiModelRequest, AppService,
-  MockAiApiService, ResourceRole, Tenant,
+  test_utils::{
+    openai_model, sea_context, AppServiceStubBuilder, SeaTestContext, TEST_TENANT_B_ID,
+  },
+  ApiAliasResponse, ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, AppService, MockAiApiService,
+  ResourceRole, Tenant,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -33,7 +35,7 @@ async fn isolation_router(
   let mut mock_ai = MockAiApiService::new();
   mock_ai
     .expect_fetch_models()
-    .returning(|_, _, _| Ok(vec![openai_model("gpt-4")]));
+    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4")]));
   let mut builder = AppServiceStubBuilder::default();
   builder
     .db_service(db_svc.clone())
@@ -72,6 +74,8 @@ fn create_form(base_url: &str) -> ApiModelRequest {
     models: vec!["gpt-4".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
   }
 }
 

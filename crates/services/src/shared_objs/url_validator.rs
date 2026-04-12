@@ -127,6 +127,35 @@ pub fn validate_http_url(url: &str) -> Result<(), validator::ValidationError> {
     .map_err(|_| validator::ValidationError::new("invalid_url_scheme"))
 }
 
+/// Rejects `Authorization` and `x-api-key` keys (case-insensitive) in `extra_headers`.
+/// Provider clients own outbound auth; allowing pass-through would collide with
+/// OAuth Bearer injection or leak client credentials upstream.
+///
+/// Called by the `validator` crate with the unwrapped inner value when the field
+/// is `Option<Value>` (only invoked when `Some`).
+pub fn validate_extra_headers_no_auth(
+  value: &serde_json::Value,
+) -> Result<(), validator::ValidationError> {
+  let Some(map) = value.as_object() else {
+    return Ok(());
+  };
+  for key in map.keys() {
+    let lower = key.to_ascii_lowercase();
+    if lower == "authorization" || lower == "x-api-key" {
+      let mut err = validator::ValidationError::new("extra_headers_forbidden_key");
+      err.message = Some(
+        format!(
+          "Cannot have pass-through authorization headers. '{}' is not allowed in extra_headers.",
+          key
+        )
+        .into(),
+      );
+      return Err(err);
+    }
+  }
+  Ok(())
+}
+
 #[cfg(test)]
 #[path = "test_url_validator.rs"]
 mod test_url_validator;

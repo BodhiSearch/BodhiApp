@@ -53,6 +53,7 @@
 
 ### AI Services (`ai_apis/`)
 - `src/ai_apis/ai_api_service.rs` — `AiApiService` trait: external AI API integration
+- `src/ai_apis/ai_provider_client.rs` — `AIProviderClient` strategy trait; `OpenAIProviderClient`, `OpenAIResponsesProviderClient`, `AnthropicProviderClient`, `AnthropicOAuthProviderClient`. `merge_extra_body()` merges config `extra_body` into incoming request body (prepends `"system"` arrays; other keys fall back when incoming lacks them).
 - `src/ai_apis/error.rs` — `AiApiServiceError`
 
 ### MCP Services (`mcps/`)
@@ -150,3 +151,75 @@
 
 ## Database Upsert Pattern
 `SettingsRepository::upsert_setting` returns a struct with `created_at` set to `now` even on update path (placeholder). Callers needing actual `created_at` should query. See `src/db/service_settings.rs`.
+
+## AppService and AuthScopedAppService
+
+**AppService**: Central service registry with 20 service accessors. Defined in `src/app_service/app_service.rs`. Includes `api_model_service()`, `download_service()`, `inference_service()`, `token_service()`, `tenant_service()`. All services are `Arc<dyn Trait>` with `#[mockall::automock]`.
+
+**AuthScopedAppService**: Wraps `Arc<dyn AppService>` + `AuthContext`. Defined in `src/app_service/auth_scoped.rs`.
+
+**Auth-aware sub-services** (co-located with their domains):
+- `tokens()` → `AuthScopedTokenService` (in `tokens/auth_scoped.rs`)
+- `mcps()` → `AuthScopedMcpService` (in `mcps/auth_scoped.rs`)
+- `users()` → `AuthScopedUserService` (in `users/auth_scoped.rs`)
+- `user_access_requests()` → `AuthScopedUserAccessRequestService` (in `users/auth_scoped_access_requests.rs`)
+- `data()` → `AuthScopedDataService` (in `models/auth_scoped_data.rs`)
+- `api_models()` → `AuthScopedApiModelService` (in `models/auth_scoped_api_models.rs`)
+- `downloads()` → `AuthScopedDownloadService` (in `models/auth_scoped_downloads.rs`)
+- `tenants()` → `AuthScopedTenantService` (in `tenants/auth_scoped.rs`)
+
+**Short-name passthrough accessors** (D1-D9, excluding D2 which is auth-scoped above): `settings()`, `auth_flow()`, `network()`, `sessions()`, `db()`, `hub()`, `ai_api()`, `time()`, `inference()`.
+
+**AiApiService**: `forward_request_with_method(method, url, body, api_key)` uses `http::Method` for type-safe HTTP method dispatch. `SafeReqwest` provides `request(method, url)` as a generic method alongside `get`/`post`/`delete`. `fetch_models` returns `Vec<ApiModel>` and delegates to `AIProviderClient` strategy pattern.
+
+**AIProviderClient** (`ai_apis/ai_provider_client.rs`): Strategy trait for multi-provider model fetching. Concrete impls: `OpenAIProviderClient`, `OpenAIResponsesProviderClient`, `AnthropicProviderClient`, `AnthropicOAuthProviderClient`. Instantiated directly in `DefaultAiApiService` methods based on `ApiFormat`.
+
+**ApiModelService**: `create()`/`update()` validate model IDs against the remote provider (fetches model list). `ModelNotFoundAtProvider` error if a requested model doesn't exist at the provider.
+
+**Non-auth-scoped passthrough**: `access_request_service()` — intentionally not auth-scoped (see `AccessRequestService` doc comment).
+
+**Removed passthroughs**: `token_service()`, `mcp_service()`, `data_service()` — use auth-scoped sub-services instead.
+
+## IoError Pattern
+
+Single `Io(#[from] IoError)` variant per service error enum. Convenience constructors: `IoError::file_read()`, `IoError::file_write()`, `IoError::dir_create()`, `IoError::file_delete()`. Bridge external errors via `impl_error_from!` macro.
+
+## impl_error_from! Macro
+
+Bridges orphan rule: `std::io::Error → IoError → DataServiceError::Io`. Signature: `impl_error_from!(source_type, target_enum::variant, intermediate_type)`.
+
+## Cross-Crate Coordination
+
+### Alias Resolution Priority
+1. User aliases (YAML files)
+2. Model aliases (auto-discovered GGUF)
+3. API aliases (database, prefix-aware routing via `supports_model()`)
+
+### MCP Service
+- CRUD for MCP server instances with slug-based identification
+- Auth header preservation: switching auth type away from `Header` does NOT delete auth headers (admin-managed). OAuth tokens ARE cleaned up.
+- OAuth token refresh has per-key concurrency guard (keyed by `oauth_refresh:{config_id}`)
+- CASCADE FK constraints on MCP tables
+- **Auth params resolution**: `resolve_auth_params(tenant_id, user_id, id)` returns `Option<McpAuthParams>` (headers + query params for upstream requests). Used by `mcp_proxy_handler` in `routes_app`. `AuthScopedMcpService.resolve_auth_params(id)` is the auth-scoped passthrough.
+
+### AuthService SPI Proxy
+- `create_tenant(bearer_token, name, description, redirect_uris)` — proxy to SPI `POST /realms/{realm}/bodhi/tenants`
+- `TenantService.create_tenant()` takes `created_by: Option<String>` parameter
+- `TenantService.set_client_ready(client_id, user_id)` — sets status to Ready AND created_by in one call (replaces separate `update_status` + `update_created_by`)
+- `SettingService.multitenant_client_secret()` — reads `BODHI_MULTITENANT_CLIENT_SECRET` env var
+
+### Session Keys
+Namespaced session keys in `src/session_keys.rs`. Client-scoped tokens use `{client_id}:access_token` / `{client_id}:refresh_token` format. Dashboard tokens use separate `DASHBOARD_*` keys.
+
+### Access Request Workflow
+All requests start as drafts. Status: `draft` → `approved` | `denied` | `failed`. `requested_role` vs `approved_role` fields.
+
+### Database
+- SeaORM with dual SQLite/PostgreSQL support
+- ID generation: ULID (`ulid::Ulid::new()`)
+- Entity fields use typed enums via `DeriveValueType`
+- Migrations in `src/db/sea_migrations/`
+
+## Service Initialization Order
+
+1. TimeService → 2. DbService → 3. SettingService → 4. AuthService → 5. SessionService → 6. TenantService → 7. HubService, DataService, CacheService → 8. ConcurrencyService, NetworkService → 9. AiApiService → 10. McpService → 11. TokenService → 12. InferenceService → 13. AccessRequestService → 14. QueueProducer

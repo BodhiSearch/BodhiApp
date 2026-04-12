@@ -1,5 +1,6 @@
 use super::ai_provider_client::{
-  AnthropicProviderClient, OpenAIProviderClient, OpenAIResponsesProviderClient, AIProviderClient,
+  AIProviderClient, AnthropicOAuthProviderClient, AnthropicProviderClient, OpenAIProviderClient,
+  OpenAIResponsesProviderClient,
 };
 use super::error::{AiApiServiceError, Result};
 use crate::models::{ApiAlias, ApiFormat, ApiModel};
@@ -23,6 +24,8 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
     model: &str,
     prompt: &str,
     api_format: &ApiFormat,
+    extra_headers: Option<Value>,
+    extra_body: Option<Value>,
   ) -> Result<String>;
 
   async fn fetch_models(
@@ -30,6 +33,8 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
     api_key: Option<String>,
     base_url: &str,
     api_format: &ApiFormat,
+    extra_headers: Option<Value>,
+    extra_body: Option<Value>,
   ) -> Result<Vec<ApiModel>>;
 
   async fn forward_request(
@@ -88,6 +93,8 @@ impl AiApiService for DefaultAiApiService {
     model: &str,
     prompt: &str,
     api_format: &ApiFormat,
+    extra_headers: Option<Value>,
+    extra_body: Option<Value>,
   ) -> Result<String> {
     if prompt.len() > TEST_PROMPT_MAX_LENGTH {
       return Err(AiApiServiceError::PromptTooLong {
@@ -111,6 +118,17 @@ impl AiApiService for DefaultAiApiService {
           .test_connection(model, prompt)
           .await
       }
+      ApiFormat::AnthropicOAuth => {
+        AnthropicOAuthProviderClient::new(
+          api_key,
+          base_url.to_string(),
+          self.client.clone(),
+          extra_headers,
+          extra_body,
+        )
+        .test_connection(model, prompt)
+        .await
+      }
     }
   }
 
@@ -119,6 +137,8 @@ impl AiApiService for DefaultAiApiService {
     api_key: Option<String>,
     base_url: &str,
     api_format: &ApiFormat,
+    extra_headers: Option<Value>,
+    extra_body: Option<Value>,
   ) -> Result<Vec<ApiModel>> {
     match api_format {
       ApiFormat::OpenAI => {
@@ -135,6 +155,17 @@ impl AiApiService for DefaultAiApiService {
         AnthropicProviderClient::new(api_key, base_url.to_string(), self.client.clone())
           .models()
           .await
+      }
+      ApiFormat::AnthropicOAuth => {
+        AnthropicOAuthProviderClient::new(
+          api_key,
+          base_url.to_string(),
+          self.client.clone(),
+          extra_headers,
+          extra_body,
+        )
+        .models()
+        .await
       }
     }
   }
@@ -159,23 +190,42 @@ impl AiApiService for DefaultAiApiService {
           .await
       }
       ApiFormat::OpenAIResponses => {
-        OpenAIResponsesProviderClient::new(
-          api_key,
-          api_alias.base_url.clone(),
-          self.client.clone(),
-        )
-        .forward(method, api_path, prefix, request, qp, ch)
-        .await
+        OpenAIResponsesProviderClient::new(api_key, api_alias.base_url.clone(), self.client.clone())
+          .forward(method, api_path, prefix, request, qp, ch)
+          .await
       }
       ApiFormat::Anthropic => {
         AnthropicProviderClient::new(api_key, api_alias.base_url.clone(), self.client.clone())
           .forward(method, api_path, prefix, request, qp, ch)
           .await
       }
+      ApiFormat::AnthropicOAuth => {
+        AnthropicOAuthProviderClient::new(
+          api_key,
+          api_alias.base_url.clone(),
+          self.client.clone(),
+          api_alias.extra_headers.clone(),
+          api_alias.extra_body.clone(),
+        )
+        .forward(method, api_path, prefix, request, qp, ch)
+        .await
+      }
     }
   }
 }
 
 #[cfg(test)]
-#[path = "test_ai_api_service.rs"]
-mod test_ai_api_service;
+#[path = "test_ai_api_anthropic.rs"]
+mod test_ai_api_anthropic;
+#[cfg(test)]
+#[path = "test_ai_api_anthropic_oauth.rs"]
+mod test_ai_api_anthropic_oauth;
+#[cfg(test)]
+#[path = "test_ai_api_forward.rs"]
+mod test_ai_api_forward;
+#[cfg(test)]
+#[path = "test_ai_api_openai.rs"]
+mod test_ai_api_openai;
+#[cfg(test)]
+#[path = "test_merge_extra_body.rs"]
+mod test_merge_extra_body;

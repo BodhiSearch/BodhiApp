@@ -8,6 +8,7 @@ import { FormActions } from '@/components/api-models/actions/FormActions';
 import { ApiFormatSelector } from '@/components/api-models/form/ApiFormatSelector';
 import { ApiKeyInput } from '@/components/api-models/form/ApiKeyInput';
 import { BaseUrlInput } from '@/components/api-models/form/BaseUrlInput';
+import { ExtrasSection } from '@/components/api-models/form/ExtrasSection';
 import { ForwardModeSelector } from '@/components/api-models/form/ForwardModeSelector';
 import { ModelSelectionSection } from '@/components/api-models/form/ModelSelectionSection';
 import { PrefixInput } from '@/components/api-models/form/PrefixInput';
@@ -118,6 +119,18 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             prefix={formLogic.watchedValues.prefix}
             error={formLogic.errors.forward_all_with_prefix?.message}
           />
+
+          {/* Extra Headers and Body (conditionally shown for formats with defaults) */}
+          {formLogic.showExtras && (
+            <ExtrasSection
+              extraHeaders={formLogic.watchedValues.extra_headers || ''}
+              extraBody={formLogic.watchedValues.extra_body || ''}
+              onExtraHeadersChange={(value) => formLogic.setValue('extra_headers', value)}
+              onExtraBodyChange={(value) => formLogic.setValue('extra_body', value)}
+              extraHeadersError={formLogic.errors.extra_headers?.message}
+              extraBodyError={formLogic.errors.extra_body?.message}
+            />
+          )}
 
           {/* Model Selection */}
           <ModelSelectionSection

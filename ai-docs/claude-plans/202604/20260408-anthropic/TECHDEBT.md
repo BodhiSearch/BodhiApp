@@ -152,3 +152,62 @@ and mock setups to work with `AIProviderClient` directly.
    with direct `AIProviderClient` construction at call sites.
 3. Update mockall mocks in `routes_app` and `server_app` tests.
 4. Delete `ai_api_service.rs` and the `AiApiService` trait.
+
+---
+
+## 7. `anthropic_oauth` E2E coverage incomplete (Phase 11c + 11d)
+
+**Severity**: Medium — backend + UI shipped and manually verified, but
+multi-format E2E loops have not been run end-to-end with the new variant.
+
+**Status**: Plan at `ai-docs/claude-plans/202604/sorted-tinkering-naur.md`
+Phases 1–6b shipped (commits `b1fffe66` → `1a3fd1c9`). Remaining:
+
+- **Phase 11d** — `specs/api-models/api-models-no-key.spec.mjs` loops
+  `Object.entries(ApiModelFixtures.API_FORMATS)`. Fixture now includes
+  `anthropic_oauth` (commit `cfdca640`), so the iteration should run
+  automatically, but the suite has NOT been run end-to-end since. A
+  sub-agent attempted this and got stuck on an SSE streaming issue in
+  the Anthropic SDK chat UI flow (unclear whether it's a real bug or a
+  test-setup artifact). The agent was stopped without making changes.
+
+- **Phase 11c** — `specs/api-models/api-live-upstream.spec.mjs` also loops
+  over `API_FORMATS`. With `INTEG_TEST_ANTHROPIC_OAUTH_TOKEN` present in
+  `.env.test`, the `anthropic_oauth` iteration should exercise:
+  - Form UI with pre-filled extras → save alias
+  - Primary endpoints `/v1/messages` and `/anthropic/v1/messages`
+  - Universal `/v1/chat/completions` routing
+  - Chat UI with OAuth token
+  Not yet verified.
+
+**Fix path**:
+1. Run `npm run test:playwright:standalone -- --grep "api-models-no-key"`
+   locally. Triage the `anthropic_oauth` iteration failures — most likely
+   the mock server needs to recognise Bearer auth (currently it ignores
+   auth, but cross-format routing might send wrong headers), or the
+   chat UI's model-selection flow needs to handle the new display name.
+2. Run `npm run test:playwright:standalone -- --grep "api-live-upstream"`
+   with a live network to verify the OAuth token round-trip.
+3. If the streaming SSE issue turns out to be a real bug (the stopped
+   sub-agent suspected it was in the byte-stream passthrough in
+   `convert_reqwest_to_axum`), file a separate TECHDEBT entry.
+
+**Blocked by**: Manual reviewer follow-up; no automated gate at the
+moment.
+
+## 8. Extras fields typed as `unknown` in generated TypeScript
+
+**Severity**: Low — frontend works via string-based JSON editors,
+but consumers of `@bodhiapp/ts-client` lose type safety on the
+`extra_headers`/`extra_body` fields.
+
+**Status**: Backend uses `Option<serde_json::Value>` which utoipa
+translates to an open-schema object. Generated types emit
+`extra_headers?: unknown` / `extra_body?: unknown`.
+
+**Fix path**: If we ever need typed access, define per-format structs
+(e.g. `AnthropicOAuthExtras { headers: HashMap<String, String>,
+body: AnthropicOAuthBody }`) behind a tagged enum keyed on `api_format`.
+For now the open shape is deliberate — it keeps the wire format
+extensible without schema migrations as providers add/change header
+requirements.

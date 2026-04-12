@@ -139,6 +139,8 @@ export type ApiAlias = {
     models: ApiModelVec;
     prefix?: string | null;
     forward_all_with_prefix: boolean;
+    extra_headers?: unknown;
+    extra_body?: unknown;
     created_at: string;
     updated_at: string;
 };
@@ -158,6 +160,8 @@ export type ApiAliasResponse = {
     models: Array<ApiModel>;
     prefix?: string | null;
     forward_all_with_prefix: boolean;
+    extra_headers?: unknown;
+    extra_body?: unknown;
     created_at: string;
     updated_at: string;
 };
@@ -165,7 +169,7 @@ export type ApiAliasResponse = {
 /**
  * API format/protocol specification
  */
-export type ApiFormat = 'openai' | 'openai_responses' | 'anthropic';
+export type ApiFormat = 'openai' | 'openai_responses' | 'anthropic' | 'anthropic_oauth';
 
 /**
  * Response containing available API formats
@@ -230,6 +234,14 @@ export type ApiModelRequest = {
      * Whether to forward all requests with this prefix (true) or only selected models (false)
      */
     forward_all_with_prefix?: boolean;
+    /**
+     * Optional extra HTTP headers to send upstream (e.g., for OAuth or custom auth)
+     */
+    extra_headers?: unknown;
+    /**
+     * Optional extra fields to merge into the request body sent upstream
+     */
+    extra_body?: unknown;
 };
 
 /**
@@ -564,6 +576,14 @@ export type FetchModelsRequest = {
      * API format to use for fetching models (defaults to OpenAI Chat Completions)
      */
     api_format?: ApiFormat;
+    /**
+     * Optional extra HTTP headers for the upstream request
+     */
+    extra_headers?: unknown;
+    /**
+     * Optional extra fields to merge into the request body
+     */
+    extra_body?: unknown;
 };
 
 /**
@@ -1298,6 +1318,14 @@ export type TestPromptRequest = {
      * API format to use for the test request (defaults to OpenAI Chat Completions)
      */
     api_format?: ApiFormat;
+    /**
+     * Optional extra HTTP headers for the upstream request
+     */
+    extra_headers?: unknown;
+    /**
+     * Optional extra fields to merge into the request body
+     */
+    extra_body?: unknown;
 };
 
 /**

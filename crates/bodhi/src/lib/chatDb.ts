@@ -4,11 +4,9 @@ import { ApiFormat } from '@bodhiapp/ts-client';
 
 import { Message } from '@/types/chat';
 
-export type ApiFormatSetting = Exclude<ApiFormat, 'placeholder'>;
-
 export interface PersistedChatSettings {
   model: string;
-  apiFormat: ApiFormatSetting;
+  apiFormat: ApiFormat;
   stream?: boolean;
   stream_enabled: boolean;
   seed?: number;

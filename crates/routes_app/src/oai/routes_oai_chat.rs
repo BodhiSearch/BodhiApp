@@ -151,7 +151,7 @@ pub async fn chat_completions_handler(
     Alias::Api(ref api_alias)
       if matches!(
         api_alias.api_format,
-        ApiFormat::OpenAI | ApiFormat::Anthropic
+        ApiFormat::OpenAI | ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
       ) =>
     {
       let api_key = crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
@@ -252,8 +252,12 @@ pub async fn embeddings_handler(
 }
 
 #[cfg(test)]
-#[path = "test_chat.rs"]
-mod test_chat;
+#[path = "test_chat_completions.rs"]
+mod test_chat_completions;
+
+#[cfg(test)]
+#[path = "test_embeddings.rs"]
+mod test_embeddings;
 
 #[cfg(test)]
 #[path = "test_live_chat.rs"]

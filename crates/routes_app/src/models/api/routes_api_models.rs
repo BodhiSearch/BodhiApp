@@ -176,6 +176,8 @@ pub async fn api_models_test(
           &payload.model,
           &payload.prompt,
           &payload.api_format,
+          payload.extra_headers.clone(),
+          payload.extra_body.clone(),
         )
         .await
     }
@@ -200,7 +202,9 @@ pub async fn api_models_test(
           api_model.base_url.trim_end_matches('/'),
           &payload.model,
           &payload.prompt,
-          &payload.api_format,
+          &api_model.api_format,
+          api_model.extra_headers.clone(),
+          api_model.extra_body.clone(),
         )
         .await
     }
@@ -253,6 +257,8 @@ pub async fn api_models_fetch_models(
           api_key.as_option().map(|s| s.to_string()),
           payload.base_url.trim_end_matches('/'),
           &payload.api_format,
+          payload.extra_headers.clone(),
+          payload.extra_body.clone(),
         )
         .await?
     }
@@ -275,7 +281,9 @@ pub async fn api_models_fetch_models(
         .fetch_models(
           stored_key,
           api_model.base_url.trim_end_matches('/'),
-          &payload.api_format,
+          &api_model.api_format,
+          api_model.extra_headers.clone(),
+          api_model.extra_body.clone(),
         )
         .await?
     }
@@ -292,11 +300,11 @@ pub async fn api_models_fetch_models(
     tag = API_TAG_MODELS_API,
     operation_id = "getApiFormats",
     summary = "Get Available API Formats",
-    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), and 'anthropic' (Messages API).",
+    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), and 'anthropic_oauth' (Anthropic via OAuth Bearer token).",
     responses(
         (status = 200, description = "API formats retrieved successfully", body = ApiFormatsResponse,
          example = json!({
-             "data": ["openai", "openai_responses", "anthropic"]
+             "data": ["openai", "openai_responses", "anthropic", "anthropic_oauth"]
          })),
     ),
     security(
@@ -311,6 +319,7 @@ pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, ApiError> 
       ApiFormat::OpenAI,
       ApiFormat::OpenAIResponses,
       ApiFormat::Anthropic,
+      ApiFormat::AnthropicOAuth,
     ],
   }))
 }
@@ -360,12 +369,20 @@ pub async fn api_models_sync(
 }
 
 #[cfg(test)]
-#[path = "test_api_models_crud.rs"]
-mod test_api_models_crud;
+#[path = "test_api_models_create.rs"]
+mod test_api_models_create;
 
 #[cfg(test)]
-#[path = "test_api_models_validation.rs"]
-mod test_api_models_validation;
+#[path = "test_api_models_read_update_delete.rs"]
+mod test_api_models_read_update_delete;
+
+#[cfg(test)]
+#[path = "test_api_models_validation_basic.rs"]
+mod test_api_models_validation_basic;
+
+#[cfg(test)]
+#[path = "test_api_models_validation_format.rs"]
+mod test_api_models_validation_format;
 
 #[cfg(test)]
 #[path = "test_api_models_prefix.rs"]

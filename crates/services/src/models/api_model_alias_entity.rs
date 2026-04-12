@@ -17,6 +17,10 @@ pub struct Model {
   pub prefix: Option<String>,
   #[sea_orm(default_value = "0")]
   pub forward_all_with_prefix: bool,
+  #[sea_orm(column_type = "JsonBinary", nullable)]
+  pub extra_headers: Option<serde_json::Value>,
+  #[sea_orm(column_type = "JsonBinary", nullable)]
+  pub extra_body: Option<serde_json::Value>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
   // DB-only encryption fields
@@ -43,6 +47,8 @@ pub struct ApiAliasView {
   pub models: ApiModelVec,
   pub prefix: Option<String>,
   pub forward_all_with_prefix: bool,
+  pub extra_headers: Option<serde_json::Value>,
+  pub extra_body: Option<serde_json::Value>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -56,6 +62,8 @@ impl From<ApiAliasView> for crate::models::ApiAlias {
       models: v.models,
       prefix: v.prefix,
       forward_all_with_prefix: v.forward_all_with_prefix,
+      extra_headers: v.extra_headers,
+      extra_body: v.extra_body,
       created_at: v.created_at,
       updated_at: v.updated_at,
     }

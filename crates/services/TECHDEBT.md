@@ -54,3 +54,11 @@
 4. Consider a central `DeploymentPolicy` trait that services can query
 
 **Deferred because**: Production hotfix to block downloads was sufficient for immediate release. Full centralization requires designing the polymorphism for each service and migrating all route-level checks.
+
+## AiApiService trait — `Option<Value>` by-value for extras
+
+**Location**: `services/src/ai_apis/ai_api_service.rs`
+
+**Issue**: `AiApiService::test_prompt` and `fetch_models` take `extra_headers`/`extra_body` as `Option<serde_json::Value>` (owned). Every caller clones. Ideal signature would be `Option<&Value>`.
+
+**Deferred because**: `async_trait` + `mockall::automock` reject anonymous lifetimes on reference parameters (`error[E0637]`). Named lifetimes propagate into the generated mock in unpleasant ways. Workarounds (`Arc<Value>`, hand-written mock) trade one cost for another.

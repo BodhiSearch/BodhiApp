@@ -94,6 +94,37 @@ export class ApiModelFixtures {
       // Anthropic format IS supported by /v1/chat/completions (routes to api.anthropic.com/v1/chat/completions).
       supportsUniversalChatCompletions: true,
     },
+    anthropic_oauth: {
+      format: 'anthropic_oauth',
+      formatDisplayName: 'Anthropic (Claude Code OAuth)',
+      model: ApiModelFixtures.ANTHROPIC_MODEL,
+      baseUrl: 'https://api.anthropic.com/v1',
+      envKey: 'INTEG_TEST_ANTHROPIC_OAUTH_TOKEN',
+      chatQuestion: 'What day comes after Monday?',
+      chatExpected: 'tuesday',
+      chatEndpoint: '/v1/messages',
+      mockResponse: 'David Smith is from Chicago',
+      primaryEndpoints: ['/v1/messages', '/anthropic/v1/messages'],
+      buildPrimaryBody: (model, question) => ({
+        model,
+        max_tokens: 50,
+        messages: [{ role: 'user', content: question }],
+      }),
+      extractPrimaryResponse: (data) => data.content?.[0]?.text ?? '',
+      multiTestPrefix: 'oauth/',
+      supportsUniversalChatCompletions: true,
+      extraHeaders: {
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'claude-code-20250219,oauth-2025-04-20',
+        'user-agent': 'claude-cli/2.1.80 (external, cli)',
+      },
+      extraBody: {
+        max_tokens: 32000,
+        system: [
+          { type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." },
+        ],
+      },
+    },
   };
 
   static createModelDataForFormat(formatKey) {
@@ -103,6 +134,8 @@ export class ApiModelFixtures {
       api_format: config.format,
       baseUrl: config.baseUrl,
       models: [config.model],
+      ...(config.extraHeaders ? { extra_headers: config.extraHeaders } : {}),
+      ...(config.extraBody ? { extra_body: config.extraBody } : {}),
     });
   }
 

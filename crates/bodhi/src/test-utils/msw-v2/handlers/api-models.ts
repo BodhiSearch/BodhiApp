@@ -374,7 +374,7 @@ export function mockDeleteApiModelError(
  * Mock handler for API formats endpoint with configurable responses
  */
 export function mockApiFormats(
-  { data = ['openai', 'placeholder'], ...rest }: Partial<components['schemas']['ApiFormatsResponse']> = {},
+  { data = ['openai', 'anthropic_oauth'], ...rest }: Partial<components['schemas']['ApiFormatsResponse']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -565,7 +565,7 @@ export function mockApiModelsEmpty() {
  */
 export function mockApiFormatsDefault() {
   return mockApiFormats({
-    data: ['openai', 'openai_responses', 'anthropic', 'placeholder'],
+    data: ['openai', 'openai_responses', 'anthropic', 'anthropic_oauth'],
   });
 }
 

@@ -323,5 +323,9 @@ pub async fn responses_cancel_handler(
 }
 
 #[cfg(test)]
-#[path = "test_oai_responses.rs"]
-mod test_oai_responses;
+#[path = "test_oai_responses_errors.rs"]
+mod test_oai_responses_errors;
+
+#[cfg(test)]
+#[path = "test_oai_responses_success.rs"]
+mod test_oai_responses_success;

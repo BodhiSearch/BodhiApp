@@ -1,5 +1,5 @@
 use crate::{
-  models::{ApiAlias, ApiAliasRepository, ApiFormat, ApiModel},
+  models::{ApiAlias, ApiAliasRepository, ApiFormat},
   new_ulid,
   test_utils::{openai_model, sea_context, setup_env},
 };
@@ -26,6 +26,8 @@ async fn test_api_model_alias_crud(
     models: vec![openai_model("gpt-4")].into(),
     prefix: Some("test".to_string()),
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -71,6 +73,8 @@ async fn test_update_api_model_alias(
     models: vec![openai_model("gpt-4")].into(),
     prefix: Some("orig".to_string()),
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -158,6 +162,8 @@ async fn test_update_api_model_alias_prefix_conflict(
     models: vec![].into(),
     prefix: Some("pfx-one".to_string()),
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -168,6 +174,8 @@ async fn test_update_api_model_alias_prefix_conflict(
     models: vec![].into(),
     prefix: Some("pfx-two".to_string()),
     forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -213,6 +221,8 @@ async fn test_update_api_model_models(
     models: vec![openai_model("gpt-4")].into(),
     prefix: Some("fwd/".to_string()),
     forward_all_with_prefix: true,
+    extra_headers: None,
+    extra_body: None,
     created_at: ctx.now,
     updated_at: ctx.now,
   };
@@ -234,6 +244,78 @@ async fn test_update_api_model_models(
     .await?
     .expect("should exist");
   assert_eq!(&new_models, &*fetched.models);
+
+  Ok(())
+}
+
+// ===== extra_headers / extra_body round-trip =====
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_api_model_alias_extra_fields_roundtrip(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  use serde_json::json;
+
+  let ctx = sea_context(db_type).await;
+
+  // Round-trip with non-null extra fields
+  let alias_with_extras = ApiAlias {
+    id: new_ulid(),
+    api_format: ApiFormat::AnthropicOAuth,
+    base_url: "https://api.anthropic.com/v1".to_string(),
+    models: vec![].into(),
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: Some(json!({"x-custom": "v1"})),
+    extra_body: Some(json!({"max_tokens": 32000})),
+    created_at: ctx.now,
+    updated_at: ctx.now,
+  };
+
+  ctx
+    .service
+    .create_api_model_alias("", "", &alias_with_extras, None)
+    .await?;
+
+  let fetched = ctx
+    .service
+    .get_api_model_alias("", "", &alias_with_extras.id)
+    .await?
+    .expect("should exist");
+  assert_eq!(alias_with_extras.extra_headers, fetched.extra_headers);
+  assert_eq!(alias_with_extras.extra_body, fetched.extra_body);
+  assert_eq!(ApiFormat::AnthropicOAuth, fetched.api_format);
+
+  // Round-trip with null extra fields
+  let alias_null_extras = ApiAlias {
+    id: new_ulid(),
+    api_format: ApiFormat::AnthropicOAuth,
+    base_url: "https://api.anthropic.com/v1".to_string(),
+    models: vec![].into(),
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
+    created_at: ctx.now,
+    updated_at: ctx.now,
+  };
+
+  ctx
+    .service
+    .create_api_model_alias("", "", &alias_null_extras, None)
+    .await?;
+
+  let fetched_null = ctx
+    .service
+    .get_api_model_alias("", "", &alias_null_extras.id)
+    .await?
+    .expect("should exist");
+  assert_eq!(None, fetched_null.extra_headers);
+  assert_eq!(None, fetched_null.extra_body);
 
   Ok(())
 }

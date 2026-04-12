@@ -3908,7 +3908,7 @@
           "models-api"
         ],
         "summary": "Get Available API Formats",
-        "description": "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), and 'anthropic' (Messages API).",
+        "description": "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), and 'anthropic_oauth' (Anthropic via OAuth Bearer token).",
         "operationId": "getApiFormats",
         "responses": {
           "200": {
@@ -3922,7 +3922,8 @@
                   "data": [
                     "openai",
                     "openai_responses",
-                    "anthropic"
+                    "anthropic",
+                    "anthropic_oauth"
                   ]
                 }
               }
@@ -7260,6 +7261,8 @@
           "forward_all_with_prefix": {
             "type": "boolean"
           },
+          "extra_headers": {},
+          "extra_body": {},
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7316,6 +7319,8 @@
           "forward_all_with_prefix": {
             "type": "boolean"
           },
+          "extra_headers": {},
+          "extra_body": {},
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7332,7 +7337,8 @@
         "enum": [
           "openai",
           "openai_responses",
-          "anthropic"
+          "anthropic",
+          "anthropic_oauth"
         ]
       },
       "ApiFormatsResponse": {
@@ -7487,6 +7493,12 @@
           "forward_all_with_prefix": {
             "type": "boolean",
             "description": "Whether to forward all requests with this prefix (true) or only selected models (false)"
+          },
+          "extra_headers": {
+            "description": "Optional extra HTTP headers to send upstream (e.g., for OAuth or custom auth)"
+          },
+          "extra_body": {
+            "description": "Optional extra fields to merge into the request body sent upstream"
           }
         },
         "example": {
@@ -8363,6 +8375,12 @@
           "api_format": {
             "$ref": "#/components/schemas/ApiFormat",
             "description": "API format to use for fetching models (defaults to OpenAI Chat Completions)"
+          },
+          "extra_headers": {
+            "description": "Optional extra HTTP headers for the upstream request"
+          },
+          "extra_body": {
+            "description": "Optional extra fields to merge into the request body"
           }
         },
         "example": {
@@ -10278,6 +10296,12 @@
           "api_format": {
             "$ref": "#/components/schemas/ApiFormat",
             "description": "API format to use for the test request (defaults to OpenAI Chat Completions)"
+          },
+          "extra_headers": {
+            "description": "Optional extra HTTP headers for the upstream request"
+          },
+          "extra_body": {
+            "description": "Optional extra fields to merge into the request body"
           }
         },
         "example": {

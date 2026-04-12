@@ -42,7 +42,7 @@ vi.mock('@/stores/chatSettingsStore', () => {
     setModel: vi.fn(),
     setApiFormat: vi.fn(),
   }));
-  return { useChatSettingsStore: store, ApiFormatSetting: {} };
+  return { useChatSettingsStore: store };
 });
 
 const mockModels = [
@@ -110,8 +110,20 @@ const mockUnifiedModels: AliasResponse[] = [
     base_url: 'https://api.anthropic.com/v1',
     has_api_key: true,
     models: [
-      { id: 'claude-3-opus', display_name: 'Claude 3 Opus', created_at: '2024-01-01T00:00:00Z', type: 'model', provider: 'anthropic' as const },
-      { id: 'claude-3-sonnet', display_name: 'Claude 3 Sonnet', created_at: '2024-01-01T00:00:00Z', type: 'model', provider: 'anthropic' as const },
+      {
+        id: 'claude-3-opus',
+        display_name: 'Claude 3 Opus',
+        created_at: '2024-01-01T00:00:00Z',
+        type: 'model',
+        provider: 'anthropic' as const,
+      },
+      {
+        id: 'claude-3-sonnet',
+        display_name: 'Claude 3 Sonnet',
+        created_at: '2024-01-01T00:00:00Z',
+        type: 'model',
+        provider: 'anthropic' as const,
+      },
     ],
     forward_all_with_prefix: false,
     created_at: '2024-01-01T00:00:00Z',
@@ -343,7 +355,28 @@ describe('AliasSelector', () => {
       {
         apiFormat: 'anthropic' as const,
         modelId: 'claude-3-opus',
-        models: [{ id: 'claude-3-opus', display_name: 'Claude 3 Opus', created_at: '2024-01-01T00:00:00Z', type: 'model', provider: 'anthropic' as const }],
+        models: [
+          {
+            id: 'claude-3-opus',
+            display_name: 'Claude 3 Opus',
+            created_at: '2024-01-01T00:00:00Z',
+            type: 'model',
+            provider: 'anthropic' as const,
+          },
+        ],
+      },
+      {
+        apiFormat: 'anthropic_oauth' as const,
+        modelId: 'claude-3-haiku-20240307',
+        models: [
+          {
+            id: 'claude-3-haiku-20240307',
+            display_name: 'Claude 3 Haiku',
+            created_at: '2024-01-01T00:00:00Z',
+            type: 'model',
+            provider: 'anthropic' as const,
+          },
+        ],
       },
     ])('calls setApiFormat with $apiFormat when API model is selected', ({ apiFormat, modelId, models }) => {
       const mockSetApiFormat = vi.fn();

@@ -5,32 +5,38 @@ import type { Model } from '@mariozechner/pi-ai';
 import { Agent } from '@mariozechner/pi-agent-core';
 import type { AgentEvent, AgentMessage, AgentTool, StreamFn } from '@mariozechner/pi-agent-core';
 
+import type { ApiFormat } from '@bodhiapp/ts-client';
+
 import { useChatStore } from './chatStore';
 import { useChatSettingsStore } from './chatSettingsStore';
-import type { ApiFormatSetting } from './chatSettingsStore';
 import { nanoid } from '@/lib/utils';
 import { extractTextFromAgentMessage } from '@/types/chat';
 
-const DUMMY_API_KEY = 'bodhi-proxy';
+// pi-ai's SDK wrappers always send an auth header derived from `apiKey`.
+// BodhiApp's chat UI authenticates through its own proxy using session cookies
+// or a user-configured BodhiApp API token, so we hand pi-ai this sentinel and
+// strip it server-side in the anthropic/openai auth middlewares.
+export const SENTINEL_API_KEY = 'bodhiapp_sentinel_api_key_ignored';
 
 type PiApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
 
-function apiFormatToPiApi(apiFormat: ApiFormatSetting): PiApi {
+function apiFormatToPiApi(apiFormat: ApiFormat): PiApi {
   switch (apiFormat) {
     case 'openai_responses':
       return 'openai-responses';
     case 'anthropic':
+    case 'anthropic_oauth':
       return 'anthropic-messages';
     default:
       return 'openai-completions';
   }
 }
 
-function apiFormatToProvider(apiFormat: ApiFormatSetting): string {
-  return apiFormat === 'anthropic' ? 'anthropic' : 'openai';
+function apiFormatToProvider(apiFormat: ApiFormat): string {
+  return apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth' ? 'anthropic' : 'openai';
 }
 
-function buildModel(modelId: string, baseUrl: string, apiFormat: ApiFormatSetting = 'openai'): Model<PiApi> {
+function buildModel(modelId: string, baseUrl: string, apiFormat: ApiFormat = 'openai'): Model<PiApi> {
   return {
     id: modelId,
     name: modelId,
@@ -41,7 +47,8 @@ function buildModel(modelId: string, baseUrl: string, apiFormat: ApiFormatSettin
     input: ['text'],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128000,
-    maxTokens: 0,
+    // pi-ai's google provider min-clamps to maxTokens; 0 produces invalid `maxOutputTokens: 0` in Gemini requests.
+    maxTokens: 4096,
   };
 }
 
@@ -49,23 +56,25 @@ function createBodhiStreamFn(getApiToken: () => string | undefined): StreamFn {
   return (model, context, options) => {
     const apiToken = getApiToken();
     const settings = useChatSettingsStore.getState();
-    const headers =
-      apiToken !== undefined
-        ? { ...model.headers, Authorization: `Bearer ${apiToken}` }
-        : { ...model.headers, Authorization: null as unknown as string };
-    const patchedModel = { ...model, headers };
+    // With a BodhiApp API token, override both headers so it authenticates.
+    // Without one, let the SDK send SENTINEL_API_KEY — middleware strips it
+    // and session-cookie auth takes over.
+    const headers = apiToken
+      ? { ...model.headers, Authorization: `Bearer ${apiToken}`, 'x-api-key': apiToken }
+      : model.headers;
+    const patchedModel = headers ? { ...model, headers } : model;
     const maxTokens = settings.max_tokens_enabled && settings.max_tokens != null ? settings.max_tokens : undefined;
     return streamSimple(patchedModel, context, maxTokens !== undefined ? { ...options, maxTokens } : options);
   };
 }
 
-function getBaseUrl(apiFormat: ApiFormatSetting = 'openai'): string {
+function getBaseUrl(apiFormat: ApiFormat = 'openai'): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
   // pi-ai's Anthropic provider uses the official @anthropic-ai/sdk which
   // appends `/v1/messages` to the configured baseURL, so we point it at
   // `/anthropic` so the final URL lands on BodhiApp's proxy endpoint
   // `/anthropic/v1/messages`.
-  return apiFormat === 'anthropic' ? `${origin}/anthropic` : `${origin}/v1`;
+  return apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth' ? `${origin}/anthropic` : `${origin}/v1`;
 }
 
 export interface AgentStoreState {
@@ -107,7 +116,7 @@ function getOrCreateAgent(): Agent {
     });
     _agent = new Agent({
       streamFn,
-      getApiKey: () => DUMMY_API_KEY,
+      getApiKey: () => SENTINEL_API_KEY,
     });
     _agentUnsubscribe?.();
     _agentUnsubscribe = _agent.subscribe((event: AgentEvent) => {

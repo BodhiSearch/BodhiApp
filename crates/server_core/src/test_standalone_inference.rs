@@ -24,6 +24,8 @@ fn make_test_api_alias() -> ApiAlias {
     None,
     false,
     fixed_dt(),
+    None,
+    None,
   )
 }
 
