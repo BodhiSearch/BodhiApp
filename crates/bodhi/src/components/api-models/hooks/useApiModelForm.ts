@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 
 import { useCreateApiModel, useUpdateApiModel, useListApiFormats } from '@/hooks/models';
 import {
+  getApiModelId,
   ApiModelFormData,
   UpdateApiModelFormData,
   createApiModelSchema,
@@ -55,7 +56,7 @@ export function useApiModelForm({
           api_format: initialData?.api_format || 'openai',
           base_url: initialData?.base_url || 'https://api.openai.com/v1',
           api_key: '',
-          models: initialData?.models?.map((m) => m.id) || [],
+          models: initialData?.models?.map((m) => getApiModelId(m, initialData?.prefix)) || [],
           prefix: initialData?.prefix || '',
           usePrefix: Boolean(initialData?.prefix),
           useApiKey: initialData?.has_api_key === true, // true = has key, checkbox checked
@@ -154,35 +155,28 @@ export function useApiModelForm({
     }
   }, [watchedValues.api_format, mode, selectedProvider]);
 
-  // API format change handler
+  // API format change handler: treat format change as dirty — reset to preset
+  // defaults (or empty when no preset). No revert-to-initial tracking; user
+  // must cancel or refresh to restore stored values.
   const handleApiFormatChange = (apiFormat: string) => {
     const preset = API_FORMAT_PRESETS[apiFormat as keyof typeof API_FORMAT_PRESETS];
+    const presetHeaders =
+      preset && 'defaultHeaders' in preset && preset.defaultHeaders
+        ? JSON.stringify(preset.defaultHeaders, null, 2)
+        : '';
+    const presetBody =
+      preset && 'defaultBody' in preset && preset.defaultBody ? JSON.stringify(preset.defaultBody, null, 2) : '';
     setValue('api_format', apiFormat);
     setValue('models', []);
     setValue('prefix', '');
     setValue('usePrefix', false);
-    // In edit mode, switching api_format away from the stored format invalidates
-    // the stored credentials — force the user to supply a new key (backend
-    // rejects ApiKeyUpdate::Keep when api_format differs).
-    const formatChangedInEdit = isEditMode && initialData && apiFormat !== initialData.api_format;
-    setValue('useApiKey', formatChangedInEdit ? true : false);
+    setValue('useApiKey', false);
     setValue('api_key', '');
+    setValue('base_url', preset?.baseUrl ?? '');
+    setValue('extra_headers', presetHeaders);
+    setValue('extra_body', presetBody);
     fetchModels.clearModels();
     testConnection.resetStatus();
-    if (preset) {
-      setValue('base_url', preset.baseUrl);
-      // Auto-populate extras from preset defaults when they exist
-      if ('defaultHeaders' in preset && preset.defaultHeaders) {
-        setValue('extra_headers', JSON.stringify(preset.defaultHeaders, null, 2));
-      } else {
-        setValue('extra_headers', '');
-      }
-      if ('defaultBody' in preset && preset.defaultBody) {
-        setValue('extra_body', JSON.stringify(preset.defaultBody, null, 2));
-      } else {
-        setValue('extra_body', '');
-      }
-    }
   };
 
   // Model selection handlers

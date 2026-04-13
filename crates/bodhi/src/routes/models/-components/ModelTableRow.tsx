@@ -4,6 +4,7 @@ import { CopyableContent } from '@/components/CopyableContent';
 import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
 import { isApiAlias, isUserAlias } from '@/lib/utils';
+import { getApiModelId } from '@/schemas/apiModel';
 
 import { ModelActions, type ModelActionsProps } from './ModelActions';
 import { SourceBadge } from './SourceBadge';
@@ -27,7 +28,9 @@ const ModelTableRow = ({
     <div className="flex flex-col gap-2">
       <CopyableContent text={isApiAlias(model) ? model.id : model.alias} className="font-medium" />
       {isApiAlias(model) && (
-        <div className="text-xs text-muted-foreground">Models: {model.models.map((m) => m.id).join(', ')}</div>
+        <div className="text-xs text-muted-foreground">
+          Models: {model.models.map((m) => getApiModelId(m, model.prefix)).join(', ')}
+        </div>
       )}
 
       <CopyableContent text={getModelDisplayRepo(model)} className="text-sm" />
@@ -54,7 +57,7 @@ const ModelTableRow = ({
         <div className="text-xs text-muted-foreground truncate">
           {model.models
             .slice(0, 2)
-            .map((m) => m.id)
+            .map((m) => getApiModelId(m, model.prefix))
             .join(', ')}
           {model.models.length > 2 ? '...' : ''}
         </div>

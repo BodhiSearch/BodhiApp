@@ -1,4 +1,4 @@
-import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, ApiAliasResponse } from '@bodhiapp/ts-client';
+import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModel, ApiModelRequest, ApiAliasResponse } from '@bodhiapp/ts-client';
 import * as z from 'zod';
 
 // API format presets for AI APIs
@@ -32,11 +32,16 @@ export const API_FORMAT_PRESETS = {
       system: [{ type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." }],
     },
   },
+  gemini: {
+    name: 'Google Gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    models: [] as string[],
+  },
 };
 
 export type ApiFormatPreset = keyof typeof API_FORMAT_PRESETS;
 
-const FORBIDDEN_EXTRA_HEADER_KEYS = ['authorization', 'x-api-key'];
+const FORBIDDEN_EXTRA_HEADER_KEYS = ['authorization', 'x-api-key', 'x-goog-api-key'];
 
 const validateJsonObjectField = (value: string | undefined, fieldName: string, ctx: z.RefinementCtx) => {
   if (!value || value.trim() === '') return;
@@ -191,15 +196,6 @@ export const updateApiModelSchema = z
 export type ApiModelFormData = z.infer<typeof createApiModelSchema>;
 export type UpdateApiModelFormData = z.infer<typeof updateApiModelSchema>;
 
-/**
- * Converts form data to ApiModelRequest for the API
- *
- * @param formData - The form data from the UI
- * @returns ApiModelRequest with proper ApiKeyUpdate type
- *
- * Note: When useApiKey is false, we send {action: 'set', value: null} to explicitly
- * indicate "no API key" for public APIs
- */
 export const parseJsonField = (value: string | undefined): unknown | null => {
   if (!value || value.trim() === '') return null;
   try {
@@ -223,19 +219,6 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModel
   extra_body: parseJsonField(formData.extra_body),
 });
 
-/**
- * Converts form data to ApiModelRequest for the API (update)
- *
- * @param formData - The form data from the UI
- * @param initialData - The original API model data (optional, used to track changes)
- * @returns ApiModelRequest with ApiKeyUpdate
- *
- * Note: API key update logic:
- * - Checkbox checked + user typed new value → {action: 'set', value: newKey}
- * - Checkbox checked + no input + had stored key → {action: 'keep'}
- * - Checkbox checked + no input + no stored key → {action: 'set', value: null}
- * - Checkbox unchecked → {action: 'set', value: null}
- */
 export const convertFormToUpdateRequest = (
   formData: UpdateApiModelFormData,
   initialData?: ApiAliasResponse
@@ -270,16 +253,6 @@ export const convertFormToUpdateRequest = (
   extra_body: parseJsonField(formData.extra_body),
 });
 
-/**
- * Converts API response to form data for editing
- *
- * @param apiData - The API model response from the backend
- * @returns Form data with correct checkbox states
- *
- * Note: has_api_key semantics:
- * - true: API key is stored → checkbox CHECKED (has key)
- * - false: No API key stored → checkbox UNCHECKED (no key)
- */
 export const serializeJsonField = (value: unknown | null | undefined): string => {
   if (value === null || value === undefined) return '';
   return JSON.stringify(value, null, 2);
@@ -289,7 +262,7 @@ export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData =>
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',
-  models: apiData.models.map((m) => m.id),
+  models: apiData.models.map((m) => getApiModelId(m, apiData.prefix)),
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
   useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
@@ -298,21 +271,11 @@ export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData =>
   extra_body: serializeJsonField(apiData.extra_body),
 });
 
-/**
- * Converts API response to update form data
- *
- * @param apiData - The API model response from the backend
- * @returns Update form data with correct checkbox states
- *
- * Note: has_api_key semantics:
- * - true: API key is stored → checkbox CHECKED (has key)
- * - false: No API key stored → checkbox UNCHECKED (no key)
- */
 export const convertApiToUpdateForm = (apiData: ApiAliasResponse): UpdateApiModelFormData => ({
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',
-  models: apiData.models.map((m) => m.id),
+  models: apiData.models.map((m) => getApiModelId(m, apiData.prefix)),
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
   useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
@@ -336,8 +299,17 @@ export const isValidApiKey = (apiKey: string): boolean => {
   return !!apiKey && apiKey.length >= 10 && apiKey.length <= 200;
 };
 
-// Helper function to format prefixed model name for display
-// The prefix should include its own separator (e.g., "azure/", "azure:", "provider-")
+export const getApiModelId = (m: ApiModel, aliasPrefix?: string | null): string => {
+  if (m.provider !== 'gemini') return m.id;
+  // Gemini stores name as "models/{prefix}{bareId}" (prefix baked in).
+  // Strip "models/" and the alias prefix to get the upstream-native bare id.
+  const afterModels = m.name.startsWith('models/') ? m.name.slice('models/'.length) : m.name;
+  if (aliasPrefix && afterModels.startsWith(aliasPrefix)) {
+    return afterModels.slice(aliasPrefix.length);
+  }
+  return afterModels;
+};
+
 export const formatPrefixedModel = (model: string, prefix?: string | null): string => {
   if (!prefix) return model;
   return `${prefix}${model}`;

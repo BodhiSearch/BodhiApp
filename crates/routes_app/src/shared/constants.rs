@@ -15,3 +15,4 @@ pub const API_TAG_MCPS: &str = "mcps";
 pub const API_TAG_APPS: &str = "apps";
 pub const API_TAG_RESPONSES: &str = "responses";
 pub const API_TAG_TENANTS: &str = "tenants";
+pub const API_TAG_GEMINI: &str = "gemini";

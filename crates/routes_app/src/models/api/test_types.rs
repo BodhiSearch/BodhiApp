@@ -1,3 +1,4 @@
+use crate::api_models_formats;
 use services::{
   ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequestBuilder, FetchModelsRequest, TestCreds,
   TestPromptRequest, TestPromptResponse,
@@ -244,4 +245,19 @@ fn test_api_model_form_validate_forward_all_disabled_with_models_success() {
     .unwrap();
 
   assert!(form.validate().is_ok());
+}
+
+#[tokio::test]
+async fn test_api_models_formats_includes_all_five() {
+  let result = api_models_formats().await.unwrap();
+  let formats = result.0.data;
+  assert!(formats.contains(&ApiFormat::OpenAI));
+  assert!(formats.contains(&ApiFormat::OpenAIResponses));
+  assert!(formats.contains(&ApiFormat::Anthropic));
+  assert!(formats.contains(&ApiFormat::AnthropicOAuth));
+  assert!(
+    formats.contains(&ApiFormat::Gemini),
+    "gemini must be in formats list"
+  );
+  assert_eq!(5, formats.len());
 }

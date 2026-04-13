@@ -47,6 +47,17 @@ export const API_PROVIDERS: ApiProvider[] = [
     category: 'popular',
   },
   {
+    id: 'gemini',
+    name: 'Google Gemini',
+    format: 'gemini' as ApiFormat,
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    description: 'Access Gemini 2.5 Flash, Gemini 1.5 Pro, and other Google models',
+    docUrl: 'https://aistudio.google.com/app/apikey',
+    commonModels: ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+    icon: '✨',
+    category: 'popular',
+  },
+  {
     id: 'openai-compatible',
     name: 'OpenAI Compatible',
     format: 'openai' as ApiFormat,

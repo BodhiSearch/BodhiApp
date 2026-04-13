@@ -1,8 +1,10 @@
-use super::ai_provider_client::{
-  AIProviderClient, AnthropicOAuthProviderClient, AnthropicProviderClient, OpenAIProviderClient,
-  OpenAIResponsesProviderClient,
-};
+use super::ai_provider_client::AIProviderClient;
 use super::error::{AiApiServiceError, Result};
+use super::provider_anthropic::AnthropicProviderClient;
+use super::provider_anthropic_oauth::AnthropicOAuthProviderClient;
+use super::provider_gemini::GeminiProviderClient;
+use super::provider_openai::OpenAIProviderClient;
+use super::provider_openai_responses::OpenAIResponsesProviderClient;
 use crate::models::{ApiAlias, ApiFormat, ApiModel};
 use crate::SafeReqwest;
 use async_trait::async_trait;
@@ -129,6 +131,11 @@ impl AiApiService for DefaultAiApiService {
         .test_connection(model, prompt)
         .await
       }
+      ApiFormat::Gemini => {
+        GeminiProviderClient::new(api_key, base_url.to_string(), self.client.clone())
+          .test_connection(model, prompt)
+          .await
+      }
     }
   }
 
@@ -166,6 +173,11 @@ impl AiApiService for DefaultAiApiService {
         )
         .models()
         .await
+      }
+      ApiFormat::Gemini => {
+        GeminiProviderClient::new(api_key, base_url.to_string(), self.client.clone())
+          .models()
+          .await
       }
     }
   }
@@ -210,6 +222,11 @@ impl AiApiService for DefaultAiApiService {
         .forward(method, api_path, prefix, request, qp, ch)
         .await
       }
+      ApiFormat::Gemini => {
+        GeminiProviderClient::new(api_key, api_alias.base_url.clone(), self.client.clone())
+          .forward(method, api_path, prefix, request, qp, ch)
+          .await
+      }
     }
   }
 }
@@ -224,8 +241,14 @@ mod test_ai_api_anthropic_oauth;
 #[path = "test_ai_api_forward.rs"]
 mod test_ai_api_forward;
 #[cfg(test)]
+#[path = "test_ai_api_gemini.rs"]
+mod test_ai_api_gemini;
+#[cfg(test)]
 #[path = "test_ai_api_openai.rs"]
 mod test_ai_api_openai;
+#[cfg(test)]
+#[path = "test_ai_api_provider_matrix.rs"]
+mod test_ai_api_provider_matrix;
 #[cfg(test)]
 #[path = "test_merge_extra_body.rs"]
 mod test_merge_extra_body;

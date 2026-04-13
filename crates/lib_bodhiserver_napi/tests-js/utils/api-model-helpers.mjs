@@ -74,6 +74,59 @@ export async function fetchWithBearer(serverUrl, token, endpoint, body) {
 }
 
 /**
+ * Make a POST request and read the SSE response body, returning the first parsed data chunk.
+ * Used for Gemini :streamGenerateContent which returns text/event-stream.
+ *
+ * @param {string} serverUrl - BodhiApp server base URL
+ * @param {string} token - Bearer token
+ * @param {string} endpoint - API endpoint path
+ * @param {object} body - Request body
+ * @returns {{ resp: Response, data: any }} data.chunks holds all parsed SSE
+ *   chunks (one per `data:` line). For convenience, `data` also mirrors the
+ *   first chunk's top-level fields so non-streaming extractors still work;
+ *   streaming-aware extractors should read `data.chunks`.
+ */
+export async function fetchWithBearerSSE(serverUrl, token, endpoint, body) {
+  const resp = await fetch(`${serverUrl}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await resp.text();
+  // Upstream stream shape depends on whether `?alt=sse` was passed upstream:
+  //  - without (default): JSON array `[{...},{...}]` of stream chunks
+  //  - with:             SSE lines `data: {...}\r\n\r\n`
+  // Parse both transparently.
+  let chunks = [];
+  const trimmed = text.trim();
+  if (trimmed.startsWith('[')) {
+    try {
+      const arr = JSON.parse(trimmed);
+      if (Array.isArray(arr)) chunks = arr;
+    } catch {
+      /* fall through to SSE parse */
+    }
+  }
+  if (chunks.length === 0) {
+    for (const line of text.split('\n')) {
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice('data:'.length).trim();
+      if (!payload || payload === '[DONE]') continue;
+      try {
+        chunks.push(JSON.parse(payload));
+      } catch {
+        // skip malformed chunk
+      }
+    }
+  }
+  const data = chunks[0] ? { ...chunks[0], chunks } : { chunks };
+  return { resp, data };
+}
+
+/**
  * Make a POST request using x-api-key header (Anthropic SDK auth style).
  * anthropic_auth_middleware on the anthropic_apis route group rewrites
  * x-api-key to Authorization: Bearer before passing to api_auth_middleware.

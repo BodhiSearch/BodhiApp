@@ -24,8 +24,8 @@ use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::{
   inference::{InferenceError, LlmEndpoint, MockInferenceService},
-  test_utils::{openai_model, AppServiceStubBuilder},
-  Alias, AuthContext, ResourceRole,
+  test_utils::{gemini_model, openai_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
+  Alias, ApiAliasBuilder, ApiFormat, ApiModel, AuthContext, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -422,12 +422,12 @@ async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Resu
 
   let mut mock_inference = MockInferenceService::new();
   mock_inference
-    .expect_forward_remote()
-    .withf(|endpoint, _req, alias, _key| {
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, alias, _key, _params, _headers| {
       *endpoint == LlmEndpoint::ChatCompletions && alias.id == "anthropic-alias"
     })
     .times(1)
-    .return_once(|_, _, _, _| non_streamed_axum_response());
+    .return_once(|_, _, _, _, _, _| non_streamed_axum_response());
 
   let app_service = builder
     .inference_service(Arc::new(mock_inference))
@@ -447,6 +447,127 @@ async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Resu
         }))?
         .with_auth_context(AuthContext::test_session(
           "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+// ============================================================================
+// Gemini format rejection on /v1/chat/completions
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_rejects_gemini_alias() -> anyhow::Result<()> {
+  // Gemini aliases are not supported by the OpenAI chat completions endpoint.
+  // The handler must return 400 with a format-mismatch error.
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_data_service().await;
+  let db_service = builder.get_db_service().await;
+
+  let gemini_alias = ApiAliasBuilder::test_default()
+    .id("gemini-alias")
+    .api_format(ApiFormat::Gemini)
+    .base_url("https://generativelanguage.googleapis.com/v1beta")
+    .models(vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))])
+    .build_with_time(db_service.now())
+    .unwrap();
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &gemini_alias, None)
+    .await?;
+
+  let app_service = builder.build().await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions")
+        .json(json!({
+          "model": "gemini-2.5-flash",
+          "messages": [{"role": "user", "content": "Hello"}]
+        }))?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  let error_message = body["error"]["message"].as_str().unwrap_or("");
+  assert!(
+    error_message.contains("gemini") || error_message.contains("format"),
+    "Expected format-mismatch error mentioning 'gemini' or 'format', got: {}",
+    error_message
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_forwards_query_params_to_upstream() -> anyhow::Result<()> {
+  use services::test_utils::{TEST_TENANT_ID, TEST_USER_ID};
+  use services::{ApiAliasBuilder, ApiFormat};
+
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_data_service().await;
+  let db_service = builder.get_db_service().await;
+
+  let api_alias = ApiAliasBuilder::test_default()
+    .id("openai-alias")
+    .api_format(ApiFormat::OpenAI)
+    .base_url("https://api.openai.com/v1")
+    .models(vec![openai_model("gpt-4o")])
+    .build_with_time(db_service.now())
+    .unwrap();
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
+    .await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, _alias, _key, params, _headers| {
+      *endpoint == LlmEndpoint::ChatCompletions
+        && params
+          .as_ref()
+          .is_some_and(|p| p.iter().any(|(k, v)| k == "foo" && v == "bar"))
+    })
+    .times(1)
+    .return_once(|_, _, _, _, _, _| non_streamed_axum_response());
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions?foo=bar")
+        .json(json!({
+          "model": "gpt-4o",
+          "messages": [{"role": "user", "content": "Hello"}]
+        }))?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
           "testuser",
           ResourceRole::User,
         )),

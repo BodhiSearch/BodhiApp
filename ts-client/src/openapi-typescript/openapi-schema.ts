@@ -669,7 +669,7 @@ export interface paths {
         };
         /**
          * Get Available API Formats
-         * @description Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), and 'anthropic_oauth' (Anthropic via OAuth Bearer token).
+         * @description Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), 'anthropic_oauth' (Anthropic via OAuth Bearer token), and 'gemini' (Google Gemini).
          */
         get: operations["getApiFormats"];
         put?: never;
@@ -1326,7 +1326,7 @@ export interface components {
          * @description API format/protocol specification
          * @enum {string}
          */
-        ApiFormat: "openai" | "openai_responses" | "anthropic" | "anthropic_oauth";
+        ApiFormat: "openai" | "openai_responses" | "anthropic" | "anthropic_oauth" | "gemini";
         /**
          * @description Response containing available API formats
          * @example {
@@ -1358,6 +1358,9 @@ export interface components {
         }) | (components["schemas"]["AnthropicModel"] & {
             /** @enum {string} */
             provider: "anthropic";
+        }) | (components["schemas"]["GeminiModel"] & {
+            /** @enum {string} */
+            provider: "gemini";
         });
         /**
          * @description Input request for creating or updating an API model configuration.
@@ -1388,7 +1391,8 @@ export interface components {
             prefix?: string | null;
             /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
             forward_all_with_prefix?: boolean;
-            /** @description Optional extra HTTP headers to send upstream (e.g., for OAuth or custom auth) */
+            /** @description Optional extra HTTP headers to send upstream. Cannot include `Authorization`
+             *     or `x-api-key` — those are owned by provider clients. */
             extra_headers?: unknown;
             /** @description Optional extra fields to merge into the request body sent upstream */
             extra_body?: unknown;
@@ -1754,7 +1758,7 @@ export interface components {
             base_url: string;
             /** @description API format to use for fetching models (defaults to OpenAI Chat Completions) */
             api_format?: components["schemas"]["ApiFormat"];
-            /** @description Optional extra HTTP headers for the upstream request */
+            /** @description Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden. */
             extra_headers?: unknown;
             /** @description Optional extra fields to merge into the request body */
             extra_body?: unknown;
@@ -1775,6 +1779,27 @@ export interface components {
         };
         /** @enum {string} */
         FlowType: "redirect" | "popup";
+        /** @description Gemini `Model` schema (see `openapi-gemini.json`). */
+        GeminiModel: {
+            name: string;
+            version?: string;
+            displayName?: string | null;
+            description?: string | null;
+            /** Format: int64 */
+            inputTokenLimit?: number | null;
+            /** Format: int64 */
+            outputTokenLimit?: number | null;
+            supportedGenerationMethods?: string[];
+            /** Format: float */
+            temperature?: number | null;
+            /** Format: float */
+            maxTemperature?: number | null;
+            /** Format: float */
+            topP?: number | null;
+            /** Format: int32 */
+            topK?: number | null;
+            thinking?: boolean | null;
+        };
         JsonVec: string[];
         ListMcpServersResponse: {
             mcp_servers: components["schemas"]["McpServerResponse"][];
@@ -2398,7 +2423,7 @@ export interface components {
             prompt: string;
             /** @description API format to use for the test request (defaults to OpenAI Chat Completions) */
             api_format?: components["schemas"]["ApiFormat"];
-            /** @description Optional extra HTTP headers for the upstream request */
+            /** @description Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden. */
             extra_headers?: unknown;
             /** @description Optional extra fields to merge into the request body */
             extra_body?: unknown;
@@ -5669,7 +5694,8 @@ export interface operations {
                      *         "openai",
                      *         "openai_responses",
                      *         "anthropic",
-                     *         "anthropic_oauth"
+                     *         "anthropic_oauth",
+                     *         "gemini"
                      *       ]
                      *     } */
                     "application/json": components["schemas"]["ApiFormatsResponse"];

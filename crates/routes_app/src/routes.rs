@@ -1,7 +1,7 @@
 use crate::middleware::{
   access_request_auth_middleware, anthropic_auth_middleware, api_auth_middleware, auth_middleware,
-  canonical_url_middleware, openai_auth_middleware, optional_auth_middleware,
-  AccessRequestValidator, McpAccessRequestValidator,
+  canonical_url_middleware, gemini_auth_middleware, openai_auth_middleware,
+  optional_auth_middleware, AccessRequestValidator, McpAccessRequestValidator,
 };
 use crate::{
   anthropic_messages_create_handler, anthropic_models_get_handler, anthropic_models_list_handler,
@@ -50,6 +50,10 @@ use crate::{
 };
 use crate::{build_ui_proxy_router, build_ui_spa_router};
 use crate::{
+  gemini_action_handler, gemini_models_get, gemini_models_list, ENDPOINT_GEMINI_MODEL,
+  ENDPOINT_GEMINI_MODELS,
+};
+use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
   ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
@@ -76,6 +80,9 @@ use utoipa_swagger_ui::SwaggerUi;
 /// time from the checked-in resource file (refresh procedure documented in
 /// `crates/routes_app/resources/README.md`).
 const ANTHROPIC_OPENAPI_JSON: &str = include_str!("../resources/openapi-anthropic.json");
+
+/// Static OpenAPI spec for the Gemini API proxy.
+const GEMINI_OPENAPI_JSON: &str = include_str!("../resources/openapi-gemini.json");
 
 fn permissive_cors() -> CorsLayer {
   CorsLayer::new()
@@ -237,6 +244,32 @@ pub async fn build_routes(
     .route(
       &format!("{ENDPOINT_ANTHROPIC_MODELS}/{{model_id}}"),
       get(anthropic_models_get_handler),
+    )
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| {
+        api_auth_middleware(
+          ResourceRole::User,
+          Some(TokenScope::User),
+          Some(UserScope::User),
+          state,
+          req,
+          next,
+        )
+      },
+    ));
+
+  // Gemini-compatible APIs at /v1beta/*. Accepts `x-goog-api-key` as an
+  // alternative to `Authorization: Bearer` via gemini_auth_middleware
+  // (scoped to this group only). Uses the same User-level auth as user_apis.
+  let gemini_apis = Router::new()
+    .route(ENDPOINT_GEMINI_MODELS, get(gemini_models_list))
+    // GET /v1beta/models/{id} → model lookup
+    // POST /v1beta/models/{id} → action dispatch ({id} = "{model}:{action}")
+    // Same path pattern, different methods — Axum routes by method.
+    .route(
+      ENDPOINT_GEMINI_MODEL,
+      get(gemini_models_get).post(gemini_action_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -506,14 +539,17 @@ pub async fn build_routes(
   let api_protected = Router::new()
     .merge(user_apis)
     .merge(anthropic_apis)
+    .merge(gemini_apis)
     .merge(apps_apis)
     .merge(power_user_apis)
     .route_layer(from_fn_with_state(state.clone(), auth_middleware))
     // Outermost layers: run first, before auth_middleware.
     // Rewrites x-api-key -> Authorization: Bearer for Anthropic paths only,
+    // strips x-goog-api-key -> Authorization: Bearer for Gemini paths (/v1beta/*),
     // and strips BodhiApp's chat-UI sentinel from auth headers on /v1/*
     // (OpenAI-compat) so session-cookie auth can fall through.
     .route_layer(from_fn(anthropic_auth_middleware))
+    .route_layer(from_fn(gemini_auth_middleware))
     .route_layer(from_fn(openai_auth_middleware))
     .layer(permissive_cors());
 
@@ -569,6 +605,23 @@ pub async fn build_routes(
     doc
   };
 
+  // Gemini spec is also a checked-in static asset. Patched similarly:
+  //   1. Inject `info.version` if missing.
+  //   2. Override `servers` to point at BodhiApp's `/v1beta` proxy prefix.
+  let openapi_gemini: serde_json::Value = {
+    let mut doc: serde_json::Value = serde_json::from_str(GEMINI_OPENAPI_JSON)
+      .expect("checked-in gemini openapi spec must be valid JSON");
+    if let Some(info) = doc.get_mut("info").and_then(|v| v.as_object_mut()) {
+      info
+        .entry("version")
+        .or_insert_with(|| serde_json::Value::String("1.0.0".to_string()));
+    }
+    if let Some(obj) = doc.as_object_mut() {
+      obj.insert("servers".to_string(), serde_json::json!([{"url": "/"}]));
+    }
+    doc
+  };
+
   // Build final router — NO global CorsLayer
   let router = Router::<Arc<dyn AppService>>::new()
     .merge(public_router)
@@ -578,7 +631,8 @@ pub async fn build_routes(
       SwaggerUi::new("/swagger-ui")
         .url("/api-docs/openapi.json", openapi)
         .url("/api-docs/openapi-oai.json", openapi_oai)
-        .external_url_unchecked("/api-docs/openapi-anthropic.json", openapi_anthropic),
+        .external_url_unchecked("/api-docs/openapi-anthropic.json", openapi_anthropic)
+        .external_url_unchecked("/api-docs/openapi-gemini.json", openapi_gemini),
     )
     .with_state(state);
 

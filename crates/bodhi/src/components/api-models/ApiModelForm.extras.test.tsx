@@ -128,6 +128,22 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     expect(screen.queryByTestId('extra-body-input')).not.toBeInTheDocument();
   });
 
+  it('hides extras fields when gemini format is selected', async () => {
+    const user = userEvent.setup();
+    server.use(...mockApiFormats({ data: ['openai', 'gemini'] }));
+
+    await act(async () => {
+      render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+    });
+
+    await selectFormat(user, 'Google Gemini');
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('extra-headers-input')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('extra-body-input')).not.toBeInTheDocument();
+    });
+  });
+
   it('shows validation error for malformed JSON in extra_headers and blocks submit', async () => {
     const user = userEvent.setup();
     server.use(
@@ -324,7 +340,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     expect(capturedRequestBody!.extra_headers).toBe(expected);
   });
 
-  it('switching api_format in edit mode forces useApiKey=true (cannot Keep stored key)', async () => {
+  it('switching api_format in edit mode resets form to preset defaults', async () => {
     const user = userEvent.setup();
     server.use(...mockApiFormats({ data: ['openai', 'anthropic_oauth'] }));
 
@@ -341,19 +357,19 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       });
     });
 
-    // Initially (edit + has_api_key), the checkbox is checked but field disabled.
+    // Initially (edit + has_api_key), the checkbox is shown.
     await waitFor(() => {
       expect(screen.getByTestId('api-key-input-checkbox')).toBeInTheDocument();
     });
 
-    // Switch to anthropic_oauth → form should force useApiKey=true so the user
-    // must enter a new key (backend rejects ApiKeyUpdate::Keep on format change).
+    // Switch format → form resets to preset defaults; useApiKey unchecked.
+    // The user must cancel or refresh to restore the stored key state.
     await selectFormat(user, 'Anthropic (Claude Code OAuth)');
 
     await waitFor(() => {
-      expect(screen.getByTestId('api-key-input-checkbox')).toBeChecked();
+      expect(screen.getByTestId('api-key-input-checkbox')).not.toBeChecked();
     });
-    // Extras are populated from preset.
+    // Extras populated from the new format's preset.
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
     });
@@ -389,6 +405,8 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     ['authorization', { authorization: 'Bearer x' }],
     ['x-api-key', { 'x-api-key': 'sk-x' }],
     ['X-API-Key', { 'X-API-Key': 'sk-x' }],
+    ['x-goog-api-key', { 'x-goog-api-key': 'AIza-x' }],
+    ['X-Goog-Api-Key', { 'X-Goog-Api-Key': 'AIza-x' }],
   ])('rejects pass-through auth header `%s` with validation error', async (forbiddenKey, headers) => {
     const user = userEvent.setup();
     server.use(

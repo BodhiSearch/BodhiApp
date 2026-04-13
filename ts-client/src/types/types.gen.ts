@@ -169,7 +169,7 @@ export type ApiAliasResponse = {
 /**
  * API format/protocol specification
  */
-export type ApiFormat = 'openai' | 'openai_responses' | 'anthropic' | 'anthropic_oauth';
+export type ApiFormat = 'openai' | 'openai_responses' | 'anthropic' | 'anthropic_oauth' | 'gemini';
 
 /**
  * Response containing available API formats
@@ -204,6 +204,8 @@ export type ApiModel = (Model & {
     provider: 'openai';
 }) | (AnthropicModel & {
     provider: 'anthropic';
+}) | (GeminiModel & {
+    provider: 'gemini';
 });
 
 /**
@@ -235,7 +237,8 @@ export type ApiModelRequest = {
      */
     forward_all_with_prefix?: boolean;
     /**
-     * Optional extra HTTP headers to send upstream (e.g., for OAuth or custom auth)
+     * Optional extra HTTP headers to send upstream. Cannot include `Authorization`
+     * or `x-api-key` — those are owned by provider clients.
      */
     extra_headers?: unknown;
     /**
@@ -577,7 +580,7 @@ export type FetchModelsRequest = {
      */
     api_format?: ApiFormat;
     /**
-     * Optional extra HTTP headers for the upstream request
+     * Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden.
      */
     extra_headers?: unknown;
     /**
@@ -595,6 +598,24 @@ export type FetchModelsResponse = {
 };
 
 export type FlowType = 'redirect' | 'popup';
+
+/**
+ * Gemini `Model` schema (see `openapi-gemini.json`).
+ */
+export type GeminiModel = {
+    name: string;
+    version?: string;
+    displayName?: string | null;
+    description?: string | null;
+    inputTokenLimit?: number | null;
+    outputTokenLimit?: number | null;
+    supportedGenerationMethods?: Array<string>;
+    temperature?: number | null;
+    maxTemperature?: number | null;
+    topP?: number | null;
+    topK?: number | null;
+    thinking?: boolean | null;
+};
 
 export type JsonVec = Array<string>;
 
@@ -1319,7 +1340,7 @@ export type TestPromptRequest = {
      */
     api_format?: ApiFormat;
     /**
-     * Optional extra HTTP headers for the upstream request
+     * Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden.
      */
     extra_headers?: unknown;
     /**

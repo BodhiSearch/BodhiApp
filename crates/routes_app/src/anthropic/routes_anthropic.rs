@@ -1,14 +1,14 @@
 use crate::oai::OAIRouteError;
 use crate::shared::AuthScope;
 use crate::{AnthropicApiError, ApiError, JsonRejectionError};
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::http::HeaderMap;
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
 use services::inference::LlmEndpoint;
 use services::{Alias, ApiAlias, ApiFormat, ApiModel};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Path-parameter safety: rejects non-ASCII and special chars that could cause
 /// URL-injection when forwarded. Allows alphanumeric, `-`, `_`, `.` (e.g. `claude-3.5-sonnet`).
@@ -106,6 +106,7 @@ async fn list_user_anthropic_aliases(auth_scope: &AuthScope) -> Result<Vec<ApiAl
 pub async fn anthropic_messages_create_handler(
   auth_scope: AuthScope,
   headers: HeaderMap,
+  Query(query_params): Query<HashMap<String, String>>,
   WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, JsonRejectionError>,
 ) -> Result<Response, AnthropicApiError> {
   let model = request
@@ -116,6 +117,12 @@ pub async fn anthropic_messages_create_handler(
 
   let (api_alias, api_key) = resolve_anthropic_alias(&auth_scope, &model).await?;
   let client_headers = extract_anthropic_headers(&headers);
+  let params: Vec<(String, String)> = query_params.into_iter().collect();
+  let params_opt = if params.is_empty() {
+    None
+  } else {
+    Some(params)
+  };
 
   let response = auth_scope
     .inference()
@@ -124,7 +131,7 @@ pub async fn anthropic_messages_create_handler(
       request,
       &api_alias,
       api_key,
-      None,
+      params_opt,
       client_headers,
     )
     .await
@@ -155,7 +162,7 @@ pub async fn anthropic_models_list_handler(
             ordered.push(entry);
           }
         }
-        ApiModel::OpenAI(_) => {} // skip — wrong format for anthropic endpoint
+        ApiModel::OpenAI(_) | ApiModel::Gemini(_) => {} // skip — wrong format for anthropic endpoint
       }
     }
   }

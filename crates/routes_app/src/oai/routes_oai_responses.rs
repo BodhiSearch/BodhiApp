@@ -125,6 +125,7 @@ fn upstream_query_params(params: &HashMap<String, String>) -> Option<Vec<(String
 )]
 pub async fn responses_create_handler(
   auth_scope: AuthScope,
+  Query(query_params): Query<HashMap<String, String>>,
   WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, JsonRejectionError>,
 ) -> Result<Response, OaiApiError> {
   validate_responses_request(&request)?;
@@ -136,10 +137,23 @@ pub async fn responses_create_handler(
     .to_string();
 
   let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
+  let params: Vec<(String, String)> = query_params.into_iter().collect();
+  let params_opt = if params.is_empty() {
+    None
+  } else {
+    Some(params)
+  };
 
   let response = auth_scope
     .inference()
-    .forward_remote(LlmEndpoint::Responses, request, &api_alias, api_key)
+    .forward_remote_with_params(
+      LlmEndpoint::Responses,
+      request,
+      &api_alias,
+      api_key,
+      params_opt,
+      None,
+    )
     .await
     .map_err(ApiError::from)?;
 
@@ -222,11 +236,13 @@ pub async fn responses_delete_handler(
 
   let response = auth_scope
     .inference()
-    .forward_remote(
+    .forward_remote_with_params(
       LlmEndpoint::ResponsesDelete(response_id),
       serde_json::Value::Null,
       &api_alias,
       api_key,
+      upstream_query_params(&params),
+      None,
     )
     .await
     .map_err(ApiError::from)?;
@@ -310,11 +326,13 @@ pub async fn responses_cancel_handler(
 
   let response = auth_scope
     .inference()
-    .forward_remote(
+    .forward_remote_with_params(
       LlmEndpoint::ResponsesCancel(response_id),
       serde_json::Value::Null,
       &api_alias,
       api_key,
+      upstream_query_params(&params),
+      None,
     )
     .await
     .map_err(ApiError::from)?;

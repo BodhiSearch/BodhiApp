@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatPrefixedModel } from '@/schemas/apiModel';
+import { formatPrefixedModel, getApiModelId } from '@/schemas/apiModel';
 import { hasLocalFileProperties, isApiAlias } from '@/lib/utils';
 
 export interface ModelActionsProps {
@@ -72,11 +72,12 @@ const ModelActions = ({
         <div className="hidden sm:flex items-center gap-1">
           {model.models
             .map((m) => {
-              const displayName = formatPrefixedModel(m.id, model.prefix);
-              const chatModel = formatPrefixedModel(m.id, model.prefix);
+              const mid = getApiModelId(m, model.prefix);
+              const displayName = formatPrefixedModel(mid, model.prefix);
+              const chatModel = formatPrefixedModel(mid, model.prefix);
               return (
                 <Button
-                  key={`${model.id}-${m.id}`}
+                  key={`${model.id}-${mid}`}
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-xs"
@@ -96,7 +97,7 @@ const ModelActions = ({
               className="h-8 px-2 text-xs text-muted-foreground"
               onClick={() =>
                 onShowMoreModels(
-                  model.models.map((m) => m.id),
+                  model.models.map((m) => getApiModelId(m, model.prefix)),
                   model.id,
                   model.prefix
                 )
@@ -123,10 +124,11 @@ const ModelActions = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {model.models.map((m) => {
-                const displayName = formatPrefixedModel(m.id, model.prefix);
-                const chatModel = formatPrefixedModel(m.id, model.prefix);
+                const mid = getApiModelId(m, model.prefix);
+                const displayName = formatPrefixedModel(mid, model.prefix);
+                const chatModel = formatPrefixedModel(mid, model.prefix);
                 return (
-                  <DropdownMenuItem key={m.id} onClick={() => navigate({ to: '/chat/', search: { model: chatModel } })}>
+                  <DropdownMenuItem key={mid} onClick={() => navigate({ to: '/chat/', search: { model: chatModel } })}>
                     {displayName}
                   </DropdownMenuItem>
                 );

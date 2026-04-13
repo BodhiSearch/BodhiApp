@@ -1,9 +1,10 @@
 use crate::models::{
-  ApiAliasRepository, ApiFormat, ApiKeyUpdate, ApiModelRequest, ApiModelService,
+  ApiAliasRepository, ApiFormat, ApiKeyUpdate, ApiModel, ApiModelRequest, ApiModelService,
   DefaultApiModelService,
 };
 use crate::test_utils::{
-  openai_model, test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID, TEST_USER_ID,
+  gemini_model, openai_model, test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID,
+  TEST_USER_ID,
 };
 use crate::MockAiApiService;
 use anyhow_trace::anyhow_trace;
@@ -31,9 +32,32 @@ fn extra_body_for(format: &ApiFormat) -> Option<serde_json::Value> {
   }
 }
 
+/// Returns two provider models appropriate for the given format.
+fn two_models_for(format: &ApiFormat) -> Vec<ApiModel> {
+  match format {
+    ApiFormat::Gemini => vec![
+      ApiModel::Gemini(gemini_model("gemini-2.5-flash")),
+      ApiModel::Gemini(gemini_model("gemini-2.5-pro")),
+    ],
+    _ => vec![openai_model("model-a"), openai_model("model-b")],
+  }
+}
+
+/// Returns two named provider models for selection tests.
+fn two_named_models_for(format: &ApiFormat, id_a: &str, id_b: &str) -> Vec<ApiModel> {
+  match format {
+    ApiFormat::Gemini => vec![
+      ApiModel::Gemini(gemini_model(id_a)),
+      ApiModel::Gemini(gemini_model(id_b)),
+    ],
+    _ => vec![openai_model(id_a), openai_model(id_b)],
+  }
+}
+
 #[rstest]
 #[case::openai(ApiFormat::OpenAI)]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth)]
+#[case::gemini(ApiFormat::Gemini)]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
@@ -44,12 +68,14 @@ async fn test_create_forward_all_stores_all_models(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
+  let expected_models = two_models_for(&api_format);
+  let expected_models_clone = expected_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
   mock_ai
     .expect_fetch_models()
     .times(1)
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("model-a"), openai_model("model-b")]));
+    .returning(move |_, _, _, _, _| Ok(expected_models_clone.clone()));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -69,22 +95,24 @@ async fn test_create_forward_all_stores_all_models(
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(result.forward_all_with_prefix);
+  let stored_ids: Vec<&str> = result.models.iter().map(|m| m.id()).collect();
+  let expected_stored_ids: Vec<String> =
+    expected_models.iter().map(|m| m.id().to_string()).collect();
   assert_eq!(
-    vec![openai_model("model-a"), openai_model("model-b")],
-    result.models
+    expected_stored_ids,
+    stored_ids.iter().map(|s| s.to_string()).collect::<Vec<_>>()
   );
   assert_eq!(extra_headers, result.extra_headers);
   assert_eq!(extra_body, result.extra_body);
 
-  // Verify extra fields stored in DB
+  // Verify models stored correctly in DB (proves ApiModelVec round-trip for the format)
   let alias = db_service
     .get_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &result.id)
     .await?
     .expect("alias should exist");
-  assert_eq!(
-    vec![openai_model("model-a"), openai_model("model-b")],
-    alias.models.to_vec()
-  );
+  assert_eq!(result.models, alias.models.to_vec());
+  assert_eq!(extra_headers, alias.extra_headers);
+  assert_eq!(extra_body, alias.extra_body);
 
   Ok(())
 }
@@ -92,6 +120,7 @@ async fn test_create_forward_all_stores_all_models(
 #[rstest]
 #[case::openai(ApiFormat::OpenAI)]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth)]
+#[case::gemini(ApiFormat::Gemini)]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
@@ -102,12 +131,15 @@ async fn test_create_non_forward_all_validates_and_filters(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
+  let provider_models = two_named_models_for(&api_format, "model-x", "model-y");
+  let expected_model = provider_models[0].clone();
+  let provider_models_clone = provider_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
   mock_ai
     .expect_fetch_models()
     .times(1)
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4"), openai_model("gpt-3.5")]));
+    .returning(move |_, _, _, _, _| Ok(provider_models_clone.clone()));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -116,7 +148,7 @@ async fn test_create_non_forward_all_validates_and_filters(
     api_format,
     base_url: "https://api.example.com/v1".to_string(),
     api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string()],
+    models: vec!["model-x".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
     extra_headers: None,
@@ -125,7 +157,7 @@ async fn test_create_non_forward_all_validates_and_filters(
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(!result.forward_all_with_prefix);
-  assert_eq!(vec![openai_model("gpt-4")], result.models);
+  assert_eq!(vec![expected_model], result.models);
 
   Ok(())
 }
@@ -133,6 +165,7 @@ async fn test_create_non_forward_all_validates_and_filters(
 #[rstest]
 #[case::openai(ApiFormat::OpenAI)]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth)]
+#[case::gemini(ApiFormat::Gemini)]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
@@ -143,13 +176,15 @@ async fn test_update_forward_all_stores_all_models(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
+  let expected_models = two_models_for(&api_format);
+  let expected_models_clone = expected_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
   // create() fetches once, update() fetches once
   mock_ai
     .expect_fetch_models()
     .times(2)
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("remote-1"), openai_model("remote-2")]));
+    .returning(move |_, _, _, _, _| Ok(expected_models_clone.clone()));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -184,9 +219,12 @@ async fn test_update_forward_all_stores_all_models(
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
   assert!(result.forward_all_with_prefix);
+  let stored_ids: Vec<&str> = result.models.iter().map(|m| m.id()).collect();
+  let expected_stored_ids: Vec<String> =
+    expected_models.iter().map(|m| m.id().to_string()).collect();
   assert_eq!(
-    vec![openai_model("remote-1"), openai_model("remote-2")],
-    result.models
+    expected_stored_ids,
+    stored_ids.iter().map(|s| s.to_string()).collect::<Vec<_>>()
   );
   assert_eq!(extra_headers, result.extra_headers);
   assert_eq!(extra_body, result.extra_body);
@@ -197,6 +235,7 @@ async fn test_update_forward_all_stores_all_models(
 #[rstest]
 #[case::openai(ApiFormat::OpenAI)]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth)]
+#[case::gemini(ApiFormat::Gemini)]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
@@ -207,13 +246,15 @@ async fn test_update_non_forward_all_validates_and_filters(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
+  let provider_models = two_named_models_for(&api_format, "model-p", "model-q");
+  let provider_models_clone = provider_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
   // create() calls fetch_models once, update() calls fetch_models once
   mock_ai
     .expect_fetch_models()
     .times(2)
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4"), openai_model("gpt-3.5")]));
+    .returning(move |_, _, _, _, _| Ok(provider_models_clone.clone()));
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -222,7 +263,7 @@ async fn test_update_non_forward_all_validates_and_filters(
     api_format: api_format.clone(),
     base_url: "https://api.example.com/v1".to_string(),
     api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string()],
+    models: vec!["model-p".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
     extra_headers: None,
@@ -236,7 +277,7 @@ async fn test_update_non_forward_all_validates_and_filters(
     api_format,
     base_url: "https://api.example.com/v2".to_string(),
     api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string(), "gpt-3.5".to_string()],
+    models: vec!["model-p".to_string(), "model-q".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
     extra_headers: None,
@@ -248,7 +289,7 @@ async fn test_update_non_forward_all_validates_and_filters(
   assert!(!result.forward_all_with_prefix);
   let mut model_ids: Vec<&str> = result.models.iter().map(|m| m.id()).collect();
   model_ids.sort();
-  assert_eq!(vec!["gpt-3.5", "gpt-4"], model_ids);
+  assert_eq!(vec!["model-p", "model-q"], model_ids);
 
   Ok(())
 }
@@ -352,6 +393,228 @@ async fn test_update_rejects_api_format_change_with_keep_key(
   assert!(
     msg.contains("Changing api_format requires a new api_key"),
     "expected ApiFormatChangedRequiresNewKey, got: {}",
+    msg
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_gemini_preserves_bare_name(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let db_service = Arc::new(db_service);
+  let provider_models = vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))];
+  let provider_models_clone = provider_models.clone();
+
+  let mut mock_ai = MockAiApiService::new();
+  mock_ai
+    .expect_fetch_models()
+    .times(1)
+    .returning(move |_, _, _, _, _| Ok(provider_models_clone.clone()));
+
+  let time_service = Arc::new(FrozenTimeService::default());
+  let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
+
+  let form = ApiModelRequest {
+    api_format: ApiFormat::Gemini,
+    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+    api_key: ApiKeyUpdate::Keep,
+    models: vec!["gemini-2.5-flash".to_string()],
+    prefix: Some("gmn/".to_string()),
+    forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
+  };
+
+  let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
+  assert_eq!(1, result.models.len());
+  match &result.models[0] {
+    ApiModel::Gemini(m) => {
+      assert_eq!("models/gemini-2.5-flash", m.name);
+      assert_eq!("gemini-2.5-flash", m.model_id());
+    }
+    other => panic!("expected ApiModel::Gemini, got {:?}", other),
+  }
+
+  // Verify DB round-trip keeps bare name and matchable_models returns single-prefix form.
+  let alias = db_service
+    .get_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &result.id)
+    .await?
+    .expect("alias should exist");
+  match &alias.models[0] {
+    ApiModel::Gemini(m) => {
+      assert_eq!("models/gemini-2.5-flash", m.name);
+      assert_eq!("gemini-2.5-flash", m.model_id());
+    }
+    other => panic!(
+      "expected ApiModel::Gemini after DB roundtrip, got {:?}",
+      other
+    ),
+  }
+  assert_eq!(
+    vec!["gmn/gemini-2.5-flash".to_string()],
+    alias.matchable_models()
+  );
+  assert!(alias.supports_model("gmn/gemini-2.5-flash"));
+  assert!(!alias.supports_model("gmn/gmn/gemini-2.5-flash"));
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_update_gemini_preserves_bare_name(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let db_service = Arc::new(db_service);
+  let provider_models = vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))];
+  let provider_models_clone = provider_models.clone();
+
+  let mut mock_ai = MockAiApiService::new();
+  mock_ai
+    .expect_fetch_models()
+    .times(2)
+    .returning(move |_, _, _, _, _| Ok(provider_models_clone.clone()));
+
+  let time_service = Arc::new(FrozenTimeService::default());
+  let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
+
+  let create_form = ApiModelRequest {
+    api_format: ApiFormat::Gemini,
+    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+    api_key: ApiKeyUpdate::Keep,
+    models: vec!["gemini-2.5-flash".to_string()],
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
+  };
+  let created = service
+    .create(TEST_TENANT_ID, TEST_USER_ID, create_form)
+    .await?;
+
+  let update_form = ApiModelRequest {
+    api_format: ApiFormat::Gemini,
+    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+    api_key: ApiKeyUpdate::Keep,
+    models: vec!["gemini-2.5-flash".to_string()],
+    prefix: Some("gmn/".to_string()),
+    forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
+  };
+  let result = service
+    .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
+    .await?;
+  assert_eq!(1, result.models.len());
+  match &result.models[0] {
+    ApiModel::Gemini(m) => {
+      assert_eq!("models/gemini-2.5-flash", m.name);
+      assert_eq!("gemini-2.5-flash", m.model_id());
+    }
+    other => panic!("expected ApiModel::Gemini, got {:?}", other),
+  }
+
+  let alias = db_service
+    .get_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &created.id)
+    .await?
+    .expect("alias should exist");
+  assert_eq!(
+    vec!["gmn/gemini-2.5-flash".to_string()],
+    alias.matchable_models()
+  );
+  assert!(alias.supports_model("gmn/gemini-2.5-flash"));
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_openai_with_prefix_no_mutation(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let db_service = Arc::new(db_service);
+
+  let mut mock_ai = MockAiApiService::new();
+  mock_ai
+    .expect_fetch_models()
+    .times(1)
+    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4")]));
+
+  let time_service = Arc::new(FrozenTimeService::default());
+  let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
+
+  let form = ApiModelRequest {
+    api_format: ApiFormat::OpenAI,
+    base_url: "https://api.openai.com/v1".to_string(),
+    api_key: ApiKeyUpdate::Keep,
+    models: vec!["gpt-4".to_string()],
+    prefix: Some("oai/".to_string()),
+    forward_all_with_prefix: false,
+    extra_headers: None,
+    extra_body: None,
+  };
+
+  let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
+  assert_eq!(1, result.models.len());
+  // OpenAI id must remain bare — prefix is not baked in for non-Gemini formats.
+  assert_eq!("gpt-4", result.models[0].id());
+
+  Ok(())
+}
+
+// Extend the extra-headers forbidden-key test to cover x-goog-api-key.
+#[rstest]
+#[case::x_goog_api_key(json!({"x-goog-api-key": "AIza-x"}), "x-goog-api-key")]
+#[case::x_goog_api_key_capitalized(json!({"X-Goog-Api-Key": "AIza-x"}), "X-Goog-Api-Key")]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_rejects_extra_headers_x_goog_api_key(
+  #[case] extra_headers: serde_json::Value,
+  #[case] forbidden_key: &str,
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let db_service = Arc::new(db_service);
+  let mock_ai = MockAiApiService::new();
+  let time_service = Arc::new(FrozenTimeService::default());
+  let service = DefaultApiModelService::new(db_service, time_service, Arc::new(mock_ai));
+
+  let form = ApiModelRequest {
+    api_format: ApiFormat::Gemini,
+    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+    api_key: ApiKeyUpdate::Keep,
+    models: vec!["gemini-2.5-flash".to_string()],
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: Some(extra_headers),
+    extra_body: None,
+  };
+
+  let err = service
+    .create(TEST_TENANT_ID, TEST_USER_ID, form)
+    .await
+    .expect_err("must reject forbidden auth header");
+  let msg = format!("{}", err);
+  assert!(
+    msg.contains("Cannot have pass-through authorization headers") && msg.contains(forbidden_key),
+    "expected forbidden-key error mentioning `{}`, got: {}",
+    forbidden_key,
     msg
   );
   Ok(())

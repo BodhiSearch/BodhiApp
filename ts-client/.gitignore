@@ -12,6 +12,9 @@ src/types/*.d.ts
 # Temp download from sync-anthropic-openapi.mjs
 .anthropic-openapi-full.yml
 
+# Temp download from sync-gemini-openapi.mjs
+.gemini-openapi-full.json
+
 # Logs
 *.log
 npm-debug.log*

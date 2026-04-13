@@ -12,7 +12,12 @@ import {
   getPreConfiguredAppClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
-import { fetchWithApiKey, fetchWithBearer, mintApiToken } from '@/utils/api-model-helpers.mjs';
+import {
+  fetchWithApiKey,
+  fetchWithBearer,
+  fetchWithBearerSSE,
+  mintApiToken,
+} from '@/utils/api-model-helpers.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 // Live upstream tests: validate end-to-end API flow for all supported formats.
@@ -106,30 +111,34 @@ test.describe('Live upstream - API token', () => {
 
     await loginPage.performOAuthLogin();
 
-    // Create one API model per format with disambiguation prefixes
-    await test.step('Create API models for all formats', async () => {
-      models = await createAllFormatModels(modelsPage, formPage);
-    });
-
-    // Mint one BodhiApp API token shared across all format tests
-    await test.step('Mint API token', async () => {
-      apiToken = await mintApiToken(
-        tokensPage,
-        page,
-        'live-upstream-api-token',
-        'scope_token_user'
-      );
-      expect(apiToken).toMatch(/^bodhiapp_/);
-    });
-
     try {
+      // Create one API model per format with disambiguation prefixes
+      await test.step('Create API models for all formats', async () => {
+        models = await createAllFormatModels(modelsPage, formPage);
+      });
+
+      // Mint one BodhiApp API token shared across all format tests
+      await test.step('Mint API token', async () => {
+        apiToken = await mintApiToken(
+          tokensPage,
+          page,
+          'live-upstream-api-token',
+          'scope_token_user'
+        );
+        expect(apiToken).toMatch(/^bodhiapp_/);
+      });
+
       // Verify each format's native (primary) endpoint(s)
       await test.step('Primary endpoints with API token', async () => {
         for (const [formatKey, formatConfig] of Object.entries(ApiModelFixtures.API_FORMATS)) {
           const { effectiveModel } = models[formatKey];
-          for (const endpoint of formatConfig.primaryEndpoints) {
+          const streamingEndpoints = formatConfig.streamingEndpoints?.(effectiveModel) ?? [];
+          for (const endpoint of formatConfig.primaryEndpoints(effectiveModel)) {
             const body = formatConfig.buildPrimaryBody(effectiveModel, formatConfig.chatQuestion);
-            const { resp, data } = await fetchWithBearer(sharedServerUrl, apiToken, endpoint, body);
+            const fetchFn = streamingEndpoints.includes(endpoint)
+              ? fetchWithBearerSSE
+              : fetchWithBearer;
+            const { resp, data } = await fetchFn(sharedServerUrl, apiToken, endpoint, body);
             expect(resp.status, `${formatKey} ${endpoint}`).toBe(200);
             const content = formatConfig.extractPrimaryResponse(data);
             expect(content.toLowerCase(), `${formatKey} ${endpoint} response`).toContain(
@@ -270,60 +279,59 @@ test.describe('Live upstream - OAuth app token', () => {
     // Login establishes the KC session needed for the OAuth approval step later
     await loginPage.performOAuthLogin();
 
-    // Create one API model per format with disambiguation prefixes
-    await test.step('Create API models for all formats', async () => {
-      models = await createAllFormatModels(modelsPage, formPage);
-    });
-
-    // Obtain a 3rd-party OAuth Bearer token via the OAuthTestApp (full PKCE flow).
-    // The existing KC session (from performOAuthLogin above) means Keycloak skips re-login.
-    await test.step('Obtain OAuth app token via OAuthTestApp', async () => {
-      const appClient = getPreConfiguredAppClient();
-      const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
-      const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
-
-      await app.navigate();
-      await app.config.configureOAuthForm({
-        bodhiServerUrl: sharedServerUrl,
-        authServerUrl: authServerConfig.authUrl,
-        realm: authServerConfig.authRealm,
-        clientId: appClient.clientId,
-        redirectUri,
-        scope: 'openid profile email',
-        requested: JSON.stringify({ version: '1' }),
+    try {
+      // Create one API model per format with disambiguation prefixes
+      await test.step('Create API models for all formats', async () => {
+        models = await createAllFormatModels(modelsPage, formPage);
       });
 
-      await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
+      // Obtain a 3rd-party OAuth Bearer token via the OAuthTestApp (full PKCE flow).
+      // The existing KC session (from performOAuthLogin above) means Keycloak skips re-login.
+      await test.step('Obtain OAuth app token via OAuthTestApp', async () => {
+        const appClient = getPreConfiguredAppClient();
+        const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
+        const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
-      // Approve the access request as the logged-in BodhiApp user
-      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
-      await reviewPage.approve();
+        await app.navigate();
+        await app.config.configureOAuthForm({
+          bodhiServerUrl: sharedServerUrl,
+          authServerUrl: authServerConfig.authUrl,
+          realm: authServerConfig.authRealm,
+          clientId: appClient.clientId,
+          redirectUri,
+          scope: 'openid profile email',
+          requested: JSON.stringify({ version: '1' }),
+        });
 
-      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
-      await app.accessCallback.waitForLoaded();
-      await app.accessCallback.clickLogin();
-      await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+        await app.config.submitAccessRequest();
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      await app.dashboard.navigateTo();
-      oauthToken = await app.dashboard.getAccessToken();
-      expect(oauthToken).toBeTruthy();
-      expect(oauthToken.length).toBeGreaterThan(50);
-    });
+        // Approve the access request as the logged-in BodhiApp user
+        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
+        await reviewPage.approve();
 
-    try {
+        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+        await app.accessCallback.waitForLoaded();
+        await app.accessCallback.clickLogin();
+        await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+
+        await app.dashboard.navigateTo();
+        oauthToken = await app.dashboard.getAccessToken();
+        expect(oauthToken).toBeTruthy();
+        expect(oauthToken.length).toBeGreaterThan(50);
+      });
+
       // Verify each format's native (primary) endpoint(s)
       await test.step('Primary endpoints with OAuth app token', async () => {
         for (const [formatKey, formatConfig] of Object.entries(ApiModelFixtures.API_FORMATS)) {
           const { effectiveModel } = models[formatKey];
-          for (const endpoint of formatConfig.primaryEndpoints) {
+          const streamingEndpoints = formatConfig.streamingEndpoints?.(effectiveModel) ?? [];
+          for (const endpoint of formatConfig.primaryEndpoints(effectiveModel)) {
             const body = formatConfig.buildPrimaryBody(effectiveModel, formatConfig.chatQuestion);
-            const { resp, data } = await fetchWithBearer(
-              sharedServerUrl,
-              oauthToken,
-              endpoint,
-              body
-            );
+            const fetchFn = streamingEndpoints.includes(endpoint)
+              ? fetchWithBearerSSE
+              : fetchWithBearer;
+            const { resp, data } = await fetchFn(sharedServerUrl, oauthToken, endpoint, body);
             expect(resp.status, `${formatKey} ${endpoint}`).toBe(200);
             const content = formatConfig.extractPrimaryResponse(data);
             expect(content.toLowerCase(), `${formatKey} ${endpoint} response`).toContain(

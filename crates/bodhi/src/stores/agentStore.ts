@@ -12,13 +12,10 @@ import { useChatSettingsStore } from './chatSettingsStore';
 import { nanoid } from '@/lib/utils';
 import { extractTextFromAgentMessage } from '@/types/chat';
 
-// pi-ai's SDK wrappers always send an auth header derived from `apiKey`.
-// BodhiApp's chat UI authenticates through its own proxy using session cookies
-// or a user-configured BodhiApp API token, so we hand pi-ai this sentinel and
-// strip it server-side in the anthropic/openai auth middlewares.
+// Sentinel key for pi-ai SDK: real auth uses session cookies or BodhiApp API token; middleware strips this.
 export const SENTINEL_API_KEY = 'bodhiapp_sentinel_api_key_ignored';
 
-type PiApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
+type PiApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages' | 'google-generative-ai';
 
 function apiFormatToPiApi(apiFormat: ApiFormat): PiApi {
   switch (apiFormat) {
@@ -27,13 +24,17 @@ function apiFormatToPiApi(apiFormat: ApiFormat): PiApi {
     case 'anthropic':
     case 'anthropic_oauth':
       return 'anthropic-messages';
+    case 'gemini':
+      return 'google-generative-ai';
     default:
       return 'openai-completions';
   }
 }
 
 function apiFormatToProvider(apiFormat: ApiFormat): string {
-  return apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth' ? 'anthropic' : 'openai';
+  if (apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth') return 'anthropic';
+  if (apiFormat === 'gemini') return 'google';
+  return 'openai';
 }
 
 function buildModel(modelId: string, baseUrl: string, apiFormat: ApiFormat = 'openai'): Model<PiApi> {
@@ -56,9 +57,7 @@ function createBodhiStreamFn(getApiToken: () => string | undefined): StreamFn {
   return (model, context, options) => {
     const apiToken = getApiToken();
     const settings = useChatSettingsStore.getState();
-    // With a BodhiApp API token, override both headers so it authenticates.
-    // Without one, let the SDK send SENTINEL_API_KEY — middleware strips it
-    // and session-cookie auth takes over.
+    // API token overrides headers; without one, sentinel key is sent and stripped by middleware.
     const headers = apiToken
       ? { ...model.headers, Authorization: `Bearer ${apiToken}`, 'x-api-key': apiToken }
       : model.headers;
@@ -70,11 +69,10 @@ function createBodhiStreamFn(getApiToken: () => string | undefined): StreamFn {
 
 function getBaseUrl(apiFormat: ApiFormat = 'openai'): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-  // pi-ai's Anthropic provider uses the official @anthropic-ai/sdk which
-  // appends `/v1/messages` to the configured baseURL, so we point it at
-  // `/anthropic` so the final URL lands on BodhiApp's proxy endpoint
-  // `/anthropic/v1/messages`.
-  return apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth' ? `${origin}/anthropic` : `${origin}/v1`;
+  // Anthropic SDK appends `/v1/messages`; Gemini SDK appends `/models/{id}:generateContent`.
+  if (apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth') return `${origin}/anthropic`;
+  if (apiFormat === 'gemini') return `${origin}/v1beta`;
+  return `${origin}/v1`;
 }
 
 export interface AgentStoreState {
@@ -101,10 +99,7 @@ export interface AgentStoreState {
   syncAgentSettings: (tools?: AgentTool[]) => void;
 }
 
-// Module-level singleton: one Agent instance per app session.
-// Lives outside Zustand state because the Agent class manages its own
-// internal streaming state and event subscriptions and cannot be serialized.
-// Reset via the store's reset() action.
+// Module-level singleton: lives outside Zustand because Agent manages its own streaming state and cannot be serialized.
 let _agent: Agent | null = null;
 let _agentUnsubscribe: (() => void) | null = null;
 
@@ -161,6 +156,9 @@ function getOrCreateAgent(): Agent {
   return _agent;
 }
 
+const isAgentMessage = (x: unknown): x is AgentMessage =>
+  typeof x === 'object' && x !== null && 'role' in x && 'api' in x && 'provider' in x;
+
 async function restoreMessagesForChat(): Promise<void> {
   const chatStore = useChatStore.getState();
   const settingsStore = useChatSettingsStore.getState();
@@ -183,34 +181,43 @@ async function restoreMessagesForChat(): Promise<void> {
   const modelId = settingsStore.model || 'unknown';
   const apiFormat = settingsStore.apiFormat;
 
-  const restored: AgentMessage[] = messages.map((m) => {
+  const restored: AgentMessage[] = messages.flatMap((m): AgentMessage[] => {
     if (m.role === 'user') {
-      return { role: 'user' as const, content: m.content, timestamp: Date.now() };
+      return [{ role: 'user' as const, content: m.content, timestamp: Date.now() }];
     }
     try {
       const parsed = JSON.parse(m.content);
-      if (parsed && typeof parsed === 'object' && 'role' in parsed) {
-        return parsed as AgentMessage;
+      if (isAgentMessage(parsed)) {
+        return [parsed];
+      }
+      if (parsed && typeof parsed === 'object') {
+        console.warn(
+          'restoreMessagesForChat: dropping malformed assistant message missing required fields (api, provider)',
+          parsed
+        );
+        return [];
       }
       throw new Error('invalid shape');
     } catch {
-      return {
-        role: 'assistant' as const,
-        content: [{ type: 'text' as const, text: m.content }],
-        api: apiFormatToPiApi(apiFormat),
-        provider: apiFormatToProvider(apiFormat),
-        model: modelId,
-        usage: {
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-          totalTokens: 0,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      return [
+        {
+          role: 'assistant' as const,
+          content: [{ type: 'text' as const, text: m.content }],
+          api: apiFormatToPiApi(apiFormat),
+          provider: apiFormatToProvider(apiFormat),
+          model: modelId,
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'stop' as const,
+          timestamp: Date.now(),
         },
-        stopReason: 'stop' as const,
-        timestamp: Date.now(),
-      };
+      ];
     }
   });
 
@@ -283,7 +290,6 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
         );
         set({ messages: [...agent.state.messages] });
       } else {
-        // Save chat
         const ref = get().chatIdRef;
         if (ref) {
           const piMessages = agent.state.messages;
@@ -317,8 +323,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
             enabledMcpTools: enabledMcpTools && Object.keys(enabledMcpTools).length > 0 ? enabledMcpTools : undefined,
           });
 
-          // Save settings BEFORE setting currentChatId, so the cross-store
-          // subscription that fires on setCurrentChatId finds persisted settings.
+          // Save settings before setCurrentChatId so the cross-store subscription finds persisted settings.
           await useChatSettingsStore.getState().saveForChat(ref.id);
 
           if (!chatStore.currentChatId || chatStore.currentChatId !== ref.id) {

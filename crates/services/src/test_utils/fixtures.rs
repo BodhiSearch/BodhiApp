@@ -14,6 +14,24 @@ pub fn openai_model(id: &str) -> ApiModel {
   })
 }
 
+pub fn gemini_model(id: impl Into<String>) -> crate::models::GeminiModel {
+  let id = id.into();
+  crate::models::GeminiModel {
+    name: format!("models/{}", id),
+    version: Some("001".to_string()),
+    display_name: None,
+    description: None,
+    input_token_limit: None,
+    output_token_limit: None,
+    supported_generation_methods: vec![],
+    temperature: None,
+    max_temperature: None,
+    top_p: None,
+    top_k: None,
+    thinking: None,
+  }
+}
+
 pub fn anthropic_model(id: &str) -> ApiModel {
   use crate::models::AnthropicModel;
   ApiModel::Anthropic(AnthropicModel {

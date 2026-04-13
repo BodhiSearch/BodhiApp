@@ -423,7 +423,7 @@ pub(crate) fn validate_extra_headers(
   };
   for key in map.keys() {
     let lower = key.to_ascii_lowercase();
-    if lower == "authorization" || lower == "x-api-key" {
+    if lower == "authorization" || lower == "x-api-key" || lower == "x-goog-api-key" {
       return Err(ApiModelServiceError::Validation(
         crate::ObjValidationError::ExtraHeadersForbiddenKey(key.clone()),
       ));

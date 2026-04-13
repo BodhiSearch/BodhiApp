@@ -73,6 +73,34 @@ fn test_app_error_to_anthropic_envelope(
 }
 
 #[test]
+fn test_5xx_message_is_generic_not_internal_detail() {
+  let api_err = ApiError {
+    name: "database connection pool exhausted: timed out after 5s".to_string(),
+    error_type: "internal_server_error".to_string(),
+    status: 500,
+    code: String::new(),
+    args: std::collections::HashMap::new(),
+  };
+  let anthropic: AnthropicApiError = api_err.into();
+  assert_eq!(500, anthropic.status);
+  assert_eq!("internal server error", anthropic.body.error.message);
+}
+
+#[test]
+fn test_4xx_message_is_preserved() {
+  let api_err = ApiError {
+    name: "alias 'foo' not found".to_string(),
+    error_type: "not_found_error".to_string(),
+    status: 404,
+    code: String::new(),
+    args: std::collections::HashMap::new(),
+  };
+  let anthropic: AnthropicApiError = api_err.into();
+  assert_eq!(404, anthropic.status);
+  assert_eq!("alias 'foo' not found", anthropic.body.error.message);
+}
+
+#[test]
 fn test_missing_model_constructor() {
   let err = AnthropicApiError::missing_model();
   assert_eq!(400, err.status);

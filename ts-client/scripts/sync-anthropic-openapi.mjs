@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, unlinkSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -101,12 +101,7 @@ async function main() {
   console.log('Updated .anthropic-openapi-meta.json');
 
   // Clean up temp file
-  try {
-    const { unlinkSync } = await import('node:fs');
-    unlinkSync(tmpInput);
-  } catch {
-    // ignore
-  }
+  unlinkSync(tmpInput);
 
   console.log('\nGenerating TypeScript types...');
   execSync('npm run generate:types-anthropic', { cwd: TS_CLIENT_DIR, stdio: 'inherit' });

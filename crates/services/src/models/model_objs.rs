@@ -1,4 +1,5 @@
 use crate::models::anthropic_model::AnthropicModel;
+use crate::models::gemini_model::GeminiModel;
 use crate::shared_objs::{is_default, to_safe_filename};
 use async_openai::types::models::Model as OpenAIModel;
 use chrono::{DateTime, Utc};
@@ -129,6 +130,8 @@ pub enum ApiModel {
   OpenAI(OpenAIModel),
   #[serde(rename = "anthropic")]
   Anthropic(AnthropicModel),
+  #[serde(rename = "gemini")]
+  Gemini(GeminiModel),
 }
 
 impl ApiModel {
@@ -136,6 +139,7 @@ impl ApiModel {
     match self {
       ApiModel::OpenAI(m) => &m.id,
       ApiModel::Anthropic(m) => &m.id,
+      ApiModel::Gemini(m) => m.model_id(),
     }
   }
 }
@@ -778,6 +782,9 @@ pub enum ApiFormat {
   #[serde(rename = "anthropic_oauth")]
   #[strum(serialize = "anthropic_oauth")]
   AnthropicOAuth,
+  #[serde(rename = "gemini")]
+  #[strum(serialize = "gemini")]
+  Gemini,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder)]

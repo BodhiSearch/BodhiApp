@@ -25,6 +25,12 @@ anthropic-openapi-filter.yaml
 .anthropic-openapi-full.yml
 openapi-anthropic.json
 
+# Gemini OpenAPI sync artifacts
+gemini-openapi-filter.yaml
+.gemini-openapi-meta.json
+.gemini-openapi-full.json
+openapi-gemini.json
+
 # Development files
 .vscode/
 .idea/

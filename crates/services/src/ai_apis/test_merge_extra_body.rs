@@ -1,4 +1,4 @@
-use super::super::ai_provider_client::merge_extra_body;
+use super::super::provider_shared::merge_extra_body;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};

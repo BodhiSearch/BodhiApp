@@ -28,6 +28,7 @@ State type: `State<Arc<dyn AppService>>`.
 - `api_auth_middleware` (authorization) — all authenticated groups; enforces `ResourceRole` / `TokenScope` / `UserScope` hierarchy
 - `access_request_auth_middleware` (entity-level) — `apps_apis` group only; validates `ExternalApp` against approved access requests
 - `anthropic_auth_middleware` — `/anthropic/*` and `/v1/messages`; strips `SENTINEL_API_KEY`, rewrites `x-api-key` → `Authorization: Bearer`
+- `gemini_auth_middleware` — `/v1beta/*`; strips `SENTINEL_API_KEY` from `x-goog-api-key`, rewrites non-sentinel `x-goog-api-key` → `Authorization: Bearer`
 - `openai_auth_middleware` — `/v1/*`; strips `SENTINEL_API_KEY` from `Authorization` / `x-api-key`
 
 ## Critical Gotcha

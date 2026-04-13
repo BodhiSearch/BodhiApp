@@ -238,6 +238,24 @@ describe('agentStore', () => {
       );
     });
 
+    it('routes gemini format via pi-ai google-generative-ai provider with /v1beta baseUrl', async () => {
+      mockPrompt.mockResolvedValueOnce(undefined);
+      useChatSettingsStore.setState({ model: 'gemini-2.5-flash', apiFormat: 'gemini' });
+
+      await act(async () => {
+        await useAgentStore.getState().append('hi');
+      });
+
+      expect(mockModelSetter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'gemini-2.5-flash',
+          api: 'google-generative-ai',
+          provider: 'google',
+          baseUrl: expect.stringMatching(/\/v1beta$/),
+        })
+      );
+    });
+
     it('configures system prompt on agent', async () => {
       mockPrompt.mockResolvedValueOnce(undefined);
       useChatSettingsStore.setState({ systemPrompt: 'You are helpful', systemPrompt_enabled: true });
@@ -464,6 +482,36 @@ describe('agentStore', () => {
       useChatStore.setState({ currentChatId: 'chat-2' });
 
       expect(useAgentStore.getState().chatIdRef).toBeNull();
+    });
+  });
+
+  describe('restoreMessagesForChat', () => {
+    it('drops structurally-incomplete stored assistant messages missing api/provider fields', async () => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      // Incomplete message: has role but missing api and provider
+      const incompleteMsg = { role: 'assistant', content: [{ type: 'text', text: 'hi' }] };
+      useChatStore.setState({
+        chats: [
+          { id: 'chat-1', messageCount: 1, createdAt: Date.now(), updatedAt: Date.now(), title: 'test', messages: [] },
+        ],
+        currentChatId: 'chat-1',
+        loadMessagesForChat: vi.fn().mockResolvedValue([{ role: 'assistant', content: JSON.stringify(incompleteMsg) }]),
+      });
+
+      await act(async () => {
+        useAgentStore.getState().reset();
+        // Wait a tick for the async restoreMessagesForChat to complete
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(useAgentStore.getState().messages).toHaveLength(0);
+      expect(consoleWarn).toHaveBeenCalledWith(
+        expect.stringContaining('dropping malformed assistant message'),
+        expect.anything()
+      );
+
+      consoleWarn.mockRestore();
     });
   });
 });

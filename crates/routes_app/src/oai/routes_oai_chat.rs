@@ -9,9 +9,10 @@ use async_openai::types::{
   },
   embeddings::{CreateEmbeddingRequest, CreateEmbeddingResponse},
 };
-use axum::{response::Response, Json};
+use axum::{extract::Query, response::Response, Json};
 use axum_extra::extract::WithRejection;
 use services::inference::LlmEndpoint;
+use std::collections::HashMap;
 
 /// Validates basic structure of chat completion request
 fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), OAIRouteError> {
@@ -124,6 +125,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), O
 )]
 pub async fn chat_completions_handler(
   auth_scope: AuthScope,
+  Query(query_params): Query<HashMap<String, String>>,
   WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, JsonRejectionError>,
 ) -> Result<Response, OaiApiError> {
   validate_chat_completion_request(&request)?;
@@ -155,8 +157,21 @@ pub async fn chat_completions_handler(
       ) =>
     {
       let api_key = crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
+      let params: Vec<(String, String)> = query_params.into_iter().collect();
+      let params_opt = if params.is_empty() {
+        None
+      } else {
+        Some(params)
+      };
       inference
-        .forward_remote(LlmEndpoint::ChatCompletions, request, api_alias, api_key)
+        .forward_remote_with_params(
+          LlmEndpoint::ChatCompletions,
+          request,
+          api_alias,
+          api_key,
+          params_opt,
+          None,
+        )
         .await
         .map_err(OaiApiError::from)?
     }
@@ -214,6 +229,7 @@ pub async fn chat_completions_handler(
 )]
 pub async fn embeddings_handler(
   auth_scope: AuthScope,
+  Query(query_params): Query<HashMap<String, String>>,
   WithRejection(Json(request), _): WithRejection<Json<CreateEmbeddingRequest>, JsonRejectionError>,
 ) -> Result<Response, OaiApiError> {
   let model = request.model.clone();
@@ -235,8 +251,21 @@ pub async fn embeddings_handler(
       .map_err(OaiApiError::from)?,
     Alias::Api(ref api_alias) if api_alias.api_format != ApiFormat::OpenAIResponses => {
       let api_key = crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
+      let params: Vec<(String, String)> = query_params.into_iter().collect();
+      let params_opt = if params.is_empty() {
+        None
+      } else {
+        Some(params)
+      };
       inference
-        .forward_remote(LlmEndpoint::Embeddings, request_value, api_alias, api_key)
+        .forward_remote_with_params(
+          LlmEndpoint::Embeddings,
+          request_value,
+          api_alias,
+          api_key,
+          params_opt,
+          None,
+        )
         .await
         .map_err(OaiApiError::from)?
     }

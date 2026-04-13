@@ -4,6 +4,7 @@ export class ApiModelFixtures {
   static OPENAI_MODEL = 'gpt-4.1-nano';
   static OPENROUTER_MODEL = 'openai/gpt-4.1-nano';
   static ANTHROPIC_MODEL = 'claude-3-haiku-20240307';
+  static GEMINI_MODEL = 'gemini-2.5-flash';
 
   // Parameterized API format configs for multi-format E2E testing.
   // Add new formats here to automatically get test coverage.
@@ -23,7 +24,7 @@ export class ApiModelFixtures {
       chatEndpoint: '/v1/chat/completions',
       mockResponse: 'David Smith is from Chicago',
       // Native endpoint(s) this format is served on
-      primaryEndpoints: ['/v1/chat/completions'],
+      primaryEndpoints: () => ['/v1/chat/completions'],
       buildPrimaryBody: (model, question) => ({
         model,
         messages: [{ role: 'user', content: question }],
@@ -46,7 +47,7 @@ export class ApiModelFixtures {
       chatExpected: 'tuesday',
       chatEndpoint: '/v1/responses',
       mockResponse: 'David Smith is from Chicago',
-      primaryEndpoints: ['/v1/responses'],
+      primaryEndpoints: () => ['/v1/responses'],
       buildPrimaryBody: (model, question) => ({
         model,
         input: question,
@@ -82,7 +83,7 @@ export class ApiModelFixtures {
       // BodhiApp exposes the Anthropic protocol on two paths:
       //   /v1/messages            – for clients that set base_url to http://bodhi-server/
       //   /anthropic/v1/messages  – for Anthropic SDK clients (base_url = http://bodhi-server/anthropic/)
-      primaryEndpoints: ['/v1/messages', '/anthropic/v1/messages'],
+      primaryEndpoints: () => ['/v1/messages', '/anthropic/v1/messages'],
       buildPrimaryBody: (model, question) => ({
         model,
         max_tokens: 50,
@@ -104,7 +105,7 @@ export class ApiModelFixtures {
       chatExpected: 'tuesday',
       chatEndpoint: '/v1/messages',
       mockResponse: 'David Smith is from Chicago',
-      primaryEndpoints: ['/v1/messages', '/anthropic/v1/messages'],
+      primaryEndpoints: () => ['/v1/messages', '/anthropic/v1/messages'],
       buildPrimaryBody: (model, question) => ({
         model,
         max_tokens: 50,
@@ -124,6 +125,43 @@ export class ApiModelFixtures {
           { type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." },
         ],
       },
+    },
+    gemini: {
+      format: 'gemini',
+      formatDisplayName: 'Google Gemini',
+      model: ApiModelFixtures.GEMINI_MODEL,
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+      envKey: 'INTEG_TEST_GEMINI_API_KEY',
+      chatQuestion: 'What day comes after Monday?',
+      chatExpected: 'tuesday',
+      chatEndpoint: `/v1beta/models/${ApiModelFixtures.GEMINI_MODEL}:generateContent`,
+      mockResponse: 'David Smith is from Chicago',
+      primaryEndpoints: (effectiveModel) => [
+        `/v1beta/models/${effectiveModel}:generateContent`,
+        `/v1beta/models/${effectiveModel}:streamGenerateContent`,
+      ],
+      // Streaming endpoints require SSE-aware fetch; map endpoint suffix to fetch strategy.
+      streamingEndpoints: (effectiveModel) => [
+        `/v1beta/models/${effectiveModel}:streamGenerateContent`,
+      ],
+      buildPrimaryBody: (model, question) => ({
+        contents: [{ role: 'user', parts: [{ text: question }] }],
+      }),
+      extractPrimaryResponse: (data) => {
+        // Streaming: concat text parts across all SSE chunks.
+        if (Array.isArray(data.chunks) && data.chunks.length > 0) {
+          return data.chunks
+            .map((c) => c.candidates?.[0]?.content?.parts?.[0]?.text ?? '')
+            .join('');
+        }
+        return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      },
+      multiTestPrefix: 'gmn/',
+      supportsUniversalChatCompletions: false,
+      // Mock-specific fields for api-models-no-key.spec.mjs
+      mockBaseUrlSuffix: '/v1beta',
+      mockModel: 'mock-gemini-flash',
+      mockSecondaryModel: 'mock-gemini-pro',
     },
   };
 

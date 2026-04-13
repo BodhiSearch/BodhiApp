@@ -17,6 +17,11 @@ pub enum LlmEndpoint {
   AnthropicMessages,
   AnthropicModels,
   AnthropicModel(String),
+  GeminiModels,
+  GeminiModel(String),
+  GeminiGenerateContent(String),
+  GeminiStreamGenerateContent(String),
+  GeminiEmbedContent(String),
 }
 
 impl LlmEndpoint {
@@ -31,6 +36,11 @@ impl LlmEndpoint {
       Self::AnthropicMessages => "/messages".to_string(),
       Self::AnthropicModels => "/models".to_string(),
       Self::AnthropicModel(id) => format!("/models/{}", id),
+      Self::GeminiModels => "/models".to_string(),
+      Self::GeminiModel(id) => format!("/models/{}", id),
+      Self::GeminiGenerateContent(id) => format!("/models/{}:generateContent", id),
+      Self::GeminiStreamGenerateContent(id) => format!("/models/{}:streamGenerateContent", id),
+      Self::GeminiEmbedContent(id) => format!("/models/{}:embedContent", id),
     }
   }
 
@@ -38,6 +48,7 @@ impl LlmEndpoint {
     match self {
       Self::ResponsesGet(_) | Self::ResponsesInputItems(_) => &Method::GET,
       Self::AnthropicModels | Self::AnthropicModel(_) => &Method::GET,
+      Self::GeminiModels | Self::GeminiModel(_) => &Method::GET,
       Self::ResponsesDelete(_) => &Method::DELETE,
       _ => &Method::POST,
     }
@@ -57,7 +68,28 @@ mod tests {
     "/models/claude-3-5-sonnet",
     &Method::GET
   )]
-  fn test_anthropic_endpoint_paths(
+  #[case(LlmEndpoint::GeminiModels, "/models", &Method::GET)]
+  #[case(
+    LlmEndpoint::GeminiModel("gemini-2.5-flash".to_string()),
+    "/models/gemini-2.5-flash",
+    &Method::GET
+  )]
+  #[case(
+    LlmEndpoint::GeminiGenerateContent("gemini-2.5-flash".to_string()),
+    "/models/gemini-2.5-flash:generateContent",
+    &Method::POST
+  )]
+  #[case(
+    LlmEndpoint::GeminiStreamGenerateContent("gemini-2.5-flash".to_string()),
+    "/models/gemini-2.5-flash:streamGenerateContent",
+    &Method::POST
+  )]
+  #[case(
+    LlmEndpoint::GeminiEmbedContent("gemini-2.5-flash".to_string()),
+    "/models/gemini-2.5-flash:embedContent",
+    &Method::POST
+  )]
+  fn test_endpoint_paths(
     #[case] endpoint: LlmEndpoint,
     #[case] expected_path: &str,
     #[case] expected_method: &Method,

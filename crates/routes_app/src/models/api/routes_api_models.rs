@@ -300,11 +300,11 @@ pub async fn api_models_fetch_models(
     tag = API_TAG_MODELS_API,
     operation_id = "getApiFormats",
     summary = "Get Available API Formats",
-    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), and 'anthropic_oauth' (Anthropic via OAuth Bearer token).",
+    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), 'anthropic_oauth' (Anthropic via OAuth Bearer token), and 'gemini' (Google Gemini).",
     responses(
         (status = 200, description = "API formats retrieved successfully", body = ApiFormatsResponse,
          example = json!({
-             "data": ["openai", "openai_responses", "anthropic", "anthropic_oauth"]
+             "data": ["openai", "openai_responses", "anthropic", "anthropic_oauth", "gemini"]
          })),
     ),
     security(
@@ -320,6 +320,7 @@ pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, ApiError> 
       ApiFormat::OpenAIResponses,
       ApiFormat::Anthropic,
       ApiFormat::AnthropicOAuth,
+      ApiFormat::Gemini,
     ],
   }))
 }

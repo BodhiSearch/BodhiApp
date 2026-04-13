@@ -13,3 +13,7 @@ export type {
   paths as pathsAnthropic,
   components as componentsAnthropic,
 } from './openapi-typescript/openapi-schema-anthropic';
+export type {
+  paths as pathsGemini,
+  components as componentsGemini,
+} from './openapi-typescript/openapi-schema-gemini';

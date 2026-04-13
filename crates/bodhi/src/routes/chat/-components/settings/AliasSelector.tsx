@@ -12,7 +12,7 @@ import { modelKeys } from '@/hooks/models/constants';
 import { useQueryClient } from '@/hooks/useQuery';
 import type { ApiFormat } from '@bodhiapp/ts-client';
 import { isApiAlias } from '@/lib/utils';
-import { formatPrefixedModel } from '@/schemas/apiModel';
+import { formatPrefixedModel, getApiModelId } from '@/schemas/apiModel';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
 
 interface AliasSelectorProps {
@@ -39,7 +39,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     models.forEach((m) => {
       if (isApiAlias(m)) {
         (m.models || []).forEach((apiModel) => {
-          map.set(formatPrefixedModel(apiModel.id, m.prefix), m);
+          map.set(formatPrefixedModel(getApiModelId(apiModel, m.prefix), m.prefix), m);
         });
       } else {
         map.set(m.alias, m);
@@ -48,23 +48,23 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     return map;
   }, [models]);
 
+  // Derive the api_format for the currently selected model; depends only on the selected entry, not the whole map.
+  const selectedAlias = useMemo(() => modelToAliasMap.get(model ?? ''), [modelToAliasMap, model]);
+  const selectedApiFormat: ApiFormat =
+    selectedAlias && isApiAlias(selectedAlias) ? (selectedAlias.api_format as ApiFormat) : 'openai';
+
   // Sync apiFormat when the selected model changes (e.g., from URL params or chat history restore)
   useEffect(() => {
     if (!model || models.length === 0) return;
-    const alias = modelToAliasMap.get(model);
-    if (alias && isApiAlias(alias)) {
-      setApiFormat(alias.api_format as ApiFormat);
-    } else {
-      setApiFormat('openai');
-    }
-  }, [model, modelToAliasMap, setApiFormat]);
+    setApiFormat(selectedApiFormat);
+  }, [model, models.length, selectedApiFormat, setApiFormat]);
 
   // Transform models array to match ComboBoxResponsive's Status type
   const modelStatuses = models.flatMap((m) => {
     if (isApiAlias(m)) {
       // For API models, create entries for each individual model with prefix if exists
       return (m.models || []).map((apiModel) => {
-        const prefixedModelName = formatPrefixedModel(apiModel.id, m.prefix);
+        const prefixedModelName = formatPrefixedModel(getApiModelId(apiModel, m.prefix), m.prefix);
         return {
           value: prefixedModelName,
           label: prefixedModelName,

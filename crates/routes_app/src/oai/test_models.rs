@@ -10,9 +10,9 @@ use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
-use services::test_utils::{anthropic_model, openai_model, TEST_TENANT_ID};
+use services::test_utils::{anthropic_model, gemini_model, openai_model, TEST_TENANT_ID};
 use services::{test_utils::AppServiceStubBuilder, AppService};
-use services::{ApiAlias, ApiFormat, AuthContext, ResourceRole};
+use services::{ApiAlias, ApiFormat, ApiModel, AuthContext, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -489,6 +489,128 @@ async fn test_oai_endpoints_allow_all_roles(
     response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
     "{role} should be allowed to {method} {path}, got {}",
     response.status()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oai_models_handler_gemini_alias_included_with_prefix() -> anyhow::Result<()> {
+  // Gemini alias with prefix should surface in /v1/models and /bodhi/v1/models
+  // with the alias prefix applied to the model id.
+  let service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .with_db_service()
+    .await
+    .build()
+    .await?;
+  let db_service = service.db_service();
+
+  let api_alias = ApiAlias::new(
+    "gemini-alias",
+    ApiFormat::Gemini,
+    "https://generativelanguage.googleapis.com/v1beta",
+    vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))],
+    Some("google/".to_string()),
+    false,
+    db_service.now(),
+    None,
+    None,
+  );
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, "test-user", &api_alias, None)
+    .await?;
+
+  let app = create_router(Arc::new(service));
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let response = response.json::<Value>().await?;
+  let data = response["data"]
+    .as_array()
+    .expect("expected data to be an array");
+  let model_ids: Vec<&str> = data
+    .iter()
+    .map(|m| m["id"].as_str().expect("expected id to be a string"))
+    .collect();
+  assert!(
+    model_ids.contains(&"google/gemini-2.5-flash"),
+    "Gemini alias models should appear in /v1/models with prefix; got: {:?}",
+    model_ids
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oai_models_handler_gemini_alias_included_without_prefix() -> anyhow::Result<()> {
+  let service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .with_db_service()
+    .await
+    .build()
+    .await?;
+  let db_service = service.db_service();
+
+  let api_alias = ApiAlias::new(
+    "gemini-alias",
+    ApiFormat::Gemini,
+    "https://generativelanguage.googleapis.com/v1beta",
+    vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))],
+    None,
+    false,
+    db_service.now(),
+    None,
+    None,
+  );
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, "test-user", &api_alias, None)
+    .await?;
+
+  let app = create_router(Arc::new(service));
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/v1/models")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let response = response.json::<Value>().await?;
+  let data = response["data"]
+    .as_array()
+    .expect("expected data to be an array");
+  let model_ids: Vec<&str> = data
+    .iter()
+    .map(|m| m["id"].as_str().expect("expected id to be a string"))
+    .collect();
+  assert!(
+    model_ids.contains(&"gemini-2.5-flash"),
+    "Gemini alias models without prefix should appear in /v1/models; got: {:?}",
+    model_ids
   );
   Ok(())
 }

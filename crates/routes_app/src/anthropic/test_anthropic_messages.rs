@@ -414,3 +414,55 @@ async fn test_messages_create_client_anthropic_version_forwarded() -> anyhow::Re
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_anthropic_messages_forwards_query_params() -> anyhow::Result<()> {
+  let mut builder = AppServiceStubBuilder::default();
+  seed_anthropic_alias(&mut builder).await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, _alias, _key, params, _headers| {
+      *endpoint == LlmEndpoint::AnthropicMessages
+        && params
+          .as_ref()
+          .is_some_and(|p| p.iter().any(|(k, v)| k == "foo" && v == "bar"))
+    })
+    .times(1)
+    .return_once(|_, _, _, _, _, _| ok_response());
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route(
+      "/anthropic/v1/messages",
+      post(anthropic_messages_create_handler),
+    )
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/anthropic/v1/messages?foo=bar")
+        .json(json!({
+          "model": "claude-3-5-sonnet-20241022",
+          "max_tokens": 100,
+          "messages": [{"role": "user", "content": "hi"}]
+        }))?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}

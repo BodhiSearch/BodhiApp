@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useToast } from '@/hooks/use-toast';
 import { useRefreshSingleMetadata } from '@/hooks/models';
 import { hasModelMetadata, hasLocalFileProperties, isApiAlias } from '@/lib/utils';
+import { getApiModelId } from '@/schemas/apiModel';
 
 interface ModelPreviewModalProps {
   open: boolean;
@@ -235,11 +236,14 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
                   <div className="pt-2">
                     <span className="text-sm text-muted-foreground">Available Models:</span>
                     <div className="flex flex-wrap gap-1 mt-2" data-testid="preview-api-models">
-                      {model.models.slice(0, 10).map((m) => (
-                        <Badge key={m.id} variant="outline" className="text-xs">
-                          {m.id}
-                        </Badge>
-                      ))}
+                      {model.models.slice(0, 10).map((m) => {
+                        const mid = getApiModelId(m, model.prefix);
+                        return (
+                          <Badge key={mid} variant="outline" className="text-xs">
+                            {mid}
+                          </Badge>
+                        );
+                      })}
                       {model.models.length > 10 && (
                         <Badge variant="outline" className="text-xs">
                           +{model.models.length - 10} more

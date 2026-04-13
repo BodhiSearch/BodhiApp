@@ -1,0 +1,11 @@
+inverseOperationIds:
+  - ListModels
+  - GetModel
+  - GenerateContent
+  - StreamGenerateContent
+  - EmbedContent
+unusedComponents:
+  - schemas
+  - parameters
+  - examples
+  - headers

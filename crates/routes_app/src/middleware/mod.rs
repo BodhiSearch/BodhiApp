@@ -1,8 +1,9 @@
 pub mod access_requests;
-mod anthropic_auth_middleware;
+pub mod anthropic_auth_middleware;
 pub mod apis;
 pub mod auth;
 mod error;
+mod gemini_auth_middleware;
 mod openai_auth_middleware;
 pub mod redirects;
 pub mod token_service;
@@ -13,6 +14,7 @@ pub use anthropic_auth_middleware::*;
 pub use apis::*;
 pub use auth::*;
 pub use error::MiddlewareError;
+pub use gemini_auth_middleware::*;
 pub use openai_auth_middleware::*;
 pub use redirects::*;
 pub use token_service::*;

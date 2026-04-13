@@ -440,3 +440,42 @@ async fn test_create_api_model_http_error_code_for_pass_through_auth(
   assert_eq!("validation_error", code);
   Ok(())
 }
+
+// x-goog-api-key is checked at the service layer (not struct validation), so returns a different code.
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_api_model_http_error_code_for_x_goog_api_key(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let mut mock_ai = services::MockAiApiService::new();
+  mock_ai
+    .expect_fetch_models()
+    .returning(|_, _, _, _, _| Ok(vec![]));
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .ai_api_service(Arc::new(mock_ai))
+    .build()
+    .await?;
+  let create_form = ApiModelRequest {
+    api_format: ApiFormat::Gemini,
+    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+    api_key: ApiKeyUpdate::Set(ApiKey::some("AIza-token".to_string())?),
+    models: vec!["gemini-2.5-flash".to_string()],
+    prefix: None,
+    forward_all_with_prefix: false,
+    extra_headers: Some(json!({"X-Goog-Api-Key": "AIza-xxx"})),
+    extra_body: None,
+  };
+  let response = test_router(Arc::new(app_service))
+    .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let error = response.json::<serde_json::Value>().await?;
+  let code = error["error"]["code"].as_str().unwrap_or("");
+  assert_eq!("api_model_service_error-validation", code);
+  Ok(())
+}

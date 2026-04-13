@@ -79,13 +79,20 @@ fn map_error_type(bodhi_error_type: &str) -> &'static str {
 
 impl From<ApiError> for AnthropicApiError {
   fn from(value: ApiError) -> Self {
+    // 5xx error names may include internal service/DB details — substitute a generic
+    // message so implementation details don't leak to Anthropic SDK callers.
+    let message = if value.status >= 500 {
+      "internal server error".to_string()
+    } else {
+      value.name
+    };
     Self {
       status: value.status,
       body: AnthropicErrorResponse {
         envelope_type: "error",
         error: AnthropicErrorBody {
           error_type: map_error_type(&value.error_type),
-          message: value.name,
+          message,
         },
       },
     }

@@ -64,12 +64,12 @@ async fn test_responses_create_success() -> anyhow::Result<()> {
 
   let mut mock_inference = MockInferenceService::new();
   mock_inference
-    .expect_forward_remote()
-    .withf(|endpoint, _req, alias, _key| {
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, alias, _key, _params, _headers| {
       *endpoint == LlmEndpoint::Responses && alias.id == "resp-alias"
     })
     .times(1)
-    .return_once(|_, _, _, _| ok_response());
+    .return_once(|_, _, _, _, _, _| ok_response());
 
   let app_service = builder
     .inference_service(Arc::new(mock_inference))
@@ -148,13 +148,13 @@ async fn test_responses_delete_success() -> anyhow::Result<()> {
 
   let mut mock_inference = MockInferenceService::new();
   mock_inference
-    .expect_forward_remote()
-    .withf(|endpoint, _req, alias, _key| {
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, alias, _key, _params, _headers| {
       *endpoint == LlmEndpoint::ResponsesDelete("resp-abc-123".to_string())
         && alias.id == "resp-alias"
     })
     .times(1)
-    .return_once(|_, _, _, _| ok_response());
+    .return_once(|_, _, _, _, _, _| ok_response());
 
   let app_service = builder
     .inference_service(Arc::new(mock_inference))
@@ -240,13 +240,13 @@ async fn test_responses_cancel_success() -> anyhow::Result<()> {
 
   let mut mock_inference = MockInferenceService::new();
   mock_inference
-    .expect_forward_remote()
-    .withf(|endpoint, _req, alias, _key| {
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, alias, _key, _params, _headers| {
       *endpoint == LlmEndpoint::ResponsesCancel("resp-abc-123".to_string())
         && alias.id == "resp-alias"
     })
     .times(1)
-    .return_once(|_, _, _, _| ok_response());
+    .return_once(|_, _, _, _, _, _| ok_response());
 
   let app_service = builder
     .inference_service(Arc::new(mock_inference))
@@ -365,6 +365,51 @@ async fn test_responses_input_items_forwards_extra_query_params() -> anyhow::Res
     .oneshot(
       Request::get("/v1/responses/resp-abc-123/input_items?model=resp%2Fgpt-4o&after=item_456")
         .body(axum::body::Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_create_forwards_query_params() -> anyhow::Result<()> {
+  let mut builder = AppServiceStubBuilder::default();
+  seed_responses_alias(&mut builder).await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, _alias, _key, params, _headers| {
+      *endpoint == LlmEndpoint::Responses
+        && params
+          .as_ref()
+          .is_some_and(|p| p.iter().any(|(k, v)| k == "foo" && v == "bar"))
+    })
+    .times(1)
+    .return_once(|_, _, _, _, _, _| ok_response());
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/responses", post(responses_create_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/responses?foo=bar")
+        .json(serde_json::json!({"model": "resp/gpt-4o", "input": "hello"}))?
         .with_auth_context(AuthContext::test_session(
           TEST_USER_ID,
           "testuser",

@@ -18,6 +18,7 @@ import { expect, test } from '@/fixtures.mjs';
 // included here since the same mock server makes it deterministic.
 
 const MOCK_MODELS = ['mock-gpt-4', 'mock-gpt-3.5-turbo'];
+const MOCK_GEMINI_MODELS = ['mock-gemini-flash', 'mock-gemini-pro'];
 const MOCK_RESPONSE = 'David Smith is from Chicago';
 
 test.describe('API Models - Optional Key (Mock Server)', () => {
@@ -57,6 +58,60 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         return false;
       },
     });
+    // Mount a /v1beta handler for Gemini endpoints.
+    sharedMockServer.mount('/v1beta', {
+      async handleRequest(req, res, pathname) {
+        // GET /models -> Gemini models list
+        if (pathname === '/models' && req.method === 'GET') {
+          const models = MOCK_GEMINI_MODELS.map((id) => ({
+            name: `models/${id}`,
+            version: '001',
+            displayName: id,
+            supportedGenerationMethods: ['generateContent', 'embedContent'],
+            description: `Mock ${id}`,
+          }));
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ models }));
+          return true;
+        }
+        // POST /models/{id}:generateContent -> non-streaming Gemini response
+        if (req.method === 'POST' && pathname.endsWith(':generateContent')) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              candidates: [
+                {
+                  content: { role: 'model', parts: [{ text: MOCK_RESPONSE }] },
+                  finishReason: 'STOP',
+                },
+              ],
+            })
+          );
+          return true;
+        }
+        // POST /models/{id}:streamGenerateContent -> SSE streaming Gemini response
+        if (req.method === 'POST' && pathname.endsWith(':streamGenerateContent')) {
+          res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive',
+          });
+          const chunk = JSON.stringify({
+            candidates: [
+              {
+                content: { role: 'model', parts: [{ text: MOCK_RESPONSE }] },
+                finishReason: 'STOP',
+              },
+            ],
+            usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 5, totalTokenCount: 10 },
+          });
+          res.write(`data: ${chunk}\r\n\r\n`);
+          res.end();
+          return true;
+        }
+        return false;
+      },
+    });
     await sharedMockServer.start();
   });
 
@@ -81,7 +136,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
       });
 
       test('api key lifecycle - starting with key', async ({ page }) => {
-        const mockServerUrl = sharedMockServer.url + '/v1';
+        const mockServerUrl = sharedMockServer.url + (formatConfig.mockBaseUrlSuffix ?? '/v1');
+        const primaryModel = formatConfig.mockModel ?? 'mock-gpt-4';
+        const secondaryModel = formatConfig.mockSecondaryModel ?? 'mock-gpt-3.5-turbo';
 
         await loginPage.performOAuthLogin();
         await modelsPage.navigateToModels();
@@ -95,13 +152,13 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         await formPage.form.fillApiKey('test-key-initial');
         await formPage.form.clickFetchModels();
         await formPage.form.expectFetchSuccess();
-        await formPage.form.searchAndSelectModel('mock-gpt-4');
+        await formPage.form.searchAndSelectModel(primaryModel);
         await formPage.form.testConnection();
         const modelId = await formPage.createModelAndCaptureId();
 
         // Step 2: Test in chat with initial key
         await chatPage.navigateToChat();
-        await chatPage.selectModel('mock-gpt-4');
+        await chatPage.selectModel(primaryModel);
         await chatPage.sendMessage('Hello');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
@@ -113,12 +170,12 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         expect(await formPage.form.isUseApiKeyChecked()).toBe(true);
         await formPage.form.clickFetchModels();
         await formPage.form.expectFetchSuccess();
-        await formPage.form.searchAndSelectModel('mock-gpt-3.5-turbo');
+        await formPage.form.searchAndSelectModel(secondaryModel);
         await formPage.updateModel();
 
         // Step 4: Test chat with other model using kept key
         await chatPage.navigateToChat();
-        await chatPage.selectModel('mock-gpt-3.5-turbo');
+        await chatPage.selectModel(secondaryModel);
         await chatPage.sendMessage('Test other model');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
@@ -135,7 +192,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
 
         // Step 6: Test chat with changed key
         await chatPage.navigateToChat();
-        await chatPage.selectModel('mock-gpt-4');
+        await chatPage.selectModel(primaryModel);
         await chatPage.sendMessage('Changed key test');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
@@ -154,7 +211,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
 
         // Step 8: Test chat without key
         await chatPage.navigateToChat();
-        await chatPage.selectModel('mock-gpt-4');
+        await chatPage.selectModel(primaryModel);
         await chatPage.sendMessage('No key test');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
@@ -164,7 +221,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
       });
 
       test('api key lifecycle - starting without key', async ({ page }) => {
-        const mockServerUrl = sharedMockServer.url + '/v1';
+        const mockServerUrl = sharedMockServer.url + (formatConfig.mockBaseUrlSuffix ?? '/v1');
+        const primaryModel = formatConfig.mockModel ?? 'mock-gpt-4';
+        const secondaryModel = formatConfig.mockSecondaryModel ?? 'mock-gpt-3.5-turbo';
 
         await loginPage.performOAuthLogin();
         await modelsPage.navigateToModels();
@@ -177,13 +236,13 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         await formPage.form.uncheckUseApiKey();
         await formPage.form.clickFetchModels();
         await formPage.form.expectFetchSuccess();
-        await formPage.form.searchAndSelectModel('mock-gpt-4');
+        await formPage.form.searchAndSelectModel(primaryModel);
         await formPage.form.testConnection();
         const modelId = await formPage.createModelAndCaptureId();
 
         // Step 2: Test in chat without key
         await chatPage.navigateToChat();
-        await chatPage.selectModel('mock-gpt-4');
+        await chatPage.selectModel(primaryModel);
         await chatPage.sendMessage('Hello');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
@@ -195,12 +254,12 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         expect(await formPage.form.isUseApiKeyChecked()).toBe(false);
         await formPage.form.clickFetchModels();
         await formPage.form.expectFetchSuccess();
-        await formPage.form.searchAndSelectModel('mock-gpt-3.5-turbo');
+        await formPage.form.searchAndSelectModel(secondaryModel);
         await formPage.updateModel();
 
         // Step 4: Test chat with other model, still no key
         await chatPage.navigateToChat();
-        await chatPage.selectModel('mock-gpt-3.5-turbo');
+        await chatPage.selectModel(secondaryModel);
         await chatPage.sendMessage('Test other model');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
@@ -217,7 +276,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
 
         // Step 6: Test chat with added key
         await chatPage.navigateToChat();
-        await chatPage.selectModel('mock-gpt-4');
+        await chatPage.selectModel(primaryModel);
         await chatPage.sendMessage('Added key test');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
@@ -236,7 +295,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
 
         // Step 8: Test chat without key again
         await chatPage.navigateToChat();
-        await chatPage.selectModel('mock-gpt-4');
+        await chatPage.selectModel(primaryModel);
         await chatPage.sendMessage('Back to no key');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);

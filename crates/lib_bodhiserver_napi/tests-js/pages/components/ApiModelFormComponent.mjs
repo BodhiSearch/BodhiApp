@@ -35,6 +35,7 @@ export class ApiModelFormComponent {
     openai_responses: 'OpenAI - Responses',
     anthropic: 'Anthropic',
     anthropic_oauth: 'Anthropic (Claude Code OAuth)',
+    gemini: 'Google Gemini',
   };
 
   static getFormatDisplayName(format) {
@@ -58,6 +59,10 @@ export class ApiModelFormComponent {
     } else if (format === 'anthropic' || format === 'anthropic_oauth') {
       await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
         'https://api.anthropic.com/v1'
+      );
+    } else if (format === 'gemini') {
+      await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
+        'https://generativelanguage.googleapis.com/v1beta'
       );
     }
   }
@@ -289,7 +294,7 @@ export class ApiModelFormComponent {
         }
 
         if (attempt < maxAttempts) {
-          await this.page.waitForTimeout(1000);
+          await this.page.locator(this.selectors.fetchModelsButton).waitFor({ state: 'visible' });
         } else {
           throw new Error(
             `Failed to fetch models after ${maxAttempts} attempts. Final state: ${fetchResult.fetchState}, hasModels: ${fetchResult.hasModels}`
@@ -297,7 +302,7 @@ export class ApiModelFormComponent {
         }
       } catch (error) {
         if (attempt < maxAttempts) {
-          await this.page.waitForTimeout(1000);
+          await this.page.locator(this.selectors.fetchModelsButton).waitFor({ state: 'visible' });
         } else {
           throw error;
         }
@@ -346,7 +351,9 @@ export class ApiModelFormComponent {
       } catch (error) {
         if (attempt < maxAttempts) {
           console.log(`Test connection attempt ${attempt} failed, retrying...`);
-          await this.page.waitForTimeout(1000);
+          await this.page
+            .locator(this.selectors.testConnectionButton)
+            .waitFor({ state: 'visible' });
         } else {
           throw new Error(
             `Failed to test connection after ${maxAttempts} attempts. Last error: ${error.message}`
