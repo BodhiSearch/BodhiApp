@@ -10,7 +10,7 @@ The Models page (`/ui/models/`) is the central hub for managing all models avail
 
 1. **User Defined Model Aliases** — Custom YAML configurations with tailored request and context parameters. Source badge: **user**.
 2. **GGUF Model File Defined Aliases** — Direct references to downloaded GGUF model files that use embedded metadata for automatic configuration. Source badge: **model**.
-3. **API Models** — Cloud-based models from providers like OpenAI, OpenRouter, and HuggingFace. Source badge: **API**. See [API Models](/docs/features/models/api-models) for configuration details.
+3. **API Models** — Cloud-based models from providers like OpenAI, Anthropic, Google Gemini, OpenRouter, and HuggingFace. Source badge: **API**. See [API Models](/docs/features/models/api-models) for configuration details.
 
 ## GGUF Model Metadata
 

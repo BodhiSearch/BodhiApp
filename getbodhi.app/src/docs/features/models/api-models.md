@@ -12,10 +12,11 @@ Bodhi App supports hybrid AI architecture - use powerful API models from leading
 
 **Key Features**:
 
-- OpenAI API format support
-- Multi-provider support providing API in OpenAI format, e.g. OpenAI, OpenRouter, HuggingFace Inference APIs
-- Access to a variety of models from the supported providers (Anthropic, Groq, Mistral, Perplexity, Qwen etc. via OpenRouter)
+- Five API formats: OpenAI Completions, OpenAI Responses, Anthropic, Anthropic OAuth, and Google Gemini
+- Multi-provider support — connect to OpenAI, Anthropic, Google, OpenRouter, HuggingFace, or any compatible endpoint
+- Native proxy endpoints for each format (e.g. `/v1/chat/completions`, `/v1/responses`, `/anthropic/v1/messages`, `/v1beta/models/...`)
 - Optional API key with encrypted storage (AES-GCM)
+- Extra headers and extra body fields for advanced per-provider customization
 - Model discovery from provider APIs
 - Prefix-based routing for namespace separation
 - Forward All with Prefix mode — forward every model from a provider via prefix routing without selecting individual models
@@ -26,7 +27,7 @@ Bodhi App supports hybrid AI architecture - use powerful API models from leading
 
 **Advantages**:
 
-- Access latest frontier models (GPT-5, Claude Sonnet 4.5, Grok via cloud)
+- Access latest frontier models (GPT-4o, Claude 3.5 Sonnet, Gemini 2.5 Flash, and others via cloud)
 - No local GPU required
 - Instant availability (no downloads)
 - Automatic model updates from providers
@@ -39,47 +40,65 @@ Bodhi App supports hybrid AI architecture - use powerful API models from leading
 
 ## Supported API Formats and Providers
 
-**API Format**: Bodhi App currently supports the **OpenAI API format** for remote model providers.
+Bodhi App supports five API formats. Each format determines how requests are routed, which proxy endpoints are available, and what authentication method is used.
 
-**How Providers Work**: A provider is defined by the combination of:
+| API Format         | UI Display Name               | Auth Method                          | Proxy Endpoint(s)                        |
+| ------------------ | ----------------------------- | ------------------------------------ | ---------------------------------------- |
+| `openai`           | OpenAI - Completions          | API key (Bearer)                     | `/v1/chat/completions`, `/v1/embeddings` |
+| `openai_responses` | OpenAI - Responses            | API key (Bearer)                     | `/v1/responses` (full CRUD)              |
+| `anthropic`        | Anthropic                     | API key (`x-api-key` or Bearer)      | `/anthropic/v1/messages`, `/v1/messages` |
+| `anthropic_oauth`  | Anthropic (Claude Code OAuth) | Bearer token + extra headers         | `/anthropic/v1/messages`, `/v1/messages` |
+| `gemini`           | Google Gemini                 | API key (`x-goog-api-key` or Bearer) | `/v1beta/models/{model}:{action}`        |
 
-- **API Format**: The API specification (currently OpenAI format only)
-- **Base URL**: The endpoint URL that identifies which provider service you're connecting to
+**How providers work**: A provider is defined by the combination of:
 
-**Tested Providers** (all using OpenAI API format):
+- **API Format**: Which API protocol Bodhi App uses to talk to the upstream service
+- **Base URL**: The upstream endpoint for that provider
 
-- OpenAI
-- OpenRouter
-- HuggingFace Inference API
-
-**Custom Providers**: Any provider that implements the OpenAI-compatible API format can be configured by manually entering its base URL and API key.
-
-**Available Models**: When you configure a provider, Bodhi App fetches all currently available models from that provider. Only added models will be available for chat completion or embedding requests.
+**Available models**: When you configure a provider, Bodhi App fetches all currently available models from that provider. Only the models you add are accessible for chat or API calls.
 
 ### Getting Started with Common Providers
 
-All providers listed below use the **OpenAI API format**. Configure them by selecting the OpenAI format and entering the appropriate base URL:
-
 1. **OpenAI**
-   - **API Format**: OpenAI
+   - **API Format**: OpenAI - Completions
    - **Base URL**: `https://api.openai.com/v1`
    - Get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
 
-2. **OpenRouter**
-   - **API Format**: OpenAI (compatible)
+2. **OpenAI Responses API**
+   - **API Format**: OpenAI - Responses
+   - **Base URL**: `https://api.openai.com/v1`
+   - Same API key as OpenAI; use this format when you want to call `/v1/responses` instead of `/v1/chat/completions`
+
+3. **Anthropic**
+   - **API Format**: Anthropic
+   - **Base URL**: `https://api.anthropic.com/v1`
+   - Get API key from [Anthropic Console](https://console.anthropic.com/settings/keys)
+
+4. **Anthropic via Claude Code OAuth**
+   - **API Format**: Anthropic (Claude Code OAuth)
+   - **Base URL**: `https://api.anthropic.com/v1`
+   - Uses the OAuth Bearer token from Claude Code (token starts with `sk-ant-oat01-`)
+   - Default extra headers and body fields are pre-filled automatically (see [Anthropic OAuth section](#anthropic-claude-code-oauth))
+
+5. **Google Gemini**
+   - **API Format**: Google Gemini
+   - **Base URL**: `https://generativelanguage.googleapis.com/v1beta`
+   - Get API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+6. **OpenRouter**
+   - **API Format**: OpenAI - Completions (compatible)
    - **Base URL**: `https://openrouter.ai/api/v1`
    - Get API key from OpenRouter dashboard
 
-3. **HuggingFace Inference API**
-   - **API Format**: OpenAI (compatible)
+7. **HuggingFace Inference API**
+   - **API Format**: OpenAI - Completions (compatible)
    - **Base URL**: `https://router.huggingface.co/v1`
    - Get API key from HuggingFace settings
 
-4. **Custom Provider**
-   - **API Format**: OpenAI (compatible)
+8. **Custom OpenAI-compatible provider**
+   - **API Format**: OpenAI - Completions (compatible)
    - **Base URL**: Provider-specific endpoint
-   - **Requirements**: Provider must implement OpenAI-compatible API format
-   - Manually configure base URL + API key as provided by your custom provider
+   - Any provider that implements the OpenAI chat completions format
 
 ## Creating an API Model
 
@@ -105,11 +124,17 @@ All providers listed below use the **OpenAI API format**. Configure them by sele
 
 Configure which provider you want to connect to by selecting the API format and entering the base URL.
 
-1. **Select API Format**: Click the "API format" dropdown and select the format
-   - Currently only **OpenAI** format is supported
+1. **Select API Format**: Click the "API Format" dropdown and choose the format matching your provider
+   - **OpenAI - Completions**: Standard OpenAI chat completions and embeddings
+   - **OpenAI - Responses**: OpenAI Responses API (stateful, multi-turn responses)
+   - **Anthropic**: Anthropic Messages API with `x-api-key` authentication
+   - **Anthropic (Claude Code OAuth)**: Anthropic Messages API with OAuth Bearer token
+   - **Google Gemini**: Google Gemini generate/stream/embed content API
 
 2. **Enter Base URL**: The provider is determined by the base URL you enter
-   - For **OpenAI**: The form auto-fills `https://api.openai.com/v1`
+   - For **OpenAI** (Completions or Responses): The form auto-fills `https://api.openai.com/v1`
+   - For **Anthropic** (API key or OAuth): The form auto-fills `https://api.anthropic.com/v1`
+   - For **Gemini**: The form auto-fills `https://generativelanguage.googleapis.com/v1beta`
    - For **OpenRouter**: Enter `https://openrouter.ai/api/v1`
    - For **HuggingFace**: Enter `https://router.huggingface.co/v1`
    - For **other OpenAI-compatible providers**: Enter their specific base URL
@@ -117,21 +142,23 @@ Configure which provider you want to connect to by selecting the API format and 
 **Base URL Requirements**:
 
 - Must be a complete endpoint URL
-- Should end with the path to which `/chat/completions` can be appended
+- For OpenAI format, it should end with the path to which `/chat/completions` can be appended
 - Example: For OpenAI, the base URL is `https://api.openai.com/v1`, so chat completions endpoint becomes `https://api.openai.com/v1/chat/completions`
+- For Anthropic format, the base URL should end at the version prefix (`/v1`); Bodhi App appends `/messages` automatically
+- For Gemini format, the base URL should be the `v1beta` base; Bodhi App routes to the correct action path
 
 **Technical Specifications**: For API implementation details, see [API Reference](/docs/developer/openapi-reference).
 
-### Step 3: Enter API Key (Optional)
+### Step 3: Enter API Key
 
-API keys are optional. Some providers (e.g., local OpenAI-compatible servers) do not require authentication. Use the "Use API Key" checkbox to toggle key usage.
+API key requirements vary by format. Use the "Use API Key" checkbox to toggle key usage.
 
 **With API key**:
 
 1. Check "Use API Key"
 2. Enter API key in password field (masked for security)
 3. Key is encrypted with AES-GCM before database storage
-4. Key is decrypted from DB and sent to the provider when forwarding requests
+4. Key is decrypted from the database and sent to the provider when forwarding requests
 
 **Without API key**:
 
@@ -139,7 +166,49 @@ API keys are optional. Some providers (e.g., local OpenAI-compatible servers) do
 2. Requests are sent without an Authorization header
 3. Useful for local or self-hosted providers that do not require authentication
 
+**How the API key is sent depends on the format**:
+
+- **OpenAI / OpenAI Responses**: sent as `Authorization: Bearer <key>`
+- **Anthropic**: the form auto-detects; Bodhi App accepts both `x-api-key: <key>` and `Authorization: Bearer <key>` from callers (the middleware normalizes it)
+- **Anthropic OAuth**: the token (starts with `sk-ant-oat01-`) is sent as `Authorization: Bearer <token>`; do not use a standard API key for this format
+- **Gemini**: Bodhi App accepts `x-goog-api-key: <key>` or `Authorization: Bearer <key>` from callers (the middleware normalizes it)
+
 You can add, change, or remove the API key at any time by editing the API model.
+
+### Step 3b: Extra Headers and Extra Body (Advanced, Optional)
+
+The **Extra Headers** and **Extra Body** fields let you inject additional data into every request forwarded to the upstream provider. Both fields accept a JSON object.
+
+**Extra Headers** — merged into the HTTP request headers sent upstream:
+
+```json
+{
+  "anthropic-version": "2023-06-01",
+  "anthropic-beta": "claude-code-20250219,oauth-2025-04-20"
+}
+```
+
+**Extra Body** — deep-merged into the JSON request body forwarded upstream:
+
+```json
+{
+  "max_tokens": 4096,
+  "system": [{ "type": "text", "text": "You are a helpful assistant." }]
+}
+```
+
+**Restrictions**:
+
+- Authorization headers (`authorization`, `x-api-key`, `x-goog-api-key`) are not allowed in Extra Headers; use the API key field instead
+- Both fields must be valid JSON objects (not arrays or primitives)
+- Fields are optional; leave blank if not needed
+
+**When to use**:
+
+- **Anthropic OAuth**: the pre-filled defaults include the required `anthropic-version`, `anthropic-beta`, and `user-agent` headers plus the `max_tokens` and `system` body fields that Claude Code OAuth expects
+- **Custom providers**: inject provider-specific headers or body fields that your provider requires but that Bodhi App does not set by default
+
+When you select the **Anthropic (Claude Code OAuth)** format, Bodhi App pre-fills these fields with the correct defaults. You can modify them if your use case requires different values.
 
 ### Step 4: Configure Model Prefix (Optional)
 
@@ -208,7 +277,7 @@ When a prefix is configured, you can enable **Forward All with Prefix** mode. In
 Discover which models are available from your API provider.
 
 1. Click "Fetch Models" button
-2. Bodhi App queries provider's `/v1/models` endpoint
+2. Bodhi App queries the provider's model listing endpoint (format-specific: `/models` for OpenAI, `/models` for Anthropic, `/models` for Gemini)
 3. Model list appears in dropdown
 4. Models are sorted by: Local models first, then grouped by provider, alphabetically within each group
 
@@ -238,9 +307,13 @@ Choose which models to make available in Bodhi App.
 Validate configuration before saving to catch errors early.
 
 1. Click "Test Connection" button
-2. Bodhi App sends test request to provider
+2. Bodhi App sends a format-appropriate test request to the provider
 3. Success or error message displayed
-4. For new models, the test uses the API key entered in the form. For existing API models, it uses the stored API key. The test makes a small chat completion request with retry logic.
+4. For new models, the test uses the API key entered in the form. For existing API models, it uses the stored API key. The test makes a small request appropriate to the selected API format with retry logic.
+
+**Format-specific test behavior**:
+
+- **OpenAI Completions / Responses / Anthropic / Anthropic OAuth / Gemini**: Each format uses its own native API call for the connection test, so the test validates the full format configuration including any extra headers or body fields.
 
 **Test Success**: Configuration is valid, proceed to save
 
@@ -410,10 +483,12 @@ Combine local and remote models based on task:
 **Solutions**:
 
 - Verify API key is valid
-- Check base URL is correct (including /v1 path)
+- Check base URL is correct (e.g. `/v1` for OpenAI/Anthropic, `/v1beta` for Gemini)
 - Ensure network connectivity
 - Try testing connection first
 - Review error message for specific issue
+- For Anthropic OAuth, verify the OAuth token is current and starts with `sk-ant-oat01-`
+- For Gemini, verify the API key is from Google AI Studio (not a service account key)
 
 ### Connection Test Fails
 
@@ -521,24 +596,175 @@ For additional troubleshooting, see the [Troubleshooting](/docs/troubleshooting)
 
 **Token Usage Tracking**: Currently not available in Bodhi App. Check your provider's dashboard for detailed usage information.
 
-## Provider-Specific Notes
+## API Format Details
 
-Bodhi App supports OpenAI API-compatible providers. Below are notes for tested providers:
+### OpenAI - Completions
+
+The standard OpenAI chat completions format. Works with any OpenAI-compatible API.
+
+**Proxy endpoints exposed by Bodhi App**:
+
+- `POST /v1/chat/completions` — chat completion (streaming supported)
+- `POST /v1/embeddings` — embedding generation
+- `GET /v1/models`, `GET /v1/models/{id}` — model listing
+
+**Authentication**: API key sent as `Authorization: Bearer <key>`.
+
+**Model fetch**: Bodhi App calls the provider's `/models` endpoint to retrieve available models.
+
+**Providers**: OpenAI, OpenRouter, HuggingFace Inference API, or any OpenAI-compatible endpoint.
+
+**Example request through Bodhi App**:
+
+```bash
+curl http://localhost:1135/v1/chat/completions \
+  -H "Authorization: Bearer <bodhi-api-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+### OpenAI - Responses API
+
+A pass-through proxy for the OpenAI Responses API. Use this format when your workflow requires stateful, multi-turn response objects instead of stateless chat completions.
+
+**Proxy endpoints exposed by Bodhi App**:
+
+- `POST /v1/responses` — create a response
+- `GET /v1/responses/{response_id}` — retrieve a response
+- `DELETE /v1/responses/{response_id}` — delete a response
+- `GET /v1/responses/{response_id}/input_items` — list input items
+- `POST /v1/responses/{response_id}/cancel` — cancel a response
+
+All five operations are pure pass-through to the upstream OpenAI Responses endpoint.
+
+**Authentication**: API key sent as `Authorization: Bearer <key>`.
+
+**Important**: Chat completions (`/v1/chat/completions`) and embeddings (`/v1/embeddings`) reject models configured with the `openai_responses` format. Use those endpoints only with models configured as OpenAI - Completions.
+
+**Example request through Bodhi App**:
+
+```bash
+curl http://localhost:1135/v1/responses \
+  -H "Authorization: Bearer <bodhi-api-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "input": "Tell me a joke."
+  }'
+```
+
+### Anthropic
+
+Proxies to the Anthropic Messages API using a standard Anthropic API key.
+
+**Proxy endpoints exposed by Bodhi App**:
+
+- `POST /anthropic/v1/messages` — create a message (primary path)
+- `POST /v1/messages` — alternative path (same handler)
+- `GET /anthropic/v1/models` — list Anthropic models (served from local cache)
+- `GET /anthropic/v1/models/{model_id}` — get model details (served from local cache)
+
+**Authentication**: The `x-api-key` header or `Authorization: Bearer` are both accepted by Bodhi App's auth middleware; only one is needed. The key is forwarded to Anthropic as `x-api-key`.
+
+**Model fetch**: Bodhi App calls Anthropic's models endpoint and caches the full model metadata (capabilities, context window, etc.).
+
+**Example request through Bodhi App**:
+
+```bash
+curl http://localhost:1135/anthropic/v1/messages \
+  -H "x-api-key: <bodhi-api-token>" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+**Anthropic-prefixed headers**: Any request headers whose name starts with `anthropic-` (e.g. `anthropic-version`, `anthropic-beta`) are forwarded verbatim to the upstream Anthropic API.
+
+### Anthropic (Claude Code OAuth)
+
+The same Anthropic Messages API, but authenticated with an OAuth Bearer token issued by Claude Code. This format is designed for users who already use Claude Code and want to reuse its OAuth credentials in Bodhi App.
+
+**Proxy endpoints**: Same as Anthropic (`/anthropic/v1/messages`, `/v1/messages`, model listing endpoints).
+
+**Authentication**: Paste your Claude Code OAuth token (begins with `sk-ant-oat01-`) into the API key field. The token is sent as `Authorization: Bearer <token>`.
+
+**Pre-filled defaults**: When you select this format, the Extra Headers and Extra Body fields are automatically populated with the values Claude Code OAuth requires:
+
+- Extra Headers: `anthropic-version`, `anthropic-beta` (includes `claude-code-20250219,oauth-2025-04-20`), `user-agent`
+- Extra Body: `max_tokens` (4096), `system` (sets the Claude Code system prompt)
+
+You can adjust these defaults before saving.
+
+**Obtaining the token**: The OAuth token is managed by Claude Code on your machine. The token is not generated within Bodhi App; refer to Claude Code documentation for how to retrieve or refresh it.
+
+**Example request through Bodhi App**:
+
+```bash
+curl http://localhost:1135/anthropic/v1/messages \
+  -H "Authorization: Bearer <bodhi-api-token>" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 4096,
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+### Google Gemini
+
+Proxies to the Google Gemini API using the `v1beta` endpoint. Supports text generation, streaming, and embeddings.
+
+**Proxy endpoints exposed by Bodhi App**:
+
+- `GET /v1beta/models` — list Gemini models (served from local cache)
+- `GET /v1beta/models/{model_id}` — get model metadata (served from local cache)
+- `POST /v1beta/models/{model}:generateContent` — generate content
+- `POST /v1beta/models/{model}:streamGenerateContent` — stream generated content
+- `POST /v1beta/models/{model}:embedContent` — embed content
+
+**Authentication**: The `x-goog-api-key` header or `Authorization: Bearer` are both accepted by Bodhi App's auth middleware. The key is forwarded to Google as the API key.
+
+**Telemetry headers**: Request headers whose name starts with `x-goog-` (e.g. `x-goog-api-client`, `x-goog-request-params`) are forwarded verbatim so Google SDK telemetry reaches Google.
+
+**Query parameters**: Query parameters (e.g. `?alt=sse` for SSE streaming) are forwarded verbatim to the upstream.
+
+**Model prefix support**: When a prefix is configured (e.g. `gemini/`), the prefix is stripped before forwarding to Google. Model names in the `name` field are returned as `models/{prefix}{model_id}` for round-tripping.
+
+**Example request through Bodhi App**:
+
+```bash
+curl "http://localhost:1135/v1beta/models/gemini-1.5-pro:generateContent" \
+  -H "x-goog-api-key: <bodhi-api-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [{"parts": [{"text": "Hello"}]}]
+  }'
+```
+
+## Provider-Specific Notes
 
 ### OpenAI
 
 **Available Models**:
 
 - All current OpenAI models are fetched dynamically when you add the provider
-- Models include GPT-4, GPT-3.5 Turbo variants, and other offerings
+- Models include GPT-4, o1, o3, and other offerings
 - Refer to OpenAI's pricing page for latest model availability
 
 **Considerations**:
 
 - Rate limits vary by tier
-- Batch API available for bulk processing
 - Function calling supported
 - Check [OpenAI Pricing](https://openai.com/pricing) for current rates
+- Use **OpenAI - Completions** for chat; use **OpenAI - Responses** if your tooling targets the Responses API
 
 ### OpenRouter
 
@@ -546,13 +772,13 @@ Bodhi App supports OpenAI API-compatible providers. Below are notes for tested p
 
 - All current OpenRouter models are fetched dynamically when you add the provider
 - OpenRouter provides access to multiple AI providers through a single API
-- Prefix feature is optional, similar to OpenRouter's own prefix system
 
 **Considerations**:
 
-- Aggregates models from multiple providers
-- Pricing varies by model - check OpenRouter dashboard
+- Aggregates models from multiple providers (including Anthropic, Google, Meta, and others)
+- Pricing varies by model — check OpenRouter dashboard
 - Good option for accessing multiple providers with one API key
+- Use the prefix feature to namespace models if you have multiple providers configured
 
 ### HuggingFace Inference API
 
@@ -560,7 +786,6 @@ Bodhi App supports OpenAI API-compatible providers. Below are notes for tested p
 
 - All current HuggingFace Inference API models are fetched dynamically when you add the provider
 - Wide variety of open-source models available
-- Model availability depends on HuggingFace hosting
 
 **Considerations**:
 
@@ -568,9 +793,35 @@ Bodhi App supports OpenAI API-compatible providers. Below are notes for tested p
 - Pricing and availability vary by model
 - Check HuggingFace documentation for model-specific details
 
+### Anthropic
+
+**Available Models**:
+
+- Fetched from Anthropic's models API and cached locally with full metadata (capabilities, context window)
+- Includes Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku, and newer models
+
+**Considerations**:
+
+- API key available from [Anthropic Console](https://console.anthropic.com/settings/keys)
+- Both `/anthropic/v1/messages` and `/v1/messages` paths work identically
+- Prefix routing works the same as other formats
+
+### Google Gemini
+
+**Available Models**:
+
+- Fetched from Google's Gemini API and cached locally
+- Includes Gemini 2.5 Flash, Gemini 1.5 Pro, Gemini 1.5 Flash, and others
+
+**Considerations**:
+
+- API key available from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- Streaming uses `?alt=sse` query parameter, forwarded automatically
+- Model IDs in Bodhi App use the bare model name (e.g. `gemini-1.5-pro`); Bodhi App handles the `models/` path prefix internally
+
 ### Other Providers
 
-**Custom Providers**: Any OpenAI-compatible API can be configured using the Custom provider option. For technical API specifications, see [API Reference](/docs/developer/openapi-reference).
+**Custom Providers**: Any OpenAI-compatible API can be configured using the OpenAI - Completions format. For technical API specifications, see [API Reference](/docs/developer/openapi-reference).
 
 ## Related Documentation
 

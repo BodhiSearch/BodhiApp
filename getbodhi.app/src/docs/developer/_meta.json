@@ -1,4 +1,10 @@
 {
   "order": 250,
-  "title": "Developer"
+  "title": "Developer",
+  "pages": {
+    "getting-started": { "order": 251 },
+    "building-apps": { "order": 252 },
+    "app-access-requests": { "order": 255 },
+    "openapi-reference": { "order": 256 }
+  }
 }

@@ -174,3 +174,5 @@ The access request system enforces strict privilege boundaries:
 | `/bodhi/v1/apps/mcps/{id}/tools/{tool_name}/execute` | POST   | Bearer  | Execute a tool on an MCP instance                                 |
 
 For the full API specification with request/response schemas, see the [OpenAPI Reference](/docs/developer/openapi-reference) or visit `/swagger-ui` on your Bodhi instance.
+
+For the complete end-to-end lifecycle — including app registration, token usage after approval, role scope implications, and security rationale — see [Building Third-Party Apps](/docs/developer/building-apps).
