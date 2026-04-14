@@ -120,7 +120,7 @@ export class ApiModelFixtures {
         'user-agent': 'claude-cli/2.1.80 (external, cli)',
       },
       extraBody: {
-        max_tokens: 32000,
+        max_tokens: 4096,
         system: [
           { type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." },
         ],
