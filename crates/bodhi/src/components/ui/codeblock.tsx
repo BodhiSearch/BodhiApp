@@ -4,6 +4,7 @@
 import { useTheme } from '@/components/ThemeProvider';
 import { Button } from '@/components/ui/button';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { copyToClipboard, getClipboardUnavailableMessage } from '@/lib/clipboard';
 import { Check, Copy } from 'lucide-react';
 import { FC, memo, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -72,12 +73,12 @@ export const CodeBlock: FC<CodeBlockProps> = memo(({ language, value }) => {
   const handleCopy = async () => {
     if (!isCopied) {
       try {
-        await navigator.clipboard.writeText(value);
+        await copyToClipboard(value);
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       } catch (error) {
         console.log('Failed to copy code:', error);
-        showError('Copy Failed', 'Failed to copy code');
+        showError('Copy Failed', getClipboardUnavailableMessage() ?? 'Failed to copy code');
         setIsCopied(false);
       }
     }

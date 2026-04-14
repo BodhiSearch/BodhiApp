@@ -13,6 +13,8 @@ import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { UsersTable } from '@/components/users/UsersTable';
 import { useGetAppInfo } from '@/hooks/info';
 import { useListUsers, useGetAuthenticatedUser } from '@/hooks/users';
+import { copyToClipboard, getClipboardUnavailableMessage } from '@/lib/clipboard';
+import { toast } from '@/hooks/use-toast';
 
 export const Route = createFileRoute('/users/')({
   component: UsersPage,
@@ -88,11 +90,16 @@ function InviteLinkSection() {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(inviteUrl);
+      await copyToClipboard(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+      toast({
+        title: 'Copy Failed',
+        description: getClipboardUnavailableMessage() ?? 'Failed to copy invite URL',
+        variant: 'destructive',
+      });
     }
   };
 

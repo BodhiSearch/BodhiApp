@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useGetMcp } from '@/hooks/mcps';
 import { useMcpClient, type McpClientTool, type McpToolCallResult } from '@/hooks/mcps/useMcpClient';
+import { copyToClipboard, getClipboardUnavailableMessage } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/mcps/playground/')({
@@ -252,11 +253,15 @@ function ResultSection({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(getTabContent());
+      await copyToClipboard(getTabContent());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast({ title: 'Failed to copy', variant: 'destructive' });
+      toast({
+        title: 'Failed to copy',
+        description: getClipboardUnavailableMessage() ?? undefined,
+        variant: 'destructive',
+      });
     }
   };
 

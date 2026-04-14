@@ -4,6 +4,7 @@ import { Check, Copy } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { copyToClipboard, getClipboardUnavailableMessage } from '@/lib/clipboard';
 
 interface CopyButtonProps {
   text: string;
@@ -25,13 +26,13 @@ export const CopyButton = ({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyToClipboard(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.log('Failed to copy to clipboard:', error);
       if (showToast) {
-        showErrorToast('Copy Failed', 'Failed to copy to clipboard');
+        showErrorToast('Copy Failed', getClipboardUnavailableMessage() ?? 'Failed to copy to clipboard');
       }
       setCopied(false);
     }
