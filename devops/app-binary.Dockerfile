@@ -61,7 +61,7 @@ RUN if [ "$BUILD_VARIANT" = "production" ]; then \
 # === TS CLIENT BUILD STAGE ===
 # Copy TS client source and generate types
 COPY ts-client/ ts-client/
-COPY openapi.json ./
+COPY openapi.json openapi-oai.json ./
 RUN cd ts-client && npm ci && npm run build:openapi
 
 # === APPLICATION BUILD STAGE ===
