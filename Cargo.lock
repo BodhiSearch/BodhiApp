@@ -563,7 +563,7 @@ dependencies = [
 
 [[package]]
 name = "bodhi"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "anyhow",
  "clap 4.5.57",
@@ -866,7 +866,7 @@ checksum = "bb7bdea464ae038f09197b82430b921c53619fc8d2bcaf7b151013b3ca008017"
 
 [[package]]
 name = "ci_optims"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -1909,7 +1909,7 @@ dependencies = [
 
 [[package]]
 name = "errmeta"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "errmeta_derive",
  "rstest",
@@ -1919,7 +1919,7 @@ dependencies = [
 
 [[package]]
 name = "errmeta_derive"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "convert_case 0.8.0",
  "pretty_assertions",
@@ -3392,7 +3392,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lib_bodhiserver"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "anyhow",
  "derive-new",
@@ -3422,7 +3422,7 @@ dependencies = [
 
 [[package]]
 name = "lib_bodhiserver_napi"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3547,7 +3547,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "llama_server_proc"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3657,7 +3657,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "mcp_client"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "async-trait",
  "errmeta",
@@ -5597,7 +5597,7 @@ dependencies = [
 
 [[package]]
 name = "routes_app"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -6453,7 +6453,7 @@ dependencies = [
 
 [[package]]
 name = "server_app"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -6503,7 +6503,7 @@ dependencies = [
 
 [[package]]
 name = "server_core"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -6541,7 +6541,7 @@ dependencies = [
 
 [[package]]
 name = "services"
-version = "0.0.50-dev"
+version = "0.0.51-dev"
 dependencies = [
  "aes-gcm",
  "anyhow",
