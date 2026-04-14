@@ -14,7 +14,7 @@ BUILD_DIR := llama.cpp/build
 BIN_DIR := bin
 
 # Common CMake flags
-CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
+CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DLLAMA_OPENSSL=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
 
 # Platform-specific variables
 ifeq ($(shell uname -s),Darwin)
@@ -26,6 +26,11 @@ BIN_EXT :=
 
 # Define the variable for the build arguments
 CUDA_BUILD_FLAGS := -DCMAKE_CUDA_ARCHITECTURES=89-real -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined -DGGML_NATIVE=OFF -DGGML_CUDA=ON
+
+# Apple Silicon: pin ARM arch so ggml skips SVE/SME runtime probes.
+# Probes use check_cxx_source_runs; SIGILL on non-SVE chips can stall
+# for many seconds under macOS ReportCrash. Covers M1 (v8.5) through M4 (v9.2).
+APPLE_ARM_FLAGS := -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8.6-a+dotprod+i8mm
 
 all: configure build copy_exec ## Build llama-server for all supported platforms
 
@@ -50,10 +55,10 @@ endef
 
 # Target-specific builds
 build-aarch64-apple-darwin-metal: ## Build Apple Silicon macOS with Metal GPU support
-	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=ON,UNAME_S=Darwin UNAME_P=arm64 UNAME_M=arm64,aarch64-apple-darwin,metal)
+	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=ON $(APPLE_ARM_FLAGS),UNAME_S=Darwin UNAME_P=arm64 UNAME_M=arm64,aarch64-apple-darwin,metal)
 
 build-aarch64-apple-darwin-cpu: ## Build Apple Silicon macOS CPU-only version
-	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=OFF -DGGML_METAL=OFF,UNAME_S=Darwin UNAME_P=arm64 UNAME_M=arm64,aarch64-apple-darwin,cpu)
+	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=OFF -DGGML_METAL=OFF $(APPLE_ARM_FLAGS),UNAME_S=Darwin UNAME_P=arm64 UNAME_M=arm64,aarch64-apple-darwin,cpu)
 
 build-aarch64-unknown-linux-gnu-cpu: ## Build ARM64 Linux CPU-only version
 	$(call build_target,,UNAME_S=Linux UNAME_P=unknown UNAME_M=arm64,aarch64-unknown-linux-gnu,cpu)

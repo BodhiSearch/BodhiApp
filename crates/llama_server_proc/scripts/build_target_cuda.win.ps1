@@ -56,6 +56,8 @@ try {
     $cmakeFlags = @(
         "-G `"Ninja`"",
         "-DLLAMA_BUILD_SERVER=ON",
+        "-DLLAMA_CURL=OFF",
+        "-DLLAMA_OPENSSL=OFF",
         "-DGGML_NATIVE=OFF",
         "-DGGML_CUDA=ON",
         "-DGGML_RPC=ON"
