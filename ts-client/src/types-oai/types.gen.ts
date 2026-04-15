@@ -14,16 +14,6 @@ export type Annotation = (FileCitationBody & {
 });
 
 /**
- * OpenAI API returns error object on failure
- */
-export type ApiError = {
-    message: string;
-    type?: string | null;
-    param?: string | null;
-    code?: string | null;
-};
-
-/**
  * Outcome values reported for apply_patch tool call outputs.
  */
 export type ApplyPatchCallOutputStatus = 'completed' | 'failed';
@@ -1867,6 +1857,16 @@ export type EmbeddingUsage = {
 export type EncodingFormat = 'float' | 'base64';
 
 /**
+ * OpenAI API returns error object on failure
+ */
+export type _Error = {
+    message: string;
+    type?: string | null;
+    param?: string | null;
+    code?: string | null;
+};
+
+/**
  * An error that occurred while generating the response.
  */
 export type ErrorObject = {
@@ -1878,6 +1878,13 @@ export type ErrorObject = {
      * A human-readable description of the error that was returned.
      */
     message: string;
+};
+
+/**
+ * Wrapper to deserialize the error object nested in "error" JSON key
+ */
+export type ErrorResponse = {
+    error: _Error;
 };
 
 export type FileCitationBody = {
@@ -4287,13 +4294,6 @@ export type WebSearchUserLocation = {
 
 export type WebSearchUserLocationType = 'approximate';
 
-/**
- * Wrapper to deserialize the error object nested in "error" JSON key
- */
-export type WrappedError = {
-    error: ApiError;
-};
-
 export type ChatOllamaModelData = {
     /**
      * Chat request in Ollama format
@@ -4308,15 +4308,15 @@ export type ChatOllamaModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Model not found
      */
@@ -4324,7 +4324,7 @@ export type ChatOllamaModelErrors = {
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type ChatOllamaModelError = ChatOllamaModelErrors[keyof ChatOllamaModelErrors];
@@ -4350,15 +4350,15 @@ export type ShowOllamaModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Model not found
      */
@@ -4366,7 +4366,7 @@ export type ShowOllamaModelErrors = {
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type ShowOllamaModelError = ShowOllamaModelErrors[keyof ShowOllamaModelErrors];
@@ -4391,19 +4391,19 @@ export type ListOllamaModelsErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type ListOllamaModelsError = ListOllamaModelsErrors[keyof ListOllamaModelsErrors];
@@ -4428,19 +4428,19 @@ export type CreateChatCompletionErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type CreateChatCompletionError = CreateChatCompletionErrors[keyof CreateChatCompletionErrors];
@@ -4469,19 +4469,19 @@ export type CreateEmbeddingErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type CreateEmbeddingError = CreateEmbeddingErrors[keyof CreateEmbeddingErrors];
@@ -4506,19 +4506,19 @@ export type ListModelsErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type ListModelsError = ListModelsErrors[keyof ListModelsErrors];
@@ -4548,23 +4548,23 @@ export type GetModelErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Model not found
      */
-    404: WrappedError;
+    404: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type GetModelError = GetModelErrors[keyof GetModelErrors];
@@ -4589,19 +4589,19 @@ export type CreateResponseErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type CreateResponseError = CreateResponseErrors[keyof CreateResponseErrors];
@@ -4640,19 +4640,19 @@ export type DeleteResponseErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type DeleteResponseError = DeleteResponseErrors[keyof DeleteResponseErrors];
@@ -4687,19 +4687,19 @@ export type GetResponseErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type GetResponseError = GetResponseErrors[keyof GetResponseErrors];
@@ -4734,19 +4734,19 @@ export type CancelResponseErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type CancelResponseError = CancelResponseErrors[keyof CancelResponseErrors];
@@ -4781,19 +4781,19 @@ export type ListResponseInputItemsErrors = {
     /**
      * Invalid request parameters
      */
-    400: WrappedError;
+    400: ErrorResponse;
     /**
      * Not authenticated
      */
-    401: WrappedError;
+    401: ErrorResponse;
     /**
      * Insufficient permissions
      */
-    403: WrappedError;
+    403: ErrorResponse;
     /**
      * Internal server error
      */
-    500: WrappedError;
+    500: ErrorResponse;
 };
 
 export type ListResponseInputItemsError = ListResponseInputItemsErrors[keyof ListResponseInputItemsErrors];

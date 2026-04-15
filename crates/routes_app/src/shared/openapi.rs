@@ -611,11 +611,8 @@ impl GlobalErrorResponses {
     Self::new("BodhiApiError")
   }
 
-  /// Variant for the OpenAI-compatible spec that references async-openai's
-  /// `WrappedError` envelope. The wire format matches OpenAI's native error
-  /// envelope: `{"error": {"message", "type", "param", "code"}}`.
   pub const fn oai() -> Self {
-    Self::new("WrappedError")
+    Self::new("ErrorResponse")
   }
 }
 

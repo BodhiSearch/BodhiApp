@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.0.49-dev"
+    "version": "0.0.50-dev"
   },
   "servers": [
     {
@@ -8455,7 +8455,10 @@
             "type": "string"
           },
           "version": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "displayName": {
             "type": [

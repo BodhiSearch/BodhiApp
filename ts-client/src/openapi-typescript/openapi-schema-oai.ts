@@ -246,13 +246,6 @@ export interface components {
             /** @enum {string} */
             type: "file_path";
         });
-        /** @description OpenAI API returns error object on failure */
-        ApiError: {
-            message: string;
-            type?: string | null;
-            param?: string | null;
-            code?: string | null;
-        };
         /**
          * @description Outcome values reported for apply_patch tool call outputs.
          * @enum {string}
@@ -1596,12 +1589,23 @@ export interface components {
         };
         /** @enum {string} */
         EncodingFormat: "float" | "base64";
+        /** @description OpenAI API returns error object on failure */
+        Error: {
+            message: string;
+            type?: string | null;
+            param?: string | null;
+            code?: string | null;
+        };
         /** @description An error that occurred while generating the response. */
         ErrorObject: {
             /** @description A machine-readable error code that was returned. */
             code: string;
             /** @description A human-readable description of the error that was returned. */
             message: string;
+        };
+        /** @description Wrapper to deserialize the error object nested in "error" JSON key */
+        ErrorResponse: {
+            error: components["schemas"]["Error"];
         };
         FileCitationBody: {
             /** @description The ID of the file. */
@@ -3404,10 +3408,6 @@ export interface components {
         };
         /** @enum {string} */
         WebSearchUserLocationType: "approximate";
-        /** @description Wrapper to deserialize the error object nested in "error" JSON key */
-        WrappedError: {
-            error: components["schemas"]["ApiError"];
-        };
     };
     responses: never;
     parameters: never;
@@ -3481,7 +3481,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3490,7 +3490,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3499,7 +3499,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Model not found */
@@ -3520,7 +3520,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -3573,7 +3573,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3582,7 +3582,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3591,7 +3591,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Model not found */
@@ -3612,7 +3612,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -3659,7 +3659,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3668,7 +3668,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3677,7 +3677,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3686,7 +3686,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -3782,7 +3782,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3791,7 +3791,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3800,7 +3800,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3809,7 +3809,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -3865,7 +3865,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3874,7 +3874,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3883,7 +3883,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3892,7 +3892,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -3938,7 +3938,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3947,7 +3947,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3956,7 +3956,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3965,7 +3965,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4006,7 +4006,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4015,7 +4015,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4024,7 +4024,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Model not found */
@@ -4040,7 +4040,7 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4049,7 +4049,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4091,7 +4091,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4100,7 +4100,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4109,7 +4109,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4118,7 +4118,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4153,7 +4153,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4162,7 +4162,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4171,7 +4171,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4180,7 +4180,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4215,7 +4215,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4224,7 +4224,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4233,7 +4233,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4242,7 +4242,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4277,7 +4277,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4286,7 +4286,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4295,7 +4295,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4304,7 +4304,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4337,7 +4337,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4346,7 +4346,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4355,7 +4355,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4364,7 +4364,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["WrappedError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

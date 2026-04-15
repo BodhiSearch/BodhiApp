@@ -1782,7 +1782,7 @@ export interface components {
         /** @description Gemini `Model` schema (see `openapi-gemini.json`). */
         GeminiModel: {
             name: string;
-            version?: string;
+            version?: string | null;
             displayName?: string | null;
             description?: string | null;
             /** Format: int64 */

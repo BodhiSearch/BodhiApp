@@ -60,7 +60,7 @@ For BodhiApp management endpoints (auth, settings, model aliases, MCPs, tokens, 
     components(
         schemas(
             // OpenAI-native error envelope used in 4xx/5xx responses
-            // (emitted as `openai.WrappedError` + `openai.ApiError` in the spec)
+            // (emitted as `ErrorResponse` + `Error` in the spec via
             OaiWrappedError,
             OaiErrorBody,
             // openai

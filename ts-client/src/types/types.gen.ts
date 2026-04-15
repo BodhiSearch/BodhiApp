@@ -604,7 +604,7 @@ export type FlowType = 'redirect' | 'popup';
  */
 export type GeminiModel = {
     name: string;
-    version?: string;
+    version?: string | null;
     displayName?: string | null;
     description?: string | null;
     inputTokenLimit?: number | null;
