@@ -32,5 +32,11 @@ export default defineConfig({
       // This tells the HMR client to connect to port 3000 (Vite) instead of 1135 (Rust proxy).
       clientPort: 3000,
     },
+    // Pre-bundle the SPA entry on startup so the first browser navigation does
+    // not race against Vite's lazy dep optimization (without this, E2E sees a
+    // blank page on the first navigation while Vite is still optimizing deps).
+    warmup: {
+      clientFiles: ['./src/main.tsx', './src/routeTree.gen.ts'],
+    },
   },
 });

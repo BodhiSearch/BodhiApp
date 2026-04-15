@@ -10,16 +10,17 @@
 ## Development Commands
 
 ### Testing
-- `make test` — Run all tests (backend, UI, NAPI)
+- `make test` — Run all tests (backend, UI, E2E)
 - `make test.backend` — Rust backend tests (requires Docker for PostgreSQL; runs `cargo test` and `cargo test -p bodhi --features native`)
 - `make test.ui` — Frontend tests (`cd crates/bodhi && npm install && npm test`)
-- `make test.napi` — NAPI/Playwright E2E tests (`cd crates/lib_bodhiserver_napi && npm install && npm run test`)
+- `make test.e2e` — Playwright E2E (`make build.dev-server` then `cd crates/lib_bodhiserver && npm install && npm run test:playwright`)
 
 ### Building & Packaging
 - `make ci.build` — Build Tauri desktop application
 - `make build.ts-client` — Build TypeScript client package with tests
 - `cd crates/bodhi && npm run build` — Build Vite frontend
-- `cd crates/lib_bodhiserver_napi && npm run build:release` — Build NAPI bindings
+- `cd crates/lib_bodhiserver_napi && npm run build:release` — Build NAPI bindings (external @bodhiapp/app-bindings npm package)
+- `make build.dev-server` — Build `bodhiserver_dev` binary used by E2E suite (skips UI embed)
 
 ### Code Quality
 - `make format` — Format all code (Rust, Node.js, Python)
@@ -36,7 +37,8 @@
 ### Running the Application
 - `cd crates/bodhi && npm run dev` — Start Vite dev server (hot reload, port 3000)
 - `cd crates/bodhi/src-tauri && cargo tauri dev` — Run Tauri desktop app in dev mode
-- `make run.app` — Run standalone HTTP server with dev configuration
+- `make app.run` — Run standalone HTTP server against the embedded UI
+- `make app.run.live` — Run standalone HTTP server with live Vite proxy (HMR; no UI rebuild needed)
 - `cargo run --bin bodhi -- serve --port 1135` — Run server directly
 
 ### Docker
@@ -95,7 +97,7 @@ When implementing a feature spanning multiple crates, always work upstream-to-do
 4. **Full backend validation**: `make test.backend` after all Rust changes.
 5. **Regenerate TypeScript types**: `make build.ts-client` to update frontend types.
 6. **Frontend component tests**: Change UI in `crates/bodhi/src/`, using `@bodhiapp/ts-client` types. Run `cd crates/bodhi && npm run test`.
-7. **E2E tests**: `make build.ui-rebuild` then update tests in `crates/lib_bodhiserver_napi/tests-js/`. Run `make test.napi`.
+7. **E2E tests**: `make build.dev-server` then update tests in `crates/lib_bodhiserver/tests-js/`. Run `make test.e2e`.
 8. **Documentation**: Update crate-level `CLAUDE.md` / `PACKAGE.md` for each modified crate.
 
 ## Important Notes
@@ -104,15 +106,13 @@ When implementing a feature spanning multiple crates, always work upstream-to-do
 - NAPI bindings require Node.js >= 22
 - For architectural patterns, testing conventions, and cross-crate rules, see `crates/CLAUDE.md`
 
-## Critical UI Development Workflow
+## UI Development Workflow
 
-**IMPORTANT: After UI changes, rebuild the embedded UI before testing:**
+Three dev loops depending on what you're validating:
 
-1. `make build.ui-clean` — Clean embedded UI build
-2. `make build.ui` — Build Vite frontend + NAPI bindings
-3. Or: `make build.ui-rebuild` — Combined clean + build
-
-The application embeds the UI build (Vite output in `crates/bodhi/out/`). Changes to `crates/bodhi/src/` are NOT visible until rebuilt. For active development, use `cd crates/bodhi && npm run dev` for hot reload.
+1. **Active UI iteration** — `cd crates/bodhi && npm run dev` (Vite on 3000; pure frontend work, MSW-mocked backend).
+2. **Full stack with live UI** — `make app.run.live` or `make test.e2e` spawn `bodhiserver_dev` which proxies `/ui/*` to Vite. UI changes reload via HMR; no rebuild needed. This is the fast path for iterating on Rust + UI together and for the Playwright suite.
+3. **Embedded-bundle validation** — `make build.ui-rebuild` (clean + build) is only required when you need to exercise the production embed path: Tauri desktop (`cargo tauri dev`, `make build.native`), Docker images, or the `bodhi` binary with the `native` feature. The Vite output under `crates/bodhi/out/` is baked into the binary via `include_dir!`; without a rebuild, these embedded modes serve a stale UI.
 
 **Frontend architecture**: Vite + TanStack Router (file-based routing in `src/routes/`) + TanStack Query v5 (hooks organized in `src/hooks/<domain>/`). See `crates/bodhi/src/CLAUDE.md` for details.
 

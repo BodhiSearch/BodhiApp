@@ -6,10 +6,10 @@ include Makefile.website.mk
 
 .DEFAULT_GOAL := help
 
-.PHONY: help test test.backend test.ui test.napi test.coverage \
+.PHONY: help test test.backend test.ui test.e2e test.e2e.standalone test.e2e.multi_tenant test.coverage \
 	test.deps.up test.deps.down \
 	dev.deps.up dev.deps.down dev.deps.clear \
-	build build.native build.ui build.ui-clean build.ui-rebuild build.ts-client \
+	build build.native build.dev-server build.ui build.ui-clean build.ui-rebuild build.ts-client \
 	openapi.anthropic openapi.gemini \
 	format format.all \
 	run run.native app.clear app.run app.run.pg app.run.live app.run.live.stop \
@@ -72,23 +72,26 @@ test.ui.unit: ## Run frontend unit tests
 
 test.ui: ## Run frontend and UI integration tests
 	$(MAKE) test.ui.unit
-	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
+	$(MAKE) test.e2e
 
-test.napi.standalone: ## Run frontend and UI integration tests
-	$(MAKE) -C crates/lib_bodhiserver_napi test.napi.standalone
+build.dev-server: ## Build bodhiserver_dev (no UI embed; for E2E + dev iteration)
+	cargo build --no-default-features --features test-utils -p lib_bodhiserver --bin bodhiserver_dev
 
-test.napi.multi_tenant: ## Run frontend and UI integration tests
-	$(MAKE) -C crates/lib_bodhiserver_napi test.napi.multi_tenant
+test.e2e: build.dev-server ## Run Playwright E2E against bodhiserver_dev + live Vite
+	cd crates/lib_bodhiserver && npm install && npm run test:playwright
 
-test.napi: ## Run NAPI bindings tests
-	cd crates/lib_bodhiserver_napi && npm install && npm run test:playwright
+test.e2e.standalone: build.dev-server ## Run only the standalone E2E project
+	cd crates/lib_bodhiserver && npm install && npm run test:playwright:standalone
 
-test: test.backend test.ui test.napi ## Run all tests (backend, UI, NAPI)
+test.e2e.multi_tenant: build.dev-server ## Run only the multi_tenant E2E project
+	cd crates/lib_bodhiserver && npm install && npm run test:playwright:multi_tenant
+
+test: test.backend test.ui test.e2e ## Run all tests (backend, UI, E2E)
 
 format: ## Format code in all projects (Rust, Node, Python)
 	cargo fmt --all
 	cd crates/bodhi && npm run format && npm run test:typecheck
-	cd crates/lib_bodhiserver_napi && npm run format
+	cd crates/lib_bodhiserver && npm run format
 	# cd openai-pysdk-compat && poetry run ruff format .
 	$(MAKE) -C getbodhi.app format
 
@@ -107,7 +110,8 @@ build.ui: ## Build Vite frontend and NAPI bindings
 
 build.ui-clean: ## Clean UI build artifacts
 	rm -rf crates/bodhi/out
-	cargo clean -p lib_bodhiserver -p bodhi && rm -rf crates/lib_bodhiserver_napi/app-bindings.*.node
+	cargo clean -p lib_bodhiserver -p bodhi
+	rm -rf crates/lib_bodhiserver_napi/app-bindings.*.node
 
 build.ui-rebuild: build.ui-clean build.ui ## Clean and rebuild UI
 
@@ -180,7 +184,7 @@ app.run.live.stop: ## Stop live dev servers (Vite + Rust)
 	@echo "Dev servers stopped"
 
 test.extension-download: ## Download Bodhi browser extension for testing (use FORCE=1 to check for updates)
-	@$(MAKE) -C crates/lib_bodhiserver_napi download-extension FORCE=$(FORCE)
+	@$(MAKE) -C crates/lib_bodhiserver download-extension FORCE=$(FORCE)
 
 test.model-download: ## Download test model for integration tests (Qwen3-1.7B Q8_0 GGUF)
 	@echo "==> Downloading test model for integration tests"
@@ -196,14 +200,14 @@ setup.worktree: ## Setup git worktree in working state
 	@echo "==> Copying .env.test files from main project"
 	cp ../../BodhiApp/crates/auth_middleware/tests/.env.test crates/auth_middleware/tests/.env.test
 	cp ../../BodhiApp/crates/server_app/tests/resources/.env.test crates/server_app/tests/resources/.env.test
-	cp ../../BodhiApp/crates/lib_bodhiserver_napi/tests-js/.env.test crates/lib_bodhiserver_napi/tests-js/.env.test
+	cp ../../BodhiApp/crates/lib_bodhiserver/tests-js/.env.test crates/lib_bodhiserver/tests-js/.env.test
 	cp ../../BodhiApp/crates/services/.env.test crates/services/.env.test
 	@echo "✓ .env.test files copied"
 	@echo "==> Installing Python dependencies for objs tests"
 	pip install -r crates/objs/tests/scripts/requirements.txt
 	@echo "✓ Python dependencies installed"
 	@echo "==> Installing npm dependencies for test-oauth-app"
-	cd crates/lib_bodhiserver_napi/test-oauth-app && npm install
+	cd crates/lib_bodhiserver/test-oauth-app && npm install
 	@echo "✓ test-oauth-app dependencies installed"
 	@echo "==> Downloading test models for integration tests"
 	@command -v hf >/dev/null 2>&1 || { echo "Error: 'hf' command not found. Install with: pip install -U huggingface_hub[cli]"; exit 1; }

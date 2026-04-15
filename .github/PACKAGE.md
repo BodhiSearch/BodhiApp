@@ -48,9 +48,10 @@ on:
 - Artifact coordination between stages using actions/upload-artifact and actions/download-artifact
 
 **Critical Flows**:
-1. **Coverage Generation**: `.github/workflows/build.yml:67-86` - Executes `make ci.coverage` with CI_DEFAULT_VARIANT=cpu
-2. **NAPI Build Coordination**: `.github/workflows/build.yml:87-92` - Uses `.github/actions/napi-build` action
-3. **Artifact Downloads**: `.github/workflows/build.yml:112-123` - Downloads NAPI bindings and llama-server binaries for Playwright tests
+1. **Coverage Generation**: `.github/workflows/build.yml` executes `make ci.coverage` with `CI_DEFAULT_VARIANT=cpu`.
+2. **`bodhiserver-dev` Build**: `.github/actions/bodhiserver-dev-build` compiles the dev binary per target and uploads it as `bodhiserver-dev-${target}`. The playwright-tests job downloads this artifact and runs the suite against it.
+3. **NAPI Build Coordination**: `.github/actions/napi-build` compiles the `@bodhiapp/app-bindings` package for the publish pipeline (`publish-npm-napi.yml`); no longer on the E2E path.
+4. **Artifact Downloads**: playwright-tests downloads `bodhiserver-dev-${target}` + llama-server binaries; the npm-napi publish job downloads the NAPI bindings.
 
 #### Multi-Platform Build System
 **File**: `.github/workflows/build-multiplatform.yml:1-180`
@@ -341,19 +342,18 @@ fi
 ```bash
 # Validate required environment variables
 echo "Checking test results..."
-echo "NAPI tests outcome: ${{ steps.napi-tests.outcome }}"
 echo "Playwright tests outcome: ${{ steps.playwright-run.outcome }}"
 ```
 
 ### Test Result Management
 
-**Test Reporter Integration**: `.github/workflows/build.yml:169-177`
+**Test Reporter Integration** (Playwright JUnit output from the `bodhiserver_dev`-launched suite):
 ```yaml
-- name: Publish NAPI binding test results
+- name: Publish Playwright test results
   uses: dorny/test-reporter@v1
   with:
-    name: NAPI Binding Tests (Linux)
-    path: crates/lib_bodhiserver_napi/test-results/vitest-junit.xml
+    name: Playwright Tests (Linux)
+    path: crates/lib_bodhiserver/test-results/junit.xml
     reporter: java-junit
     fail-on-error: false
 ```

@@ -99,7 +99,7 @@ You are thoughtful, give nuanced answers, and are brilliant at reasoning. You ca
 - **Base URL**: Keep `apiClient.baseURL` as empty string (`''`)
 
 ### Playwright UI Tests
-- Playwright based UI tests are located in `crates/lib_bodhiserver_napi/js-tests`
+- Playwright based UI tests are located in `crates/lib_bodhiserver/tests-js`; run via `make test.e2e`
 - Run these tests at the end of major feature implementation
 - Add/Update UI test if adding new feature
 

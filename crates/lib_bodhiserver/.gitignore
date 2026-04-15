@@ -1,0 +1,24 @@
+**/node_modules
+**/playwright-report/
+**/test-results/
+**/dist/
+**/.next/
+**/coverage/
+**/.nyc_output/
+**/*.tsbuildinfo
+
+# Vite
+**/.vite/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -33,7 +33,7 @@ When implementing complex logic in workflows, follow this hierarchy:
 - **Timeout**: 30 minutes (build), 15 minutes (Playwright)
 - **Key Features**:
   - Uses all reusable actions for consistency
-  - Full test suite including NAPI bindings and Playwright tests
+  - Full test suite: Rust + UI unit tests, NAPI bindings build (feeds `@bodhiapp/app-bindings` publish), and Playwright E2E (runs against the prebuilt `bodhiserver-dev` binary)
   - Codecov coverage reporting
   - TypeScript client validation
 

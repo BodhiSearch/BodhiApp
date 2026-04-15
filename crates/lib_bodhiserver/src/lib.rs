@@ -8,6 +8,7 @@ mod app_options;
 mod app_service_builder;
 mod bootstrap_service;
 mod error;
+#[cfg(feature = "embed-ui")]
 mod ui_assets;
 
 /// Git commit SHA captured at build time. "undefined" if not available.
@@ -22,6 +23,7 @@ pub use app_service_builder::*;
 pub use bootstrap_service::BootstrapService;
 pub use error::*;
 pub use services::BootstrapParts;
+#[cfg(feature = "embed-ui")]
 pub use ui_assets::EMBEDDED_UI_ASSETS;
 
 // Re-exports for crates/bodhi dependency isolation

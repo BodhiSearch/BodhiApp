@@ -121,7 +121,7 @@ function ServerViewContent() {
         toast({ title: 'Registration endpoint is required for dynamic registration', variant: 'destructive' });
         return;
       }
-      const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback`;
+      const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback/`;
       try {
         const dcrResponse = await standaloneDcr.mutateAsync({
           registration_endpoint: formRegistrationEndpoint,

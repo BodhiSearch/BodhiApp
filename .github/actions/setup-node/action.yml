@@ -28,7 +28,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ env.NPM_CACHE_DIR }}
-        key: ${{ runner.os }}-npm-${{ hashFiles('crates/bodhi/package-lock.json', 'crates/lib_bodhiserver_napi/package-lock.json', 'ts-client/package-lock.json') }}
+        key: ${{ runner.os }}-npm-${{ hashFiles('crates/bodhi/package-lock.json', 'crates/lib_bodhiserver/package-lock.json', 'crates/lib_bodhiserver_napi/package-lock.json', 'ts-client/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-npm-
 

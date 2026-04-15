@@ -1,5 +1,5 @@
 name: napi-build
-description: Build NAPI bindings for Playwright and upload artifacts
+description: Build NAPI bindings for the @bodhiapp/app-bindings npm publish pipeline and upload artifacts
 inputs:
   platform:
     description: "Platform to build for"
@@ -11,7 +11,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Build NAPI bindings for Playwright
+    - name: Build NAPI bindings for @bodhiapp/app-bindings
       id: napi-build
       continue-on-error: true
       working-directory: crates/lib_bodhiserver_napi

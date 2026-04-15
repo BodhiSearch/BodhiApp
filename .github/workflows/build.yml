@@ -110,6 +110,12 @@ jobs:
           platform: ubuntu-latest
           target: x86_64-unknown-linux-gnu
 
+      - name: Build bodhiserver_dev binary (E2E launcher)
+        uses: ./.github/actions/bodhiserver-dev-build
+        with:
+          platform: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+
   playwright-tests:
     needs: build-and-test
     if: needs.build-and-test.outputs.coverage-success == 'true'
@@ -171,13 +177,13 @@ jobs:
         uses: ./.github/actions/setup-playwright
         with:
           platform: ubuntu-latest
-          working-directory: crates/lib_bodhiserver_napi
+          working-directory: crates/lib_bodhiserver
 
-      - name: Download NAPI artifacts
+      - name: Download bodhiserver_dev binary
         uses: actions/download-artifact@v4
         with:
-          name: napi-bindings-x86_64-unknown-linux-gnu
-          path: crates/lib_bodhiserver_napi/
+          name: bodhiserver-dev-x86_64-unknown-linux-gnu
+          path: target/debug/
 
       - name: Download llama_server_proc binaries
         uses: actions/download-artifact@v4
@@ -185,69 +191,43 @@ jobs:
           name: llama-server-binaries-x86_64-unknown-linux-gnu
           path: crates/llama_server_proc/bin/
 
-      - name: Verify llama-server binary exists and set permissions
+      - name: Verify binaries and set permissions
         shell: bash
         run: |
-          echo "Checking for llama-server binary at expected location:"
+          echo "==> llama-server"
           BINARY_PATH="crates/llama_server_proc/bin/x86_64-unknown-linux-gnu/cpu/llama-server"
-
-          if [ -f "$BINARY_PATH" ]; then
-            echo "✅ Binary found at: $BINARY_PATH"
-            ls -la "$BINARY_PATH"
-            chmod +x "$BINARY_PATH"
-          else
-            echo "❌ Binary not found at expected location!"
-            echo "Contents of crates/llama_server_proc/bin/:"
-            find crates/llama_server_proc/bin -type f 2>/dev/null || echo "bin directory not found"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "❌ llama-server binary not found"
+            find crates/llama_server_proc/bin -type f 2>/dev/null || true
             exit 1
           fi
+          echo "✅ $BINARY_PATH"
+          ls -la "$BINARY_PATH"
+          chmod +x "$BINARY_PATH"
+
+          echo "==> bodhiserver_dev"
+          if [ ! -f target/debug/bodhiserver_dev ]; then
+            echo "❌ bodhiserver_dev binary not found"
+            ls -la target/debug 2>/dev/null || true
+            exit 1
+          fi
+          echo "✅ target/debug/bodhiserver_dev"
+          ls -la target/debug/bodhiserver_dev
+          chmod +x target/debug/bodhiserver_dev
 
       - name: Install dependencies
         shell: bash
-        working-directory: crates/lib_bodhiserver_napi
+        working-directory: crates/lib_bodhiserver
         run: |
           npm ci
           cd test-oauth-app && npm ci && cd ..
           cd test-mcp-oauth-server && npm ci && cd ..
           cd test-mcp-auth-server && npm ci && cd ..
-          cd test-mcp-full-server && npm ci && cd ..
-
-      - name: Verify NAPI bindings exist
-        shell: bash
-        working-directory: crates/lib_bodhiserver_napi
-        run: |
-          if [ ! -f app-bindings.*.node ]; then
-            echo "Error: NAPI bindings not found. Build may have failed."
-            exit 1
-          fi
-          echo "✅ NAPI bindings found:"
-          ls -la app-bindings.*.node
-          ls -la index.*
-
-      - name: Run NAPI binding tests
-        id: napi-tests
-        continue-on-error: true
-        shell: bash
-        working-directory: crates/lib_bodhiserver_napi
-        run: |
-          npx vitest run --reporter=junit --outputFile=test-results/vitest-junit.xml --reporter=verbose
-        env:
-          CI: true
-          BODHI_EXEC_VARIANT: cpu
-
-      - name: Publish NAPI binding test results
-        uses: dorny/test-reporter@v1
-        if: (success() || failure()) && steps.napi-tests.outcome != 'skipped'
-        with:
-          name: NAPI Binding Tests (Linux)
-          path: crates/lib_bodhiserver_napi/test-results/vitest-junit.xml
-          reporter: java-junit
-          fail-on-error: false
 
       - name: Run Playwright tests
         id: playwright-run
         shell: bash
-        working-directory: crates/lib_bodhiserver_napi
+        working-directory: crates/lib_bodhiserver
         run: |
           npm run test:playwright:ci
         env:
@@ -287,7 +267,7 @@ jobs:
         if: (success() || failure()) && steps.playwright-run.outcome != 'skipped'
         with:
           name: Playwright Tests (Linux)
-          path: crates/lib_bodhiserver_napi/test-results/junit.xml
+          path: crates/lib_bodhiserver/test-results/junit.xml
           reporter: java-junit
           fail-on-error: false
 
@@ -297,31 +277,17 @@ jobs:
         with:
           name: test-results-linux
           path: |
-            crates/lib_bodhiserver_napi/test-results/
-            crates/lib_bodhiserver_napi/playwright-report/
+            crates/lib_bodhiserver/test-results/
+            crates/lib_bodhiserver/playwright-report/
           retention-days: 7
 
       - name: Check test results and fail if any failed
         if: always()
         shell: bash
         run: |
-          echo "Checking test results..."
-          echo "NAPI tests outcome: ${{ steps.napi-tests.outcome }}"
           echo "Playwright tests outcome: ${{ steps.playwright-run.outcome }}"
-
-          if [[ "${{ steps.napi-tests.outcome }}" == "failure" ]]; then
-            echo "❌ NAPI binding tests failed"
-            TESTS_FAILED=true
-          fi
-
           if [[ "${{ steps.playwright-run.outcome }}" == "failure" ]]; then
-            echo "❌ Playwright tests failed"
-            TESTS_FAILED=true
-          fi
-
-          if [[ "$TESTS_FAILED" == "true" ]]; then
-            echo "💔 One or more test suites failed. Check uploaded artifacts for details."
+            echo "❌ Playwright tests failed. Check uploaded artifacts for details."
             exit 1
-          else
-            echo "✅ All test suites passed!"
           fi
+          echo "✅ Playwright tests passed!"

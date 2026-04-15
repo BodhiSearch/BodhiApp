@@ -24,7 +24,7 @@ The CI/CD design philosophy centers on three core principles:
 
 The build system implements a sophisticated dependency-aware orchestration that goes beyond simple matrix builds. It uses dynamic cargo metadata analysis to determine optimal build ordering while maximizing parallelization opportunities. The system distinguishes between fast-feedback builds (Linux-only for rapid iteration) and comprehensive multi-platform builds (for releases), optimizing developer experience without compromising release quality.
 
-**Key Innovation**: The build system maintains separate artifact streams for different consumption patterns - NAPI bindings flow to Playwright tests, llama-server binaries coordinate across test phases, and UI builds integrate with both NAPI and desktop packaging workflows.
+**Key Innovation**: The build system maintains separate artifact streams for different consumption patterns — the `bodhiserver-dev` binary feeds Playwright E2E jobs, llama-server binaries coordinate across test phases, NAPI bindings feed the `@bodhiapp/app-bindings` npm publish for external consumers, and UI builds integrate with Tauri + Docker packaging.
 
 ### Multi-Layered Testing Architecture
 
@@ -32,7 +32,7 @@ The testing framework implements a hierarchical test execution strategy that coo
 
 1. **Rust Unit/Integration Layer**: Workspace-aware test execution with coverage aggregation
 2. **Frontend Unit Testing**: React/TypeScript test suites with isolated coverage reporting  
-3. **NAPI Binding Validation**: Cross-language interface testing with binary dependency coordination
+3. **NAPI Binding Validation**: `cargo test -p lib_bodhiserver_napi` + `npm run build` on the bindings crate, gating the `@bodhiapp/app-bindings` publish pipeline (external consumers only; BodhiApp's own E2E suite uses the `bodhiserver-dev` binary instead)
 4. **End-to-End Playwright Integration**: Full-stack behavior validation with authentication flow testing
 5. **Cross-Platform Consistency Testing**: Ensuring identical behavior across target platforms
 
@@ -93,7 +93,7 @@ The system implements advanced build orchestration that combines workspace topol
 The pipeline implements a sophisticated artifact flow system where build products become precisely coordinated inputs for downstream processes. This coordination extends beyond simple file passing to include metadata propagation, version consistency validation, and dependency resolution.
 
 **Critical Flows**:
-- NAPI bindings → Playwright test execution (with binary verification)
+- `bodhiserver-dev` binary → Playwright test execution (built by `.github/actions/bodhiserver-dev-build`, downloaded by the playwright-tests job)
 - llama-server binaries → Integration test coordination (with platform-specific path resolution)
 - UI builds → Desktop application packaging (with embedded resource optimization)
 - Coverage reports → Aggregated reporting (with multi-language consolidation)

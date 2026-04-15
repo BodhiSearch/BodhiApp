@@ -39,7 +39,7 @@ As a developer, I want to validate the complete OAuth2 Token Exchange v2 flow so
 - [Testing Strategy](../../01-architecture/testing-strategy.md)
 
 ### Existing Patterns
-- Follow Playwright patterns: `crates/lib_bodhiserver_napi/tests-js/playwright/`
+- Follow Playwright patterns: `crates/lib_bodhiserver/tests-js/specs/` (E2E migrated from `lib_bodhiserver_napi` in 2026-04)
 - Server management: `bodhi-app-server.mjs`
 - Auth client utilities: `auth-server-client.mjs`
 - Test helpers: `../test-helpers.mjs`

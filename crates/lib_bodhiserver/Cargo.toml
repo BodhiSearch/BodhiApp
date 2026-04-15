@@ -24,6 +24,10 @@ strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+anyhow = { workspace = true }
 mcp_client = { workspace = true }
 
 [build-dependencies]
@@ -42,4 +46,11 @@ tokio = { workspace = true, features = ["test-util"] }
 
 
 [features]
+default = ["embed-ui"]
+embed-ui = []
 test-utils = ["services/test-utils"]
+
+[[bin]]
+name = "bodhiserver_dev"
+path = "src/bin/bodhiserver_dev.rs"
+required-features = ["test-utils"]

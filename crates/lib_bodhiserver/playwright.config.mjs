@@ -130,6 +130,21 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: [
     {
+      // Vite dev server provides the UI that bodhiserver_dev proxies under /ui/*.
+      // Use a real SPA route as the readiness URL so Vite pre-bundles its deps
+      // (react, react-router, etc.) before the first test navigates — otherwise
+      // the cold-start prebundle races against `page.goto` and the SPA never
+      // mounts (blank page, no Login button).
+      command: 'npm run e2e:server:vite',
+      // Wait on @vite/client (the HMR runtime stub) so Vite has both the SPA
+      // route and the internal endpoint compiled before tests run — otherwise
+      // the first /ui/@vite/client request races and 404s, leaving a blank
+      // page mid-test.
+      url: 'http://localhost:3000/ui/@vite/client',
+      reuseExistingServer: false,
+      timeout: 180000,
+    },
+    {
       command: 'npm run e2e:server:standalone',
       url: 'http://localhost:51135/ping',
       reuseExistingServer: false,  // Always start fresh

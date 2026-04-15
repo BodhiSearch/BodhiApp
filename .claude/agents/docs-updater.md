@@ -37,7 +37,7 @@ Launch these 5 sub-agents in parallel using `isolation: "worktree"` and `run_in_
 | **B** | `bodhi/src`, `bodhi/src-tauri` | UI crate, allows extra satellites (COMPONENTS.md, HOOKS.md, FORMS.md) |
 | **C** | `routes_app`, `auth_middleware` | Tightly coupled API + auth layer |
 | **D** | `errmeta`, `errmeta_derive`, `llama_server_proc`, `mcp_client` | Foundation Rust crates |
-| **E** | `server_app`, `lib_bodhiserver` (+ `src/test_utils/`), `lib_bodhiserver_napi` (+ `tests-js/`) | App layer + E2E |
+| **E** | `server_app`, `lib_bodhiserver` (+ `src/test_utils/`, `tests-js/`), `lib_bodhiserver_napi` | App layer + E2E |
 
 ### Sub-Agent Shared Instructions
 

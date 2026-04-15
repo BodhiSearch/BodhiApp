@@ -1,0 +1,50 @@
+{
+  "name": "@bodhiapp/lib-bodhiserver-tests",
+  "version": "0.0.0-dev",
+  "private": true,
+  "description": "Playwright E2E suite for BodhiApp running against the bodhiserver_dev binary + live Vite dev server.",
+  "type": "module",
+  "scripts": {
+    "test:run": "vitest run",
+    "test:playwright": "cross-env HEADLESS=true playwright test --config=playwright.config.mjs --reporter=list",
+    "test:playwright:standalone": "cross-env HEADLESS=true playwright test --config=playwright.config.mjs --reporter=list --project standalone",
+    "test:playwright:multi_tenant": "cross-env HEADLESS=true playwright test --config=playwright.config.mjs --reporter=list --project multi_tenant",
+    "test:playwright:all": "cross-env HEADLESS=true playwright test --config=playwright.config.mjs --reporter=list",
+    "test:playwright:ci": "playwright test --config=playwright.config.mjs",
+    "test:playwright:ui": "playwright test --config=playwright.config.mjs --ui",
+    "test:playwright:headed": "playwright test --config=playwright.config.mjs --headed",
+    "test:playwright:scheduled": "playwright test --config=playwright.config.mjs --reporter=list --grep @scheduled",
+    "test:all": "npm run test:run && npm run test:playwright",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "e2e:server:vite": "npm --prefix ../bodhi run dev",
+    "e2e:server:standalone": "node tests-js/scripts/start-shared-server.mjs --port 51135 --db-type sqlite",
+    "e2e:server:multi_tenant": "node tests-js/scripts/start-shared-server.mjs --port 41135 --db-type postgres --deployment multi_tenant",
+    "e2e:server:test-app-oauth": "cd test-oauth-app && npm run build && npx serve dist -s -l 55173",
+    "e2e:server:test-app-mcp": "cd test-mcp-oauth-server && npm run build && npm start",
+    "e2e:server:test-app-mcp-dcr": "cd test-mcp-oauth-server && npm run build && node dist/index.js --dcr",
+    "e2e:server:test-mcp-auth-header": "cd test-mcp-auth-server && npm run build && node dist/index.js --header Authorization=\"Bearer test-header-key\" --port 55176",
+    "e2e:server:test-mcp-auth-query": "cd test-mcp-auth-server && npm run build && node dist/index.js --query api_key=test-query-key --port 55177",
+    "e2e:server:test-mcp-auth-mixed": "cd test-mcp-auth-server && npm run build && node dist/index.js --header X-Auth-1=header-val-1 --header X-Auth-2=header-val-2 --query q_key_1=query-val-1 --query q_key_2=query-val-2 --port 55178",
+    "e2e:server:everything-mcp": "PORT=55180 npx @modelcontextprotocol/server-everything streamableHttp",
+    "e2e:server:mcp-inspector": "DANGEROUSLY_OMIT_AUTH=true MCP_AUTO_OPEN_ENABLED=false npx @modelcontextprotocol/inspector"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@copilotkit/aimock": "^1.11.0",
+    "@modelcontextprotocol/inspector": "0.21.1",
+    "@modelcontextprotocol/server-everything": "2026.1.26",
+    "@playwright/test": "1.57.0",
+    "cross-env": "^10.1.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

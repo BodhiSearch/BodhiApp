@@ -41,7 +41,7 @@ Classify changed files into layers:
 - **routes_app**: `crates/routes_app/src/**`
 - **server_app**: `crates/server_app/src/**`
 - **ui**: `crates/bodhi/src/**`
-- **e2e**: `crates/lib_bodhiserver_napi/tests-js/**`
+- **e2e**: `crates/lib_bodhiserver/tests-js/**`
 - **migrations**: `crates/services/migrations/**`
 - **ts-client**: `ts-client/**`
 
@@ -60,7 +60,7 @@ For each affected crate, load its CLAUDE.md and PACKAGE.md:
 | routes_app | `crates/routes_app/CLAUDE.md` | `crates/routes_app/PACKAGE.md` |
 | server_app | `crates/server_app/CLAUDE.md` | `crates/server_app/PACKAGE.md` |
 | ui (bodhi/src) | `crates/bodhi/src/CLAUDE.md` | `crates/bodhi/src/PACKAGE.md` |
-| e2e (tests-js) | `crates/lib_bodhiserver_napi/tests-js/CLAUDE.md` | -- |
+| e2e (tests-js) | `crates/lib_bodhiserver/tests-js/CLAUDE.md` | -- |
 
 Also load `tests-js/E2E.md` if E2E tests are affected.
 
@@ -245,7 +245,7 @@ When applying fixes, follow this order:
 6. Full backend: `make test.backend`
 7. Regenerate ts-client: `make build.ts-client`
 8. Frontend issues → verify: `cd crates/bodhi && npm test`
-9. E2E issues → verify: `make build.ui-rebuild && make test.napi`
+9. E2E issues → verify: `make test.e2e` (or `make build.dev-server && cd crates/lib_bodhiserver && npm run test:playwright -- <filter>` for a filtered run)
 10. Documentation updates
 
 ## Reports Generated

@@ -1,0 +1,43 @@
+name: bodhiserver-dev-build
+description: Build the bodhiserver_dev binary used by Playwright E2E + upload artifact
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+  target:
+    description: "Target triple"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Build bodhiserver_dev binary
+      id: dev-build
+      continue-on-error: true
+      shell: bash
+      run: |
+        cargo build --no-default-features --features test-utils \
+          -p lib_bodhiserver --bin bodhiserver_dev --locked
+
+    - name: Stage bodhiserver_dev binary (with .exe on Windows)
+      if: steps.dev-build.outcome == 'success'
+      shell: bash
+      run: |
+        mkdir -p bodhiserver-dev-out
+        if [ -f target/debug/bodhiserver_dev ]; then
+          cp target/debug/bodhiserver_dev bodhiserver-dev-out/bodhiserver_dev
+        elif [ -f target/debug/bodhiserver_dev.exe ]; then
+          cp target/debug/bodhiserver_dev.exe bodhiserver-dev-out/bodhiserver_dev.exe
+        else
+          echo "Error: bodhiserver_dev binary not found in target/debug"
+          exit 1
+        fi
+        ls -la bodhiserver-dev-out
+
+    - name: Upload bodhiserver_dev artifact
+      if: steps.dev-build.outcome == 'success'
+      uses: actions/upload-artifact@v4
+      with:
+        name: bodhiserver-dev-${{ inputs.target }}
+        path: bodhiserver-dev-out/
+        retention-days: 1

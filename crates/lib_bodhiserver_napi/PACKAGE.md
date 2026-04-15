@@ -58,13 +58,9 @@ cd crates/lib_bodhiserver_napi && npm run build:release
 
 # Rust tests
 cargo test -p lib_bodhiserver_napi
-
-# JS unit tests (vitest)
-cd crates/lib_bodhiserver_napi && npm run test:run
-
-# Playwright E2E tests
-cd crates/lib_bodhiserver_napi && npm run test:playwright
 ```
+
+Playwright E2E for BodhiApp lives in `crates/lib_bodhiserver/tests-js/` and runs against the `bodhiserver_dev` binary, not these NAPI bindings. See `crates/lib_bodhiserver/tests-js/CLAUDE.md`.
 
 ## Cross-Platform Targets
 

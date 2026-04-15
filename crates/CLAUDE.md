@@ -14,8 +14,8 @@ See `MDFILES.md` in project root for documentation conventions.
 | `server_core` | HTTP infrastructure: SharedContext, SSE streaming, InferenceService |
 | `routes_app` | API endpoints + auth middleware: AuthScope, ApiError, JWT, session, OpenAPI |
 | `server_app` | Standalone HTTP server: ServeCommand, graceful shutdown, live integration tests |
-| `lib_bodhiserver` | Embeddable server library: AppServiceBuilder, setup_app_dirs, re-exports |
-| `lib_bodhiserver_napi` | NAPI bindings: @bodhiapp/app-bindings, Playwright E2E |
+| `lib_bodhiserver` | Embeddable server library: AppServiceBuilder, setup_app_dirs, re-exports, `bodhiserver_dev` bin + Playwright E2E suite |
+| `lib_bodhiserver_napi` | NAPI bindings: @bodhiapp/app-bindings (published for external Node.js consumers) |
 | `bodhi/src` | Vite + TanStack Router + TanStack Query v5 frontend: @bodhiapp/ts-client, Vitest, MSW |
 | `bodhi/src-tauri` | Tauri desktop + container server: native feature flag, dual-mode |
 | `ci_optims` | Docker layer caching for CI builds |
@@ -25,7 +25,7 @@ Sub-module docs (load when working inside these modules):
 - `crates/routes_app/src/middleware/CLAUDE.md` — Auth middleware
 - `crates/services/src/test_utils/CLAUDE.md` — Test utility infrastructure
 - `crates/server_core/src/test_utils/CLAUDE.md` — HTTP test utilities
-- `crates/lib_bodhiserver_napi/tests-js/CLAUDE.md` + `E2E.md` — Playwright E2E tests
+- `crates/lib_bodhiserver/tests-js/CLAUDE.md` + `E2E.md` — Playwright E2E tests
 
 ## Shared Rust Conventions
 
@@ -112,4 +112,4 @@ cargo test -p <failing_crate> --lib 2>&1 | grep -E "FAILED|failures:|test result
 - **Test files**: Prefer sibling `test_*.rs` via `#[cfg(test)] #[path = "test_<name>.rs"] mod test_<name>;`. Inline `mod tests` for files under 500 lines
 - **Assertions**: `assert_eq!(expected, actual)` with `pretty_assertions`. Error assertions via `.code()`, never message text
 - Avoid `use super::*` in test modules — use explicit imports
-- **Test boundaries**: `routes_app` = single-turn via `tower::oneshot()`, `server_app` = multi-turn real HTTP (`#[serial_test::serial(live)]`), `lib_bodhiserver_napi` = Playwright E2E
+- **Test boundaries**: `routes_app` = single-turn via `tower::oneshot()`, `server_app` = multi-turn real HTTP (`#[serial_test::serial(live)]`), `lib_bodhiserver` = Playwright E2E (via `bodhiserver_dev` bin + live Vite)

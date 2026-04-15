@@ -49,9 +49,10 @@ Three places must stay in sync — all set to `/ui`:
 
 ### Build & Test
 
-- `cd crates/bodhi && npm run dev` — Vite dev server (hot reload, port 3000)
+- `cd crates/bodhi && npm run dev` — Vite dev server (hot reload, port 3000; pure frontend)
 - `cd crates/bodhi && npm test` — run Vitest component tests
-- After UI changes, rebuild embedded UI: `make build.ui-rebuild` (see root CLAUDE.md)
+- `make app.run.live` / `make test.e2e` — full stack against live Vite (no rebuild needed, HMR active)
+- `make build.ui-rebuild` — only for embedded-bundle validation (Tauri, Docker, native binary); see root CLAUDE.md
 
 ### MSW v2 Handler Ordering
 

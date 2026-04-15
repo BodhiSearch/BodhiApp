@@ -154,15 +154,15 @@ make rebuild.ui
 ```
 
 ### Phase 6: Integration Testing
-- **Crate:** `lib_bodhiserver_napi`
+- **Crate:** `lib_bodhiserver`
 - **Typical Tasks:**
   - Playwright tests
   - End-to-end scenarios
   - API integration tests
-- **Key Files:** `crates/lib_bodhiserver_napi/tests-js/**/*.spec.mjs`
+- **Key Files:** `crates/lib_bodhiserver/tests-js/**/*.spec.mjs`
 - **Commands:**
 ```bash
-cd crates/lib_bodhiserver_napi && npm run test
+make test.e2e
 ```
 
 ## Task Item Patterns
@@ -271,7 +271,7 @@ After any frontend modifications:
 ### Frontend Build Tasks
 - [ ] Run frontend tests: `cd crates/bodhi && npm run test`
 - [ ] Rebuild UI: `make rebuild.ui`
-- [ ] Run Playwright tests: `cd crates/lib_bodhiserver_napi && npm run test`
+- [ ] Run Playwright tests: `make test.e2e`
 - [ ] **Test:** Verify UI changes in browser
 ```
 

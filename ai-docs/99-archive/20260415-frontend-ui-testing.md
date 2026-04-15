@@ -1,4 +1,13 @@
-# Frontend UI Testing (Playwright)
+# Frontend UI Testing (Playwright) — ARCHIVED 2026-04-15
+
+> **Archived**: This document described the pre-migration layout where Playwright specs lived under `crates/lib_bodhiserver_napi/tests-js/playwright/`, ran against NAPI bindings, and relied on the embedded UI. As of commit `30ec0895` (2026-04-15) the E2E suite moved to `crates/lib_bodhiserver/tests-js/` and runs against the `bodhiserver_dev` binary + live Vite dev server. The authoritative Playwright conventions now live in:
+>
+> - `crates/lib_bodhiserver/tests-js/CLAUDE.md` — concise orientation
+> - `crates/lib_bodhiserver/tests-js/E2E.md` — detailed writing guide
+>
+> The content below is preserved for historical reference only.
+
+---
 
 > **AI Coding Assistant Guide**: This document provides concise Playwright UI testing conventions and patterns for the Bodhi App. Focus on established patterns and avoid conditional logic.
 

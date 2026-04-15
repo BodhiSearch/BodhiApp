@@ -393,7 +393,7 @@ function NewMcpPageContent() {
         { ...form.getValues(), mcp_id: editId || '' },
         selectedServer ? { url: selectedServer.url, name: selectedServer.name } : undefined
       );
-      const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback`;
+      const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback/`;
       const loginResponse = await oauthLoginMutation.mutateAsync({
         id: configId,
         redirect_uri: redirectUri,

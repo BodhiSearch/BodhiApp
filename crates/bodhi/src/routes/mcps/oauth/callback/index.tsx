@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Loader2 } from 'lucide-react';
 import { z } from 'zod';
@@ -30,12 +30,15 @@ function OAuthCallbackContent() {
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
-  const [exchanged, setExchanged] = useState(false);
+  // Ref, not state: under React StrictMode dev mode effects double-invoke before
+  // the state update commits, so a useState guard would let the token exchange
+  // fire twice and the second call would 400 with invalid_grant.
+  const exchangedRef = useRef(false);
 
   const tokenExchangeMutation = useOAuthTokenExchange();
 
   useEffect(() => {
-    if (exchanged) return;
+    if (exchangedRef.current) return;
 
     if (error) {
       setStatus('error');
@@ -80,28 +83,28 @@ function OAuthCallbackContent() {
 
     const mcpId = formState.mcp_id || undefined;
 
-    setExchanged(true);
-    const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback`;
+    exchangedRef.current = true;
+    const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback/`;
 
-    tokenExchangeMutation.mutate(
-      { id: configId, mcp_id: mcpId, code, redirect_uri: redirectUri, state },
-      {
-        onSuccess: (response) => {
-          const tokenId = response.data.id;
-          formState.oauth_token_id = tokenId;
-          sessionStorage.setItem(OAUTH_FORM_STORAGE_KEY, JSON.stringify(formState));
-          setStatus('success');
-          const returnUrl = formState.return_url || '/mcps/new/';
-          navigate({ to: returnUrl });
-        },
-        onError: (err) => {
-          sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY);
-          setStatus('error');
-          setErrorMessage(err?.response?.data?.error?.message || 'Failed to exchange authorization code');
-        },
-      }
-    );
-  }, [code, state, error, errorDescription, exchanged, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+    // mutateAsync, not mutate+per-call callbacks: react-query skips per-call
+    // callbacks if the component unmounts before the response, which StrictMode's
+    // dev-mode double-mount reliably triggers here.
+    tokenExchangeMutation
+      .mutateAsync({ id: configId, mcp_id: mcpId, code, redirect_uri: redirectUri, state })
+      .then((response) => {
+        const tokenId = response.data.id;
+        formState.oauth_token_id = tokenId;
+        sessionStorage.setItem(OAUTH_FORM_STORAGE_KEY, JSON.stringify(formState));
+        setStatus('success');
+        const returnUrl = formState.return_url || '/mcps/new/';
+        navigate({ to: returnUrl });
+      })
+      .catch((err) => {
+        sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY);
+        setStatus('error');
+        setErrorMessage(err?.response?.data?.error?.message || 'Failed to exchange authorization code');
+      });
+  }, [code, state, error, errorDescription, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="container mx-auto p-4 max-w-md" data-testid="oauth-callback-page">

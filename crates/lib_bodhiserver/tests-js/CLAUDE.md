@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Playwright E2E tests validating **user journeys** through Bodhi App. NAPI bindings embed the Rust server directly into Node.js -- no Docker or external processes. Tests are JavaScript/MJS.
+Playwright E2E tests validating **user journeys** through Bodhi App. Tests spawn the prebuilt `bodhiserver_dev` binary (built via `make build.dev-server`) as a child process and run against a live Vite dev server proxied by the binary at `/ui/*`. Tests are JavaScript/MJS.
 
 ## Core Rules
 
@@ -14,7 +14,7 @@ Playwright E2E tests validating **user journeys** through Bodhi App. NAPI bindin
 
 ## Running Tests
 
-All commands from `crates/lib_bodhiserver_napi/`:
+Build the dev binary once (`make build.dev-server`); thereafter run from `crates/lib_bodhiserver/`:
 
 | Command | Purpose |
 |---------|---------|

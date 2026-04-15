@@ -10,7 +10,7 @@ This script creates 6 GGUF files in a synthetic HF_HOME directory structure:
 - mistral-audio.gguf - Audio capability (metadata-based)
 - llava-multimodal.gguf - Vision + tool calling + structured output (multi-capability)
 
-Output directory: ../../lib_bodhiserver_napi/tests-js/data/test-gguf/
+Output directory: ../../lib_bodhiserver/tests-js/data/test-gguf/
 Directory structure mimics HuggingFace cache:
   hub/models--test--{model}/
     ├── refs/main (contains snapshot hash)

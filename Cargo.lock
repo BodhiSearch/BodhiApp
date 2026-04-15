@@ -3395,6 +3395,7 @@ name = "lib_bodhiserver"
 version = "0.0.51-dev"
 dependencies = [
  "anyhow",
+ "chrono",
  "derive-new",
  "derive_builder 0.20.2",
  "errmeta_derive",
@@ -3418,6 +3419,8 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
 ]
 
 [[package]]

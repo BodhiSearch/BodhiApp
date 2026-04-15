@@ -1,10 +1,16 @@
 # lib_bodhiserver -- CLAUDE.md
 **Companion docs** (load as needed):
 - `PACKAGE.md` -- Implementation details, error types, file index
+- `tests-js/CLAUDE.md` -- E2E Playwright suite (runs against `bodhiserver_dev`)
+- `tests-js/E2E.md` -- E2E test writing conventions
 
 ## Purpose
 
 Embeddable server library: service composition (`AppServiceBuilder`), application directory setup (`setup_app_dirs`), configuration management (`AppOptions`/`AppOptionsBuilder`), and re-exports for downstream crates.
+
+Also hosts:
+- `src/bin/bodhiserver_dev.rs` — env-var-driven binary used by the Playwright suite. Forces `BODHI_DEV_PROXY_UI=true` and runs without embedded UI assets so iteration on Rust + Vite no longer requires rebuilding NAPI bindings.
+- `tests-js/` — Playwright E2E tests + supporting MCP/OAuth fixture servers, migrated from `lib_bodhiserver_napi`.
 
 ## Architecture Position
 
@@ -52,9 +58,22 @@ Re-exports curated surface from `services`, `routes_app`, `server_app` so downst
 - `AppOptionsBuilder::development()` -- dev defaults (Development, Container, test auth URL)
 - `AppOptionsBuilder::with_bodhi_home(path)` -- development builder with custom BODHI_HOME
 
+## Feature Flags
+
+- `embed-ui` (default on) — gates `ui_assets::EMBEDDED_UI_ASSETS` and the frontend build step in `build.rs`. Disable with `--no-default-features` to skip the npm/Vite pipeline (used when building only `bodhiserver_dev`).
+- `test-utils` — required by the `bodhiserver_dev` bin (`required-features = ["test-utils"]`) for `create_tenant_test`.
+
 ## Commands
 
 ```bash
 cargo test -p lib_bodhiserver
 cargo test -p lib_bodhiserver --features test-utils
+
+# Build the dev binary without invoking npm/Vite
+cargo build --no-default-features --features test-utils -p lib_bodhiserver --bin bodhiserver_dev
+# Or via Make:
+make build.dev-server
+
+# Run the full Playwright matrix against the dev binary + live Vite
+make test.e2e
 ```

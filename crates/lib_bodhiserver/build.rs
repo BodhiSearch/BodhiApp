@@ -15,6 +15,12 @@ fn _main() -> anyhow::Result<()> {
   // Capture git commit SHA at build time
   capture_git_sha();
 
+  // Skip the frontend pipeline entirely when the embed-ui feature is disabled
+  // (e.g. `cargo build --no-default-features` for the bodhiserver_dev binary).
+  if env::var_os("CARGO_FEATURE_EMBED_UI").is_none() {
+    return Ok(());
+  }
+
   let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   let bodhi_dir = manifest_dir.join("../bodhi");
   let project_root = manifest_dir.join("../..");
