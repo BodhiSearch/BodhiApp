@@ -1,6 +1,6 @@
 [package]
 name = "services"
-version = "0.0.51-dev"
+version = "0.0.52-dev"
 edition = "2021"
 
 [[bin]]
