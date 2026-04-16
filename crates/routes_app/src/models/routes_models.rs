@@ -1,5 +1,5 @@
 use crate::shared::AuthScope;
-use crate::{ApiError, BodhiApiError};
+use crate::BodhiErrorResponse;
 use crate::{PaginationSortParams, API_TAG_MODELS, ENDPOINT_MODELS};
 use axum::{
   extract::{Path, Query},
@@ -66,7 +66,7 @@ use services::{AliasResponse, DataServiceError, PaginatedAliasResponse, UserAlia
 pub async fn models_index(
   auth_scope: AuthScope,
   Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedAliasResponse>, ApiError> {
+) -> Result<Json<PaginatedAliasResponse>, BodhiErrorResponse> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
 
   // Fetch all aliases using unified DataService (User + Model + API)
@@ -207,7 +207,7 @@ fn get_alias_source(alias: &Alias) -> &str {
     ),
     responses(
         (status = 200, description = "Model alias details", body = UserAliasResponse),
-        (status = 404, description = "Alias not found", body = BodhiApiError,
+        (status = 404, description = "Alias not found", body = BodhiErrorResponse,
          example = json!({
              "error": {
                  "message": "Alias 'unknown:model' not found",
@@ -225,7 +225,7 @@ fn get_alias_source(alias: &Alias) -> &str {
 pub async fn models_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<UserAliasResponse>, ApiError> {
+) -> Result<Json<UserAliasResponse>, BodhiErrorResponse> {
   let user_alias = auth_scope
     .data()
     .get_user_alias_by_id(&id)

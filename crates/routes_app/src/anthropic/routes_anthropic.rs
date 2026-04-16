@@ -1,13 +1,13 @@
 use crate::oai::OAIRouteError;
 use crate::shared::AuthScope;
-use crate::{AnthropicApiError, ApiError, JsonRejectionError};
+use crate::{AnthropicApiError, BodhiErrorResponse, JsonRejectionError};
 use axum::extract::{Path, Query};
 use axum::http::HeaderMap;
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
 use services::inference::LlmEndpoint;
-use services::{Alias, ApiAlias, ApiFormat, ApiModel};
+use services::{Alias, ApiAlias, ApiFormat, ApiModel, DataServiceError};
 use std::collections::{HashMap, HashSet};
 
 /// Path-parameter safety: rejects non-ASCII and special chars that could cause
@@ -47,10 +47,10 @@ fn extract_anthropic_headers(headers: &HeaderMap) -> Option<Vec<(String, String)
 async fn resolve_anthropic_alias(
   auth_scope: &AuthScope,
   model: &str,
-) -> Result<(ApiAlias, Option<String>), ApiError> {
+) -> Result<(ApiAlias, Option<String>), BodhiErrorResponse> {
   let alias =
     auth_scope.data().find_alias(model).await.ok_or_else(|| {
-      ApiError::from(services::DataServiceError::AliasNotFound(model.to_string()))
+      BodhiErrorResponse::from(DataServiceError::AliasNotFound(model.to_string()))
     })?;
 
   let api_alias = match alias {
@@ -77,12 +77,14 @@ async fn resolve_anthropic_alias(
   Ok((api_alias, api_key))
 }
 
-async fn list_user_anthropic_aliases(auth_scope: &AuthScope) -> Result<Vec<ApiAlias>, ApiError> {
+async fn list_user_anthropic_aliases(
+  auth_scope: &AuthScope,
+) -> Result<Vec<ApiAlias>, BodhiErrorResponse> {
   let aliases = auth_scope
     .data()
     .list_aliases()
     .await
-    .map_err(ApiError::from)?;
+    .map_err(BodhiErrorResponse::from)?;
   Ok(
     aliases
       .into_iter()
@@ -135,7 +137,7 @@ pub async fn anthropic_messages_create_handler(
       client_headers,
     )
     .await
-    .map_err(ApiError::from)?;
+    .map_err(BodhiErrorResponse::from)?;
 
   Ok(response)
 }

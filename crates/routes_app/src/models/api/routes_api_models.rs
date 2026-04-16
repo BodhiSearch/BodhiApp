@@ -1,5 +1,5 @@
 use crate::shared::AuthScope;
-use crate::{ApiError, BodhiApiError, ValidatedJson};
+use crate::{BodhiErrorResponse, ValidatedJson};
 use crate::{
   API_TAG_MODELS_API, ENDPOINT_MODELS_API, ENDPOINT_MODELS_API_FETCH_MODELS,
   ENDPOINT_MODELS_API_FORMATS, ENDPOINT_MODELS_API_TEST,
@@ -30,7 +30,7 @@ use services::{
              "has_api_key": true,
              "models": ["gpt-4"]
          })),
-        (status = 404, description = "API model with specified ID not found", body = BodhiApiError,
+        (status = 404, description = "API model with specified ID not found", body = BodhiErrorResponse,
          example = json!({
              "error": {
                  "message": "API model 'invalid-model' not found",
@@ -48,7 +48,7 @@ use services::{
 pub async fn api_models_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<ApiAliasResponse>, ApiError> {
+) -> Result<Json<ApiAliasResponse>, BodhiErrorResponse> {
   let result = auth_scope.api_models().get(&id).await?;
   Ok(Json(result))
 }
@@ -62,7 +62,7 @@ pub async fn api_models_show(
     request_body = ApiModelRequest,
     responses(
         (status = 201, description = "API model created", body = ApiAliasResponse),
-        (status = 409, description = "Alias already exists", body = BodhiApiError),
+        (status = 409, description = "Alias already exists", body = BodhiErrorResponse),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -73,7 +73,7 @@ pub async fn api_models_show(
 pub async fn api_models_create(
   auth_scope: AuthScope,
   ValidatedJson(form): ValidatedJson<ApiModelRequest>,
-) -> Result<(StatusCode, Json<ApiAliasResponse>), ApiError> {
+) -> Result<(StatusCode, Json<ApiAliasResponse>), BodhiErrorResponse> {
   let result = auth_scope.api_models().create(form).await?;
   Ok((StatusCode::CREATED, Json(result)))
 }
@@ -90,7 +90,7 @@ pub async fn api_models_create(
     request_body = ApiModelRequest,
     responses(
         (status = 200, description = "API model updated", body = ApiAliasResponse),
-        (status = 404, description = "API model not found", body = BodhiApiError),
+        (status = 404, description = "API model not found", body = BodhiErrorResponse),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -102,7 +102,7 @@ pub async fn api_models_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   ValidatedJson(form): ValidatedJson<ApiModelRequest>,
-) -> Result<Json<ApiAliasResponse>, ApiError> {
+) -> Result<Json<ApiAliasResponse>, BodhiErrorResponse> {
   let result = auth_scope.api_models().update(&id, form).await?;
   Ok(Json(result))
 }
@@ -118,7 +118,7 @@ pub async fn api_models_update(
     ),
     responses(
         (status = 204, description = "API model deleted"),
-        (status = 404, description = "API model not found", body = BodhiApiError),
+        (status = 404, description = "API model not found", body = BodhiErrorResponse),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -129,7 +129,7 @@ pub async fn api_models_update(
 pub async fn api_models_destroy(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   auth_scope.api_models().delete(&id).await?;
   Ok(StatusCode::NO_CONTENT)
 }
@@ -148,7 +148,7 @@ pub async fn api_models_destroy(
     request_body = TestPromptRequest,
     responses(
         (status = 200, description = "Test result", body = TestPromptResponse),
-        (status = 400, description = "Invalid request", body = BodhiApiError),
+        (status = 400, description = "Invalid request", body = BodhiErrorResponse),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -159,7 +159,7 @@ pub async fn api_models_destroy(
 pub async fn api_models_test(
   auth_scope: AuthScope,
   ValidatedJson(payload): ValidatedJson<TestPromptRequest>,
-) -> Result<Json<TestPromptResponse>, ApiError> {
+) -> Result<Json<TestPromptResponse>, BodhiErrorResponse> {
   let ai_api = auth_scope.ai_api();
   let db = auth_scope.db();
   let tenant_id = auth_scope.require_tenant_id()?;
@@ -187,7 +187,7 @@ pub async fn api_models_test(
         .get_api_model_alias(tenant_id, user_id, id)
         .await?
         .ok_or_else(|| {
-          ApiError::from(services::EntityError::NotFound(format!(
+          BodhiErrorResponse::from(services::EntityError::NotFound(format!(
             "API model '{}' not found",
             id
           )))
@@ -231,7 +231,7 @@ pub async fn api_models_test(
     request_body = FetchModelsRequest,
     responses(
         (status = 200, description = "Available models", body = FetchModelsResponse),
-        (status = 400, description = "Invalid request", body = BodhiApiError),
+        (status = 400, description = "Invalid request", body = BodhiErrorResponse),
     ),
     security(
         ("bearer_api_token" = ["scope_token_power_user"]),
@@ -242,7 +242,7 @@ pub async fn api_models_test(
 pub async fn api_models_fetch_models(
   auth_scope: AuthScope,
   ValidatedJson(payload): ValidatedJson<FetchModelsRequest>,
-) -> Result<Json<FetchModelsResponse>, ApiError> {
+) -> Result<Json<FetchModelsResponse>, BodhiErrorResponse> {
   let ai_api = auth_scope.ai_api();
   let db = auth_scope.db();
   let tenant_id = auth_scope.require_tenant_id()?;
@@ -268,7 +268,7 @@ pub async fn api_models_fetch_models(
         .get_api_model_alias(tenant_id, user_id, id)
         .await?
         .ok_or_else(|| {
-          ApiError::from(services::EntityError::NotFound(format!(
+          BodhiErrorResponse::from(services::EntityError::NotFound(format!(
             "API model '{}' not found",
             id
           )))
@@ -313,7 +313,7 @@ pub async fn api_models_fetch_models(
         ("session_auth" = ["resource_power_user"])
     )
 )]
-pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, ApiError> {
+pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, BodhiErrorResponse> {
   Ok(Json(ApiFormatsResponse {
     data: vec![
       ApiFormat::OpenAI,
@@ -364,7 +364,7 @@ pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, ApiError> 
 pub async fn api_models_sync(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<ApiAliasResponse>, ApiError> {
+) -> Result<Json<ApiAliasResponse>, BodhiErrorResponse> {
   let result = auth_scope.api_models().sync_models(&id).await?;
   Ok(Json(result))
 }

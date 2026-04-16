@@ -1,4 +1,4 @@
-use crate::ApiError;
+use crate::BodhiErrorResponse;
 use axum::{
   extract::{FromRef, FromRequestParts},
   http::request::Parts,
@@ -31,7 +31,7 @@ where
   S: Send + Sync,
   Arc<dyn AppService>: FromRef<S>,
 {
-  type Rejection = ApiError;
+  type Rejection = BodhiErrorResponse;
 
   async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
     // Extract AuthContext from extensions (set by auth middleware before handler runs).

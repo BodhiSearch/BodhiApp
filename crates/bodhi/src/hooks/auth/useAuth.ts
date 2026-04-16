@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 
 // Type imports
-import { AuthCallbackRequest, AuthInitiateRequest, RedirectResponse, BodhiApiError } from '@bodhiapp/ts-client';
+import { AuthCallbackRequest, AuthInitiateRequest, RedirectResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseMutationResult } from '@/hooks/useQuery';
@@ -19,9 +19,6 @@ import {
   ENDPOINT_LOGOUT,
 } from './constants';
 
-// Type alias
-type ErrorResponse = BodhiApiError;
-
 // OAuth Initiate Hook
 interface UseOAuthInitiateOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
@@ -30,7 +27,7 @@ interface UseOAuthInitiateOptions {
 
 export function useOAuthInitiate(
   options?: UseOAuthInitiateOptions
-): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, AuthInitiateRequest> {
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<BodhiErrorResponse>, AuthInitiateRequest> {
   const handleSuccess = useCallback(
     (response: AxiosResponse<RedirectResponse>) => {
       options?.onSuccess?.(response);
@@ -39,7 +36,7 @@ export function useOAuthInitiate(
   );
 
   const handleError = useCallback(
-    (error: AxiosError<ErrorResponse>) => {
+    (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to initiate OAuth authentication';
       options?.onError?.(message);
     },
@@ -86,7 +83,7 @@ interface UseOAuthCallbackOptions {
 
 export function useOAuthCallback(
   options?: UseOAuthCallbackOptions
-): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, AuthCallbackRequest> {
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<BodhiErrorResponse>, AuthCallbackRequest> {
   const handleSuccess = useCallback(
     (response: AxiosResponse<RedirectResponse>) => {
       options?.onSuccess?.(response);
@@ -95,7 +92,7 @@ export function useOAuthCallback(
   );
 
   const handleError = useCallback(
-    (error: AxiosError<ErrorResponse>) => {
+    (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to complete OAuth authentication';
       options?.onError?.(message);
     },
@@ -120,12 +117,12 @@ export function useOAuthCallback(
 // Logout Hook (from useQuery.ts)
 interface UseLogoutOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
-  onError?: (error: AxiosError<ErrorResponse>) => void;
+  onError?: (error: AxiosError<BodhiErrorResponse>) => void;
 }
 
 export function useLogout(
   options?: UseLogoutOptions
-): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, void> {
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<BodhiErrorResponse>, void> {
   const queryClient = useQueryClient();
   return useMutationQuery<RedirectResponse, void>(ENDPOINT_LOGOUT, 'post', {
     ...options,
@@ -146,7 +143,7 @@ interface UseDashboardOAuthInitiateOptions {
 
 export function useDashboardOAuthInitiate(
   options?: UseDashboardOAuthInitiateOptions
-): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, void> {
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<BodhiErrorResponse>, void> {
   const handleSuccess = useCallback(
     (response: AxiosResponse<RedirectResponse>) => {
       options?.onSuccess?.(response);
@@ -155,7 +152,7 @@ export function useDashboardOAuthInitiate(
   );
 
   const handleError = useCallback(
-    (error: AxiosError<ErrorResponse>) => {
+    (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to initiate dashboard authentication';
       options?.onError?.(message);
     },
@@ -185,7 +182,7 @@ interface UseDashboardOAuthCallbackOptions {
 
 export function useDashboardOAuthCallback(
   options?: UseDashboardOAuthCallbackOptions
-): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, AuthCallbackRequest> {
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<BodhiErrorResponse>, AuthCallbackRequest> {
   const handleSuccess = useCallback(
     (response: AxiosResponse<RedirectResponse>) => {
       options?.onSuccess?.(response);
@@ -194,7 +191,7 @@ export function useDashboardOAuthCallback(
   );
 
   const handleError = useCallback(
-    (error: AxiosError<ErrorResponse>) => {
+    (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to complete dashboard authentication';
       options?.onError?.(message);
     },
@@ -227,7 +224,7 @@ export function useLogoutHandler(options?: UseLogoutHandlerOptions) {
     onSuccess: (response: AxiosResponse<RedirectResponse>) => {
       options?.onSuccess?.(response);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       console.error('Logout failed:', error);
       const errorMessage =
         error.response?.data?.error?.message || error.message || 'An unexpected error occurred. Please try again.';

@@ -1,4 +1,6 @@
+mod api_error;
 mod error;
+mod openapi;
 mod routes_oai_chat;
 mod routes_oai_models;
 mod routes_oai_responses;
@@ -7,7 +9,9 @@ mod routes_oai_responses;
 #[path = "test_live_utils.rs"]
 pub(crate) mod test_live_utils;
 
+pub use api_error::*;
 pub use error::*;
+pub use openapi::*;
 pub use routes_oai_chat::*;
 pub use routes_oai_models::*;
 pub use routes_oai_responses::*;

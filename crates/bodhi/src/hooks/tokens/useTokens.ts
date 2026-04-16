@@ -4,7 +4,7 @@ import {
   CreateTokenRequest,
   PaginatedTokenResponse,
   UpdateTokenRequest,
-  BodhiApiError,
+  BodhiErrorResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosResponse, AxiosError } from 'axios';
 
@@ -12,9 +12,6 @@ import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult } from '@/hooks/useQuery';
 
 import { tokenKeys, API_TOKENS_ENDPOINT } from './constants';
-
-// Type alias for compatibility
-type ErrorResponse = BodhiApiError;
 
 // Hooks
 export function useListTokens(page: number = 1, pageSize: number = 10, options?: { enabled?: boolean }) {
@@ -29,7 +26,7 @@ export function useListTokens(page: number = 1, pageSize: number = 10, options?:
 export function useCreateToken(options?: {
   onSuccess?: (response: TokenCreated) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<TokenCreated>, AxiosError<ErrorResponse>, CreateTokenRequest> {
+}): UseMutationResult<AxiosResponse<TokenCreated>, AxiosError<BodhiErrorResponse>, CreateTokenRequest> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<TokenCreated, CreateTokenRequest>(API_TOKENS_ENDPOINT, 'post', {
@@ -37,7 +34,7 @@ export function useCreateToken(options?: {
       queryClient.invalidateQueries({ queryKey: tokenKeys.all });
       options?.onSuccess?.(response.data);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to generate token';
       options?.onError?.(message);
     },
@@ -52,7 +49,7 @@ interface UpdateTokenRequestWithId extends UpdateTokenRequest {
 export function useUpdateToken(options?: {
   onSuccess?: (token: TokenDetail) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<TokenDetail>, AxiosError<ErrorResponse>, UpdateTokenRequestWithId> {
+}): UseMutationResult<AxiosResponse<TokenDetail>, AxiosError<BodhiErrorResponse>, UpdateTokenRequestWithId> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<TokenDetail, UpdateTokenRequestWithId>(
@@ -63,7 +60,7 @@ export function useUpdateToken(options?: {
         queryClient.invalidateQueries({ queryKey: tokenKeys.all });
         options?.onSuccess?.(response.data);
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to update token';
         options?.onError?.(message);
       },

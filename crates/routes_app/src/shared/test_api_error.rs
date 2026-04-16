@@ -1,4 +1,4 @@
-use crate::shared::api_error::ApiError;
+use crate::shared::api_error::BodhiErrorResponse;
 use axum::{
   body::{to_bytes, Body},
   extract::Path,
@@ -28,7 +28,7 @@ enum TestError {
 
 async fn handler_return_different_error_objs(
   Path(input): Path<String>,
-) -> Result<Response, ApiError> {
+) -> Result<Response, BodhiErrorResponse> {
   if input.parse::<i32>().unwrap() % 2 == 0 {
     Err(TestError::BadInput("even".to_string()))?
   } else {

@@ -43,7 +43,7 @@ export function mockAuthInitiateError({
   type = INTERNAL_SERVER_ERROR.type,
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
-}: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+}: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {}) {
   return [
     typedHttp.post(ENDPOINT_AUTH_INITIATE, async ({ response }) => {
       const errorData = {
@@ -99,7 +99,7 @@ export function mockAuthCallbackError({
   type = INTERNAL_SERVER_ERROR.type,
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
-}: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 422 | 500 } = {}) {
+}: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 422 | 500 } = {}) {
   return [
     typedHttp.post(ENDPOINT_AUTH_CALLBACK, async ({ response }) => {
       const errorData = {
@@ -142,7 +142,7 @@ export function mockLogoutError({
   type = INTERNAL_SERVER_ERROR.type,
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
-}: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+}: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {}) {
   return [
     typedHttp.post(ENDPOINT_LOGOUT, async ({ response }) => {
       const errorData = {

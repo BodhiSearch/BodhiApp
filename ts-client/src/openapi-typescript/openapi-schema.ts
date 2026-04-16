@@ -1532,18 +1532,6 @@ export interface components {
             client_id: string;
         };
         /** @example {
-         *       "error": {
-         *         "code": "validation_error",
-         *         "message": "Validation failed: name is required",
-         *         "param": "name",
-         *         "type": "invalid_request_error"
-         *       }
-         *     } */
-        BodhiApiError: {
-            /** @description Error details following OpenAI API error format */
-            error: components["schemas"]["BodhiErrorBody"];
-        };
-        /** @example {
          *       "code": "validation_error",
          *       "message": "Validation failed: name is required",
          *       "param": {
@@ -1552,7 +1540,7 @@ export interface components {
          *       },
          *       "type": "invalid_request_error"
          *     } */
-        BodhiErrorBody: {
+        BodhiError: {
             /**
              * @description Human-readable error message describing what went wrong
              * @example Validation failed: name is required
@@ -1578,6 +1566,20 @@ export interface components {
             param?: {
                 [key: string]: string;
             } | null;
+        };
+        /** @example {
+         *       "error": {
+         *         "code": "validation_error",
+         *         "message": "Validation failed: name is required",
+         *         "param": {
+         *           "field": "name"
+         *         },
+         *         "type": "invalid_request_error"
+         *       }
+         *     } */
+        BodhiErrorResponse: {
+            /** @description Error details following Bodhi API error format */
+            error: components["schemas"]["BodhiError"];
         };
         /** @description Whether a single capability is supported by the model. */
         CapabilitySupport: {
@@ -2714,7 +2716,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -2723,7 +2725,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -2732,7 +2734,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -2741,7 +2743,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -2779,7 +2781,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -2788,7 +2790,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -2797,7 +2799,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -2806,7 +2808,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -2843,7 +2845,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -2852,7 +2854,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -2861,7 +2863,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -2870,7 +2872,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Already processed */
@@ -2879,7 +2881,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -2888,7 +2890,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -2923,7 +2925,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -2932,7 +2934,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -2941,7 +2943,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Request not found */
@@ -2950,7 +2952,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -2959,7 +2961,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -2991,7 +2993,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3000,7 +3002,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3009,7 +3011,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -3018,7 +3020,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Already processed */
@@ -3027,7 +3029,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3036,7 +3038,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3066,7 +3068,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3075,7 +3077,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3084,7 +3086,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Request not found */
@@ -3093,7 +3095,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3102,7 +3104,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3134,7 +3136,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3143,7 +3145,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3152,7 +3154,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -3161,7 +3163,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Request expired */
@@ -3170,7 +3172,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3179,7 +3181,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3214,7 +3216,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3223,7 +3225,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3232,7 +3234,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found or app_client_id mismatch */
@@ -3241,7 +3243,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3250,7 +3252,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3279,7 +3281,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3288,7 +3290,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3297,7 +3299,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3306,7 +3308,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3338,7 +3340,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3347,7 +3349,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3356,7 +3358,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description MCP not found */
@@ -3372,7 +3374,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3402,7 +3404,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3411,7 +3413,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3420,7 +3422,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3429,7 +3431,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3463,7 +3465,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3472,7 +3474,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3481,7 +3483,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description App client not found */
@@ -3490,7 +3492,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3499,7 +3501,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3540,7 +3542,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3549,7 +3551,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3558,7 +3560,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description OAuth error, invalid request parameters, or state mismatch */
@@ -3574,7 +3576,7 @@ export interface operations {
                      *         "type": "invalid_request_error"
                      *       }
                      *     } */
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3583,7 +3585,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3617,7 +3619,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3626,7 +3628,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3635,7 +3637,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3644,7 +3646,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3686,7 +3688,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3695,7 +3697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3704,7 +3706,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3713,7 +3715,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3762,7 +3764,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3771,7 +3773,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3780,7 +3782,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3789,7 +3791,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3826,7 +3828,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3835,7 +3837,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3867,7 +3869,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3876,7 +3878,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3885,7 +3887,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3894,7 +3896,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3923,7 +3925,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3932,7 +3934,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -3941,7 +3943,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -3950,7 +3952,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -3983,7 +3985,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -3992,7 +3994,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4001,7 +4003,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4010,7 +4012,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4041,7 +4043,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4050,7 +4052,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4059,7 +4061,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4068,7 +4070,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4101,7 +4103,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4110,7 +4112,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4119,7 +4121,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4128,7 +4130,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4160,7 +4162,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4169,7 +4171,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4178,7 +4180,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -4194,7 +4196,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4224,7 +4226,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4233,7 +4235,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4242,7 +4244,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -4258,7 +4260,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4294,7 +4296,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4303,7 +4305,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4312,7 +4314,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Auth config not found */
@@ -4328,7 +4330,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4364,7 +4366,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4373,7 +4375,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4382,7 +4384,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Auth config not found */
@@ -4398,7 +4400,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4430,7 +4432,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4439,7 +4441,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4448,7 +4450,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -4464,7 +4466,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4494,7 +4496,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4503,7 +4505,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4512,7 +4514,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -4528,7 +4530,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4561,7 +4563,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4570,7 +4572,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4579,7 +4581,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4588,7 +4590,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4621,7 +4623,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4630,7 +4632,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4639,7 +4641,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4648,7 +4650,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4681,7 +4683,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4690,7 +4692,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4699,7 +4701,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4708,7 +4710,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4740,7 +4742,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4749,7 +4751,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4758,7 +4760,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -4767,7 +4769,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4800,7 +4802,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4809,7 +4811,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4818,7 +4820,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description URL already exists */
@@ -4834,7 +4836,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4866,7 +4868,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4875,7 +4877,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4884,7 +4886,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -4900,7 +4902,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -4936,7 +4938,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -4945,7 +4947,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -4954,7 +4956,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -4977,7 +4979,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5009,7 +5011,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5018,7 +5020,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5027,7 +5029,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description MCP not found */
@@ -5043,7 +5045,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5079,7 +5081,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5088,7 +5090,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5097,7 +5099,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description MCP not found */
@@ -5113,7 +5115,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5143,7 +5145,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5152,7 +5154,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5161,7 +5163,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description MCP not found */
@@ -5177,7 +5179,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5256,7 +5258,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5265,7 +5267,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5274,7 +5276,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5283,7 +5285,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5316,7 +5318,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5325,7 +5327,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5334,7 +5336,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5343,7 +5345,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5379,7 +5381,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5388,7 +5390,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5397,7 +5399,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5406,7 +5408,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5436,7 +5438,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5445,7 +5447,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5454,7 +5456,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Alias not found */
@@ -5470,7 +5472,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5506,7 +5508,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5515,7 +5517,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5524,7 +5526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Source alias not found */
@@ -5540,7 +5542,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5573,7 +5575,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5582,7 +5584,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5591,7 +5593,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Alias already exists */
@@ -5600,7 +5602,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5609,7 +5611,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5642,7 +5644,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5651,7 +5653,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5660,7 +5662,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5669,7 +5671,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5707,7 +5709,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5716,7 +5718,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5725,7 +5727,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5734,7 +5736,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5767,7 +5769,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5776,7 +5778,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5785,7 +5787,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5794,7 +5796,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5838,7 +5840,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5847,7 +5849,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5856,7 +5858,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description API model with specified ID not found */
@@ -5872,7 +5874,7 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5881,7 +5883,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5917,7 +5919,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5926,7 +5928,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -5935,7 +5937,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description API model not found */
@@ -5944,7 +5946,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -5953,7 +5955,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -5983,7 +5985,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -5992,7 +5994,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6001,7 +6003,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description API model not found */
@@ -6010,7 +6012,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6019,7 +6021,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6069,7 +6071,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6078,7 +6080,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6087,7 +6089,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description API model not found */
@@ -6103,7 +6105,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6154,7 +6156,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6163,7 +6165,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6172,7 +6174,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6181,7 +6183,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6235,7 +6237,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6244,7 +6246,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6253,7 +6255,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6262,7 +6264,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6327,7 +6329,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6336,7 +6338,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6345,7 +6347,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6354,7 +6356,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6398,7 +6400,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6407,7 +6409,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6416,7 +6418,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Download request not found */
@@ -6432,7 +6434,7 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6441,7 +6443,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6487,7 +6489,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6496,7 +6498,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6505,7 +6507,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Model alias not found for specified repo/filename/snapshot */
@@ -6521,7 +6523,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6553,7 +6555,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6562,7 +6564,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6571,7 +6573,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Alias not found */
@@ -6587,7 +6589,7 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6596,7 +6598,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6628,7 +6630,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6637,7 +6639,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6646,7 +6648,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6655,7 +6657,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6713,7 +6715,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6722,7 +6724,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6731,7 +6733,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6740,7 +6742,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6802,7 +6804,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6811,7 +6813,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6820,7 +6822,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Setting not found */
@@ -6836,7 +6838,7 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6845,7 +6847,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6896,7 +6898,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -6905,7 +6907,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -6914,7 +6916,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Setting not found */
@@ -6930,7 +6932,7 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6939,7 +6941,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -6980,7 +6982,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -6989,7 +6991,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7018,7 +7020,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7027,7 +7029,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7036,7 +7038,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7045,7 +7047,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7079,7 +7081,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7088,7 +7090,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7097,7 +7099,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7106,7 +7108,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7136,7 +7138,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7145,7 +7147,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7154,7 +7156,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7163,7 +7165,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7226,7 +7228,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7235,7 +7237,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7244,7 +7246,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7253,7 +7255,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7296,7 +7298,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7305,7 +7307,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7314,7 +7316,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7323,7 +7325,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7376,7 +7378,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7385,7 +7387,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7394,7 +7396,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Token not found */
@@ -7410,7 +7412,7 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7419,7 +7421,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7448,7 +7450,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7457,7 +7459,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7466,7 +7468,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7475,7 +7477,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7502,7 +7504,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7511,7 +7513,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7520,7 +7522,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Pending request already exists */
@@ -7529,7 +7531,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description User already has role */
@@ -7538,7 +7540,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7547,7 +7549,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7576,7 +7578,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7585,7 +7587,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7594,7 +7596,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Request not found */
@@ -7603,7 +7605,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7612,7 +7614,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7652,7 +7654,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7661,7 +7663,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7670,7 +7672,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7679,7 +7681,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7709,7 +7711,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7718,7 +7720,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7727,7 +7729,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description User not found */
@@ -7736,7 +7738,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7745,7 +7747,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7779,7 +7781,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Not authenticated */
@@ -7788,7 +7790,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Insufficient permissions */
@@ -7797,7 +7799,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description User not found */
@@ -7806,7 +7808,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7815,7 +7817,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7847,7 +7849,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7856,7 +7858,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };
@@ -7888,7 +7890,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
             /** @description Internal server error */
@@ -7897,7 +7899,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BodhiApiError"];
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };
         };

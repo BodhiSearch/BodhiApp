@@ -1,6 +1,6 @@
 use crate::middleware::auth::AuthError;
 use crate::middleware::token_service::DefaultTokenService;
-use crate::middleware::MiddlewareError;
+use crate::BodhiErrorResponse;
 use axum::{
   extract::{Request, State},
   http::{header::HOST, HeaderMap},
@@ -120,7 +120,7 @@ pub async fn auth_middleware(
   State(app_service): State<Arc<dyn AppService>>,
   mut req: Request,
   next: Next,
-) -> Result<Response, MiddlewareError> {
+) -> Result<Response, BodhiErrorResponse> {
   remove_app_headers(&mut req);
   let tenant_service = app_service.tenant_service();
   let deployment = app_service.setting_service().deployment_mode().await;
@@ -212,7 +212,7 @@ pub async fn optional_auth_middleware(
   State(app_service): State<Arc<dyn AppService>>,
   mut req: Request,
   next: Next,
-) -> Result<Response, MiddlewareError> {
+) -> Result<Response, BodhiErrorResponse> {
   remove_app_headers(&mut req);
   let tenant_service = app_service.tenant_service();
   let deployment = app_service.setting_service().deployment_mode().await;

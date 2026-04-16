@@ -3,7 +3,7 @@ use crate::middleware::{
   SESSION_KEY_USER_ID,
 };
 use crate::shared::{utils::extract_request_host, AuthScope};
-use crate::{ApiError, BodhiApiError};
+use crate::BodhiErrorResponse;
 use crate::{
   AuthCallbackRequest, AuthInitiateRequest, AuthRouteError, RedirectResponse, API_TAG_AUTH,
   ENDPOINT_LOGOUT,
@@ -55,7 +55,7 @@ pub async fn auth_initiate(
   headers: HeaderMap,
   session: Session,
   Json(request): Json<AuthInitiateRequest>,
-) -> Result<impl axum::response::IntoResponse, ApiError> {
+) -> Result<impl axum::response::IntoResponse, BodhiErrorResponse> {
   let auth_context = auth_scope.auth_context();
   let settings = auth_scope.settings();
 
@@ -164,7 +164,7 @@ pub async fn auth_initiate(
          example = json!({
              "location": "https://app.example.com/dashboard"
          })),
-        (status = 422, description = "OAuth error, invalid request parameters, or state mismatch", body = BodhiApiError,
+        (status = 422, description = "OAuth error, invalid request parameters, or state mismatch", body = BodhiErrorResponse,
          example = json!({
              "error": {
                  "message": "State parameter mismatch",
@@ -184,7 +184,7 @@ pub async fn auth_callback(
   auth_scope: AuthScope,
   session: Session,
   Json(request): Json<AuthCallbackRequest>,
-) -> Result<Json<RedirectResponse>, ApiError> {
+) -> Result<Json<RedirectResponse>, BodhiErrorResponse> {
   let settings = auth_scope.settings();
   let tenant_svc = auth_scope.tenants();
   let auth_flow = auth_scope.auth_flow();
@@ -360,7 +360,7 @@ pub fn generate_pkce() -> (String, String) {
 pub async fn auth_logout(
   auth_scope: AuthScope,
   session: Session,
-) -> Result<Json<RedirectResponse>, ApiError> {
+) -> Result<Json<RedirectResponse>, BodhiErrorResponse> {
   let settings = auth_scope.settings();
   session
     .delete()

@@ -1,8 +1,8 @@
 use crate::middleware::{access_token_key, SESSION_KEY_ACTIVE_CLIENT_ID};
 use crate::shared::AuthScope;
 use crate::{
-  ApiError, CreateTenantRequest, CreateTenantResponse, DashboardAuthRouteError, TenantListItem,
-  TenantListResponse, ValidatedJson, API_TAG_TENANTS, ENDPOINT_TENANTS,
+  BodhiErrorResponse, CreateTenantRequest, CreateTenantResponse, DashboardAuthRouteError,
+  TenantListItem, TenantListResponse, ValidatedJson, API_TAG_TENANTS, ENDPOINT_TENANTS,
 };
 use axum::extract::Path;
 use axum::http::StatusCode;
@@ -31,7 +31,7 @@ use tower_sessions::Session;
 pub async fn tenants_index(
   auth_scope: AuthScope,
   session: Session,
-) -> Result<Json<TenantListResponse>, ApiError> {
+) -> Result<Json<TenantListResponse>, BodhiErrorResponse> {
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
@@ -101,7 +101,7 @@ pub async fn tenants_create(
   auth_scope: AuthScope,
   _session: Session,
   ValidatedJson(form): ValidatedJson<CreateTenantRequest>,
-) -> Result<(StatusCode, Json<CreateTenantResponse>), ApiError> {
+) -> Result<(StatusCode, Json<CreateTenantResponse>), BodhiErrorResponse> {
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
@@ -180,7 +180,7 @@ pub async fn tenants_activate(
   auth_scope: AuthScope,
   session: Session,
   Path(client_id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }

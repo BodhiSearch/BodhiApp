@@ -1,13 +1,13 @@
 use crate::oai::OAIRouteError;
 use crate::shared::AuthScope;
-use crate::{ApiError, GeminiApiError, JsonRejectionError};
+use crate::{BodhiErrorResponse, GeminiApiError, JsonRejectionError};
 use axum::extract::{Path, Query};
 use axum::http::HeaderMap;
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
 use services::inference::LlmEndpoint;
-use services::{Alias, ApiAlias, ApiFormat, ApiModel};
+use services::{Alias, ApiAlias, ApiFormat, ApiModel, DataServiceError};
 use std::collections::HashSet;
 
 /// Forward `x-goog-*` request headers to upstream Gemini so SDK telemetry
@@ -47,7 +47,7 @@ fn validate_model_id(id: &str) -> Result<(), GeminiApiError> {
 async fn resolve_gemini_alias(
   auth_scope: &AuthScope,
   model: &str,
-) -> Result<(ApiAlias, Option<String>), ApiError> {
+) -> Result<(ApiAlias, Option<String>), BodhiErrorResponse> {
   // Check if any alias at all supports this model (for helpful format-mismatch errors).
   let alias = auth_scope.data().find_alias(model).await;
   if let Some(Alias::Api(ref api_alias)) = alias {
@@ -68,18 +68,20 @@ async fn resolve_gemini_alias(
   let api_alias = aliases
     .into_iter()
     .find(|alias| alias.matchable_models().iter().any(|m| m == model))
-    .ok_or_else(|| ApiError::from(services::DataServiceError::AliasNotFound(model.to_string())))?;
+    .ok_or_else(|| BodhiErrorResponse::from(DataServiceError::AliasNotFound(model.to_string())))?;
 
   let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
   Ok((api_alias, api_key))
 }
 
-async fn list_user_gemini_aliases(auth_scope: &AuthScope) -> Result<Vec<ApiAlias>, ApiError> {
+async fn list_user_gemini_aliases(
+  auth_scope: &AuthScope,
+) -> Result<Vec<ApiAlias>, BodhiErrorResponse> {
   let aliases = auth_scope
     .data()
     .list_aliases()
     .await
-    .map_err(ApiError::from)?;
+    .map_err(BodhiErrorResponse::from)?;
   Ok(
     aliases
       .into_iter()
@@ -232,7 +234,7 @@ pub async fn gemini_action_handler(
       client_headers,
     )
     .await
-    .map_err(ApiError::from)?;
+    .map_err(BodhiErrorResponse::from)?;
 
   Ok(response)
 }

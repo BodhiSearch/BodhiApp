@@ -1,4 +1,4 @@
-import { BodhiApiError } from '@bodhiapp/ts-client';
+import { BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -31,7 +31,7 @@ vi.mock('@tanstack/react-router', async () => {
 });
 
 // Type aliases for compatibility
-type ApiError = BodhiApiError;
+type ApiError = BodhiErrorResponse;
 
 const mockUserLoggedInData = createMockLoggedInUser({
   user_id: 'test-user-id',

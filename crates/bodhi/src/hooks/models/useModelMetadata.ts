@@ -1,11 +1,9 @@
-import { BodhiApiError, AliasResponse, RefreshResponse } from '@bodhiapp/ts-client';
+import { BodhiErrorResponse, AliasResponse, RefreshResponse } from '@bodhiapp/ts-client';
 import { AxiosError } from 'axios';
 
 import { useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 import { modelKeys, modelFileKeys, ENDPOINT_MODELS_REFRESH } from './constants';
-
-type ErrorResponse = BodhiApiError;
 
 /**
  * Hook to trigger metadata refresh for all local models (async bulk mode)
@@ -22,7 +20,7 @@ export function useRefreshAllMetadata(options?: {
       queryClient.invalidateQueries({ queryKey: modelFileKeys.all });
       options?.onSuccess?.(response.data);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to refresh metadata';
       options?.onError?.(message);
     },
@@ -51,7 +49,7 @@ export function useRefreshSingleMetadata(options?: {
           queryClient.invalidateQueries({ queryKey: modelFileKeys.all });
         }, 100);
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to refresh metadata';
         options?.onError?.(message);
       },

@@ -1,4 +1,4 @@
-use crate::ApiError;
+use crate::BodhiErrorResponse;
 use axum::{
   body::Body,
   response::{IntoResponse, Response},
@@ -70,15 +70,15 @@ fn map_error_to_grpc_status(bodhi_error_type: &str) -> (u16, &'static str) {
   }
 }
 
-impl From<ApiError> for GeminiApiError {
-  fn from(value: ApiError) -> Self {
-    let (http_status, grpc_status) = map_error_to_grpc_status(&value.error_type);
-    // 5xx error names may include internal service/DB details — substitute a generic
+impl From<BodhiErrorResponse> for GeminiApiError {
+  fn from(value: BodhiErrorResponse) -> Self {
+    let (http_status, grpc_status) = map_error_to_grpc_status(&value.error.r#type);
+    // 5xx error messages may include internal service/DB details — substitute a generic
     // message so implementation details don't leak to Gemini SDK callers.
     let message = if http_status >= 500 {
       "internal server error".to_string()
     } else {
-      value.name
+      value.error.message
     };
     Self {
       status: http_status,
@@ -95,7 +95,7 @@ impl From<ApiError> for GeminiApiError {
 
 impl<T: AppError + 'static> From<T> for GeminiApiError {
   fn from(value: T) -> Self {
-    Self::from(ApiError::from(value))
+    Self::from(BodhiErrorResponse::from(value))
   }
 }
 

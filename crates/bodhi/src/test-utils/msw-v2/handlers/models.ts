@@ -118,7 +118,7 @@ export function mockModelsError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -220,7 +220,7 @@ export function mockCreateModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -341,7 +341,7 @@ export function mockGetModelError(
     type = 'not_found_error',
     status = 404,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -468,7 +468,7 @@ export function mockUpdateModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -639,7 +639,7 @@ export function mockRefreshAllMetadataError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;

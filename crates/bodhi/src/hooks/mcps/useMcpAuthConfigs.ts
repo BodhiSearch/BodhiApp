@@ -5,7 +5,7 @@ import {
   McpAuthConfigsListResponse,
   McpAuthType,
   OAuthTokenResponse,
-  BodhiApiError,
+  BodhiErrorResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -20,8 +20,6 @@ import {
   MCPS_OAUTH_TOKENS_ENDPOINT,
 } from './constants';
 
-type ErrorResponse = BodhiApiError;
-
 // ============================================================================
 // Query Hooks - Unified Auth Configs
 // ============================================================================
@@ -29,7 +27,7 @@ type ErrorResponse = BodhiApiError;
 export function useListAuthConfigs(
   serverId: string,
   options?: { enabled?: boolean }
-): UseQueryResult<McpAuthConfigsListResponse, AxiosError<ErrorResponse>> {
+): UseQueryResult<McpAuthConfigsListResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<McpAuthConfigsListResponse>(
     authConfigKeys.list(serverId),
     MCPS_AUTH_CONFIGS_ENDPOINT,
@@ -41,7 +39,7 @@ export function useListAuthConfigs(
 export function useGetAuthConfig(
   configId: string,
   options?: { enabled?: boolean }
-): UseQueryResult<McpAuthConfigResponse, AxiosError<ErrorResponse>> {
+): UseQueryResult<McpAuthConfigResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<McpAuthConfigResponse>(
     authConfigKeys.detail(configId),
     `${MCPS_AUTH_CONFIGS_ENDPOINT}/${configId}`,
@@ -57,7 +55,7 @@ export function useGetAuthConfig(
 export function useGetOAuthToken(
   tokenId: string,
   options?: { enabled?: boolean }
-): UseQueryResult<OAuthTokenResponse, AxiosError<ErrorResponse>> {
+): UseQueryResult<OAuthTokenResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<OAuthTokenResponse>(
     oauthTokenKeys.detail(tokenId),
     `${MCPS_OAUTH_TOKENS_ENDPOINT}/${tokenId}`,
@@ -73,7 +71,7 @@ export function useGetOAuthToken(
 export function useCreateAuthConfig(options?: {
   onSuccess?: (config: McpAuthConfigResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<McpAuthConfigResponse>, AxiosError<ErrorResponse>, CreateAuthConfig> {
+}): UseMutationResult<AxiosResponse<McpAuthConfigResponse>, AxiosError<BodhiErrorResponse>, CreateAuthConfig> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<McpAuthConfigResponse, CreateAuthConfig>(() => MCPS_AUTH_CONFIGS_ENDPOINT, 'post', {
@@ -81,7 +79,7 @@ export function useCreateAuthConfig(options?: {
       queryClient.invalidateQueries({ queryKey: authConfigKeys.all });
       options?.onSuccess?.(response.data);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to create auth config';
       options?.onError?.(message);
     },
@@ -91,7 +89,7 @@ export function useCreateAuthConfig(options?: {
 export function useDeleteAuthConfig(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { configId: string }> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, { configId: string }> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<void, { configId: string }>(
@@ -103,7 +101,7 @@ export function useDeleteAuthConfig(options?: {
         queryClient.invalidateQueries({ queryKey: mcpServerKeys.all });
         options?.onSuccess?.();
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to delete auth config';
         options?.onError?.(message);
       },
@@ -119,7 +117,7 @@ export function useDeleteAuthConfig(options?: {
 export function useDeleteOAuthToken(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { tokenId: string }> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, { tokenId: string }> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<void, { tokenId: string }>(
@@ -130,7 +128,7 @@ export function useDeleteOAuthToken(options?: {
         queryClient.invalidateQueries({ queryKey: oauthTokenKeys.all });
         options?.onSuccess?.();
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to delete OAuth token';
         options?.onError?.(message);
       },

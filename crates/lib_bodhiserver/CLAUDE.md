@@ -44,7 +44,7 @@ Also hosts:
 
 ### Re-exports (`src/lib.rs`)
 Re-exports curated surface from `services`, `routes_app`, `server_app` so downstream crates only depend on `lib_bodhiserver`:
-- `ApiError`, `OpenAIApiError` from `routes_app`
+- `BodhiErrorResponse` from `routes_app` (canonical Bodhi error envelope; OAI wire-format `OaiApiError` lives in `routes_app::oai` and is not re-exported here)
 - Service traits/impls, setting constants, `AppCommand`, `AppType`, `EnvType`
 - `ServeCommand`, `ServeError`, `ServerShutdownHandle` from `server_app`
 - `EMBEDDED_UI_ASSETS` -- compile-time Vite frontend embed via `include_dir!`

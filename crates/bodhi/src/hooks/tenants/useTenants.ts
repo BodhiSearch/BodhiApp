@@ -1,5 +1,5 @@
 // External imports
-import { TenantListResponse, CreateTenantRequest, CreateTenantResponse, BodhiApiError } from '@bodhiapp/ts-client';
+import { TenantListResponse, CreateTenantRequest, CreateTenantResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 // Internal imports
@@ -8,9 +8,6 @@ import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@
 import { userKeys } from '@/hooks/users/constants';
 
 import { tenantKeys, ENDPOINT_TENANTS } from './constants';
-
-// Type alias
-type ErrorResponse = BodhiApiError;
 
 // List tenants
 export function useListTenants(options?: { enabled?: boolean }) {
@@ -23,7 +20,7 @@ export function useListTenants(options?: { enabled?: boolean }) {
 export function useCreateTenant(options?: {
   onSuccess?: (response: CreateTenantResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<CreateTenantResponse>, AxiosError<ErrorResponse>, CreateTenantRequest> {
+}): UseMutationResult<AxiosResponse<CreateTenantResponse>, AxiosError<BodhiErrorResponse>, CreateTenantRequest> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<CreateTenantResponse, CreateTenantRequest>(ENDPOINT_TENANTS, 'post', {
@@ -31,7 +28,7 @@ export function useCreateTenant(options?: {
       queryClient.invalidateQueries({ queryKey: tenantKeys.all });
       options?.onSuccess?.(response.data);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to create tenant';
       options?.onError?.(message);
     },
@@ -42,7 +39,7 @@ export function useCreateTenant(options?: {
 export function useTenantActivate(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { client_id: string }> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, { client_id: string }> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<void, { client_id: string }>(
@@ -55,7 +52,7 @@ export function useTenantActivate(options?: {
         queryClient.invalidateQueries({ queryKey: userKeys.current });
         options?.onSuccess?.();
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to activate tenant';
         options?.onError?.(message);
       },

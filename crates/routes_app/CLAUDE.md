@@ -9,7 +9,7 @@
 
 ## Purpose
 
-API orchestration layer: HTTP endpoint handlers for all BodhiApp application routes. Defines `ApiError`/`OpenAIApiError`/`ErrorBody` in `shared/` (moved from `services`). Includes authentication/authorization middleware (merged from former `auth_middleware` crate) in `src/middleware/`. Consumes `AuthContext` via the `AuthScope` extractor.
+API orchestration layer: HTTP endpoint handlers for all BodhiApp application routes. Defines the canonical `BodhiErrorResponse` + `BodhiError` envelope in `shared/api_error.rs`; the OpenAI wire-format `OaiApiError` lives in `src/oai/api_error.rs` (the only module that imports `async-openai` error types). Includes authentication/authorization middleware (merged from former `auth_middleware` crate) in `src/middleware/`. Consumes `AuthContext` via the `AuthScope` extractor.
 
 ## Architecture Position
 
@@ -48,9 +48,12 @@ Falls back to `AuthContext::Anonymous { deployment: DeploymentMode::Standalone }
 
 ## Error Handling Chain
 
-Service error -> domain `<X>RouteError` (this crate) -> `ApiError` (`shared/api_error.rs`) -> OpenAI-compatible JSON.
+Two return types depending on handler audience:
 
-`ApiError`, `OpenAIApiError`, `ErrorBody` are in `routes_app::shared` (import as `use crate::ApiError`, NOT `use services::ApiError`).
+- **Bodhi handlers + middleware**: `Result<_, BodhiErrorResponse>` (`shared/api_error.rs`). Emits `{error: {message, type, code, param?}}` JSON. `BodhiErrorResponse` has a blanket `From<T: AppError>` so service / domain errors convert via `?`.
+- **OAI handlers** (only under `src/oai/`): `Result<_, OaiApiError>` (`oai/api_error.rs`). Converts to async-openai's `WrappedError` for OpenAI SDK compatibility. The `param` field is a joined `key=value` string (OpenAI wire spec) instead of a HashMap.
+
+Provider proxies (Anthropic, Gemini) wrap `BodhiErrorResponse` into provider-specific envelopes (`AnthropicApiError`, `GeminiApiError`).
 
 Domain error enums wrap service errors via `#[error(transparent)]` + `#[from]`. Error codes auto-generated: `model_route_error-alias_not_found`.
 

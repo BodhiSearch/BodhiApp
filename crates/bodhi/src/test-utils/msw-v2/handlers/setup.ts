@@ -51,7 +51,7 @@ export function mockSetupError({
   type = INTERNAL_SERVER_ERROR.type,
   status = 400,
   ...rest
-}: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 500 } = {}) {
+}: Partial<components['schemas']['BodhiError']> & { status?: 400 | 500 } = {}) {
   return [
     typedHttp.post(ENDPOINT_APP_SETUP, async ({ response }) => {
       const errorData = {

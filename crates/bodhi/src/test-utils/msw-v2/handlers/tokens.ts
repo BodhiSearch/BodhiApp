@@ -173,7 +173,7 @@ export function mockTokensError(
     type = 'invalid_request_error',
     status = 401,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 401 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 401 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -204,7 +204,7 @@ export function mockCreateTokenError(
     type = 'invalid_request_error',
     status = 400,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -236,7 +236,7 @@ export function mockUpdateTokenError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 401 | 404 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 401 | 404 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;

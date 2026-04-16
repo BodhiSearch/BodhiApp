@@ -39,11 +39,9 @@ State type: `State<Arc<dyn AppService>>`.
 
 `SENTINEL_API_KEY` (`"bodhiapp_sentinel_api_key_ignored"`) — placed by chat UI in pi-ai SDKs; `anthropic_auth_middleware` + `openai_auth_middleware` strip it so session-cookie auth takes over. See `PACKAGE.md`.
 
-## MiddlewareError
+## Error Type
 
-`error.rs` -- captures `AppError` metadata, implements `IntoResponse`. Has blanket `From<T: AppError + 'static>` impl.
-
-No `"param": null` in JSON -- only adds `param` key when args is non-empty.
+Middleware functions return `Result<Response, BodhiErrorResponse>` directly (`crate::BodhiErrorResponse` from `routes_app::shared::api_error`). `BodhiErrorResponse` has a blanket `From<T: AppError + 'static>` impl and emits `{error: {message, type, code, param?}}` JSON via `IntoResponse`. The previously-separate `MiddlewareError` was removed; both middleware and route handlers share the same wire envelope.
 
 ## Commands
 

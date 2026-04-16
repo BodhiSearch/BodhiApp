@@ -2,7 +2,7 @@ use crate::middleware::standalone_app_status_or_default;
 use crate::setup::error::SetupRouteError;
 use crate::setup::setup_api_schemas::{AppInfo, SetupRequest, SetupResponse};
 use crate::shared::{utils::extract_request_host, AuthScope};
-use crate::{ApiError, JsonRejectionError};
+use crate::{BodhiErrorResponse, JsonRejectionError};
 use crate::{API_TAG_SETUP, API_TAG_SYSTEM, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
 use axum::Json;
 use axum_extra::extract::WithRejection;
@@ -29,7 +29,7 @@ pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
          })),
     )
 )]
-pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, ApiError> {
+pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, BodhiErrorResponse> {
   let settings = auth_scope.settings();
   let deployment = settings.deployment_mode().await;
 
@@ -114,7 +114,7 @@ pub async fn setup_create(
   auth_scope: AuthScope,
   headers: axum::http::HeaderMap,
   WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, JsonRejectionError>,
-) -> Result<SetupResponse, ApiError> {
+) -> Result<SetupResponse, BodhiErrorResponse> {
   let settings = auth_scope.settings();
   if settings.is_multi_tenant().await {
     return Err(SetupRouteError::NotStandalone)?;

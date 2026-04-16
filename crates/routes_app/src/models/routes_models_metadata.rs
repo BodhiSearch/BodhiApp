@@ -7,7 +7,7 @@
 use crate::models::error::ModelRouteError;
 use crate::models::models_api_schemas::{QueueStatusResponse, RefreshResponseType};
 use crate::shared::AuthScope;
-use crate::ApiError;
+use crate::BodhiErrorResponse;
 use crate::API_TAG_MODELS;
 use axum::Json;
 use services::Alias;
@@ -50,7 +50,7 @@ use std::str::FromStr;
 pub async fn refresh_metadata_handler(
   auth_scope: AuthScope,
   Json(request): Json<RefreshRequest>,
-) -> Result<RefreshResponseType, ApiError> {
+) -> Result<RefreshResponseType, BodhiErrorResponse> {
   match request {
     RefreshRequest::Model {
       repo,
@@ -159,7 +159,7 @@ pub async fn refresh_metadata_handler(
 )]
 pub async fn queue_status_handler(
   auth_scope: AuthScope,
-) -> Result<Json<QueueStatusResponse>, ApiError> {
+) -> Result<Json<QueueStatusResponse>, BodhiErrorResponse> {
   let status = auth_scope.queue_status();
   Ok(Json(QueueStatusResponse { status }))
 }

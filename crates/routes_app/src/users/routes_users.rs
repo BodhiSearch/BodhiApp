@@ -1,6 +1,6 @@
 use crate::users::error::UsersRouteError;
 use crate::users::users_api_schemas::ListUsersParams;
-use crate::{ApiError, AuthScope, BodhiApiError, ValidatedJson, API_TAG_AUTH};
+use crate::{AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_AUTH};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -31,7 +31,7 @@ use tracing::{error, info, warn};
 pub async fn users_index(
   auth_scope: AuthScope,
   Query(params): Query<ListUsersParams>,
-) -> Result<Json<UserListResponse>, ApiError> {
+) -> Result<Json<UserListResponse>, BodhiErrorResponse> {
   let users = auth_scope
     .users()
     .list_users(params.page, params.page_size)
@@ -59,7 +59,7 @@ pub async fn users_index(
     request_body = ChangeRoleRequest,
     responses(
         (status = 200, description = "Role changed successfully"),
-        (status = 404, description = "User not found", body = BodhiApiError),
+        (status = 404, description = "User not found", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = ["resource_manager"])
@@ -69,7 +69,7 @@ pub async fn users_change_role(
   auth_scope: AuthScope,
   Path(user_id): Path<String>,
   ValidatedJson(request): ValidatedJson<ChangeRoleRequest>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   // Validate role hierarchy: caller's role must be >= target role
   let caller_role = auth_scope
     .auth_context()
@@ -134,7 +134,7 @@ pub async fn users_change_role(
     ),
     responses(
         (status = 200, description = "User removed successfully"),
-        (status = 404, description = "User not found", body = BodhiApiError),
+        (status = 404, description = "User not found", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = ["resource_manager"])
@@ -143,7 +143,7 @@ pub async fn users_change_role(
 pub async fn users_destroy(
   auth_scope: AuthScope,
   Path(user_id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   // Role ceiling check: caller cannot delete users with higher privilege (AUTHZ-VULN-06)
   // Fetch the target user's role, then compare against caller's role
   let caller_role = auth_scope

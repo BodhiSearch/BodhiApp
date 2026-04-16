@@ -52,15 +52,13 @@ Authentication, authorization, and request processing middleware. Merged from th
 | `access_requests/` | `access_request_auth_middleware`, entity-level access control |
 | `token_service/` | `DefaultTokenService`, `CachedExchangeResult` |
 | `redirects/` | `canonical_url_middleware` |
-| `error.rs` | `MiddlewareError` |
 | `utils.rs` | `app_status_or_default`, `generate_random_string` |
 
 ### Shared Infrastructure (`src/shared/`)
 
 | File | Purpose |
 |------|---------|
-| `api_error.rs` | `ApiError` with blanket `From<T: AppError>` conversion |
-| `error_oai.rs` | `OpenAIApiError`, `ErrorBody` |
+| `api_error.rs` | `BodhiErrorResponse` + `BodhiError` with blanket `From<T: AppError>` conversion + `IntoResponse`; canonical Bodhi error envelope |
 | `error_wrappers.rs` | Framework error type wrappers |
 | `auth_scope_extractor.rs` | `AuthScope` Axum extractor |
 | `pagination.rs` | Pagination params, paginated response |
@@ -68,6 +66,13 @@ Authentication, authorization, and request processing middleware. Merged from th
 | `openapi.rs` | `BodhiOpenAPIDoc`, `OpenAPIEnvModifier`, `GlobalErrorResponses` |
 | `common.rs` | `RedirectResponse` DTO |
 | `utils.rs` | `extract_request_host` |
+
+### OAI module (`src/oai/`)
+
+| File | Purpose |
+|------|---------|
+| `api_error.rs` | `OaiApiError` with blanket `From<T: AppError>` and `Into<async_openai::error::WrappedError>`; OpenAI-compatible wire-format error envelope. Used only by handlers under `src/oai/`. |
+| `openapi.rs` | `BodhiOAIOpenAPIDoc` — OpenAPI spec for OAI/Ollama/Responses endpoints; sole `async-openai` schema importer |
 
 ### Route Composition
 
@@ -189,7 +194,7 @@ see `src/shared/validated_json.rs` for implementation. `ValidatedJson` deseriali
 
 ## Anthropic API (Pass-Through Proxy)
 
-Routes in `src/anthropic/`: `routes_anthropic.rs` (handlers), `anthropic_api_schemas.rs` (AnthropicApiError types, moved from `shared/anthropic_error.rs`). `anthropic_models_list_handler` returns full Anthropic metadata (display_name, created_at, capabilities) from stored `ApiModel::Anthropic` data. Error types follow Anthropic's error format (distinct from OpenAI's `ErrorBody`).
+Routes in `src/anthropic/`: `routes_anthropic.rs` (handlers), `anthropic_api_schemas.rs` (AnthropicApiError types, moved from `shared/anthropic_error.rs`). `anthropic_models_list_handler` returns full Anthropic metadata (display_name, created_at, capabilities) from stored `ApiModel::Anthropic` data. Error types follow Anthropic's error format (distinct from OpenAI's wire-format `WrappedError`/`ApiError`).
 
 Anthropic endpoints use a pre-built `openapi-anthropic.json` spec (in `resources/` and `ts-client/`) synced from the official Anthropic API to maintain format consistency. These routes intentionally do NOT use `#[utoipa::path]` annotations — the Anthropic API spec is kept separate from the Bodhi management API OpenAPI spec to avoid overloading it. Do not manually edit `openapi-anthropic.json`; re-sync from Anthropic when the upstream spec changes.
 

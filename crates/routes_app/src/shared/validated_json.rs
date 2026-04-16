@@ -3,7 +3,6 @@ use axum::{
   response::{IntoResponse, Response},
   Json,
 };
-use services::AppError;
 use std::collections::HashMap;
 use validator::Validate;
 
@@ -33,23 +32,17 @@ where
 
 impl IntoResponse for ValidationRejection {
   fn into_response(self) -> Response {
-    crate::ApiError::from(self).into_response()
+    crate::BodhiErrorResponse::from(self).into_response()
   }
 }
 
-impl From<ValidationRejection> for crate::ApiError {
+impl From<ValidationRejection> for crate::BodhiErrorResponse {
   fn from(value: ValidationRejection) -> Self {
     match value {
       ValidationRejection::JsonRejection(rejection) => {
         use crate::JsonRejectionError;
         let err = JsonRejectionError::from(rejection);
-        crate::ApiError {
-          name: err.to_string(),
-          error_type: err.error_type(),
-          status: err.status(),
-          code: err.code(),
-          args: err.args(),
-        }
+        crate::BodhiErrorResponse::from(err)
       }
       ValidationRejection::Validation(errors) => {
         let args: HashMap<String, String> = errors
@@ -63,12 +56,15 @@ impl From<ValidationRejection> for crate::ApiError {
             (field.to_string(), msg)
           })
           .collect();
-        crate::ApiError {
-          name: "Validation failed".to_string(),
-          error_type: "invalid_request_error".to_string(),
+        let param = if args.is_empty() { None } else { Some(args) };
+        crate::BodhiErrorResponse {
+          error: crate::BodhiError {
+            message: "Validation failed".to_string(),
+            r#type: "invalid_request_error".to_string(),
+            code: Some("validation_error".to_string()),
+            param,
+          },
           status: 400,
-          code: "validation_error".to_string(),
-          args,
         }
       }
     }

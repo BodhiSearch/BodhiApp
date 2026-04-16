@@ -1,4 +1,4 @@
-import { BodhiApiError, SettingInfo } from '@bodhiapp/ts-client';
+import { BodhiErrorResponse, SettingInfo } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -18,7 +18,7 @@ import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
 // Type aliases for compatibility
-type ApiError = BodhiApiError;
+type ApiError = BodhiErrorResponse;
 type Setting = SettingInfo;
 
 const mockSettingsData: Setting[] = [

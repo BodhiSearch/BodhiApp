@@ -1,5 +1,5 @@
 use crate::middleware::access_requests::{AccessRequestAuthError, AccessRequestValidator};
-use crate::middleware::MiddlewareError;
+use crate::BodhiErrorResponse;
 use axum::{
   body::Body,
   extract::{Request, State},
@@ -73,7 +73,7 @@ pub async fn access_request_auth_middleware(
   State(app_service): State<Arc<dyn AppService>>,
   req: Request<Body>,
   next: Next,
-) -> Result<Response, MiddlewareError> {
+) -> Result<Response, BodhiErrorResponse> {
   let auth_context = req
     .extensions()
     .get::<AuthContext>()

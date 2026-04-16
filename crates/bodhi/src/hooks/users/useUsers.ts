@@ -1,7 +1,7 @@
 // External imports
 import { useEffect } from 'react';
 
-import { UserInfo, UserInfoEnvelope, UserResponse, UserListResponse, BodhiApiError } from '@bodhiapp/ts-client';
+import { UserInfo, UserInfoEnvelope, UserResponse, UserListResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useNavigate } from '@tanstack/react-router';
 
@@ -13,8 +13,6 @@ import { userKeys, ENDPOINT_USER_INFO, ENDPOINT_USERS } from './constants';
 
 // Types
 export type AuthenticatedUser = UserInfo & { auth_status: 'logged_in' };
-type ErrorResponse = BodhiApiError;
-
 // Basic user info hook
 export function useGetUser(options?: { enabled?: boolean }) {
   return useQuery<UserInfoEnvelope | null>(userKeys.current, ENDPOINT_USER_INFO, undefined, {
@@ -24,7 +22,7 @@ export function useGetUser(options?: { enabled?: boolean }) {
 }
 
 // Authenticated user hook with redirect functionality
-export function useGetAuthenticatedUser(): UseQueryResult<AuthenticatedUser, AxiosError<ErrorResponse>> {
+export function useGetAuthenticatedUser(): UseQueryResult<AuthenticatedUser, AxiosError<BodhiErrorResponse>> {
   const navigate = useNavigate();
   const { data: userInfo, isLoading, error, ...queryResult } = useGetUser();
 
@@ -40,14 +38,14 @@ export function useGetAuthenticatedUser(): UseQueryResult<AuthenticatedUser, Axi
     data: userInfo?.auth_status === 'logged_in' ? userInfo : undefined,
     isLoading,
     error,
-  } as UseQueryResult<AuthenticatedUser, AxiosError<ErrorResponse>>;
+  } as UseQueryResult<AuthenticatedUser, AxiosError<BodhiErrorResponse>>;
 }
 
 // User management hooks - List all users (admin/manager)
 export function useListUsers(
   page: number = 1,
   pageSize: number = 10
-): UseQueryResult<UserListResponse, AxiosError<ErrorResponse>> {
+): UseQueryResult<UserListResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<UserListResponse>(
     userKeys.list(page, pageSize),
     ENDPOINT_USERS,
@@ -63,7 +61,7 @@ export function useListUsers(
 export function useChangeUserRole(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { userId: string; newRole: string }> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, { userId: string; newRole: string }> {
   const queryClient = useQueryClient();
 
   // Transform from: {userId: string; newRole: string} → endpoint: /users/${userId}/role, body: {role: newRole}
@@ -75,7 +73,7 @@ export function useChangeUserRole(options?: {
         queryClient.invalidateQueries({ queryKey: userKeys.all });
         options?.onSuccess?.();
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to change user role';
         options?.onError?.(message);
       },
@@ -90,7 +88,7 @@ export function useChangeUserRole(options?: {
 export function useRemoveUser(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, string> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string> {
   const queryClient = useQueryClient();
 
   // DELETE with path variables and no body
@@ -102,7 +100,7 @@ export function useRemoveUser(options?: {
         queryClient.invalidateQueries({ queryKey: userKeys.all });
         options?.onSuccess?.();
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to remove user';
         options?.onError?.(message);
       },

@@ -1,5 +1,5 @@
 use crate::mcps::{McpServerQuery, ENDPOINT_MCP_SERVERS};
-use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_MCPS};
+use crate::{AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_MCPS};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -48,7 +48,7 @@ pub struct ListMcpServersResponse {
 pub async fn mcp_servers_create(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<McpServerRequest>,
-) -> Result<(StatusCode, Json<McpServerResponse>), ApiError> {
+) -> Result<(StatusCode, Json<McpServerResponse>), BodhiErrorResponse> {
   let mcps = auth_scope.mcps();
 
   let auth_config_request = request.auth_config.clone();
@@ -97,7 +97,7 @@ pub async fn mcp_servers_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   ValidatedJson(request): ValidatedJson<McpServerRequest>,
-) -> Result<Json<McpServerResponse>, ApiError> {
+) -> Result<Json<McpServerResponse>, BodhiErrorResponse> {
   let mcps = auth_scope.mcps();
 
   let entity = mcps.update_mcp_server(&id, request).await?;
@@ -132,7 +132,7 @@ pub async fn mcp_servers_update(
 pub async fn mcp_servers_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<McpServerResponse>, ApiError> {
+) -> Result<Json<McpServerResponse>, BodhiErrorResponse> {
   let mcps = auth_scope.mcps();
 
   let entity = mcps
@@ -169,7 +169,7 @@ pub async fn mcp_servers_show(
 pub async fn mcp_servers_index(
   auth_scope: AuthScope,
   Query(query): Query<McpServerQuery>,
-) -> Result<Json<ListMcpServersResponse>, ApiError> {
+) -> Result<Json<ListMcpServersResponse>, BodhiErrorResponse> {
   let mcps = auth_scope.mcps();
 
   let entities = mcps.list_mcp_servers(query.enabled).await?;

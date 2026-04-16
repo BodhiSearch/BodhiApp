@@ -1,5 +1,5 @@
 use crate::shared::AuthScope;
-use crate::{ApiError, ValidatedJson};
+use crate::{BodhiErrorResponse, ValidatedJson};
 use crate::{API_TAG_MODELS_ALIAS, ENDPOINT_MODELS_ALIAS};
 use axum::{extract::Path, http::StatusCode, Json};
 use services::{CopyAliasRequest, UserAliasResponse};
@@ -23,7 +23,7 @@ use services::{CopyAliasRequest, UserAliasResponse};
 pub async fn models_create(
   auth_scope: AuthScope,
   ValidatedJson(form): ValidatedJson<services::UserAliasRequest>,
-) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
+) -> Result<(StatusCode, Json<UserAliasResponse>), BodhiErrorResponse> {
   let alias = auth_scope.data().create_alias_from_form(form).await?;
   Ok((StatusCode::CREATED, Json(UserAliasResponse::from(alias))))
 }
@@ -51,7 +51,7 @@ pub async fn models_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   ValidatedJson(form): ValidatedJson<services::UserAliasRequest>,
-) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
+) -> Result<(StatusCode, Json<UserAliasResponse>), BodhiErrorResponse> {
   let updated_alias = auth_scope.data().update_alias_from_form(&id, form).await?;
   Ok((StatusCode::OK, Json(UserAliasResponse::from(updated_alias))))
 }
@@ -76,7 +76,7 @@ pub async fn models_update(
 pub async fn models_destroy(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   auth_scope.data().delete_alias(&id).await?;
   Ok(StatusCode::OK)
 }
@@ -103,7 +103,7 @@ pub async fn models_copy(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   ValidatedJson(payload): ValidatedJson<CopyAliasRequest>,
-) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
+) -> Result<(StatusCode, Json<UserAliasResponse>), BodhiErrorResponse> {
   let new_alias = auth_scope.data().copy_alias(&id, &payload.alias).await?;
   Ok((
     StatusCode::CREATED,

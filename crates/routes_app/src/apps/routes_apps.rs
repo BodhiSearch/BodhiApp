@@ -2,7 +2,7 @@ use crate::apps::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
   AppsRouteError, CreateAccessRequestResponse,
 };
-use crate::{ApiError, AuthScope, BodhiApiError, ValidatedJson, API_TAG_AUTH};
+use crate::{AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_AUTH};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -42,15 +42,15 @@ pub struct AccessRequestStatusQuery {
     ),
     responses(
         (status = 201, description = "Access request created", body = CreateAccessRequestResponse),
-        (status = 400, description = "Invalid request", body = BodhiApiError),
-        (status = 404, description = "App client not found", body = BodhiApiError),
+        (status = 400, description = "Invalid request", body = BodhiErrorResponse),
+        (status = 404, description = "App client not found", body = BodhiErrorResponse),
     ),
     security(())
 )]
 pub async fn apps_create_access_request(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<CreateAccessRequest>,
-) -> Result<(StatusCode, Json<CreateAccessRequestResponse>), ApiError> {
+) -> Result<(StatusCode, Json<CreateAccessRequestResponse>), BodhiErrorResponse> {
   debug!(
     "Creating access request for app_client_id: {}",
     request.app_client_id
@@ -114,7 +114,7 @@ pub async fn apps_create_access_request(
     ),
     responses(
         (status = 200, description = "Status retrieved", body = AccessRequestStatusResponse),
-        (status = 404, description = "Not found or app_client_id mismatch", body = BodhiApiError),
+        (status = 404, description = "Not found or app_client_id mismatch", body = BodhiErrorResponse),
     ),
     security(())
 )]
@@ -122,7 +122,7 @@ pub async fn apps_get_access_request_status(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   Query(query): Query<AccessRequestStatusQuery>,
-) -> Result<Json<AccessRequestStatusResponse>, ApiError> {
+) -> Result<Json<AccessRequestStatusResponse>, BodhiErrorResponse> {
   debug!("Getting access request status for id: {}", id);
 
   let access_request_service = auth_scope.access_request_service();
@@ -161,8 +161,8 @@ pub async fn apps_get_access_request_status(
     ),
     responses(
         (status = 200, description = "Review data retrieved", body = AccessRequestReviewResponse),
-        (status = 404, description = "Not found", body = BodhiApiError),
-        (status = 410, description = "Request expired", body = BodhiApiError),
+        (status = 404, description = "Not found", body = BodhiErrorResponse),
+        (status = 410, description = "Request expired", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = [])
@@ -171,7 +171,7 @@ pub async fn apps_get_access_request_status(
 pub async fn apps_get_access_request_review(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<AccessRequestReviewResponse>, ApiError> {
+) -> Result<Json<AccessRequestReviewResponse>, BodhiErrorResponse> {
   let access_request_service = auth_scope.access_request_service();
   let request = access_request_service
     .get_request(&id)
@@ -237,9 +237,9 @@ pub async fn apps_get_access_request_review(
     ),
     responses(
         (status = 200, description = "Request approved", body = AccessRequestActionResponse),
-        (status = 400, description = "Invalid request", body = BodhiApiError),
-        (status = 404, description = "Not found", body = BodhiApiError),
-        (status = 409, description = "Already processed", body = BodhiApiError),
+        (status = 400, description = "Invalid request", body = BodhiErrorResponse),
+        (status = 404, description = "Not found", body = BodhiErrorResponse),
+        (status = 409, description = "Already processed", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = [])
@@ -249,7 +249,7 @@ pub async fn apps_approve_access_request(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   ValidatedJson(approval_input): ValidatedJson<ApproveAccessRequest>,
-) -> Result<Json<AccessRequestActionResponse>, ApiError> {
+) -> Result<Json<AccessRequestActionResponse>, BodhiErrorResponse> {
   let user_id = auth_scope.require_user_id()?;
   let token = auth_scope
     .auth_context()
@@ -371,8 +371,8 @@ pub async fn apps_approve_access_request(
     ),
     responses(
         (status = 200, description = "Request denied", body = AccessRequestActionResponse),
-        (status = 404, description = "Not found", body = BodhiApiError),
-        (status = 409, description = "Already processed", body = BodhiApiError),
+        (status = 404, description = "Not found", body = BodhiErrorResponse),
+        (status = 409, description = "Already processed", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = [])
@@ -381,7 +381,7 @@ pub async fn apps_approve_access_request(
 pub async fn apps_deny_access_request(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<AccessRequestActionResponse>, ApiError> {
+) -> Result<Json<AccessRequestActionResponse>, BodhiErrorResponse> {
   let user_id = auth_scope.require_user_id()?;
 
   let access_request_service = auth_scope.access_request_service();

@@ -1,4 +1,4 @@
-import { Mcp, McpRequest, ListMcpsResponse, BodhiApiError } from '@bodhiapp/ts-client';
+import { Mcp, McpRequest, ListMcpsResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
@@ -6,19 +6,17 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 import { mcpKeys, MCPS_ENDPOINT } from './constants';
 
-type ErrorResponse = BodhiApiError;
-
 // ============================================================================
 // Query Hooks - MCP Instance CRUD
 // ============================================================================
 
 export function useListMcps(options?: {
   enabled?: boolean;
-}): UseQueryResult<ListMcpsResponse, AxiosError<ErrorResponse>> {
+}): UseQueryResult<ListMcpsResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<ListMcpsResponse>(mcpKeys.all, MCPS_ENDPOINT, undefined, options);
 }
 
-export function useGetMcp(id: string, options?: { enabled?: boolean }): UseQueryResult<Mcp, AxiosError<ErrorResponse>> {
+export function useGetMcp(id: string, options?: { enabled?: boolean }): UseQueryResult<Mcp, AxiosError<BodhiErrorResponse>> {
   return useQuery<Mcp>(mcpKeys.detail(id), `${MCPS_ENDPOINT}/${id}`, undefined, options);
 }
 
@@ -29,7 +27,7 @@ export function useGetMcp(id: string, options?: { enabled?: boolean }): UseQuery
 export function useCreateMcp(options?: {
   onSuccess?: (mcp: Mcp) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<Mcp>, AxiosError<ErrorResponse>, McpRequest> {
+}): UseMutationResult<AxiosResponse<Mcp>, AxiosError<BodhiErrorResponse>, McpRequest> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<Mcp, McpRequest>(() => MCPS_ENDPOINT, 'post', {
@@ -37,7 +35,7 @@ export function useCreateMcp(options?: {
       queryClient.invalidateQueries({ queryKey: mcpKeys.all });
       options?.onSuccess?.(response.data);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to create MCP';
       options?.onError?.(message);
     },
@@ -47,7 +45,7 @@ export function useCreateMcp(options?: {
 export function useUpdateMcp(options?: {
   onSuccess?: (mcp: Mcp) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<Mcp>, AxiosError<ErrorResponse>, McpRequest & { id: string }> {
+}): UseMutationResult<AxiosResponse<Mcp>, AxiosError<BodhiErrorResponse>, McpRequest & { id: string }> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<Mcp, McpRequest & { id: string }>(
@@ -58,7 +56,7 @@ export function useUpdateMcp(options?: {
         queryClient.invalidateQueries({ queryKey: mcpKeys.all });
         options?.onSuccess?.(response.data);
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to update MCP';
         options?.onError?.(message);
       },
@@ -70,7 +68,7 @@ export function useUpdateMcp(options?: {
 export function useDeleteMcp(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: string }> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, { id: string }> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<void, { id: string }>(
@@ -81,7 +79,7 @@ export function useDeleteMcp(options?: {
         queryClient.invalidateQueries({ queryKey: mcpKeys.all });
         options?.onSuccess?.();
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to delete MCP';
         options?.onError?.(message);
       },

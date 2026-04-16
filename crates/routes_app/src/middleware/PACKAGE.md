@@ -15,7 +15,6 @@ Entry point: `mod.rs` -- re-exports all public types.
 | `openai_auth_middleware.rs` | `openai_auth_middleware.rs` | `openai_auth_middleware` — `/v1/*` path-scoped; strips `SENTINEL_API_KEY` from `Authorization` / `x-api-key` |
 | `apis/` | `api_middleware.rs` | `api_auth_middleware`, `ApiAuthError` |
 | `access_requests/` | `access_request_middleware.rs` | `access_request_auth_middleware`, `AccessRequestAuthError`, `AccessRequestValidator` trait, `McpAccessRequestValidator` |
-| `error.rs` | `error.rs` | `MiddlewareError` struct with blanket `From<T: AppError>` |
 | `token_service/` | `token_service.rs` | `DefaultTokenService`, `CachedExchangeResult` |
 | `redirects/` | `canonical_url_middleware.rs` | URL normalization (301 redirect for GET/HEAD) |
 | `utils.rs` | `utils.rs` | `app_status_or_default(TenantService)`, `generate_random_string()`, `ApiErrorResponse` |
@@ -64,7 +63,7 @@ Defined in `services::auth::auth_context`.
 
 **Convenience methods**: `user_id()`, `require_user_id()`, `client_id()`, `require_client_id()`, `tenant_id()`, `require_tenant_id()`, `token()`, `external_app_token()`, `app_role()`, `is_authenticated()`, `is_multi_tenant()`, `dashboard_token()`, `require_dashboard_token()`.
 
-`require_user_id()` returns `Result<&str, AuthContextError>` (not `ApiError`).
+`require_user_id()` returns `Result<&str, AuthContextError>` (not `BodhiErrorResponse`).
 
 **Multi-tenant helpers**: `is_multi_tenant()` returns `true` for `MultiTenantSession` and `Anonymous { deployment: MultiTenant }`. `require_dashboard_token()` returns `Result<&str, AuthContextError>` -- only `MultiTenantSession` carries a dashboard token. Route handlers use these instead of querying `SettingService`.
 

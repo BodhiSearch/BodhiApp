@@ -1,6 +1,6 @@
 use crate::models::error::ModelRouteError;
 use crate::shared::AuthScope;
-use crate::{ApiError, BodhiApiError, ValidatedJson};
+use crate::{BodhiErrorResponse, ValidatedJson};
 use crate::{PaginationSortParams, API_TAG_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL};
 use axum::http::StatusCode;
 use axum::{
@@ -54,7 +54,7 @@ use tracing::debug;
 pub async fn models_pull_index(
   auth_scope: AuthScope,
   Query(query): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedDownloadResponse>, ApiError> {
+) -> Result<Json<PaginatedDownloadResponse>, BodhiErrorResponse> {
   let result = auth_scope
     .downloads()
     .list(query.page, query.page_size)
@@ -109,7 +109,7 @@ pub async fn models_pull_index(
 pub async fn models_pull_create(
   auth_scope: AuthScope,
   ValidatedJson(payload): ValidatedJson<NewDownloadRequest>,
-) -> Result<(StatusCode, Json<DownloadRequest>), ApiError> {
+) -> Result<(StatusCode, Json<DownloadRequest>), BodhiErrorResponse> {
   let repo = Repo::try_from(payload.repo.clone())?;
 
   // Check if the file is already downloaded (no auth required)
@@ -183,7 +183,7 @@ pub async fn models_pull_create(
              "created_at": "2024-11-10T04:52:06.786Z",
              "updated_at": "2024-01-20T12:00:10Z"
          })),
-        (status = 404, description = "Download request not found", body = BodhiApiError,
+        (status = 404, description = "Download request not found", body = BodhiErrorResponse,
          example = json!({
              "error": {
                  "message": "item '550e8400-e29b-41d4-a716-446655440000' of type 'download_requests' not found in db",
@@ -201,7 +201,7 @@ pub async fn models_pull_create(
 pub async fn models_pull_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<DownloadRequest>, ApiError> {
+) -> Result<Json<DownloadRequest>, BodhiErrorResponse> {
   let download_request = auth_scope.downloads().get(&id).await?;
   Ok(Json(download_request.into()))
 }
@@ -215,7 +215,7 @@ async fn update_download_status(
   let (status, error) = match result {
     Ok(_) => (DownloadStatus::Completed, None),
     Err(e) => {
-      let api_error: ApiError = e.into();
+      let api_error: BodhiErrorResponse = e.into();
       (DownloadStatus::Error, Some(api_error.to_string()))
     }
   };

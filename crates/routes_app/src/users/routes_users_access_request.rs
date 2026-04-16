@@ -1,4 +1,4 @@
-use crate::{ApiError, AuthScope, BodhiApiError};
+use crate::{AuthScope, BodhiErrorResponse};
 use crate::{
   PaginationSortParams, UsersRouteError, API_TAG_AUTH, ENDPOINT_ACCESS_REQUESTS_ALL,
   ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
@@ -27,8 +27,8 @@ use tracing::{debug, error, info};
     description = "Authenticated users without roles can request access to the system. Only one pending request is allowed per user.",
     responses(
         (status = 201, description = "Access request created successfully"),
-        (status = 409, description = "Pending request already exists", body = BodhiApiError),
-        (status = 422, description = "User already has role", body = BodhiApiError),
+        (status = 409, description = "Pending request already exists", body = BodhiErrorResponse),
+        (status = 422, description = "User already has role", body = BodhiErrorResponse),
     ),
     security(
         (),
@@ -37,7 +37,7 @@ use tracing::{debug, error, info};
         ("session_auth" = [])
     )
 )]
-pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, ApiError> {
+pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, BodhiErrorResponse> {
   // Session auth: extract username, user_id, and role
   let (user_id, username, role) = match auth_scope.auth_context() {
     AuthContext::Session {
@@ -97,7 +97,7 @@ pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, A
     description = "Check the status of the current user's access request.",
     responses(
         (status = 200, description = "Request status retrieved", body = UserAccessStatusResponse),
-        (status = 404, description = "Request not found", body = BodhiApiError),
+        (status = 404, description = "Request not found", body = BodhiErrorResponse),
     ),
     security(
         (),
@@ -108,7 +108,7 @@ pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, A
 )]
 pub async fn users_request_status(
   auth_scope: AuthScope,
-) -> Result<Json<UserAccessStatusResponse>, ApiError> {
+) -> Result<Json<UserAccessStatusResponse>, BodhiErrorResponse> {
   let Some(user_id) = auth_scope.auth_context().user_id() else {
     return Err(UsersRouteError::PendingRequestNotFound)?;
   };
@@ -142,7 +142,7 @@ pub async fn users_request_status(
 pub async fn users_access_requests_pending(
   auth_scope: AuthScope,
   Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedUserAccessResponse>, ApiError> {
+) -> Result<Json<PaginatedUserAccessResponse>, BodhiErrorResponse> {
   debug!(
     "Listing pending access requests with pagination: {:?}",
     params
@@ -182,7 +182,7 @@ pub async fn users_access_requests_pending(
 pub async fn users_access_requests_index(
   auth_scope: AuthScope,
   Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedUserAccessResponse>, ApiError> {
+) -> Result<Json<PaginatedUserAccessResponse>, BodhiErrorResponse> {
   debug!("Listing all access requests with pagination: {:?}", params);
 
   let svc = auth_scope.user_access_requests();
@@ -216,7 +216,7 @@ pub async fn users_access_requests_index(
     ),
     responses(
         (status = 200, description = "Request approved successfully"),
-        (status = 404, description = "Request not found", body = BodhiApiError),
+        (status = 404, description = "Request not found", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = ["resource_manager"])
@@ -226,7 +226,7 @@ pub async fn users_access_request_approve(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   Json(request): Json<ApproveUserAccessRequest>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   let (approver_username, approver_role) = match auth_scope.auth_context() {
     AuthContext::Session { username, role, .. }
     | AuthContext::MultiTenantSession { username, role, .. } => (username, role),
@@ -309,7 +309,7 @@ pub async fn users_access_request_approve(
     ),
     responses(
         (status = 200, description = "Request rejected successfully"),
-        (status = 404, description = "Request not found", body = BodhiApiError)
+        (status = 404, description = "Request not found", body = BodhiErrorResponse)
     ),
     security(
         ("session_auth" = ["resource_manager"])
@@ -318,7 +318,7 @@ pub async fn users_access_request_approve(
 pub async fn users_access_request_reject(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   let token = auth_scope
     .auth_context()
     .token()

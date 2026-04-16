@@ -2,8 +2,8 @@ use crate::tokens::error::TokenRouteError;
 use crate::tokens::tokens_api_schemas::{
   CreateTokenRequest, PaginatedTokenResponse, TokenCreated, TokenDetail, UpdateTokenRequest,
 };
-use crate::{ApiError, BodhiApiError, ValidatedJson};
 use crate::{AuthScope, PaginationSortParams, API_TAG_API_KEYS, ENDPOINT_TOKENS};
+use crate::{BodhiErrorResponse, ValidatedJson};
 use axum::{
   extract::{Path, Query},
   http::{
@@ -39,7 +39,7 @@ use services::{ResourceRole, TokenScope};
          example = json!({
              "token": "bodhiapp_1234567890abcdef"
          })),
-        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot create tokens)", body = BodhiApiError),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot create tokens)", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = ["resource_power_user"])
@@ -54,7 +54,7 @@ pub async fn tokens_create(
     [(axum::http::HeaderName, &'static str); 2],
     Json<TokenCreated>,
   ),
-  ApiError,
+  BodhiErrorResponse,
 > {
   let user_role = auth_scope
     .auth_context()
@@ -127,7 +127,7 @@ pub async fn tokens_create(
              "created_at": "2024-11-10T04:52:06.786Z",
              "updated_at": "2024-11-10T04:52:06.786Z"
          })),
-        (status = 404, description = "Token not found", body = BodhiApiError,
+        (status = 404, description = "Token not found", body = BodhiErrorResponse,
          example = json!({
              "error": {
                  "message": "Token not found",
@@ -135,7 +135,7 @@ pub async fn tokens_create(
                  "code": "entity_error-not_found"
              }
          })),
-        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot manage tokens)", body = BodhiApiError),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot manage tokens)", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = ["resource_power_user"])
@@ -145,7 +145,7 @@ pub async fn tokens_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   ValidatedJson(request): ValidatedJson<UpdateTokenRequest>,
-) -> Result<Json<TokenDetail>, ApiError> {
+) -> Result<Json<TokenDetail>, BodhiErrorResponse> {
   let token = auth_scope.tokens().update_token(&id, request).await?;
   Ok(Json(token))
 }
@@ -191,7 +191,7 @@ pub async fn tokens_update(
              "page": 1,
              "page_size": 10
          })),
-        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot list tokens)", body = BodhiApiError),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot list tokens)", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = ["resource_power_user"])
@@ -200,7 +200,7 @@ pub async fn tokens_update(
 pub async fn tokens_index(
   auth_scope: AuthScope,
   Query(query): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedTokenResponse>, ApiError> {
+) -> Result<Json<PaginatedTokenResponse>, BodhiErrorResponse> {
   let per_page = query.page_size.min(100);
   let paginated = auth_scope
     .tokens()

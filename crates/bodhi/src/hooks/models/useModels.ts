@@ -1,14 +1,11 @@
 // External imports
-import { Alias, BodhiApiError, PaginatedAliasResponse, UserAliasRequest } from '@bodhiapp/ts-client';
+import { Alias, BodhiErrorResponse, PaginatedAliasResponse, UserAliasRequest } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 // Internal imports
 import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 import { modelKeys, ENDPOINT_MODELS, ENDPOINT_ALIAS } from './constants';
-
-// Type alias
-type ErrorResponse = BodhiApiError;
 
 // Model-related hooks
 
@@ -30,14 +27,14 @@ export function useGetModel(id: string) {
 export function useCreateModel(options?: {
   onSuccess?: (model: Alias) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UserAliasRequest> {
+}): UseMutationResult<AxiosResponse<Alias>, AxiosError<BodhiErrorResponse>, UserAliasRequest> {
   const queryClient = useQueryClient();
   return useMutationQuery<Alias, UserAliasRequest>(ENDPOINT_ALIAS, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: modelKeys.all });
       options?.onSuccess?.(response.data);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to create model';
       options?.onError?.(message);
     },
@@ -50,7 +47,7 @@ export function useUpdateModel(
     onSuccess?: (model: Alias) => void;
     onError?: (message: string) => void;
   }
-): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UserAliasRequest> {
+): UseMutationResult<AxiosResponse<Alias>, AxiosError<BodhiErrorResponse>, UserAliasRequest> {
   const queryClient = useQueryClient();
   return useMutationQuery<Alias, UserAliasRequest>(() => `${ENDPOINT_ALIAS}/${id}`, 'put', {
     onSuccess: (response) => {
@@ -58,7 +55,7 @@ export function useUpdateModel(
       queryClient.invalidateQueries({ queryKey: modelKeys.detail(id) });
       options?.onSuccess?.(response.data);
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to update model';
       options?.onError?.(message);
     },

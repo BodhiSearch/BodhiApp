@@ -1,3 +1,5 @@
+use crate::{BodhiError, BodhiErrorResponse};
+
 use super::*;
 use axum::http::StatusCode;
 
@@ -28,12 +30,14 @@ fn test_missing_model_has_correct_shape() {
 
 #[test]
 fn test_5xx_message_is_generic_not_internal_detail() {
-  let api_err = crate::ApiError {
-    name: "database connection pool exhausted: timed out after 5s".to_string(),
-    error_type: "internal_server_error".to_string(),
+  let api_err = BodhiErrorResponse {
+    error: BodhiError {
+      message: "database connection pool exhausted: timed out after 5s".to_string(),
+      r#type: "internal_server_error".to_string(),
+      code: None,
+      param: None,
+    },
     status: 500,
-    code: String::new(),
-    args: std::collections::HashMap::new(),
   };
   let gemini_err: GeminiApiError = api_err.into();
   assert_eq!(500, gemini_err.status);
@@ -43,12 +47,14 @@ fn test_5xx_message_is_generic_not_internal_detail() {
 
 #[test]
 fn test_4xx_message_is_preserved() {
-  let api_err = crate::ApiError {
-    name: "alias 'foo' not found".to_string(),
-    error_type: "not_found_error".to_string(),
+  let api_err = BodhiErrorResponse {
+    error: BodhiError {
+      message: "alias 'foo' not found".to_string(),
+      r#type: "not_found_error".to_string(),
+      code: None,
+      param: None,
+    },
     status: 404,
-    code: String::new(),
-    args: std::collections::HashMap::new(),
   };
   let gemini_err: GeminiApiError = api_err.into();
   assert_eq!(404, gemini_err.status);

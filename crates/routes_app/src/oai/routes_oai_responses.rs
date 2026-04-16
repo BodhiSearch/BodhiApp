@@ -2,7 +2,7 @@ use super::error::OAIRouteError;
 use super::ENDPOINT_OAI_RESPONSES;
 use crate::shared::AuthScope;
 use crate::API_TAG_RESPONSES;
-use crate::{ApiError, JsonRejectionError, OaiApiError};
+use crate::{JsonRejectionError, OaiApiError};
 use async_openai::types::responses::{
   CreateResponse, DeleteResponse as OaiDeleteResponse, Response as OaiResponse,
 };
@@ -55,11 +55,10 @@ fn validate_response_id(id: &str) -> Result<(), OAIRouteError> {
 async fn resolve_responses_alias(
   auth_scope: &AuthScope,
   model: &str,
-) -> Result<(services::ApiAlias, Option<String>), ApiError> {
-  let alias =
-    auth_scope.data().find_alias(model).await.ok_or_else(|| {
-      ApiError::from(services::DataServiceError::AliasNotFound(model.to_string()))
-    })?;
+) -> Result<(services::ApiAlias, Option<String>), OaiApiError> {
+  let alias = auth_scope.data().find_alias(model).await.ok_or_else(|| {
+    OaiApiError::from(services::DataServiceError::AliasNotFound(model.to_string()))
+  })?;
 
   let api_alias = match alias {
     Alias::Api(api_alias) if api_alias.api_format == ApiFormat::OpenAIResponses => api_alias,
@@ -155,7 +154,7 @@ pub async fn responses_create_handler(
       None,
     )
     .await
-    .map_err(ApiError::from)?;
+    .map_err(OaiApiError::from)?;
 
   Ok(response)
 }
@@ -200,7 +199,7 @@ pub async fn responses_get_handler(
       None,
     )
     .await
-    .map_err(ApiError::from)?;
+    .map_err(OaiApiError::from)?;
 
   Ok(response)
 }
@@ -245,7 +244,7 @@ pub async fn responses_delete_handler(
       None,
     )
     .await
-    .map_err(ApiError::from)?;
+    .map_err(OaiApiError::from)?;
 
   Ok(response)
 }
@@ -290,7 +289,7 @@ pub async fn responses_input_items_handler(
       None,
     )
     .await
-    .map_err(ApiError::from)?;
+    .map_err(OaiApiError::from)?;
 
   Ok(response)
 }
@@ -335,7 +334,7 @@ pub async fn responses_cancel_handler(
       None,
     )
     .await
-    .map_err(ApiError::from)?;
+    .map_err(OaiApiError::from)?;
 
   Ok(response)
 }

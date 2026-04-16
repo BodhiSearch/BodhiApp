@@ -1,4 +1,4 @@
-use crate::{ApiError, AuthScope, API_TAG_MCPS, ENDPOINT_APPS_MCPS};
+use crate::{AuthScope, BodhiErrorResponse, API_TAG_MCPS, ENDPOINT_APPS_MCPS};
 use axum::{
   body::Body,
   extract::Path,
@@ -66,7 +66,7 @@ pub async fn mcp_proxy_handler(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   request: axum::extract::Request,
-) -> Result<Response, ApiError> {
+) -> Result<Response, BodhiErrorResponse> {
   // 1. Resolve MCP instance + server
   let mcp = auth_scope
     .mcps()

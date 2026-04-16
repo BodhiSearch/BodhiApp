@@ -1,4 +1,4 @@
-import type { ApiAliasResponse, ApiModelRequest, BodhiApiError } from '@bodhiapp/ts-client';
+import type { ApiAliasResponse, ApiModelRequest, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -83,7 +83,7 @@ describe('useCreateApiModel', () => {
       try {
         await result.current.mutateAsync(mockCreateRequest);
       } catch (error) {
-        const axiosError = error as AxiosError<BodhiApiError>;
+        const axiosError = error as AxiosError<BodhiErrorResponse>;
         expect(axiosError.response?.status).toBe(400);
         expect(axiosError.response?.data.error?.message).toBe('Invalid base URL');
       }

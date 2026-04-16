@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 
-import { AppStatus, BodhiApiError } from '@bodhiapp/ts-client';
+import { AppStatus, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { useNavigate } from '@tanstack/react-router';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -114,7 +114,7 @@ export default function AppInitializer({
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {(appError.response?.data as BodhiApiError)?.error?.message || appError.message}
+          {(appError.response?.data as BodhiErrorResponse)?.error?.message || appError.message}
         </AlertDescription>
       </Alert>
     );
@@ -125,7 +125,7 @@ export default function AppInitializer({
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {(userError.response?.data as BodhiApiError)?.error?.message || userError.message}
+          {(userError.response?.data as BodhiErrorResponse)?.error?.message || userError.message}
         </AlertDescription>
       </Alert>
     );

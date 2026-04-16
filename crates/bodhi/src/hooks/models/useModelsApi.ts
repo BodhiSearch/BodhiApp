@@ -6,7 +6,7 @@ import {
   FetchModelsRequest,
   FetchModelsResponse,
   ApiFormatsResponse,
-  BodhiApiError,
+  BodhiErrorResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -23,16 +23,13 @@ import {
   ENDPOINT_API_MODELS_FORMATS,
 } from './constants';
 
-// Type alias for compatibility
-type ErrorResponse = BodhiApiError;
-
 /**
  * Hook to fetch a single API model by id
  */
 export function useGetApiModel(
   id: string,
-  options?: Omit<UseQueryOptions<ApiAliasResponse, AxiosError<ErrorResponse>>, 'queryKey' | 'queryFn'>
-): UseQueryResult<ApiAliasResponse, AxiosError<ErrorResponse>> {
+  options?: Omit<UseQueryOptions<ApiAliasResponse, AxiosError<BodhiErrorResponse>>, 'queryKey' | 'queryFn'>
+): UseQueryResult<ApiAliasResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<ApiAliasResponse>(apiModelKeys.detail(id), `${ENDPOINT_API_MODELS}/${id}`, undefined, {
     enabled: !!id,
     refetchOnWindowFocus: false,
@@ -45,8 +42,8 @@ export function useGetApiModel(
  * Hook to create a new API model
  */
 export function useCreateApiModel(
-  options?: UseMutationOptions<AxiosResponse<ApiAliasResponse>, AxiosError<ErrorResponse>, ApiModelRequest>
-): UseMutationResult<AxiosResponse<ApiAliasResponse>, AxiosError<ErrorResponse>, ApiModelRequest> {
+  options?: UseMutationOptions<AxiosResponse<ApiAliasResponse>, AxiosError<BodhiErrorResponse>, ApiModelRequest>
+): UseMutationResult<AxiosResponse<ApiAliasResponse>, AxiosError<BodhiErrorResponse>, ApiModelRequest> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<ApiAliasResponse, ApiModelRequest>(ENDPOINT_API_MODELS, 'post', {
@@ -67,12 +64,12 @@ export function useCreateApiModel(
 export function useUpdateApiModel(
   options?: UseMutationOptions<
     AxiosResponse<ApiAliasResponse>,
-    AxiosError<ErrorResponse>,
+    AxiosError<BodhiErrorResponse>,
     { id: string; data: ApiModelRequest }
   >
 ): UseMutationResult<
   AxiosResponse<ApiAliasResponse>,
-  AxiosError<ErrorResponse>,
+  AxiosError<BodhiErrorResponse>,
   { id: string; data: ApiModelRequest }
 > {
   const queryClient = useQueryClient();
@@ -100,8 +97,8 @@ export function useUpdateApiModel(
  * Hook to delete an API model
  */
 export function useDeleteApiModel(
-  options?: UseMutationOptions<AxiosResponse<void>, AxiosError<ErrorResponse>, string>
-): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, string> {
+  options?: UseMutationOptions<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string>
+): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string> {
   const queryClient = useQueryClient();
 
   // DELETE with path variables and no body
@@ -127,8 +124,8 @@ export function useDeleteApiModel(
  * Hook to test API model connectivity
  */
 export function useTestApiModel(
-  options?: UseMutationOptions<AxiosResponse<TestPromptResponse>, AxiosError<ErrorResponse>, TestPromptRequest>
-): UseMutationResult<AxiosResponse<TestPromptResponse>, AxiosError<ErrorResponse>, TestPromptRequest> {
+  options?: UseMutationOptions<AxiosResponse<TestPromptResponse>, AxiosError<BodhiErrorResponse>, TestPromptRequest>
+): UseMutationResult<AxiosResponse<TestPromptResponse>, AxiosError<BodhiErrorResponse>, TestPromptRequest> {
   return useMutationQuery<TestPromptResponse, TestPromptRequest>(ENDPOINT_API_MODELS_TEST, 'post', options);
 }
 
@@ -136,8 +133,8 @@ export function useTestApiModel(
  * Hook to fetch available models from an API provider
  */
 export function useFetchApiModels(
-  options?: UseMutationOptions<AxiosResponse<FetchModelsResponse>, AxiosError<ErrorResponse>, FetchModelsRequest>
-): UseMutationResult<AxiosResponse<FetchModelsResponse>, AxiosError<ErrorResponse>, FetchModelsRequest> {
+  options?: UseMutationOptions<AxiosResponse<FetchModelsResponse>, AxiosError<BodhiErrorResponse>, FetchModelsRequest>
+): UseMutationResult<AxiosResponse<FetchModelsResponse>, AxiosError<BodhiErrorResponse>, FetchModelsRequest> {
   return useMutationQuery<FetchModelsResponse, FetchModelsRequest>(ENDPOINT_API_MODELS_FETCH, 'post', options);
 }
 
@@ -145,8 +142,8 @@ export function useFetchApiModels(
  * Hook to fetch available API formats
  */
 export function useListApiFormats(
-  options?: Omit<UseQueryOptions<ApiFormatsResponse, AxiosError<ErrorResponse>>, 'queryKey' | 'queryFn'>
-): UseQueryResult<ApiFormatsResponse, AxiosError<ErrorResponse>> {
+  options?: Omit<UseQueryOptions<ApiFormatsResponse, AxiosError<BodhiErrorResponse>>, 'queryKey' | 'queryFn'>
+): UseQueryResult<ApiFormatsResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<ApiFormatsResponse>(apiFormatKeys.all, ENDPOINT_API_MODELS_FORMATS, undefined, {
     refetchOnWindowFocus: false,
     staleTime: 10 * 60 * 1000, // 10 minutes (formats don't change often)

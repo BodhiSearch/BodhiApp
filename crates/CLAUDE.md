@@ -44,11 +44,11 @@ Sub-module docs (load when working inside these modules):
 Three layers — never mix:
 1. **errmeta**: `AppError` trait, `ErrorType`, `IoError`, `EntityError` — zero framework deps
 2. **services**: Domain errors (`TokenServiceError`, `McpError`, `AuthContextError`) — `#[derive(ErrorMeta)]`
-3. **routes_app**: `ApiError` / `OpenAIApiError` / `ErrorBody` in `routes_app::shared` — HTTP responses
+3. **routes_app**: `BodhiErrorResponse` + `BodhiError` in `routes_app::shared` (canonical Bodhi envelope, used by all handlers + middleware). `OaiApiError` in `routes_app::oai` (OpenAI wire format via async-openai's `WrappedError`, used only by `src/oai/` handlers).
 
-Flow: service error -> `AppError` -> `ApiError` (blanket `From<T: AppError>` auto-converts). Middleware uses `MiddlewareError` (also blanket `From<T: AppError>`).
+Flow: service error -> `AppError` -> `BodhiErrorResponse` (blanket `From<T: AppError>` auto-converts) -> JSON via `IntoResponse`. OAI handlers convert directly to `OaiApiError` instead.
 
-**IMPORTANT**: `ApiError` is NOT in `services`.
+**IMPORTANT**: `BodhiErrorResponse` is NOT in `services`. `async-openai` types are confined to `crates/routes_app/src/oai/`.
 
 ### Role Hierarchy
 `ResourceRole`: `Anonymous < Guest < User < PowerUser < Manager < Admin`. Derives `PartialOrd` — variant order matters.

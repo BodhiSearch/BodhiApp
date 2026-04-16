@@ -1,6 +1,6 @@
 use crate::settings::error::SettingsRouteError;
 use crate::shared::AuthScope;
-use crate::{ApiError, BodhiApiError, ValidatedJson};
+use crate::{BodhiErrorResponse, ValidatedJson};
 use crate::{API_TAG_SETTINGS, ENDPOINT_SETTINGS};
 use axum::{extract::Path, Json};
 use services::SettingInfo;
@@ -42,13 +42,15 @@ use services::{UpdateSettingRequest, BODHI_HOME, EDIT_SETTINGS_ALLOWED, LLM_SETT
                  }
              }
          ])),
-        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiApiError),
+        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiErrorResponse),
     ),
     security(
         ("session_auth" = ["resource_admin"])
     )
 )]
-pub async fn settings_index(auth_scope: AuthScope) -> Result<Json<Vec<SettingInfo>>, ApiError> {
+pub async fn settings_index(
+  auth_scope: AuthScope,
+) -> Result<Json<Vec<SettingInfo>>, BodhiErrorResponse> {
   let settings = auth_scope.settings().list().await;
   Ok(Json(settings))
 }
@@ -86,7 +88,7 @@ pub async fn settings_index(auth_scope: AuthScope) -> Result<Json<Vec<SettingInf
                  "options": ["error", "warn", "info", "debug", "trace"]
              }
          })),
-        (status = 404, description = "Setting not found", body = BodhiApiError,
+        (status = 404, description = "Setting not found", body = BodhiErrorResponse,
          example = json!({
              "error": {
                  "message": "Setting not found: INVALID_KEY",
@@ -94,7 +96,7 @@ pub async fn settings_index(auth_scope: AuthScope) -> Result<Json<Vec<SettingInf
                  "code": "settings_route_error-not_found"
              }
          })),
-        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiApiError)
+        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiErrorResponse)
     ),
     security(
         ("session_auth" = ["resource_admin"])
@@ -104,7 +106,7 @@ pub async fn settings_update(
   auth_scope: AuthScope,
   Path(key): Path<String>,
   ValidatedJson(request): ValidatedJson<UpdateSettingRequest>,
-) -> Result<Json<SettingInfo>, ApiError> {
+) -> Result<Json<SettingInfo>, BodhiErrorResponse> {
   let settings = auth_scope.settings();
 
   if BODHI_HOME == key {
@@ -163,7 +165,7 @@ pub async fn settings_update(
                  "options": ["error", "warn", "info", "debug", "trace"]
              }
          })),
-        (status = 404, description = "Setting not found", body = BodhiApiError,
+        (status = 404, description = "Setting not found", body = BodhiErrorResponse,
          example = json!({
              "error": {
                  "message": "Setting not found: INVALID_KEY",
@@ -171,7 +173,7 @@ pub async fn settings_update(
                  "code": "settings_route_error-not_found"
              }
          })),
-        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiApiError)
+        (status = 403, description = "Forbidden - Admin session authentication required", body = BodhiErrorResponse)
     ),
     security(
         ("session_auth" = ["resource_admin"])
@@ -180,7 +182,7 @@ pub async fn settings_update(
 pub async fn settings_destroy(
   auth_scope: AuthScope,
   Path(key): Path<String>,
-) -> Result<Json<SettingInfo>, ApiError> {
+) -> Result<Json<SettingInfo>, BodhiErrorResponse> {
   let settings = auth_scope.settings();
 
   if BODHI_HOME == key {

@@ -1,4 +1,4 @@
-use crate::{ApiError, AuthScope, DashboardAuthRouteError};
+use crate::{AuthScope, BodhiErrorResponse, DashboardAuthRouteError};
 use axum::{
   body::Body,
   extract::Path,
@@ -36,7 +36,7 @@ pub enum DevError {
   SpiRequestFailed { status: u16, body: String },
 }
 
-pub async fn dev_secrets_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
+pub async fn dev_secrets_handler(auth_scope: AuthScope) -> Result<Response, BodhiErrorResponse> {
   let tenant_svc = auth_scope.tenants();
   let instance = tenant_svc.get_standalone_app().await.ok().flatten();
   let status = instance
@@ -57,7 +57,7 @@ pub async fn dev_secrets_handler(auth_scope: AuthScope) -> Result<Response, ApiE
   )
 }
 
-pub async fn envs_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
+pub async fn envs_handler(auth_scope: AuthScope) -> Result<Response, BodhiErrorResponse> {
   let envs = auth_scope
     .settings()
     .list()
@@ -67,7 +67,7 @@ pub async fn envs_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
   Ok((StatusCode::OK, Json(envs)).into_response())
 }
 
-pub async fn dev_db_reset_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
+pub async fn dev_db_reset_handler(auth_scope: AuthScope) -> Result<Response, BodhiErrorResponse> {
   auth_scope
     .db()
     .reset_all_tables()
@@ -84,7 +84,7 @@ pub async fn dev_db_reset_handler(auth_scope: AuthScope) -> Result<Response, Api
 pub async fn dev_clients_dag_handler(
   auth_scope: AuthScope,
   Path(client_id): Path<String>,
-) -> Result<Response, ApiError> {
+) -> Result<Response, BodhiErrorResponse> {
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DevError::NotMultiTenant)?;
   }
@@ -129,7 +129,9 @@ pub async fn dev_clients_dag_handler(
   )
 }
 
-pub async fn dev_tenants_cleanup_handler(auth_scope: AuthScope) -> Result<Response, ApiError> {
+pub async fn dev_tenants_cleanup_handler(
+  auth_scope: AuthScope,
+) -> Result<Response, BodhiErrorResponse> {
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DevError::NotMultiTenant)?;
   }

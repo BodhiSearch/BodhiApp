@@ -48,7 +48,7 @@ export function mockApiModelsError(
     message = INTERNAL_SERVER_ERROR.message,
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: number } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: number } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -114,7 +114,7 @@ export function mockCreateApiModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -196,7 +196,7 @@ export function mockGetApiModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -286,7 +286,7 @@ export function mockUpdateApiModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -343,7 +343,7 @@ export function mockDeleteApiModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -398,7 +398,7 @@ export function mockApiFormatsError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -450,7 +450,7 @@ export function mockTestApiModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -500,7 +500,7 @@ export function mockFetchApiModelsError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['BodhiErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  }: Partial<components['schemas']['BodhiError']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;

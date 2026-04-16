@@ -1,5 +1,5 @@
 import {
-  BodhiApiError,
+  BodhiErrorResponse,
   PaginatedUserAccessResponse,
   ResourceRole,
   UserAccessStatusResponse,
@@ -17,11 +17,8 @@ import {
   ENDPOINT_ACCESS_REQUESTS,
 } from './constants';
 
-// Type alias for compatibility
-type ErrorResponse = BodhiApiError;
-
 // User request status
-export function useGetRequestStatus(): UseQueryResult<UserAccessStatusResponse, AxiosError<ErrorResponse>> {
+export function useGetRequestStatus(): UseQueryResult<UserAccessStatusResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<UserAccessStatusResponse>(accessRequestKeys.status, ENDPOINT_USER_REQUEST_STATUS, undefined, {
     retry: (failureCount, error) => {
       // Don't retry on 404 (no request exists) - this is expected
@@ -37,14 +34,14 @@ export function useGetRequestStatus(): UseQueryResult<UserAccessStatusResponse, 
 export function useSubmitAccessRequest(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, void> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, void> {
   const queryClient = useQueryClient();
   return useMutationQuery<void, void>(ENDPOINT_USER_REQUEST_ACCESS, 'post', {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accessRequestKeys.status });
       options?.onSuccess?.();
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
+    onError: (error: AxiosError<BodhiErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to submit access request';
       options?.onError?.(message);
     },
@@ -55,7 +52,7 @@ export function useSubmitAccessRequest(options?: {
 export function useListPendingRequests(
   page: number = 1,
   pageSize: number = 10
-): UseQueryResult<PaginatedUserAccessResponse, AxiosError<ErrorResponse>> {
+): UseQueryResult<PaginatedUserAccessResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<PaginatedUserAccessResponse>(
     accessRequestKeys.pending(page, pageSize),
     ENDPOINT_ACCESS_REQUESTS_PENDING,
@@ -70,7 +67,7 @@ export function useListPendingRequests(
 export function useListAllRequests(
   page: number = 1,
   pageSize: number = 10
-): UseQueryResult<PaginatedUserAccessResponse, AxiosError<ErrorResponse>> {
+): UseQueryResult<PaginatedUserAccessResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<PaginatedUserAccessResponse>(
     accessRequestKeys.list(page, pageSize),
     ENDPOINT_ACCESS_REQUESTS,
@@ -85,7 +82,7 @@ export function useListAllRequests(
 export function useApproveRequest(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: string; role: string }> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, { id: string; role: string }> {
   const queryClient = useQueryClient();
   // Transform from: {id: string; role: string} → endpoint: /access-requests/${id}/approve, body: {role: role as Role}
   return useMutationQuery<void, { id: string; role: string }>(
@@ -96,7 +93,7 @@ export function useApproveRequest(options?: {
         queryClient.invalidateQueries({ queryKey: accessRequestKeys.all });
         options?.onSuccess?.();
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to approve request';
         options?.onError?.(message);
       },
@@ -111,7 +108,7 @@ export function useApproveRequest(options?: {
 export function useRejectRequest(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, string> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string> {
   const queryClient = useQueryClient();
   // POST with path variables and no meaningful body
   return useMutationQuery<void, string>(
@@ -122,7 +119,7 @@ export function useRejectRequest(options?: {
         queryClient.invalidateQueries({ queryKey: accessRequestKeys.all });
         options?.onSuccess?.();
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to reject request';
         options?.onError?.(message);
       },

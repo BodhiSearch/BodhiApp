@@ -7,7 +7,7 @@ import {
   OAuthLoginResponse,
   OAuthTokenExchangeRequest,
   OAuthTokenResponse,
-  BodhiApiError,
+  BodhiErrorResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -20,8 +20,6 @@ import {
   MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE_ENDPOINT,
 } from './constants';
 
-type ErrorResponse = BodhiApiError;
-
 // ============================================================================
 // Mutation Hooks - OAuth Discovery & Login & Token
 // ============================================================================
@@ -29,13 +27,13 @@ type ErrorResponse = BodhiApiError;
 export function useDiscoverMcp(options?: {
   onSuccess?: (response: OAuthDiscoverMcpResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<OAuthDiscoverMcpResponse>, AxiosError<ErrorResponse>, OAuthDiscoverMcpRequest> {
+}): UseMutationResult<AxiosResponse<OAuthDiscoverMcpResponse>, AxiosError<BodhiErrorResponse>, OAuthDiscoverMcpRequest> {
   return useMutationQuery<OAuthDiscoverMcpResponse, OAuthDiscoverMcpRequest>(
     () => MCPS_OAUTH_DISCOVER_MCP_ENDPOINT,
     'post',
     {
       onSuccess: (response) => options?.onSuccess?.(response.data),
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to discover MCP OAuth endpoints';
         options?.onError?.(message);
       },
@@ -46,13 +44,13 @@ export function useDiscoverMcp(options?: {
 export function useStandaloneDynamicRegister(options?: {
   onSuccess?: (response: DynamicRegisterResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<DynamicRegisterResponse>, AxiosError<ErrorResponse>, DynamicRegisterRequest> {
+}): UseMutationResult<AxiosResponse<DynamicRegisterResponse>, AxiosError<BodhiErrorResponse>, DynamicRegisterRequest> {
   return useMutationQuery<DynamicRegisterResponse, DynamicRegisterRequest>(
     () => MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE_ENDPOINT,
     'post',
     {
       onSuccess: (response) => options?.onSuccess?.(response.data),
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to register dynamic client';
         options?.onError?.(message);
       },
@@ -65,7 +63,7 @@ export function useOAuthLogin(options?: {
   onError?: (message: string) => void;
 }): UseMutationResult<
   AxiosResponse<OAuthLoginResponse>,
-  AxiosError<ErrorResponse>,
+  AxiosError<BodhiErrorResponse>,
   OAuthLoginRequest & { id: string }
 > {
   return useMutationQuery<OAuthLoginResponse, OAuthLoginRequest & { id: string }>(
@@ -73,7 +71,7 @@ export function useOAuthLogin(options?: {
     'post',
     {
       onSuccess: (response) => options?.onSuccess?.(response.data),
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to initiate OAuth login';
         options?.onError?.(message);
       },
@@ -87,7 +85,7 @@ export function useOAuthTokenExchange(options?: {
   onError?: (message: string) => void;
 }): UseMutationResult<
   AxiosResponse<OAuthTokenResponse>,
-  AxiosError<ErrorResponse>,
+  AxiosError<BodhiErrorResponse>,
   OAuthTokenExchangeRequest & { id: string }
 > {
   return useMutationQuery<OAuthTokenResponse, OAuthTokenExchangeRequest & { id: string }>(
@@ -95,7 +93,7 @@ export function useOAuthTokenExchange(options?: {
     'post',
     {
       onSuccess: (response) => options?.onSuccess?.(response.data),
-      onError: (error: AxiosError<ErrorResponse>) => {
+      onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to exchange OAuth token';
         options?.onError?.(message);
       },

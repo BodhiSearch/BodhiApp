@@ -1,4 +1,4 @@
-use crate::ApiError;
+use crate::BodhiErrorResponse;
 use axum::{
   body::Body,
   response::{IntoResponse, Response},
@@ -77,21 +77,21 @@ fn map_error_type(bodhi_error_type: &str) -> &'static str {
   }
 }
 
-impl From<ApiError> for AnthropicApiError {
-  fn from(value: ApiError) -> Self {
-    // 5xx error names may include internal service/DB details — substitute a generic
+impl From<BodhiErrorResponse> for AnthropicApiError {
+  fn from(value: BodhiErrorResponse) -> Self {
+    // 5xx error messages may include internal service/DB details — substitute a generic
     // message so implementation details don't leak to Anthropic SDK callers.
     let message = if value.status >= 500 {
       "internal server error".to_string()
     } else {
-      value.name
+      value.error.message
     };
     Self {
       status: value.status,
       body: AnthropicErrorResponse {
         envelope_type: "error",
         error: AnthropicErrorBody {
-          error_type: map_error_type(&value.error_type),
+          error_type: map_error_type(&value.error.r#type),
           message,
         },
       },
@@ -101,7 +101,7 @@ impl From<ApiError> for AnthropicApiError {
 
 impl<T: AppError + 'static> From<T> for AnthropicApiError {
   fn from(value: T) -> Self {
-    Self::from(ApiError::from(value))
+    Self::from(BodhiErrorResponse::from(value))
   }
 }
 

@@ -1,5 +1,7 @@
 use crate::mcps::{McpRouteError, ENDPOINT_MCPS};
-use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_APPS, API_TAG_MCPS, ENDPOINT_APPS_MCPS};
+use crate::{
+  AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_APPS, API_TAG_MCPS, ENDPOINT_APPS_MCPS,
+};
 use axum::{extract::Path, http::StatusCode, Json};
 use services::{
   ApprovalStatus, ApprovedResources, AuthContext, Mcp, McpRequest, McpWithServerEntity,
@@ -29,7 +31,9 @@ pub struct ListMcpsResponse {
   ),
   security(("bearer" = []))
 )]
-pub async fn mcps_index(auth_scope: AuthScope) -> Result<Json<ListMcpsResponse>, ApiError> {
+pub async fn mcps_index(
+  auth_scope: AuthScope,
+) -> Result<Json<ListMcpsResponse>, BodhiErrorResponse> {
   let entities = auth_scope.mcps().list().await?;
 
   // Filter MCP list for ExternalApp tokens: only return MCPs approved in the access request
@@ -86,7 +90,7 @@ pub async fn mcps_index(auth_scope: AuthScope) -> Result<Json<ListMcpsResponse>,
 pub async fn mcps_create(
   auth_scope: AuthScope,
   ValidatedJson(request): ValidatedJson<McpRequest>,
-) -> Result<(StatusCode, Json<Mcp>), ApiError> {
+) -> Result<(StatusCode, Json<Mcp>), BodhiErrorResponse> {
   if request.mcp_server_id.is_none() || request.mcp_server_id.as_deref() == Some("") {
     return Err(McpRouteError::Validation("mcp_server_id is required".to_string()).into());
   }
@@ -115,7 +119,7 @@ pub async fn mcps_create(
 pub async fn mcps_show(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<Json<Mcp>, ApiError> {
+) -> Result<Json<Mcp>, BodhiErrorResponse> {
   let entity = auth_scope
     .mcps()
     .get(&id)
@@ -146,7 +150,7 @@ pub async fn mcps_update(
   auth_scope: AuthScope,
   Path(id): Path<String>,
   ValidatedJson(request): ValidatedJson<McpRequest>,
-) -> Result<Json<Mcp>, ApiError> {
+) -> Result<Json<Mcp>, BodhiErrorResponse> {
   let entity = auth_scope.mcps().update(&id, request).await?;
 
   Ok(Json(entity.into()))
@@ -170,7 +174,7 @@ pub async fn mcps_update(
 pub async fn mcps_destroy(
   auth_scope: AuthScope,
   Path(id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   auth_scope.mcps().delete(&id).await?;
 
   Ok(StatusCode::NO_CONTENT)
@@ -191,7 +195,9 @@ pub async fn mcps_destroy(
   ),
   security(("bearer_oauth_token" = []))
 )]
-pub async fn apps_mcps_index(auth_scope: AuthScope) -> Result<Json<ListMcpsResponse>, ApiError> {
+pub async fn apps_mcps_index(
+  auth_scope: AuthScope,
+) -> Result<Json<ListMcpsResponse>, BodhiErrorResponse> {
   mcps_index(auth_scope).await
 }
 
@@ -213,7 +219,7 @@ pub async fn apps_mcps_index(auth_scope: AuthScope) -> Result<Json<ListMcpsRespo
 pub async fn apps_mcps_show(
   auth_scope: AuthScope,
   path: Path<String>,
-) -> Result<Json<Mcp>, ApiError> {
+) -> Result<Json<Mcp>, BodhiErrorResponse> {
   mcps_show(auth_scope, path).await
 }
 

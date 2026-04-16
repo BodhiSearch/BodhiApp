@@ -1,4 +1,4 @@
-import type { BodhiApiError } from '@bodhiapp/ts-client';
+import type { BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -76,7 +76,7 @@ describe('useQuery', () => {
       expect(result.current.isError).toBe(true);
     });
 
-    const error = result.current.error as AxiosError<BodhiApiError>;
+    const error = result.current.error as AxiosError<BodhiErrorResponse>;
     expect(error.response?.status).toBe(404);
   });
 });
@@ -137,7 +137,7 @@ describe('useMutationQuery', () => {
       try {
         await result.current.mutateAsync({ name: 'Bad Item' });
       } catch (error) {
-        const axiosError = error as AxiosError<BodhiApiError>;
+        const axiosError = error as AxiosError<BodhiErrorResponse>;
         expect(axiosError.response?.status).toBe(400);
         expect(axiosError.response?.data.error?.message).toBe('Invalid data');
       }

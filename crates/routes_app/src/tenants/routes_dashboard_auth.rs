@@ -1,7 +1,7 @@
 use crate::auth::generate_pkce;
 use crate::middleware::generate_random_string;
 use crate::shared::AuthScope;
-use crate::{ApiError, AuthCallbackRequest, RedirectResponse};
+use crate::{AuthCallbackRequest, BodhiErrorResponse, RedirectResponse};
 use crate::{
   DashboardAuthRouteError, DASHBOARD_ACCESS_TOKEN_KEY, DASHBOARD_REFRESH_TOKEN_KEY,
   ENDPOINT_DASHBOARD_AUTH_CALLBACK, ENDPOINT_DASHBOARD_AUTH_INITIATE,
@@ -40,7 +40,7 @@ pub async fn dashboard_auth_initiate(
   auth_scope: AuthScope,
   _headers: HeaderMap,
   session: Session,
-) -> Result<impl axum::response::IntoResponse, ApiError> {
+) -> Result<impl axum::response::IntoResponse, BodhiErrorResponse> {
   // Must be in multi-tenant mode
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
@@ -130,7 +130,7 @@ pub async fn dashboard_auth_callback(
   auth_scope: AuthScope,
   session: Session,
   Json(request): Json<AuthCallbackRequest>,
-) -> Result<Json<RedirectResponse>, ApiError> {
+) -> Result<Json<RedirectResponse>, BodhiErrorResponse> {
   // Must be in multi-tenant mode
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;

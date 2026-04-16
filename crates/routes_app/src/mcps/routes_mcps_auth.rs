@@ -3,7 +3,7 @@ use crate::mcps::{
   OAuthTokenExchangeRequest, OAuthTokenResponse, ENDPOINT_MCPS_AUTH_CONFIGS,
 };
 use crate::middleware::generate_random_string;
-use crate::{ApiError, AuthScope, ValidatedJson, API_TAG_MCPS};
+use crate::{AuthScope, BodhiErrorResponse, ValidatedJson, API_TAG_MCPS};
 use axum::{
   extract::{Path, Query},
   http::StatusCode,
@@ -34,7 +34,7 @@ use tower_sessions::Session;
 pub async fn mcp_auth_configs_create(
   auth_scope: AuthScope,
   ValidatedJson(body): ValidatedJson<CreateAuthConfig>,
-) -> Result<(StatusCode, Json<McpAuthConfigResponse>), ApiError> {
+) -> Result<(StatusCode, Json<McpAuthConfigResponse>), BodhiErrorResponse> {
   // URL scheme validation (XSS-VULN-02) is handled by ValidatedJson via
   // the manual Validate impl on CreateMcpAuthConfigRequest.
   let config = auth_scope
@@ -59,7 +59,7 @@ pub async fn mcp_auth_configs_create(
 pub async fn mcp_auth_configs_index(
   auth_scope: AuthScope,
   Query(query): Query<AuthConfigsQuery>,
-) -> Result<Json<McpAuthConfigsListResponse>, ApiError> {
+) -> Result<Json<McpAuthConfigsListResponse>, BodhiErrorResponse> {
   let auth_configs = auth_scope
     .mcps()
     .list_auth_configs(&query.mcp_server_id)
@@ -85,7 +85,7 @@ pub async fn mcp_auth_configs_index(
 pub async fn mcp_auth_configs_show(
   auth_scope: AuthScope,
   Path(config_id): Path<String>,
-) -> Result<Json<McpAuthConfigResponse>, ApiError> {
+) -> Result<Json<McpAuthConfigResponse>, BodhiErrorResponse> {
   let config = auth_scope
     .mcps()
     .get_auth_config(&config_id)
@@ -112,7 +112,7 @@ pub async fn mcp_auth_configs_show(
 pub async fn mcp_auth_configs_destroy(
   auth_scope: AuthScope,
   Path(config_id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   auth_scope.mcps().delete_auth_config(&config_id).await?;
   Ok(StatusCode::NO_CONTENT)
 }
@@ -142,7 +142,7 @@ pub async fn mcp_oauth_login(
   session: Session,
   Path(config_id): Path<String>,
   Json(request): Json<OAuthLoginRequest>,
-) -> Result<Json<OAuthLoginResponse>, ApiError> {
+) -> Result<Json<OAuthLoginResponse>, BodhiErrorResponse> {
   url::Url::parse(&request.redirect_uri)
     .map_err(|e| McpRouteError::InvalidRedirectUri(e.to_string()))?;
 
@@ -222,7 +222,7 @@ pub async fn mcp_oauth_token_exchange(
   session: Session,
   Path(config_id): Path<String>,
   Json(request): Json<OAuthTokenExchangeRequest>,
-) -> Result<Json<OAuthTokenResponse>, ApiError> {
+) -> Result<Json<OAuthTokenResponse>, BodhiErrorResponse> {
   url::Url::parse(&request.redirect_uri)
     .map_err(|e| McpRouteError::InvalidRedirectUri(e.to_string()))?;
 

@@ -1,4 +1,4 @@
-import { BodhiApiError } from '@bodhiapp/ts-client';
+import { BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import {
   useMutation,
@@ -16,19 +16,16 @@ import apiClient from '@/lib/apiClient';
 // Re-export for backward compatibility (test files import from here)
 export { BODHI_API_BASE };
 
-// Type alias for compatibility
-type ErrorResponse = BodhiApiError;
-
 export function useQuery<T>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   key: string | readonly any[],
   endpoint: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: Record<string, any>,
-  options?: Omit<UseQueryOptions<T, AxiosError<ErrorResponse>>, 'queryKey' | 'queryFn'>
-): UseQueryResult<T, AxiosError<ErrorResponse>> {
+  options?: Omit<UseQueryOptions<T, AxiosError<BodhiErrorResponse>>, 'queryKey' | 'queryFn'>
+): UseQueryResult<T, AxiosError<BodhiErrorResponse>> {
   const queryKey = Array.isArray(key) ? key : [key];
-  return useReactQuery<T, AxiosError<ErrorResponse>>({
+  return useReactQuery<T, AxiosError<BodhiErrorResponse>>({
     queryKey,
     queryFn: async () => {
       const { data } = await apiClient.get<T>(endpoint, {
@@ -46,15 +43,15 @@ export function useQuery<T>(
 export function useMutationQuery<T, V>(
   endpoint: string | ((variables: V) => string),
   method: 'post' | 'put' | 'delete' = 'post',
-  options?: UseMutationOptions<AxiosResponse<T>, AxiosError<ErrorResponse>, V>,
+  options?: UseMutationOptions<AxiosResponse<T>, AxiosError<BodhiErrorResponse>, V>,
   axiosConfig?: {
     headers?: Record<string, string>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     transformBody?: (variables: V) => any;
     noBody?: boolean;
   }
-): UseMutationResult<AxiosResponse<T>, AxiosError<ErrorResponse>, V> {
-  return useMutation<AxiosResponse<T>, AxiosError<ErrorResponse>, V>({
+): UseMutationResult<AxiosResponse<T>, AxiosError<BodhiErrorResponse>, V> {
+  return useMutation<AxiosResponse<T>, AxiosError<BodhiErrorResponse>, V>({
     mutationFn: async (variables) => {
       const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
 

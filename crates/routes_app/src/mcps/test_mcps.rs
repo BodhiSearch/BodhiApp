@@ -1,7 +1,7 @@
 use crate::mcps::{mcps_create, mcps_destroy, mcps_index, mcps_show, mcps_update};
 use crate::test_utils::RequestAuthContextExt;
 use crate::test_utils::{build_mcp_test_state, fixed_dt};
-use crate::BodhiApiError;
+use crate::BodhiErrorResponse;
 use anyhow_trace::anyhow_trace;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -623,7 +623,7 @@ async fn test_create_mcp_service_error_returns_correct_status() -> anyhow::Resul
   let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::NOT_FOUND, response.status());
-  let body: BodhiApiError = response.json().await?;
+  let body: BodhiErrorResponse = response.json().await?;
   assert_eq!(
     Some("mcp_error-mcp_server_not_found".to_string()),
     body.error.code
@@ -668,7 +668,7 @@ async fn test_create_mcp_slug_conflict_returns_409() -> anyhow::Result<()> {
   let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::CONFLICT, response.status());
-  let body: BodhiApiError = response.json().await?;
+  let body: BodhiErrorResponse = response.json().await?;
   assert_eq!(Some("mcp_error-slug_exists".to_string()), body.error.code);
   Ok(())
 }
@@ -710,7 +710,7 @@ async fn test_update_mcp_not_found_returns_404() -> anyhow::Result<()> {
   let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::NOT_FOUND, response.status());
-  let body: BodhiApiError = response.json().await?;
+  let body: BodhiErrorResponse = response.json().await?;
   assert_eq!(Some("mcp_error-mcp_not_found".to_string()), body.error.code);
   Ok(())
 }

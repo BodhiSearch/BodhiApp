@@ -1,7 +1,7 @@
 use crate::models::error::ModelRouteError;
 use crate::models::models_api_schemas::{LocalModelResponse, PaginatedLocalModelResponse};
 use crate::shared::AuthScope;
-use crate::ApiError;
+use crate::BodhiErrorResponse;
 use crate::{PaginationSortParams, API_TAG_MODELS_FILES, ENDPOINT_MODELS_FILES};
 use axum::{extract::Query, Json};
 use services::HubFile;
@@ -41,7 +41,7 @@ use services::HubFile;
 pub async fn modelfiles_index(
   auth_scope: AuthScope,
   Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedLocalModelResponse>, ApiError> {
+) -> Result<Json<PaginatedLocalModelResponse>, BodhiErrorResponse> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
   let mut models = auth_scope.hub_service().list_local_models();
   sort_models(&mut models, &sort, &sort_order);

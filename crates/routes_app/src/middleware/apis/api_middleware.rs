@@ -1,5 +1,5 @@
 use crate::middleware::apis::ApiAuthError;
-use crate::middleware::MiddlewareError;
+use crate::BodhiErrorResponse;
 use axum::{
   extract::{Request, State},
   middleware::Next,
@@ -17,7 +17,7 @@ pub async fn api_auth_middleware(
   State(_app_service): State<Arc<dyn AppService>>,
   req: Request,
   next: Next,
-) -> Result<Response, MiddlewareError> {
+) -> Result<Response, BodhiErrorResponse> {
   Ok(
     authorize_request(
       required_role,

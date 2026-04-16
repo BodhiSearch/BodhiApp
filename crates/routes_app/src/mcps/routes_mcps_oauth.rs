@@ -4,7 +4,7 @@ use crate::mcps::{
   ENDPOINT_MCPS_OAUTH_DISCOVER_AS, ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
   ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE,
 };
-use crate::{ApiError, AuthScope, API_TAG_MCPS};
+use crate::{AuthScope, BodhiErrorResponse, API_TAG_MCPS};
 use axum::{extract::Path, http::StatusCode, Json};
 
 // ============================================================================
@@ -27,7 +27,7 @@ use axum::{extract::Path, http::StatusCode, Json};
 pub async fn mcp_oauth_discover_as(
   auth_scope: AuthScope,
   Json(request): Json<OAuthDiscoverAsRequest>,
-) -> Result<Json<OAuthDiscoverAsResponse>, ApiError> {
+) -> Result<Json<OAuthDiscoverAsResponse>, BodhiErrorResponse> {
   url::Url::parse(&request.url).map_err(|e| McpRouteError::InvalidUrl(format!("url: {}", e)))?;
 
   let mcps = auth_scope.mcps();
@@ -72,7 +72,7 @@ pub async fn mcp_oauth_discover_as(
 pub async fn mcp_oauth_discover_mcp(
   auth_scope: AuthScope,
   Json(request): Json<OAuthDiscoverMcpRequest>,
-) -> Result<Json<OAuthDiscoverMcpResponse>, ApiError> {
+) -> Result<Json<OAuthDiscoverMcpResponse>, BodhiErrorResponse> {
   url::Url::parse(&request.mcp_server_url)
     .map_err(|e| McpRouteError::InvalidUrl(format!("mcp_server_url: {}", e)))?;
 
@@ -120,7 +120,7 @@ pub async fn mcp_oauth_discover_mcp(
 pub async fn mcp_oauth_dynamic_register(
   auth_scope: AuthScope,
   Json(request): Json<DynamicRegisterRequest>,
-) -> Result<Json<DynamicRegisterResponse>, ApiError> {
+) -> Result<Json<DynamicRegisterResponse>, BodhiErrorResponse> {
   url::Url::parse(&request.registration_endpoint)
     .map_err(|e| McpRouteError::InvalidUrl(format!("registration_endpoint: {}", e)))?;
   url::Url::parse(&request.redirect_uri)
@@ -173,7 +173,7 @@ pub async fn mcp_oauth_dynamic_register(
 pub async fn mcp_oauth_tokens_show(
   auth_scope: AuthScope,
   Path(token_id): Path<String>,
-) -> Result<Json<OAuthTokenResponse>, ApiError> {
+) -> Result<Json<OAuthTokenResponse>, BodhiErrorResponse> {
   let token = auth_scope
     .mcps()
     .get_oauth_token(&token_id)
@@ -200,7 +200,7 @@ pub async fn mcp_oauth_tokens_show(
 pub async fn mcp_oauth_tokens_destroy(
   auth_scope: AuthScope,
   Path(token_id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<StatusCode, BodhiErrorResponse> {
   auth_scope
     .mcps()
     .delete_oauth_token(&token_id)

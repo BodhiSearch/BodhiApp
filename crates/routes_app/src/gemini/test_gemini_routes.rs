@@ -503,7 +503,7 @@ async fn test_generate_content_forwards_to_gemini_endpoint() -> anyhow::Result<(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_action_handler_returns_not_found_for_unknown_alias() -> anyhow::Result<()> {
-  // Exercises the From<ApiError> for GeminiApiError path: AliasNotFound → 404 NOT_FOUND
+  // Exercises the From<BodhiErrorResponse> for GeminiApiError path: AliasNotFound → 404 NOT_FOUND
   // with grpc status "NOT_FOUND" in the response body.
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()

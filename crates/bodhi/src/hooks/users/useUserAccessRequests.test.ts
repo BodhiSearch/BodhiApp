@@ -1,4 +1,4 @@
-import type { PaginatedUserAccessResponse, UserAccessStatusResponse, BodhiApiError } from '@bodhiapp/ts-client';
+import type { PaginatedUserAccessResponse, UserAccessStatusResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -99,7 +99,7 @@ describe('useGetRequestStatus', () => {
       expect(result.current.isError).toBe(true);
     });
 
-    const error = result.current.error as AxiosError<BodhiApiError>;
+    const error = result.current.error as AxiosError<BodhiErrorResponse>;
     expect(error.response?.status).toBe(404);
   });
 });

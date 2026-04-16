@@ -1,6 +1,6 @@
 use crate::{
-  ApiError, AuthScope, DashboardUser, TokenInfo, UserInfoEnvelope, UserResponse, API_TAG_AUTH,
-  ENDPOINT_USER_INFO,
+  AuthScope, BodhiErrorResponse, DashboardUser, TokenInfo, UserInfoEnvelope, UserResponse,
+  API_TAG_AUTH, ENDPOINT_USER_INFO,
 };
 use axum::Json;
 use services::AppRole;
@@ -52,7 +52,9 @@ use tracing::debug;
         ("session_auth" = [])
     )
 )]
-pub async fn users_info(auth_scope: AuthScope) -> Result<Json<UserInfoEnvelope>, ApiError> {
+pub async fn users_info(
+  auth_scope: AuthScope,
+) -> Result<Json<UserInfoEnvelope>, BodhiErrorResponse> {
   let (user, dashboard) = match auth_scope.auth_context().clone() {
     AuthContext::Anonymous { .. } => {
       debug!("anonymous request");

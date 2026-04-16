@@ -36,7 +36,7 @@ use crate::{
   __path_mcps_show, __path_mcps_update,
 };
 // Settings and setup DTOs and handlers
-use crate::BodhiApiError;
+use crate::BodhiErrorResponse;
 use crate::{
   SetupRequest, SetupResponse, __path_settings_destroy, __path_settings_index,
   __path_settings_update, __path_setup_create, __path_setup_show,
@@ -259,7 +259,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
     components(
         schemas(
             // common
-            BodhiApiError,
+            BodhiErrorResponse,
             AppStatus,
             RedirectResponse,
             // system
@@ -594,7 +594,7 @@ impl Modify for SecurityModifier {
 /// Modifies OpenAPI documentation to add common error responses to all endpoints.
 ///
 /// Each spec provides its own error schema name — the management spec uses
-/// `BodhiApiError`, the OpenAI-compat spec uses async-openai's `openai.WrappedError`
+/// `BodhiErrorResponse`, the OpenAI-compat spec uses async-openai's `openai.WrappedError`
 /// envelope — because the two surfaces have different wire formats.
 #[derive(Debug)]
 pub struct GlobalErrorResponses {
@@ -608,7 +608,7 @@ impl GlobalErrorResponses {
 
   /// Default variant for the BodhiApp management spec.
   pub const fn bodhi() -> Self {
-    Self::new("BodhiApiError")
+    Self::new("BodhiErrorResponse")
   }
 
   pub const fn oai() -> Self {
