@@ -372,9 +372,15 @@ export type BodhiError = {
     /**
      * Additional error parameters as key-value pairs (for validation errors)
      */
-    param?: {
+    params?: {
         [key: string]: string;
     } | null;
+    /**
+     * JSON-encoded form of `params`. Superset field so clients that speak the
+     * OpenAI `Error` shape (where `param` is a String) can still read it.
+     * Populated automatically from `params` by `BodhiError::new`.
+     */
+    param?: string | null;
 };
 
 export type BodhiErrorResponse = {

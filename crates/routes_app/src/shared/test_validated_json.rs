@@ -67,9 +67,17 @@ async fn test_invalid_field_returns_validation_error() {
   assert_eq!("invalid_request_error", error["type"]);
   assert_eq!("validation_error", error["code"]);
   assert!(
-    error["param"]["name"].is_string(),
-    "expected param.name to be a string, got: {}",
-    error["param"]
+    error["params"]["name"].is_string(),
+    "expected params.name to be a string, got: {}",
+    error["params"]
+  );
+  let param_str = error["param"]
+    .as_str()
+    .expect("expected param to be a JSON-encoded string");
+  assert!(
+    param_str.contains("\"name\""),
+    "expected param JSON string to contain \"name\", got: {}",
+    param_str
   );
 }
 

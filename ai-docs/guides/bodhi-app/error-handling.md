@@ -16,7 +16,7 @@ BodhiApp's error system provides:
 
 ### Standard Error Structure
 
-All BodhiApp API errors follow the OpenAI-compatible error format:
+All BodhiApp management API errors use the `BodhiError` envelope. Its wire format is a **superset** of OpenAI's `Error` shape: it carries a structured `params` map plus a `param` string (the JSON-encoded form of `params`), so clients that only speak the OpenAI shape can still read `param`:
 
 ```json
 {
@@ -24,7 +24,8 @@ All BodhiApp API errors follow the OpenAI-compatible error format:
     "message": "Human-readable error description",
     "type": "error_category",
     "code": "specific_error_code",
-    "param": "field_name_if_applicable"
+    "params": { "field": "model" },
+    "param": "{\"field\":\"model\"}"
   }
 }
 ```
@@ -33,7 +34,10 @@ All BodhiApp API errors follow the OpenAI-compatible error format:
 - `message`: Localized, human-readable error description
 - `type`: Error category (see Error Types section)
 - `code`: Specific error code for programmatic handling
-- `param`: Field name that caused the error (optional)
+- `params`: Structured map of error parameters (Bodhi-native; optional)
+- `param`: JSON-encoded string form of `params` (OpenAI-compatible superset; optional)
+
+Prefer reading `params` when available; fall back to `JSON.parse(param)` for OpenAI-only clients. The `/v1/chat/completions`, `/v1/embeddings`, `/v1/models`, and `/v1/responses/*` endpoints return the OpenAI-native envelope instead, where `param` is a `"key=value, key=value"` string (not JSON).
 
 ### Example Error Response
 
@@ -43,7 +47,8 @@ All BodhiApp API errors follow the OpenAI-compatible error format:
     "message": "invalid request, reason: missing required field 'model'",
     "type": "invalid_request_error",
     "code": "bad_request_error",
-    "param": "model"
+    "params": { "field": "model" },
+    "param": "{\"field\":\"model\"}"
   }
 }
 ```
@@ -145,7 +150,8 @@ const headers = {
     "message": "invalid request, reason: missing required field 'model'",
     "type": "invalid_request_error",
     "code": "bad_request_error",
-    "param": "model"
+    "params": { "field": "model" },
+    "param": "{\"field\":\"model\"}"
   }
 }
 ```
@@ -318,6 +324,7 @@ class BodhiAPIError extends Error {
   public readonly type: string;
   public readonly code: string;
   public readonly status: number;
+  public readonly params?: Record<string, string>;
   public readonly param?: string;
 
   constructor(error: any, status: number) {
@@ -326,6 +333,7 @@ class BodhiAPIError extends Error {
     this.type = error.type;
     this.code = error.code;
     this.status = status;
+    this.params = error.params;
     this.param = error.param;
   }
 }
@@ -410,8 +418,8 @@ async function robustChatCompletion(
           throw new Error('API token is invalid or expired. Please generate a new token.');
           
         case 'bad_request_error':
-          if (error.param) {
-            throw new Error(`Invalid value for field '${error.param}': ${error.message}`);
+          if (error.params?.field) {
+            throw new Error(`Invalid value for field '${error.params.field}': ${error.message}`);
           }
           throw new Error(`Invalid request: ${error.message}`);
           

@@ -273,13 +273,17 @@ POST /bodhi/v1/setup
 ## Request/Response Formats
 
 ### Standard Error Response
+
+Bodhi management endpoints (everything except the `/v1/*` OpenAI-compatible routes) return the `BodhiError` envelope, which is a superset of OpenAI's shape: both structured `params` (map) and `param` (JSON-encoded string form of `params`) are emitted so OpenAI-only clients can still read `param`.
+
 ```json
 {
   "error": {
     "message": "Human-readable error description",
     "type": "error_category",
     "code": "specific_error_code",
-    "param": "field_name_if_applicable"
+    "params": { "field": "field_name" },
+    "param": "{\"field\":\"field_name\"}"
   }
 }
 ```

@@ -56,14 +56,14 @@ impl From<ValidationRejection> for crate::BodhiErrorResponse {
             (field.to_string(), msg)
           })
           .collect();
-        let param = if args.is_empty() { None } else { Some(args) };
+        let params = if args.is_empty() { None } else { Some(args) };
         crate::BodhiErrorResponse {
-          error: crate::BodhiError {
-            message: "Validation failed".to_string(),
-            r#type: "invalid_request_error".to_string(),
-            code: Some("validation_error".to_string()),
-            param,
-          },
+          error: crate::BodhiError::new(
+            "Validation failed".to_string(),
+            "invalid_request_error".to_string(),
+            Some("validation_error".to_string()),
+            params,
+          ),
           status: 400,
         }
       }

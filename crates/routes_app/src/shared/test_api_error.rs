@@ -42,7 +42,8 @@ async fn handler_return_different_error_objs(
   "message": "Bad input: even.",
   "type": "invalid_request_error",
   "code": "test_error-bad_input",
-  "param": {"var_0": "even"}
+  "params": {"var_0": "even"},
+  "param": "{\"var_0\":\"even\"}"
   }
 }})]
 #[case("3", 500, serde_json::json! {{
@@ -50,7 +51,8 @@ async fn handler_return_different_error_objs(
     "message": "Something went wrong: odd.",
     "type": "internal_server_error",
     "code": "test_error-internal",
-    "param": {"var_0": "odd"}
+    "params": {"var_0": "odd"},
+    "param": "{\"var_0\":\"odd\"}"
   }
 }})]
 #[tokio::test]

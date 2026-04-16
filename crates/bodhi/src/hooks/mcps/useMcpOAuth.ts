@@ -27,7 +27,11 @@ import {
 export function useDiscoverMcp(options?: {
   onSuccess?: (response: OAuthDiscoverMcpResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<OAuthDiscoverMcpResponse>, AxiosError<BodhiErrorResponse>, OAuthDiscoverMcpRequest> {
+}): UseMutationResult<
+  AxiosResponse<OAuthDiscoverMcpResponse>,
+  AxiosError<BodhiErrorResponse>,
+  OAuthDiscoverMcpRequest
+> {
   return useMutationQuery<OAuthDiscoverMcpResponse, OAuthDiscoverMcpRequest>(
     () => MCPS_OAUTH_DISCOVER_MCP_ENDPOINT,
     'post',

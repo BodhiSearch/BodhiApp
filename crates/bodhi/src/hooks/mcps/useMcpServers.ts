@@ -58,7 +58,11 @@ export function useCreateMcpServer(options?: {
 export function useUpdateMcpServer(options?: {
   onSuccess?: (server: McpServerResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<McpServerResponse>, AxiosError<BodhiErrorResponse>, McpServerRequest & { id: string }> {
+}): UseMutationResult<
+  AxiosResponse<McpServerResponse>,
+  AxiosError<BodhiErrorResponse>,
+  McpServerRequest & { id: string }
+> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<McpServerResponse, McpServerRequest & { id: string }>(

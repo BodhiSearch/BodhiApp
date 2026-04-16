@@ -75,12 +75,12 @@ fn test_app_error_to_anthropic_envelope(
 #[test]
 fn test_5xx_message_is_generic_not_internal_detail() {
   let api_err = BodhiErrorResponse {
-    error: BodhiError {
-      message: "database connection pool exhausted: timed out after 5s".to_string(),
-      r#type: "internal_server_error".to_string(),
-      code: None,
-      param: None,
-    },
+    error: BodhiError::new(
+      "database connection pool exhausted: timed out after 5s".to_string(),
+      "internal_server_error".to_string(),
+      None,
+      None,
+    ),
     status: 500,
   };
   let anthropic: AnthropicApiError = api_err.into();
@@ -91,12 +91,12 @@ fn test_5xx_message_is_generic_not_internal_detail() {
 #[test]
 fn test_4xx_message_is_preserved() {
   let api_err = BodhiErrorResponse {
-    error: BodhiError {
-      message: "alias 'foo' not found".to_string(),
-      r#type: "not_found_error".to_string(),
-      code: None,
-      param: None,
-    },
+    error: BodhiError::new(
+      "alias 'foo' not found".to_string(),
+      "not_found_error".to_string(),
+      None,
+      None,
+    ),
     status: 404,
   };
   let anthropic: AnthropicApiError = api_err.into();

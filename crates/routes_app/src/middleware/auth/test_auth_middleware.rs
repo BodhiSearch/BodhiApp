@@ -521,9 +521,10 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
         "message": "Network error: Failed to refresh token.",
         "type": "internal_server_error",
         "code": "reqwest_error",
-        "param": {
+        "params": {
           "error": "Failed to refresh token"
-        }
+        },
+        "param": "{\"error\":\"Failed to refresh token\"}"
       }
     }},
     actual
@@ -946,9 +947,10 @@ async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()
         "code": "token_error-invalid_token",
         "type": "authentication_error",
         "message": "Invalid token: Invalid token.",
-        "param": {
+        "params": {
           "var_0": "Invalid token"
-        }
+        },
+        "param": "{\"var_0\":\"Invalid token\"}"
       }
     }},
     body

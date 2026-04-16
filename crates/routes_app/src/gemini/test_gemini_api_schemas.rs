@@ -31,12 +31,12 @@ fn test_missing_model_has_correct_shape() {
 #[test]
 fn test_5xx_message_is_generic_not_internal_detail() {
   let api_err = BodhiErrorResponse {
-    error: BodhiError {
-      message: "database connection pool exhausted: timed out after 5s".to_string(),
-      r#type: "internal_server_error".to_string(),
-      code: None,
-      param: None,
-    },
+    error: BodhiError::new(
+      "database connection pool exhausted: timed out after 5s".to_string(),
+      "internal_server_error".to_string(),
+      None,
+      None,
+    ),
     status: 500,
   };
   let gemini_err: GeminiApiError = api_err.into();
@@ -48,12 +48,12 @@ fn test_5xx_message_is_generic_not_internal_detail() {
 #[test]
 fn test_4xx_message_is_preserved() {
   let api_err = BodhiErrorResponse {
-    error: BodhiError {
-      message: "alias 'foo' not found".to_string(),
-      r#type: "not_found_error".to_string(),
-      code: None,
-      param: None,
-    },
+    error: BodhiError::new(
+      "alias 'foo' not found".to_string(),
+      "not_found_error".to_string(),
+      None,
+      None,
+    ),
     status: 404,
   };
   let gemini_err: GeminiApiError = api_err.into();

@@ -16,7 +16,10 @@ export function useListMcps(options?: {
   return useQuery<ListMcpsResponse>(mcpKeys.all, MCPS_ENDPOINT, undefined, options);
 }
 
-export function useGetMcp(id: string, options?: { enabled?: boolean }): UseQueryResult<Mcp, AxiosError<BodhiErrorResponse>> {
+export function useGetMcp(
+  id: string,
+  options?: { enabled?: boolean }
+): UseQueryResult<Mcp, AxiosError<BodhiErrorResponse>> {
   return useQuery<Mcp>(mcpKeys.detail(id), `${MCPS_ENDPOINT}/${id}`, undefined, options);
 }
 

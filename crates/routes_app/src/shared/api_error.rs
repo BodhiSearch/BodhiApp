@@ -8,12 +8,13 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use utoipa::ToSchema;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new, ToSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "message": "Validation failed: name is required",
     "type": "invalid_request_error",
     "code": "validation_error",
-    "param": {"field": "name", "value": "invalid"}
+    "params": {"field": "name", "value": "invalid"},
+    "param": "{\"field\":\"name\",\"value\":\"invalid\"}"
 }))]
 pub struct BodhiError {
   /// Human-readable error message describing what went wrong
@@ -31,7 +32,32 @@ pub struct BodhiError {
   /// Additional error parameters as key-value pairs (for validation errors)
   #[serde(skip_serializing_if = "Option::is_none")]
   #[schema(example = json!({"field": "name", "value": "invalid"}))]
-  pub param: Option<HashMap<String, String>>,
+  pub params: Option<HashMap<String, String>>,
+
+  /// JSON-encoded form of `params`. Superset field so clients that speak the
+  /// OpenAI `Error` shape (where `param` is a String) can still read it.
+  /// Populated automatically from `params` by `BodhiError::new`.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[schema(example = "{\"field\":\"name\",\"value\":\"invalid\"}")]
+  pub param: Option<String>,
+}
+
+impl BodhiError {
+  pub fn new(
+    message: String,
+    r#type: String,
+    code: Option<String>,
+    params: Option<HashMap<String, String>>,
+  ) -> Self {
+    let param = params.as_ref().and_then(|p| serde_json::to_string(p).ok());
+    Self {
+      message,
+      r#type,
+      code,
+      params,
+      param,
+    }
+  }
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new, ToSchema, thiserror::Error)]
@@ -40,7 +66,8 @@ pub struct BodhiError {
         "message": "Validation failed: name is required",
         "type": "invalid_request_error",
         "code": "validation_error",
-        "param": {"field": "name"}
+        "params": {"field": "name"},
+        "param": "{\"field\":\"name\"}"
     }
 }))]
 pub struct BodhiErrorResponse {
@@ -68,14 +95,14 @@ impl<T: AppError + 'static> From<T> for BodhiErrorResponse {
   fn from(value: T) -> Self {
     let value = value.borrow();
     let args = value.args();
-    let param = if args.is_empty() { None } else { Some(args) };
+    let params = if args.is_empty() { None } else { Some(args) };
     BodhiErrorResponse {
-      error: BodhiError {
-        message: value.to_string(),
-        r#type: value.error_type(),
-        code: Some(value.code()),
-        param,
-      },
+      error: BodhiError::new(
+        value.to_string(),
+        value.error_type(),
+        Some(value.code()),
+        params,
+      ),
       status: value.status(),
     }
   }

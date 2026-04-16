@@ -16,16 +16,14 @@ pub struct JsonRejectionError {
 impl IntoResponse for JsonRejectionError {
   fn into_response(self) -> Response {
     let args = self.args();
-    let param = if args.is_empty() { None } else { Some(args) };
-    let mut error_obj = serde_json::json!({
-      "message": self.to_string(),
-      "type": self.error_type(),
-      "code": self.code(),
-    });
-    if let Some(p) = param {
-      error_obj["param"] = serde_json::to_value(p).unwrap_or(serde_json::Value::Null);
-    }
-    let body = serde_json::json!({ "error": error_obj });
+    let params = if args.is_empty() { None } else { Some(args) };
+    let bodhi_error = crate::BodhiError::new(
+      self.to_string(),
+      self.error_type(),
+      Some(self.code()),
+      params,
+    );
+    let body = serde_json::json!({ "error": bodhi_error });
     let body_str = serde_json::to_string(&body).unwrap_or_else(|e| format!("{:?}", e));
     Response::builder()
       .status(self.status())
@@ -94,7 +92,8 @@ mod tests {
           "message": "Invalid JSON in request: Expected request with `Content-Type: application/json`.",
           "type": "invalid_request_error",
           "code": "json_rejection_error",
-          "param": {"source": "Expected request with `Content-Type: application/json`"}
+          "params": {"source": "Expected request with `Content-Type: application/json`"},
+          "param": "{\"source\":\"Expected request with `Content-Type: application/json`\"}"
         }
       }},
       response

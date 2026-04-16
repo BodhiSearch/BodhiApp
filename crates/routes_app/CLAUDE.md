@@ -50,8 +50,8 @@ Falls back to `AuthContext::Anonymous { deployment: DeploymentMode::Standalone }
 
 Two return types depending on handler audience:
 
-- **Bodhi handlers + middleware**: `Result<_, BodhiErrorResponse>` (`shared/api_error.rs`). Emits `{error: {message, type, code, param?}}` JSON. `BodhiErrorResponse` has a blanket `From<T: AppError>` so service / domain errors convert via `?`.
-- **OAI handlers** (only under `src/oai/`): `Result<_, OaiApiError>` (`oai/api_error.rs`). Converts to async-openai's `WrappedError` for OpenAI SDK compatibility. The `param` field is a joined `key=value` string (OpenAI wire spec) instead of a HashMap.
+- **Bodhi handlers + middleware**: `Result<_, BodhiErrorResponse>` (`shared/api_error.rs`). Emits `{error: {message, type, code, params?, param?}}` JSON — a wire-level superset of OpenAI's `Error` shape. `params` is the structured HashMap; `param` is its JSON-encoded string form (populated by `BodhiError::new`), so OpenAI-only clients can still read `param`. `BodhiErrorResponse` has a blanket `From<T: AppError>` so service / domain errors convert via `?`.
+- **OAI handlers** (only under `src/oai/`): `Result<_, OaiApiError>` (`oai/api_error.rs`). Converts to async-openai's `WrappedError` for OpenAI SDK compatibility. The `param` field is a joined `key=value` string (OpenAI wire spec) instead of a HashMap — deliberately different from `BodhiError`'s JSON-encoded `param`.
 
 Provider proxies (Anthropic, Gemini) wrap `BodhiErrorResponse` into provider-specific envelopes (`AnthropicApiError`, `GeminiApiError`).
 

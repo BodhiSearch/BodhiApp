@@ -7811,7 +7811,7 @@
             "description": "Specific error code for programmatic error handling",
             "example": "validation_error"
           },
-          "param": {
+          "params": {
             "type": [
               "object",
               "null"
@@ -7827,12 +7827,21 @@
               "field": "name",
               "value": "invalid"
             }
+          },
+          "param": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "JSON-encoded form of `params`. Superset field so clients that speak the\nOpenAI `Error` shape (where `param` is a String) can still read it.\nPopulated automatically from `params` by `BodhiError::new`.",
+            "example": "{\"field\":\"name\",\"value\":\"invalid\"}"
           }
         },
         "example": {
           "code": "validation_error",
           "message": "Validation failed: name is required",
-          "param": {
+          "param": "{\"field\":\"name\",\"value\":\"invalid\"}",
+          "params": {
             "field": "name",
             "value": "invalid"
           },
@@ -7854,7 +7863,8 @@
           "error": {
             "code": "validation_error",
             "message": "Validation failed: name is required",
-            "param": {
+            "param": "{\"field\":\"name\"}",
+            "params": {
               "field": "name"
             },
             "type": "invalid_request_error"

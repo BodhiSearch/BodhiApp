@@ -41,7 +41,7 @@ State type: `State<Arc<dyn AppService>>`.
 
 ## Error Type
 
-Middleware functions return `Result<Response, BodhiErrorResponse>` directly (`crate::BodhiErrorResponse` from `routes_app::shared::api_error`). `BodhiErrorResponse` has a blanket `From<T: AppError + 'static>` impl and emits `{error: {message, type, code, param?}}` JSON via `IntoResponse`. The previously-separate `MiddlewareError` was removed; both middleware and route handlers share the same wire envelope.
+Middleware functions return `Result<Response, BodhiErrorResponse>` directly (`crate::BodhiErrorResponse` from `routes_app::shared::api_error`). `BodhiErrorResponse` has a blanket `From<T: AppError + 'static>` impl and emits `{error: {message, type, code, params?, param?}}` JSON via `IntoResponse` — `params` is a structured HashMap and `param` is its JSON-encoded string form (superset of OpenAI's `Error` shape). The previously-separate `MiddlewareError` was removed; both middleware and route handlers share the same wire envelope.
 
 ## Commands
 

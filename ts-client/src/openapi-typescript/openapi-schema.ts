@@ -1534,7 +1534,8 @@ export interface components {
         /** @example {
          *       "code": "validation_error",
          *       "message": "Validation failed: name is required",
-         *       "param": {
+         *       "param": "{\"field\":\"name\",\"value\":\"invalid\"}",
+         *       "params": {
          *         "field": "name",
          *         "value": "invalid"
          *       },
@@ -1563,15 +1564,23 @@ export interface components {
              *       "value": "invalid"
              *     }
              */
-            param?: {
+            params?: {
                 [key: string]: string;
             } | null;
+            /**
+             * @description JSON-encoded form of `params`. Superset field so clients that speak the
+             *     OpenAI `Error` shape (where `param` is a String) can still read it.
+             *     Populated automatically from `params` by `BodhiError::new`.
+             * @example {"field":"name","value":"invalid"}
+             */
+            param?: string | null;
         };
         /** @example {
          *       "error": {
          *         "code": "validation_error",
          *         "message": "Validation failed: name is required",
-         *         "param": {
+         *         "param": "{\"field\":\"name\"}",
+         *         "params": {
          *           "field": "name"
          *         },
          *         "type": "invalid_request_error"
