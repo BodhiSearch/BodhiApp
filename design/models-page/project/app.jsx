@@ -86,10 +86,11 @@ function Root() {
       <div className="page active" data-screen-label={`${String(idx).padStart(2,'0')} ${current.title}`}>
         <SectionHead n={idx} title={current.title} concept={current.concept}/>
         <p className="page-intro">
-          3 wireframe variants — familiar → balanced → bolder. Responsive: stacks to 1 column on narrow screens.
-          Toggle Tweaks (top-right) to hide annotations, texture, the sketchy font, or color accents.
+          {variants.length > 1
+            ? '3 wireframe variants — familiar → balanced → bolder. Responsive: stacks to 1 column on narrow screens. Toggle Tweaks (top-right) to hide annotations, texture, the sketchy font, or color accents.'
+            : 'Selected direction — expand below. Toggle Tweaks (top-right) to hide annotations, texture, the sketchy font, or color accents.'}
         </p>
-        <div className="variants">
+        <div className={`variants${variants.length===1?' single':''}`}>
           {variants.map((v, i) => {
             const C = v.component;
             return (
