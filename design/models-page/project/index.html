@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bodhi · Models Redesign Wireframes</title>
+<link rel="stylesheet" href="wireframes.css" />
+</head>
+<body>
+  <header class="app-chrome">
+    <div class="brand">
+      <img src="assets/bodhi-logo.svg" alt="Bodhi" />
+      <div>
+        <div class="title">Bodhi · Models redesign</div>
+        <div class="sub">Mid-fi wireframes — explore the design space</div>
+      </div>
+    </div>
+    <div class="meta">v1 · 3 variants per screen · responsive</div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <main id="pages"></main>
+
+  <!-- Tweaks -->
+  <div id="tweaks-panel">
+    <h4>Tweaks</h4>
+    <div class="tweak-row">
+      <label>Show annotations</label>
+      <input type="checkbox" id="tw-annot" checked />
+    </div>
+    <div class="tweak-row">
+      <label>Paper texture</label>
+      <input type="checkbox" id="tw-texture" checked />
+    </div>
+    <div class="tweak-row">
+      <label>Hand-drawn font</label>
+      <input type="checkbox" id="tw-hand" checked />
+    </div>
+    <div class="tweak-row">
+      <label>Color accents</label>
+      <input type="checkbox" id="tw-color" checked />
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="screens/primitives.jsx"></script>
+  <script type="text/babel" src="screens/hub.jsx"></script>
+  <script type="text/babel" src="screens/discover.jsx"></script>
+  <script type="text/babel" src="screens/download.jsx"></script>
+  <script type="text/babel" src="screens/alias.jsx"></script>
+  <script type="text/babel" src="screens/api.jsx"></script>
+  <script type="text/babel" src="screens/providers.jsx"></script>
+  <script type="text/babel" src="screens/detail.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+
+  <script>
+    // Tweaks integration
+    (function(){
+      const TWEAKS = /*EDITMODE-BEGIN*/{
+        "showAnnotations": false,
+        "paperTexture": true,
+        "handFont": true,
+        "colorAccents": true
+      }/*EDITMODE-END*/;
+      const apply = (t) => {
+        document.body.classList.toggle('no-annot', !t.showAnnotations);
+        document.body.classList.toggle('no-texture', !t.paperTexture);
+        document.body.classList.toggle('no-hand', !t.handFont);
+        document.body.classList.toggle('no-color', !t.colorAccents);
+      };
+      apply(TWEAKS);
+      const bindings = [
+        ['tw-annot', 'showAnnotations'],
+        ['tw-texture', 'paperTexture'],
+        ['tw-hand', 'handFont'],
+        ['tw-color', 'colorAccents'],
+      ];
+      bindings.forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        el.checked = TWEAKS[key];
+        el.addEventListener('change', () => {
+          TWEAKS[key] = el.checked;
+          apply(TWEAKS);
+          window.parent.postMessage({type:'__edit_mode_set_keys', edits:{[key]: el.checked}}, '*');
+        });
+      });
+      window.addEventListener('message', (e) => {
+        if (!e.data || typeof e.data !== 'object') return;
+        if (e.data.type === '__activate_edit_mode') document.getElementById('tweaks-panel').classList.add('open');
+        if (e.data.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel').classList.remove('open');
+      });
+      window.parent.postMessage({type:'__edit_mode_available'}, '*');
+    })();
+  </script>
+
+  <style>
+    body.no-texture { background: #fafaf7; background-image: none; }
+    body.no-hand .h1, body.no-hand .h2, body.no-hand .h3, body.no-hand .md, body.no-hand .sm, body.no-hand .lbl,
+    body.no-hand .chip, body.no-hand .btn, body.no-hand .field, body.no-hand .tab, body.no-hand .variant-label,
+    body.no-hand .variant-note, body.no-hand .variant-tag, body.no-hand .callout, body.no-hand .crumbs,
+    body.no-hand .tbl th, body.no-hand .tbl td, body.no-hand .stars, body.no-hand .tl { font-family: var(--sans) !important; }
+    body.no-annot .callout, body.no-annot .novel { display: none !important; }
+    body.no-color .chip.on, body.no-color .chip.leaf, body.no-color .chip.saff, body.no-color .chip.indigo, body.no-color .chip.warn,
+    body.no-color .btn.primary, body.no-color .btn.accent, body.no-color .btn.leaf, body.no-color .btn.saff,
+    body.no-color .variant-tag, body.no-color .tab.active { background: var(--paper-2) !important; }
+  </style>
+</body>
+</html>
