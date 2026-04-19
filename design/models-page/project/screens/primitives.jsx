@@ -193,25 +193,41 @@ const DownloadsMenu = ({active, count=1, onClick}) => (
   </div>
 );
 
-// Generic list-view row used by Hub + Discover when "☰ List" is selected.
-// Accepts the same basic shape as ModelCard / DiscoverCard.
-const ModelListRow = ({kind='file', title, subtitle, caps=[], meta, cost, status, fitLabel, fit, selected, onClick}) => {
+// Generic list-view row used by the unified Models page in list mode.
+// v25: accepts optional duality props for the unified stream:
+//   · localBadge (tag alias/file/api-model as 'local' when mixed in All mode)
+//   · backlink (↗ catalog link on file-first rows)
+//   · catalogAliases ({count, onClick}) for hf-repo rows with local aliases
+//   · directoryAttribution (show 'from api.getbodhi.app' on unconnected providers)
+const ModelListRow = ({kind='file', title, subtitle, caps=[], meta, cost, status, fitLabel, fit, selected, onClick,
+                        localBadge, backlink, catalogAliases, directoryAttribution}) => {
   const kindTone =
     kind==='alias' ? 'saff' :
+    kind==='file' ? 'leaf' :
+    kind==='api-model' ? 'indigo' :
     kind==='provider' ? 'indigo' :
-    kind==='provider-off' ? '' : 'leaf';
+    kind==='provider-off' ? '' :
+    kind==='hf-repo' ? 'leaf' : 'leaf';
   const statusTone =
     status==='live' || status==='ready' || status==='fits' || status==='connected' ? 'leaf' :
     status==='oauth' ? 'saff' :
     status==='rate-limited' || status==='tight' ? 'warn' : '';
   const fitTone = fit==='green' ? 'leaf' : fit==='yellow' ? 'warn' : fit==='red' ? 'warn' : '';
   const extra = kind==='provider-off' ? ' dashed' : '';
+  const kindLabel = kind==='provider-off' ? 'provider' : kind;
   return (
     <div className={`model-list-row${selected?' selected':''}${extra}`} onClick={onClick}>
-      <Chip tone={kindTone} style={{fontSize:10}}>{kind==='provider-off' ? 'provider' : kind}</Chip>
+      <Chip tone={kindTone} style={{fontSize:10}}>{kindLabel}</Chip>
       <div className="mlr-title-cell">
-        <div className="model-card-title" style={{fontSize:13, margin:0}}>{title}</div>
+        <div className="model-card-title" style={{fontSize:13, margin:0}}>
+          {title}
+          {localBadge && <span className="row-local-badge">local</span>}
+        </div>
         {subtitle && <div className="sm">{subtitle}</div>}
+        {backlink && <div><span className="row-backlink">↗ {backlink}</span></div>}
+        {directoryAttribution && (
+          <div className="row-directory-attribution">from Bodhi directory · <code>api.getbodhi.app</code></div>
+        )}
       </div>
       <div className="mlr-caps-cell">
         {caps.map((c,i)=>(<Chip key={i}>{c}</Chip>))}
@@ -219,6 +235,9 @@ const ModelListRow = ({kind='file', title, subtitle, caps=[], meta, cost, status
       <div className="mlr-meta-cell sm">
         {cost && <div className="mlr-cost">{cost}</div>}
         {meta && <div>{meta}</div>}
+        {catalogAliases && catalogAliases.count>0 && (
+          <div><span className="row-catalog-aliases-badge">✓ {catalogAliases.count} local aliases ↗</span></div>
+        )}
       </div>
       <div className="mlr-status-cell">
         {status && <Chip tone={statusTone}>● {status}</Chip>}
@@ -249,33 +268,29 @@ const MobileHeader = ({active='My Models', dlCount=1, rightSlot}) => (
 );
 
 // Nested app menu that drops from tapping the breadcrumb.
-const MobileMenu = ({active='My Models', withDownloads=false, dlCount=1}) => (
-  <div className="m-menu-overlay">
-    <div className="m-menu">
-      <div className="m-menu-item">Chat</div>
-      <div className="m-menu-item expanded">
-        <div className="m-menu-container">
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-            <span>Models</span><span>▾</span>
+// v25: Models is a single leaf — no more My Models / Discover sub-tree since
+// the unified Models page handles that split via its mode toggle.
+const MobileMenu = ({active='Models', withDownloads=false, dlCount=1}) => {
+  // Backwards-compat: treat legacy "My Models" / "Discover" as Models active.
+  const modelsActive = active==='Models' || active==='My Models' || active==='Discover';
+  return (
+    <div className="m-menu-overlay">
+      <div className="m-menu">
+        <div className="m-menu-item">Chat</div>
+        <div className={`m-menu-item${modelsActive?' active':''}`}>Models</div>
+        {withDownloads && (
+          <div className="m-menu-item">
+            <span>↓ Downloads</span>
+            {dlCount>0 && <span className="m-menu-badge">{dlCount} ↓</span>}
           </div>
-          <div className="m-menu-sub">
-            <div className={`m-menu-sub-item${active==='My Models'?' active':''}`}>My Models</div>
-            <div className={`m-menu-sub-item${active==='Discover'?' active':''}`}>Discover</div>
-          </div>
-        </div>
+        )}
+        <div className="m-menu-item">Agents</div>
+        <div className="m-menu-item">Logs</div>
+        <div className="m-menu-item">Settings</div>
       </div>
-      {withDownloads && (
-        <div className="m-menu-item">
-          <span>↓ Downloads</span>
-          {dlCount>0 && <span className="m-menu-badge">{dlCount} ↓</span>}
-        </div>
-      )}
-      <div className="m-menu-item">Agents</div>
-      <div className="m-menu-item">Logs</div>
-      <div className="m-menu-item">Settings</div>
     </div>
-  </div>
-);
+  );
+};
 
 // Tablet-shaped frame used for the medium-width wireframes.
 const TabletFrame = ({label, children}) => (
@@ -284,6 +299,14 @@ const TabletFrame = ({label, children}) => (
     <div className="tablet-screen">
       <div className="tablet-content">{children}</div>
     </div>
+  </div>
+);
+
+// Phone-shaped frame used for mobile variants.
+const PhoneFrame = ({label, children}) => (
+  <div className="phone-frame">
+    <div className="phone-label">{label}</div>
+    <div className="phone-screen">{children}</div>
   </div>
 );
 
@@ -861,4 +884,67 @@ const PresetAndArgsSection = ({n=3, selected='chat', open=false, compact=false})
   );
 };
 
-Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection});
+// ─────────────────────────────────────────────────────────────
+// Unified Models page primitives · v25
+// ─────────────────────────────────────────────────────────────
+
+// Mode radio — "[o] My Models · [ ] All Models" row 1 of the main toolbar.
+// Shows a counts readout on the right so users see what each bucket contains.
+const ModeToggle = ({mode='my', onChange, localCount=14, catalogCount='3.1M', directoryCount=23}) => (
+  <div className="mode-toggle">
+    <div className={`mode-toggle-option${mode==='my'?' active':''}`}
+         onClick={() => onChange && onChange('my')}>
+      <span className="dot"/>
+      <span>My Models</span>
+      <span className="sm" style={{color:'inherit', opacity:0.7}}>({localCount})</span>
+    </div>
+    <div className={`mode-toggle-option${mode==='all'?' active':''}`}
+         onClick={() => onChange && onChange('all')}>
+      <span className="dot"/>
+      <span>All Models</span>
+      <span className="sm" style={{color:'inherit', opacity:0.7}}>({catalogCount} + {directoryCount} directory)</span>
+    </div>
+  </div>
+);
+
+// Caption under the toggle — a one-liner explaining what each mode draws from.
+const ModeToggleCaption = ({mode='my'}) => (
+  <div className="mode-toggle-caption">
+    {mode==='my'
+      ? 'My Models: locally-hosted aliases, downloaded files, configured API models, and connected providers.'
+      : 'All Models: HuggingFace catalog + connected + directory providers (api.getbodhi.app) + your local entities (tagged).'}
+  </div>
+);
+
+// Toolbar row 2 — kind chips to narrow within the current mode.
+const KindChipRow = ({active=['all'], mode='my'}) => {
+  const kinds = mode==='my'
+    ? [['all','All'],['alias','Aliases'],['file','Files'],['api-model','API models'],['provider','Providers']]
+    : [['all','All'],['alias','Aliases'],['file','Files'],['api-model','API models'],['provider','Providers'],['hf-repo','HF repos']];
+  return (
+    <div className="kind-chip-row">
+      <span className="kind-chip-row-label">kind</span>
+      {kinds.map(([k,l]) => (
+        <Chip key={k} on={active.includes(k)}>{l}</Chip>
+      ))}
+    </div>
+  );
+};
+
+// Grouped Add + Browse dropdown shown below the `+ ▾` button in the page header.
+// Desktop variant: two labelled groups; mobile/medium pass `compact` to tighten.
+const ModelsAddBrowseMenu = ({style}) => (
+  <div className="add-browse-menu" style={style}>
+    <div className="add-browse-group-head">Add model</div>
+    <div className="add-browse-item">Add by HF repo<span className="add-browse-item-badge">overlay</span></div>
+    <div className="add-browse-item">Paste URL<span className="add-browse-item-badge">.gguf / hf://</span></div>
+    <div className="add-browse-item">Add API provider<span className="add-browse-item-badge">connect</span></div>
+    <div className="add-browse-item">Add API model<span className="add-browse-item-badge">from connected</span></div>
+    <div className="add-browse-group-head">Browse</div>
+    <div className="add-browse-item">↑ Trending</div>
+    <div className="add-browse-item">★ New launches</div>
+    <div className="add-browse-item">🏆 Leaderboards ›</div>
+  </div>
+);
+
+Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, PhoneFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection, ModeToggle, ModeToggleCaption, KindChipRow, ModelsAddBrowseMenu});

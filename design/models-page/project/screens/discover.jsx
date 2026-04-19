@@ -1,20 +1,32 @@
-// Screen 2 — Discover (HF repos + API providers, 3-column shell)
+// Unified Models page — v25 · HF repos + local aliases/files/api-models + providers
+// (Filename remains discover.jsx to avoid index.html churn; the SCREEN is now
+// "Models" — see app.jsx. Tabs/variants are the three width variants of the
+// unified page.)
 
-const DiscoverCard = ({kind='hf-repo', title, subtitle, caps=[], meta, cost, status, fit, fitLabel, selected, onClick}) => {
-  const kindTone = kind==='provider' ? 'indigo' : kind==='provider-off' ? '' : 'leaf';
+const DiscoverCard = ({kind='hf-repo', title, subtitle, caps=[], meta, cost, status, fit, fitLabel, selected, onClick,
+                        localBadge, backlink, catalogAliases, directoryAttribution}) => {
+  const kindTone =
+    kind==='alias' ? 'saff' :
+    kind==='file' ? 'leaf' :
+    kind==='api-model' ? 'indigo' :
+    kind==='provider' ? 'indigo' :
+    kind==='provider-off' ? '' :
+    kind==='hf-repo' ? 'leaf' : 'leaf';
   const statusTone =
-    status==='connected' ? 'leaf' :
+    status==='ready' || status==='connected' || status==='fits' || status==='live' ? 'leaf' :
     status==='oauth' ? 'saff' :
     status==='not connected' ? '' :
-    status==='rate-limited' ? 'warn' : '';
+    status==='rate-limited' || status==='tight' ? 'warn' : '';
   const fitTone = fit==='green' ? 'leaf' : fit==='yellow' ? 'warn' : fit==='red' ? 'warn' : '';
   const extraClass = kind==='provider-off' ? ' dashed' : '';
+  const kindLabel = kind==='provider-off' ? 'provider' : kind;
   return (
     <div className={`model-card${selected?' selected':''}${extraClass}`} onClick={onClick} style={{cursor:'pointer'}}>
       <div className="model-card-head">
-        <Chip tone={kindTone} style={{fontSize:10}}>{kind==='provider-off' ? 'provider' : kind}</Chip>
+        <Chip tone={kindTone} style={{fontSize:10}}>{kindLabel}</Chip>
         {status && <Chip tone={statusTone}>● {status}</Chip>}
         {fitLabel && <Chip tone={fitTone}>● {fitLabel}</Chip>}
+        {localBadge && <span className="row-local-badge">local</span>}
       </div>
       <div className="model-card-title">{title}</div>
       {subtitle && <div className="sm">{subtitle}</div>}
@@ -25,6 +37,15 @@ const DiscoverCard = ({kind='hf-repo', title, subtitle, caps=[], meta, cost, sta
       )}
       {cost && <div className="model-card-cost">{cost}</div>}
       {meta && <div className="model-card-meta">{meta}</div>}
+      {backlink && <div><span className="row-backlink">↗ {backlink}</span></div>}
+      {catalogAliases && catalogAliases.count>0 && (
+        <div style={{marginTop:3}}>
+          <span className="row-catalog-aliases-badge">✓ {catalogAliases.count} local aliases ↗</span>
+        </div>
+      )}
+      {directoryAttribution && (
+        <div className="row-directory-attribution">from Bodhi directory · <code>api.getbodhi.app</code></div>
+      )}
     </div>
   );
 };
@@ -299,6 +320,7 @@ function DiscoverA() {
   const [sel, setSel] = React.useState('hf-qwen');
   const [view, setView] = React.useState('cards');
   const [spec, setSpec] = React.useState('coding'); // wireframe demo: show active Specialization
+  const [mode, setMode] = React.useState('all');    // v25: My | All (demo on All so duality is visible)
   const specMeta = SPECIALIZATIONS.find(s => s.k === spec) || SPECIALIZATIONS[0];
   const Row = view==='list' ? ModelListRow : DiscoverCard;
   return (
@@ -314,20 +336,14 @@ function DiscoverA() {
           </div>
         </div>
 
-        <div className="side-section-picker">
+        <div className="side-section-picker active">
           <span className="side-section-picker-icon">▦</span>
-          <span style={{flex:1}}>Models</span>
-          <span className="sm">▾</span>
-        </div>
-
-        <div className="sub-nav">
-          <div className="sub-nav-item">My Models</div>
-          <div className="sub-nav-item active">Discover</div>
+          <span style={{flex:1, fontWeight:700}}>Models</span>
         </div>
 
         <DownloadsMenu active={sel==='downloads'} count={1} onClick={()=>setSel('downloads')}/>
 
-        <div className="side-sec-label">Discover</div>
+        <div className="side-sec-label">Browse</div>
         <div className="side-nav">
           <div className="side-nav-item active">Trending <span className="badge">↑</span></div>
           <div className="side-nav-item">New launches <span className="badge">★</span></div>
@@ -356,12 +372,21 @@ function DiscoverA() {
           )}
         </div>
         <div className="side-filter-group">
+          <div className="side-filter-title">kind · multi-select</div>
+          <div className="chips-col">
+            <Chip on>All</Chip>
+            <Chip>Aliases</Chip><Chip>Files</Chip><Chip>API models</Chip>
+            <Chip>Providers</Chip>{mode==='all' && <Chip>HF repos</Chip>}
+          </div>
+        </div>
+        <div className="side-filter-group">
           <div className="side-filter-title">source</div>
           <div className="chips-col">
-            <Chip>HuggingFace</Chip><Chip>OpenRouter</Chip>
-            <Chip>NVIDIA NIM</Chip><Chip>Groq</Chip>
-            <Chip>Together</Chip><Chip>HF Inference</Chip>
-            <Chip>Anthropic</Chip><Chip>OpenAI</Chip><Chip>Google</Chip>
+            <Chip>HuggingFace</Chip>
+            <Chip>Bodhi Directory <span className="sm" style={{color:'var(--ink-4)'}}>· api.getbodhi.app</span></Chip>
+            <Chip>OpenAI</Chip><Chip>Anthropic</Chip><Chip>Groq</Chip>
+            <Chip>Together</Chip><Chip>NVIDIA NIM</Chip><Chip>HF Inference</Chip>
+            <Chip>OpenRouter</Chip><Chip>Google</Chip>
           </div>
         </div>
         <div className="side-filter-group">
@@ -380,7 +405,7 @@ function DiscoverA() {
             <Chip>ctx ≥ 32k</Chip>
           </div>
         </div>
-        <div className="side-filter-group">
+        <div className={`side-filter-group${mode==='my'?' filter-group-disabled':''}`}>
           <div className="side-filter-title">cost · api</div>
           <div className="chips-col">
             <Chip>Free / OSS</Chip><Chip>$&lt;1 / M</Chip>
@@ -418,25 +443,41 @@ function DiscoverA() {
       <main className="hub3col-main">
         <div className="main-topbar">
           <div>
-            <div className="h1" style={{fontSize:20}}>Discover</div>
-            <div className="sm">3.1M HF repos + 12 API providers · curated for M3 Max 36GB</div>
+            <div className="h1" style={{fontSize:20}}>Models</div>
+            <div className="sm">Local + API + remote · one catalog · M3 Max 36GB</div>
           </div>
-          <div className="main-toolbar">
-            <Chip on>All</Chip><Chip>Local</Chip><Chip>API</Chip>
-            <span className="vsep"/>
-            <Chip tone="leaf">Fits rig ✓</Chip>
-            <span className="vsep"/>
-            <Chip on>Likes</Chip><Chip>Downloads</Chip><Chip>Recent</Chip>
-            <span className="vsep"/>
-            <Chip on={view==='cards'} onClick={()=>setView('cards')}>▦ Cards</Chip>
-            <Chip on={view==='list'} onClick={()=>setView('list')}>☰ List</Chip>
+          <div style={{position:'relative', display:'flex', gap:6}}>
+            <Btn variant="primary" size="xs">+ ▾ Add model</Btn>
+            <Btn size="xs">⋯ ▾ Browse</Btn>
+            {/* Wireframe: always render the Add&Browse menu so users see its shape */}
+            <ModelsAddBrowseMenu/>
           </div>
         </div>
 
+        {/* ── Toolbar row 1: mode toggle ── */}
+        <ModeToggle mode={mode} onChange={setMode}
+          localCount={14}
+          catalogCount="3.1M"
+          directoryCount={23}/>
+        <ModeToggleCaption mode={mode}/>
+
+        {/* ── Toolbar row 2: kind chips + sort + view ── */}
+        <div className="main-toolbar" style={{marginBottom:4}}>
+          <KindChipRow mode={mode} active={['all']}/>
+          <span className="vsep"/>
+          <span className="sm">sort:</span>
+          {mode==='my'
+            ? <><Chip on>Recently used</Chip><Chip>Name</Chip><Chip>Size</Chip></>
+            : <><Chip on>Likes</Chip><Chip>Downloads</Chip><Chip>Recent</Chip>
+              {spec!=='all' && <Chip tone="indigo">⭐ {specMeta.bench}</Chip>}</>}
+          <span className="vsep"/>
+          <Chip on={view==='cards'} onClick={()=>setView('cards')}>▦ Cards</Chip>
+          <Chip on={view==='list'} onClick={()=>setView('list')}>☰ List</Chip>
+        </div>
+
         <div style={{position:'relative'}}>
-          <Field hint="Filter repos & providers — e.g. 'vision 7B apache' or 'claude tool-use'" filled
+          <Field hint="Filter anything — 'vision 7B apache', 'claude tool-use', 'my aliases'…" filled
             right={<span className="sm">⌘K</span>}/>
-          <Callout style={{top:-6, right:14}}>Unified local + API discovery</Callout>
         </div>
 
         <div className="active-filters">
@@ -454,6 +495,56 @@ function DiscoverA() {
         </div>
 
         <div className={view==='list' ? 'cards-list' : 'cards-grid'}>
+          {/* ── Local entities (always shown; labelled `local` in All mode) ── */}
+          <Row kind="alias" title="my-gemma"
+            subtitle="google/gemma-2-9b:Q4_K_M · ctx 16k"
+            caps={['text→text','tool-use']}
+            meta="preset: chat · last used 12m ago"
+            status="ready"
+            backlink="catalog · google/gemma-2-9b-GGUF"
+            localBadge={mode==='all'}
+            selected={sel==='alias-my-gemma'}
+            onClick={()=>setSel('alias-my-gemma')}/>
+          <Row kind="alias" title="code-beast"
+            subtitle="Qwen/Qwen2.5-Coder-14B:Q5_K_M · ctx 32k"
+            caps={['text→text','tool-use','structured']}
+            meta="preset: coding · last used yesterday"
+            status="ready"
+            backlink="catalog · Qwen/Qwen2.5-Coder-14B-GGUF"
+            localBadge={mode==='all'}
+            selected={sel==='alias-code-beast'}
+            onClick={()=>setSel('alias-code-beast')}/>
+          <Row kind="file" title="google/gemma-2-9b:Q5_K_M"
+            subtitle="6.6 GB · downloaded · no alias"
+            caps={['text2text','tool-use']}
+            meta="+ Create alias · orphan file"
+            fit="green" fitLabel="~30 t/s"
+            backlink="catalog · google/gemma-2-9b-GGUF"
+            localBadge={mode==='all'}
+            selected={sel==='file-gemma-q5'}
+            onClick={()=>setSel('file-gemma-q5')}/>
+          <Row kind="api-model" title="openai/gpt-5-mini"
+            subtitle="configured · system preset + tool overrides"
+            caps={['tool-use','structured']}
+            cost="in $0.25 · out $2.00 / M"
+            meta="preset: agent · last used 3h ago"
+            status="live"
+            backlink="openai provider"
+            localBadge={mode==='all'}
+            selected={sel==='api-gpt5mini'}
+            onClick={()=>setSel('api-gpt5mini')}/>
+          <Row kind="provider" title="openai"
+            subtitle={<><code>openai-responses</code> · key sk-…a71e</>}
+            caps={['tool-use','vision','structured','reasoning','embedding']}
+            cost="in $0.05 – $2.00 / M · 7 models"
+            meta="✓ 1 api-model configured · gpt-5, gpt-5-mini, gpt-5-nano, o4-mini, +3"
+            status="connected"
+            localBadge={mode==='all'}
+            selected={sel==='provider-openai'}
+            onClick={()=>setSel('provider-openai')}/>
+
+          {/* ── Catalog entities (All mode only) ── */}
+          {mode==='all' && <>
           <Row kind="hf-repo" title="Qwen/Qwen3.5-9B"
             subtitle="9B · ctx 32k · Apache-2 · HuggingFace"
             caps={['text2text','tool-use','reasoning']}
@@ -461,23 +552,28 @@ function DiscoverA() {
             fit="green" fitLabel="~38 t/s"
             selected={sel==='hf-qwen'}
             onClick={()=>setSel('hf-qwen')}/>
-          <Row kind="provider" title="openai"
-            subtitle={<><code>openai-responses</code> · key sk-…a71e</>}
-            caps={['tool-use','vision','structured','reasoning','embedding']}
-            cost="in $0.05 – $2.00 / M · 7 models"
-            meta="gpt-5, gpt-5-mini, gpt-5-nano, o4-mini, +3 more"
-            status="connected"
-            selected={sel==='provider-openai'}
-            onClick={()=>setSel('provider-openai')}/>
           <Row kind="provider-off" title="groq"
             subtitle={<><code>openai-completions</code> · bring-your-own-key</>}
             caps={['tool-use','speech','moderation']}
             cost="in $0.05 – $0.75 / M · 6 models"
             meta="llama-3.3-70b, llama-3.1-8b, qwen-2.5-32b, +3 more"
             status="not connected"
+            directoryAttribution
             selected={sel==='provider-groq'}
             onClick={()=>setSel('provider-groq')}/>
 
+          <Row kind="hf-repo" title="google/gemma-2-9b-GGUF"
+            subtitle="8.5B · Gemma T&C · HuggingFace"
+            caps={['text2text','tool-use']}
+            meta={<>default <code>:Q4_K_M</code> · 5.4GB · 5 quants · ↓ 2.1M · ♥ 4.4k</>}
+            fit="green" fitLabel="~38 t/s"
+            catalogAliases={{count:1}}/>
+          <Row kind="hf-repo" title="Qwen/Qwen2.5-Coder-14B-GGUF"
+            subtitle="14B · Apache-2 · HuggingFace"
+            caps={['text2text','structured','reasoning']}
+            meta={<>default <code>:Q4_K_M</code> · 9.0GB · 5 quants · ↓ 511k · ♥ 2.8k</>}
+            fit="green" fitLabel="~22 t/s"
+            catalogAliases={{count:1}}/>
           <Row kind="hf-repo" title="google/gemma-4-e2b"
             subtitle="2B · vision · Gemma T&C · HuggingFace"
             caps={['multimodal','vision']}
@@ -488,7 +584,8 @@ function DiscoverA() {
             caps={['tool-use','vision','reasoning']}
             cost="varies · 100+ models"
             meta="meta-llama-3.3-70b, mistral-large, deepseek-r1, +97 more"
-            status="not connected"/>
+            status="not connected"
+            directoryAttribution/>
           <Row kind="hf-repo" title="unsloth/Nemotron-3-Nano-30B"
             subtitle="30B · ctx 128k · NVIDIA · HuggingFace"
             caps={['text2text','reasoning','long-ctx']}
@@ -499,7 +596,8 @@ function DiscoverA() {
             caps={['tool-use','vision','structured','reasoning']}
             cost="in $0.80 – $15 / M · 5 models"
             meta="claude-opus-4, claude-sonnet-4.5, claude-haiku-4.5, +2 more"
-            status="not connected"/>
+            status="not connected"
+            directoryAttribution/>
           <Row kind="hf-repo" title="LiquidAI/LFM2.5-1.2B"
             subtitle="1.2B · edge · Apache-2 · HuggingFace"
             caps={['text2text']}
@@ -510,7 +608,8 @@ function DiscoverA() {
             caps={['text2text','tool-use','long-ctx']}
             cost="in $0.60 – $1.80 / M · 18 models"
             meta="nemotron-4-340b, llama-3.3-70b-nim, mistral-large-nim, +15 more"
-            status="not connected"/>
+            status="not connected"
+            directoryAttribution/>
           <Row kind="hf-repo" title="Qwen/Qwen2.5-VL-7B"
             subtitle="7B · vision-language · Apache-2 · HuggingFace"
             caps={['multimodal','vision']}
@@ -549,18 +648,28 @@ function DiscoverA() {
             caps={['text-embedding']}
             meta={<>default <code>:F16</code> · 274MB · 1 quant · ↓ 5.1M</>}
             fit="green" fitLabel="embed fast"/>
+          </>}
         </div>
 
         <div style={{textAlign:'center', marginTop:4}}>
-          <Btn variant="ghost">Load more →</Btn>
+          <Btn variant="ghost">{mode==='my' ? 'Switch to All Models to browse catalog →' : 'Load more →'}</Btn>
         </div>
       </main>
 
-      {/* ── RIGHT: collapsible detail panel (swaps by selection) ── */}
+      {/* ── RIGHT: collapsible detail panel (dispatches by row kind) ── */}
       <aside className="hub3col-right">
-        {sel==='hf-qwen' && <HfRepoPanel/>}
+        {/* Local entities — panels from hub.jsx */}
+        {(sel==='alias-my-gemma' || sel==='alias-code-beast') && <AliasPanel/>}
+        {sel==='file-gemma-q5' && <FilePanel/>}
+        {/* api-model reuses the connected-provider panel (highlight on the specific model happens later) */}
+        {sel==='api-gpt5mini' && <ConnectedProviderPanel/>}
         {sel==='provider-openai' && <ConnectedProviderPanel/>}
+
+        {/* Catalog entities — panels from this file */}
+        {sel==='hf-qwen' && <HfRepoPanel/>}
         {sel==='provider-groq' && <UnconnectedProviderPanel/>}
+
+        {/* Downloads rail click */}
         {sel==='downloads' && <DownloadsPanel/>}
       </aside>
     </div>
@@ -569,22 +678,25 @@ function DiscoverA() {
 
 // ── Mobile variant ────────────────────────────────────────────
 
-// Action button that replaces the DL icon in the Discover header.
-// Opens a dropdown menu listing browse modes + Downloads + Leaderboards.
+// Header action button — single "+ ▾" on mobile/medium that drops a grouped
+// Add + Browse menu (the same dropdown rendered as ModelsAddBrowseMenu on
+// desktop).
 const DiscoverActionsBtn = () => (
-  <span className="m-ico m-ico-action" title="browse & actions">⋯ ▾</span>
+  <span className="m-ico m-ico-add" title="add & browse">+ ▾</span>
 );
 
-// The dropdown that drops from the Discover header action.
+// Grouped menu (Add + Browse) opened from the `+ ▾` header button.
 const DiscoverActionsMenu = () => (
   <div className="m-menu-overlay" style={{justifyContent:'flex-end', paddingRight:6, paddingTop:40}}>
-    <div className="m-menu" style={{width:'74%'}}>
+    <div className="m-menu" style={{width:'76%'}}>
+      <div className="m-menu-section-head">Add model</div>
+      <div className="m-menu-item">Add by HF repo</div>
+      <div className="m-menu-item">Paste URL</div>
+      <div className="m-menu-item">Add API provider</div>
+      <div className="m-menu-item">Add API model</div>
+      <div className="m-menu-section-head">Browse</div>
       <div className="m-menu-item">↑ Trending</div>
       <div className="m-menu-item">★ New launches</div>
-      <div className="m-menu-item">
-        <span>↓ Downloads</span>
-        <span className="m-menu-badge">1</span>
-      </div>
       <div className="m-menu-item expanded">
         <div className="m-menu-container">
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -603,12 +715,24 @@ const DiscoverActionsMenu = () => (
   </div>
 );
 
-const DiscoverMobileSubbar = ({filtersCount=5}) => (
+const DiscoverMobileSubbar = ({filtersCount=5, mode='all'}) => (
   <>
-    <div className="t-search" style={{fontSize:10}}><span>Filter repos & providers…</span><span>⌘K</span></div>
+    <div style={{padding:'4px 6px'}}>
+      <div className="mode-toggle" style={{padding:'3px 4px', marginBottom:4}}>
+        <div className={`mode-toggle-option${mode==='my'?' active':''}`} style={{padding:'3px 6px', fontSize:11}}>
+          <span className="dot" style={{width:8,height:8}}/>
+          <span>My (14)</span>
+        </div>
+        <div className={`mode-toggle-option${mode==='all'?' active':''}`} style={{padding:'3px 6px', fontSize:11}}>
+          <span className="dot" style={{width:8,height:8}}/>
+          <span>All (3.1M + 23)</span>
+        </div>
+      </div>
+    </div>
+    <div className="t-search" style={{fontSize:10}}><span>Filter anything…</span><span>⌘K</span></div>
     <div className="m-toolbar">
       <span className="m-filter-btn">Filters <span className="m-filter-badge">{filtersCount}</span> ▾</span>
-      <span className="sm">Sort: Likes ▾</span>
+      <span className="sm">Sort: {mode==='my'?'Recently used':'Likes'} ▾</span>
       <span className="m-view-toggle"><Chip on>▦</Chip><Chip>☰</Chip></span>
     </div>
   </>
@@ -638,7 +762,7 @@ function DiscoverMobile() {
     <div className="phone-deck">
       {/* ── 1. Browse state ── */}
       <PhoneFrame label="1 · Browse">
-        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
         <DiscoverMobileSubbar/>
         <div className="active-filters" style={{fontSize:10, padding:'2px 0'}}>
           <span className="active-filters-label">filters:</span>
@@ -657,15 +781,15 @@ function DiscoverMobile() {
 
       {/* ── 2. Header menu open ── */}
       <PhoneFrame label="2 · Menu">
-        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
-        <MobileMenu active="Discover"/>
+        <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
+        <MobileMenu active="Models"/>
         <Callout style={{position:'static', fontSize:9, margin:'4px 0'}}>breadcrumb menu · Models expands · Discover active</Callout>
       </PhoneFrame>
 
       {/* ── 3. Filters sheet ── */}
       <PhoneFrame label="3 · Filters sheet">
         <div className="phone-dim">
-          <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+          <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
           <DiscoverMobileSubbar/>
           <div className="m-grid dim">
             <DiscoverMobileCard title="Qwen/Qwen3.5-9B" subtitle="9B · Apache-2" fit="green" fitLabel="~38 t/s"/>
@@ -731,7 +855,7 @@ function DiscoverMobile() {
       {/* ── 4. Detail bottom sheet (HF repo) ── */}
       <PhoneFrame label="4 · Repo sheet">
         <div className="phone-dim">
-          <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+          <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
           <DiscoverMobileSubbar/>
           <div className="m-grid dim">
             <DiscoverMobileCard title="Qwen/Qwen3.5-9B" subtitle="9B · Apache-2" meta="~38 t/s" selected/>
@@ -768,7 +892,7 @@ function DiscoverMobile() {
 
       {/* ── 5. Header action menu ── */}
       <PhoneFrame label="5 · Header action">
-        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
         <DiscoverActionsMenu/>
         <Callout style={{position:'static', fontSize:9, margin:'4px 0'}}>tap ⋯ ▾ · Trending / New launches / Downloads / Leaderboards ›</Callout>
       </PhoneFrame>
@@ -796,13 +920,25 @@ const TabletDiscoverMiniCard = ({kind, title, subtitle, fit, fitLabel, cost, sta
   );
 };
 
-const DiscoverMediumToolbar = ({filtersCount=5}) => (
+const DiscoverMediumToolbar = ({filtersCount=5, mode='all'}) => (
   <>
-    <div className="t-search" style={{fontSize:11}}><span>Filter repos & providers — e.g. 'vision 7B apache' or 'claude tool-use'…</span><span>⌘K</span></div>
+    <div style={{padding:'4px 8px'}}>
+      <div className="mode-toggle" style={{padding:'4px 6px', marginBottom:4}}>
+        <div className={`mode-toggle-option${mode==='my'?' active':''}`} style={{padding:'4px 8px', fontSize:12}}>
+          <span className="dot" style={{width:10,height:10}}/>
+          <span>My Models (14)</span>
+        </div>
+        <div className={`mode-toggle-option${mode==='all'?' active':''}`} style={{padding:'4px 8px', fontSize:12}}>
+          <span className="dot" style={{width:10,height:10}}/>
+          <span>All Models (3.1M + 23 dir)</span>
+        </div>
+      </div>
+    </div>
+    <div className="t-search" style={{fontSize:11}}><span>Filter anything — 'vision 7B apache', 'my aliases', 'claude tool-use'…</span><span>⌘K</span></div>
     <div className="m-toolbar">
       <span className="m-filter-btn">Filters <span className="m-filter-badge">{filtersCount}</span> ▾</span>
-      <span className="sm">Scope: All ▾</span>
-      <span className="sm">Sort: Likes ▾</span>
+      <span className="sm">kind: All ▾</span>
+      <span className="sm">Sort: {mode==='my'?'Recently used':'Likes'} ▾</span>
       <span className="m-view-toggle"><Chip on>▦</Chip><Chip>☰</Chip></span>
     </div>
     <div className="active-filters" style={{fontSize:10, padding:'2px 0'}}>
@@ -881,7 +1017,7 @@ function DiscoverMedium() {
     <div className="tablet-deck">
       {/* 1. Browse */}
       <TabletFrame label="1 · Browse · 2-col grid + fixed right panel">
-        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
         <DiscoverMediumToolbar/>
         <div className="t-layout-fixed">
           <DiscoverMediumGrid/>
@@ -892,7 +1028,7 @@ function DiscoverMedium() {
       {/* 2. Filters sheet (compact centered) */}
       <TabletFrame label="2 · Filters sheet (from Filters ▾)">
         <div className="phone-dim">
-          <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+          <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
           <DiscoverMediumToolbar/>
           <div className="t-layout-fixed">
             <DiscoverMediumGrid/>
@@ -956,7 +1092,7 @@ function DiscoverMedium() {
 
       {/* 3. Header action menu */}
       <TabletFrame label="3 · Header action (⋯ ▾)">
-        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
         <DiscoverMediumToolbar/>
         <div className="t-layout-fixed">
           <DiscoverMediumGrid/>
@@ -968,8 +1104,18 @@ function DiscoverMedium() {
   );
 }
 
-window.DiscoverScreens = [
-  {label:'A · HF repos + providers', tag:'balanced', note:'Same 3-column shell as Hub. Repo-level HF cards (with default-quant badge) mixed with API provider cards (connected + not-yet-connected). Three demo cards are clickable.', novel:'repo + provider unified grid, connected vs unconnected provider states', component:DiscoverA},
-  {label:'A · Medium (tablet)', tag:'medium', note:'Breadcrumb header + ⋯ ▾ action. 2-col grid + fixed right detail panel. Filters sheet now includes Specialization group (single-select · Coding shown active · Clear). Active-filter pill shows "Coding · sort ⭐ HumanEval". 3 frames.', novel:'Specialization filter in sheet · sort follows benchmark · Clear affordance', component:DiscoverMedium},
-  {label:'A · Mobile', tag:'mobile', note:'Breadcrumb menu. ⋯ ▾ header action. Filters sheet: Specialization (single-select) / source / capability / size / cost / license / format. Specialization pill visible in active-filters strip. Five frames.', novel:'Specialization as single-select filter with Clear and bench-driven sort', component:DiscoverMobile},
+// v25: unified Models page. Exports as `window.ModelsScreens` — see app.jsx.
+window.ModelsScreens = [
+  {label:'A · Models (desktop)', tag:'balanced',
+    note:'Unified "Models" page · Models Hub and Discover collapsed. Top-of-toolbar mode toggle `[●] My Models · [ ] All Models` swaps the row set. Rows: local aliases/files/api-models/connected providers in My mode; + HF repos + directory providers (from api.getbodhi.app) in All mode. File-first rows carry `↗ catalog` backlinks; hf-repo rows show `✓ N local aliases ↗` when matching aliases exist; unconnected providers carry `from api.getbodhi.app` attribution. Sidebar filters unified: Specialization (single-select, Clear) / Kind / Source / Capability / Size·rig / Cost·api (greyed in My) / License / Format.',
+    novel:'one page for local + API + remote · mode radio · duality links · directory attribution',
+    component:DiscoverA},
+  {label:'A · Models (medium · tablet)', tag:'medium',
+    note:'Breadcrumb `Bodhi › Models` (no sub-tab). Mode toggle at top of toolbar. Filters sheet covers unified filter set. 3 frames: grid / filter sheet / header-action menu (+ ▾ Add & Browse).',
+    novel:'mode toggle compact on tablet · Add+Browse merged menu',
+    component:DiscoverMedium},
+  {label:'A · Models (mobile)', tag:'mobile',
+    note:'Breadcrumb menu shows Models as a single leaf (no My/Discover sub-tree). Mode toggle is compact pill at top of subbar. `+ ▾` header button opens grouped Add + Browse menu. Five frames: browse · breadcrumb menu · filters sheet · repo detail sheet · header-action menu.',
+    novel:'single-leaf Models menu · compact mode pill · grouped add+browse menu',
+    component:DiscoverMobile},
 ];

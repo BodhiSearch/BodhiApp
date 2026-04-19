@@ -1,12 +1,22 @@
 // Main app: tabs + rendering of variants per screen
+// v25: Models Hub + Discover collapsed into a single "Models" page.
 const SCREENS = [
-  {key:'hub', title:'Models Hub', concept:'unified landing', list: () => window.HubScreens},
-  {key:'discover', title:'Discover local', concept:'HF-style browse + smart recs', list: () => window.DiscoverScreens},
+  {key:'models', title:'Models', concept:'one catalog · My + All · local + API + remote', list: () => window.ModelsScreens},
   {key:'alias', title:'Create local alias', concept:'tune llama.cpp runtime', list: () => window.AliasScreens},
   {key:'api', title:'Create API model', concept:'connect an inference service', list: () => window.ApiScreens},
   {key:'providers', title:'Provider directory', concept:'browse &amp; compare providers', list: () => window.ProvidersScreens},
   {key:'detail', title:'Model detail', concept:'side-drawer / page / sheet', list: () => window.DetailScreens},
 ];
+
+// Migrate legacy tab keys (`hub`, `discover`) → `models` on first load.
+(function migrateTabKey(){
+  try {
+    const cur = localStorage.getItem('bodhi-wf-tab');
+    if (cur === 'hub' || cur === 'discover') {
+      localStorage.setItem('bodhi-wf-tab', 'models');
+    }
+  } catch(e){}
+})();
 
 function App() {
   const firstTab = (typeof localStorage !== 'undefined' && localStorage.getItem('bodhi-wf-tab')) || 'hub';
