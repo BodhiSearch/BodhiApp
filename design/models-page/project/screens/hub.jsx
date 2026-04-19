@@ -265,6 +265,8 @@ function ProviderPanel() {
 
 function HubB() {
   const [sel, setSel] = React.useState('file-gemma-q4');
+  const [view, setView] = React.useState('cards');
+  const Row = view==='list' ? ModelListRow : ModelCard;
   return (
     <div className="hub3col">
 
@@ -353,7 +355,8 @@ function HubB() {
             <span className="vsep"/>
             <Chip>Local only</Chip><Chip>API only</Chip>
             <span className="vsep"/>
-            <Chip on>▦ Cards</Chip><Chip>☰ List</Chip>
+            <Chip on={view==='cards'} onClick={()=>setView('cards')}>▦ Cards</Chip>
+            <Chip on={view==='list'} onClick={()=>setView('list')}>☰ List</Chip>
           </div>
         </div>
 
@@ -371,63 +374,63 @@ function HubB() {
           <span className="active-filters-clear">clear all</span>
         </div>
 
-        <div className="cards-grid">
-          <ModelCard kind="alias" title="my-gemma"
+        <div className={view==='list' ? 'cards-list' : 'cards-grid'}>
+          <Row kind="alias" title="my-gemma"
             subtitle={<>→ <code>google/gemma-2-9b:Q4_K_M</code></>}
             caps={['text→text','tool-use']}
             meta="ctx 16k · gpu 28 layers · used 12m ago"
             status="ready"
             selected={sel==='alias-my-gemma'}
             onClick={()=>setSel('alias-my-gemma')}/>
-          <ModelCard kind="alias" title="code-beast"
+          <Row kind="alias" title="code-beast"
             subtitle={<>→ <code>qwen/qwen3-14b:Q5_K_M</code></>}
             caps={['text→text','tool-use','structured']}
             meta="ctx 32k · stop [</done>]"
             status="ready"/>
 
-          <ModelCard kind="file" title="google/gemma-2-9b:Q4_K_M"
+          <Row kind="file" title="google/gemma-2-9b:Q4_K_M"
             subtitle="5.4 GB · 8.5B · HuggingFace"
             caps={['text2text','tool-use']}
             meta="~38 t/s · 3 sibling quants · ↓ 2026-02-10"
             status="fits"
             selected={sel==='file-gemma-q4'}
             onClick={()=>setSel('file-gemma-q4')}/>
-          <ModelCard kind="file" title="google/gemma-2-9b:Q5_K_M"
+          <Row kind="file" title="google/gemma-2-9b:Q5_K_M"
             subtitle="6.6 GB · 8.5B · HuggingFace"
             caps={['text2text','tool-use']}
             meta="~30 t/s · 3 sibling quants"
             status="fits"/>
-          <ModelCard kind="file" title="qwen/qwen3-14b:Q5_K_M"
+          <Row kind="file" title="qwen/qwen3-14b:Q5_K_M"
             subtitle="10.1 GB · 14B · ctx 32k"
             caps={['text2text','tool-use','long-ctx']}
             meta="~18 t/s · 3 sibling quants"
             status="tight"/>
-          <ModelCard kind="file" title="qwen/qwen3-14b:Q4_K_M"
+          <Row kind="file" title="qwen/qwen3-14b:Q4_K_M"
             subtitle="8.2 GB · 14B · ctx 32k"
             caps={['text2text','tool-use','long-ctx']}
             meta="~24 t/s · 3 sibling quants"
             status="fits"/>
-          <ModelCard kind="file" title="LiquidAI/LFM2.5-1.2B:Q8_0"
+          <Row kind="file" title="LiquidAI/LFM2.5-1.2B:Q8_0"
             subtitle="1.3 GB · 1.2B · edge"
             caps={['text2text']}
             meta="~85 t/s · 2 sibling quants"
             status="fits"/>
-          <ModelCard kind="file" title="Qwen/Qwen2.5-VL-7B:Q4_K_M"
+          <Row kind="file" title="Qwen/Qwen2.5-VL-7B:Q4_K_M"
             subtitle="4.7 GB · vision-language"
             caps={['multimodal','vision']}
             meta="~32 t/s · 3 sibling quants"
             status="fits"/>
-          <ModelCard kind="file" title="nomic-ai/nomic-embed-text-v2:F16"
+          <Row kind="file" title="nomic-ai/nomic-embed-text-v2:F16"
             subtitle="274 MB · 768-dim"
             caps={['text-embedding']}
             meta="fast · 1 quant"/>
-          <ModelCard kind="file" title="deepseek/DeepSeek-R1-14B:Q5_K_M"
+          <Row kind="file" title="deepseek/DeepSeek-R1-14B:Q5_K_M"
             subtitle="10.2 GB · reasoning"
             caps={['text2text','reasoning']}
             meta="~19 t/s · 3 sibling quants"
             status="fits"/>
 
-          <ModelCard kind="provider" title="openai"
+          <Row kind="provider" title="openai"
             subtitle={<><code>openai-responses</code> · key sk-…a71e</>}
             caps={['tool-use','vision','structured','reasoning','embedding']}
             cost="in $0.05 – $2.00 / M · 7 models"
@@ -435,19 +438,19 @@ function HubB() {
             status="live"
             selected={sel==='provider-openai'}
             onClick={()=>setSel('provider-openai')}/>
-          <ModelCard kind="provider" title="anthropic"
+          <Row kind="provider" title="anthropic"
             subtitle={<><code>anthropic-oauth</code> · Claude Pro</>}
             caps={['tool-use','vision','structured','reasoning']}
             cost="in $0.80 – $15 / M · 5 models"
             meta="claude-opus-4, claude-sonnet-4.5, claude-haiku-4.5, +2 more"
             status="live"/>
-          <ModelCard kind="provider" title="google"
+          <Row kind="provider" title="google"
             subtitle={<><code>google-gemini</code> · key AIza…</>}
             caps={['tool-use','vision','long-ctx','embedding']}
             cost="in $0.075 – $1.25 / M · 4 models"
             meta="gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, +1 more"
             status="rate-limited"/>
-          <ModelCard kind="provider" title="openrouter"
+          <Row kind="provider" title="openrouter"
             subtitle={<><code>openai-completions</code> · key sk-or-…</>}
             caps={['tool-use','vision','reasoning']}
             cost="varies by model · 100+ models"

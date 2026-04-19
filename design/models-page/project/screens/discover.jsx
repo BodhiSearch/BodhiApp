@@ -279,6 +279,8 @@ function ConnectedProviderPanel() {
 
 function DiscoverA() {
   const [sel, setSel] = React.useState('hf-qwen');
+  const [view, setView] = React.useState('cards');
+  const Row = view==='list' ? ModelListRow : DiscoverCard;
   return (
     <div className="hub3col">
 
@@ -385,7 +387,8 @@ function DiscoverA() {
             <span className="vsep"/>
             <Chip on>Likes</Chip><Chip>Downloads</Chip><Chip>Recent</Chip>
             <span className="vsep"/>
-            <Chip on>▦ Cards</Chip><Chip>☰ List</Chip>
+            <Chip on={view==='cards'} onClick={()=>setView('cards')}>▦ Cards</Chip>
+            <Chip on={view==='list'} onClick={()=>setView('list')}>☰ List</Chip>
           </div>
         </div>
 
@@ -403,15 +406,15 @@ function DiscoverA() {
           <span className="active-filters-clear">clear all</span>
         </div>
 
-        <div className="cards-grid">
-          <DiscoverCard title="Qwen/Qwen3.5-9B"
+        <div className={view==='list' ? 'cards-list' : 'cards-grid'}>
+          <Row kind="hf-repo" title="Qwen/Qwen3.5-9B"
             subtitle="9B · ctx 32k · Apache-2 · HuggingFace"
             caps={['text2text','tool-use','reasoning']}
             meta={<>default <code>:Q4_K_M</code> · 5.6GB · 5 quants · ↓ 443k · ♥ 3.1k</>}
             fit="green" fitLabel="~38 t/s"
             selected={sel==='hf-qwen'}
             onClick={()=>setSel('hf-qwen')}/>
-          <DiscoverCard kind="provider" title="openai"
+          <Row kind="provider" title="openai"
             subtitle={<><code>openai-responses</code> · key sk-…a71e</>}
             caps={['tool-use','vision','structured','reasoning','embedding']}
             cost="in $0.05 – $2.00 / M · 7 models"
@@ -419,7 +422,7 @@ function DiscoverA() {
             status="connected"
             selected={sel==='provider-openai'}
             onClick={()=>setSel('provider-openai')}/>
-          <DiscoverCard kind="provider-off" title="groq"
+          <Row kind="provider-off" title="groq"
             subtitle={<><code>openai-completions</code> · bring-your-own-key</>}
             caps={['tool-use','speech','moderation']}
             cost="in $0.05 – $0.75 / M · 6 models"
@@ -428,73 +431,73 @@ function DiscoverA() {
             selected={sel==='provider-groq'}
             onClick={()=>setSel('provider-groq')}/>
 
-          <DiscoverCard title="google/gemma-4-e2b"
+          <Row kind="hf-repo" title="google/gemma-4-e2b"
             subtitle="2B · vision · Gemma T&C · HuggingFace"
             caps={['multimodal','vision']}
             meta={<>default <code>:Q4_K_M</code> · 1.4GB · 3 quants · ↓ 3.8M · ♥ 2.1k</>}
             fit="green" fitLabel="~85 t/s"/>
-          <DiscoverCard kind="provider-off" title="openrouter"
+          <Row kind="provider-off" title="openrouter"
             subtitle={<><code>openai-completions</code> · multi-provider routing</>}
             caps={['tool-use','vision','reasoning']}
             cost="varies · 100+ models"
             meta="meta-llama-3.3-70b, mistral-large, deepseek-r1, +97 more"
             status="not connected"/>
-          <DiscoverCard title="unsloth/Nemotron-3-Nano-30B"
+          <Row kind="hf-repo" title="unsloth/Nemotron-3-Nano-30B"
             subtitle="30B · ctx 128k · NVIDIA · HuggingFace"
             caps={['text2text','reasoning','long-ctx']}
             meta={<>default <code>:Q4_K_M</code> · 17GB · 4 quants · ↓ 133k</>}
             fit="yellow" fitLabel="~6 t/s · tight"/>
-          <DiscoverCard kind="provider-off" title="anthropic"
+          <Row kind="provider-off" title="anthropic"
             subtitle={<><code>anthropic-oauth</code> · Claude Pro / key</>}
             caps={['tool-use','vision','structured','reasoning']}
             cost="in $0.80 – $15 / M · 5 models"
             meta="claude-opus-4, claude-sonnet-4.5, claude-haiku-4.5, +2 more"
             status="not connected"/>
-          <DiscoverCard title="LiquidAI/LFM2.5-1.2B"
+          <Row kind="hf-repo" title="LiquidAI/LFM2.5-1.2B"
             subtitle="1.2B · edge · Apache-2 · HuggingFace"
             caps={['text2text']}
             meta={<>default <code>:Q8_0</code> · 1.3GB · 3 quants · ↓ 28k</>}
             fit="green" fitLabel="~110 t/s"/>
-          <DiscoverCard kind="provider-off" title="nvidia-nim"
+          <Row kind="provider-off" title="nvidia-nim"
             subtitle={<><code>openai-completions</code> · NVIDIA NIM · key</>}
             caps={['text2text','tool-use','long-ctx']}
             cost="in $0.60 – $1.80 / M · 18 models"
             meta="nemotron-4-340b, llama-3.3-70b-nim, mistral-large-nim, +15 more"
             status="not connected"/>
-          <DiscoverCard title="Qwen/Qwen2.5-VL-7B"
+          <Row kind="hf-repo" title="Qwen/Qwen2.5-VL-7B"
             subtitle="7B · vision-language · Apache-2 · HuggingFace"
             caps={['multimodal','vision']}
             meta={<>default <code>:Q4_K_M</code> · 4.7GB · 4 quants · ↓ 612k</>}
             fit="green" fitLabel="~32 t/s"/>
-          <DiscoverCard kind="provider-off" title="together"
+          <Row kind="provider-off" title="together"
             subtitle={<><code>openai-completions</code> · Together AI · key</>}
             caps={['text2text','tool-use','long-ctx','image-gen']}
             cost="in $0.10 – $3.50 / M · 40+ models"
             meta="qwen-2.5-72b, deepseek-v3, flux-1.1-pro, +37 more"
             status="not connected"/>
-          <DiscoverCard title="deepseek/DeepSeek-R1-Distill-14B"
+          <Row kind="hf-repo" title="deepseek/DeepSeek-R1-Distill-14B"
             subtitle="14B · reasoning · MIT · HuggingFace"
             caps={['text2text','reasoning']}
             meta={<>default <code>:Q5_K_M</code> · 10.2GB · 4 quants · ↓ 1.1M</>}
             fit="green" fitLabel="~19 t/s"/>
-          <DiscoverCard kind="provider-off" title="huggingface"
+          <Row kind="provider-off" title="huggingface"
             subtitle={<><code>openai-completions</code> · HF Inference · key</>}
             caps={['text2text','embedding','image-gen']}
             cost="PAYG + Pro $9/mo · 500+ models"
             meta="mistral-large, llama-3.3, stable-diffusion-xl, +497 more"
             status="not connected"/>
-          <DiscoverCard title="meta/Llama-3.3-70B-Instruct"
+          <Row kind="hf-repo" title="meta/Llama-3.3-70B-Instruct"
             subtitle="70B · ctx 128k · Llama-3 license · HuggingFace"
             caps={['text2text','tool-use','long-ctx']}
             meta={<>default <code>:Q4_K_M</code> · 40GB · 5 quants · ↓ 2.4M</>}
             fit="red" fitLabel="won't fit"/>
-          <DiscoverCard kind="provider-off" title="google-gemini"
+          <Row kind="provider-off" title="google-gemini"
             subtitle={<><code>google-gemini</code> · key AIza…</>}
             caps={['tool-use','vision','long-ctx','embedding']}
             cost="in $0.075 – $1.25 / M · 4 models"
             meta="gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, +1 more"
             status="not connected"/>
-          <DiscoverCard title="nomic-ai/nomic-embed-text-v2"
+          <Row kind="hf-repo" title="nomic-ai/nomic-embed-text-v2"
             subtitle="F16 · 274MB · 768-dim · HuggingFace"
             caps={['text-embedding']}
             meta={<>default <code>:F16</code> · 274MB · 1 quant · ↓ 5.1M</>}

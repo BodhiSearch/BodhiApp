@@ -10,8 +10,8 @@ const Lines = ({rows=[60,80,40]}) => (
   </div>
 );
 
-const Chip = ({on, tone, children, style}) => (
-  <span className={`chip${on?' on':''}${tone?' '+tone:''}`} style={style}>{children}</span>
+const Chip = ({on, tone, children, style, onClick}) => (
+  <span className={`chip${on?' on':''}${tone?' '+tone:''}`} style={{...(onClick?{cursor:'pointer'}:{}), ...style}} onClick={onClick}>{children}</span>
 );
 
 const Btn = ({variant='', size='', children, style, title}) => (
@@ -193,4 +193,39 @@ const DownloadsMenu = ({active, count=1, onClick}) => (
   </div>
 );
 
-Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu});
+// Generic list-view row used by Hub + Discover when "☰ List" is selected.
+// Accepts the same basic shape as ModelCard / DiscoverCard.
+const ModelListRow = ({kind='file', title, subtitle, caps=[], meta, cost, status, fitLabel, fit, selected, onClick}) => {
+  const kindTone =
+    kind==='alias' ? 'saff' :
+    kind==='provider' ? 'indigo' :
+    kind==='provider-off' ? '' : 'leaf';
+  const statusTone =
+    status==='live' || status==='ready' || status==='fits' || status==='connected' ? 'leaf' :
+    status==='oauth' ? 'saff' :
+    status==='rate-limited' || status==='tight' ? 'warn' : '';
+  const fitTone = fit==='green' ? 'leaf' : fit==='yellow' ? 'warn' : fit==='red' ? 'warn' : '';
+  const extra = kind==='provider-off' ? ' dashed' : '';
+  return (
+    <div className={`model-list-row${selected?' selected':''}${extra}`} onClick={onClick}>
+      <Chip tone={kindTone} style={{fontSize:10}}>{kind==='provider-off' ? 'provider' : kind}</Chip>
+      <div className="mlr-title-cell">
+        <div className="model-card-title" style={{fontSize:13, margin:0}}>{title}</div>
+        {subtitle && <div className="sm">{subtitle}</div>}
+      </div>
+      <div className="mlr-caps-cell">
+        {caps.map((c,i)=>(<Chip key={i}>{c}</Chip>))}
+      </div>
+      <div className="mlr-meta-cell sm">
+        {cost && <div className="mlr-cost">{cost}</div>}
+        {meta && <div>{meta}</div>}
+      </div>
+      <div className="mlr-status-cell">
+        {status && <Chip tone={statusTone}>● {status}</Chip>}
+        {fitLabel && <Chip tone={fitTone}>● {fitLabel}</Chip>}
+      </div>
+    </div>
+  );
+};
+
+Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow});
