@@ -280,10 +280,26 @@ function ConnectedProviderPanel() {
   );
 }
 
+// Specialization filter options (Task categories, single-select, default = All)
+const SPECIALIZATIONS = [
+  {k:'all',       label:'All',                 bench:null},
+  {k:'chat',      label:'Chat · general',      bench:'Arena Elo'},
+  {k:'coding',    label:'Coding',              bench:'HumanEval'},
+  {k:'agent',     label:'Agentic · tool-use',  bench:'BFCL'},
+  {k:'reason',    label:'Reasoning',           bench:'GPQA'},
+  {k:'longctx',   label:'Long context',        bench:'RULER'},
+  {k:'multiling', label:'Multilingual',        bench:'mMMLU'},
+  {k:'vision',    label:'Vision + text',       bench:'MMMU'},
+  {k:'embed',     label:'Text embedding',      bench:'MTEB'},
+  {k:'memb',      label:'Multimodal embed',    bench:'MMEB'},
+  {k:'small',     label:'Small & fast',        bench:'Open LLM LB'},
+];
+
 function DiscoverA() {
   const [sel, setSel] = React.useState('hf-qwen');
   const [view, setView] = React.useState('cards');
-  const [browseBy, setBrowseBy] = React.useState('family');
+  const [spec, setSpec] = React.useState('coding'); // wireframe demo: show active Specialization
+  const specMeta = SPECIALIZATIONS.find(s => s.k === spec) || SPECIALIZATIONS[0];
   const Row = view==='list' ? ModelListRow : DiscoverCard;
   return (
     <div className="hub3col">
@@ -318,6 +334,27 @@ function DiscoverA() {
         </div>
 
         <div className="side-sec-label">Filters</div>
+        <div className="side-filter-group">
+          <div className="side-filter-title" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <span>specialization · single-select</span>
+            {spec!=='all' && <span className="active-filters-clear" onClick={()=>setSpec('all')}>clear</span>}
+          </div>
+          <div className="chips-col">
+            {SPECIALIZATIONS.map(s => (
+              <Chip key={s.k}
+                on={spec===s.k}
+                onClick={()=>setSpec(s.k)}
+                style={spec===s.k && s.k!=='all' ? {background:'var(--indigo-soft)', fontWeight:700} : undefined}>
+                {s.label}{s.bench && spec===s.k ? ` · ${s.bench}` : ''}
+              </Chip>
+            ))}
+          </div>
+          {spec!=='all' && (
+            <div className="sm" style={{marginTop:4, fontStyle:'italic'}}>
+              Main grid filtered to <b>{specMeta.label}</b> · sorted by <b>{specMeta.bench}</b>
+            </div>
+          )}
+        </div>
         <div className="side-filter-group">
           <div className="side-filter-title">source</div>
           <div className="chips-col">
@@ -402,45 +439,20 @@ function DiscoverA() {
           <Callout style={{top:-6, right:14}}>Unified local + API discovery</Callout>
         </div>
 
-        <div className="browse-by-row">
-          <span className="browse-by-label">Browse by</span>
-          <div className="browse-by-seg">
-            {[['task','Task'],['capability','Capability'],['family','Family']].map(([k,l]) => (
-              <span key={k}
-                className={`browse-by-seg-item${browseBy===k?' active':''}`}
-                onClick={()=>setBrowseBy(k)}>{l}</span>
-            ))}
-          </div>
-          <span className="sm" style={{marginLeft:'auto'}}>
-            {browseBy==='task' ? 'Pick a goal first — recommendations follow.' :
-             browseBy==='capability' ? 'Filter by caps: tool-use, vision, embedding, …' :
-             'Classic HF-style browse by org/family.'}
-          </span>
+        <div className="active-filters">
+          <span className="active-filters-label">filters:</span>
+          {spec!=='all' && (
+            <span className="filter-tag" style={{background:'var(--indigo-soft)', fontWeight:700}}>
+              Specialization: {specMeta.label} · sort ⭐ {specMeta.bench}
+              <span className="x" onClick={()=>setSpec('all')}>× clear</span>
+            </span>
+          )}
+          <span className="filter-tag">capability: tool-use <span className="x">×</span></span>
+          <span className="filter-tag">size: Fits rig ✓ <span className="x">×</span></span>
+          <span className="filter-tag">license: Apache-2 <span className="x">×</span></span>
+          <span className="active-filters-clear">clear all</span>
         </div>
 
-        {browseBy!=='task' && (
-          <div className="active-filters">
-            <span className="active-filters-label">filters:</span>
-            <span className="filter-tag">capability: tool-use <span className="x">×</span></span>
-            <span className="filter-tag">size: Fits rig ✓ <span className="x">×</span></span>
-            <span className="filter-tag">license: Apache-2 <span className="x">×</span></span>
-            <span className="active-filters-clear">clear all</span>
-          </div>
-        )}
-
-        {browseBy==='task' && (
-          <>
-            <div className="sm" style={{margin:'4px 0 6px'}}>
-              10 illustrative categories · benchmarks are canonical refs · sample orgs/models shown · click → pre-filters grid on that tag.
-            </div>
-            <TaskCategoryGrid/>
-            <div style={{textAlign:'center', marginTop:8}}>
-              <Btn variant="ghost" size="xs" onClick={()=>setBrowseBy('family')}>← Back to family browse</Btn>
-            </div>
-          </>
-        )}
-
-        {browseBy!=='task' && (<>
         <div className={view==='list' ? 'cards-list' : 'cards-grid'}>
           <Row kind="hf-repo" title="Qwen/Qwen3.5-9B"
             subtitle="9B · ctx 32k · Apache-2 · HuggingFace"
@@ -542,8 +554,6 @@ function DiscoverA() {
         <div style={{textAlign:'center', marginTop:4}}>
           <Btn variant="ghost">Load more →</Btn>
         </div>
-        </>
-        )}
       </main>
 
       {/* ── RIGHT: collapsible detail panel (swaps by selection) ── */}
@@ -569,7 +579,6 @@ const DiscoverActionsBtn = () => (
 const DiscoverActionsMenu = () => (
   <div className="m-menu-overlay" style={{justifyContent:'flex-end', paddingRight:6, paddingTop:40}}>
     <div className="m-menu" style={{width:'74%'}}>
-      <div className="m-menu-item">🎯 Browse by task ›</div>
       <div className="m-menu-item">↑ Trending</div>
       <div className="m-menu-item">★ New launches</div>
       <div className="m-menu-item">
@@ -670,7 +679,17 @@ function DiscoverMobile() {
             <span className="sm" style={{fontSize:10}}>5 active · <a href="#" style={{textDecoration:'underline', color:'var(--ink-3)'}}>clear all</a></span>
           </div>
           <div className="m-filter-groups">
-            <div className="side-filter-title" style={{fontSize:11}}>source</div>
+            <div className="side-filter-title" style={{fontSize:11, display:'flex', justifyContent:'space-between'}}>
+              <span>specialization · single-select</span>
+              <span className="active-filters-clear" style={{fontSize:10}}>clear</span>
+            </div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip>All</Chip>
+              <Chip on style={{background:'var(--indigo-soft)', fontWeight:700}}>Coding · HumanEval</Chip>
+              <Chip>Chat</Chip><Chip>Agent</Chip><Chip>Reasoning</Chip>
+              <Chip>Long ctx</Chip><Chip>Vision</Chip><Chip>Embed</Chip><Chip>Small</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>source</div>
             <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
               <Chip on>HuggingFace</Chip><Chip>OpenRouter</Chip><Chip>NVIDIA NIM</Chip>
               <Chip>Groq</Chip><Chip>Together</Chip><Chip>Anthropic</Chip><Chip>OpenAI</Chip>
@@ -788,6 +807,7 @@ const DiscoverMediumToolbar = ({filtersCount=5}) => (
     </div>
     <div className="active-filters" style={{fontSize:10, padding:'2px 0'}}>
       <span className="active-filters-label">filters:</span>
+      <span className="filter-tag" style={{background:'var(--indigo-soft)', fontWeight:700}}>Coding · sort ⭐ HumanEval <span className="x">clear</span></span>
       <span className="filter-tag">tool-use <span className="x">×</span></span>
       <span className="filter-tag">Fits rig ✓ <span className="x">×</span></span>
       <span className="filter-tag">Apache-2 <span className="x">×</span></span>
@@ -885,7 +905,17 @@ function DiscoverMedium() {
             <span className="sm" style={{fontSize:10}}>5 active · <a href="#" style={{textDecoration:'underline', color:'var(--ink-3)'}}>clear all</a></span>
           </div>
           <div className="m-filter-groups">
-            <div className="side-filter-title" style={{fontSize:11}}>source</div>
+            <div className="side-filter-title" style={{fontSize:11, display:'flex', justifyContent:'space-between'}}>
+              <span>specialization · single-select</span>
+              <span className="active-filters-clear" style={{fontSize:10}}>clear</span>
+            </div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip>All</Chip>
+              <Chip on style={{background:'var(--indigo-soft)', fontWeight:700}}>Coding · HumanEval</Chip>
+              <Chip>Chat</Chip><Chip>Agent</Chip><Chip>Reasoning</Chip>
+              <Chip>Long ctx</Chip><Chip>Vision</Chip><Chip>Embed</Chip><Chip>Small</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>source</div>
             <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
               <Chip on>HuggingFace</Chip><Chip>OpenRouter</Chip><Chip>Groq</Chip>
               <Chip>NVIDIA NIM</Chip><Chip>Together</Chip><Chip>Anthropic</Chip><Chip>OpenAI</Chip>
@@ -940,6 +970,6 @@ function DiscoverMedium() {
 
 window.DiscoverScreens = [
   {label:'A · HF repos + providers', tag:'balanced', note:'Same 3-column shell as Hub. Repo-level HF cards (with default-quant badge) mixed with API provider cards (connected + not-yet-connected). Three demo cards are clickable.', novel:'repo + provider unified grid, connected vs unconnected provider states', component:DiscoverA},
-  {label:'A · Medium (tablet)', tag:'medium', note:'Breadcrumb header + ⋯ ▾ action (Trending / New launches / Downloads / Leaderboards ›). No rail. 2-col grid + fixed right detail panel. Filters as compact centered modal. 3 frames.', novel:'Discover-specific header-action menu · fixed right panel · compact filters modal', component:DiscoverMedium},
-  {label:'A · Mobile', tag:'mobile', note:'Breadcrumb menu for app nav. ⋯ ▾ header action for browse modes + Downloads + Leaderboards. Filters sheet: source / capability / size / cost / license / format. Five frames.', novel:'two-menu header (app vs discover-actions) · 5 states', component:DiscoverMobile},
+  {label:'A · Medium (tablet)', tag:'medium', note:'Breadcrumb header + ⋯ ▾ action. 2-col grid + fixed right detail panel. Filters sheet now includes Specialization group (single-select · Coding shown active · Clear). Active-filter pill shows "Coding · sort ⭐ HumanEval". 3 frames.', novel:'Specialization filter in sheet · sort follows benchmark · Clear affordance', component:DiscoverMedium},
+  {label:'A · Mobile', tag:'mobile', note:'Breadcrumb menu. ⋯ ▾ header action. Filters sheet: Specialization (single-select) / source / capability / size / cost / license / format. Specialization pill visible in active-filters strip. Five frames.', novel:'Specialization as single-select filter with Clear and bench-driven sort', component:DiscoverMobile},
 ];
