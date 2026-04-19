@@ -291,12 +291,13 @@ function HubB() {
 
         <Btn variant="primary" style={{width:'100%', justifyContent:'center'}}>+ Add model ▾</Btn>
 
+        <DownloadsMenu active={sel==='downloads'} count={1} onClick={()=>setSel('downloads')}/>
+
         <div className="side-sec-label">Models</div>
         <div className="side-nav">
           <div className="side-nav-item active">All models <span className="badge">14</span></div>
           <div className="side-nav-item">Recently used <span className="badge">4</span></div>
           <div className="side-nav-item">Favorites <span className="badge">5</span></div>
-          <div className="side-nav-item">Downloads <span className="badge">2</span></div>
         </div>
 
         <div className="side-sec-label">Sources</div>
@@ -464,6 +465,7 @@ function HubB() {
         {sel==='alias-my-gemma' && <AliasPanel/>}
         {sel==='file-gemma-q4' && <FilePanel/>}
         {sel==='provider-openai' && <ProviderPanel/>}
+        {sel==='downloads' && <DownloadsPanel/>}
       </aside>
     </div>
   );

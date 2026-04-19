@@ -303,6 +303,8 @@ function DiscoverA() {
           <div className="sub-nav-item active">Discover</div>
         </div>
 
+        <DownloadsMenu active={sel==='downloads'} count={1} onClick={()=>setSel('downloads')}/>
+
         <div className="side-sec-label">Discover</div>
         <div className="side-nav">
           <div className="side-nav-item active">Trending <span className="badge">↑</span></div>
@@ -509,6 +511,7 @@ function DiscoverA() {
         {sel==='hf-qwen' && <HfRepoPanel/>}
         {sel==='provider-openai' && <ConnectedProviderPanel/>}
         {sel==='provider-groq' && <UnconnectedProviderPanel/>}
+        {sel==='downloads' && <DownloadsPanel/>}
       </aside>
     </div>
   );

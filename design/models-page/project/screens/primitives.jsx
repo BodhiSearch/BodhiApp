@@ -104,4 +104,93 @@ const ModelRow = ({name='Qwen3.5-9B', org='Qwen', task='Text→Text', size='9B',
   </div>
 );
 
-Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow});
+// Shared Downloads panel — used as the right-pane detail view on Hub + Discover
+// when the user clicks the "↓ Downloads" menu entry.
+const DownloadsPanel = () => (
+  <>
+    <div className="right-collapsed-rail">downloads · 1 active</div>
+    <div className="right-topbar">
+      <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+        <Chip tone="saff" style={{fontSize:10}}>downloads</Chip>
+        <span className="h2" style={{margin:0}}>Downloads</span>
+        <Chip tone="saff">● 1 active</Chip>
+      </div>
+      <Btn variant="ghost" size="xs" title="collapse">→</Btn>
+    </div>
+    <div className="sm">8 files · 94 GB on disk · last pull 12m ago</div>
+
+    <div style={{display:'flex', gap:4, marginTop:8, flexWrap:'wrap'}}>
+      <Chip on>All</Chip><Chip>Downloading (1)</Chip><Chip>Ready (7)</Chip><Chip>Failed</Chip>
+    </div>
+
+    <div className="h3">In progress</div>
+    <div className="card" style={{padding:'8px 10px'}}>
+      <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:4}}>
+        <Chip tone="saff" style={{fontSize:10}}>downloading</Chip>
+        <code style={{flex:1}}>unsloth/gemma-4-e4b-it:Q4_K_M</code>
+        <span className="sm">2.40 / 3.99 GB</span>
+      </div>
+      <Bar pct={60}/>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:4}}>
+        <span className="sm">12 MB/s · eta 2m · started 1m ago</span>
+        <div style={{display:'flex', gap:4}}>
+          <Btn size="xs" title="pause">⏸</Btn>
+          <Btn size="xs" title="cancel">✕</Btn>
+        </div>
+      </div>
+    </div>
+
+    <div className="h3">Recently completed</div>
+    <div style={{display:'flex', flexDirection:'column', gap:4}}>
+      <div className="card row" style={{padding:'5px 7px'}}>
+        <Chip tone="leaf" style={{fontSize:10}}>ready</Chip>
+        <code style={{flex:1}}>google/gemma-2-9b:Q4_K_M</code>
+        <span className="sm">5.4 GB · 12m ago</span>
+        <Btn variant="ghost" size="xs">open →</Btn>
+      </div>
+      <div className="card row" style={{padding:'5px 7px'}}>
+        <Chip tone="leaf" style={{fontSize:10}}>ready</Chip>
+        <code style={{flex:1}}>qwen/qwen3-14b:Q5_K_M</code>
+        <span className="sm">10.1 GB · 2h ago</span>
+        <Btn variant="ghost" size="xs">open →</Btn>
+      </div>
+      <div className="card row" style={{padding:'5px 7px'}}>
+        <Chip tone="leaf" style={{fontSize:10}}>ready</Chip>
+        <code style={{flex:1}}>LiquidAI/LFM2.5-1.2B:Q8_0</code>
+        <span className="sm">1.3 GB · yesterday</span>
+        <Btn variant="ghost" size="xs">open →</Btn>
+      </div>
+      <div className="card row" style={{padding:'5px 7px'}}>
+        <Chip tone="warn" style={{fontSize:10}}>failed</Chip>
+        <code style={{flex:1}}>meta/Llama-3.3-70B:Q4_K_M</code>
+        <span className="sm">disk full · 2d ago</span>
+        <Btn size="xs">retry</Btn>
+      </div>
+    </div>
+
+    <div className="h3">Disk usage</div>
+    <div style={{display:'grid', gridTemplateColumns:'auto 1fr', columnGap:8, rowGap:3}}>
+      <span className="sm">models dir</span><span className="sm"><code>~/.bodhi/models</code></span>
+      <span className="sm">on disk</span><span className="sm">94 GB / 1 TB <Bar pct={9}/></span>
+      <span className="sm">cached</span><span className="sm">8 files · 2 broken cleanup candidates</span>
+    </div>
+
+    <div style={{display:'flex', gap:4, marginTop:10, flexWrap:'wrap'}}>
+      <Btn variant="primary" size="xs">+ Pull from URL…</Btn>
+      <Btn variant="ghost" size="xs">Open models folder ↗</Btn>
+      <Btn variant="ghost" size="xs">Clear history</Btn>
+    </div>
+  </>
+);
+
+// Tiny sidebar row used on Hub + Discover to open the DownloadsPanel.
+// Shows a live badge when something is in progress.
+const DownloadsMenu = ({active, count=1, onClick}) => (
+  <div className={`downloads-menu${active?' active':''}${count>0?' live':''}`} onClick={onClick}>
+    <span className="downloads-menu-icon">↓</span>
+    <span style={{flex:1}}>Downloads</span>
+    {count > 0 && <span className="downloads-menu-badge">{count} ↓</span>}
+  </div>
+);
+
+Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu});

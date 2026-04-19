@@ -2,7 +2,6 @@
 const SCREENS = [
   {key:'hub', title:'Models Hub', concept:'unified landing', list: () => window.HubScreens},
   {key:'discover', title:'Discover local', concept:'HF-style browse + smart recs', list: () => window.DiscoverScreens},
-  {key:'download', title:'Download / Pull', concept:'pick quant, watch progress', list: () => window.DownloadScreens},
   {key:'alias', title:'Create local alias', concept:'tune llama.cpp runtime', list: () => window.AliasScreens},
   {key:'api', title:'Create API model', concept:'connect an inference service', list: () => window.ApiScreens},
   {key:'providers', title:'Provider directory', concept:'browse &amp; compare providers', list: () => window.ProvidersScreens},

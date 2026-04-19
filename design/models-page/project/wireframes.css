@@ -505,6 +505,36 @@ html, body {
 .provider-table-row.disabled { opacity: 0.55; }
 .provider-table-row.disabled code { color: var(--ink-3); }
 .model-card.dashed { border-style: dashed; background: var(--paper); }
+
+.downloads-menu {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--hand); font-size: 13px; font-weight: 700; color: var(--ink);
+  padding: 7px 10px;
+  background: #fff;
+  border: 1.3px dashed var(--line-soft);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.downloads-menu:hover { background: var(--paper-2); border-color: var(--ink); }
+.downloads-menu.active { background: var(--lotus-soft); border: 1.5px solid var(--ink); box-shadow: 1px 1px 0 rgba(26,26,34,0.1); }
+.downloads-menu.live { border-color: var(--ink); }
+.downloads-menu-icon {
+  width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1.3px solid var(--ink); border-radius: 50%;
+  background: var(--lotus-soft); font-size: 12px;
+}
+.downloads-menu-badge {
+  font-family: var(--hand); font-size: 10px; font-weight: 700;
+  padding: 1px 7px;
+  background: var(--lotus); color: #fff;
+  border: 1.3px solid var(--ink);
+  border-radius: 10px;
+  animation: pulse-badge 1.6s ease-in-out infinite;
+}
+@keyframes pulse-badge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
 .side-sec-label {
   font-family: var(--hand); font-size: 11px; color: var(--ink-3);
   text-transform: uppercase; letter-spacing: 1px; margin-top: 6px;
