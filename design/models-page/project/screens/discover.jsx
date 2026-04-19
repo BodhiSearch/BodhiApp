@@ -63,40 +63,41 @@ function HfRepoPanel() {
         <span className="sm">rig fit</span><span className="sm"><TL tone="green">Q4/Q5 fit · Q8 tight</TL></span>
       </div>
 
-      <div className="h3">Quants · pull</div>
+      <div className="h3">Quants · add as alias</div>
       <div style={{display:'flex', flexDirection:'column', gap:4}}>
         <div className="card row" style={{padding:'5px 7px', borderColor:'var(--ink)'}}>
           <Chip tone="saff" style={{fontSize:10}}>default</Chip>
           <code style={{flex:1}}>:Q4_K_M</code>
           <span className="sm">5.6 GB</span>
           <TL tone="green">~38 t/s</TL>
-          <Btn variant="primary" size="xs">pull</Btn>
+          <Btn variant="primary" size="xs">+ alias</Btn>
         </div>
         <div className="card row" style={{padding:'5px 7px'}}>
           <code style={{flex:1}}>:Q5_K_M</code>
           <span className="sm">6.8 GB</span>
           <TL tone="green">~30 t/s</TL>
-          <Btn size="xs">pull</Btn>
+          <Btn size="xs">+ alias</Btn>
         </div>
         <div className="card row" style={{padding:'5px 7px'}}>
           <code style={{flex:1}}>:Q6_K</code>
           <span className="sm">7.9 GB</span>
           <TL tone="green">~24 t/s</TL>
-          <Btn size="xs">pull</Btn>
+          <Btn size="xs">+ alias</Btn>
         </div>
         <div className="card row" style={{padding:'5px 7px'}}>
           <code style={{flex:1}}>:Q8_0</code>
           <span className="sm">9.6 GB</span>
           <TL tone="yellow">~16 t/s</TL>
-          <Btn size="xs">pull</Btn>
+          <Btn size="xs">+ alias</Btn>
         </div>
         <div className="card row" style={{padding:'5px 7px'}}>
           <code style={{flex:1}}>:F16</code>
           <span className="sm">18 GB</span>
           <TL tone="warn">won't fit</TL>
-          <Btn variant="ghost" size="xs">pull</Btn>
+          <Btn variant="ghost" size="xs">+ alias</Btn>
         </div>
       </div>
+      <div className="sm" style={{marginTop:4}}>★ `+ alias` opens the alias form overlay prefilled with this quant · downloads on save.</div>
 
       <div className="h3">README snippet</div>
       <div className="sm" style={{fontStyle:'italic', borderLeft:'2px dashed var(--line-soft)', paddingLeft:8}}>
@@ -104,10 +105,12 @@ function HfRepoPanel() {
       </div>
 
       <div style={{display:'flex', gap:4, marginTop:10, flexWrap:'wrap'}}>
-        <Btn variant="primary" size="xs">Pull default (Q4_K_M)</Btn>
+        <Btn variant="primary" size="xs">+ Add to Bodhi</Btn>
+        <Btn size="xs">Pull file only</Btn>
         <Btn variant="ghost" size="xs">★ Favorite</Btn>
         <Btn variant="ghost" size="xs">HF ↗</Btn>
       </div>
+      <Callout style={{position:'static', display:'inline-block', marginTop:6, fontSize:10}}>★ `+ Add to Bodhi` opens alias overlay prefilled with repo + default quant</Callout>
     </>
   );
 }
@@ -280,6 +283,7 @@ function ConnectedProviderPanel() {
 function DiscoverA() {
   const [sel, setSel] = React.useState('hf-qwen');
   const [view, setView] = React.useState('cards');
+  const [browseBy, setBrowseBy] = React.useState('family');
   const Row = view==='list' ? ModelListRow : DiscoverCard;
   return (
     <div className="hub3col">
@@ -398,14 +402,45 @@ function DiscoverA() {
           <Callout style={{top:-6, right:14}}>Unified local + API discovery</Callout>
         </div>
 
-        <div className="active-filters">
-          <span className="active-filters-label">filters:</span>
-          <span className="filter-tag">capability: tool-use <span className="x">×</span></span>
-          <span className="filter-tag">size: Fits rig ✓ <span className="x">×</span></span>
-          <span className="filter-tag">license: Apache-2 <span className="x">×</span></span>
-          <span className="active-filters-clear">clear all</span>
+        <div className="browse-by-row">
+          <span className="browse-by-label">Browse by</span>
+          <div className="browse-by-seg">
+            {[['task','Task'],['capability','Capability'],['family','Family']].map(([k,l]) => (
+              <span key={k}
+                className={`browse-by-seg-item${browseBy===k?' active':''}`}
+                onClick={()=>setBrowseBy(k)}>{l}</span>
+            ))}
+          </div>
+          <span className="sm" style={{marginLeft:'auto'}}>
+            {browseBy==='task' ? 'Pick a goal first — recommendations follow.' :
+             browseBy==='capability' ? 'Filter by caps: tool-use, vision, embedding, …' :
+             'Classic HF-style browse by org/family.'}
+          </span>
         </div>
 
+        {browseBy!=='task' && (
+          <div className="active-filters">
+            <span className="active-filters-label">filters:</span>
+            <span className="filter-tag">capability: tool-use <span className="x">×</span></span>
+            <span className="filter-tag">size: Fits rig ✓ <span className="x">×</span></span>
+            <span className="filter-tag">license: Apache-2 <span className="x">×</span></span>
+            <span className="active-filters-clear">clear all</span>
+          </div>
+        )}
+
+        {browseBy==='task' && (
+          <>
+            <div className="sm" style={{margin:'4px 0 6px'}}>
+              10 illustrative categories · benchmarks are canonical refs · sample orgs/models shown · click → pre-filters grid on that tag.
+            </div>
+            <TaskCategoryGrid/>
+            <div style={{textAlign:'center', marginTop:8}}>
+              <Btn variant="ghost" size="xs" onClick={()=>setBrowseBy('family')}>← Back to family browse</Btn>
+            </div>
+          </>
+        )}
+
+        {browseBy!=='task' && (<>
         <div className={view==='list' ? 'cards-list' : 'cards-grid'}>
           <Row kind="hf-repo" title="Qwen/Qwen3.5-9B"
             subtitle="9B · ctx 32k · Apache-2 · HuggingFace"
@@ -507,6 +542,8 @@ function DiscoverA() {
         <div style={{textAlign:'center', marginTop:4}}>
           <Btn variant="ghost">Load more →</Btn>
         </div>
+        </>
+        )}
       </main>
 
       {/* ── RIGHT: collapsible detail panel (swaps by selection) ── */}
@@ -532,6 +569,7 @@ const DiscoverActionsBtn = () => (
 const DiscoverActionsMenu = () => (
   <div className="m-menu-overlay" style={{justifyContent:'flex-end', paddingRight:6, paddingTop:40}}>
     <div className="m-menu" style={{width:'74%'}}>
+      <div className="m-menu-item">🎯 Browse by task ›</div>
       <div className="m-menu-item">↑ Trending</div>
       <div className="m-menu-item">★ New launches</div>
       <div className="m-menu-item">
