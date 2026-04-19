@@ -1,18 +1,18 @@
 // Main app: tabs + rendering of variants per screen
 // v25: Models Hub + Discover collapsed into a single "Models" page.
+// v27: Provider Directory absorbed into Models (specs/models.md §13).
 const SCREENS = [
-  {key:'models', title:'Models', concept:'one catalog · My + All · local + API + remote', list: () => window.ModelsScreens},
+  {key:'models', title:'Models', concept:'local + API + remote · My / All · ranked leaderboards', list: () => window.ModelsScreens},
   {key:'alias', title:'Create local alias', concept:'tune llama.cpp runtime', list: () => window.AliasScreens},
   {key:'api', title:'Create API model', concept:'connect an inference service', list: () => window.ApiScreens},
-  {key:'providers', title:'Provider directory', concept:'browse &amp; compare providers', list: () => window.ProvidersScreens},
   {key:'detail', title:'Model detail', concept:'side-drawer / page / sheet', list: () => window.DetailScreens},
 ];
 
-// Migrate legacy tab keys (`hub`, `discover`) → `models` on first load.
+// Migrate legacy tab keys (`hub`, `discover`, `providers`) → `models` on first load.
 (function migrateTabKey(){
   try {
     const cur = localStorage.getItem('bodhi-wf-tab');
-    if (cur === 'hub' || cur === 'discover') {
+    if (cur === 'hub' || cur === 'discover' || cur === 'providers') {
       localStorage.setItem('bodhi-wf-tab', 'models');
     }
   } catch(e){}

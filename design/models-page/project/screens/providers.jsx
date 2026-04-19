@@ -1,4 +1,15 @@
-// Screen 6 — API Provider Directory
+// Archived 2026-04-19 — Provider Directory absorbed into unified Models page.
+// Not loaded by index.html any more. Kept on disk for archival reference
+// (git-recoverable). The three variants here (logo gallery / matrix comparison /
+// needs-based matcher) were superseded by:
+//   · Variant A (logo gallery) → Models' Kind=Providers + Source=Bodhi Directory
+//     filter combo plus the `+ ▾ Add model` menu's "Add API provider" entry.
+//   · Variant B (matrix comparison) → dropped. Not ported. Do not reintroduce.
+//   · Variant C (needs-based matcher) → dropped. Specialization filter covers
+//     ≈ the same intent. Do not reintroduce.
+// See specs/models.md §13 + specs/shared-primitives.md §6.
+
+// Screen 6 — API Provider Directory (archived)
 function ProvidersA() {
   const provs = [
     ['OpenAI','api.openai.com','#10a37f','Key','$3/$10','★★★★★','official'],

@@ -494,7 +494,20 @@ function DiscoverA() {
           <span className="active-filters-clear">clear all</span>
         </div>
 
+        {/* Ranked display mode: a benchmark sort is active (see specs/models.md §8).
+            Rows collapse to model-level with local-file dedup + api-config stack. */}
+        {spec!=='all' && (
+          <RankedModeCaption benchmark={specMeta.bench} specLabel={specMeta.label}/>
+        )}
+
         <div className={view==='list' ? 'cards-list' : 'cards-grid'}>
+          {spec!=='all' ? (
+            groupIntoRankedRows(specMeta.bench, mode).map((entry) => (
+              <RankedRow key={entry.rank} entry={entry}
+                selected={sel===`rank-${entry.rank}`}
+                onClick={()=>setSel(`rank-${entry.rank}`)}/>
+            ))
+          ) : (<>
           {/* ── Local entities (always shown; labelled `local` in All mode) ── */}
           <Row kind="alias" title="my-gemma"
             subtitle="google/gemma-2-9b:Q4_K_M · ctx 16k"
@@ -649,6 +662,7 @@ function DiscoverA() {
             meta={<>default <code>:F16</code> · 274MB · 1 quant · ↓ 5.1M</>}
             fit="green" fitLabel="embed fast"/>
           </>}
+          </>)}
         </div>
 
         <div style={{textAlign:'center', marginTop:4}}>
@@ -668,6 +682,20 @@ function DiscoverA() {
         {/* Catalog entities — panels from this file */}
         {sel==='hf-qwen' && <HfRepoPanel/>}
         {sel==='provider-groq' && <UnconnectedProviderPanel/>}
+
+        {/* Ranked-mode selections — dispatch by the entry's canonical kind */}
+        {sel && typeof sel === 'string' && sel.startsWith('rank-') && (() => {
+          const rank = Number(sel.slice(5));
+          const entry = RANKED_FIXTURE_CODING.find(e => e.rank === rank);
+          if (!entry) return null;
+          const k = entry.dispatchKind;
+          if (k === 'alias') return <AliasPanel/>;
+          if (k === 'file') return <FilePanel/>;
+          if (k === 'api-model' || k === 'provider-connected') return <ConnectedProviderPanel/>;
+          if (k === 'provider-unconnected') return <UnconnectedProviderPanel/>;
+          if (k === 'hf-repo') return <HfRepoPanel/>;
+          return null;
+        })()}
 
         {/* Downloads rail click */}
         {sel==='downloads' && <DownloadsPanel/>}
@@ -896,6 +924,21 @@ function DiscoverMobile() {
         <DiscoverActionsMenu/>
         <Callout style={{position:'static', fontSize:9, margin:'4px 0'}}>tap ⋯ ▾ · Trending / New launches / Downloads / Leaderboards ›</Callout>
       </PhoneFrame>
+
+      {/* ── 6. Ranked display mode ── */}
+      <PhoneFrame label="6 · Ranked (Coding)">
+        <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
+        <DiscoverMobileSubbar/>
+        <div style={{padding:'0 4px'}}>
+          <RankedModeCaption benchmark="HumanEval" specLabel="Coding"/>
+          <div style={{display:'flex', flexDirection:'column', gap:3}}>
+            {groupIntoRankedRows('HumanEval', 'all').slice(0,4).map(entry => (
+              <RankedRow key={entry.rank} entry={entry}/>
+            ))}
+          </div>
+          <Callout style={{position:'static', fontSize:9, margin:'4px 0'}}>local downloads dedup · API configs stack · absolute rank preserved</Callout>
+        </div>
+      </PhoneFrame>
     </div>
   );
 }
@@ -1100,22 +1143,37 @@ function DiscoverMedium() {
         </div>
         <DiscoverActionsMenu/>
       </TabletFrame>
+
+      {/* 4. Ranked display mode — Specialization Coding active */}
+      <TabletFrame label="4 · Ranked (Coding · HumanEval)">
+        <MobileHeader active="Models" rightSlot={<DiscoverActionsBtn/>}/>
+        <DiscoverMediumToolbar/>
+        <div style={{padding:'0 8px'}}>
+          <RankedModeCaption benchmark="HumanEval" specLabel="Coding"/>
+          <div style={{display:'flex', flexDirection:'column', gap:4}}>
+            {groupIntoRankedRows('HumanEval', 'all').slice(0,6).map(entry => (
+              <RankedRow key={entry.rank} entry={entry}/>
+            ))}
+          </div>
+        </div>
+      </TabletFrame>
     </div>
   );
 }
 
-// v25: unified Models page. Exports as `window.ModelsScreens` — see app.jsx.
+// v27: unified Models page. Provider Directory absorbed; ranked display mode
+// added (model-level rows when a benchmark sort is active). See specs/models.md.
 window.ModelsScreens = [
   {label:'A · Models (desktop)', tag:'balanced',
-    note:'Unified "Models" page · Models Hub and Discover collapsed. Top-of-toolbar mode toggle `[●] My Models · [ ] All Models` swaps the row set. Rows: local aliases/files/api-models/connected providers in My mode; + HF repos + directory providers (from api.getbodhi.app) in All mode. File-first rows carry `↗ catalog` backlinks; hf-repo rows show `✓ N local aliases ↗` when matching aliases exist; unconnected providers carry `from api.getbodhi.app` attribution. Sidebar filters unified: Specialization (single-select, Clear) / Kind / Source / Capability / Size·rig / Cost·api (greyed in My) / License / Format.',
-    novel:'one page for local + API + remote · mode radio · duality links · directory attribution',
+    note:'Unified "Models" page · Models Hub + Discover + Provider Directory all collapsed. Top-of-toolbar mode toggle `[●] My Models · [ ] All Models` swaps the row set. Rows: local aliases/files/api-models/connected providers in My mode; + HF repos + directory providers (from api.getbodhi.app) in All mode. File-first rows carry `↗ catalog` backlinks; hf-repo rows show `✓ N local aliases ↗` when matching aliases exist; unconnected providers carry `from api.getbodhi.app` attribution. Sidebar filters unified: Specialization (single-select, Clear) / Kind / Source / Capability / Size·rig / Cost·api (greyed in My) / License / Format. v27: Specialization=Coding shown active → ranked display mode (model-level rows, local-file dedup, API-config stack, absolute rank numbers).',
+    novel:'one page for local + API + remote · mode radio · duality links · directory attribution · ranked display mode',
     component:DiscoverA},
   {label:'A · Models (medium · tablet)', tag:'medium',
-    note:'Breadcrumb `Bodhi › Models` (no sub-tab). Mode toggle at top of toolbar. Filters sheet covers unified filter set. 3 frames: grid / filter sheet / header-action menu (+ ▾ Add & Browse).',
-    novel:'mode toggle compact on tablet · Add+Browse merged menu',
+    note:'Breadcrumb `Bodhi › Models` (no sub-tab). Mode toggle at top of toolbar. Filters sheet covers unified filter set. 4 frames: grid / filter sheet / header-action menu (+ ▾ Add & Browse) / ranked display mode.',
+    novel:'mode toggle compact on tablet · Add+Browse merged menu · ranked display mode',
     component:DiscoverMedium},
   {label:'A · Models (mobile)', tag:'mobile',
-    note:'Breadcrumb menu shows Models as a single leaf (no My/Discover sub-tree). Mode toggle is compact pill at top of subbar. `+ ▾` header button opens grouped Add + Browse menu. Five frames: browse · breadcrumb menu · filters sheet · repo detail sheet · header-action menu.',
-    novel:'single-leaf Models menu · compact mode pill · grouped add+browse menu',
+    note:'Breadcrumb menu shows Models as a single leaf (no My/Discover sub-tree). Mode toggle is compact pill at top of subbar. `+ ▾` header button opens grouped Add + Browse menu. Six frames: browse · breadcrumb menu · filters sheet · repo detail sheet · header-action menu · ranked (Coding) display mode.',
+    novel:'single-leaf Models menu · compact mode pill · grouped add+browse menu · ranked display mode',
     component:DiscoverMobile},
 ];

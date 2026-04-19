@@ -39,6 +39,8 @@ Every row in the Models page is one of six typed entities. The entire visual sys
 | 5 | `provider-unconnected` | `api.getbodhi.app` hosted provider directory | provider-summary (dashed border + attribution) | — | ✓ |
 | 6 | `hf-repo` | HuggingFace API | repo-first (nested quants) | — | ✓ |
 
+> **Naming note.** The kind is spelled `api-model` in code even though users (and this doc in prose) sometimes call it "API Alias". The synonym is intentional — a user-configured api-model IS an alias in the product sense, but `api-model` stays as the `kind` key for backward-compat. Do not rename without a migration.
+
 ### Provenance rules
 
 - `alias` / `file` / `api-model` / `provider-connected` all come from the **same Bodhi server DB**. The user's own data.
@@ -81,6 +83,22 @@ Two row shapes coexist in the same list.
 
 **Provider** rows are their own third shape (summary with model-count), and expand fully in their detail panels.
 
+**Ranked rows** (model-level) — a fourth shape added in v27 to handle benchmark leaderboards. See `models.md §8` for the full spec. Triggered when a benchmark sort is active (Specialization ≠ All). Collapses local files to their alias representation, stacks api-aliases above a provider identity line. Each ranked row carries an absolute rank number that never renumbers even under filters.
+
+```
+#4.  my-qwen-coder            [alias · preset: coding]
+     my-qwen-long             [alias · preset: long-ctx]
+     Qwen/Qwen3-Coder-32B:Q4_K_M  [modelfile · 20.3 GB]
+                                                 75.8 HumanEval  [use →]
+```
+
+### Dedup + stack rules (ranked shape)
+
+The one asymmetry to remember:
+
+- **Local file dedup collapses the HF entry.** Once a modelfile is on disk, all aliases on it share the same bits — listing the local aliases AND the upstream HF repo entry would double-count. The HF entry collapses away.
+- **API configs stack without dedup.** Each config (api-key / oauth / override-set) is a distinct user choice. Listing only one would hide the others.
+
 ### Why three shapes and not one
 
 An earlier iteration considered unifying everything into a single row component. Rejected because:
@@ -108,6 +126,10 @@ Primitives are exported from `screens/primitives.jsx` via `Object.assign(window,
 | `ModelListRow` | `discover.jsx` | Extended with `localBadge`, `backlink`, `catalogAliases`, `directoryAttribution` props |
 | `PhoneFrame` | Models mobile variant, also older screens | Phone chrome wrapping mobile variants (re-added after hub.jsx slimming) |
 | `MobileMenu` | all mobile variants | Site-wide menu — `Models` is now a **leaf** (no `expanded: { My Models, Discover }` sub-tree) |
+| `RankedRow` | `discover.jsx` desktop/medium/mobile | Model-level row for ranked mode. Takes `{entry, selected, onClick}`. Entry has `rank`, `primaries[]`, `identity`, `score`, `benchmark`, `actions[]`, `dispatchKind`, `isLocal`, `isDirectory`. |
+| `RankedModeCaption` | `discover.jsx` | Honest-disclosure banner below the toolbar when ranked mode is active. Explains dedup/stack rules. Dismissible. |
+| `groupIntoRankedRows(benchmark, mode)` | `discover.jsx` | Pure function. Returns ordered `RankedRow` props for the given benchmark + mode. Wireframe uses the static `RANKED_FIXTURE_CODING`; production aggregator lives here. |
+| `RANKED_FIXTURE_CODING` | primitives.jsx | Static 9-entry leaderboard for the HumanEval/Coding demo. Covers every dedup/stack case. |
 
 ### Create-alias primitives
 
@@ -155,7 +177,11 @@ When a filter group does not apply in the current mode (e.g. `Cost · api` in `M
 
 ### localStorage migration
 
-Tab state persists in `localStorage.bodhi-wf-tab`. A migration shim in `app.jsx` rewrites legacy `hub` / `discover` values to `models` on first load. Do not remove this shim without a plan for what happens to users on old browsers — the wireframe is hosted on a static server and users may have stale localStorage.
+Tab state persists in `localStorage.bodhi-wf-tab`. A migration shim in `app.jsx` rewrites legacy `hub` / `discover` / `providers` values to `models` on first load. Do not remove this shim without a plan for what happens to users on old browsers — the wireframe is hosted on a static server and users may have stale localStorage.
+
+### Benchmark sort triggers ranked mode
+
+Selecting any non-`All` Specialization → benchmark sort → **ranked display mode**. In ranked mode the main list uses `RankedRow` instead of `ModelListRow` / `DiscoverCard`, rank numbers are absolute across the leaderboard (not renumbered by filters), and local items dedup while API configs stack. Clearing Specialization (back to `All`) exits ranked mode. See `models.md §8` for the full spec.
 
 ### Specialization filter (single-select + Clear)
 
@@ -178,6 +204,12 @@ AI agents picking this up should know these, because the wireframes only show th
 - **Counts are shown honestly.** `My Models (14)` and `All Models (3.1M + 23 directory)` — the `+ 23 directory` makes it explicit that `All` draws from two sources (HF + Bodhi Directory). Do not collapse these into a single count.
 - **Hub's detail panels survived the collapse.** `AliasPanel`, `FilePanel`, `ProviderPanel` still live in `hub.jsx`. That file was slimmed (removed `HubB`, `HubMedium`, `HubMobile`, `ModelCard`, `window.HubScreens`) but kept loaded. Don't move the panels; `index.html` `<script>` ordering will break.
 - **Provider directory provenance is first-class.** `api.getbodhi.app` is a real hosted directory. The wireframe's dashed border + `from api.getbodhi.app` attribution chip + `Bodhi Directory` source filter option are all signalling that this is multi-source data. When implementation happens, this attribution pattern should carry through.
+- **Provider Directory tab absorbed (2026-04-19).** The top-level `Provider directory` tab is gone. Its three variants (logo gallery, matrix comparison, needs-based matcher) were all either covered by existing Models affordances or dropped by user decision:
+  - **Variant A (logo gallery + connect)** → replicated via Models' `Kind=Providers` + `Source=Bodhi Directory` filter combo, and the `+ ▾ Add model` menu's "Add API provider" entry.
+  - **Variant B (matrix comparison)** → dropped. Not ported. Do not reintroduce.
+  - **Variant C (needs-based matcher with priority chips + match %)** → dropped. Specialization + Capability filters cover ≈ the same intent.
+  - `screens/providers.jsx` is left on disk with an archival header comment; not loaded by `index.html`.
+- **Ranked display mode added (2026-04-19).** When a benchmark sort is active (Specialization ≠ All), the main list swaps from entity-level rows to model-level `RankedRow`. The core asymmetry (local files dedup; API configs stack) emerged from how users reason about each kind: a downloaded file is a shared asset (aliases on it are facets), while each API config is a distinct user choice. Rank numbers are absolute across the whole leaderboard and never renumber under filters — the rank means "#2 in the world on HumanEval", not "#2 in your filtered subset".
 
 ### Create local alias
 
@@ -201,9 +233,13 @@ These were explicitly punted during design. A future agent proposing work in thi
 
 - **`ApiModelPanel`** — api-model rows currently dispatch to `ConnectedProviderPanel` with the specific model row highlighted. Extracting a dedicated `ApiModelPanel` with per-model override UI is deferred.
 - **Unifying Hub's `ProviderPanel` with Discover's `ConnectedProviderPanel`.** Two similar panels still exist. Collapsing them is deferred; the duplication is not load-bearing but the refactor has more surface than it looks.
-- **Actually deleting `screens/hub.jsx`.** The file is slimmed to just the three panels. Deleting it fully requires a pass over `index.html` `<script>` tag ordering. Deferred.
+- **Actually deleting `screens/hub.jsx` and `screens/providers.jsx`.** Both are archived but still on disk. Fully deleting them requires a pass over `index.html` `<script>` tag ordering and downstream cross-references. Deferred.
 - **Real data fetching for the provider directory.** Wireframe uses static samples. Integration with `api.getbodhi.app` is a build task, not a wireframe task.
-- **Removing the `Provider directory` tab from `SCREENS`.** It's still in `app.jsx`'s nav list as a "just providers" view. Removing it was out of scope for the Hub/Discover unification pass.
+- **Matrix-comparison view (was Provider Directory Variant B).** Dropped explicitly in the 2026-04-19 pass. Do not re-introduce as if novel.
+- **Needs-based matcher (was Provider Directory Variant C).** Dropped explicitly in the 2026-04-19 pass. Specialization + Capability filters are the replacement. Do not re-introduce.
+- **Explicit benchmark-sort dropdown (non-Specialization trigger).** Ranked mode is currently only activated via a Specialization selection. A future explicit "Sort by benchmark X" dropdown is deferred.
+- **Benchmarks beyond HumanEval/Coding.** The `RANKED_FIXTURE_CODING` fixture covers one specialization end-to-end. Other specializations (Chat/MT-Bench, Reasoning/GPQA, etc.) show ranked-mode UI but reuse the same fixture for demo. Real per-benchmark fixtures are deferred.
+- **Re-ranking under filter scope.** Explicitly rejected: when filters narrow visible rows, the rank numbers stay absolute. A "rank within filtered subset" mode would undermine the "#2 in the world" semantic.
 - **New entity kinds.** Custom endpoints, local OpenAI-proxy, etc. — not in this iteration. If a 7th kind is added, it goes into the `kind`-dispatch pattern; see `discover.jsx` for the switch.
 
 ---
@@ -222,7 +258,7 @@ design/models-page/
 │       ├── discover.jsx    # The unified Models page (3 variants)
 │       ├── alias.jsx       # Create local alias (4 variants)
 │       ├── api.jsx         # Create API model
-│       ├── providers.jsx   # Provider directory (kept as a separate tab)
+│       ├── providers.jsx   # ARCHIVED — not loaded by index.html (absorbed into Models)
 │       └── detail.jsx      # Model detail (side-drawer / page / sheet)
 └── specs/                  # This folder — archival spec docs
     ├── shared-primitives.md  (this file)
@@ -230,4 +266,6 @@ design/models-page/
     └── alias.md
 ```
 
-Cache-buster: every `<script type="text/babel">` tag in `index.html` ends with `?v=N`. Last bumped to `?v=26` after PhoneFrame re-addition. Bump on every jsx/css change.
+Cache-buster: every `<script type="text/babel">` tag in `index.html` ends with `?v=N`. Last bumped to `?v=27` for the Provider Directory absorption + ranked display mode pass. Bump on every jsx/css change.
+
+**Loaded scripts** (in order, from `index.html`): `primitives.jsx` → `hub.jsx` → `discover.jsx` → `alias.jsx` → `api.jsx` → `detail.jsx` → `app.jsx`. `providers.jsx` is intentionally NOT in the loaded list — it's archived. Do not re-add it.

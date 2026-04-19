@@ -1560,3 +1560,109 @@ html, body {
   border-bottom: 1px dashed var(--line-soft);
 }
 .m-menu-section-head:first-child { border-top: none; }
+
+/* ─────────────────────────────────────────────────────────────
+   Ranked display mode — model-level rows when a benchmark sort
+   is active (see specs/models.md §8). Rank number leads, primary
+   identifiers stack, identity line subdued, meta right-aligned.
+   ───────────────────────────────────────────────────────────── */
+.rank-caption {
+  font-family: var(--hand); font-size: 11px;
+  color: var(--ink-3); font-style: italic;
+  margin: 2px 2px 8px; padding: 4px 10px;
+  background: var(--indigo-soft);
+  border: 1.2px dashed var(--ink-4);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+}
+.rank-caption-dismiss {
+  cursor: pointer; font-size: 13px; color: var(--ink-3);
+  padding: 0 4px;
+}
+.rank-caption-dismiss:hover { color: var(--ink); }
+
+.rank-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: start; gap: 10px;
+  padding: 8px 10px; margin-bottom: 6px;
+  background: var(--paper);
+  border: 1.4px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 2px 2px 0 var(--ink);
+  cursor: pointer;
+}
+.rank-row:hover { background: var(--paper-2); }
+.rank-row.rank-local { background: var(--saffron-soft); }
+.rank-row.rank-directory {
+  border-style: dashed;
+  background: var(--paper);
+}
+
+.rank-number {
+  font-family: var(--hand); font-size: 26px;
+  font-weight: 700; color: var(--ink);
+  text-align: center; line-height: 1.1;
+  padding-top: 2px;
+}
+.rank-number-prefix {
+  font-size: 14px; color: var(--ink-3); font-weight: 600;
+}
+
+.rank-primaries {
+  display: flex; flex-direction: column; gap: 3px;
+  min-width: 0;
+}
+.rank-primary-line {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--hand); font-size: 13.5px;
+  color: var(--ink); font-weight: 600;
+  min-width: 0;
+}
+.rank-primary-line code {
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 12px; color: var(--ink);
+  background: var(--paper-2);
+  padding: 0 5px; border-radius: 4px;
+  border: 1px solid var(--line-soft);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.rank-identity {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--hand); font-style: italic;
+  font-size: 11px; color: var(--ink-3);
+  margin-top: 4px; padding-top: 4px;
+  border-top: 1px dashed var(--line-soft);
+}
+.rank-identity code {
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-style: normal;
+  font-size: 10.5px; color: var(--ink-3);
+}
+.rank-identity-tag {
+  font-family: var(--hand); font-size: 9.5px;
+  font-style: normal; font-weight: 700;
+  padding: 0 5px; border-radius: 6px;
+  border: 1px solid var(--ink-4);
+  color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+
+.rank-meta {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 4px; white-space: nowrap;
+}
+.rank-meta-score {
+  font-family: var(--hand); font-size: 13px; font-weight: 700;
+  color: var(--ink);
+}
+.rank-meta-score-label {
+  font-family: var(--hand); font-size: 9.5px;
+  color: var(--ink-3); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.rank-meta-actions {
+  display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;
+}

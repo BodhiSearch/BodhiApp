@@ -947,4 +947,188 @@ const ModelsAddBrowseMenu = ({style}) => (
   </div>
 );
 
-Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, PhoneFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection, ModeToggle, ModeToggleCaption, KindChipRow, ModelsAddBrowseMenu});
+// ─────────────────────────────────────────────────────────────
+// Ranked display mode · v27
+// Model-level rows that kick in when a benchmark sort is active.
+// See specs/models.md §8 for the full spec. Key rules:
+//   · local file downloaded → collapse HF entry; stack aliases
+//   · API model → stack all api-aliases + show provider identity
+//   · no local backing → show HF / provider / directory entry as-is
+//   · rank numbers are ABSOLUTE across the leaderboard;
+//     filtering narrows visible rows but never renumbers.
+// ─────────────────────────────────────────────────────────────
+
+// Banner shown below the toolbar when ranked mode is active. Dismissible.
+const RankedModeCaption = ({benchmark='HumanEval', specLabel='Coding', onDismiss}) => (
+  <div className="rank-caption">
+    <span>
+      Ranked by <b>{benchmark}</b> ({specLabel}). Local downloads shown as your
+      aliases; API models stack all configurations. Filtering hides rows but
+      keeps rank numbers.
+    </span>
+    <span className="rank-caption-dismiss" onClick={onDismiss} title="dismiss">×</span>
+  </div>
+);
+
+// Static fixture used by groupIntoRankedRows. Each entry represents the model
+// at a given global rank; `isLocal` controls which entries are visible in
+// `My Models` scope. The shape mirrors what a production aggregator would
+// produce after applying dedup + stack rules to raw entity data.
+const RANKED_FIXTURE_CODING = [
+  {
+    rank: 1, score: 82.1, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'claude-sonnet-4.5', chip: 'api-alias', tone: 'indigo', code: 'anthropic/claude-sonnet-4.5'},
+    ],
+    identity: {label: 'anthropic (provider — connected)', tag: 'provider', code: 'api.anthropic.com'},
+    actions: [{label: 'use →'}],
+    dispatchKind: 'provider-connected',
+    isLocal: true, isDirectory: false,
+  },
+  {
+    rank: 2, score: 79.3, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'cc/opus-4-6',       chip: 'api-alias', tone: 'indigo', meta: 'api-key'},
+      {label: 'cc-oauth/opus-4-6', chip: 'api-alias', tone: 'saff',   meta: 'oauth'},
+    ],
+    identity: {label: 'anthropic (provider — connected)', tag: 'provider', code: 'claude-opus-4.6'},
+    actions: [{label: 'use →'}, {label: '+ new alias'}],
+    dispatchKind: 'api-model',
+    isLocal: true, isDirectory: false,
+  },
+  {
+    rank: 3, score: 77.0, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'gpt-5', chip: 'api-alias', tone: 'indigo', meta: 'api-key'},
+    ],
+    identity: {label: 'openai (provider — connected)', tag: 'provider', code: 'openai/gpt-5'},
+    actions: [{label: 'use →'}],
+    dispatchKind: 'api-model',
+    isLocal: true, isDirectory: false,
+  },
+  {
+    rank: 4, score: 75.8, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'my-qwen-coder', chip: 'alias', tone: 'saff', meta: 'preset: coding'},
+      {label: 'my-qwen-long',  chip: 'alias', tone: 'saff', meta: 'preset: long-ctx'},
+    ],
+    identity: {label: 'Qwen/Qwen3-Coder-32B:Q4_K_M', tag: 'modelfile', code: null, size: '20.3 GB'},
+    actions: [{label: 'use →'}],
+    dispatchKind: 'alias',
+    isLocal: true, isDirectory: false,
+  },
+  {
+    rank: 5, score: 74.2, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'Qwen3-Coder-32B:Q8_0', chip: 'hf-repo', tone: 'leaf', code: 'Qwen/Qwen3-Coder-32B'},
+    ],
+    identity: {label: 'HuggingFace catalog · 34.0 GB · 5 quants', tag: 'huggingface', code: null},
+    actions: [{label: 'pull →'}],
+    dispatchKind: 'hf-repo',
+    isLocal: false, isDirectory: false,
+  },
+  {
+    rank: 6, score: 67.2, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'my-gemma', chip: 'alias', tone: 'saff', meta: 'preset: chat'},
+    ],
+    identity: {label: 'google/gemma-3-9b:Q8_0', tag: 'modelfile', code: null, size: '9.1 GB'},
+    actions: [{label: 'use →'}],
+    dispatchKind: 'alias',
+    isLocal: true, isDirectory: false,
+  },
+  {
+    rank: 7, score: 62.7, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'DeepSeek-V3:Q4_K_M', chip: 'file', tone: 'leaf', code: 'deepseek-ai/DeepSeek-V3', meta: 'orphan · no alias'},
+    ],
+    identity: {label: 'on disk · 404 GB · downloaded 2026-03-02', tag: 'modelfile', code: null},
+    actions: [{label: '+ Create alias'}],
+    dispatchKind: 'file',
+    isLocal: true, isDirectory: false,
+  },
+  {
+    rank: 8, score: 61.4, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'Llama-3.3-70B:Q4_K_M', chip: 'hf-repo', tone: 'leaf', code: 'meta-llama/Llama-3.3-70B-Instruct'},
+    ],
+    identity: {label: 'HuggingFace catalog · 42.5 GB · 4 quants', tag: 'huggingface', code: null},
+    actions: [{label: 'pull →'}],
+    dispatchKind: 'hf-repo',
+    isLocal: false, isDirectory: false,
+  },
+  {
+    rank: 9, score: 58.4, benchmark: 'HumanEval',
+    primaries: [
+      {label: 'mixtral-8x7b-instruct', chip: 'provider', tone: '', code: 'groq/mixtral-8x7b-instruct'},
+    ],
+    identity: {label: 'groq (from Bodhi directory)', tag: 'from-directory', code: 'api.getbodhi.app'},
+    actions: [{label: 'Connect to use →'}],
+    dispatchKind: 'provider-unconnected',
+    isLocal: false, isDirectory: true,
+  },
+];
+
+// Pure function: takes the benchmark key + mode, returns ordered RankedRow props.
+// For the wireframe the population is the static fixture above; in production
+// this is where the backend-data shape would be formalized. The mode filter
+// narrows the SET but never renumbers ranks — an item at global #6 still shows
+// as #6 in My Models even if it's the 3rd surviving row.
+const groupIntoRankedRows = (benchmark='HumanEval', mode='all') => {
+  const all = RANKED_FIXTURE_CODING; // only Coding/HumanEval wired for the demo
+  return mode === 'my' ? all.filter(r => r.isLocal) : all;
+};
+
+// One ranked entry — rank number · stacked primaries · identity line · meta.
+// Click dispatches to the same detail panel as the equivalent non-ranked row.
+const RankedRow = ({entry, selected, onClick}) => {
+  if (!entry) return null;
+  const {rank, primaries=[], identity, score, benchmark, actions=[],
+         isLocal, isDirectory} = entry;
+  const cls = [
+    'rank-row',
+    isLocal ? 'rank-local' : '',
+    isDirectory ? 'rank-directory' : '',
+    selected ? 'selected' : '',
+  ].filter(Boolean).join(' ');
+  return (
+    <div className={cls} onClick={onClick}>
+      <div className="rank-number">
+        <span className="rank-number-prefix">#</span>{rank}
+      </div>
+      <div>
+        <div className="rank-primaries">
+          {primaries.map((p, i) => (
+            <div key={i} className="rank-primary-line">
+              <Chip tone={p.tone||''} style={{fontSize:9.5}}>{p.chip}</Chip>
+              <span style={{flex:'0 0 auto'}}>{p.label}</span>
+              {p.code && <code>{p.code}</code>}
+              {p.meta && <span className="sm" style={{fontStyle:'italic'}}>· {p.meta}</span>}
+            </div>
+          ))}
+        </div>
+        {identity && (
+          <div className="rank-identity">
+            <span className="rank-identity-tag">{identity.tag}</span>
+            <span>{identity.label}</span>
+            {identity.code && <code>{identity.code}</code>}
+            {identity.size && <span>· {identity.size}</span>}
+          </div>
+        )}
+      </div>
+      <div className="rank-meta">
+        <div>
+          <span className="rank-meta-score">{score.toFixed(1)}</span>{' '}
+          <span className="rank-meta-score-label">{benchmark}</span>
+        </div>
+        <div className="rank-meta-actions">
+          {actions.map((a, i) => (
+            <Btn key={i} variant={i===0?'primary':'ghost'} size="xs">{a.label}</Btn>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, PhoneFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection, ModeToggle, ModeToggleCaption, KindChipRow, ModelsAddBrowseMenu, RankedRow, RankedModeCaption, RANKED_FIXTURE_CODING, groupIntoRankedRows});
