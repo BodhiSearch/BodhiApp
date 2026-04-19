@@ -210,6 +210,11 @@ AI agents picking this up should know these, because the wireframes only show th
   - **Variant C (needs-based matcher with priority chips + match %)** → dropped. Specialization + Capability filters cover ≈ the same intent.
   - `screens/providers.jsx` is left on disk with an archival header comment; not loaded by `index.html`.
 - **Ranked display mode added (2026-04-19).** When a benchmark sort is active (Specialization ≠ All), the main list swaps from entity-level rows to model-level `RankedRow`. The core asymmetry (local files dedup; API configs stack) emerged from how users reason about each kind: a downloaded file is a shared asset (aliases on it are facets), while each API config is a distinct user choice. Rank numbers are absolute across the whole leaderboard and never renumber under filters — the rank means "#2 in the world on HumanEval", not "#2 in your filtered subset".
+- **Model Detail tab absorbed (2026-04-19).** The top-level `Model detail` tab is gone. Its three variants (side-drawer, full-page, bottom-sheet) were all for `hf-repo` entities, and two were already reproduced by the Models page:
+  - **Variant A (side-drawer)** → identical to Models' desktop right-panel dispatch of `HfRepoPanel` when an hf-repo row is clicked.
+  - **Variant C (bottom sheet)** → identical to Models' mobile/medium sheet dispatch of `HfRepoPanel`.
+  - **Variant B (full-page with benchmark bars + quant slider + community rating)** → dropped by user decision. The unique features (Bar chart benchmarks, interactive quant slider, stars + review count) were explicitly dropped, not ported. They can be added into `HfRepoPanel` later if required, but not in this pass.
+  - `screens/detail.jsx` is archived on disk; not loaded by `index.html`. No file depended on it (grep-verified before removal).
 
 ### Create local alias
 
@@ -237,6 +242,8 @@ These were explicitly punted during design. A future agent proposing work in thi
 - **Real data fetching for the provider directory.** Wireframe uses static samples. Integration with `api.getbodhi.app` is a build task, not a wireframe task.
 - **Matrix-comparison view (was Provider Directory Variant B).** Dropped explicitly in the 2026-04-19 pass. Do not re-introduce as if novel.
 - **Needs-based matcher (was Provider Directory Variant C).** Dropped explicitly in the 2026-04-19 pass. Specialization + Capability filters are the replacement. Do not re-introduce.
+- **Benchmark visualization bars, quant slider, community rating card (was Model Detail Variant B).** Dropped explicitly in the 2026-04-19 pass. These three unique surfaces do not exist anywhere in the wireframe today. The user noted they can be added to `HfRepoPanel` later if required — but are not considered missing work.
+- **Full-page detail layout** (two-column breathing-room variant). Dropped with Model Detail. Current dispatch (right-drawer on desktop, bottom-sheet on mobile) is the canonical detail UX.
 - **Explicit benchmark-sort dropdown (non-Specialization trigger).** Ranked mode is currently only activated via a Specialization selection. A future explicit "Sort by benchmark X" dropdown is deferred.
 - **Benchmarks beyond HumanEval/Coding.** The `RANKED_FIXTURE_CODING` fixture covers one specialization end-to-end. Other specializations (Chat/MT-Bench, Reasoning/GPQA, etc.) show ranked-mode UI but reuse the same fixture for demo. Real per-benchmark fixtures are deferred.
 - **Re-ranking under filter scope.** Explicitly rejected: when filters narrow visible rows, the rank numbers stay absolute. A "rank within filtered subset" mode would undermine the "#2 in the world" semantic.
@@ -258,14 +265,16 @@ design/models-page/
 │       ├── discover.jsx    # The unified Models page (3 variants)
 │       ├── alias.jsx       # Create local alias (4 variants)
 │       ├── api.jsx         # Create API model
-│       ├── providers.jsx   # ARCHIVED — not loaded by index.html (absorbed into Models)
-│       └── detail.jsx      # Model detail (side-drawer / page / sheet)
+│       ├── providers.jsx   # ARCHIVED — not loaded (absorbed into Models)
+│       └── detail.jsx      # ARCHIVED — not loaded (absorbed into Models right-drawer dispatch)
 └── specs/                  # This folder — archival spec docs
     ├── shared-primitives.md  (this file)
     ├── models.md
     └── alias.md
 ```
 
-Cache-buster: every `<script type="text/babel">` tag in `index.html` ends with `?v=N`. Last bumped to `?v=27` for the Provider Directory absorption + ranked display mode pass. Bump on every jsx/css change.
+Cache-buster: every `<script type="text/babel">` tag in `index.html` ends with `?v=N`. Last bumped to `?v=28` for the Model Detail absorption pass. Bump on every jsx/css change.
 
-**Loaded scripts** (in order, from `index.html`): `primitives.jsx` → `hub.jsx` → `discover.jsx` → `alias.jsx` → `api.jsx` → `detail.jsx` → `app.jsx`. `providers.jsx` is intentionally NOT in the loaded list — it's archived. Do not re-add it.
+**Loaded scripts** (in order, from `index.html`): `primitives.jsx` → `hub.jsx` → `discover.jsx` → `alias.jsx` → `api.jsx` → `app.jsx`. `providers.jsx` and `detail.jsx` are intentionally NOT in the loaded list — both are archived. Do not re-add them.
+
+**Top-level tabs** in the wireframe: `Models | Create local alias | Create API model` (three tabs; all detail-level browsing happens as dispatched panels inside `Models`).

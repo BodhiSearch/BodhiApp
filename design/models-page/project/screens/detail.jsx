@@ -1,4 +1,13 @@
-// Screen 7 — Model Detail (side-drawer variants)
+// Archived 2026-04-19 — Model Detail absorbed into unified Models page.
+// Not loaded by index.html. Kept on disk for archival reference (git-recoverable).
+// The three variants here (side-drawer / full-page / bottom-sheet) were all for
+// hf-repo entities; the Models page already dispatches `HfRepoPanel` as a
+// right-drawer on desktop and a bottom-sheet on mobile, covering Variants A + C.
+// Variant B's unique surface (benchmark bars, quant slider, community rating)
+// was dropped by user decision — can be added to HfRepoPanel if required later.
+// See specs/models.md §13 + specs/shared-primitives.md §6.
+
+// Screen 7 — Model Detail (archived)
 function DetailA() {
   return (
     <div style={{position:'relative'}}>

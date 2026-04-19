@@ -343,6 +343,8 @@ These are the design decisions made during the Hub+Discover → Models unificati
 
 14. **Absolute rank numbers.** Filters narrow visible rows but never renumber. Rank-within-filter-scope was explicitly rejected: it would undermine the "#2 in the world" semantic and turn rank into a confusing context-dependent integer.
 
+15. **Model Detail tab absorbed (2026-04-19).** The top-level `Model detail` tab was removed. Rationale: all three variants showed only `hf-repo` entities, and two variants (side-drawer, bottom-sheet) were already how the Models page dispatches `HfRepoPanel`. The third variant (full-page) had three unique surfaces — benchmark Bar charts, interactive quant slider, community rating card — all of which were dropped by user decision (not ported). The noted follow-up option: "can be added to HfRepoPanel if required." `detail.jsx` is archived on disk.
+
 ---
 
 ## 14. Verification checklist (for smoke-testing after changes)
@@ -350,8 +352,8 @@ These are the design decisions made during the Hub+Discover → Models unificati
 When modifying `discover.jsx` / `primitives.jsx` / `wireframes.css`:
 
 1. Reload `http://localhost:8000/` in Chrome (cache-buster already set via `?v=N`).
-2. In console: `localStorage.setItem('bodhi-wf-tab','providers'); location.reload();` → lands on `Models` tab; stored value rewritten to `models`. Shim working.
-3. **Top nav**: 4 tabs only — `Models | Create local alias | Create API model | Model detail`. No `Provider directory`.
+2. In console: `['providers','detail','hub','discover'].forEach(k => { localStorage.setItem('bodhi-wf-tab', k); location.reload(); })` — each stale key lands on `Models` after reload with stored value rewritten to `models`. Shim working.
+3. **Top nav**: 3 tabs only — `Models | Create local alias | Create API model`. No `Provider directory`. No `Model detail`.
 4. **Desktop variant (ranked mode ON — Specialization = Coding by default)**:
    - Ranked-mode caption visible below toolbar with HumanEval/Coding copy.
    - Rows render as `.rank-row` (numbered #1…#9). Fixture population.
@@ -377,9 +379,11 @@ When modifying `discover.jsx` / `primitives.jsx` / `wireframes.css`:
 See `shared-primitives.md` §7 for the full deferred list. Specifically for this page:
 - `ApiModelPanel` extraction.
 - Real `api.getbodhi.app` fetching.
-- Deleting `hub.jsx` and `providers.jsx` entirely from disk.
+- Deleting `hub.jsx`, `providers.jsx`, and `detail.jsx` entirely from disk (all three archived).
 - **Matrix comparison view** (was Provider Directory Variant B) — explicit drop. Do not re-introduce.
 - **Needs-based matcher** (was Provider Directory Variant C) — explicit drop.
+- **Benchmark Bar charts, interactive quant slider, community rating card** (were Model Detail Variant B) — explicit drop. User noted they can land in `HfRepoPanel` later if required, but not in this pass.
+- **Full-page detail layout** — dropped with Model Detail. Right-drawer + bottom-sheet dispatch is the canonical detail UX.
 - **Explicit benchmark-sort dropdown** (benchmark sort without Specialization as the trigger) — deferred.
 - **Ranked fixtures beyond Coding/HumanEval** — single fixture for the demo; per-specialization data deferred.
 - **Rank-within-filter-scope** — explicitly rejected. Ranks stay absolute under filters.
