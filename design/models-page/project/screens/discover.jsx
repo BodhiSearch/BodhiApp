@@ -1,145 +1,519 @@
-// Screen 2 — Local model discovery (HF-style browse)
+// Screen 2 — Discover (HF repos + API providers, 3-column shell)
+
+const DiscoverCard = ({kind='hf-repo', title, subtitle, caps=[], meta, cost, status, fit, fitLabel, selected, onClick}) => {
+  const kindTone = kind==='provider' ? 'indigo' : kind==='provider-off' ? '' : 'leaf';
+  const statusTone =
+    status==='connected' ? 'leaf' :
+    status==='oauth' ? 'saff' :
+    status==='not connected' ? '' :
+    status==='rate-limited' ? 'warn' : '';
+  const fitTone = fit==='green' ? 'leaf' : fit==='yellow' ? 'warn' : fit==='red' ? 'warn' : '';
+  const extraClass = kind==='provider-off' ? ' dashed' : '';
+  return (
+    <div className={`model-card${selected?' selected':''}${extraClass}`} onClick={onClick} style={{cursor:'pointer'}}>
+      <div className="model-card-head">
+        <Chip tone={kindTone} style={{fontSize:10}}>{kind==='provider-off' ? 'provider' : kind}</Chip>
+        {status && <Chip tone={statusTone}>● {status}</Chip>}
+        {fitLabel && <Chip tone={fitTone}>● {fitLabel}</Chip>}
+      </div>
+      <div className="model-card-title">{title}</div>
+      {subtitle && <div className="sm">{subtitle}</div>}
+      {caps.length>0 && (
+        <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+          {caps.map((c,i)=>(<Chip key={i}>{c}</Chip>))}
+        </div>
+      )}
+      {cost && <div className="model-card-cost">{cost}</div>}
+      {meta && <div className="model-card-meta">{meta}</div>}
+    </div>
+  );
+};
+
+// ── Right-panel variants ───────────────────────────────────────
+
+function HfRepoPanel() {
+  return (
+    <>
+      <div className="right-collapsed-rail">Qwen/Qwen3.5-9B · repo</div>
+      <div className="right-topbar">
+        <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+          <Chip tone="leaf" style={{fontSize:10}}>hf-repo</Chip>
+          <span className="h2" style={{margin:0}}>Qwen/Qwen3.5-9B</span>
+        </div>
+        <Btn variant="ghost" size="xs" title="collapse">→</Btn>
+      </div>
+      <div className="sm">HuggingFace · Apache-2 · 9B · released 2025-08 · not yet downloaded</div>
+
+      <div style={{display:'flex', gap:4, marginTop:8, flexWrap:'wrap'}}>
+        <Chip on>Overview</Chip><Chip>Quants (5)</Chip><Chip>README</Chip><Chip>Leaderboard</Chip>
+      </div>
+
+      <div className="h3">Capabilities</div>
+      <div style={{display:'flex', gap:4, flexWrap:'wrap'}}>
+        <Chip tone="leaf">text2text</Chip><Chip tone="leaf">tool-use</Chip>
+        <Chip>reasoning</Chip><Chip>structured-output</Chip>
+      </div>
+
+      <div className="h3">Specs</div>
+      <div style={{display:'grid', gridTemplateColumns:'auto 1fr', columnGap:8, rowGap:3}}>
+        <span className="sm">ctx</span><span className="sm"><b>32768</b> tokens</span>
+        <span className="sm">arch</span><span className="sm">qwen3 · GQA</span>
+        <span className="sm">scores</span><span className="sm">#2 Arena · 92.4 MMLU-Pro</span>
+        <span className="sm">popularity</span><span className="sm">↓ 443k · ♥ 3.1k</span>
+        <span className="sm">rig fit</span><span className="sm"><TL tone="green">Q4/Q5 fit · Q8 tight</TL></span>
+      </div>
+
+      <div className="h3">Quants · pull</div>
+      <div style={{display:'flex', flexDirection:'column', gap:4}}>
+        <div className="card row" style={{padding:'5px 7px', borderColor:'var(--ink)'}}>
+          <Chip tone="saff" style={{fontSize:10}}>default</Chip>
+          <code style={{flex:1}}>:Q4_K_M</code>
+          <span className="sm">5.6 GB</span>
+          <TL tone="green">~38 t/s</TL>
+          <Btn variant="primary" size="xs">pull</Btn>
+        </div>
+        <div className="card row" style={{padding:'5px 7px'}}>
+          <code style={{flex:1}}>:Q5_K_M</code>
+          <span className="sm">6.8 GB</span>
+          <TL tone="green">~30 t/s</TL>
+          <Btn size="xs">pull</Btn>
+        </div>
+        <div className="card row" style={{padding:'5px 7px'}}>
+          <code style={{flex:1}}>:Q6_K</code>
+          <span className="sm">7.9 GB</span>
+          <TL tone="green">~24 t/s</TL>
+          <Btn size="xs">pull</Btn>
+        </div>
+        <div className="card row" style={{padding:'5px 7px'}}>
+          <code style={{flex:1}}>:Q8_0</code>
+          <span className="sm">9.6 GB</span>
+          <TL tone="yellow">~16 t/s</TL>
+          <Btn size="xs">pull</Btn>
+        </div>
+        <div className="card row" style={{padding:'5px 7px'}}>
+          <code style={{flex:1}}>:F16</code>
+          <span className="sm">18 GB</span>
+          <TL tone="warn">won't fit</TL>
+          <Btn variant="ghost" size="xs">pull</Btn>
+        </div>
+      </div>
+
+      <div className="h3">README snippet</div>
+      <div className="sm" style={{fontStyle:'italic', borderLeft:'2px dashed var(--line-soft)', paddingLeft:8}}>
+        Qwen3.5-9B is a 9B instruction-tuned model with improved tool-use, 32k context, and strong reasoning. Drop-in replacement for Qwen2.5-9B.
+      </div>
+
+      <div style={{display:'flex', gap:4, marginTop:10, flexWrap:'wrap'}}>
+        <Btn variant="primary" size="xs">Pull default (Q4_K_M)</Btn>
+        <Btn variant="ghost" size="xs">★ Favorite</Btn>
+        <Btn variant="ghost" size="xs">HF ↗</Btn>
+      </div>
+    </>
+  );
+}
+
+function UnconnectedProviderPanel() {
+  return (
+    <>
+      <div className="right-collapsed-rail">groq · provider (not connected)</div>
+      <div className="right-topbar">
+        <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+          <Chip style={{fontSize:10}}>provider</Chip>
+          <span className="h2" style={{margin:0}}>groq</span>
+          <Chip>● not connected</Chip>
+        </div>
+        <Btn variant="ghost" size="xs" title="collapse">→</Btn>
+      </div>
+      <div className="sm">openai-completions · api-key · LPU-accelerated inference · 99.8% up (public SLA)</div>
+
+      <div style={{display:'flex', gap:4, marginTop:8, flexWrap:'wrap'}}>
+        <Chip on>Models (6)</Chip><Chip>Pricing</Chip><Chip>About</Chip>
+      </div>
+
+      <div className="h3">Available models (preview · connect to use)</div>
+      <div className="provider-table">
+        <div className="provider-table-row provider-table-head">
+          <span>model</span><span>caps</span><span>in $/M</span><span>out $/M</span><span>cached</span><span>t/s</span><span></span>
+        </div>
+        <div className="provider-table-row disabled">
+          <code>llama-3.3-70b-versatile</code>
+          <span className="sm">tool · long-ctx</span>
+          <span className="sm">0.59</span><span className="sm">0.79</span><span className="sm">—</span>
+          <TL tone="green">276</TL>
+          <Btn variant="ghost" size="xs" disabled>use</Btn>
+        </div>
+        <div className="provider-table-row disabled">
+          <code>llama-3.1-8b-instant</code>
+          <span className="sm">tool</span>
+          <span className="sm">0.05</span><span className="sm">0.08</span><span className="sm">—</span>
+          <TL tone="green">750</TL>
+          <Btn variant="ghost" size="xs" disabled>use</Btn>
+        </div>
+        <div className="provider-table-row disabled">
+          <code>qwen-2.5-32b</code>
+          <span className="sm">tool · structured</span>
+          <span className="sm">0.29</span><span className="sm">0.39</span><span className="sm">—</span>
+          <TL tone="green">200</TL>
+          <Btn variant="ghost" size="xs" disabled>use</Btn>
+        </div>
+        <div className="provider-table-row disabled">
+          <code>deepseek-r1-distill-70b</code>
+          <span className="sm">reasoning · tool</span>
+          <span className="sm">0.75</span><span className="sm">0.99</span><span className="sm">—</span>
+          <TL tone="green">180</TL>
+          <Btn variant="ghost" size="xs" disabled>use</Btn>
+        </div>
+        <div className="provider-table-row disabled">
+          <code>whisper-large-v3</code>
+          <span className="sm">speech</span>
+          <span className="sm">$0.11/hr</span><span className="sm">—</span><span className="sm">—</span>
+          <TL tone="green">164×rt</TL>
+          <Btn variant="ghost" size="xs" disabled>use</Btn>
+        </div>
+        <div className="provider-table-row disabled">
+          <code>llama-guard-4-12b</code>
+          <span className="sm">moderation</span>
+          <span className="sm">0.20</span><span className="sm">0.20</span><span className="sm">—</span>
+          <TL tone="green">480</TL>
+          <Btn variant="ghost" size="xs" disabled>use</Btn>
+        </div>
+      </div>
+
+      <div className="h3">About</div>
+      <div className="sm" style={{fontStyle:'italic', borderLeft:'2px dashed var(--line-soft)', paddingLeft:8}}>
+        Groq serves open-weight models on custom LPU silicon with industry-leading throughput. openai-completions-compatible endpoint; bring your own API key.
+      </div>
+
+      <div style={{display:'flex', gap:4, marginTop:10, flexWrap:'wrap'}}>
+        <Btn variant="primary" size="xs">Configure →</Btn>
+        <Btn variant="ghost" size="xs">groq.com ↗</Btn>
+      </div>
+      <div className="sm" style={{marginTop:4, color:'var(--ink-3)'}}>opens <b>Create API model</b> tab with groq preselected</div>
+    </>
+  );
+}
+
+function ConnectedProviderPanel() {
+  return (
+    <>
+      <div className="right-collapsed-rail">openai · provider</div>
+      <div className="right-topbar">
+        <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+          <Chip tone="indigo" style={{fontSize:10}}>provider</Chip>
+          <span className="h2" style={{margin:0}}>openai</span>
+          <Chip tone="leaf">● connected</Chip>
+        </div>
+        <Btn variant="ghost" size="xs" title="collapse">→</Btn>
+      </div>
+      <div className="sm">openai-responses · key sk-…a71e · added 2026-01-22 · 99.9% up (30d)</div>
+
+      <div style={{display:'flex', gap:4, marginTop:8, flexWrap:'wrap'}}>
+        <Chip on>Models (7)</Chip><Chip>Connection</Chip><Chip>Usage</Chip>
+      </div>
+
+      <div className="h3">Available models</div>
+      <div className="provider-table">
+        <div className="provider-table-row provider-table-head">
+          <span>model</span><span>caps</span><span>in $/M</span><span>out $/M</span><span>cached</span><span>t/s</span><span></span>
+        </div>
+        <div className="provider-table-row">
+          <code>gpt-5</code>
+          <span className="sm">tool · vision · reasoning</span>
+          <span className="sm">1.25</span><span className="sm">10.00</span><span className="sm">0.125</span>
+          <TL tone="green">64</TL>
+          <Btn variant="ghost" size="xs">use</Btn>
+        </div>
+        <div className="provider-table-row">
+          <code>gpt-5-mini</code>
+          <span className="sm">tool · structured</span>
+          <span className="sm">0.25</span><span className="sm">2.00</span><span className="sm">0.03</span>
+          <TL tone="green">78</TL>
+          <Btn variant="ghost" size="xs">use</Btn>
+        </div>
+        <div className="provider-table-row">
+          <code>gpt-5-nano</code>
+          <span className="sm">tool</span>
+          <span className="sm">0.05</span><span className="sm">0.40</span><span className="sm">0.005</span>
+          <TL tone="green">120</TL>
+          <Btn variant="ghost" size="xs">use</Btn>
+        </div>
+        <div className="provider-table-row">
+          <code>o4-mini</code>
+          <span className="sm">reasoning · tool</span>
+          <span className="sm">1.10</span><span className="sm">4.40</span><span className="sm">0.275</span>
+          <TL tone="green">54</TL>
+          <Btn variant="ghost" size="xs">use</Btn>
+        </div>
+        <div className="provider-table-row">
+          <code>gpt-4.1</code>
+          <span className="sm">tool · vision</span>
+          <span className="sm">2.00</span><span className="sm">8.00</span><span className="sm">0.50</span>
+          <TL tone="green">52</TL>
+          <Btn variant="ghost" size="xs">use</Btn>
+        </div>
+        <div className="provider-table-row">
+          <code>text-embedding-3-large</code>
+          <span className="sm">embedding</span>
+          <span className="sm">0.13</span><span className="sm">—</span><span className="sm">—</span>
+          <TL tone="green">fast</TL>
+          <Btn variant="ghost" size="xs">use</Btn>
+        </div>
+      </div>
+
+      <div className="h3">Connection</div>
+      <div style={{display:'grid', gridTemplateColumns:'auto 1fr', columnGap:8, rowGap:3}}>
+        <span className="sm">format</span><span className="sm">openai-responses</span>
+        <span className="sm">auth</span><span className="sm">api-key (sk-…a71e)</span>
+        <span className="sm">base url</span><span className="sm">api.openai.com/v1</span>
+        <span className="sm">status</span><span className="sm"><TL tone="green">live · last ping 2s ago</TL></span>
+      </div>
+
+      <div style={{display:'flex', gap:4, marginTop:10, flexWrap:'wrap'}}>
+        <Btn variant="primary" size="xs">+ Add as alias</Btn>
+        <Btn size="xs">Test connection</Btn>
+        <Btn variant="ghost" size="xs">Manage in My Models</Btn>
+      </div>
+    </>
+  );
+}
+
 function DiscoverA() {
+  const [sel, setSel] = React.useState('hf-qwen');
   return (
-    <Browser url="bodhi.local/models/discover">
-      <Crumbs items={['Bodhi','Models','Discover local']}/>
-      <div className="split w">
-        <aside>
-          <div className="h3">Task</div>
-          {['Text→Text','Vision','Tool-use','Embedding','Speech','Image'].map(t=>(
-            <div key={t} style={{marginBottom:4}}><Chip>{t}</Chip></div>
-          ))}
-          <div className="h3">Parameters</div>
-          <div className="slider">
-            <div className="tick" style={{left:'5%'}}/><div className="tick" style={{left:'25%'}}/>
-            <div className="tick" style={{left:'55%'}}/><div className="tick" style={{left:'85%'}}/>
-            <div className="thumb" style={{left:'25%'}}/><div className="thumb" style={{left:'55%'}}/>
-          </div>
-          <div className="sm">1B — 32B</div>
-          <div className="h3">Capability</div>
-          {['🔧 Tool use','👁 Vision','🧠 Reasoning','💬 Chat'].map(t=>(
-            <div key={t} style={{marginBottom:4}}><Chip>{t}</Chip></div>
-          ))}
-          <div className="h3">License</div>
-          {['Apache-2','MIT','Llama','Gemma'].map(t=>(
-            <div key={t} style={{marginBottom:4}}><Chip>{t}</Chip></div>
-          ))}
-          <div className="h3">Format</div>
-          <div><Chip tone="leaf">GGUF ✓</Chip></div>
-          <div className="sm" style={{marginTop:4}}>others soon</div>
-        </aside>
-        <div>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-            <Field hint="Filter 2.8M models…" filled style={{flex:1, minWidth:140}}/>
-            <div style={{display:'flex', gap:4}}>
-              <Chip tone="leaf">Fits my rig</Chip>
-              <Chip on>Trending</Chip><Chip>Likes</Chip><Chip>Downloads</Chip>
-            </div>
-          </div>
-          <div className="divider"/>
-          {[
-            ['Qwen','Qwen3.5-9B','9B','Text→Text','443k','415','green','~38 tok/s'],
-            ['unsloth','Nemotron-3-Nano-30B','30B','Text→Text','133k','39','yellow','~6 tok/s · tight'],
-            ['google','gemma-4-e2b','2B','Vision+Text','3.8M','2.1k','green','~85 tok/s'],
-            ['LiquidAI','LFM2.5-1.2B','1.2B','Text→Text','28k','91','green','~110 tok/s'],
-            ['unsloth','Qwen3.5-35B','35B','Text→Text','443k','415','red','won\'t fit'],
-          ].map((r,i)=>(
-            <ModelRow key={i} org={r[0]} name={r[1]} size={r[2]} task={r[3]} dl={r[4]} likes={r[5]} fit={r[6]} fitLabel={r[7]}/>
-          ))}
-          <div style={{textAlign:'center', marginTop:8}}><Btn variant="ghost">Load more…</Btn></div>
-        </div>
-      </div>
-    </Browser>
-  );
-}
+    <div className="hub3col">
 
-function DiscoverB() {
-  return (
-    <Browser url="bodhi.local/models/discover">
-      <Crumbs items={['Bodhi','Models','Discover']}/>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', flexWrap:'wrap', gap:6}}>
-        <div className="h1" style={{fontSize:20}}>Discover · curated for M3 Max 36GB</div>
-        <div style={{display:'flex', gap:4}}>
-          <Chip tone="leaf">Fits ✓</Chip><Chip>All</Chip>
-        </div>
-      </div>
-      <div className="sm" style={{marginBottom:8}}>Ranked by quality × fit × popularity. Hardware detected automatically.</div>
-      <div className="h3">🏆 Top of leaderboard this week</div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-        {[
-          ['Qwen3.5-9B','Qwen','9B','#2 chatbot arena','92.4','~38 tok/s','green'],
-          ['gemma-4-e2b','google','2B','#7 open-weights','88.1','~85 tok/s','green'],
-          ['LFM2.5-1.2B','LiquidAI','1.2B','#1 tiny models','81.3','~110 tok/s','green'],
-          ['Nemotron-3-30B','NVIDIA','30B','#4 reasoning','94.2','~6 tok/s','yellow'],
-        ].map((m,i)=>(
-          <div key={i} className="card">
-            <div style={{display:'flex', alignItems:'center', gap:6}}>
-              <div className="ph thumb" style={{width:32,height:32}}/>
-              <div style={{flex:1, minWidth:0}}>
-                <div className="h2" style={{margin:0}}>{m[1]}/{m[0]}</div>
-                <span className="sm">{m[3]} · score {m[4]}</span>
-              </div>
-              <Chip tone="saff">{m[2]}</Chip>
-            </div>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-              <TL tone={m[6]}>{m[5]}</TL>
-              <Btn size="xs" variant="primary">Add →</Btn>
-            </div>
+      {/* ── LEFT: navigation + filters ── */}
+      <aside className="hub3col-left">
+        <div className="side-brand">
+          <span className="brand-dot">◉</span>
+          <div style={{display:'flex', flexDirection:'column', lineHeight:1}}>
+            <span>Bodhi</span>
+            <span className="sm" style={{letterSpacing:1, fontSize:9, color:'var(--ink-3)'}}>AI GATEWAY</span>
           </div>
-        ))}
-      </div>
-      <div className="h3" style={{marginTop:14}}>By capability</div>
-      <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
-        {['💬 Chat (124)','🧰 Tool-use (48)','👁 Vision (31)','🔊 Speech (12)','🎨 Image-gen (22)','🧮 Embedding (60)','🔢 Math (18)'].map(t=>
-          <Chip key={t}>{t}</Chip>
-        )}
-      </div>
-      <Callout style={{position:'static', display:'inline-block', margin:'10px 0'}}>★ leaderboard-first, not an endless scroll</Callout>
-    </Browser>
-  );
-}
+        </div>
 
-function DiscoverC() {
-  return (
-    <Browser url="bodhi.local/models/discover">
-      <div className="h1" style={{fontSize:20, marginBottom:4}}>Tell us about your use case</div>
-      <div className="sm" style={{marginBottom:10}}>We'll narrow 2.8M models down to a shortlist of 3–5.</div>
-      <div className="card">
-        <div className="h3" style={{marginTop:0}}>1. What for?</div>
-        <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
-          <Chip on>💬 General chat</Chip><Chip>🧑‍💻 Code</Chip><Chip>📄 Summarize docs</Chip>
-          <Chip>🧰 Agent/tools</Chip><Chip>👁 Image Q&amp;A</Chip>
+        <div className="side-section-picker">
+          <span className="side-section-picker-icon">▦</span>
+          <span style={{flex:1}}>Models</span>
+          <span className="sm">▾</span>
         </div>
-        <div className="h3">2. How long are your inputs?</div>
-        <div className="slider">
-          <div className="thumb" style={{left:'40%'}}/>
+
+        <div className="sub-nav">
+          <div className="sub-nav-item">My Models</div>
+          <div className="sub-nav-item active">Discover</div>
         </div>
-        <div style={{display:'flex', justifyContent:'space-between'}} className="sm"><span>short (4K)</span><span>32K</span><span>128K+</span></div>
-        <div className="h3">3. Your speed vs. quality preference</div>
-        <div className="slider"><div className="thumb" style={{left:'65%'}}/></div>
-        <div style={{display:'flex', justifyContent:'space-between'}} className="sm"><span>fast/smaller</span><span>balanced</span><span>best/slower</span></div>
-        <div className="h3">4. Privacy</div>
-        <div style={{display:'flex', gap:6}}>
-          <Chip on>🔒 Local only</Chip><Chip>☁︎ API fine</Chip><Chip>Mix</Chip>
+
+        <div className="side-sec-label">Discover</div>
+        <div className="side-nav">
+          <div className="side-nav-item active">Trending <span className="badge">↑</span></div>
+          <div className="side-nav-item">New launches <span className="badge">★</span></div>
         </div>
-      </div>
-      <div className="h2" style={{margin:'14px 0 6px'}}>✨ Our picks</div>
-      <ModelRow name="Qwen3.5-9B" org="Qwen" size="9B" fitLabel="~38 tok/s · balanced" highlight>
-        <Chip tone="saff">match 94%</Chip>
-      </ModelRow>
-      <ModelRow name="gemma-4-e2b" org="google" size="2B" fitLabel="~85 tok/s">
-        <Chip tone="saff">match 88%</Chip>
-      </ModelRow>
-      <ModelRow name="LFM2.5-1.2B" org="LiquidAI" size="1.2B" fitLabel="~110 tok/s">
-        <Chip tone="saff">match 79%</Chip>
-      </ModelRow>
-      <Callout style={{position:'static', display:'inline-block', marginTop:8}}>★ guided needs → recommendation</Callout>
-    </Browser>
+
+        <div className="side-sec-label">Filters</div>
+        <div className="side-filter-group">
+          <div className="side-filter-title">source</div>
+          <div className="chips-col">
+            <Chip>HuggingFace</Chip><Chip>OpenRouter</Chip>
+            <Chip>NVIDIA NIM</Chip><Chip>Groq</Chip>
+            <Chip>Together</Chip><Chip>HF Inference</Chip>
+            <Chip>Anthropic</Chip><Chip>OpenAI</Chip><Chip>Google</Chip>
+          </div>
+        </div>
+        <div className="side-filter-group">
+          <div className="side-filter-title">capability</div>
+          <div className="chips-col">
+            <Chip>tool-use</Chip><Chip>vision</Chip><Chip>structured</Chip>
+            <Chip>embedding</Chip><Chip>speech</Chip><Chip>image-gen</Chip>
+            <Chip>reasoning</Chip>
+          </div>
+        </div>
+        <div className="side-filter-group">
+          <div className="side-filter-title">size · rig</div>
+          <div className="chips-col">
+            <Chip tone="leaf">Fits rig ✓</Chip>
+            <Chip>&lt; 5GB</Chip><Chip>5–15GB</Chip><Chip>&gt; 15GB</Chip>
+            <Chip>ctx ≥ 32k</Chip>
+          </div>
+        </div>
+        <div className="side-filter-group">
+          <div className="side-filter-title">cost · api</div>
+          <div className="chips-col">
+            <Chip>Free / OSS</Chip><Chip>$&lt;1 / M</Chip>
+            <Chip>$1–5</Chip><Chip>$&gt;5</Chip>
+            <Chip>≥99% up</Chip>
+          </div>
+        </div>
+        <div className="side-filter-group">
+          <div className="side-filter-title">license</div>
+          <div className="chips-col">
+            <Chip>Apache-2</Chip><Chip>MIT</Chip><Chip>Llama</Chip>
+            <Chip>Gemma</Chip><Chip>CC-BY</Chip><Chip>Proprietary</Chip>
+          </div>
+        </div>
+        <div className="side-filter-group">
+          <div className="side-filter-title">format</div>
+          <div className="chips-col">
+            <Chip tone="leaf">GGUF ✓</Chip>
+            <Chip>openai-responses</Chip><Chip>anthropic-messages</Chip>
+            <Chip>openrouter</Chip>
+          </div>
+        </div>
+
+        <div className="side-sec-label">Leaderboard</div>
+        <div className="side-nav">
+          <div className="side-nav-item">Chatbot Arena</div>
+          <div className="side-nav-item">MMLU-Pro</div>
+          <div className="side-nav-item">HumanEval</div>
+          <div className="side-nav-item">Tool-use</div>
+          <div className="side-nav-item">Vision (MMMU)</div>
+        </div>
+      </aside>
+
+      {/* ── CENTER: search + scope + card grid ── */}
+      <main className="hub3col-main">
+        <div className="main-topbar">
+          <div>
+            <div className="h1" style={{fontSize:20}}>Discover</div>
+            <div className="sm">3.1M HF repos + 12 API providers · curated for M3 Max 36GB</div>
+          </div>
+          <div className="main-toolbar">
+            <Chip on>All</Chip><Chip>Local</Chip><Chip>API</Chip>
+            <span className="vsep"/>
+            <Chip tone="leaf">Fits rig ✓</Chip>
+            <span className="vsep"/>
+            <Chip on>Likes</Chip><Chip>Downloads</Chip><Chip>Recent</Chip>
+            <span className="vsep"/>
+            <Chip on>▦ Cards</Chip><Chip>☰ List</Chip>
+          </div>
+        </div>
+
+        <div style={{position:'relative'}}>
+          <Field hint="Filter repos & providers — e.g. 'vision 7B apache' or 'claude tool-use'" filled
+            right={<span className="sm">⌘K</span>}/>
+          <Callout style={{top:-6, right:14}}>Unified local + API discovery</Callout>
+        </div>
+
+        <div className="active-filters">
+          <span className="active-filters-label">filters:</span>
+          <span className="filter-tag">capability: tool-use <span className="x">×</span></span>
+          <span className="filter-tag">size: Fits rig ✓ <span className="x">×</span></span>
+          <span className="filter-tag">license: Apache-2 <span className="x">×</span></span>
+          <span className="active-filters-clear">clear all</span>
+        </div>
+
+        <div className="cards-grid">
+          <DiscoverCard title="Qwen/Qwen3.5-9B"
+            subtitle="9B · ctx 32k · Apache-2 · HuggingFace"
+            caps={['text2text','tool-use','reasoning']}
+            meta={<>default <code>:Q4_K_M</code> · 5.6GB · 5 quants · ↓ 443k · ♥ 3.1k</>}
+            fit="green" fitLabel="~38 t/s"
+            selected={sel==='hf-qwen'}
+            onClick={()=>setSel('hf-qwen')}/>
+          <DiscoverCard kind="provider" title="openai"
+            subtitle={<><code>openai-responses</code> · key sk-…a71e</>}
+            caps={['tool-use','vision','structured','reasoning','embedding']}
+            cost="in $0.05 – $2.00 / M · 7 models"
+            meta="gpt-5, gpt-5-mini, gpt-5-nano, o4-mini, +3 more"
+            status="connected"
+            selected={sel==='provider-openai'}
+            onClick={()=>setSel('provider-openai')}/>
+          <DiscoverCard kind="provider-off" title="groq"
+            subtitle={<><code>openai-completions</code> · bring-your-own-key</>}
+            caps={['tool-use','speech','moderation']}
+            cost="in $0.05 – $0.75 / M · 6 models"
+            meta="llama-3.3-70b, llama-3.1-8b, qwen-2.5-32b, +3 more"
+            status="not connected"
+            selected={sel==='provider-groq'}
+            onClick={()=>setSel('provider-groq')}/>
+
+          <DiscoverCard title="google/gemma-4-e2b"
+            subtitle="2B · vision · Gemma T&C · HuggingFace"
+            caps={['multimodal','vision']}
+            meta={<>default <code>:Q4_K_M</code> · 1.4GB · 3 quants · ↓ 3.8M · ♥ 2.1k</>}
+            fit="green" fitLabel="~85 t/s"/>
+          <DiscoverCard kind="provider-off" title="openrouter"
+            subtitle={<><code>openai-completions</code> · multi-provider routing</>}
+            caps={['tool-use','vision','reasoning']}
+            cost="varies · 100+ models"
+            meta="meta-llama-3.3-70b, mistral-large, deepseek-r1, +97 more"
+            status="not connected"/>
+          <DiscoverCard title="unsloth/Nemotron-3-Nano-30B"
+            subtitle="30B · ctx 128k · NVIDIA · HuggingFace"
+            caps={['text2text','reasoning','long-ctx']}
+            meta={<>default <code>:Q4_K_M</code> · 17GB · 4 quants · ↓ 133k</>}
+            fit="yellow" fitLabel="~6 t/s · tight"/>
+          <DiscoverCard kind="provider-off" title="anthropic"
+            subtitle={<><code>anthropic-oauth</code> · Claude Pro / key</>}
+            caps={['tool-use','vision','structured','reasoning']}
+            cost="in $0.80 – $15 / M · 5 models"
+            meta="claude-opus-4, claude-sonnet-4.5, claude-haiku-4.5, +2 more"
+            status="not connected"/>
+          <DiscoverCard title="LiquidAI/LFM2.5-1.2B"
+            subtitle="1.2B · edge · Apache-2 · HuggingFace"
+            caps={['text2text']}
+            meta={<>default <code>:Q8_0</code> · 1.3GB · 3 quants · ↓ 28k</>}
+            fit="green" fitLabel="~110 t/s"/>
+          <DiscoverCard kind="provider-off" title="nvidia-nim"
+            subtitle={<><code>openai-completions</code> · NVIDIA NIM · key</>}
+            caps={['text2text','tool-use','long-ctx']}
+            cost="in $0.60 – $1.80 / M · 18 models"
+            meta="nemotron-4-340b, llama-3.3-70b-nim, mistral-large-nim, +15 more"
+            status="not connected"/>
+          <DiscoverCard title="Qwen/Qwen2.5-VL-7B"
+            subtitle="7B · vision-language · Apache-2 · HuggingFace"
+            caps={['multimodal','vision']}
+            meta={<>default <code>:Q4_K_M</code> · 4.7GB · 4 quants · ↓ 612k</>}
+            fit="green" fitLabel="~32 t/s"/>
+          <DiscoverCard kind="provider-off" title="together"
+            subtitle={<><code>openai-completions</code> · Together AI · key</>}
+            caps={['text2text','tool-use','long-ctx','image-gen']}
+            cost="in $0.10 – $3.50 / M · 40+ models"
+            meta="qwen-2.5-72b, deepseek-v3, flux-1.1-pro, +37 more"
+            status="not connected"/>
+          <DiscoverCard title="deepseek/DeepSeek-R1-Distill-14B"
+            subtitle="14B · reasoning · MIT · HuggingFace"
+            caps={['text2text','reasoning']}
+            meta={<>default <code>:Q5_K_M</code> · 10.2GB · 4 quants · ↓ 1.1M</>}
+            fit="green" fitLabel="~19 t/s"/>
+          <DiscoverCard kind="provider-off" title="huggingface"
+            subtitle={<><code>openai-completions</code> · HF Inference · key</>}
+            caps={['text2text','embedding','image-gen']}
+            cost="PAYG + Pro $9/mo · 500+ models"
+            meta="mistral-large, llama-3.3, stable-diffusion-xl, +497 more"
+            status="not connected"/>
+          <DiscoverCard title="meta/Llama-3.3-70B-Instruct"
+            subtitle="70B · ctx 128k · Llama-3 license · HuggingFace"
+            caps={['text2text','tool-use','long-ctx']}
+            meta={<>default <code>:Q4_K_M</code> · 40GB · 5 quants · ↓ 2.4M</>}
+            fit="red" fitLabel="won't fit"/>
+          <DiscoverCard kind="provider-off" title="google-gemini"
+            subtitle={<><code>google-gemini</code> · key AIza…</>}
+            caps={['tool-use','vision','long-ctx','embedding']}
+            cost="in $0.075 – $1.25 / M · 4 models"
+            meta="gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, +1 more"
+            status="not connected"/>
+          <DiscoverCard title="nomic-ai/nomic-embed-text-v2"
+            subtitle="F16 · 274MB · 768-dim · HuggingFace"
+            caps={['text-embedding']}
+            meta={<>default <code>:F16</code> · 274MB · 1 quant · ↓ 5.1M</>}
+            fit="green" fitLabel="embed fast"/>
+        </div>
+
+        <div style={{textAlign:'center', marginTop:4}}>
+          <Btn variant="ghost">Load more →</Btn>
+        </div>
+      </main>
+
+      {/* ── RIGHT: collapsible detail panel (swaps by selection) ── */}
+      <aside className="hub3col-right">
+        {sel==='hf-qwen' && <HfRepoPanel/>}
+        {sel==='provider-openai' && <ConnectedProviderPanel/>}
+        {sel==='provider-groq' && <UnconnectedProviderPanel/>}
+      </aside>
+    </div>
   );
 }
 
 window.DiscoverScreens = [
-  {label:'A · HF-style facets', tag:'familiar', note:'Sidebar filters + ranked list. Adds a "Fits my rig" chip and tok/s estimates on every row.', novel:'per-row tok/s estimate from detected hardware', component:DiscoverA},
-  {label:'B · Leaderboard grid', tag:'balanced', note:'Curated hero grid, not a flat list. Ranks by quality × fit × popularity.', novel:'hardware-aware default ranking', component:DiscoverB},
-  {label:'C · Guided picker', tag:'bold', note:'Conversational form → 3–5 recommendations. Good for novices and hardware-curious users.', novel:'guided needs → match-score', component:DiscoverC},
+  {label:'A · HF repos + providers', tag:'balanced', note:'Same 3-column shell as Hub. Repo-level HF cards (with default-quant badge) mixed with API provider cards (connected + not-yet-connected). Three demo cards are clickable.', novel:'repo + provider unified grid, connected vs unconnected provider states', component:DiscoverA},
 ];
