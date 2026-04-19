@@ -274,6 +274,12 @@ All panel definitions still live where they were before the unification. `hub.js
 
 **Why this replaces the old Provider Directory tab**: "Add API provider" in this menu IS the Provider Directory's connect flow; the browse-provider behaviour is reproduced by `Kind=Providers + Source=Bodhi Directory` in the filter sidebar. See §13 for the full absorption rationale.
 
+**What each menu item routes to:**
+- `Add by HF repo` → Create local alias overlay (`AliasOverlay`, from `screens/alias.jsx`).
+- `Paste URL` → Same alias overlay, pre-filled with a `.gguf` / `hf://` URL.
+- `Add API provider` → Create API model overlay (`ApiOverlay`, from `screens/api.jsx`). Primary entry into the consolidated api-create flow.
+- `Add API model` (badge "from connected") → Placeholder for a dedicated "pick from connected provider" picker. Currently routes to the same `ApiOverlay` with the provider chip pre-selected. A dedicated picker screen is deferred (see `shared-primitives.md §7`).
+
 ---
 
 ## 11. Responsive deltas
@@ -344,6 +350,10 @@ These are the design decisions made during the Hub+Discover → Models unificati
 14. **Absolute rank numbers.** Filters narrow visible rows but never renumber. Rank-within-filter-scope was explicitly rejected: it would undermine the "#2 in the world" semantic and turn rank into a confusing context-dependent integer.
 
 15. **Model Detail tab absorbed (2026-04-19).** The top-level `Model detail` tab was removed. Rationale: all three variants showed only `hf-repo` entities, and two variants (side-drawer, bottom-sheet) were already how the Models page dispatches `HfRepoPanel`. The third variant (full-page) had three unique surfaces — benchmark Bar charts, interactive quant slider, community rating card — all of which were dropped by user decision (not ported). The noted follow-up option: "can be added to HfRepoPanel if required." `detail.jsx` is archived on disk.
+
+16. **Create API Model uses one flat form, not accordions.** Rationale: API creation has fewer decisions than local alias (no runtime config, no llama.cpp flags). Accordions would add ceremony for a 3-section form. Kept Option A's flat layout; enriched the fields to match the production screenshot (toggles, radio, full Model Selection UI); extended to 4 variants matching alias.jsx.
+
+17. **Conditional Model Selection in api.jsx breaks our normal grey-out convention.** Elsewhere (e.g. `Cost · api` filter in My Models) we grey-out inapplicable groups to keep layout stable. For api.jsx's Model Selection section, when `Forwarding = "Forward all"` we **hide** the section entirely. Rationale: it's a form-specific affordance (not a filter on the shared list), and keeping it visible-but-greyed would imply users should interact with it "once they understand the mode" — which is the wrong mental model. Forward-all means "no selection needed"; hiding the section makes that obvious.
 
 ---
 

@@ -1,139 +1,231 @@
-// Screen 5 — Create/Edit API Model
-function ApiA() {
+// Create API Model · v29
+// Flat one-form layout with production-parity fields. See specs/api.md.
+// Four variants: Standalone / Overlay / Medium / Mobile (parity with alias.jsx).
+// Model Selection section is CONDITIONAL on forwarding mode — shown only when
+// "Forward for selected models only" is active.
+
+// Shared form body used by every variant. Takes a mode ('desktop' | 'mobile')
+// for small layout nudges (padding/font), but the field set is identical.
+function ApiFormBody({forwarding='selected', setForwarding,
+                     selected, setSelected, search, setSearch,
+                     compact=false}) {
+  const selectedList = selected;
+  const onDeselect = (m) => setSelected(selectedList.filter(x => x !== m));
+  const onSelect   = (m) => !selectedList.includes(m) && setSelected([...selectedList, m]);
+  const onClear    = () => setSelected([]);
+  const onSelectAll = () => {
+    const add = FIXTURE_OPENAI_MODELS
+      .filter(m => !search || m.toLowerCase().includes(search.toLowerCase()))
+      .filter(m => !selectedList.includes(m));
+    setSelected([...selectedList, ...add]);
+  };
+  return (
+    <>
+      {/* ── Provider connection ── */}
+      <div className="api-form-section-head">1 · Provider connection</div>
+      <ApiFormatPicker value="openai-completions"/>
+      <div style={{marginTop:6}}>
+        <Field
+          label={<span>Base URL <Chip tone="warn" style={{fontSize:9, marginLeft:4}}>required</Chip></span>}
+          filled
+          value="https://api.openai.com/v1"
+        />
+        <span className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>Enter the complete API endpoint URL for your provider</span>
+      </div>
+      <div style={{marginTop:6}}>
+        <ApiKeyField enabled={true} masked={true}/>
+      </div>
+
+      <hr className="api-form-divider"/>
+
+      {/* ── Request routing ── */}
+      <div className="api-form-section-head">2 · Request routing</div>
+      <PrefixField enabled={true} value="openai/" example="openai/gpt-4"/>
+      <div style={{marginTop:8}}>
+        <div className="sm" style={{fontWeight:700, color:'var(--ink)', marginBottom:4}}>Request forwarding mode</div>
+        <ForwardingModeRadio value={forwarding} onChange={setForwarding}/>
+      </div>
+
+      {/* ── Model selection (conditional) ── */}
+      {forwarding === 'selected' && (
+        <>
+          <hr className="api-form-divider"/>
+          <div className="api-form-section-head">3 · Model selection</div>
+          <div className="sm" style={{fontSize:11, color:'var(--ink-3)', marginBottom:4}}>
+            Select which OpenAI models you'd like to use. Only the selected set will be forwarded through the alias prefix.
+          </div>
+          <ModelMultiSelect
+            selected={selectedList}
+            available={FIXTURE_OPENAI_MODELS}
+            search={search}
+            onSearch={setSearch}
+            onSelect={onSelect}
+            onDeselect={onDeselect}
+            onFetch={() => { /* wireframe: no-op */ }}
+            onSelectAll={onSelectAll}
+            onClear={onClear}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+function ApiFormFooter({onCancel, primaryLabel='Create API Model'}) {
+  return (
+    <div className="api-form-footer">
+      <Btn size="xs">🔌 Test connection</Btn>
+      <div className="api-form-footer-actions">
+        <Btn onClick={onCancel}>Cancel</Btn>
+        <Btn variant="primary">{primaryLabel}</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ── 1. ApiStandalone ─────────────────────────────────────────────
+function ApiStandalone() {
+  const [forwarding, setForwarding] = React.useState('selected');
+  const [selected, setSelected] = React.useState(['gpt-4-turbo','gpt-5-mini','gpt-5.3-codex']);
+  const [search, setSearch] = React.useState('codex');
   return (
     <Browser url="bodhi.local/models/api/new">
       <Crumbs items={['Bodhi','Models','New API model']}/>
-      <div className="h1" style={{fontSize:20, marginBottom:6}}>New API model</div>
-      <Field label="API format" filled value="OpenAI — Completions" right={<span className="sm">▾</span>}/>
-      <div style={{marginTop:6}}>
-        <Field label="Base URL" filled value="https://api.openai.com/v1" />
-        <span className="sm">Auto-filled · swap for OpenRouter, HF, Groq, etc.</span>
-      </div>
-      <div style={{marginTop:6}}>
-        <Field label="API key · required" filled hint="sk-…" right={<span className="sm">👁</span>}/>
-      </div>
-      <div className="divider"/>
-      <div className="h3" style={{marginTop:0}}>Optional</div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-        <Field label="Model prefix" hint="e.g. openai/" />
-        <Field label="Forwarding" value="Forward all" right={<span className="sm">▾</span>}/>
-      </div>
-      <div style={{display:'flex', gap:6, justifyContent:'space-between', marginTop:10, alignItems:'center', flexWrap:'wrap'}}>
-        <Btn>🔌 Test connection</Btn>
-        <div style={{display:'flex', gap:6}}>
-          <Btn>Cancel</Btn><Btn variant="primary">Save — use all models</Btn>
+      <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:10, marginBottom:6}}>
+        <div>
+          <div className="h1" style={{fontSize:20, marginBottom:2}}>Create New API Model</div>
+          <div className="sm">Configure a new external AI API model. Connect a provider, choose routing, pick which models forward through this alias.</div>
         </div>
       </div>
-      <Callout style={{position:'static', display:'inline-block', marginTop:8}}>★ save with just key — everything else auto-filled</Callout>
+      <div style={{display:'grid', gridTemplateColumns:'170px 1fr', gap:12, alignItems:'start'}}>
+        <ApiRail active={forwarding==='selected' ? 'models' : 'routing'}/>
+        <div>
+          <ApiFormBody
+            forwarding={forwarding} setForwarding={setForwarding}
+            selected={selected} setSelected={setSelected}
+            search={search} setSearch={setSearch}
+          />
+          <ApiFormFooter/>
+          <Callout style={{position:'static', display:'inline-block', marginTop:8}}>
+            ★ Model selection only appears when "Forward for selected" is active · toggle radios to compare
+          </Callout>
+        </div>
+      </div>
     </Browser>
   );
 }
 
-function ApiB() {
+// ── 2. ApiOverlay ────────────────────────────────────────────────
+function ApiOverlay() {
+  const [forwarding, setForwarding] = React.useState('selected');
+  const [selected, setSelected] = React.useState(['gpt-4-turbo','gpt-5-mini','gpt-5.3-codex']);
+  const [search, setSearch] = React.useState('codex');
+  const context = (
+    <>
+      <span className="sm" style={{color:'var(--ink)'}}>Adding</span>
+      <Chip tone="indigo" style={{fontSize:10}}>api provider</Chip>
+      <code>openai</code>
+      <span className="sm" style={{marginLeft:'auto'}}>from + ▾ Add model</span>
+    </>
+  );
+  const body = (
+    <ApiFormBody
+      forwarding={forwarding} setForwarding={setForwarding}
+      selected={selected} setSelected={setSelected}
+      search={search} setSearch={setSearch}
+    />
+  );
+  const footer = (
+    <>
+      <Btn variant="ghost" size="xs">🔌 Test connection</Btn>
+      <Btn variant="ghost" size="xs">Open full page ↗</Btn>
+      <Btn>Cancel</Btn>
+      <Btn variant="primary">Create API Model</Btn>
+    </>
+  );
+  return <OverlayShell title="Connect API provider" context={context} body={body} footer={footer}/>;
+}
+
+// ── 3. ApiMedium (tablet) ────────────────────────────────────────
+function ApiMedium() {
+  const [forwarding, setForwarding] = React.useState('all'); // demo short form
+  const [selected, setSelected] = React.useState([]);
+  const [search, setSearch] = React.useState('');
   return (
-    <Browser url="bodhi.local/models/api/new">
-      <Crumbs items={['Bodhi','Models','API','New']}/>
-      <div className="h1" style={{fontSize:20, marginBottom:6}}>Connect Google Gemini</div>
-      <div className="sm" style={{marginBottom:8}}>Steps collapse as you complete them.</div>
-
-      <div className="card" style={{borderColor:'var(--lotus)', background:'var(--lotus-soft)'}}>
-        <div style={{display:'flex', justifyContent:'space-between'}}>
-          <div className="h2" style={{margin:0}}>1 · Authentication</div>
-          <Chip>editing</Chip>
-        </div>
-        <Field label="API key" filled hint="AIza…" right={<span className="sm">👁</span>} />
-        <span className="sm">Get one at <span className="code">aistudio.google.com/apikey</span></span>
-        <div style={{display:'flex', gap:6, marginTop:6}}>
-          <Btn size="xs">🔌 Test</Btn>
-          <Btn size="xs" variant="primary">Continue →</Btn>
-        </div>
+    <TabletFrame label="Tablet · Forward all · short form">
+      <MobileHeader active="Create API model"/>
+      <ApiMediumAnchors active={forwarding==='selected' ? 'models' : 'routing'}/>
+      <div style={{padding:'8px 10px'}}>
+        <div className="h1" style={{fontSize:16, marginBottom:2}}>Create New API Model</div>
+        <div className="sm" style={{fontSize:11, marginBottom:6}}>Demo: "Forward all with prefix" — Model selection section hidden.</div>
+        <ApiFormBody
+          forwarding={forwarding} setForwarding={setForwarding}
+          selected={selected} setSelected={setSelected}
+          search={search} setSearch={setSearch}
+        />
+        <ApiFormFooter/>
+        <Callout style={{position:'static', fontSize:9, margin:'6px 0'}}>
+          Tap "Forward for selected models only" above to reveal the model picker · no scroll-jump
+        </Callout>
       </div>
-
-      <div className="card" style={{marginTop:8, opacity:.6}}>
-        <div style={{display:'flex', justifyContent:'space-between'}}>
-          <div className="h2" style={{margin:0}}>2 · Choose models</div>
-          <Chip>fetch after auth</Chip>
-        </div>
-        <span className="sm">We'll list Gemini models once your key is verified.</span>
-      </div>
-      <div className="card" style={{marginTop:8, opacity:.6}}>
-        <div style={{display:'flex', justifyContent:'space-between'}}>
-          <div className="h2" style={{margin:0}}>3 · Routing &amp; prefix (optional)</div>
-          <Chip>skip</Chip>
-        </div>
-        <span className="sm">Prefix like <span className="code">gmn/</span> and forwarding rules.</span>
-      </div>
-      <Callout style={{position:'static', display:'inline-block', marginTop:10}}>★ stepper — fields appear as you need them</Callout>
-    </Browser>
+    </TabletFrame>
   );
 }
 
-function ApiC() {
+// ── 4. ApiMobile (phone) ─────────────────────────────────────────
+function ApiMobile() {
   return (
-    <Browser url="bodhi.local/models/api/new">
-      <Crumbs items={['Bodhi','Models','API','Anthropic (Claude Code OAuth)']}/>
-      <div style={{display:'flex', alignItems:'center', gap:10}}>
-        <div className="ph thumb" style={{background:'#d97557'}}/>
-        <div>
-          <div className="h1" style={{fontSize:20, margin:0}}>Anthropic · Claude Code OAuth</div>
-          <span className="sm">api.anthropic.com · auto-filled · 5 models</span>
-        </div>
-        <Chip tone="leaf" style={{marginLeft:'auto'}}>● connected</Chip>
+    <div className="phone-deck">
+      {/* 1. Default — Forward for selected (main demo) */}
+      <PhoneFrame label="1 · Forward for selected">
+        <ApiMobileBody initialForwarding="selected"
+          initialSelected={['gpt-4-turbo','gpt-5-mini','gpt-5.3-codex']}
+          initialSearch="codex"/>
+      </PhoneFrame>
+      {/* 2. Forward all — short form */}
+      <PhoneFrame label="2 · Forward all (short form)">
+        <ApiMobileBody initialForwarding="all" initialSelected={[]} initialSearch=""/>
+      </PhoneFrame>
+    </div>
+  );
+}
+
+function ApiMobileBody({initialForwarding, initialSelected, initialSearch}) {
+  const [forwarding, setForwarding] = React.useState(initialForwarding);
+  const [selected, setSelected] = React.useState(initialSelected);
+  const [search, setSearch] = React.useState(initialSearch);
+  return (
+    <>
+      <MobileHeader active="Create API model"/>
+      <div style={{padding:'6px 8px'}}>
+        <div className="h1" style={{fontSize:14, marginBottom:2}}>Create API Model</div>
+        <ApiFormBody
+          forwarding={forwarding} setForwarding={setForwarding}
+          selected={selected} setSelected={setSelected}
+          search={search} setSearch={setSearch}
+          compact
+        />
+        <ApiFormFooter/>
       </div>
-      <div className="divider"/>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
-        <div>
-          <div className="h3" style={{marginTop:0}}>Auth</div>
-          <div className="card">
-            <div style={{display:'flex', justifyContent:'space-between'}}>
-              <span className="h2" style={{margin:0}}>OAuth token</span>
-              <Chip tone="leaf">valid · 30d</Chip>
-            </div>
-            <span className="sm">Re-auth in your browser if this expires.</span>
-            <div style={{display:'flex', gap:4, marginTop:6}}>
-              <Btn size="xs">Re-auth</Btn>
-              <Btn size="xs">Revoke</Btn>
-            </div>
-          </div>
-          <div className="h3">Routing</div>
-          <div className="card">
-            <div style={{display:'flex', gap:6, alignItems:'center'}}>
-              <Chip on>Forward all</Chip>
-              <Chip>Selected only</Chip>
-            </div>
-            <div style={{marginTop:6}}>
-              <Field label="Prefix" filled value="cc-"/>
-              <span className="sm">→ cc-opus-4, cc-sonnet-4.5…</span>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div className="h3" style={{marginTop:0}}>Models (5 selected)</div>
-          <div className="card" style={{padding:6}}>
-            {[['claude-opus-4.1','✓','$15/$75'],
-              ['claude-sonnet-4.5','✓','$3/$15'],
-              ['claude-haiku-4.5','✓','$0.80/$4'],
-              ['claude-sonnet-3.7','✓','$3/$15'],
-              ['claude-haiku-3.5','','$0.80/$4']
-            ].map((r,i)=>(
-              <div key={i} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 4px', borderBottom: i<4?'1px dashed var(--line-soft)':'none'}}>
-                <span className="md"><input type="checkbox" defaultChecked={r[1]==='✓'} /> {r[0]}</span>
-                <span className="sm">{r[2]} <Chip tone="leaf">🔧</Chip></span>
-              </div>
-            ))}
-          </div>
-          <Callout style={{position:'static', display:'inline-block', marginTop:6}}>★ cost + tool-capability per model</Callout>
-        </div>
-      </div>
-      <div style={{display:'flex', gap:6, justifyContent:'flex-end', marginTop:10}}>
-        <Btn>Cancel</Btn><Btn variant="primary">Update</Btn>
-      </div>
-    </Browser>
+    </>
   );
 }
 
 window.ApiScreens = [
-  {label:'A · One-form minimal', tag:'familiar', note:'Format + base URL + key. Base URL auto-fills per format. Save with just a key.', novel:'save-with-key-only default', component:ApiA},
-  {label:'B · Stepper', tag:'balanced', note:'Auth → fetch models → route. Next step unlocks when prior is valid.', novel:null, component:ApiB},
-  {label:'C · Provider-aware editor', tag:'bold', note:'Branded header, cost per model, OAuth lifecycle in one card.', novel:'per-model cost + capability inline', component:ApiC},
+  {label:'A · Standalone · full page', tag:'balanced',
+    note:'Flat one-form layout · fields match production (Use API key toggle, Enable prefix toggle, Forwarding radio, full Model Selection). Standalone route `/models/api/new` with ApiRail sticky nav. Demo: Forward for selected with 3 preselected models + codex search filter.',
+    novel:'conditional Model selection · toggle-aware primitives · production-parity fields',
+    component:ApiStandalone},
+  {label:'A · Overlay', tag:'balanced',
+    note:'Reached from Models · `+ ▾ Add model → Add API provider`. OverlayShell chrome with context banner and footer actions. Same form body as Standalone.',
+    novel:'in-context add from Models page',
+    component:ApiOverlay},
+  {label:'A · Medium · tablet', tag:'medium',
+    note:'Tablet width with top anchor strip. Demos Forward all (short form) — Model selection section hidden. Flipping the radio reveals it.',
+    novel:'anchor-strip nav · conditional section demo',
+    component:ApiMedium},
+  {label:'A · Mobile', tag:'mobile',
+    note:'Two frames: (1) Forward for selected with search+chips, (2) Forward all short form. Same field order as Standalone, stacked.',
+    novel:'conditional model selection preserved at phone width',
+    component:ApiMobile},
 ];

@@ -1131,4 +1131,206 @@ const RankedRow = ({entry, selected, onClick}) => {
   );
 };
 
-Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, PhoneFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection, ModeToggle, ModeToggleCaption, KindChipRow, ModelsAddBrowseMenu, RankedRow, RankedModeCaption, RANKED_FIXTURE_CODING, groupIntoRankedRows});
+// ─────────────────────────────────────────────────────────────
+// Create API Model primitives · v29
+// Flat one-form layout with production-parity fields:
+//   · ApiFormatPicker     — format dropdown (openai/anthropic/google/…)
+//   · ApiKeyField         — "Use API key" toggle + masked input + eye
+//   · PrefixField         — "Enable prefix" toggle + text input
+//   · ForwardingModeRadio — "Forward all" / "Forward for selected models only"
+//   · ModelMultiSelect    — selected chips + search + available list + actions
+//   · ApiRail / ApiMediumAnchors — sticky/top section nav
+// Model selection section is CONDITIONAL on forwarding mode — shown only when
+// "Forward for selected" is active. See specs/api.md §4.
+// ─────────────────────────────────────────────────────────────
+
+const API_FORMATS = [
+  {code: 'openai-responses',     label: 'OpenAI — Responses',       defaultBaseUrl: 'https://api.openai.com/v1'},
+  {code: 'openai-completions',   label: 'OpenAI — Completions',     defaultBaseUrl: 'https://api.openai.com/v1'},
+  {code: 'anthropic-messages',   label: 'Anthropic — Messages',     defaultBaseUrl: 'https://api.anthropic.com/v1'},
+  {code: 'anthropic-oauth',      label: 'Anthropic — OAuth',        defaultBaseUrl: 'https://api.anthropic.com/v1'},
+  {code: 'google-gemini',        label: 'Google — Gemini',          defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta'},
+  {code: 'openrouter',           label: 'OpenRouter',                defaultBaseUrl: 'https://openrouter.ai/api/v1'},
+  {code: 'hf-inference',         label: 'HuggingFace — Inference',   defaultBaseUrl: 'https://api-inference.huggingface.co'},
+  {code: 'nvidia-nim',           label: 'NVIDIA — NIM',              defaultBaseUrl: 'https://integrate.api.nvidia.com/v1'},
+  {code: 'groq',                 label: 'Groq — OpenAI-compatible',  defaultBaseUrl: 'https://api.groq.com/openai/v1'},
+  {code: 'together',             label: 'Together AI',               defaultBaseUrl: 'https://api.together.xyz/v1'},
+];
+
+const FIXTURE_OPENAI_MODELS = [
+  'gpt-5', 'gpt-5-mini', 'gpt-5-nano',
+  'o4-mini',
+  'codex-latest',
+  'gpt-5.1-codex-mini', 'gpt-5.1-codex-max', 'gpt-5.2-codex',
+  'gpt-4.1', 'gpt-4-turbo',
+  'gpt-5.3-codex',
+  'text-embedding-3-large',
+];
+
+// Dropdown picker for API format. Wireframe: Field-styled closed state only.
+const ApiFormatPicker = ({value='openai-completions', onChange}) => {
+  const selected = API_FORMATS.find(f => f.code === value) || API_FORMATS[0];
+  return (
+    <Field
+      label={<span>API format <Chip tone="warn" style={{fontSize:9, marginLeft:4}}>required</Chip></span>}
+      filled
+      value={selected.label}
+      right={<span className="sm">▾</span>}
+    />
+  );
+};
+
+// "Use API key" toggle + masked input with eye toggle. Disabled until toggled on.
+const ApiKeyField = ({enabled=true, value='••••••••••••••••••••••', masked=true, onEnabledChange, onValueChange, onToggleMask}) => (
+  <div className="api-toggle-field">
+    <input type="checkbox" checked={enabled} onChange={e => onEnabledChange && onEnabledChange(e.target.checked)} />
+    <div className={`api-toggle-field-main${enabled?'':' disabled'}`}>
+      <div className="sm" style={{fontWeight:700, color:'var(--ink)'}}>Use API key</div>
+      <Field
+        filled
+        value={masked ? value : 'sk-proj-a71e-••••-••••-a71e2f09d4b6c83a5'}
+        hint={enabled ? 'sk-…' : 'Toggle on to enter a key'}
+        right={<span className="sm" style={{cursor:'pointer'}} onClick={onToggleMask}>👁</span>}
+      />
+      <span className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>Your API key is stored securely</span>
+    </div>
+  </div>
+);
+
+// "Enable prefix" toggle + text input. Example helper shown under the input.
+const PrefixField = ({enabled=true, value='openai/', onEnabledChange, onValueChange, example='openai/gpt-4'}) => (
+  <div className="api-toggle-field">
+    <input type="checkbox" checked={enabled} onChange={e => onEnabledChange && onEnabledChange(e.target.checked)} />
+    <div className={`api-toggle-field-main${enabled?'':' disabled'}`}>
+      <div className="sm" style={{fontWeight:700, color:'var(--ink)'}}>Enable prefix</div>
+      <Field
+        filled
+        value={value}
+      />
+      <span className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>
+        Add a prefix to model names (useful for organization or API routing). Example: <code style={{fontSize:10}}>{example}</code>
+      </span>
+    </div>
+  </div>
+);
+
+// Two-option radio: forward-all vs forward-for-selected. Drives the
+// conditional rendering of the Model selection section in api.jsx.
+const ForwardingModeRadio = ({value='selected', onChange}) => {
+  const opts = [
+    {k: 'all',      label: 'Forward all requests with prefix'},
+    {k: 'selected', label: 'Forward for selected models only'},
+  ];
+  return (
+    <div className="api-forward-radio">
+      {opts.map(o => (
+        <div key={o.k}
+             className={`api-forward-radio-option${value===o.k?' active':''}`}
+             onClick={() => onChange && onChange(o.k)}>
+          <span className="api-forward-radio-dot"/>
+          <span>{o.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Full model picker: selected-chips strip + search + available list + actions.
+// `onSelect`/`onDeselect` toggle individual models; `onSelectAll`/`onClear`
+// bulk ops; `onFetch` mimics a re-fetch of the provider's model list.
+const ModelMultiSelect = ({
+  selected=['gpt-4-turbo','gpt-5-mini','gpt-5.3-codex'],
+  available=FIXTURE_OPENAI_MODELS,
+  search='codex',
+  onSearch, onSelect, onDeselect, onFetch, onSelectAll, onClear,
+}) => {
+  const filtered = available.filter(m => !search || m.toLowerCase().includes(search.toLowerCase()));
+  const unselectedFiltered = filtered.filter(m => !selected.includes(m));
+  const selectedSet = new Set(selected);
+  return (
+    <div className="api-models-card">
+      <div className="api-models-selected-label">
+        <span>Selected Models ({selected.length})</span>
+        {selected.length>0 && <span className="clear-link" onClick={onClear}>Clear All</span>}
+      </div>
+      <div className="api-models-selected">
+        {selected.length === 0
+          ? <span className="sm" style={{fontStyle:'italic', color:'var(--ink-3)'}}>No models selected · pick from the list below</span>
+          : selected.map(m => (
+              <span key={m} className="api-models-chip">
+                {m}
+                <span className="x" onClick={() => onDeselect && onDeselect(m)} title="remove">×</span>
+              </span>
+            ))
+        }
+      </div>
+
+      <div className="api-models-selected-label">
+        <span>Available Models</span>
+        <span style={{display:'flex', gap:6}}>
+          <span className="clear-link" style={{color:'var(--indigo)'}} onClick={onFetch}>Fetch Models</span>
+          <span className="clear-link" style={{color:'var(--indigo)'}} onClick={onSelectAll}>Select All ({unselectedFiltered.length})</span>
+        </span>
+      </div>
+      <div className="api-models-search">
+        <input type="text" value={search} placeholder="Search available models…"
+               onChange={e => onSearch && onSearch(e.target.value)}/>
+        {search && <span className="clear-x" onClick={() => onSearch && onSearch('')}>×</span>}
+      </div>
+      <div className="api-models-available">
+        {filtered.length === 0 && (
+          <div className="sm" style={{fontStyle:'italic', color:'var(--ink-3)', padding:'6px 8px'}}>
+            No matches — try Fetch Models or a different search.
+          </div>
+        )}
+        {filtered.map(m => (
+          <label key={m}
+                 className={`api-models-available-item${selectedSet.has(m)?' selected':''}`}>
+            <input type="checkbox"
+                   checked={selectedSet.has(m)}
+                   onChange={e => {
+                     if (e.target.checked) onSelect && onSelect(m);
+                     else onDeselect && onDeselect(m);
+                   }}/>
+            <span>{m}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Sticky section nav for ApiStandalone — mirrors AliasRail.
+const ApiRail = ({active='provider'}) => {
+  const items = [
+    {k:'provider', label:'Provider'},
+    {k:'routing',  label:'Routing'},
+    {k:'models',   label:'Models'},
+  ];
+  return (
+    <aside className="api-rail">
+      <div className="api-rail-head">sections</div>
+      {items.map(i => (
+        <div key={i.k} className={`api-rail-item${active===i.k?' active':''}`}>{i.label}</div>
+      ))}
+    </aside>
+  );
+};
+
+// Top-of-page jump chips for ApiMedium — mirrors AliasMediumAnchors.
+const ApiMediumAnchors = ({active='provider'}) => {
+  const items = [
+    {k:'provider', label:'Provider'},
+    {k:'routing',  label:'Routing'},
+    {k:'models',   label:'Models'},
+  ];
+  return (
+    <div className="api-medium-anchors">
+      {items.map(i => (
+        <span key={i.k} className={`api-medium-anchor${active===i.k?' active':''}`}>{i.label}</span>
+      ))}
+    </div>
+  );
+};
+
+Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, PhoneFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection, ModeToggle, ModeToggleCaption, KindChipRow, ModelsAddBrowseMenu, RankedRow, RankedModeCaption, RANKED_FIXTURE_CODING, groupIntoRankedRows, API_FORMATS, FIXTURE_OPENAI_MODELS, ApiFormatPicker, ApiKeyField, PrefixField, ForwardingModeRadio, ModelMultiSelect, ApiRail, ApiMediumAnchors});

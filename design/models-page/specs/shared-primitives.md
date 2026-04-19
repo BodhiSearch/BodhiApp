@@ -131,6 +131,20 @@ Primitives are exported from `screens/primitives.jsx` via `Object.assign(window,
 | `groupIntoRankedRows(benchmark, mode)` | `discover.jsx` | Pure function. Returns ordered `RankedRow` props for the given benchmark + mode. Wireframe uses the static `RANKED_FIXTURE_CODING`; production aggregator lives here. |
 | `RANKED_FIXTURE_CODING` | primitives.jsx | Static 9-entry leaderboard for the HumanEval/Coding demo. Covers every dedup/stack case. |
 
+### API-create primitives (added v29)
+
+| Name | What it does |
+|---|---|
+| `ApiFormatPicker` | Dropdown picker over `API_FORMATS`. Field-styled closed state with ▾. |
+| `ApiKeyField` | "Use API key" checkbox toggle + masked input + 👁 eye. When toggle off, input disabled. |
+| `PrefixField` | "Enable prefix" checkbox toggle + text input + example helper. |
+| `ForwardingModeRadio` | Two-option radio: `all` / `selected`. Drives the conditional Model Selection section in `api.jsx`. |
+| `ModelMultiSelect` | Selected chips strip (× to remove) + search input + scrollable available list with checkboxes + action footer (`Fetch Models` / `Select All (N)` / `Clear All`). |
+| `ApiRail` | Sticky section nav for `ApiStandalone`. 3 anchors: Provider / Routing / Models. Mirrors `AliasRail`. |
+| `ApiMediumAnchors` | Top-of-page jump chips for `ApiMedium`. Mirrors `AliasMediumAnchors`. |
+| `API_FORMATS` constant | 10 formats: openai-responses, openai-completions, anthropic-messages, anthropic-oauth, google-gemini, openrouter, hf-inference, nvidia-nim, groq, together. Each entry: `{code, label, defaultBaseUrl}`. |
+| `FIXTURE_OPENAI_MODELS` constant | 12 representative OpenAI models used by the demo (gpt-5 family, gpt-5.1-codex-mini/max, gpt-5.2-codex, gpt-4-turbo, gpt-5.3-codex, text-embedding-3-large). |
+
 ### Create-alias primitives
 
 | Name | What it does |
@@ -215,6 +229,12 @@ AI agents picking this up should know these, because the wireframes only show th
   - **Variant C (bottom sheet)** → identical to Models' mobile/medium sheet dispatch of `HfRepoPanel`.
   - **Variant B (full-page with benchmark bars + quant slider + community rating)** → dropped by user decision. The unique features (Bar chart benchmarks, interactive quant slider, stars + review count) were explicitly dropped, not ported. They can be added into `HfRepoPanel` later if required, but not in this pass.
   - `screens/detail.jsx` is archived on disk; not loaded by `index.html`. No file depended on it (grep-verified before removal).
+- **Create API Model consolidated (2026-04-19).** The original `api.jsx` had three speculative variants (A: one-form minimal / B: stepper / C: provider-aware editor). User direction: keep A's flat one-form UX but enrich with production-parity fields and give it the 4-variant responsive deck used by alias.jsx.
+  - **Option A kept + extended.** Fields added to match production: "Use API key" toggle in front of the masked input, "Enable prefix" toggle in front of the prefix text, Forwarding Mode as a **radio** (not dropdown), and the full Model Selection UI (selected chips with ×, available list with checkboxes + search, `Fetch Models` / `Select All (N)` / `Clear All` actions).
+  - **Conditional Model Selection.** The Model Selection section is **hidden** (not greyed) when `Forwarding mode = "Forward all requests with prefix"`. This breaks our usual filter-grey-out convention intentionally: the section isn't a filter group on the shared list, it's a form-specific affordance that has no meaning in "forward all" mode. Matches production behavior.
+  - **Four variants.** `ApiStandalone` (full page with `ApiRail` sticky nav) / `ApiOverlay` (reached from Models' `+ ▾ Add model → Add API provider`) / `ApiMedium` (tablet, demos Forward-all short form) / `ApiMobile` (two PhoneFrames covering both forwarding states).
+  - **Variants B + C dropped.** Stepper UX (B) and provider-aware editor (C) are gone. Their novel bits (OAuth lifecycle card, per-model cost inline) did not survive the consolidation — deferred to `ConnectedProviderPanel` work.
+  - Primitives added: `ApiFormatPicker`, `ApiKeyField`, `PrefixField`, `ForwardingModeRadio`, `ModelMultiSelect`, `ApiRail`, `ApiMediumAnchors` + constants `API_FORMATS`, `FIXTURE_OPENAI_MODELS`.
 
 ### Create local alias
 
@@ -244,6 +264,11 @@ These were explicitly punted during design. A future agent proposing work in thi
 - **Needs-based matcher (was Provider Directory Variant C).** Dropped explicitly in the 2026-04-19 pass. Specialization + Capability filters are the replacement. Do not re-introduce.
 - **Benchmark visualization bars, quant slider, community rating card (was Model Detail Variant B).** Dropped explicitly in the 2026-04-19 pass. These three unique surfaces do not exist anywhere in the wireframe today. The user noted they can be added to `HfRepoPanel` later if required — but are not considered missing work.
 - **Full-page detail layout** (two-column breathing-room variant). Dropped with Model Detail. Current dispatch (right-drawer on desktop, bottom-sheet on mobile) is the canonical detail UX.
+- **Separate "Add API model from connected provider" screen.** The `+ ▾ Add model` menu has a distinct "Add API model" entry (badge "from connected"). For this pass it routes to the same `api.jsx` form with provider pre-picked; a dedicated picker screen (list connected providers → choose model) is deferred.
+- **Per-API-model override UI** (temperature defaults, system prompt defaults at the API-model level, matching what `AliasPanel` shows for local aliases) — not wireframed. Deferred.
+- **OAuth lifecycle UI** (anthropic-oauth PKCE, google-gemini OAuth tokens, expiry/re-auth flows) — `API_FORMATS` lists these formats but the form assumes key-based auth. A future pass will handle OAuth in both `api.jsx` and `ConnectedProviderPanel`.
+- **Stepper UX for API create** (was api.jsx Variant B). Dropped. Do not reintroduce — user rejected.
+- **Provider-aware editor with per-model cost inline** (was api.jsx Variant C). Dropped. The cost-per-model surface belongs in `ConnectedProviderPanel` if it lands at all.
 - **Explicit benchmark-sort dropdown (non-Specialization trigger).** Ranked mode is currently only activated via a Specialization selection. A future explicit "Sort by benchmark X" dropdown is deferred.
 - **Benchmarks beyond HumanEval/Coding.** The `RANKED_FIXTURE_CODING` fixture covers one specialization end-to-end. Other specializations (Chat/MT-Bench, Reasoning/GPQA, etc.) show ranked-mode UI but reuse the same fixture for demo. Real per-benchmark fixtures are deferred.
 - **Re-ranking under filter scope.** Explicitly rejected: when filters narrow visible rows, the rank numbers stay absolute. A "rank within filtered subset" mode would undermine the "#2 in the world" semantic.
@@ -273,7 +298,7 @@ design/models-page/
     └── alias.md
 ```
 
-Cache-buster: every `<script type="text/babel">` tag in `index.html` ends with `?v=N`. Last bumped to `?v=28` for the Model Detail absorption pass. Bump on every jsx/css change.
+Cache-buster: every `<script type="text/babel">` tag in `index.html` ends with `?v=N`. Last bumped to `?v=29` for the Create API Model consolidation pass. Bump on every jsx/css change.
 
 **Loaded scripts** (in order, from `index.html`): `primitives.jsx` → `hub.jsx` → `discover.jsx` → `alias.jsx` → `api.jsx` → `app.jsx`. `providers.jsx` and `detail.jsx` are intentionally NOT in the loaded list — both are archived. Do not re-add them.
 

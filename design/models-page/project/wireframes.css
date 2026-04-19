@@ -1666,3 +1666,208 @@ html, body {
 .rank-meta-actions {
   display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Create API model primitives · v29
+   Flat one-form layout with section heads + dividers.
+   Field toggles (ApiKeyField, PrefixField), radio (Forwarding),
+   model multi-select (selected chips + available checkbox list).
+   ───────────────────────────────────────────────────────────── */
+.api-form-section-head {
+  font-family: var(--hand); font-size: 13px;
+  font-weight: 700; color: var(--ink);
+  margin: 10px 0 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px dashed var(--line-soft);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.api-form-section-head:first-child { margin-top: 0; }
+
+.api-form-divider {
+  height: 0; border: none; border-top: 1px dashed var(--line-soft);
+  margin: 10px 0;
+}
+
+.api-toggle-field {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 4px 0;
+}
+.api-toggle-field input[type="checkbox"] {
+  margin-top: 4px; accent-color: var(--lotus);
+  width: 14px; height: 14px;
+}
+.api-toggle-field-main {
+  flex: 1; display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
+}
+.api-toggle-field-main.disabled { opacity: 0.5; pointer-events: none; }
+
+.api-forward-radio {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 4px 0;
+}
+.api-forward-radio-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; cursor: pointer;
+  border: 1.3px solid transparent; border-radius: 8px;
+  font-family: var(--hand); font-size: 13px;
+}
+.api-forward-radio-option:hover { background: var(--paper-2); }
+.api-forward-radio-option.active {
+  border-color: var(--ink);
+  background: var(--lotus-soft);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.api-forward-radio-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--ink); background: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.api-forward-radio-option.active .api-forward-radio-dot {
+  background: var(--lotus);
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+.api-models-card {
+  border: 1.3px solid var(--ink); border-radius: 10px;
+  background: var(--paper); padding: 8px;
+  margin-top: 4px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.api-models-selected {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  margin-bottom: 6px;
+  min-height: 20px;
+}
+.api-models-selected-label {
+  font-family: var(--hand); font-size: 11px;
+  color: var(--ink-3); font-weight: 700;
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 4px;
+}
+.api-models-selected-label .clear-link {
+  color: var(--warn); cursor: pointer;
+  text-decoration: underline dotted;
+  font-size: 10.5px; font-weight: 600;
+}
+.api-models-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 6px;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 11px; color: var(--ink);
+  background: var(--paper-2);
+  border: 1.2px solid var(--ink); border-radius: 8px;
+}
+.api-models-chip .x {
+  cursor: pointer; color: var(--ink-3);
+  font-size: 12px; padding: 0 2px;
+}
+.api-models-chip .x:hover { color: var(--warn); }
+
+.api-models-search {
+  position: relative;
+  margin-bottom: 6px;
+}
+.api-models-search input {
+  width: 100%; box-sizing: border-box;
+  padding: 5px 10px 5px 26px;
+  font-family: var(--hand); font-size: 13px;
+  border: 1.2px solid var(--ink); border-radius: 8px;
+  background: #fff;
+}
+.api-models-search::before {
+  content: '🔍'; position: absolute;
+  left: 7px; top: 50%; transform: translateY(-50%);
+  font-size: 11px; pointer-events: none;
+}
+.api-models-search .clear-x {
+  position: absolute; right: 8px; top: 50%;
+  transform: translateY(-50%); cursor: pointer;
+  color: var(--ink-3); font-size: 14px;
+}
+
+.api-models-available {
+  max-height: 180px; overflow-y: auto;
+  border: 1px dashed var(--line-soft); border-radius: 6px;
+  padding: 4px;
+  background: #fff;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.api-models-available-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; cursor: pointer;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 12px; color: var(--ink);
+  border-radius: 4px;
+}
+.api-models-available-item:hover { background: var(--paper-2); }
+.api-models-available-item.selected { background: var(--lotus-soft); }
+.api-models-available-item input[type="checkbox"] {
+  accent-color: var(--lotus); width: 13px; height: 13px;
+}
+
+.api-models-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 6px; margin-top: 6px;
+  flex-wrap: wrap;
+}
+.api-models-footer-actions {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+
+.api-form-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1.3px solid var(--ink);
+  gap: 6px; flex-wrap: wrap;
+}
+.api-form-footer-actions {
+  display: flex; gap: 6px;
+}
+
+/* Sticky section nav for ApiStandalone — mirrors .alias-rail */
+.api-rail {
+  position: sticky; top: 10px;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 8px;
+  background: var(--paper-2);
+  border: 1.3px solid var(--ink); border-radius: 10px;
+  box-shadow: 2px 2px 0 var(--ink);
+  min-width: 140px;
+}
+.api-rail-head {
+  font-family: var(--hand); font-size: 10px;
+  font-weight: 700; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 2px 4px;
+  border-bottom: 1px dashed var(--line-soft);
+  margin-bottom: 2px;
+}
+.api-rail-item {
+  padding: 4px 8px; cursor: pointer;
+  font-family: var(--hand); font-size: 12px;
+  color: var(--ink-3); border-radius: 6px;
+}
+.api-rail-item:hover { background: var(--paper); }
+.api-rail-item.active {
+  background: var(--indigo-soft); color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.3px var(--ink);
+}
+
+.api-medium-anchors {
+  display: flex; gap: 4px; padding: 4px 8px;
+  overflow-x: auto;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.api-medium-anchor {
+  padding: 3px 8px; cursor: pointer;
+  font-family: var(--hand); font-size: 11px;
+  color: var(--ink-3); border-radius: 6px;
+  white-space: nowrap;
+}
+.api-medium-anchor.active {
+  background: var(--indigo-soft); color: var(--ink);
+  font-weight: 700;
+}
