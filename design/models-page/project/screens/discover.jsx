@@ -520,6 +520,388 @@ function DiscoverA() {
   );
 }
 
+// ── Mobile variant ────────────────────────────────────────────
+
+// Action button that replaces the DL icon in the Discover header.
+// Opens a dropdown menu listing browse modes + Downloads + Leaderboards.
+const DiscoverActionsBtn = () => (
+  <span className="m-ico m-ico-action" title="browse & actions">⋯ ▾</span>
+);
+
+// The dropdown that drops from the Discover header action.
+const DiscoverActionsMenu = () => (
+  <div className="m-menu-overlay" style={{justifyContent:'flex-end', paddingRight:6, paddingTop:40}}>
+    <div className="m-menu" style={{width:'74%'}}>
+      <div className="m-menu-item">↑ Trending</div>
+      <div className="m-menu-item">★ New launches</div>
+      <div className="m-menu-item">
+        <span>↓ Downloads</span>
+        <span className="m-menu-badge">1</span>
+      </div>
+      <div className="m-menu-item expanded">
+        <div className="m-menu-container">
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <span>🏆 Leaderboards</span><span>▾</span>
+          </div>
+          <div className="m-menu-sub">
+            <div className="m-menu-sub-item">Chatbot Arena</div>
+            <div className="m-menu-sub-item">MMLU-Pro</div>
+            <div className="m-menu-sub-item">HumanEval</div>
+            <div className="m-menu-sub-item">Tool-use</div>
+            <div className="m-menu-sub-item">Vision (MMMU)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const DiscoverMobileSubbar = ({filtersCount=5}) => (
+  <>
+    <div className="t-search" style={{fontSize:10}}><span>Filter repos & providers…</span><span>⌘K</span></div>
+    <div className="m-toolbar">
+      <span className="m-filter-btn">Filters <span className="m-filter-badge">{filtersCount}</span> ▾</span>
+      <span className="sm">Sort: Likes ▾</span>
+      <span className="m-view-toggle"><Chip on>▦</Chip><Chip>☰</Chip></span>
+    </div>
+  </>
+);
+
+const DiscoverMobileCard = ({kind, title, subtitle, meta, cost, status, fit, fitLabel, selected}) => {
+  const kindTone = kind==='provider' ? 'indigo' : kind==='provider-off' ? '' : 'leaf';
+  const fitTone = fit==='green' ? 'leaf' : fit==='yellow' ? 'warn' : fit==='red' ? 'warn' : '';
+  const extra = kind==='provider-off' ? ' dashed' : '';
+  return (
+    <div className={`m-card${selected?' selected':''}${extra}`}>
+      <div style={{display:'flex', gap:4, alignItems:'center', flexWrap:'wrap'}}>
+        <Chip tone={kindTone} style={{fontSize:9}}>{kind==='provider-off' ? 'provider' : kind}</Chip>
+        {status && <Chip>● {status}</Chip>}
+        {fitLabel && <Chip tone={fitTone}>● {fitLabel}</Chip>}
+      </div>
+      <div className="model-card-title" style={{fontSize:13}}>{title}</div>
+      {subtitle && <div className="sm" style={{fontSize:10}}>{subtitle}</div>}
+      {cost && <div className="model-card-cost" style={{fontSize:10, padding:'1px 5px'}}>{cost}</div>}
+      {meta && <div className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>{meta}</div>}
+    </div>
+  );
+};
+
+function DiscoverMobile() {
+  return (
+    <div className="phone-deck">
+      {/* ── 1. Browse state ── */}
+      <PhoneFrame label="1 · Browse">
+        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <DiscoverMobileSubbar/>
+        <div className="active-filters" style={{fontSize:10, padding:'2px 0'}}>
+          <span className="active-filters-label">filters:</span>
+          <span className="filter-tag">tool-use <span className="x">×</span></span>
+          <span className="filter-tag">Fits rig ✓ <span className="x">×</span></span>
+        </div>
+        <div className="m-grid">
+          <DiscoverMobileCard title="Qwen/Qwen3.5-9B" subtitle="9B · Apache-2 · HF" meta="default :Q4_K_M · 5.6GB · 5 quants · ↓443k" fit="green" fitLabel="~38 t/s" selected/>
+          <DiscoverMobileCard kind="provider" title="openai" subtitle="openai-responses · 7 models" cost="in $0.05 – $2.00 / M" status="connected"/>
+          <DiscoverMobileCard kind="provider-off" title="groq" subtitle="openai-completions · 6 models" cost="in $0.05 – $0.75 / M" status="not connected"/>
+          <DiscoverMobileCard title="google/gemma-4-e2b" subtitle="2B · Gemma T&C · HF" meta="default :Q4_K_M · 1.4GB · 3 quants" fit="green" fitLabel="~85 t/s"/>
+          <DiscoverMobileCard kind="provider-off" title="openrouter" subtitle="openai-completions · 100+ models" cost="varies"/>
+        </div>
+        <Callout style={{position:'static', fontSize:9, margin:'4px 0'}}>repos + providers unified · same sheet UX as Hub</Callout>
+      </PhoneFrame>
+
+      {/* ── 2. Header menu open ── */}
+      <PhoneFrame label="2 · Menu">
+        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <MobileMenu active="Discover"/>
+        <Callout style={{position:'static', fontSize:9, margin:'4px 0'}}>breadcrumb menu · Models expands · Discover active</Callout>
+      </PhoneFrame>
+
+      {/* ── 3. Filters sheet ── */}
+      <PhoneFrame label="3 · Filters sheet">
+        <div className="phone-dim">
+          <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+          <DiscoverMobileSubbar/>
+          <div className="m-grid dim">
+            <DiscoverMobileCard title="Qwen/Qwen3.5-9B" subtitle="9B · Apache-2" fit="green" fitLabel="~38 t/s"/>
+            <DiscoverMobileCard kind="provider" title="openai" subtitle="7 models"/>
+          </div>
+        </div>
+        <div className="m-sheet m-sheet-tall">
+          <div className="m-sheet-handle"/>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:6}}>
+            <span className="h2" style={{margin:0, fontSize:13}}>Filters</span>
+            <span className="sm" style={{fontSize:10}}>5 active · <a href="#" style={{textDecoration:'underline', color:'var(--ink-3)'}}>clear all</a></span>
+          </div>
+          <div className="m-filter-groups">
+            <div className="side-filter-title" style={{fontSize:11}}>source</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip on>HuggingFace</Chip><Chip>OpenRouter</Chip><Chip>NVIDIA NIM</Chip>
+              <Chip>Groq</Chip><Chip>Together</Chip><Chip>Anthropic</Chip><Chip>OpenAI</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>capability</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip on>tool-use</Chip><Chip>vision</Chip><Chip>structured</Chip>
+              <Chip>embedding</Chip><Chip>reasoning</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>size · rig</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip tone="leaf" on>Fits rig ✓</Chip>
+              <Chip>&lt; 5GB</Chip><Chip>5–15GB</Chip><Chip>&gt; 15GB</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>cost · api</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip>Free / OSS</Chip><Chip>$&lt;1 / M</Chip>
+              <Chip>$1–5</Chip><Chip>$&gt;5</Chip><Chip>≥99% up</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>license</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip on>Apache-2</Chip><Chip>MIT</Chip><Chip>Llama</Chip>
+              <Chip>Gemma</Chip><Chip>Proprietary</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>format</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip tone="leaf" on>GGUF ✓</Chip>
+              <Chip>openai-responses</Chip><Chip>anthropic-messages</Chip>
+              <Chip>openrouter</Chip>
+            </div>
+          </div>
+          <div className="m-sheet-actions">
+            <Btn variant="ghost" size="xs">Cancel</Btn>
+            <Btn variant="primary" size="xs">Apply · 5 filters</Btn>
+          </div>
+        </div>
+      </PhoneFrame>
+
+      {/* ── 4. Detail bottom sheet (HF repo) ── */}
+      <PhoneFrame label="4 · Repo sheet">
+        <div className="phone-dim">
+          <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+          <DiscoverMobileSubbar/>
+          <div className="m-grid dim">
+            <DiscoverMobileCard title="Qwen/Qwen3.5-9B" subtitle="9B · Apache-2" meta="~38 t/s" selected/>
+            <DiscoverMobileCard kind="provider" title="openai" subtitle="7 models"/>
+          </div>
+        </div>
+        <div className="m-sheet">
+          <div className="m-sheet-handle"/>
+          <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+            <Chip tone="leaf" style={{fontSize:9}}>hf-repo</Chip>
+            <span className="h2" style={{margin:0, fontSize:13}}>Qwen/Qwen3.5-9B</span>
+          </div>
+          <div className="sm" style={{fontSize:10}}>Apache-2 · 9B · #2 Arena · ↓443k</div>
+          <div style={{display:'flex', gap:3, marginTop:4, flexWrap:'wrap'}}>
+            <Chip tone="leaf">text2text</Chip><Chip tone="leaf">tool-use</Chip><Chip>reasoning</Chip>
+          </div>
+          <div className="h3" style={{fontSize:10, margin:'6px 0 3px'}}>Quants · pull</div>
+          <div style={{display:'flex', flexDirection:'column', gap:3}}>
+            <div className="card row" style={{padding:'3px 5px', fontSize:10}}>
+              <Chip tone="saff" style={{fontSize:9}}>default</Chip>
+              <code style={{flex:1, fontSize:10}}>:Q4_K_M</code>
+              <span className="sm" style={{fontSize:10}}>5.6GB</span>
+              <Btn variant="primary" size="xs">pull</Btn>
+            </div>
+            <div className="card row" style={{padding:'3px 5px', fontSize:10}}>
+              <code style={{flex:1, fontSize:10}}>:Q5_K_M</code>
+              <span className="sm" style={{fontSize:10}}>6.8GB</span>
+              <Btn size="xs">pull</Btn>
+            </div>
+          </div>
+          <div className="sm" style={{fontSize:9, color:'var(--ink-3)', marginTop:4, textAlign:'center'}}>↑ swipe up for README · leaderboard · more quants</div>
+        </div>
+      </PhoneFrame>
+
+      {/* ── 5. Header action menu ── */}
+      <PhoneFrame label="5 · Header action">
+        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <DiscoverActionsMenu/>
+        <Callout style={{position:'static', fontSize:9, margin:'4px 0'}}>tap ⋯ ▾ · Trending / New launches / Downloads / Leaderboards ›</Callout>
+      </PhoneFrame>
+    </div>
+  );
+}
+
+// ── Medium / tablet variant ────────────────────────────────────
+
+const TabletDiscoverMiniCard = ({kind, title, subtitle, fit, fitLabel, cost, status, selected}) => {
+  const kindTone = kind==='provider' ? 'indigo' : kind==='provider-off' ? '' : 'leaf';
+  const fitTone = fit==='green' ? 'leaf' : fit==='yellow' ? 'warn' : fit==='red' ? 'warn' : '';
+  const extra = kind==='provider-off' ? ' dashed' : '';
+  return (
+    <div className={`m-card${selected?' selected':''}${extra}`} style={{fontSize:10}}>
+      <div style={{display:'flex', gap:4, alignItems:'center', flexWrap:'wrap'}}>
+        <Chip tone={kindTone} style={{fontSize:9}}>{kind==='provider-off' ? 'provider' : kind}</Chip>
+        {status && <Chip>● {status}</Chip>}
+        {fitLabel && <Chip tone={fitTone}>● {fitLabel}</Chip>}
+      </div>
+      <div className="model-card-title" style={{fontSize:12}}>{title}</div>
+      {subtitle && <div className="sm" style={{fontSize:10}}>{subtitle}</div>}
+      {cost && <div className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>{cost}</div>}
+    </div>
+  );
+};
+
+const DiscoverMediumToolbar = ({filtersCount=5}) => (
+  <>
+    <div className="t-search" style={{fontSize:11}}><span>Filter repos & providers — e.g. 'vision 7B apache' or 'claude tool-use'…</span><span>⌘K</span></div>
+    <div className="m-toolbar">
+      <span className="m-filter-btn">Filters <span className="m-filter-badge">{filtersCount}</span> ▾</span>
+      <span className="sm">Scope: All ▾</span>
+      <span className="sm">Sort: Likes ▾</span>
+      <span className="m-view-toggle"><Chip on>▦</Chip><Chip>☰</Chip></span>
+    </div>
+    <div className="active-filters" style={{fontSize:10, padding:'2px 0'}}>
+      <span className="active-filters-label">filters:</span>
+      <span className="filter-tag">tool-use <span className="x">×</span></span>
+      <span className="filter-tag">Fits rig ✓ <span className="x">×</span></span>
+      <span className="filter-tag">Apache-2 <span className="x">×</span></span>
+      <span className="active-filters-clear">clear all</span>
+    </div>
+  </>
+);
+
+const DiscoverMediumGrid = () => (
+  <div className="t-main">
+    <div className="t-grid-2col">
+      <TabletDiscoverMiniCard title="Qwen/Qwen3.5-9B" subtitle="9B · Apache-2 · default :Q4_K_M" fit="green" fitLabel="~38 t/s" selected/>
+      <TabletDiscoverMiniCard kind="provider" title="openai" subtitle="openai-responses · 7 models" cost="in $0.05 – $2 / M" status="connected"/>
+      <TabletDiscoverMiniCard kind="provider-off" title="groq" subtitle="openai-completions · 6 models" cost="in $0.05 – $0.75 / M" status="not connected"/>
+      <TabletDiscoverMiniCard title="google/gemma-4-e2b" subtitle="2B · default :Q4_K_M · 1.4GB" fit="green" fitLabel="~85 t/s"/>
+      <TabletDiscoverMiniCard kind="provider-off" title="openrouter" subtitle="100+ models" cost="varies"/>
+      <TabletDiscoverMiniCard title="meta/Llama-3.3-70B" subtitle="70B · Llama-3 license" fit="red" fitLabel="won't fit"/>
+    </div>
+  </div>
+);
+
+const DiscoverMediumRightPanel = () => (
+  <aside className="t-right-fixed">
+    <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+      <Chip tone="leaf" style={{fontSize:10}}>hf-repo</Chip>
+      <span className="h2" style={{margin:0, fontSize:12}}>Qwen/Qwen3.5-9B</span>
+    </div>
+    <div className="sm" style={{fontSize:10}}>Apache-2 · 9B · released 2025-08 · not yet downloaded</div>
+    <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+      <Chip on style={{fontSize:9}}>Overview</Chip><Chip style={{fontSize:9}}>Quants (5)</Chip><Chip style={{fontSize:9}}>README</Chip>
+    </div>
+    <div className="h3">Capabilities</div>
+    <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+      <Chip tone="leaf">text2text</Chip><Chip tone="leaf">tool-use</Chip><Chip>reasoning</Chip>
+    </div>
+    <div className="h3">Specs</div>
+    <div style={{display:'grid', gridTemplateColumns:'auto 1fr', columnGap:8, rowGap:2, fontSize:10}}>
+      <span className="sm">ctx</span><span className="sm"><b>32768</b></span>
+      <span className="sm">arch</span><span className="sm">qwen3 · GQA</span>
+      <span className="sm">scores</span><span className="sm">#2 Arena · 92.4 MMLU</span>
+      <span className="sm">rig</span><span className="sm"><TL tone="green">Q4/Q5 fit</TL></span>
+    </div>
+    <div className="h3">Quants · pull</div>
+    <div style={{display:'flex', flexDirection:'column', gap:3}}>
+      <div className="card row" style={{padding:'3px 5px', fontSize:10}}>
+        <Chip tone="saff" style={{fontSize:9}}>default</Chip>
+        <code style={{flex:1, fontSize:10}}>:Q4_K_M</code>
+        <span className="sm" style={{fontSize:10}}>5.6GB</span>
+        <Btn variant="primary" size="xs">pull</Btn>
+      </div>
+      <div className="card row" style={{padding:'3px 5px', fontSize:10}}>
+        <code style={{flex:1, fontSize:10}}>:Q5_K_M</code>
+        <span className="sm" style={{fontSize:10}}>6.8GB</span>
+        <Btn size="xs">pull</Btn>
+      </div>
+      <div className="card row" style={{padding:'3px 5px', fontSize:10}}>
+        <code style={{flex:1, fontSize:10}}>:Q8_0</code>
+        <span className="sm" style={{fontSize:10}}>9.6GB</span>
+        <Btn size="xs">pull</Btn>
+      </div>
+    </div>
+    <div style={{display:'flex', gap:4, marginTop:4, flexWrap:'wrap'}}>
+      <Btn variant="primary" size="xs">Pull default</Btn>
+      <Btn variant="ghost" size="xs">HF ↗</Btn>
+    </div>
+  </aside>
+);
+
+function DiscoverMedium() {
+  return (
+    <div className="tablet-deck">
+      {/* 1. Browse */}
+      <TabletFrame label="1 · Browse · 2-col grid + fixed right panel">
+        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <DiscoverMediumToolbar/>
+        <div className="t-layout-fixed">
+          <DiscoverMediumGrid/>
+          <DiscoverMediumRightPanel/>
+        </div>
+      </TabletFrame>
+
+      {/* 2. Filters sheet (compact centered) */}
+      <TabletFrame label="2 · Filters sheet (from Filters ▾)">
+        <div className="phone-dim">
+          <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+          <DiscoverMediumToolbar/>
+          <div className="t-layout-fixed">
+            <DiscoverMediumGrid/>
+            <DiscoverMediumRightPanel/>
+          </div>
+        </div>
+        <div className="m-sheet m-sheet-tall m-sheet-centered">
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:6}}>
+            <span className="h2" style={{margin:0, fontSize:13}}>Filters</span>
+            <span className="sm" style={{fontSize:10}}>5 active · <a href="#" style={{textDecoration:'underline', color:'var(--ink-3)'}}>clear all</a></span>
+          </div>
+          <div className="m-filter-groups">
+            <div className="side-filter-title" style={{fontSize:11}}>source</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip on>HuggingFace</Chip><Chip>OpenRouter</Chip><Chip>Groq</Chip>
+              <Chip>NVIDIA NIM</Chip><Chip>Together</Chip><Chip>Anthropic</Chip><Chip>OpenAI</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>capability</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip on>tool-use</Chip><Chip>vision</Chip><Chip>structured</Chip>
+              <Chip>embedding</Chip><Chip>reasoning</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>size · rig</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip tone="leaf" on>Fits rig ✓</Chip>
+              <Chip>&lt; 5GB</Chip><Chip>5–15GB</Chip><Chip>&gt; 15GB</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>cost · api</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip>Free / OSS</Chip><Chip>$&lt;1 / M</Chip>
+              <Chip>$1–5</Chip><Chip>$&gt;5</Chip><Chip>≥99% up</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>license</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip on>Apache-2</Chip><Chip>MIT</Chip><Chip>Llama</Chip>
+              <Chip>Gemma</Chip><Chip>Proprietary</Chip>
+            </div>
+            <div className="side-filter-title" style={{fontSize:11, marginTop:6}}>format</div>
+            <div style={{display:'flex', gap:3, flexWrap:'wrap'}}>
+              <Chip tone="leaf" on>GGUF ✓</Chip>
+              <Chip>openai-responses</Chip><Chip>anthropic-messages</Chip>
+              <Chip>openrouter</Chip>
+            </div>
+          </div>
+          <div className="m-sheet-actions">
+            <Btn variant="ghost" size="xs">Cancel</Btn>
+            <Btn variant="primary" size="xs">Apply · 5 filters</Btn>
+          </div>
+        </div>
+      </TabletFrame>
+
+      {/* 3. Header action menu */}
+      <TabletFrame label="3 · Header action (⋯ ▾)">
+        <MobileHeader active="Discover" rightSlot={<DiscoverActionsBtn/>}/>
+        <DiscoverMediumToolbar/>
+        <div className="t-layout-fixed">
+          <DiscoverMediumGrid/>
+          <DiscoverMediumRightPanel/>
+        </div>
+        <DiscoverActionsMenu/>
+      </TabletFrame>
+    </div>
+  );
+}
+
 window.DiscoverScreens = [
   {label:'A · HF repos + providers', tag:'balanced', note:'Same 3-column shell as Hub. Repo-level HF cards (with default-quant badge) mixed with API provider cards (connected + not-yet-connected). Three demo cards are clickable.', novel:'repo + provider unified grid, connected vs unconnected provider states', component:DiscoverA},
+  {label:'A · Medium (tablet)', tag:'medium', note:'Breadcrumb header + ⋯ ▾ action (Trending / New launches / Downloads / Leaderboards ›). No rail. 2-col grid + fixed right detail panel. Filters as compact centered modal. 3 frames.', novel:'Discover-specific header-action menu · fixed right panel · compact filters modal', component:DiscoverMedium},
+  {label:'A · Mobile', tag:'mobile', note:'Breadcrumb menu for app nav. ⋯ ▾ header action for browse modes + Downloads + Leaderboards. Filters sheet: source / capability / size / cost / license / format. Five frames.', novel:'two-menu header (app vs discover-actions) · 5 states', component:DiscoverMobile},
 ];

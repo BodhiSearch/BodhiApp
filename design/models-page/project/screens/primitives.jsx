@@ -60,8 +60,8 @@ const Browser = ({url='bodhi.local/models', children, style}) => (
   </div>
 );
 
-const Variant = ({label, tag, note, novel, children}) => (
-  <section className="variant">
+const Variant = ({label, tag, note, novel, className='', children}) => (
+  <section className={`variant ${className}`}>
     <div className="variant-head">
       <span className="variant-label">{label}</span>
       {tag && <span className="variant-tag">{tag}</span>}
@@ -228,4 +228,63 @@ const ModelListRow = ({kind='file', title, subtitle, caps=[], meta, cost, status
   );
 };
 
-Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow});
+// Breadcrumb-style header for mobile + medium (replaces the old ☰-brand topbar).
+// The whole path is tappable and opens MobileMenu.
+const MobileHeader = ({active='My Models', dlCount=1, rightSlot}) => (
+  <div className="m-bc-header">
+    <div className="m-bc-path">
+      <span>Bodhi</span>
+      <span className="m-bc-sep">›</span>
+      <span>Models</span>
+      <span className="m-bc-sep">›</span>
+      <span className="m-bc-active">{active}</span>
+      <span className="m-bc-caret">▾</span>
+    </div>
+    {rightSlot || (
+      <span className={`m-ico m-ico-dl${dlCount>0?' live':''}`} title="downloads">
+        ↓{dlCount>0 && <span className="m-dl-badge">{dlCount}</span>}
+      </span>
+    )}
+  </div>
+);
+
+// Nested app menu that drops from tapping the breadcrumb.
+const MobileMenu = ({active='My Models', withDownloads=false, dlCount=1}) => (
+  <div className="m-menu-overlay">
+    <div className="m-menu">
+      <div className="m-menu-item">Chat</div>
+      <div className="m-menu-item expanded">
+        <div className="m-menu-container">
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <span>Models</span><span>▾</span>
+          </div>
+          <div className="m-menu-sub">
+            <div className={`m-menu-sub-item${active==='My Models'?' active':''}`}>My Models</div>
+            <div className={`m-menu-sub-item${active==='Discover'?' active':''}`}>Discover</div>
+          </div>
+        </div>
+      </div>
+      {withDownloads && (
+        <div className="m-menu-item">
+          <span>↓ Downloads</span>
+          {dlCount>0 && <span className="m-menu-badge">{dlCount} ↓</span>}
+        </div>
+      )}
+      <div className="m-menu-item">Agents</div>
+      <div className="m-menu-item">Logs</div>
+      <div className="m-menu-item">Settings</div>
+    </div>
+  </div>
+);
+
+// Tablet-shaped frame used for the medium-width wireframes.
+const TabletFrame = ({label, children}) => (
+  <div className="tablet-frame">
+    <div className="tablet-label">{label}</div>
+    <div className="tablet-screen">
+      <div className="tablet-content">{children}</div>
+    </div>
+  </div>
+);
+
+Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame});

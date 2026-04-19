@@ -89,11 +89,12 @@ function Root() {
             ? '3 wireframe variants — familiar → balanced → bolder. Responsive: stacks to 1 column on narrow screens. Toggle Tweaks (top-right) to hide annotations, texture, the sketchy font, or color accents.'
             : 'Selected direction — expand below. Toggle Tweaks (top-right) to hide annotations, texture, the sketchy font, or color accents.'}
         </p>
-        <div className={`variants${variants.length===1?' single':''}`}>
+        <div className={`variants${variants.length===1?' single':''}${variants.some(v=>v.tag==='mobile'||v.tag==='medium')?' stacked':''}`}>
           {variants.map((v, i) => {
             const C = v.component;
+            const responsiveClass = (v.tag==='mobile' || v.tag==='medium') ? 'variant-responsive' : '';
             return (
-              <Variant key={i} label={v.label} tag={v.tag} note={v.note} novel={v.novel}>
+              <Variant key={i} label={v.label} tag={v.tag} note={v.note} novel={v.novel} className={responsiveClass}>
                 <C />
               </Variant>
             );
