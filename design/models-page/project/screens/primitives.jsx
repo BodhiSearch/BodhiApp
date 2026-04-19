@@ -1333,4 +1333,630 @@ const ApiMediumAnchors = ({active='provider'}) => {
   );
 };
 
-Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, PhoneFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection, ModeToggle, ModeToggleCaption, KindChipRow, ModelsAddBrowseMenu, RankedRow, RankedModeCaption, RANKED_FIXTURE_CODING, groupIntoRankedRows, API_FORMATS, FIXTURE_OPENAI_MODELS, ApiFormatPicker, ApiKeyField, PrefixField, ForwardingModeRadio, ModelMultiSelect, ApiRail, ApiMediumAnchors});
+// ═════════════════ MCP primitives (v30) ═════════════════
+
+// 9 curated categories drawn from research across Smithery / mcp.so / mcpmarket / Docker Hub MCP.
+const MCP_CATEGORIES = [
+  {code:'all',         label:'All',                icon:'◎'},
+  {code:'productivity',label:'Productivity',       icon:'▤'},
+  {code:'search',      label:'Search & Web',       icon:'⌕'},
+  {code:'browser',     label:'Browser',            icon:'◰'},
+  {code:'dev',         label:'Dev Tools',          icon:'⌁'},
+  {code:'data',        label:'Data',               icon:'⊞'},
+  {code:'ai',          label:'AI & Content',       icon:'✦'},
+  {code:'memory',      label:'Memory',             icon:'◧'},
+  {code:'comms',       label:'Comms',              icon:'✉'},
+  {code:'finance',     label:'Finance',            icon:'◉'},
+];
+
+// Catalog fixture — 12 entries that span the 5 card-states, loosely modelled on the production
+// Register-MCP-Server screenshots (download (23).png header-auth and download (24).png oauth).
+// `state` is the DERIVED state a viewer would see, not a DB column — computed from the join.
+const MCP_CATALOG_FIXTURE = [
+  {slug:'notion', name:'Notion', publisher:'Notion Labs', verified:true, category:'productivity',
+   logo:'N', tags:['oauth','featured','official'],
+   short:'Search, read and write pages & databases across your Notion workspace.',
+   defaultBaseUrl:'https://mcp.notion.com/mcp', transport:'streamable-http', authType:'oauth2',
+   authConfig:{registrationType:'dynamic', authorizationEndpoint:'https://mcp.notion.com/authorize', tokenEndpoint:'https://mcp.notion.com/token', registrationEndpoint:'https://mcp.notion.com/register', scopes:['notion:read','notion:write']},
+   stats:{installCount:'7.4k', weeklyCalls:'212k', uptimePct:98.1, latencyP50Ms:420},
+   links:{homepage:'https://notion.com', repository:'notion/mcp', license:'MIT'},
+   state:'connected'},
+  {slug:'linear', name:'Linear', publisher:'Linear', verified:true, category:'productivity',
+   logo:'L', tags:['oauth','featured'],
+   short:'Manage issues, projects, cycles, and comments across your Linear workspace.',
+   defaultBaseUrl:'https://mcp.linear.app/mcp', transport:'streamable-http', authType:'oauth2',
+   authConfig:{registrationType:'dynamic', authorizationEndpoint:'https://mcp.linear.app/authorize', tokenEndpoint:'https://mcp.linear.app/token', registrationEndpoint:'https://mcp.linear.app/register', scopes:['read','write']},
+   stats:{installCount:'3.1k', weeklyCalls:'88k', uptimePct:99.2, latencyP50Ms:310},
+   links:{homepage:'https://linear.app', repository:'linear/mcp', license:'MIT'},
+   state:'approved'},
+  {slug:'gmail', name:'Gmail', publisher:'Google', verified:true, category:'comms',
+   logo:'G', tags:['oauth','official'],
+   short:'Send, draft, reply, forward, and bulk-modify messages and threads in Gmail.',
+   defaultBaseUrl:'https://mcp.google.com/gmail', transport:'streamable-http', authType:'oauth2',
+   authConfig:{registrationType:'preregistered', authorizationEndpoint:'https://accounts.google.com/o/oauth2/auth', tokenEndpoint:'https://oauth2.googleapis.com/token', registrationEndpoint:'', scopes:['https://mail.google.com/']},
+   stats:{installCount:'46k', weeklyCalls:'1.2M', uptimePct:99.8, latencyP50Ms:280},
+   links:{homepage:'https://mail.google.com', repository:'google/mcp-gmail', license:'Apache-2.0'},
+   state:'catalog-only'},
+  {slug:'slack', name:'Slack', publisher:'Slack', verified:true, category:'comms',
+   logo:'S', tags:['oauth'],
+   short:'Channel-based messaging: post, search, react across your Slack workspace.',
+   defaultBaseUrl:'https://mcp.slack.com/mcp', transport:'streamable-http', authType:'oauth2',
+   authConfig:{registrationType:'preregistered', authorizationEndpoint:'https://slack.com/oauth/v2/authorize', tokenEndpoint:'https://slack.com/api/oauth.v2.access', registrationEndpoint:'', scopes:['chat:write','channels:read']},
+   stats:{installCount:'14k', weeklyCalls:'410k', uptimePct:99.4, latencyP50Ms:340},
+   links:{homepage:'https://slack.com', repository:'slack/mcp', license:'MIT'},
+   state:'pending-approval'},
+  {slug:'exa', name:'Exa Search', publisher:'Exa Labs', verified:true, category:'search',
+   logo:'E', tags:['header','featured'],
+   short:'Fast, intelligent web search and crawling — + Exa-code context tool for coding.',
+   defaultBaseUrl:'https://mcp.exa.ai/mcp', transport:'streamable-http', authType:'header',
+   authConfig:{keyDefinitions:[{placement:'header', name:'Authorization', hint:'Bearer <EXA_API_KEY>'}]},
+   stats:{installCount:'60k', weeklyCalls:'27k', uptimePct:58.6, latencyP50Ms:2300},
+   links:{homepage:'https://exa.ai', repository:'exa-labs/exa-mcp-server', license:'MIT'},
+   state:'connected'},
+  {slug:'github', name:'GitHub', publisher:'GitHub', verified:true, category:'dev',
+   logo:'◉', tags:['oauth','official','featured'],
+   short:'Manage repos, issues, PRs, workflows, and Actions — official MCP server.',
+   defaultBaseUrl:'https://api.github.com/mcp', transport:'streamable-http', authType:'oauth2',
+   authConfig:{registrationType:'preregistered', authorizationEndpoint:'https://github.com/login/oauth/authorize', tokenEndpoint:'https://github.com/login/oauth/access_token', registrationEndpoint:'', scopes:['repo','workflow']},
+   stats:{installCount:'5.2k', weeklyCalls:'180k', uptimePct:99.9, latencyP50Ms:210},
+   links:{homepage:'https://github.com', repository:'github/github-mcp-server', license:'MIT'},
+   state:'approved'},
+  {slug:'playwright', name:'Playwright', publisher:'Microsoft', verified:true, category:'browser',
+   logo:'▷', tags:['header'],
+   short:'Browser automation: click, fill, screenshot, assert across Chrome/FF/Safari.',
+   defaultBaseUrl:'https://mcp.playwright.dev/mcp', transport:'streamable-http', authType:'header',
+   authConfig:{keyDefinitions:[{placement:'header', name:'X-API-Key', hint:'Your Playwright key'}]},
+   stats:{installCount:'3.9k', weeklyCalls:'45k', uptimePct:97.2, latencyP50Ms:640},
+   links:{homepage:'https://playwright.dev', repository:'microsoft/playwright-mcp', license:'Apache-2.0'},
+   state:'catalog-only'},
+  {slug:'sheets', name:'Google Sheets', publisher:'Google', verified:true, category:'data',
+   logo:'⊞', tags:['oauth','official'],
+   short:'Read, write and format spreadsheet data; manage sheets and collaborate.',
+   defaultBaseUrl:'https://mcp.google.com/sheets', transport:'streamable-http', authType:'oauth2',
+   authConfig:{registrationType:'preregistered', authorizationEndpoint:'https://accounts.google.com/o/oauth2/auth', tokenEndpoint:'https://oauth2.googleapis.com/token', registrationEndpoint:'', scopes:['https://www.googleapis.com/auth/spreadsheets']},
+   stats:{installCount:'55k', weeklyCalls:'980k', uptimePct:99.7, latencyP50Ms:360},
+   links:{homepage:'https://sheets.google.com', repository:'google/mcp-sheets', license:'Apache-2.0'},
+   state:'catalog-only'},
+  {slug:'supabase', name:'Supabase', publisher:'Supabase', verified:true, category:'data',
+   logo:'▲', tags:['header'],
+   short:'Search Supabase docs, troubleshoot errors, and manage projects & schema.',
+   defaultBaseUrl:'https://mcp.supabase.com/mcp', transport:'streamable-http', authType:'header',
+   authConfig:{keyDefinitions:[{placement:'header', name:'Authorization', hint:'Bearer <SUPABASE_ACCESS_TOKEN>'}]},
+   stats:{installCount:'6.6k', weeklyCalls:'72k', uptimePct:98.8, latencyP50Ms:480},
+   links:{homepage:'https://supabase.com', repository:'supabase/mcp-supabase', license:'Apache-2.0'},
+   state:'approved'},
+  {slug:'jina', name:'Jina AI', publisher:'Jina AI', verified:true, category:'ai',
+   logo:'J', tags:['header'],
+   short:'AI-powered search + retrieval: read pages, extract structured data, re-rank.',
+   defaultBaseUrl:'https://mcp.jina.ai/mcp', transport:'streamable-http', authType:'header',
+   authConfig:{keyDefinitions:[{placement:'header', name:'Authorization', hint:'Bearer <JINA_KEY>'}]},
+   stats:{installCount:'3.3k', weeklyCalls:'58k', uptimePct:97.9, latencyP50Ms:520},
+   links:{homepage:'https://jina.ai', repository:'jina-ai/jina-mcp', license:'Apache-2.0'},
+   state:'catalog-only'},
+  {slug:'context7', name:'Context7', publisher:'Upstash', verified:true, category:'memory',
+   logo:'⊙', tags:['header','featured'],
+   short:'Fetch up-to-date, version-specific docs and code examples into your prompts.',
+   defaultBaseUrl:'https://mcp.context7.com/mcp', transport:'streamable-http', authType:'none',
+   authConfig:{},
+   stats:{installCount:'12.8k', weeklyCalls:'320k', uptimePct:99.1, latencyP50Ms:240},
+   links:{homepage:'https://context7.com', repository:'upstash/context7-mcp', license:'MIT'},
+   state:'disabled'},
+  {slug:'firecrawl', name:'Firecrawl', publisher:'Mendable', verified:false, category:'search',
+   logo:'🜂', tags:['header'],
+   short:'Scrape and crawl any site into LLM-friendly markdown or structured data.',
+   defaultBaseUrl:'https://mcp.firecrawl.dev/v2/mcp', transport:'streamable-http', authType:'header',
+   authConfig:{keyDefinitions:[{placement:'header', name:'Authorization', hint:'Bearer <FIRECRAWL_KEY>'}]},
+   stats:{installCount:'2.8k', weeklyCalls:'41k', uptimePct:96.4, latencyP50Ms:720},
+   links:{homepage:'https://firecrawl.dev', repository:'mendableai/firecrawl-mcp-server', license:'MIT'},
+   state:'catalog-only'},
+];
+
+// Admin Registered-servers fixture.
+const MCP_SERVERS_FIXTURE = [
+  {slug:'notion',    name:'notion',    url:'https://mcp.notion.com/mcp',    authType:'oauth2', enabled:true,  instances:4, approvedBy:'admin', approvedAt:'2026-04-02'},
+  {slug:'linear',    name:'linear',    url:'https://mcp.linear.app/mcp',    authType:'oauth2', enabled:true,  instances:2, approvedBy:'admin', approvedAt:'2026-04-05'},
+  {slug:'exa',       name:'exa',       url:'https://mcp.exa.ai/mcp',        authType:'header', enabled:true,  instances:6, approvedBy:'admin', approvedAt:'2026-03-30'},
+  {slug:'github',    name:'github',    url:'https://api.github.com/mcp',    authType:'oauth2', enabled:true,  instances:1, approvedBy:'admin', approvedAt:'2026-04-10'},
+  {slug:'supabase',  name:'supabase',  url:'https://mcp.supabase.com/mcp',  authType:'header', enabled:true,  instances:0, approvedBy:'admin', approvedAt:'2026-04-14'},
+  {slug:'context7',  name:'context7',  url:'https://mcp.context7.com/mcp',  authType:'none',   enabled:false, instances:3, approvedBy:'admin', approvedAt:'2026-02-20'},
+];
+
+// User's MCP instances.
+const MCP_INSTANCES_FIXTURE = [
+  {slug:'deepwiki', name:'deepwiki', url:'https://mcp.deepwiki.com/mcp', authState:'connected',     serverSlug:'deepwiki', lastUsedAt:'12m ago'},
+  {slug:'exa',      name:'exa',      url:'https://mcp.exa.ai/mcp',       authState:'connected',     serverSlug:'exa',      lastUsedAt:'3h ago'},
+  {slug:'notion',   name:'notion',   url:'https://mcp.notion.com/mcp',   authState:'connected',     serverSlug:'notion',   lastUsedAt:'yesterday'},
+  {slug:'gmail-a',  name:'gmail-a',  url:'https://mcp.google.com/gmail', authState:'needs_reauth',  serverSlug:'gmail',    lastUsedAt:'2 days ago'},
+];
+
+// Pending approvals in Admin inbox.
+const MCP_APPROVAL_FIXTURE = [
+  {id:'req-1', slug:'slack',   name:'Slack',   requester:'arjun@bodhi.ai',  requestedAt:'2026-04-18', reason:'Channel automation for sprint syncs'},
+  {id:'req-2', slug:'firecrawl', name:'Firecrawl', requester:'priya@bodhi.ai', requestedAt:'2026-04-19', reason:'Need to pull docs into RAG pipeline'},
+];
+
+// Per-server tool fixture — drives Playground + Drawer Capabilities tab.
+const MCP_TOOLS_FIXTURE = {
+  notion: [
+    {name:'notion-search', desc:'Perform a search across Notion — "internal" Search api.',
+     parameters:[{name:'query',type:'string',hint:'Search query'},{name:'filter',type:'object',hint:'Optional property filter'}]},
+    {name:'notion-fetch', desc:'Retrieves details about a Notion entity (page, database, block).',
+     parameters:[{name:'id',type:'string',hint:'Page or database UUID'}]},
+    {name:'notion-create-pages', desc:'Overview: creates one or more Notion pages with given properties.',
+     parameters:[{name:'pages',type:'array',hint:'List of page property objects'}]},
+    {name:'notion-update-page', desc:'Overview: update a Notion page properties.',
+     parameters:[{name:'id',type:'string',hint:'Page UUID'},{name:'properties',type:'object',hint:'Patch object'}]},
+    {name:'notion-get-users', desc:'Retrieves a list of users in the current workspace.',
+     parameters:[{name:'query',type:'string',hint:'Optional name filter'},{name:'page_size',type:'number',hint:'Max 100'},{name:'user_id',type:'string',hint:'Specific user; "self" for current'}]},
+    {name:'notion-move-pages', desc:'Move one or more Notion pages or databases to a new parent.',
+     parameters:[{name:'ids',type:'array'},{name:'parentId',type:'string'}]},
+    {name:'notion-create-database', desc:'Create a new Notion database.',
+     parameters:[{name:'title',type:'string'},{name:'properties',type:'object'}]},
+  ],
+  linear: [
+    {name:'linear-list-issues', desc:'List issues in the current workspace with filters.',
+     parameters:[{name:'teamId',type:'string'},{name:'state',type:'string',hint:'e.g. open, done'}]},
+    {name:'linear-create-issue', desc:'Create a new Linear issue.',
+     parameters:[{name:'teamId',type:'string'},{name:'title',type:'string'},{name:'description',type:'string'}]},
+    {name:'linear-update-issue', desc:'Patch an existing Linear issue.',
+     parameters:[{name:'id',type:'string'},{name:'patch',type:'object'}]},
+  ],
+  exa: [
+    {name:'web_search_exa', desc:'Fast semantic web search with neural ranking.',
+     parameters:[{name:'query',type:'string'},{name:'numResults',type:'number',hint:'default 10'}]},
+    {name:'get_code_context_exa', desc:'Pulls code-relevant context for a coding agent.',
+     parameters:[{name:'task',type:'string'}]},
+    {name:'crawling_exa', desc:'Crawl a URL and return structured contents.',
+     parameters:[{name:'url',type:'string'},{name:'maxCharacters',type:'number'}]},
+  ],
+};
+
+// Filter chip row (category).
+const McpCategoryChipRow = ({active='all', onChange}) => (
+  <div className="mcp-category-chips">
+    {MCP_CATEGORIES.map(c => (
+      <Chip key={c.code} on={c.code===active} tone="indigo" onClick={() => onChange && onChange(c.code)}>
+        <span style={{opacity:0.6, marginRight:3}}>{c.icon}</span>{c.label}
+      </Chip>
+    ))}
+  </div>
+);
+
+// Status pill group — filters cards by derived state.
+const McpStatusFilter = ({active='all', onChange}) => {
+  const items = [
+    {k:'all',          label:'All'},
+    {k:'approved',     label:'Approved'},
+    {k:'connected',    label:'Connected'},
+    {k:'catalog-only', label:'Not connected'},
+    {k:'pending-approval', label:'Pending'},
+  ];
+  return (
+    <div className="mcp-status-filter">
+      {items.map(i => (
+        <span key={i.k} className={`mcp-status-pill${active===i.k?' active':''}`}
+              onClick={() => onChange && onChange(i.k)}>{i.label}</span>
+      ))}
+    </div>
+  );
+};
+
+// Compute the visible CTA on a card given the derived state and the viewer's role.
+const mcpCardCta = ({state, role='user'}) => {
+  if (state === 'catalog-only')    return role === 'admin' ? {label:'One-click Add to app', tone:'indigo'} : {label:'Submit for Approval', tone:'indigo'};
+  if (state === 'pending-approval') return role === 'admin' ? {label:'Review request', tone:'saff'} : {label:'Request pending…', tone:'warn', disabled:true};
+  if (state === 'approved')        return {label:'+ Add MCP Server', tone:'indigo'};
+  if (state === 'connected')       return {label:'View instance ↗', tone:'leaf'};
+  if (state === 'disabled')        return role === 'admin' ? {label:'Re-enable', tone:''} : {label:'Unavailable', tone:'', disabled:true};
+  return {label:'…', tone:''};
+};
+
+// Discover grid card.
+const McpCatalogCard = ({entry, role='user', instance, onCta, onOpen}) => {
+  const cta = mcpCardCta({state:entry.state, role});
+  const stateClass = `state-${entry.state}`;
+  return (
+    <div className={`mcp-card ${stateClass}`} onClick={onOpen}>
+      <div className="mcp-card-head">
+        <div className="mcp-card-logo">{entry.logo}</div>
+        <div style={{flex:1, minWidth:0}}>
+          <div className="mcp-card-title">{entry.name}</div>
+          <div className="mcp-card-publisher">{entry.publisher}{entry.verified && <span title="verified">✓</span>}</div>
+        </div>
+        <Chip tone="indigo" style={{fontSize:9}}>{MCP_CATEGORIES.find(c=>c.code===entry.category)?.label || entry.category}</Chip>
+      </div>
+      <div className="mcp-card-short">{entry.short}</div>
+      <div className="mcp-card-metrics">
+        <span className="mcp-card-metric">⚒ {(MCP_TOOLS_FIXTURE[entry.slug]?.length || entry.stats?.installCount) ? `${MCP_TOOLS_FIXTURE[entry.slug]?.length || '?'} tools` : '—'}</span>
+        <span className="mcp-card-metric">↓ {entry.stats.installCount}</span>
+        <span className="mcp-card-metric">{entry.authType === 'oauth2' ? '🔐 OAuth' : entry.authType === 'header' ? '🔑 Key' : entry.authType === 'none' ? '· No auth' : ''}</span>
+      </div>
+      {entry.state === 'connected' && instance && (
+        <div className="mcp-card-inline-instance">
+          <span>◉ <strong>{instance.name}</strong> · {instance.authState === 'needs_reauth' ? '⚠ needs reauth' : 'connected'}</span>
+          <span style={{color:'var(--ink-3)'}}>{instance.lastUsedAt}</span>
+        </div>
+      )}
+      <div className="mcp-card-cta">
+        <span style={{fontSize:10, color:'var(--ink-3)'}}>
+          {entry.state === 'pending-approval' ? 'submitted 1d ago' :
+           entry.state === 'disabled' ? 'Admin disabled' :
+           entry.state === 'approved' ? '✓ admin-approved' :
+           entry.state === 'connected' ? `instance · ${instance?.lastUsedAt || ''}` :
+           'not yet in this app'}
+        </span>
+        <Btn variant={cta.tone === 'indigo' ? 'primary' : cta.tone} size="xs"
+             onClick={(e)=>{e.stopPropagation(); onCta && onCta(entry, cta);}}
+             title={cta.disabled ? 'Disabled' : undefined}>
+          {cta.label}
+        </Btn>
+      </div>
+    </div>
+  );
+};
+
+// Detail drawer — About / Capabilities / Connection / Metadata / Performance.
+const McpCatalogDrawer = ({entry, activeTab='capabilities'}) => {
+  if (!entry) return null;
+  const tools = MCP_TOOLS_FIXTURE[entry.slug] || [];
+  return (
+    <aside className="mcp-drawer">
+      <div className="mcp-drawer-head">
+        <div className="mcp-card-logo" style={{width:24, height:24, fontSize:13}}>{entry.logo}</div>
+        <div style={{flex:1, minWidth:0}}>
+          <div className="mcp-card-title">{entry.name}</div>
+          <div className="mcp-card-publisher">{entry.publisher}{entry.verified && ' ✓'}</div>
+        </div>
+      </div>
+      <div className="mcp-drawer-tabs">
+        {['About','Capabilities','Connection','Metadata','Performance'].map(t => (
+          <span key={t} className={`mcp-drawer-tab${(activeTab||'').toLowerCase()===t.toLowerCase()?' active':''}`}>{t}</span>
+        ))}
+      </div>
+      <div className="mcp-drawer-section">
+        <h5>Tools ({tools.length})</h5>
+        {tools.slice(0,4).map(t => (
+          <div key={t.name} className="mcp-tool-list-item">
+            <strong>{t.name}</strong>
+            <div style={{color:'var(--ink-3)'}}>{t.desc}</div>
+          </div>
+        ))}
+        {tools.length > 4 && <div style={{fontSize:10, color:'var(--ink-3)'}}>+ {tools.length - 4} more…</div>}
+      </div>
+      <div className="mcp-drawer-section">
+        <h5>Connection</h5>
+        <div><code style={{fontSize:9.5}}>{entry.defaultBaseUrl}</code></div>
+        <div>transport: <code>{entry.transport}</code></div>
+        <div>auth: <code>{entry.authType}</code></div>
+      </div>
+      <div className="mcp-drawer-section">
+        <h5>Stats (30d)</h5>
+        <div>installs · {entry.stats.installCount}</div>
+        <div>calls · {entry.stats.weeklyCalls}/wk</div>
+        <div>uptime · {entry.stats.uptimePct}%</div>
+        <div>p50 · {entry.stats.latencyP50Ms}ms</div>
+      </div>
+      <div className="mcp-drawer-section">
+        <h5>Metadata</h5>
+        <div>license · {entry.links.license}</div>
+        <div>repo · <code style={{fontSize:9.5}}>{entry.links.repository}</code></div>
+      </div>
+    </aside>
+  );
+};
+
+// Header/Query auth key definitions block.
+const McpAuthHeaderConfig = ({value={keyDefinitions:[]}, onChange}) => {
+  const rows = value.keyDefinitions || [{placement:'header', name:'Authorization', hint:''}];
+  return (
+    <div className="mcp-auth-block">
+      <div className="sm" style={{fontWeight:700, marginBottom:4}}>Key definitions</div>
+      {rows.map((r, i) => (
+        <div key={i} className="mcp-auth-key-row">
+          <select defaultValue={r.placement} style={{fontFamily:'var(--hand)', fontSize:11, padding:'3px 4px', border:'1.3px solid var(--ink)', borderRadius:4}}>
+            <option value="header">Header</option>
+            <option value="query">Query</option>
+          </select>
+          <Field filled value={r.name} style={{margin:0}}/>
+          <button title="Remove" style={{background:'none', border:'none', color:'var(--destructive)', cursor:'pointer'}}>🗑</button>
+        </div>
+      ))}
+      <Btn size="xs">+ Add Key</Btn>
+    </div>
+  );
+};
+
+// OAuth2 auth config block.
+const McpAuthOAuthConfig = ({value={}, onChange}) => {
+  const cfg = {
+    registrationType: value.registrationType || 'dynamic',
+    authorizationEndpoint: value.authorizationEndpoint || '',
+    tokenEndpoint: value.tokenEndpoint || '',
+    registrationEndpoint: value.registrationEndpoint || '',
+    scopes: (value.scopes || []).join(' '),
+  };
+  return (
+    <div className="mcp-auth-block">
+      <div className="sm" style={{fontWeight:700, marginBottom:4}}>Registration type</div>
+      <select defaultValue={cfg.registrationType}
+              style={{fontFamily:'var(--hand)', fontSize:12, padding:'4px 6px', width:'100%', border:'1.3px solid var(--ink)', borderRadius:6}}>
+        <option value="dynamic">Dynamic Registration</option>
+        <option value="metadata">Metadata Document</option>
+        <option value="preregistered">Pre-registered</option>
+      </select>
+      <div className="mcp-auth-endpoint" style={{marginTop:6}}>
+        <span className="sm" style={{fontWeight:700}}>Authorization Endpoint</span>
+        <Field filled value={cfg.authorizationEndpoint}/>
+      </div>
+      <div className="mcp-auth-endpoint">
+        <span className="sm" style={{fontWeight:700}}>Token Endpoint</span>
+        <Field filled value={cfg.tokenEndpoint}/>
+      </div>
+      <div className="mcp-auth-endpoint">
+        <span className="sm" style={{fontWeight:700}}>Registration Endpoint</span>
+        <Field filled value={cfg.registrationEndpoint}/>
+      </div>
+      <div className="mcp-auth-endpoint">
+        <span className="sm" style={{fontWeight:700}}>Scopes (Optional)</span>
+        <Field filled value={cfg.scopes} hint="Space-separated, e.g. mcp:tools mcp:read"/>
+      </div>
+    </div>
+  );
+};
+
+// Server registry form — usable standalone (Admin) or inside OverlayShell (Discover).
+const McpServerForm = ({mode='blank', initial={}, compact=false}) => {
+  const [authType, setAuthType] = React.useState(initial.authType || 'oauth2');
+  const isPrefill = mode === 'prefilled';
+  return (
+    <div className="mcp-server-form" style={{fontSize: compact ? 11 : 12}}>
+      <div className="mcp-form-section-head">1 · Server connection</div>
+      <div style={{marginTop:4}}>
+        <Field label={<span>URL <Chip tone="warn" style={{fontSize:9, marginLeft:4}}>required</Chip></span>}
+               filled value={initial.url || 'https://mcp.linear.app/mcp'}/>
+      </div>
+      <div style={{marginTop:6}}>
+        <Field label="Name" filled value={initial.name || 'linear'}/>
+      </div>
+      <div style={{marginTop:6}}>
+        <Field label="Description" filled value={initial.description || 'Manage issues, projects, cycles.'} ta/>
+      </div>
+      <div className="mcp-toggle-field" style={{marginTop:6}}>
+        <span className="mcp-toggle-check on">✓</span>
+        <div>
+          <div className="sm" style={{fontWeight:700}}>Enabled</div>
+          <div className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>Users can create instances of this server</div>
+        </div>
+      </div>
+
+      <div className="mcp-form-section-head">2 · Authentication</div>
+      <div className="sm" style={{fontWeight:700, marginBottom:4}}>Auth type</div>
+      <div style={{display:'flex', gap:4, marginBottom:6}}>
+        {['oauth2','header','query','none'].map(t => (
+          <Chip key={t} on={authType===t} tone="indigo" onClick={() => setAuthType(t)}>{t}</Chip>
+        ))}
+      </div>
+      {authType === 'oauth2' && <McpAuthOAuthConfig value={initial.authConfig || {}}/>}
+      {(authType === 'header' || authType === 'query') && <McpAuthHeaderConfig value={initial.authConfig || {keyDefinitions:[{placement:authType, name:'Authorization'}]}}/>}
+      {authType === 'none' && <Callout style={{position:'static', display:'inline-block', marginTop:6}}>No credentials needed — public server.</Callout>}
+
+      {isPrefill && (
+        <Callout style={{position:'static', marginTop:8, background:'var(--indigo-soft)'}}>
+          ★ Pre-filled from catalog entry · admin can review and Save in one click
+        </Callout>
+      )}
+    </div>
+  );
+};
+
+// Instance form — for the user to create / edit an instance of an approved server.
+const McpInstanceForm = ({initial={}, compact=false, serverOptions}) => {
+  const servers = serverOptions || MCP_SERVERS_FIXTURE.filter(s => s.enabled);
+  const selected = initial.serverSlug || 'linear';
+  const server = servers.find(s => s.slug === selected) || servers[0];
+  return (
+    <div className="mcp-instance-form" style={{fontSize: compact ? 11 : 12}}>
+      <div className="mcp-form-section-head">1 · Pick a registered server</div>
+      <select defaultValue={selected} style={{fontFamily:'var(--hand)', fontSize:12, padding:'5px 6px', width:'100%', border:'1.3px solid var(--ink)', borderRadius:6, background:'var(--paper)'}}>
+        {servers.map(s => (
+          <option key={s.slug} value={s.slug}>{s.name} — {s.url}</option>
+        ))}
+      </select>
+      <div className="sm" style={{fontSize:10, color:'var(--ink-3)', marginTop:3}}>{server?.url}</div>
+
+      <div className="mcp-form-section-head">2 · Name this instance</div>
+      <div style={{marginTop:4}}>
+        <Field label="Name" filled value={initial.name || server.slug}/>
+      </div>
+      <div style={{marginTop:6}}>
+        <Field label={<span>Slug <Chip tone="warn" style={{fontSize:9, marginLeft:4}}>unique</Chip></span>} filled value={initial.slug || server.slug}/>
+        <span className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>Used in tool names: <code>mcp_{initial.slug || server.slug}__tool</code></span>
+      </div>
+      <div style={{marginTop:6}}>
+        <Field label="Description (optional)" filled value={initial.description || ''} ta/>
+      </div>
+
+      <div className="mcp-toggle-field" style={{marginTop:6}}>
+        <span className="mcp-toggle-check on">✓</span>
+        <div className="sm" style={{fontWeight:700}}>Enable MCP</div>
+      </div>
+
+      <div className="mcp-form-section-head">3 · Authentication</div>
+      {server.authType === 'oauth2' ? (
+        <div className="mcp-auth-block">
+          <div className="sm" style={{fontWeight:700}}>OAuth ({server.authType === 'oauth2' ? 'OAuth' : 'header'})</div>
+          <div className="sm" style={{fontSize:11, color:'var(--ink-3)', marginBottom:6}}>OAuth authentication is required. Click Connect to authorize.</div>
+          {initial.authState === 'connected' ? (
+            <div style={{padding:6, background:'var(--leaf-soft)', border:'1.3px solid var(--leaf)', borderRadius:6, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <div>
+                <div><Chip tone="leaf">● Connected</Chip></div>
+                <div className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>Client ID: nThkxKhhePfB92ss</div>
+                <div className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>Auth Server: {server.url.replace('/mcp','')}</div>
+              </div>
+              <Btn size="xs">🔌 Disconnect</Btn>
+            </div>
+          ) : (
+            <Btn variant="primary" size="xs">Connect via OAuth ↗</Btn>
+          )}
+        </div>
+      ) : server.authType === 'header' ? (
+        <div className="mcp-auth-block">
+          <div className="sm" style={{fontWeight:700, marginBottom:4}}>Provide credentials</div>
+          <Field label="Authorization" filled value="••••••••••••••••••••••" right="👁"/>
+        </div>
+      ) : (
+        <Callout style={{position:'static', display:'inline-block', marginTop:6}}>No credentials needed — public server.</Callout>
+      )}
+    </div>
+  );
+};
+
+// Table row — admin registry list.
+const McpServerListRow = ({server}) => (
+  <div className="mcp-row mcp-row-server">
+    <span>{server.authType === 'oauth2' ? '🔐' : server.authType === 'header' ? '🔑' : '·'}</span>
+    <div>
+      <div style={{fontWeight:700}}>{server.name}</div>
+      <div className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>approved {server.approvedAt} · {server.authType}</div>
+    </div>
+    <code style={{fontSize:10.5}}>{server.url}</code>
+    <Chip tone={server.enabled ? 'leaf' : ''}>{server.enabled ? 'enabled' : 'disabled'}</Chip>
+    <span className="sm">{server.instances} inst</span>
+    <div className="mcp-actions">
+      <Btn size="xs">✎</Btn>
+      <Btn size="xs">{server.enabled ? '⏸' : '▶'}</Btn>
+      <Btn size="xs" variant="">🗑</Btn>
+    </div>
+  </div>
+);
+
+// Approval inbox row.
+const McpApprovalRow = ({request}) => (
+  <div className="mcp-row mcp-row-approval" style={{background:'var(--warn-soft)'}}>
+    <span>✉</span>
+    <div>
+      <div style={{fontWeight:700}}>{request.name}</div>
+      <div className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>by {request.requester} · {request.requestedAt}</div>
+    </div>
+    <div className="sm" style={{color:'var(--ink-2)'}}>{request.reason}</div>
+    <div className="mcp-actions">
+      <Btn size="xs">✗ Reject</Btn>
+      <Btn variant="primary" size="xs">✓ Approve</Btn>
+    </div>
+  </div>
+);
+
+// Instance list row — My MCPs.
+const McpInstanceListRow = ({instance}) => (
+  <div className="mcp-row mcp-row-instance">
+    <span>🔌</span>
+    <div>
+      <div style={{fontWeight:700}}>{instance.name}</div>
+      <div className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>last used · {instance.lastUsedAt}</div>
+    </div>
+    <code style={{fontSize:10.5}}>{instance.url}</code>
+    {instance.authState === 'needs_reauth'
+      ? <Chip tone="warn">⚠ reauth</Chip>
+      : <Chip tone="leaf">● active</Chip>}
+    <div className="mcp-actions">
+      <Btn size="xs">▷</Btn>
+      <Btn size="xs">✎</Btn>
+      <Btn size="xs" variant="">🗑</Btn>
+    </div>
+  </div>
+);
+
+// Pending banner on My MCPs.
+const McpInstancePendingBanner = ({pending=[]}) => (
+  <div className="mcp-pending-banner">
+    <span>⏳ {pending.length} pending approval{pending.length !== 1 ? 's' : ''}: {pending.map(p => p.name).join(', ')}</span>
+    <Btn size="xs">View</Btn>
+  </div>
+);
+
+// Playground — tool sidebar.
+const McpToolSidebar = ({tools=[], selected, search='', onSearch, onSelect, instanceName='notion'}) => (
+  <aside className="mcp-tool-sidebar">
+    <div className="mcp-tool-sidebar-head">
+      <Chip tone="leaf" style={{fontSize:9}}>● connected</Chip> {instanceName}
+    </div>
+    <Field filled value={search} hint="🔍 Search tools"/>
+    {tools.map(t => (
+      <div key={t.name} className={`mcp-tool-sidebar-item${selected===t.name?' active':''}`}
+           onClick={() => onSelect && onSelect(t.name)}>
+        <div className="mcp-tool-name">{t.name}</div>
+        <div className="mcp-tool-desc">{t.desc.slice(0, 60)}{t.desc.length > 60 ? '…' : ''}</div>
+      </div>
+    ))}
+  </aside>
+);
+
+// Playground — main executor (form + Execute + response tabs).
+const McpToolExecutor = ({tool, activeResponseTab='success'}) => {
+  if (!tool) return <div className="mcp-tool-main"><em>Select a tool from the sidebar.</em></div>;
+  return (
+    <div className="mcp-tool-main">
+      <div className="h3" style={{margin:0, fontSize:14}}>{tool.name}</div>
+      <div className="sm" style={{color:'var(--ink-3)', marginBottom:6}}>{tool.desc}</div>
+      <div className="api-format-picker" style={{display:'flex', gap:4, marginBottom:6}}>
+        <Chip on tone="indigo">Form</Chip>
+        <Chip>JSON</Chip>
+      </div>
+      {(tool.parameters || []).map(p => (
+        <div key={p.name} style={{marginBottom:6}}>
+          <Field label={<span><strong>{p.name}</strong> <span style={{color:'var(--ink-3)', fontWeight:400}}>({p.type})</span> <span className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>{p.hint || ''}</span></span>} filled value=""/>
+        </div>
+      ))}
+      <Btn variant="primary">Execute</Btn>
+      <div className="mcp-response-tabs">
+        {['Success','Response','Raw JSON','Request'].map(t => (
+          <span key={t} className={`mcp-response-tab${activeResponseTab.toLowerCase().replace(' ','')===t.toLowerCase().replace(' ','')?' active':''}`}>
+            {t === 'Success' && <Chip tone="leaf" style={{fontSize:9, marginRight:3}}>●</Chip>}{t}
+          </span>
+        ))}
+      </div>
+      <div className="mcp-response-body">{`[\n  {\n    "type": "text",\n    "text": "{\\"results\\":[{\\"type\\":\\"person\\",\\"id\\":\\"73b3a1b1-…\\"}\n  }\n]`}</div>
+    </div>
+  );
+};
+
+// Sticky rail nav (Admin / Playground Desktop).
+const McpRail = ({active='servers', items}) => {
+  const defaultItems = [
+    {k:'servers',   label:'Registered'},
+    {k:'approvals', label:'Approvals'},
+  ];
+  const use = items || defaultItems;
+  return (
+    <aside className="mcp-rail">
+      <div className="mcp-rail-head">sections</div>
+      {use.map(i => (
+        <div key={i.k} className={`mcp-rail-item${active===i.k?' active':''}`}>{i.label}</div>
+      ))}
+    </aside>
+  );
+};
+
+// Top-of-page anchor strip (Medium variants).
+const McpMediumAnchors = ({active='servers', items}) => {
+  const defaultItems = [
+    {k:'servers',   label:'Registered'},
+    {k:'approvals', label:'Approvals'},
+  ];
+  const use = items || defaultItems;
+  return (
+    <div className="mcp-medium-anchors">
+      {use.map(i => (
+        <span key={i.k} className={`mcp-medium-anchor${active===i.k?' active':''}`}>{i.label}</span>
+      ))}
+    </div>
+  );
+};
+
+Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, PhoneFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection, ModeToggle, ModeToggleCaption, KindChipRow, ModelsAddBrowseMenu, RankedRow, RankedModeCaption, RANKED_FIXTURE_CODING, groupIntoRankedRows, API_FORMATS, FIXTURE_OPENAI_MODELS, ApiFormatPicker, ApiKeyField, PrefixField, ForwardingModeRadio, ModelMultiSelect, ApiRail, ApiMediumAnchors,
+  // MCP v30
+  MCP_CATEGORIES, MCP_CATALOG_FIXTURE, MCP_SERVERS_FIXTURE, MCP_INSTANCES_FIXTURE, MCP_APPROVAL_FIXTURE, MCP_TOOLS_FIXTURE,
+  McpCategoryChipRow, McpStatusFilter, mcpCardCta, McpCatalogCard, McpCatalogDrawer,
+  McpAuthHeaderConfig, McpAuthOAuthConfig, McpServerForm, McpInstanceForm,
+  McpServerListRow, McpApprovalRow, McpInstanceListRow, McpInstancePendingBanner,
+  McpToolSidebar, McpToolExecutor, McpRail, McpMediumAnchors});

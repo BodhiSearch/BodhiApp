@@ -6,6 +6,10 @@ const SCREENS = [
   {key:'models', title:'Models', concept:'local + API + remote · My / All · ranked leaderboards', list: () => window.ModelsScreens},
   {key:'alias', title:'Create local alias', concept:'tune llama.cpp runtime', list: () => window.AliasScreens},
   {key:'api', title:'Create API model', concept:'connect an inference service', list: () => window.ApiScreens},
+  {key:'mcp-discover', title:'MCP Discover', concept:'Bodhi-curated catalog · one-click Add or Submit-for-Approval', list: () => window.McpDiscoverScreens},
+  {key:'my-mcps', title:'My MCPs', concept:'instances you have connected', list: () => window.MyMcpsScreens},
+  {key:'mcp-admin', title:'MCP Admin', concept:'registered servers + approval inbox', list: () => window.McpAdminScreens},
+  {key:'mcp-playground', title:'MCP Playground', concept:'exercise tools on a connected instance', list: () => window.McpPlaygroundScreens},
 ];
 
 // Migrate legacy tab keys (`hub`, `discover`, `providers`, `detail`) → `models` on first load.

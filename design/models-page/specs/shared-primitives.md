@@ -173,6 +173,34 @@ Primitives are exported from `screens/primitives.jsx` via `Object.assign(window,
 | `TaskCategoryGrid` | Category tiles grid — also now behind the Specialization filter. |
 | `SPECIALIZATIONS` constant | Source of truth for the 11 specialization entries + their benchmark ref (`HumanEval`, `GPQA`, `MMMU`, …) |
 
+### MCP primitives (added v30)
+
+| Name | What it does |
+|---|---|
+| `McpCategoryChipRow` | Horizontal chip row over `MCP_CATEGORIES`; filters the MCP Discover grid by catalog category (9 categories + All). |
+| `McpStatusFilter` | Pill group that filters by derived card-state: `All · Approved · Connected · Not connected · Pending`. |
+| `McpCatalogCard` | Discover grid card. Reads the catalog entry + viewer role and renders the five-state CTA (`One-click Add` / `Submit for Approval` / `+ Add MCP Server` / `View instance ↗` / `Re-enable`). When `state==='connected'`, renders an inline mini-instance summary on the card. |
+| `McpCatalogDrawer` | Right-side detail pane opened when a Discover card is clicked. Tabbed: About / Capabilities / Connection / Metadata / Performance. Capabilities lists fixture tools with descriptions. |
+| `McpServerForm` | Server-registry form. Takes `mode='blank'|'prefilled'|'edit'` and `initial`. Auth-type-aware: renders `McpAuthOAuthConfig` or `McpAuthHeaderConfig` conditionally. Body usable standalone (Admin full-page) or inside an `OverlayShell` (Discover `Add MCP Server` overlay demo). |
+| `McpInstanceForm` | Instance-create form. Picks from approved servers list, auto-defaults slug/name, renders OAuth-connect step (shows Connected state with Client ID + Disconnect) or header-credentials field. Same form body works full-page (My MCPs edit) or inside `OverlayShell` (Discover overlay). |
+| `McpAuthHeaderConfig` | Header/Query auth sub-block: list of `{placement, name, hint}` rows + `+ Add Key`. |
+| `McpAuthOAuthConfig` | OAuth2 auth sub-block: registration type picker + Authorization/Token/Registration endpoints + Scopes input. Matches production download (24).png. |
+| `McpServerListRow` | Admin registry table row. Columns: auth icon / name+date / URL / status chip / instance count / actions edit/disable/delete. |
+| `McpApprovalRow` | Inbox row (warn-tone background) showing user-submitted request with Reject / Approve actions. |
+| `McpInstanceListRow` | My-MCPs instance row: auth icon / name+lastUsed / URL / status chip (active/needs_reauth) / actions play/edit/delete. |
+| `McpInstancePendingBanner` | Yellow dashed banner at top of My MCPs when the user has one or more pending approval requests. |
+| `McpToolSidebar` | Playground left sidebar. Instance pill + search + scrollable tool list with name + truncated description. |
+| `McpToolExecutor` | Playground main pane. Tool header · description · Form/JSON tabs · parameter fields · Execute button · tabbed response (Success/Response/Raw JSON/Request) with JSON preview. |
+| `McpRail` | Sticky section nav for MCP Admin Desktop (Registered / Approvals). Mirrors `AliasRail` / `ApiRail`. |
+| `McpMediumAnchors` | Top-of-page jump chips for MCP Admin Medium. Mirrors `AliasMediumAnchors` / `ApiMediumAnchors`. |
+| `MCP_CATEGORIES` constant | 9 catalog categories (+ `all`): Productivity, Search & Web, Browser, Dev Tools, Data, AI & Content, Memory, Comms, Finance. Each entry `{code, label, icon}`. |
+| `MCP_CATALOG_FIXTURE` constant | 12 curated entries spanning all 5 card-states and all auth types (oauth2/header/none). Includes defaultBaseUrl, transport, authConfig, stats, links. |
+| `MCP_SERVERS_FIXTURE` constant | 6 admin registry rows (1 disabled). |
+| `MCP_INSTANCES_FIXTURE` constant | 4 user instances including one `needs_reauth` state. |
+| `MCP_APPROVAL_FIXTURE` constant | 2 pending user-submitted requests. |
+| `MCP_TOOLS_FIXTURE` constant | Keyed by server slug; each value is a list of tool objects with `{name, desc, parameters[]}`. Drives Playground + drawer Capabilities tab. |
+| `mcpCardCta({state, role})` | Pure helper returning `{label, tone, disabled?}` for the card CTA given derived state and viewer role. This is the codified "five-state × role" contract. |
+
 **AI-agent note:** When adding new primitives, follow the same pattern — define locally in `primitives.jsx`, export via `Object.assign(window, {...})` at the bottom. Do not use ES imports; the wireframe is babel-standalone / no bundler.
 
 ---
@@ -236,6 +264,16 @@ AI agents picking this up should know these, because the wireframes only show th
   - **Variants B + C dropped.** Stepper UX (B) and provider-aware editor (C) are gone. Their novel bits (OAuth lifecycle card, per-model cost inline) did not survive the consolidation — deferred to `ConnectedProviderPanel` work.
   - Primitives added: `ApiFormatPicker`, `ApiKeyField`, `PrefixField`, `ForwardingModeRadio`, `ModelMultiSelect`, `ApiRail`, `ApiMediumAnchors` + constants `API_FORMATS`, `FIXTURE_OPENAI_MODELS`.
 
+### MCP wireframes (2026-04-19)
+
+- **Four screens added as separate top-level tabs** — `MCP Discover`, `My MCPs`, `MCP Admin`, `MCP Playground`. Each has 3 responsive variants (Desktop / Medium / Mobile). The **overlay treatment is reserved for the two MCP forms only** (server form + instance form) and demonstrated as two extra variants on the Discover tab, because Discover is where both forms are most often launched from at runtime. Discover therefore has 5 variants total; the other three have 3 each.
+- **Four MCP entities** — `mcp-catalog-entry` (hosted at `api.getbodhi.app`), `mcp-server-registry` (admin-owned, Bodhi DB), `mcp-instance` (user-owned, Bodhi DB), `mcp-tool` (live from connected instance). Discover cards derive their state by joining entities 1+2+3 into five states: `catalog-only` / `pending-approval` / `approved` / `connected` / `disabled`. This five-state collapse is the central UX contract — one card shape, five CTAs, all derivable.
+- **Catalog source is Bodhi-curated only for this pass.** Rich metadata (logo, publisher, category, stats, screenshots-deferred) hosted at `api.getbodhi.app`. Read-through from the official MCP registry / Smithery / mcp.so is deferred; research during design did browse all 7 reference registries via Claude-in-Chrome and their schemas inform our card/detail shape.
+- **Admin gate preserved with one-click pre-fill.** Admins can click a catalog card and open `McpServerForm` with every field pre-filled from the catalog entry — one review click and Save creates the registry row for the whole app instance. Users land on the same cards and see `Submit for Approval`, which files a request into the Admin Inbox. Once a server is approved, users see `+ Add MCP Server` on the same card → opens `McpInstanceForm` overlay with credentials entry (OAuth/Header) and a Connect step. Already-connected instances surface inline on the card with a `View instance ↗` chip.
+- **Overlay reusability — by design.** Both `McpServerForm` and `McpInstanceForm` are plain form bodies. They render as-is in standalone pages (Admin, My MCPs) and inside `OverlayShell` when launched from Discover. No duplication, no forked code paths.
+- **Card visuals encode state.** `.mcp-card.state-connected` uses leaf-soft background + leaf border; `.state-pending-approval` uses dashed + warn-soft; `.state-disabled` fades to 58% opacity. All other state-bearing signals (CTA label, inline-instance strip, pre-footer hint text) derive from the same `state` field. Do not add a sixth state without updating `mcpCardCta()` and the five-state matrix in `specs/mcp.md`.
+- **Primitives added (16):** `McpCategoryChipRow`, `McpStatusFilter`, `McpCatalogCard`, `McpCatalogDrawer`, `McpServerForm`, `McpInstanceForm`, `McpAuthHeaderConfig`, `McpAuthOAuthConfig`, `McpServerListRow`, `McpApprovalRow`, `McpInstanceListRow`, `McpInstancePendingBanner`, `McpToolSidebar`, `McpToolExecutor`, `McpRail`, `McpMediumAnchors` + 6 constants (`MCP_CATEGORIES`, `MCP_CATALOG_FIXTURE`, `MCP_SERVERS_FIXTURE`, `MCP_INSTANCES_FIXTURE`, `MCP_APPROVAL_FIXTURE`, `MCP_TOOLS_FIXTURE`) + helper `mcpCardCta`.
+
 ### Create local alias
 
 - **The form started as a holistic "typed field per llama.cpp knob" design.** This was rejected after user feedback: keeping a typed form in sync with llama.cpp releases is a high-maintenance treadmill — new flags appear, semantics change, and we did not want to own that.
@@ -272,6 +310,20 @@ These were explicitly punted during design. A future agent proposing work in thi
 - **Explicit benchmark-sort dropdown (non-Specialization trigger).** Ranked mode is currently only activated via a Specialization selection. A future explicit "Sort by benchmark X" dropdown is deferred.
 - **Benchmarks beyond HumanEval/Coding.** The `RANKED_FIXTURE_CODING` fixture covers one specialization end-to-end. Other specializations (Chat/MT-Bench, Reasoning/GPQA, etc.) show ranked-mode UI but reuse the same fixture for demo. Real per-benchmark fixtures are deferred.
 - **Re-ranking under filter scope.** Explicitly rejected: when filters narrow visible rows, the rank numbers stay absolute. A "rank within filtered subset" mode would undermine the "#2 in the world" semantic.
+
+### MCP deferred (added v30)
+
+- **External registry read-through** — official MCP registry (`registry.modelcontextprotocol.io`) / Smithery / mcp.so / Docker Hub MCP / mcpmarket. For this pass, Discover is Bodhi-curated only. A second read-through tier (long-tail search across external registries) is a future pass.
+- **Community-submission flow** for new catalog entries (user proposes a server → Bodhi admins vet it into the curated catalog). Not wireframed.
+- **Per-tool live analytics** (uptime / latency / call-count time-series charts in the Capabilities drawer). Research showed Smithery does this; our drawer renders static numbers for MVP.
+- **Resources and Prompts** — MCP spec defines three capability classes; current wireframe is tools-only, matching the existing MCP decisions log.
+- **stdio-based MCP transport** — HTTP-streamable only for MVP, matching the existing MCP decisions log.
+- **Needs-reauth refresh overlay** — `mcp-instance` rows show a `⚠ reauth` chip when `authState === 'needs_reauth'`; the OAuth refresh overlay itself is not wireframed. Clicking the chip in production should re-run the OAuth flow.
+- **Audit log / activity history.** Admin has an Approvals inbox but no full timeline of approve/reject/disable actions. Deferred.
+- **Playground history / saved invocations.** `McpToolExecutor` resets on tool switch; re-run history and named saved examples are a future pass.
+- **Role-switcher UI.** The Desktop Discover variant has a "Role: User ▾" chip so the wireframe can demonstrate both admin and user CTAs; a real role switch in the product would be automatic from auth context.
+- **Bulk actions** — no multi-select on server, instance, or approval lists.
+- **Deep-link to Playground with tool + params encoded.** My MCPs `▷` jumps to Playground with instance pre-selected; encoding the tool name + params in the URL is deferred.
 - **New entity kinds.** Custom endpoints, local OpenAI-proxy, etc. — not in this iteration. If a 7th kind is added, it goes into the `kind`-dispatch pattern; see `discover.jsx` for the switch.
 
 ---
