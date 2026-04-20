@@ -201,6 +201,23 @@ Primitives are exported from `screens/primitives.jsx` via `Object.assign(window,
 | `MCP_TOOLS_FIXTURE` constant | Keyed by server slug; each value is a list of tool objects with `{name, desc, parameters[]}`. Drives Playground + drawer Capabilities tab. |
 | `mcpCardCta({state, role})` | Pure helper returning `{label, tone, disabled?}` for the card CTA given derived state and viewer role. This is the codified "five-state × role" contract. |
 
+### Access-request primitives (added v31)
+
+| Name | What it does |
+|---|---|
+| `AccessRequestHeader` | App identity card at the top of the review page. Logo, display-name, verified chip, `3rd-party app` chip, truncated client-id, description, homepage link. Also renders the wireframe-only User/Admin role toggle pinned top-right. |
+| `AccessCapsEnvelope` | Indigo-soft pill row of the app's declared capabilities: required + preferred + min-ctx + max-cost per-MTok. Hint line: "we'll pre-check models that match". |
+| `AccessModelRow` | Per-model checkbox row. Shows up to 3 capability chips + reason chip (`★ app-suggested` / `matches` / `below envelope`) + context size + cost-or-origin meta. Disabled when below envelope (opacity 0.58 + pointer-events none). |
+| `AccessModelGroup` | Grouped list (Aliases / API models / Provider models) with `select all` header. Renders `AccessModelRow` for each model with state from `accessModelState()`. |
+| `AccessMcpRow` | Per-MCP row driven by 6-state matrix (`has-instance` / `needs-reauth` / `needs-instance` / `oauth-in-progress` / `needs-server` / `pending-admin`). Role-adaptive CTA. Optionally opens `AccessMcpInlineAddServer` in admin `needs-server` case. |
+| `AccessMcpInlineAddServer` | Accordion expanded under a `needs-server` row when admin clicks `One-click Add`. Wraps the v30 `McpServerForm` with `mode='prefilled'` + compact layout + Cancel/Save footer. Reuses `McpServerForm` unchanged. |
+| `AccessOAuthHint` | Pulsing indigo-dot strip: `⏳ Waiting for OAuth confirmation in popup…` (waiting state) / `✓ Connected · instance created` (connected state). Drives the `oauth-in-progress` row visual. |
+| `AccessRoleSelect` | Simple role dropdown (User / PowerUser / Admin) + helper. Mirrors production. |
+| `AccessActionBar` | Sticky footer with Deny + `Approve N of M resources` primary. Shows a warn-tone hint line above the primary when disabled (explains why — blocker MCPs count or no-resources-selected). |
+| `ACCESS_REQUEST_FIXTURE` constant | One complete request: app identity + capability envelope + suggested-models list + 4 requested MCPs covering `has-instance` / `needs-reauth` / `needs-instance` / `needs-server`. |
+| `ACCESS_MODELS_FIXTURE` constant | 8 user models spanning alias / api / provider kinds with capabilities + context + cost. At least one model fails the envelope to demo the `below-envelope` disabled row. |
+| `accessModelState(model, caps, suggested)` | Pure helper returning one of 5 row states: `app-suggested` / `matches-envelope` / `user-config` / `below-envelope` / `unavailable`. Codified row-state contract. |
+
 **AI-agent note:** When adding new primitives, follow the same pattern — define locally in `primitives.jsx`, export via `Object.assign(window, {...})` at the bottom. Do not use ES imports; the wireframe is babel-standalone / no bundler.
 
 ---
@@ -274,6 +291,18 @@ AI agents picking this up should know these, because the wireframes only show th
 - **Card visuals encode state.** `.mcp-card.state-connected` uses leaf-soft background + leaf border; `.state-pending-approval` uses dashed + warn-soft; `.state-disabled` fades to 58% opacity. All other state-bearing signals (CTA label, inline-instance strip, pre-footer hint text) derive from the same `state` field. Do not add a sixth state without updating `mcpCardCta()` and the five-state matrix in `specs/mcp.md`.
 - **Primitives added (16):** `McpCategoryChipRow`, `McpStatusFilter`, `McpCatalogCard`, `McpCatalogDrawer`, `McpServerForm`, `McpInstanceForm`, `McpAuthHeaderConfig`, `McpAuthOAuthConfig`, `McpServerListRow`, `McpApprovalRow`, `McpInstanceListRow`, `McpInstancePendingBanner`, `McpToolSidebar`, `McpToolExecutor`, `McpRail`, `McpMediumAnchors` + 6 constants (`MCP_CATEGORIES`, `MCP_CATALOG_FIXTURE`, `MCP_SERVERS_FIXTURE`, `MCP_INSTANCES_FIXTURE`, `MCP_APPROVAL_FIXTURE`, `MCP_TOOLS_FIXTURE`) + helper `mcpCardCta`.
 
+### Access-request review (2026-04-20)
+
+- **Replaced the minimal production review page** (dead-end when MCP not configured → see `download (26).png`) with a **self-contained 4-section card** that can resolve missing MCP prerequisites without leaving the page. New tab in the deck as the 8th position.
+- **Per-model allow-list** replaces the old "Approve All" coarse grant. The 3rd-party app declares a **capability envelope** (`required`, `preferred`, `minContext`, `maxCostUsdPerMTok`) plus an optional **suggestedModels** list; the UI pre-checks matching rows and disables below-envelope rows. User retains sovereignty — they can grant rows outside the envelope (but can't grant rows that fail hard constraints like `tool-use`).
+- **Per-MCP row contract: 6 states × role** (`has-instance` / `needs-reauth` / `needs-instance` / `oauth-in-progress` / `needs-server` / `pending-admin`) × (user / admin). Centralised in `AccessMcpRow`. Missing server → admin gets **one-click inline mini-overlay** (inline accordion wrapping v30 `McpServerForm` pre-filled from catalog); user gets **Request admin to add** filing into v30 Admin Inbox. Missing instance → **OAuth in popup window**; TanStack Query `refetchOnWindowFocus:true` surfaces the new instance automatically on tab refocus — this is the user-friendly magic.
+- **Inline mini-overlay, not a layered modal.** Admin's `Add MCP Server` expansion lives *inside* the review card as an accordion. Rationale: keep the reviewer's approval context + the new-server config visible together; a floating modal would occlude the rest of the review.
+- **OAuth popup, not same-window redirect.** Overrides the v30 MCP same-window default specifically for this flow. Rationale: same-window would destroy the review context (lose the request-id + filled checkboxes). Popup + on-focus refetch gives the seamless round-trip.
+- **Role-adaptive UI, not role-hidden.** Both user and admin see every MCP row; the CTA changes per role. Users get a `Request admin to add` affordance instead of being stuck.
+- **Approve button label reflects reality.** `Approve N of M resources` live-updates from checkboxes. Disabled when any checked MCP is not `has-instance` OR when zero resources selected — always with a warn-tone hint explaining why.
+- **Primitives added (9):** `AccessRequestHeader`, `AccessCapsEnvelope`, `AccessModelRow`, `AccessModelGroup`, `AccessMcpRow`, `AccessMcpInlineAddServer`, `AccessOAuthHint`, `AccessRoleSelect`, `AccessActionBar` + 2 fixtures (`ACCESS_REQUEST_FIXTURE`, `ACCESS_MODELS_FIXTURE`) + helper `accessModelState`.
+- **`Btn` primitive extended with `onClick`.** Was `({variant, size, children, style, title})`; now accepts `onClick` too. Enables interactive demos (inline-overlay toggle, role switch). Backward-compatible — all existing call sites that omit `onClick` keep working.
+
 ### Create local alias
 
 - **The form started as a holistic "typed field per llama.cpp knob" design.** This was rejected after user feedback: keeping a typed form in sync with llama.cpp releases is a high-maintenance treadmill — new flags appear, semantics change, and we did not want to own that.
@@ -324,6 +353,19 @@ These were explicitly punted during design. A future agent proposing work in thi
 - **Role-switcher UI.** The Desktop Discover variant has a "Role: User ▾" chip so the wireframe can demonstrate both admin and user CTAs; a real role switch in the product would be automatic from auth context.
 - **Bulk actions** — no multi-select on server, instance, or approval lists.
 - **Deep-link to Playground with tool + params encoded.** My MCPs `▷` jumps to Playground with instance pre-selected; encoding the tool name + params in the URL is deferred.
+
+### Access-request deferred (added v31)
+
+- **Per-tool MCP scoping.** Grants are whole-server today; per-tool (OAuth-scope-like) grants deferred. Catalog already carries the tool list, so the wiring exists.
+- **Temporal grants / expiry.** Approvals permanent until revoked. Time-boxed grants (30d / 90d) deferred.
+- **Rate-limit overrides per app.** No per-app rpm / tpm throttles.
+- **Cost ceilings per app.** No hard budget caps in this screen.
+- **Header-auth MCP inline form.** Today's `needs-instance` CTA assumes OAuth popup. For header-auth servers the inline mini-overlay should render `McpInstanceForm` inline instead of opening a popup — deferred.
+- **Request audit log / history** (My approved apps view) — separate screen, out of scope.
+- **Batch review across multiple requests.** One request at a time for now.
+- **Popup-blocked / OAuth-failed recovery UX.** Wireframe shows `oauth-in-progress`; failure-retry flow deferred.
+- **App icon upload / directory.** Fixture uses letter glyph; production renders a URL. A Bodhi 3rd-party app directory is far-future.
+- **Role auto-detection.** Wireframe has a manual User/Admin toggle chip in the header for demo purposes; production uses auth context.
 - **New entity kinds.** Custom endpoints, local OpenAI-proxy, etc. — not in this iteration. If a 7th kind is added, it goes into the `kind`-dispatch pattern; see `discover.jsx` for the switch.
 
 ---

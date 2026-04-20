@@ -14,8 +14,8 @@ const Chip = ({on, tone, children, style, onClick}) => (
   <span className={`chip${on?' on':''}${tone?' '+tone:''}`} style={{...(onClick?{cursor:'pointer'}:{}), ...style}} onClick={onClick}>{children}</span>
 );
 
-const Btn = ({variant='', size='', children, style, title}) => (
-  <button className={`btn ${variant} ${size}`} style={style} title={title}>{children}</button>
+const Btn = ({variant='', size='', children, style, title, onClick}) => (
+  <button className={`btn ${variant} ${size}`} style={style} title={title} onClick={onClick}>{children}</button>
 );
 
 const Field = ({label, value, hint, filled, ta, style, right}) => (
@@ -1953,10 +1953,257 @@ const McpMediumAnchors = ({active='servers', items}) => {
   );
 };
 
+// ═════════════════ Access-request primitives (v31) ═════════════════
+
+// One representative 3rd-party app request. Capability envelope + suggested models
+// + 4 requested MCPs covering the row-state matrix.
+const ACCESS_REQUEST_FIXTURE = {
+  app: {
+    clientId: 'bodhi-app-f181a4d1-d7af-43f4-965a-0a8efd453d86',
+    name: 'Research Copilot',
+    publisher: 'Pebble Labs',
+    verified: true,
+    logo: 'R',
+    description: 'An agent that helps you summarise research papers, organise Notion pages, and pull market data from web search.',
+    homepage: 'https://research-copilot.pebble.ai',
+  },
+  caps: {
+    required: ['tool-use', 'text-to-text'],
+    preferred: ['vision'],
+    minContext: 128_000,
+    maxCostUsdPerMTok: 2.5,
+  },
+  suggestedModels: ['openai/gpt-5-mini', 'my-qwen-long', 'anthropic/claude-sonnet-4-6'],
+  mcps: [
+    {slug:'exa',     rowState:'has-instance',   reason:'User already has an exa instance · instance=exa · active'},
+    {slug:'notion',  rowState:'needs-reauth',   reason:'Instance exists but token expired · user must reconnect'},
+    {slug:'linear',  rowState:'needs-instance', reason:'Admin has registered Linear · user needs to run OAuth'},
+    {slug:'gmail',   rowState:'needs-server',   reason:'No registry entry yet · admin can one-click Add'},
+  ],
+};
+
+// User's configured models — drives the Model access section. Shape deliberately mirrors
+// the Models page row-shape: kind (alias/api-model/provider) + caps + cost + ctx + origin.
+const ACCESS_MODELS_FIXTURE = [
+  {kind:'alias',  name:'my-qwen-long',  title:'my-qwen-long',   caps:['text2text','tool-use','long-ctx'], ctx:128_000, cost:null,     origin:'local'},
+  {kind:'alias',  name:'my-gemma',      title:'my-gemma',       caps:['text2text'],                        ctx:32_768,  cost:null,     origin:'local'},
+  {kind:'alias',  name:'my-qwen-coder', title:'my-qwen-coder',  caps:['text2text','tool-use','coding'],    ctx:32_768,  cost:null,     origin:'local'},
+  {kind:'api',    name:'openai/gpt-5-mini', title:'openai/gpt-5-mini', caps:['text2text','tool-use','vision'], ctx:400_000, cost:{in:0.25, out:2.0, unit:'M'}, origin:'openai'},
+  {kind:'api',    name:'openai/gpt-4-turbo', title:'openai/gpt-4-turbo', caps:['text2text','tool-use'],    ctx:128_000, cost:{in:10, out:30, unit:'M'}, origin:'openai'},
+  {kind:'api',    name:'anthropic/claude-sonnet-4-6', title:'anthropic/claude-sonnet-4-6', caps:['text2text','tool-use','vision'], ctx:200_000, cost:{in:3, out:15, unit:'M'}, origin:'anthropic'},
+  {kind:'provider', name:'anthropic/claude-opus-4-6', title:'anthropic/claude-opus-4-6', caps:['text2text','tool-use','vision','reasoning'], ctx:200_000, cost:{in:15, out:75, unit:'M'}, origin:'anthropic (provider)'},
+  {kind:'alias',  name:'my-embed',      title:'my-embed',       caps:['embed'],                            ctx:8_192,   cost:null,     origin:'local'},
+];
+
+// Compute per-model access-row state given the envelope.
+const accessModelState = (model, caps, suggested=[]) => {
+  const matchesTool = !caps.required.includes('tool-use') || model.caps.includes('tool-use');
+  const matchesCtx  = !caps.minContext || model.ctx >= caps.minContext;
+  const matchesText = !caps.required.includes('text-to-text') || model.caps.includes('text2text');
+  const fitsCost    = !caps.maxCostUsdPerMTok || !model.cost || model.cost.out <= caps.maxCostUsdPerMTok * 20;
+  const isSuggested = suggested.includes(model.name);
+  if (!matchesTool || !matchesText) return 'below-envelope';
+  if (!matchesCtx) return 'below-envelope';
+  if (isSuggested) return 'app-suggested';
+  if (matchesTool && matchesCtx && fitsCost) return 'matches-envelope';
+  return 'user-config';
+};
+
+// ── primitives ──────────────────────────────────────────────────
+const AccessRequestHeader = ({request, viewerRole='user', onRoleChange}) => {
+  const {app} = request;
+  return (
+    <div className="access-header">
+      <div className="access-logo">{app.logo}</div>
+      <div style={{flex:1, minWidth:0}}>
+        <div className="access-app-title">
+          {app.name}
+          {app.verified && <Chip tone="leaf" style={{fontSize:9}}>✓ verified</Chip>}
+          <Chip tone="indigo" style={{fontSize:9}}>3rd-party app</Chip>
+        </div>
+        <div className="access-app-sub">is requesting access to your resources.</div>
+        <div className="access-client-id" title="client id">{app.clientId}</div>
+        <div className="sm" style={{fontSize:11, color:'var(--ink-2)', marginTop:5}}>{app.description}</div>
+      </div>
+      <div className="access-role-toggle">
+        <span className={viewerRole==='user'?'active':''} onClick={() => onRoleChange && onRoleChange('user')}>User</span>
+        <span className={viewerRole==='admin'?'active':''} onClick={() => onRoleChange && onRoleChange('admin')}>Admin</span>
+      </div>
+    </div>
+  );
+};
+
+const AccessCapsEnvelope = ({caps}) => (
+  <div className="access-caps-row">
+    {caps.required.map(c => <Chip key={c} on tone="indigo" style={{fontSize:10}}>⚒ {c}</Chip>)}
+    {caps.preferred.map(c => <Chip key={c} style={{fontSize:10}}>preferred · {c}</Chip>)}
+    {caps.minContext && <Chip style={{fontSize:10}}>min-ctx · {(caps.minContext/1000).toFixed(0)}k</Chip>}
+    {caps.maxCostUsdPerMTok && <Chip style={{fontSize:10}}>max-cost · ${caps.maxCostUsdPerMTok}/MTok</Chip>}
+  </div>
+);
+
+const AccessModelRow = ({model, state, checked, onChange}) => {
+  const reasonChip = state === 'app-suggested' ? <Chip tone="leaf" style={{fontSize:9}}>★ app-suggested</Chip> :
+                     state === 'matches-envelope' ? <Chip tone="indigo" style={{fontSize:9}}>matches</Chip> :
+                     state === 'below-envelope' ? <Chip tone="warn" style={{fontSize:9}}>below envelope</Chip> :
+                     null;
+  const rowCls = `access-model-row ${state === 'app-suggested' ? 'suggested' : state === 'below-envelope' ? 'below-envelope disabled' : ''}`;
+  return (
+    <div className={rowCls}>
+      <span className="mcp-toggle-check" style={{background: checked ? 'var(--indigo-soft)' : 'var(--paper)'}}>{checked ? '✓' : ''}</span>
+      <div className="access-model-body">
+        <span className="access-model-title">{model.title}</span>
+        <div className="access-model-chips">
+          {model.caps.slice(0,3).map(c => <Chip key={c} style={{fontSize:9}}>{c}</Chip>)}
+        </div>
+        {reasonChip}
+      </div>
+      <div className="access-model-meta">
+        {(model.ctx/1000).toFixed(0)}k · {model.cost ? `$${model.cost.in}/${model.cost.out} per M` : model.origin}
+      </div>
+    </div>
+  );
+};
+
+const AccessModelGroup = ({title, models, caps, suggested, selected, onToggle}) => (
+  <>
+    <div className="access-model-group-head">
+      <span>{title} · {models.length}</span>
+      <span style={{color:'var(--ink-3)', fontSize:10, cursor:'pointer'}}>select all</span>
+    </div>
+    {models.map(m => {
+      const state = accessModelState(m, caps, suggested);
+      const checked = selected.includes(m.name);
+      return <AccessModelRow key={m.name} model={m} state={state} checked={checked} onChange={() => onToggle(m.name)}/>;
+    })}
+  </>
+);
+
+const AccessMcpRow = ({server, instance, rowState, role='user', checked=true, inlineOpen=false, onToggleInline}) => {
+  const entry = MCP_CATALOG_FIXTURE.find(e => e.slug === server.slug);
+  const body = (() => {
+    if (rowState === 'has-instance') {
+      return (
+        <select defaultValue={instance?.slug || server.slug}
+                style={{fontFamily:'var(--hand)', fontSize:11, padding:'3px 6px', border:'1.3px solid var(--ink)', borderRadius:6, background:'var(--paper)'}}>
+          <option>{instance ? `${instance.name} · ● active` : `${server.slug} · ● active`}</option>
+        </select>
+      );
+    }
+    if (rowState === 'needs-reauth') {
+      return <><Chip tone="warn" style={{fontSize:10}}>⚠ Reconnect required</Chip><Btn size="xs" variant="primary" style={{marginLeft:4}}>Reconnect via OAuth ↗</Btn></>;
+    }
+    if (rowState === 'needs-instance') {
+      return <><Btn variant="primary" size="xs">+ Connect instance (OAuth ↗)</Btn><span className="access-tool-hint" style={{display:'block', marginTop:3}}>opens OAuth in a popup · page auto-refreshes when done</span></>;
+    }
+    if (rowState === 'oauth-in-progress') {
+      return <span className="access-oauth-hint"><span className="dot"/>Waiting for OAuth confirmation in popup…</span>;
+    }
+    if (rowState === 'needs-server') {
+      return role === 'admin'
+        ? (<><Btn variant="primary" size="xs" onClick={onToggleInline}>⚡ One-click Add MCP Server</Btn><span className="access-tool-hint" style={{display:'block', marginTop:3}}>pre-filled from Bodhi catalog · review and save without leaving this page</span></>)
+        : (<><Btn size="xs">✉ Request admin to add</Btn><span className="access-tool-hint" style={{display:'block', marginTop:3}}>your admin gets a notification · reviewer can approve from Admin Inbox</span></>);
+    }
+    if (rowState === 'pending-admin') {
+      return <Chip style={{fontSize:10}}>⏳ Admin notified · 2m ago</Chip>;
+    }
+  })();
+
+  const toolPreview = (MCP_TOOLS_FIXTURE[server.slug] || []).slice(0,3).map(t => t.name).join(' · ');
+
+  return (
+    <div className={`access-mcp-row state-${rowState}`}>
+      <div className="access-mcp-row-head">
+        <span className="access-mcp-check mcp-toggle-check" style={{background: checked ? 'var(--indigo-soft)' : 'var(--paper)'}}>{checked ? '✓' : ''}</span>
+        <span className="access-mcp-title">{entry?.name || server.slug}</span>
+        <code className="access-mcp-url">{entry?.defaultBaseUrl || server.url}</code>
+        <span style={{marginLeft:'auto', fontSize:10, color:'var(--ink-3)'}}>
+          {rowState === 'has-instance' ? 'ready' :
+           rowState === 'needs-reauth' ? 'reauth' :
+           rowState === 'needs-instance' ? 'needs instance' :
+           rowState === 'needs-server' ? 'not in app' :
+           rowState === 'pending-admin' ? 'pending' :
+           rowState === 'oauth-in-progress' ? 'authorising…' : ''}
+        </span>
+      </div>
+      <div className="access-mcp-row-body">
+        {body}
+        {toolPreview && rowState !== 'has-instance' && <div className="access-tool-hint">Will use: {toolPreview}…</div>}
+      </div>
+      {inlineOpen && entry && role === 'admin' && rowState === 'needs-server' && (
+        <AccessMcpInlineAddServer entry={entry} onCancel={onToggleInline}/>
+      )}
+    </div>
+  );
+};
+
+const AccessMcpInlineAddServer = ({entry, onSave, onCancel}) => (
+  <div className="access-mcp-inline-add">
+    <div className="access-mcp-inline-add-head">
+      <span>★ One-click Add · pre-filled from catalog: <code>{entry.slug}</code></span>
+      <Btn size="xs" onClick={onCancel}>✗ Cancel</Btn>
+    </div>
+    <McpServerForm mode="prefilled" initial={{
+      url: entry.defaultBaseUrl, name: entry.slug, description: entry.short,
+      authType: entry.authType, authConfig: entry.authConfig,
+    }} compact/>
+    <div style={{display:'flex', justifyContent:'flex-end', gap:6, marginTop:8}}>
+      <Btn size="xs" onClick={onCancel}>Cancel</Btn>
+      <Btn variant="primary" size="xs">Save & continue</Btn>
+    </div>
+  </div>
+);
+
+const AccessOAuthHint = ({status='waiting'}) => (
+  <span className="access-oauth-hint">
+    <span className="dot"/>
+    {status === 'waiting' ? 'Waiting for OAuth confirmation in popup…' :
+     status === 'connected' ? '✓ Connected · instance created' :
+     'OAuth failed · retry'}
+  </span>
+);
+
+const AccessRoleSelect = ({value='User'}) => (
+  <div className="access-role-row">
+    <span className="sm" style={{fontWeight:700}}>Approved role</span>
+    <select defaultValue={value}>
+      <option>User</option>
+      <option>PowerUser</option>
+      <option>Admin</option>
+    </select>
+    <span className="sm" style={{fontSize:10, color:'var(--ink-3)'}}>drives what this app can see in your resources</span>
+  </div>
+);
+
+const AccessActionBar = ({checkedModels=0, totalModels=0, checkedMcps=0, totalMcps=0, blockers=0}) => {
+  const total = totalModels + totalMcps;
+  const checked = checkedModels + checkedMcps;
+  const disabled = blockers > 0 || checked === 0;
+  return (
+    <div className="access-action-bar">
+      <Btn>Deny</Btn>
+      <div style={{display:'flex', alignItems:'center', gap:8}}>
+        {disabled && <span className="access-action-hint">
+          {blockers > 0 ? `${blockers} MCP${blockers>1?'s':''} need setup before approving` :
+                          'select at least one resource'}
+        </span>}
+        <Btn variant="primary" title={disabled ? 'resolve prerequisites first' : undefined}>
+          Approve {checked} of {total} resources
+        </Btn>
+      </div>
+    </div>
+  );
+};
+
 Object.assign(window, {Ph, Lines, Chip, Btn, Field, TL, Stars, Bar, Crumbs, Browser, Variant, Callout, SectionHead, ModelRow, DownloadsPanel, DownloadsMenu, ModelListRow, MobileHeader, MobileMenu, TabletFrame, PhoneFrame, ParamSection, PresetChipRow, QuantPicker, FitCheckCard, LiveConfigJson, DownloadProgressStrip, SliderWithMarks, TaskCategoryGrid, TaskCategoryCard, BrowseBySelector, OverlayShell, AliasRail, AliasMediumAnchors, DEFAULT_QUANTS, DEFAULT_ALIAS_CONFIG, TASK_CATEGORIES, PRESETS, ALIAS_SECTIONS, ArgsEditor, ArgsPalette, ArgsHelpPop, ARGS_HELP, ARGS_PRESETS, DEFAULT_ARG_LINES, PRESET_CATALOGUE, PresetGrid, PresetAndArgsSection, ModeToggle, ModeToggleCaption, KindChipRow, ModelsAddBrowseMenu, RankedRow, RankedModeCaption, RANKED_FIXTURE_CODING, groupIntoRankedRows, API_FORMATS, FIXTURE_OPENAI_MODELS, ApiFormatPicker, ApiKeyField, PrefixField, ForwardingModeRadio, ModelMultiSelect, ApiRail, ApiMediumAnchors,
   // MCP v30
   MCP_CATEGORIES, MCP_CATALOG_FIXTURE, MCP_SERVERS_FIXTURE, MCP_INSTANCES_FIXTURE, MCP_APPROVAL_FIXTURE, MCP_TOOLS_FIXTURE,
   McpCategoryChipRow, McpStatusFilter, mcpCardCta, McpCatalogCard, McpCatalogDrawer,
   McpAuthHeaderConfig, McpAuthOAuthConfig, McpServerForm, McpInstanceForm,
   McpServerListRow, McpApprovalRow, McpInstanceListRow, McpInstancePendingBanner,
-  McpToolSidebar, McpToolExecutor, McpRail, McpMediumAnchors});
+  McpToolSidebar, McpToolExecutor, McpRail, McpMediumAnchors,
+  // Access-request v31
+  ACCESS_REQUEST_FIXTURE, ACCESS_MODELS_FIXTURE, accessModelState,
+  AccessRequestHeader, AccessCapsEnvelope, AccessModelRow, AccessModelGroup,
+  AccessMcpRow, AccessMcpInlineAddServer, AccessOAuthHint,
+  AccessRoleSelect, AccessActionBar});

@@ -152,7 +152,7 @@ app.run: ## Run the BodhiApp
 		BODHI_LOG_LEVEL=info \
 		BODHI_LOG_STDOUT=true \
 		BODHI_HOME=~/.bodhi-dev-makefile \
-		cargo run --bin bodhi -- serve --port 1135
+		cargo run --bin bodhi -- serve --port 11135
 
 app.run.pg: dev.deps.up ## Run the BodhiApp with PostgreSQL dev databases
 	BODHI_ENCRYPTION_KEY=dummy-key \

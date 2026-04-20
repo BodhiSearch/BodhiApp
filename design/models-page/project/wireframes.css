@@ -2214,3 +2214,187 @@ html, body {
   font-family: var(--display); font-size: 17px; font-weight: 700;
   display: flex; align-items: center; gap: 6px;
 }
+
+/* ═════════════════ Access-request (v31) ═════════════════ */
+
+.access-card {
+  max-width: 760px; margin: 0 auto;
+  background: var(--paper-2);
+  border: 1.5px solid var(--ink); border-radius: 12px;
+  box-shadow: 2.5px 2.5px 0 var(--ink);
+  padding: 14px;
+  position: relative;
+}
+.access-card.fill { max-width: 100%; }
+.access-card.compact { padding: 10px; }
+
+.access-header {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding-bottom: 10px; margin-bottom: 10px;
+  border-bottom: 1.3px dashed var(--ink);
+}
+.access-header .access-logo {
+  width: 42px; height: 42px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--paper); border: 1.3px solid var(--ink); border-radius: 8px;
+  font-family: var(--display); font-size: 22px; font-weight: 700;
+}
+.access-header .access-app-title {
+  font-family: var(--display); font-size: 18px; font-weight: 700;
+  line-height: 1.1; display: flex; align-items: center; gap: 4px;
+}
+.access-header .access-app-sub {
+  font-family: var(--hand); font-size: 12px; color: var(--ink-2);
+  margin-top: 2px;
+}
+.access-header .access-client-id {
+  font-family: 'Menlo', monospace; font-size: 9.5px; color: var(--ink-3);
+  padding: 1.5px 5px; background: var(--paper);
+  border: 1px solid var(--line-soft); border-radius: 4px;
+  display: inline-block; margin-top: 2px;
+}
+
+.access-section {
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.access-section:last-of-type { border-bottom: none; }
+.access-section-head {
+  font-family: var(--display); font-size: 15px; font-weight: 700;
+  color: var(--ink);
+  display: flex; align-items: baseline; gap: 6px;
+  margin-bottom: 6px;
+}
+.access-section-hint {
+  font-family: var(--hand); font-size: 11px; color: var(--ink-3);
+  margin-top: 4px;
+}
+
+.access-caps-row {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 6px 8px;
+  background: var(--indigo-soft);
+  border: 1.3px dashed var(--ink); border-radius: 8px;
+}
+
+.access-model-group-head {
+  font-family: var(--hand); font-size: 11px; font-weight: 700;
+  color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 4px 0 3px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.access-model-row {
+  display: grid; grid-template-columns: 18px 1fr auto; gap: 8px;
+  align-items: center;
+  padding: 6px 8px; margin-bottom: 3px;
+  background: var(--paper);
+  border: 1.3px solid var(--ink); border-radius: 7px;
+  font-family: var(--hand); font-size: 12px;
+}
+.access-model-row.suggested { background: var(--leaf-soft); }
+.access-model-row.below-envelope { opacity: 0.58; }
+.access-model-row.disabled { opacity: 0.45; pointer-events: none; }
+.access-model-row .access-model-body {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+}
+.access-model-row .access-model-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.access-model-row .access-model-chips { display: flex; gap: 3px; flex-wrap: wrap; }
+.access-model-row .access-model-meta {
+  font-family: var(--sans); font-size: 10px; color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.access-mcp-row {
+  padding: 8px 10px; margin-bottom: 6px;
+  background: var(--paper);
+  border: 1.3px solid var(--ink); border-radius: 8px;
+  font-family: var(--hand); font-size: 12px;
+}
+.access-mcp-row.state-has-instance { background: var(--leaf-soft); }
+.access-mcp-row.state-needs-instance { border-style: dashed; }
+.access-mcp-row.state-needs-reauth { background: var(--warn-soft); }
+.access-mcp-row.state-needs-server { border-style: dashed; background: var(--paper); }
+.access-mcp-row.state-oauth-in-progress { background: var(--indigo-soft); }
+.access-mcp-row.state-pending-admin { opacity: 0.62; background: var(--paper); }
+
+.access-mcp-row-head {
+  display: flex; align-items: center; gap: 8px;
+}
+.access-mcp-row-head .access-mcp-check { flex-shrink: 0; }
+.access-mcp-row-head .access-mcp-title { font-weight: 700; }
+.access-mcp-row-head .access-mcp-url {
+  font-family: 'Menlo', monospace; font-size: 10px; color: var(--ink-3);
+  padding: 1.5px 5px;
+  background: var(--paper-2); border: 1px solid var(--line-soft); border-radius: 4px;
+}
+.access-mcp-row-body { margin-top: 6px; padding-left: 26px; }
+
+.access-mcp-inline-add {
+  margin-top: 8px; margin-left: 26px;
+  padding: 8px;
+  background: var(--paper-2);
+  border: 1.3px solid var(--ink); border-radius: 8px;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,0.02);
+}
+.access-mcp-inline-add-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+  font-family: var(--hand); font-size: 11px; color: var(--ink-3);
+}
+
+.access-oauth-hint {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 8px;
+  background: var(--indigo-soft); border: 1px dashed var(--ink); border-radius: 999px;
+  font-family: var(--hand); font-size: 11px;
+}
+.access-oauth-hint .dot {
+  width: 7px; height: 7px; background: var(--indigo);
+  border-radius: 50%;
+  animation: access-pulse 1.4s infinite ease-in-out;
+}
+@keyframes access-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.75); }
+}
+
+.access-tool-hint {
+  font-family: var(--sans); font-size: 10px; color: var(--ink-3);
+  margin-top: 3px;
+}
+
+.access-action-bar {
+  position: sticky; bottom: 0;
+  padding: 10px; margin: 10px -14px -14px;
+  background: var(--paper-2);
+  border-top: 1.5px solid var(--ink);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap;
+}
+.access-action-bar .access-action-hint {
+  font-family: var(--hand); font-size: 11px; color: var(--warn);
+}
+
+.access-role-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.access-role-row select {
+  fontFamily: var(--hand); font-size: 12px; padding: 4px 8px;
+  background: var(--paper); border: 1.3px solid var(--ink); border-radius: 6px;
+  min-width: 160px;
+}
+
+.access-role-toggle {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; gap: 2px; padding: 2px;
+  background: var(--paper); border: 1.3px solid var(--ink); border-radius: 999px;
+}
+.access-role-toggle span {
+  padding: 2px 8px; cursor: pointer;
+  font-family: var(--hand); font-size: 10px; color: var(--ink-3);
+  border-radius: 999px;
+}
+.access-role-toggle span.active {
+  background: var(--indigo-soft); color: var(--ink); font-weight: 700;
+}

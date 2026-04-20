@@ -10,6 +10,7 @@ const SCREENS = [
   {key:'my-mcps', title:'My MCPs', concept:'instances you have connected', list: () => window.MyMcpsScreens},
   {key:'mcp-admin', title:'MCP Admin', concept:'registered servers + approval inbox', list: () => window.McpAdminScreens},
   {key:'mcp-playground', title:'MCP Playground', concept:'exercise tools on a connected instance', list: () => window.McpPlaygroundScreens},
+  {key:'access-request', title:'Access Request', concept:'3rd-party app review · per-model + per-MCP grants · inline prerequisites', list: () => window.AccessRequestScreens},
 ];
 
 // Migrate legacy tab keys (`hub`, `discover`, `providers`, `detail`) → `models` on first load.
