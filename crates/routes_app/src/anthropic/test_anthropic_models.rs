@@ -24,7 +24,7 @@ async fn seed_anthropic_alias(
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
-    .models(vec![anthropic_model("claude-3-5-sonnet-20241022")])
+    .models(vec![anthropic_model("claude-sonnet-4-5-20250929")])
     .build_with_time(db_service.now())
     .unwrap();
   db_service
@@ -86,8 +86,8 @@ async fn test_models_list_aggregates_from_all_anthropic_aliases() -> anyhow::Res
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
     .models(vec![
-      anthropic_model("claude-3-5-sonnet-20241022"),
-      anthropic_model("claude-3-opus-20240229"),
+      anthropic_model("claude-sonnet-4-5-20250929"),
+      anthropic_model("claude-opus-4-5-20251101"),
     ])
     .build_with_time(db_service.now())
     .unwrap();
@@ -96,8 +96,8 @@ async fn test_models_list_aggregates_from_all_anthropic_aliases() -> anyhow::Res
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
     .models(vec![
-      anthropic_model("claude-3-5-sonnet-20241022"), // duplicate
-      anthropic_model("claude-3-haiku-20240307"),
+      anthropic_model("claude-sonnet-4-5-20250929"), // duplicate
+      anthropic_model("claude-haiku-4-5-20251001"),
     ])
     .build_with_time(db_service.now())
     .unwrap();
@@ -131,9 +131,9 @@ async fn test_models_list_aggregates_from_all_anthropic_aliases() -> anyhow::Res
   let data = body["data"].as_array().unwrap();
   assert_eq!(3, data.len()); // 3 unique models
   let ids: Vec<&str> = data.iter().map(|m| m["id"].as_str().unwrap()).collect();
-  assert!(ids.contains(&"claude-3-5-sonnet-20241022"));
-  assert!(ids.contains(&"claude-3-opus-20240229"));
-  assert!(ids.contains(&"claude-3-haiku-20240307"));
+  assert!(ids.contains(&"claude-sonnet-4-5-20250929"));
+  assert!(ids.contains(&"claude-opus-4-5-20251101"));
+  assert!(ids.contains(&"claude-haiku-4-5-20251001"));
   // All entries carry type: "model"
   for item in data {
     assert_eq!("model", item["type"].as_str().unwrap());
@@ -155,7 +155,7 @@ async fn test_models_list_excludes_non_anthropic_aliases() -> anyhow::Result<()>
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
-    .models(vec![anthropic_model("claude-3-5-sonnet-20241022")])
+    .models(vec![anthropic_model("claude-sonnet-4-5-20250929")])
     .build_with_time(db_service.now())
     .unwrap();
   let openai_alias = ApiAliasBuilder::test_default()
@@ -198,7 +198,7 @@ async fn test_models_list_excludes_non_anthropic_aliases() -> anyhow::Result<()>
     .iter()
     .map(|m| m["id"].as_str().unwrap())
     .collect();
-  assert!(ids.contains(&"claude-3-5-sonnet-20241022"));
+  assert!(ids.contains(&"claude-sonnet-4-5-20250929"));
   assert!(!ids.contains(&"gpt-4o"));
   Ok(())
 }
@@ -226,7 +226,7 @@ async fn test_models_get_by_path_param_returns_cached_model() -> anyhow::Result<
 
   let response = app
     .oneshot(
-      Request::get("/anthropic/v1/models/claude-3-5-sonnet-20241022")
+      Request::get("/anthropic/v1/models/claude-sonnet-4-5-20250929")
         .body(axum::body::Body::empty())?
         .with_auth_context(AuthContext::test_session(
           TEST_USER_ID,
@@ -238,10 +238,10 @@ async fn test_models_get_by_path_param_returns_cached_model() -> anyhow::Result<
 
   assert_eq!(StatusCode::OK, response.status());
   let body = response.json::<serde_json::Value>().await?;
-  assert_eq!("claude-3-5-sonnet-20241022", body["id"].as_str().unwrap());
+  assert_eq!("claude-sonnet-4-5-20250929", body["id"].as_str().unwrap());
   assert_eq!("model", body["type"].as_str().unwrap());
   assert_eq!(
-    "claude-3-5-sonnet-20241022",
+    "claude-sonnet-4-5-20250929",
     body["display_name"].as_str().unwrap()
   );
   Ok(())

@@ -10,7 +10,7 @@ import { expect, test } from '@/fixtures.mjs';
 // exercised against the live API (no chargeable completions).
 
 const ANTHROPIC_BASE_URL = 'https://api.anthropic.com/v1';
-const REAL_MODEL_ID = 'claude-3-haiku-20240307';
+const REAL_MODEL_ID = 'claude-haiku-4-5-20251001';
 const ANTHROPIC_OAUTH_FORMAT = ApiModelFixtures.API_FORMATS.anthropic_oauth;
 
 test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {

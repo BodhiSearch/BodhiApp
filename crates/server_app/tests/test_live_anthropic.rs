@@ -59,7 +59,7 @@ async fn test_anthropic_messages_proxy_injects_auth_headers() -> anyhow::Result<
     .mock("GET", "/models")
     .with_status(200)
     .with_header("content-type", "application/json")
-    .with_body(r#"{"data":[{"id":"claude-3-5-sonnet-20241022","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"}],"has_more":false}"#)
+    .with_body(r#"{"data":[{"id":"claude-sonnet-4-5-20250929","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"}],"has_more":false}"#)
     .create_async()
     .await;
   let mock = mock_server
@@ -82,7 +82,7 @@ async fn test_anthropic_messages_proxy_injects_auth_headers() -> anyhow::Result<
     &server.base_url,
     &cookie,
     &mock_server.url(),
-    vec!["claude-3-5-sonnet-20241022"],
+    vec!["claude-sonnet-4-5-20250929"],
   )
   .await?;
 
@@ -90,7 +90,7 @@ async fn test_anthropic_messages_proxy_injects_auth_headers() -> anyhow::Result<
     .post(format!("{}/anthropic/v1/messages", server.base_url))
     .header("Cookie", &cookie)
     .json(&json!({
-      "model": "claude-3-5-sonnet-20241022",
+      "model": "claude-sonnet-4-5-20250929",
       "max_tokens": 50,
       "messages": [{"role": "user", "content": "Hello"}]
     }))
@@ -118,7 +118,7 @@ async fn test_anthropic_messages_proxy_forwards_anthropic_beta_header() -> anyho
     .mock("GET", "/models")
     .with_status(200)
     .with_header("content-type", "application/json")
-    .with_body(r#"{"data":[{"id":"claude-3-5-sonnet-20241022","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"}],"has_more":false}"#)
+    .with_body(r#"{"data":[{"id":"claude-sonnet-4-5-20250929","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"}],"has_more":false}"#)
     .create_async()
     .await;
   let mock = mock_server
@@ -141,7 +141,7 @@ async fn test_anthropic_messages_proxy_forwards_anthropic_beta_header() -> anyho
     &server.base_url,
     &cookie,
     &mock_server.url(),
-    vec!["claude-3-5-sonnet-20241022"],
+    vec!["claude-sonnet-4-5-20250929"],
   )
   .await?;
 
@@ -150,7 +150,7 @@ async fn test_anthropic_messages_proxy_forwards_anthropic_beta_header() -> anyho
     .header("Cookie", &cookie)
     .header("anthropic-beta", "token-counting-2024-11-01")
     .json(&json!({
-      "model": "claude-3-5-sonnet-20241022",
+      "model": "claude-sonnet-4-5-20250929",
       "max_tokens": 50,
       "messages": [{"role": "user", "content": "Hello"}]
     }))
@@ -227,7 +227,7 @@ async fn test_anthropic_models_list_aggregates_from_db() -> anyhow::Result<()> {
     .mock("GET", "/models")
     .with_status(200)
     .with_header("content-type", "application/json")
-    .with_body(r#"{"data":[{"id":"claude-3-5-sonnet-20241022","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"},{"id":"claude-3-opus-20240229","display_name":"Claude 3 Opus","created_at":"2024-02-29T00:00:00Z","type":"model"},{"id":"claude-3-haiku-20240307","display_name":"Claude 3 Haiku","created_at":"2024-03-07T00:00:00Z","type":"model"}],"has_more":false}"#)
+    .with_body(r#"{"data":[{"id":"claude-sonnet-4-5-20250929","display_name":"Claude 3.5 Sonnet","created_at":"2024-10-22T00:00:00Z","type":"model"},{"id":"claude-opus-4-5-20251101","display_name":"Claude 3 Opus","created_at":"2024-02-29T00:00:00Z","type":"model"},{"id":"claude-haiku-4-5-20251001","display_name":"Claude 3 Haiku","created_at":"2024-03-07T00:00:00Z","type":"model"}],"has_more":false}"#)
     .expect(2)
     .create_async()
     .await;
@@ -243,7 +243,7 @@ async fn test_anthropic_models_list_aggregates_from_db() -> anyhow::Result<()> {
     &server.base_url,
     &cookie,
     &mock_server.url(),
-    vec!["claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
+    vec!["claude-sonnet-4-5-20250929", "claude-opus-4-5-20251101"],
   )
   .await?;
   let _b = create_anthropic_alias(
@@ -251,7 +251,7 @@ async fn test_anthropic_models_list_aggregates_from_db() -> anyhow::Result<()> {
     &server.base_url,
     &cookie,
     &mock_server.url(),
-    vec!["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"],
+    vec!["claude-sonnet-4-5-20250929", "claude-haiku-4-5-20251001"],
   )
   .await?;
 
@@ -265,9 +265,9 @@ async fn test_anthropic_models_list_aggregates_from_db() -> anyhow::Result<()> {
   let data = body["data"].as_array().unwrap();
   assert_eq!(3, data.len(), "expected 3 unique models, got {:?}", data);
   let ids: Vec<&str> = data.iter().map(|m| m["id"].as_str().unwrap()).collect();
-  assert!(ids.contains(&"claude-3-5-sonnet-20241022"));
-  assert!(ids.contains(&"claude-3-opus-20240229"));
-  assert!(ids.contains(&"claude-3-haiku-20240307"));
+  assert!(ids.contains(&"claude-sonnet-4-5-20250929"));
+  assert!(ids.contains(&"claude-opus-4-5-20251101"));
+  assert!(ids.contains(&"claude-haiku-4-5-20251001"));
   assert_eq!(false, body["has_more"].as_bool().unwrap());
 
   server.handle.shutdown().await?;

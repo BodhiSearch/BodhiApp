@@ -175,7 +175,12 @@ pub async fn gemini_models_get(
 }
 
 /// Supported Gemini action suffixes (the part after `:` in the path segment).
-const GEMINI_ACTIONS: &[&str] = &["generateContent", "streamGenerateContent", "embedContent"];
+const GEMINI_ACTIONS: &[&str] = &[
+  "generateContent",
+  "streamGenerateContent",
+  "embedContent",
+  "batchEmbedContents",
+];
 
 /// Dispatches `POST /v1beta/models/{model}:{action}` — captures whole segment, splits on last `:`.
 pub async fn gemini_action_handler(
@@ -199,7 +204,7 @@ pub async fn gemini_action_handler(
 
   if !GEMINI_ACTIONS.contains(&action) {
     return Err(GeminiApiError::invalid_request(format!(
-      "Unsupported action '{}'. Supported: generateContent, streamGenerateContent, embedContent.",
+      "Unsupported action '{}'. Supported: generateContent, streamGenerateContent, embedContent, batchEmbedContents.",
       action
     )));
   }
@@ -213,6 +218,7 @@ pub async fn gemini_action_handler(
     "generateContent" => LlmEndpoint::GeminiGenerateContent(stripped_model),
     "streamGenerateContent" => LlmEndpoint::GeminiStreamGenerateContent(stripped_model),
     "embedContent" => LlmEndpoint::GeminiEmbedContent(stripped_model),
+    "batchEmbedContents" => LlmEndpoint::GeminiBatchEmbedContents(stripped_model),
     _ => unreachable!("action validated above"),
   };
 

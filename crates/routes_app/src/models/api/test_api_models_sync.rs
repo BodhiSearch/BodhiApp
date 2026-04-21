@@ -327,8 +327,8 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
     })
     .returning(|_, _, _, _, _| {
       Ok(vec![
-        anthropic_model("claude-3-5-sonnet-20241022"),
-        anthropic_model("claude-3-haiku-20240307"),
+        anthropic_model("claude-sonnet-4-5-20250929"),
+        anthropic_model("claude-haiku-4-5-20251001"),
       ])
     });
 
@@ -374,8 +374,8 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
   let sync_body = sync_response.json::<ApiAliasResponse>().await?;
   assert_eq!(ApiFormat::AnthropicOAuth, sync_body.api_format);
   let model_ids: Vec<&str> = sync_body.models.iter().map(|m| m.id()).collect();
-  assert!(model_ids.contains(&"claude-3-5-sonnet-20241022"));
-  assert!(model_ids.contains(&"claude-3-haiku-20240307"));
+  assert!(model_ids.contains(&"claude-sonnet-4-5-20250929"));
+  assert!(model_ids.contains(&"claude-haiku-4-5-20251001"));
 
   Ok(())
 }

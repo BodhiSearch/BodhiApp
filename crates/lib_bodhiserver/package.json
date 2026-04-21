@@ -34,14 +34,17 @@
     "e2e:server:mcp-inspector": "DANGEROUSLY_OMIT_AUTH=true MCP_AUTO_OPEN_ENABLED=false npx @modelcontextprotocol/inspector"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@biomejs/biome": "^1.9.4",
     "@copilotkit/aimock": "^1.11.0",
+    "@google/genai": "^1.50.1",
     "@modelcontextprotocol/inspector": "0.21.1",
     "@modelcontextprotocol/server-everything": "2026.1.26",
     "@playwright/test": "1.57.0",
     "cross-env": "^10.1.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "openai": "^6.34.0",
     "vitest": "^2.1.8"
   },
   "engines": {

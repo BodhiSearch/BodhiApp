@@ -36,7 +36,7 @@ async fn seed_anthropic_oauth_alias(
     .id("anthropic-oauth-alias")
     .api_format(ApiFormat::AnthropicOAuth)
     .base_url("https://api.anthropic.com/v1")
-    .models(vec![anthropic_model("claude-3-5-sonnet-20241022")])
+    .models(vec![anthropic_model("claude-sonnet-4-5-20250929")])
     .build_with_time(db_service.now())
     .unwrap();
   db_service
@@ -78,7 +78,7 @@ async fn test_messages_create_forwards_to_anthropic_oauth_alias() -> anyhow::Res
     .oneshot(
       Request::post("/anthropic/v1/messages")
         .json(json!({
-          "model": "claude-3-5-sonnet-20241022",
+          "model": "claude-sonnet-4-5-20250929",
           "max_tokens": 100,
           "messages": [{"role": "user", "content": "hi"}]
         }))?

@@ -1005,6 +1005,55 @@ async fn test_embed_content_forwards_correct_endpoint() -> anyhow::Result<()> {
   Ok(())
 }
 
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_batch_embed_contents_forwards_correct_endpoint() -> anyhow::Result<()> {
+  let mut builder = AppServiceStubBuilder::default();
+  seed_gemini_alias(&mut builder).await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, alias, _key, _params, _headers| {
+      *endpoint == LlmEndpoint::GeminiBatchEmbedContents("gemini-2.5-flash".to_string())
+        && alias.id == "gemini-alias"
+    })
+    .times(1)
+    .return_once(|_, _, _, _, _, _| ok_response());
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route(
+      ENDPOINT_GEMINI_MODEL,
+      get(gemini_models_get).post(gemini_action_handler),
+    )
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1beta/models/gemini-2.5-flash:batchEmbedContents")
+        .header("content-type", "application/json")
+        .body(Body::from(
+          r#"{"requests":[{"model":"models/gemini-2.5-flash","content":{"parts":[{"text":"hello world"}]}}]}"#,
+        ))?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
 // ============================================================================
 // Axum path routing: verify GET/POST disambiguation
 // ============================================================================

@@ -3,8 +3,13 @@ export class ApiModelFixtures {
   // Update these when models are deprecated.
   static OPENAI_MODEL = 'gpt-4.1-nano';
   static OPENROUTER_MODEL = 'openai/gpt-4.1-nano';
-  static ANTHROPIC_MODEL = 'claude-3-haiku-20240307';
+  static ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
   static GEMINI_MODEL = 'gemini-2.5-flash';
+  // Embedding models registered alongside chat models for SDK-compat tests.
+  // Gemini's stable embeddings model is `gemini-embedding-001` (appears in
+  // /v1beta/models default page). `text-embedding-004` is NOT listed.
+  static OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small';
+  static GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 
   // Parameterized API format configs for multi-format E2E testing.
   // Add new formats here to automatically get test coverage.
@@ -36,6 +41,8 @@ export class ApiModelFixtures {
       multiTestPrefix: 'oai/',
       // BodhiApp routes /v1/chat/completions to OpenAI | Anthropic aliases only.
       supportsUniversalChatCompletions: true,
+      // Embedding model to register alongside the chat model for SDK-compat tests.
+      embeddingModel: 'text-embedding-3-small',
     },
     openai_responses: {
       format: 'openai_responses',
@@ -158,6 +165,8 @@ export class ApiModelFixtures {
       },
       multiTestPrefix: 'gmn/',
       supportsUniversalChatCompletions: false,
+      // Embedding model to register alongside the chat model for SDK-compat tests.
+      embeddingModel: 'gemini-embedding-001',
       // Mock-specific fields for api-models-no-key.spec.mjs
       mockBaseUrlSuffix: '/v1beta',
       mockModel: 'mock-gemini-flash',

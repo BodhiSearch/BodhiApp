@@ -22,7 +22,7 @@ async fn test_test_prompt_anthropic_oauth_success() -> anyhow::Result<()> {
   });
 
   let expected_body = json!({
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "claude-sonnet-4-5-20250929",
     "max_tokens": 50,
     "messages": [{"role": "user", "content": "Hello"}],
     "system": [{"type": "text", "text": "You are Claude Code"}]
@@ -45,7 +45,7 @@ async fn test_test_prompt_anthropic_oauth_success() -> anyhow::Result<()> {
     .test_prompt(
       Some("oauth-token-123".to_string()),
       &url,
-      "claude-3-5-sonnet-20241022",
+      "claude-sonnet-4-5-20250929",
       "Hello",
       &ApiFormat::AnthropicOAuth,
       Some(extra_headers),
@@ -79,7 +79,7 @@ async fn test_fetch_models_anthropic_oauth_success() -> anyhow::Result<()> {
     .with_header("content-type", "application/json")
     .with_body(r#"{
       "data": [
-        {"id": "claude-3-5-sonnet-20241022", "display_name": "Claude 3.5 Sonnet", "created_at": "2024-10-22T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
+        {"id": "claude-sonnet-4-5-20250929", "display_name": "Claude 3.5 Sonnet", "created_at": "2024-10-22T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
       ],
       "has_more": false
     }"#)
@@ -96,7 +96,7 @@ async fn test_fetch_models_anthropic_oauth_success() -> anyhow::Result<()> {
     )
     .await?;
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
-  assert_eq!(vec!["claude-3-5-sonnet-20241022"], model_ids);
+  assert_eq!(vec!["claude-sonnet-4-5-20250929"], model_ids);
 
   Ok(())
 }
@@ -119,7 +119,7 @@ async fn test_forward_request_anthropic_oauth_merges_body() -> anyhow::Result<()
     "anthropic-oauth-api",
     ApiFormat::AnthropicOAuth,
     &url,
-    vec![openai_model("claude-3-5-sonnet-20241022")],
+    vec![openai_model("claude-sonnet-4-5-20250929")],
     None,
     false,
     fixed_dt(),
@@ -129,7 +129,7 @@ async fn test_forward_request_anthropic_oauth_merges_body() -> anyhow::Result<()
 
   // Incoming has max_tokens: 10 (incoming wins) and no system (config applied)
   let expected_upstream_body = json!({
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "claude-sonnet-4-5-20250929",
     "max_tokens": 10,
     "messages": [{"role": "user", "content": "Hello"}],
     "system": [{"type": "text", "text": "ABC"}]
@@ -149,7 +149,7 @@ async fn test_forward_request_anthropic_oauth_merges_body() -> anyhow::Result<()
     .await;
 
   let incoming = json!({
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "claude-sonnet-4-5-20250929",
     "max_tokens": 10,
     "messages": [{"role": "user", "content": "Hello"}]
   });
@@ -187,7 +187,7 @@ async fn test_forward_request_anthropic_oauth_prepends_system() -> anyhow::Resul
     "anthropic-oauth-api",
     ApiFormat::AnthropicOAuth,
     &url,
-    vec![openai_model("claude-3-5-sonnet-20241022")],
+    vec![openai_model("claude-sonnet-4-5-20250929")],
     None,
     false,
     fixed_dt(),
@@ -197,7 +197,7 @@ async fn test_forward_request_anthropic_oauth_prepends_system() -> anyhow::Resul
 
   // Incoming has its own system — config must be prepended
   let expected_upstream_body = json!({
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "claude-sonnet-4-5-20250929",
     "max_tokens": 10,
     "messages": [{"role": "user", "content": "Hello"}],
     "system": [
@@ -219,7 +219,7 @@ async fn test_forward_request_anthropic_oauth_prepends_system() -> anyhow::Resul
     .await;
 
   let incoming = json!({
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "claude-sonnet-4-5-20250929",
     "max_tokens": 10,
     "messages": [{"role": "user", "content": "Hello"}],
     "system": [{"type": "text", "text": "USER"}]
@@ -257,7 +257,7 @@ async fn test_forward_request_anthropic_oauth_version_injected_when_absent() -> 
     "anthropic-oauth-api",
     ApiFormat::AnthropicOAuth,
     &url,
-    vec![openai_model("claude-3-5-sonnet-20241022")],
+    vec![openai_model("claude-sonnet-4-5-20250929")],
     None,
     false,
     fixed_dt(),
@@ -281,7 +281,7 @@ async fn test_forward_request_anthropic_oauth_version_injected_when_absent() -> 
       "/messages",
       &api_alias,
       Some("oauth-token-123".to_string()),
-      Some(json!({"model":"claude-3-5-sonnet-20241022","max_tokens":1,"messages":[]})),
+      Some(json!({"model":"claude-sonnet-4-5-20250929","max_tokens":1,"messages":[]})),
       None,
       None,
     )

@@ -14,7 +14,7 @@ async fn test_test_prompt_anthropic_success() -> anyhow::Result<()> {
   let service = DefaultAiApiService::new()?;
 
   let expected_body = serde_json::json!({
-    "model": "claude-3-5-sonnet-20241022",
+    "model": "claude-sonnet-4-5-20250929",
     "max_tokens": 50,
     "messages": [{"role": "user", "content": "Hello"}]
   });
@@ -36,7 +36,7 @@ async fn test_test_prompt_anthropic_success() -> anyhow::Result<()> {
     .test_prompt(
       Some("test-key".to_string()),
       &url,
-      "claude-3-5-sonnet-20241022",
+      "claude-sonnet-4-5-20250929",
       "Hello",
       &ApiFormat::Anthropic,
       None,
@@ -68,7 +68,7 @@ async fn test_test_prompt_anthropic_malformed_response() -> anyhow::Result<()> {
     .test_prompt(
       Some("test-key".to_string()),
       &url,
-      "claude-3-5-sonnet-20241022",
+      "claude-sonnet-4-5-20250929",
       "Hello",
       &ApiFormat::Anthropic,
       None,
@@ -97,8 +97,8 @@ async fn test_fetch_models_anthropic_success() -> anyhow::Result<()> {
     .with_body(
       r#"{
         "data": [
-          {"id": "claude-3-5-sonnet-20241022", "display_name": "Claude 3.5 Sonnet", "created_at": "2024-10-22T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null},
-          {"id": "claude-3-opus-20240229", "display_name": "Claude 3 Opus", "created_at": "2024-02-29T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
+          {"id": "claude-sonnet-4-5-20250929", "display_name": "Claude 3.5 Sonnet", "created_at": "2024-10-22T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null},
+          {"id": "claude-opus-4-5-20251101", "display_name": "Claude 3 Opus", "created_at": "2024-02-29T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
         ],
         "has_more": false
       }"#,
@@ -117,7 +117,7 @@ async fn test_fetch_models_anthropic_success() -> anyhow::Result<()> {
     .await?;
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
   assert_eq!(
-    vec!["claude-3-5-sonnet-20241022", "claude-3-opus-20240229"],
+    vec!["claude-sonnet-4-5-20250929", "claude-opus-4-5-20251101"],
     model_ids
   );
 
@@ -143,8 +143,8 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
     .with_body(
       r#"{
         "data": [
-          {"id": "claude-3-5-sonnet-20241022", "display_name": "Claude 3.5 Sonnet", "created_at": "2024-10-22T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null},
-          {"id": "claude-3-opus-20240229", "display_name": "Claude 3 Opus", "created_at": "2024-02-29T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
+          {"id": "claude-sonnet-4-5-20250929", "display_name": "Claude 3.5 Sonnet", "created_at": "2024-10-22T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null},
+          {"id": "claude-opus-4-5-20251101", "display_name": "Claude 3 Opus", "created_at": "2024-02-29T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
         ],
         "has_more": true
       }"#,
@@ -153,7 +153,7 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
     .await;
 
   let _mock_page2 = server
-    .mock("GET", "/models?before_id=claude-3-opus-20240229")
+    .mock("GET", "/models?before_id=claude-opus-4-5-20251101")
     .match_header("x-api-key", "test-key")
     .match_header("anthropic-version", "2023-06-01")
     .with_status(200)
@@ -161,7 +161,7 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
     .with_body(
       r#"{
         "data": [
-          {"id": "claude-3-haiku-20240307", "display_name": "Claude 3 Haiku", "created_at": "2024-03-07T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
+          {"id": "claude-haiku-4-5-20251001", "display_name": "Claude 3 Haiku", "created_at": "2024-03-07T00:00:00Z", "type": "model", "capabilities": null, "max_input_tokens": null, "max_tokens": null}
         ],
         "has_more": false
       }"#,
@@ -181,9 +181,9 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
   assert_eq!(
     vec![
-      "claude-3-5-sonnet-20241022",
-      "claude-3-opus-20240229",
-      "claude-3-haiku-20240307"
+      "claude-sonnet-4-5-20250929",
+      "claude-opus-4-5-20251101",
+      "claude-haiku-4-5-20251001"
     ],
     model_ids
   );

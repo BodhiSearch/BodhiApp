@@ -22,6 +22,7 @@ pub enum LlmEndpoint {
   GeminiGenerateContent(String),
   GeminiStreamGenerateContent(String),
   GeminiEmbedContent(String),
+  GeminiBatchEmbedContents(String),
 }
 
 impl LlmEndpoint {
@@ -41,6 +42,7 @@ impl LlmEndpoint {
       Self::GeminiGenerateContent(id) => format!("/models/{}:generateContent", id),
       Self::GeminiStreamGenerateContent(id) => format!("/models/{}:streamGenerateContent", id),
       Self::GeminiEmbedContent(id) => format!("/models/{}:embedContent", id),
+      Self::GeminiBatchEmbedContents(id) => format!("/models/{}:batchEmbedContents", id),
     }
   }
 
@@ -87,6 +89,11 @@ mod tests {
   #[case(
     LlmEndpoint::GeminiEmbedContent("gemini-2.5-flash".to_string()),
     "/models/gemini-2.5-flash:embedContent",
+    &Method::POST
+  )]
+  #[case(
+    LlmEndpoint::GeminiBatchEmbedContents("gemini-2.5-flash".to_string()),
+    "/models/gemini-2.5-flash:batchEmbedContents",
     &Method::POST
   )]
   fn test_endpoint_paths(

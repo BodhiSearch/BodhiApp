@@ -218,8 +218,8 @@ describe('agentStore', () => {
     });
 
     it.each([
-      ['anthropic' as const, 'claude-3-5-sonnet-20241022'],
-      ['anthropic_oauth' as const, 'claude-3-haiku-20240307'],
+      ['anthropic' as const, 'claude-sonnet-4-5-20250929'],
+      ['anthropic_oauth' as const, 'claude-haiku-4-5-20251001'],
     ])('routes %s format via pi-ai anthropic-messages provider with /anthropic baseUrl', async (apiFormat, modelId) => {
       mockPrompt.mockResolvedValueOnce(undefined);
       useChatSettingsStore.setState({ model: modelId, apiFormat });

@@ -411,7 +411,7 @@ async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Resu
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
     .models(vec![services::test_utils::anthropic_model(
-      "claude-3-5-sonnet-20241022",
+      "claude-sonnet-4-5-20250929",
     )])
     .build_with_time(db_service.now())
     .unwrap();
@@ -442,7 +442,7 @@ async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Resu
     .oneshot(
       Request::post("/v1/chat/completions")
         .json(json!({
-          "model": "claude-3-5-sonnet-20241022",
+          "model": "claude-sonnet-4-5-20250929",
           "messages": [{"role": "user", "content": "Hello"}]
         }))?
         .with_auth_context(AuthContext::test_session(

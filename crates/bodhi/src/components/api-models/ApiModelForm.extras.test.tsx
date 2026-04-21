@@ -148,7 +148,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     const user = userEvent.setup();
     server.use(
       ...mockApiFormats({ data: ['anthropic_oauth'] }),
-      ...mockFetchApiModels({ models: ['claude-3-5-sonnet-20241022'] })
+      ...mockFetchApiModels({ models: ['claude-sonnet-4-5-20250929'] })
     );
 
     await act(async () => {
@@ -166,9 +166,9 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
 
     await user.click(screen.getByTestId('fetch-models-button'));
     await waitFor(() => {
-      expect(screen.queryByTestId('available-model-claude-3-5-sonnet-20241022')).toBeInTheDocument();
+      expect(screen.queryByTestId('available-model-claude-sonnet-4-5-20250929')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('available-model-claude-3-5-sonnet-20241022'));
+    await user.click(screen.getByTestId('available-model-claude-sonnet-4-5-20250929'));
 
     await user.click(screen.getByTestId('create-api-model-button'));
 
@@ -209,7 +209,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     const user = userEvent.setup();
     server.use(
       ...mockApiFormats({ data: ['anthropic_oauth'] }),
-      ...mockFetchApiModels({ models: ['claude-3-5-sonnet-20241022'] })
+      ...mockFetchApiModels({ models: ['claude-sonnet-4-5-20250929'] })
     );
 
     let capturedRequestBody: Record<string, unknown> | undefined;
@@ -235,9 +235,9 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
 
     await user.click(screen.getByTestId('fetch-models-button'));
     await waitFor(() => {
-      expect(screen.queryByTestId('available-model-claude-3-5-sonnet-20241022')).toBeInTheDocument();
+      expect(screen.queryByTestId('available-model-claude-sonnet-4-5-20250929')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('available-model-claude-3-5-sonnet-20241022'));
+    await user.click(screen.getByTestId('available-model-claude-sonnet-4-5-20250929'));
 
     await user.click(screen.getByTestId('create-api-model-button'));
 
@@ -254,7 +254,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     const customHeaders = { 'x-custom': 'value' };
     server.use(
       ...mockApiFormats({ data: ['anthropic_oauth'] }),
-      ...mockFetchApiModels({ models: ['claude-3-5-sonnet-20241022'] })
+      ...mockFetchApiModels({ models: ['claude-sonnet-4-5-20250929'] })
     );
 
     let capturedRequestBody: Record<string, unknown> | undefined;
@@ -280,9 +280,9 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
 
     await user.click(screen.getByTestId('fetch-models-button'));
     await waitFor(() => {
-      expect(screen.queryByTestId('available-model-claude-3-5-sonnet-20241022')).toBeInTheDocument();
+      expect(screen.queryByTestId('available-model-claude-sonnet-4-5-20250929')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('available-model-claude-3-5-sonnet-20241022'));
+    await user.click(screen.getByTestId('available-model-claude-sonnet-4-5-20250929'));
 
     await user.click(screen.getByTestId('create-api-model-button'));
 
@@ -300,7 +300,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     const user = userEvent.setup();
     server.use(
       ...mockApiFormats({ data: ['anthropic_oauth'] }),
-      ...mockFetchApiModels({ models: ['claude-3-5-sonnet-20241022'] })
+      ...mockFetchApiModels({ models: ['claude-sonnet-4-5-20250929'] })
     );
 
     let capturedRequestBody: Record<string, unknown> | undefined;
@@ -327,9 +327,9 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
 
     await user.click(screen.getByTestId('fetch-models-button'));
     await waitFor(() => {
-      expect(screen.queryByTestId('available-model-claude-3-5-sonnet-20241022')).toBeInTheDocument();
+      expect(screen.queryByTestId('available-model-claude-sonnet-4-5-20250929')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('available-model-claude-3-5-sonnet-20241022'));
+    await user.click(screen.getByTestId('available-model-claude-sonnet-4-5-20250929'));
 
     await user.click(screen.getByTestId('create-api-model-button'));
 
@@ -411,7 +411,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     const user = userEvent.setup();
     server.use(
       ...mockApiFormats({ data: ['anthropic_oauth'] }),
-      ...mockFetchApiModels({ models: ['claude-3-5-sonnet-20241022'] })
+      ...mockFetchApiModels({ models: ['claude-sonnet-4-5-20250929'] })
     );
 
     await act(async () => {
@@ -429,9 +429,9 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
 
     await user.click(screen.getByTestId('fetch-models-button'));
     await waitFor(() => {
-      expect(screen.queryByTestId('available-model-claude-3-5-sonnet-20241022')).toBeInTheDocument();
+      expect(screen.queryByTestId('available-model-claude-sonnet-4-5-20250929')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('available-model-claude-3-5-sonnet-20241022'));
+    await user.click(screen.getByTestId('available-model-claude-sonnet-4-5-20250929'));
 
     await user.click(screen.getByTestId('create-api-model-button'));
 

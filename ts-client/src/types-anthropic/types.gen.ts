@@ -2260,7 +2260,7 @@ export type StopReason = 'end_turn' | 'max_tokens' | 'stop_sequence' | 'tool_use
 /**
  * The model that will complete your prompt.\n\nSee [models](https://docs.anthropic.com/en/docs/models-overview) for additional details and options.
  */
-export type Model = string | 'claude-mythos-preview' | 'claude-opus-4-6' | 'claude-sonnet-4-6' | 'claude-haiku-4-5' | 'claude-haiku-4-5-20251001' | 'claude-opus-4-5' | 'claude-opus-4-5-20251101' | 'claude-sonnet-4-5' | 'claude-sonnet-4-5-20250929' | 'claude-opus-4-1' | 'claude-opus-4-1-20250805' | 'claude-opus-4-0' | 'claude-opus-4-20250514' | 'claude-sonnet-4-0' | 'claude-sonnet-4-20250514' | 'claude-3-haiku-20240307';
+export type Model = string | 'claude-mythos-preview' | 'claude-opus-4-6' | 'claude-sonnet-4-6' | 'claude-haiku-4-5' | 'claude-haiku-4-5-20251001' | 'claude-opus-4-5' | 'claude-opus-4-5-20251101' | 'claude-sonnet-4-5' | 'claude-sonnet-4-5-20250929' | 'claude-opus-4-1' | 'claude-opus-4-1-20250805' | 'claude-opus-4-0' | 'claude-opus-4-20250514' | 'claude-sonnet-4-0' | 'claude-sonnet-4-20250514';
 
 export type MessagesPostData = {
     body: CreateMessageParams;

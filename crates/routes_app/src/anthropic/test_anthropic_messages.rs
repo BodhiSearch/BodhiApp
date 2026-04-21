@@ -38,7 +38,7 @@ async fn seed_anthropic_alias(
     .id("anthropic-alias")
     .api_format(ApiFormat::Anthropic)
     .base_url("https://api.anthropic.com/v1")
-    .models(vec![anthropic_model("claude-3-5-sonnet-20241022")])
+    .models(vec![anthropic_model("claude-sonnet-4-5-20250929")])
     .build_with_time(db_service.now())
     .unwrap();
   db_service
@@ -232,7 +232,7 @@ async fn test_messages_create_forwards_to_anthropic_alias() -> anyhow::Result<()
     .oneshot(
       Request::post("/anthropic/v1/messages")
         .json(json!({
-          "model": "claude-3-5-sonnet-20241022",
+          "model": "claude-sonnet-4-5-20250929",
           "max_tokens": 100,
           "messages": [{"role": "user", "content": "hi"}]
         }))?
@@ -288,7 +288,7 @@ async fn test_messages_create_forwards_anthropic_beta_header() -> anyhow::Result
       Request::post("/anthropic/v1/messages")
         .header("anthropic-beta", "test-beta-flag")
         .json(json!({
-          "model": "claude-3-5-sonnet-20241022",
+          "model": "claude-sonnet-4-5-20250929",
           "max_tokens": 100,
           "messages": [{"role": "user", "content": "hi"}]
         }))?
@@ -344,7 +344,7 @@ async fn test_messages_create_non_anthropic_header_not_forwarded() -> anyhow::Re
       Request::post("/anthropic/v1/messages")
         .header("x-custom-thing", "ignored")
         .json(json!({
-          "model": "claude-3-5-sonnet-20241022",
+          "model": "claude-sonnet-4-5-20250929",
           "max_tokens": 100,
           "messages": [{"role": "user", "content": "hi"}]
         }))?
@@ -399,7 +399,7 @@ async fn test_messages_create_client_anthropic_version_forwarded() -> anyhow::Re
       Request::post("/anthropic/v1/messages")
         .header("anthropic-version", "2023-06-01")
         .json(json!({
-          "model": "claude-3-5-sonnet-20241022",
+          "model": "claude-sonnet-4-5-20250929",
           "max_tokens": 100,
           "messages": [{"role": "user", "content": "hi"}]
         }))?
@@ -451,7 +451,7 @@ async fn test_anthropic_messages_forwards_query_params() -> anyhow::Result<()> {
     .oneshot(
       Request::post("/anthropic/v1/messages?foo=bar")
         .json(json!({
-          "model": "claude-3-5-sonnet-20241022",
+          "model": "claude-sonnet-4-5-20250929",
           "max_tokens": 100,
           "messages": [{"role": "user", "content": "hi"}]
         }))?

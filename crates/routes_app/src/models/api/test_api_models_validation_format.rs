@@ -136,7 +136,7 @@ async fn test_api_models_test_id_uses_stored_api_format(
     .api_format(ApiFormat::AnthropicOAuth)
     .base_url("https://api.anthropic.com/v1")
     .models(services::ApiModelVec::from(vec![anthropic_model(
-      "claude-3-5-sonnet-20241022",
+      "claude-sonnet-4-5-20250929",
     )]))
     .build_with_time(chrono::Utc::now())?;
   db_arc
@@ -166,7 +166,7 @@ async fn test_api_models_test_id_uses_stored_api_format(
   let test_request = TestPromptRequest {
     creds: TestCreds::Id("oauth-alias".to_string()),
     base_url: "https://placeholder.example.com/v1".to_string(),
-    model: "claude-3-5-sonnet-20241022".to_string(),
+    model: "claude-sonnet-4-5-20250929".to_string(),
     prompt: "hi".to_string(),
     api_format: ApiFormat::OpenAI,
     extra_headers: None,
@@ -197,7 +197,7 @@ async fn test_api_models_fetch_models_id_uses_stored_api_format(
     .api_format(ApiFormat::AnthropicOAuth)
     .base_url("https://api.anthropic.com/v1")
     .models(services::ApiModelVec::from(vec![anthropic_model(
-      "claude-3-5-sonnet-20241022",
+      "claude-sonnet-4-5-20250929",
     )]))
     .build_with_time(chrono::Utc::now())?;
   db_arc

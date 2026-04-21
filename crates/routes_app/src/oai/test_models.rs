@@ -396,7 +396,7 @@ async fn test_oai_models_handler_anthropic_oauth_alias_included() -> anyhow::Res
     "anthropic-oauth-alias",
     ApiFormat::AnthropicOAuth,
     "https://api.anthropic.com",
-    vec![anthropic_model("claude-3-5-sonnet-20241022")],
+    vec![anthropic_model("claude-sonnet-4-5-20250929")],
     Some("anthropic/".to_string()),
     false,
     db_service.now(),
@@ -431,7 +431,7 @@ async fn test_oai_models_handler_anthropic_oauth_alias_included() -> anyhow::Res
     .map(|m| m["id"].as_str().expect("expected id to be a string"))
     .collect();
   assert!(
-    model_ids.contains(&"anthropic/claude-3-5-sonnet-20241022"),
+    model_ids.contains(&"anthropic/claude-sonnet-4-5-20250929"),
     "anthropic_oauth alias models should be included in /v1/models; got: {:?}",
     model_ids
   );

@@ -367,10 +367,10 @@ describe('AliasSelector', () => {
       },
       {
         apiFormat: 'anthropic_oauth' as const,
-        modelId: 'claude-3-haiku-20240307',
+        modelId: 'claude-haiku-4-5-20251001',
         models: [
           {
-            id: 'claude-3-haiku-20240307',
+            id: 'claude-haiku-4-5-20251001',
             display_name: 'Claude 3 Haiku',
             created_at: '2024-01-01T00:00:00Z',
             type: 'model',

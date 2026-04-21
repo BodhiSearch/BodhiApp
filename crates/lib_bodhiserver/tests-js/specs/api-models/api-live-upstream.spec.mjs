@@ -1,3 +1,10 @@
+// This spec validates the /v1, /anthropic/v1, and /v1beta surfaces via RAW
+// `fetch` (no SDKs). It complements api-sdk-compat.spec.mjs, which drives the
+// same endpoints through the providers' official SDK clients. Keep both:
+// this file catches middleware bugs (x-api-key rewriting, universal
+// /v1/chat/completions routing, anthropic_oauth headers, chat-UI wiring) that
+// SDK calls may not exercise directly; the SDK spec catches client-library
+// compatibility regressions.
 import { expect, test } from '@/fixtures.mjs';
 import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
@@ -7,18 +14,18 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
-import {
-  getAuthServerConfig,
-  getPreConfiguredAppClient,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 import {
   fetchWithApiKey,
   fetchWithBearer,
   fetchWithBearerSSE,
   mintApiToken,
 } from '@/utils/api-model-helpers.mjs';
-import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import {
+  getAuthServerConfig,
+  getPreConfiguredAppClient,
+  getTestCredentials,
+} from '@/utils/auth-server-client.mjs';
 
 // Live upstream tests: validate end-to-end API flow for all supported formats.
 //
