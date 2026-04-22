@@ -293,9 +293,7 @@ function buildGeminiAdapter(serverUrl, token, state) {
       // response shapes it may be empty; walk `candidates[].content.parts[]`
       // directly to find a `functionCall` entry as the canonical fallback.
       const parts = resp.candidates?.[0]?.content?.parts ?? [];
-      const viaParts = parts
-        .map((p) => p.functionCall)
-        .filter((fc) => fc && fc.name);
+      const viaParts = parts.map((p) => p.functionCall).filter((fc) => fc && fc.name);
       const calls = (resp.functionCalls?.length ? resp.functionCalls : viaParts) ?? [];
       if (calls.length === 0) {
         throw new Error(

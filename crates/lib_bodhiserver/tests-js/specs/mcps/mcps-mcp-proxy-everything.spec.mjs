@@ -20,6 +20,13 @@ import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
  * Tests CORS, session management, and full MCP protocol passthrough
  * at the browser level — true black-box E2E testing.
  *
+ * NOTE: This file covers the browser-driven (Inspector UI) path. The
+ * programmatic counterpart that drives the same `/bodhi/v1/apps/mcps/{id}/mcp`
+ * endpoint through the official `@modelcontextprotocol/sdk` TypeScript client
+ * lives in `mcps-sdk-compat-everything.spec.mjs`. Keep both: this spec catches
+ * browser/CORS/Inspector-integration regressions; the SDK spec catches raw
+ * protocol-compat regressions that Inspector would mask (both use the SDK).
+ *
  * Flow:
  * 1. Login to Bodhi → create everything MCP server + instance via UI
  * 2. OAuth test app → request access → approve → get Bearer token
