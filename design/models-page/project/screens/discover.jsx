@@ -321,6 +321,7 @@ function DiscoverA() {
   const [view, setView] = React.useState('cards');
   const [spec, setSpec] = React.useState('coding'); // wireframe demo: show active Specialization
   const [mode, setMode] = React.useState('all');    // v25: My | All (demo on All so duality is visible)
+  const [showAddMenu, setShowAddMenu] = React.useState(false);
   const specMeta = SPECIALIZATIONS.find(s => s.k === spec) || SPECIALIZATIONS[0];
   const Row = view==='list' ? ModelListRow : DiscoverCard;
   return (
@@ -447,10 +448,9 @@ function DiscoverA() {
             <div className="sm">Local + API + remote · one catalog · M3 Max 36GB</div>
           </div>
           <div style={{position:'relative', display:'flex', gap:6}}>
-            <Btn variant="primary" size="xs">+ ▾ Add model</Btn>
-            <Btn size="xs">⋯ ▾ Browse</Btn>
-            {/* Wireframe: always render the Add&Browse menu so users see its shape */}
-            <ModelsAddBrowseMenu/>
+            <Btn variant="primary" size="xs" onClick={()=>setShowAddMenu(v=>!v)}>+ ▾ Add model</Btn>
+            <Btn size="xs" onClick={()=>setShowAddMenu(v=>!v)}>⋯ ▾ Browse</Btn>
+            {showAddMenu && <ModelsAddBrowseMenu/>}
           </div>
         </div>
 
@@ -500,7 +500,7 @@ function DiscoverA() {
           <RankedModeCaption benchmark={specMeta.bench} specLabel={specMeta.label}/>
         )}
 
-        <div className={view==='list' ? 'cards-list' : 'cards-grid'}>
+        <div className={view==='list' ? 'cards-list' : (spec!=='all' ? 'ranked-grid' : 'cards-grid')}>
           {spec!=='all' ? (
             groupIntoRankedRows(specMeta.bench, mode).map((entry) => (
               <RankedRow key={entry.rank} entry={entry}

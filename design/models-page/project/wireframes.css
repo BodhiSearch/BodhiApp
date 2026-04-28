@@ -1667,6 +1667,40 @@ html, body {
   display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;
 }
 
+/* Ranked rows in cards (grid) view — multi-column tile layout.
+   Compact rank-row variant: rank-meta drops below the primaries
+   instead of taking a fixed right column, so each tile fits cleanly
+   in a 240px+ column without chip/code overflow. */
+.ranked-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+.ranked-grid .rank-row {
+  grid-template-columns: 36px 1fr;
+}
+.ranked-grid .rank-row > .rank-meta {
+  grid-column: 2;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line-soft);
+  white-space: normal;
+}
+.ranked-grid .rank-row .rank-number { font-size: 22px; }
+.ranked-grid .rank-row .rank-identity { font-size: 10.5px; flex-wrap: wrap; }
+.ranked-grid .rank-row .rank-primary-line {
+  flex-wrap: wrap; font-size: 12px;
+}
+.ranked-grid .rank-row .rank-primary-line code {
+  white-space: normal; word-break: break-all; max-width: 100%;
+}
+.ranked-grid .rank-row .rank-identity code {
+  white-space: normal; word-break: break-all;
+}
+
 /* ─────────────────────────────────────────────────────────────
    Create API model primitives · v29
    Flat one-form layout with section heads + dividers.
