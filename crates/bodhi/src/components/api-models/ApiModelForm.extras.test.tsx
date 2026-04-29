@@ -105,7 +105,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
     });
 
-    await selectFormat(user, 'Anthropic (Claude Code OAuth)');
+    await selectFormat(user, 'Anthropic Setup Token');
 
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
     });
 
-    await selectFormat(user, 'Anthropic (Claude Code OAuth)');
+    await selectFormat(user, 'Anthropic Setup Token');
 
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
@@ -224,7 +224,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
     });
 
-    await selectFormat(user, 'Anthropic (Claude Code OAuth)');
+    await selectFormat(user, 'Anthropic Setup Token');
 
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
@@ -269,7 +269,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
     });
 
-    await selectFormat(user, 'Anthropic (Claude Code OAuth)');
+    await selectFormat(user, 'Anthropic Setup Token');
 
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
@@ -315,7 +315,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
     });
 
-    await selectFormat(user, 'Anthropic (Claude Code OAuth)');
+    await selectFormat(user, 'Anthropic Setup Token');
 
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
@@ -364,7 +364,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
 
     // Switch format → form resets to preset defaults; useApiKey unchecked.
     // The user must cancel or refresh to restore the stored key state.
-    await selectFormat(user, 'Anthropic (Claude Code OAuth)');
+    await selectFormat(user, 'Anthropic Setup Token');
 
     await waitFor(() => {
       expect(screen.getByTestId('api-key-input-checkbox')).not.toBeChecked();
@@ -418,7 +418,7 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
     });
 
-    await selectFormat(user, 'Anthropic (Claude Code OAuth)');
+    await selectFormat(user, 'Anthropic Setup Token');
 
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();

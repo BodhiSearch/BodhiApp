@@ -1317,6 +1317,7 @@ export interface components {
             forward_all_with_prefix: boolean;
             extra_headers?: unknown;
             extra_body?: unknown;
+            llm_liberty?: null | components["schemas"]["LlmLibertySummary"];
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1326,7 +1327,7 @@ export interface components {
          * @description API format/protocol specification
          * @enum {string}
          */
-        ApiFormat: "openai" | "openai_responses" | "anthropic" | "anthropic_oauth" | "gemini";
+        ApiFormat: "openai" | "openai_responses" | "anthropic" | "anthropic_oauth" | "gemini" | "llm_liberty_oauth";
         /**
          * @description Response containing available API formats
          * @example {
@@ -1364,6 +1365,8 @@ export interface components {
         });
         /**
          * @description Input request for creating or updating an API model configuration.
+         *     Discriminated by `api_format` — `llm_liberty_oauth` uses `LlmLibertyApiModelRequest`,
+         *     every other format uses `DefaultApiModelRequest`.
          * @example {
          *       "api_format": "openai",
          *       "api_key": {
@@ -1378,25 +1381,25 @@ export interface components {
          *       "prefix": "openai"
          *     }
          */
-        ApiModelRequest: {
-            /** @description API format/protocol (e.g., "openai") */
-            api_format: components["schemas"]["ApiFormat"];
-            /** @description API base URL */
-            base_url: string;
-            /** @description API key update action (Keep/Set with Some or None) */
-            api_key?: components["schemas"]["ApiKeyUpdate"];
-            /** @description List of available models */
-            models: string[];
-            /** @description Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4") */
-            prefix?: string | null;
-            /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
-            forward_all_with_prefix?: boolean;
-            /** @description Optional extra HTTP headers to send upstream. Cannot include `Authorization`
-             *     or `x-api-key` — those are owned by provider clients. */
-            extra_headers?: unknown;
-            /** @description Optional extra fields to merge into the request body sent upstream */
-            extra_body?: unknown;
-        };
+        ApiModelRequest: (components["schemas"]["DefaultApiModelRequest"] & {
+            /** @enum {string} */
+            api_format: "openai";
+        }) | (components["schemas"]["DefaultApiModelRequest"] & {
+            /** @enum {string} */
+            api_format: "openai_responses";
+        }) | (components["schemas"]["DefaultApiModelRequest"] & {
+            /** @enum {string} */
+            api_format: "anthropic";
+        }) | (components["schemas"]["DefaultApiModelRequest"] & {
+            /** @enum {string} */
+            api_format: "anthropic_oauth";
+        }) | (components["schemas"]["DefaultApiModelRequest"] & {
+            /** @enum {string} */
+            api_format: "gemini";
+        }) | (components["schemas"]["LlmLibertyApiModelRequest"] & {
+            /** @enum {string} */
+            api_format: "llm_liberty_oauth";
+        });
         /** @description DB-storable `Vec<ApiModel>` — stored as JSON binary in SeaORM columns. */
         ApiModelVec: components["schemas"]["ApiModel"][];
         /** @enum {string} */
@@ -1711,6 +1714,51 @@ export interface components {
             first_name?: string | null;
             last_name?: string | null;
         };
+        /** @description Inner request shape for the five non-llm-liberty `api_format` values.
+         *     Shared across `openai`, `openai_responses`, `anthropic`, `anthropic_oauth`, `gemini`. */
+        DefaultApiModelRequest: {
+            /** @description API base URL */
+            base_url: string;
+            /** @description API key update action (Keep/Set with Some or None) */
+            api_key?: components["schemas"]["ApiKeyUpdate"];
+            /** @description List of available models */
+            models: string[];
+            /** @description Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4") */
+            prefix?: string | null;
+            /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
+            forward_all_with_prefix?: boolean;
+            /** @description Optional extra HTTP headers to send upstream. Cannot include `Authorization`
+             *     or `x-api-key` — those are owned by provider clients. */
+            extra_headers?: unknown;
+            /** @description Optional extra fields to merge into the request body sent upstream */
+            extra_body?: unknown;
+        };
+        /** @description Inner request for the five non-llm-liberty `api_format` values. */
+        DefaultFetchModelsRequest: {
+            /** @description Credentials to use for fetching models */
+            creds?: components["schemas"]["TestCreds"];
+            /** @description API base URL (required - always needed to know where to fetch models from) */
+            base_url: string;
+            /** @description Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden. */
+            extra_headers?: unknown;
+            /** @description Optional extra fields to merge into the request body */
+            extra_body?: unknown;
+        };
+        /** @description Inner request for the five non-llm-liberty `api_format` values. */
+        DefaultTestPromptRequest: {
+            /** @description Credentials to use for testing */
+            creds?: components["schemas"]["TestCreds"];
+            /** @description API base URL */
+            base_url: string;
+            /** @description Model to use for testing */
+            model: string;
+            /** @description Test prompt (max 30 characters for cost control) */
+            prompt: string;
+            /** @description Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden. */
+            extra_headers?: unknown;
+            /** @description Optional extra fields to merge into the request body */
+            extra_body?: unknown;
+        };
         /** @enum {string} */
         DeploymentMode: "standalone" | "multi_tenant";
         DownloadRequest: {
@@ -1752,7 +1800,7 @@ export interface components {
             max: components["schemas"]["CapabilitySupport"];
         };
         /**
-         * @description Request to fetch available models from provider
+         * @description Request to fetch available models from provider. Discriminated on `api_format`.
          * @example {
          *       "api_format": "openai",
          *       "base_url": "http://localhost:8080/v1",
@@ -1762,18 +1810,25 @@ export interface components {
          *       }
          *     }
          */
-        FetchModelsRequest: {
-            /** @description Credentials to use for fetching models */
-            creds?: components["schemas"]["TestCreds"];
-            /** @description API base URL (required - always needed to know where to fetch models from) */
-            base_url: string;
-            /** @description API format to use for fetching models (defaults to OpenAI Chat Completions) */
-            api_format?: components["schemas"]["ApiFormat"];
-            /** @description Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden. */
-            extra_headers?: unknown;
-            /** @description Optional extra fields to merge into the request body */
-            extra_body?: unknown;
-        };
+        FetchModelsRequest: (components["schemas"]["DefaultFetchModelsRequest"] & {
+            /** @enum {string} */
+            api_format: "openai";
+        }) | (components["schemas"]["DefaultFetchModelsRequest"] & {
+            /** @enum {string} */
+            api_format: "openai_responses";
+        }) | (components["schemas"]["DefaultFetchModelsRequest"] & {
+            /** @enum {string} */
+            api_format: "anthropic";
+        }) | (components["schemas"]["DefaultFetchModelsRequest"] & {
+            /** @enum {string} */
+            api_format: "anthropic_oauth";
+        }) | (components["schemas"]["DefaultFetchModelsRequest"] & {
+            /** @enum {string} */
+            api_format: "gemini";
+        }) | (components["schemas"]["LlmLibertyFetchModelsRequest"] & {
+            /** @enum {string} */
+            api_format: "llm_liberty_oauth";
+        });
         /**
          * @description Returns model IDs only (not full metadata) to minimize information exposure —
          *     the endpoint accepts an API key parameter. Full metadata is stored on create/update.
@@ -1831,6 +1886,97 @@ export interface components {
              * @example 10
              */
             page_size?: number | null;
+        };
+        LlmLibertyApiEndpoints: {
+            base_url: string;
+            chat_url: string;
+            models_url?: string | null;
+        };
+        /** @description Request shape for `api_format == "llm_liberty_oauth"`. Carries the full envelope
+         *     (or `Keep` to leave existing credentials untouched on update). */
+        LlmLibertyApiModelRequest: {
+            /** @description Envelope update action — Keep (update only) or Set (create/replace credentials). */
+            envelope?: components["schemas"]["LlmLibertyEnvelopeUpdate"];
+            /** @description List of available models */
+            models?: string[];
+            /** @description Optional prefix for model namespacing */
+            prefix?: string | null;
+            /** @description Whether to forward all requests with this prefix */
+            forward_all_with_prefix?: boolean;
+        };
+        LlmLibertyAuthSpec: {
+            in: string;
+            key: string;
+            scheme: string;
+        };
+        /** @description The JSON blob emitted by `npx @bodhiapp/llm-liberty@latest login`.
+         *
+         *     Version field allows BodhiApp to detect breaking changes in the envelope
+         *     schema (major-version bump = breaking). Currently only `"1.0.0"` is accepted. */
+        LlmLibertyEnvelope: {
+            /** @description Envelope schema version — must be "1.0.0". */
+            version: string;
+            /** @description Provider identifier, e.g. "anthropic". Only "anthropic" is supported in v1. */
+            provider: string;
+            access_token: string;
+            refresh_token: string;
+            /**
+             * Format: int64
+             * @description Unix epoch seconds when the access token expires.
+             */
+            expires_at: number;
+            auth: components["schemas"]["LlmLibertyAuthSpec"];
+            oauth: components["schemas"]["LlmLibertyOauthEndpoints"];
+            api: components["schemas"]["LlmLibertyApiEndpoints"];
+            headers?: unknown;
+            body?: unknown;
+            extra?: unknown;
+        };
+        /** @description Tagged envelope update action — either keep the existing credentials or replace them. */
+        LlmLibertyEnvelopeUpdate: {
+            /** @enum {string} */
+            action: "keep";
+        } | {
+            /** @description Replace with a new envelope (atomic re-paste). */
+            value: components["schemas"]["LlmLibertyEnvelope"];
+            /** @enum {string} */
+            action: "set";
+        };
+        /** @description Inner request for `api_format == "llm_liberty_oauth"`. Either `id` (use stored creds)
+         *     or `envelope` (use the provided envelope directly) must be set, never both. */
+        LlmLibertyFetchModelsRequest: {
+            /** @description Edit mode: alias id whose stored credentials should be used. */
+            id?: string | null;
+            envelope?: null | components["schemas"]["LlmLibertyEnvelope"];
+        };
+        LlmLibertyOauthEndpoints: {
+            authorize_url: string;
+            token_url: string;
+            revoke_url?: string | null;
+            client_id: string;
+            client_secret?: string | null;
+        };
+        /** @description Non-secret summary of stored LLM Liberty OAuth credentials for API responses. */
+        LlmLibertySummary: {
+            provider: string;
+            envelope_version: string;
+            /**
+             * Format: int64
+             * @description Unix epoch seconds — when the stored access token expires.
+             */
+            expires_at: number;
+            has_refresh_token: boolean;
+        };
+        /** @description Inner request for `api_format == "llm_liberty_oauth"`. Either `id` (use stored creds)
+         *     or `envelope` (use the provided envelope directly) must be set, never both. */
+        LlmLibertyTestPromptRequest: {
+            /** @description Edit mode: alias id whose stored credentials should be used. */
+            id?: string | null;
+            envelope?: null | components["schemas"]["LlmLibertyEnvelope"];
+            /** @description Model to use for testing */
+            model: string;
+            /** @description Test prompt (max 30 characters for cost control) */
+            prompt: string;
         };
         /** @description Local model file response */
         LocalModelResponse: {
@@ -2412,8 +2558,9 @@ export interface components {
             type: "api_key";
         };
         /**
-         * @description Request to test API connectivity with a prompt
+         * @description Request to test API connectivity with a prompt. Discriminated on `api_format`.
          * @example {
+         *       "api_format": "openai",
          *       "base_url": "https://api.openai.com/v1",
          *       "creds": {
          *         "type": "api_key",
@@ -2423,22 +2570,25 @@ export interface components {
          *       "prompt": "Hello, how are you?"
          *     }
          */
-        TestPromptRequest: {
-            /** @description Credentials to use for testing */
-            creds?: components["schemas"]["TestCreds"];
-            /** @description API base URL */
-            base_url: string;
-            /** @description Model to use for testing */
-            model: string;
-            /** @description Test prompt (max 30 characters for cost control) */
-            prompt: string;
-            /** @description API format to use for the test request (defaults to OpenAI Chat Completions) */
-            api_format?: components["schemas"]["ApiFormat"];
-            /** @description Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden. */
-            extra_headers?: unknown;
-            /** @description Optional extra fields to merge into the request body */
-            extra_body?: unknown;
-        };
+        TestPromptRequest: (components["schemas"]["DefaultTestPromptRequest"] & {
+            /** @enum {string} */
+            api_format: "openai";
+        }) | (components["schemas"]["DefaultTestPromptRequest"] & {
+            /** @enum {string} */
+            api_format: "openai_responses";
+        }) | (components["schemas"]["DefaultTestPromptRequest"] & {
+            /** @enum {string} */
+            api_format: "anthropic";
+        }) | (components["schemas"]["DefaultTestPromptRequest"] & {
+            /** @enum {string} */
+            api_format: "anthropic_oauth";
+        }) | (components["schemas"]["DefaultTestPromptRequest"] & {
+            /** @enum {string} */
+            api_format: "gemini";
+        }) | (components["schemas"]["LlmLibertyTestPromptRequest"] & {
+            /** @enum {string} */
+            api_format: "llm_liberty_oauth";
+        });
         /**
          * @description Response from testing API connectivity
          * @example {

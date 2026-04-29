@@ -7,6 +7,7 @@ import { Message } from '@/types/chat';
 export interface PersistedChatSettings {
   model: string;
   apiFormat: ApiFormat;
+  llmLibertyProvider?: string | null;
   stream?: boolean;
   stream_enabled: boolean;
   seed?: number;

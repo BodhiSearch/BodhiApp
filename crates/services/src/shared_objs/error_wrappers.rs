@@ -35,6 +35,14 @@ pub enum ObjValidationError {
   #[error("Changing api_format requires a new api_key; cannot keep the existing key.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   ApiFormatChangedRequiresNewKey,
+
+  #[error("llm_liberty_envelope is required when creating an LLM Liberty OAuth alias.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  LlmLibertyEnvelopeRequired,
+
+  #[error("Invalid LLM Liberty envelope: {0}")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  LlmLibertyEnvelopeInvalid(String),
 }
 
 #[derive(Debug)]

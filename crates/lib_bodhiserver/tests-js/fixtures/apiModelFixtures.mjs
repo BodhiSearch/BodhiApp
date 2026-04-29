@@ -104,7 +104,7 @@ export class ApiModelFixtures {
     },
     anthropic_oauth: {
       format: 'anthropic_oauth',
-      formatDisplayName: 'Anthropic (Claude Code OAuth)',
+      formatDisplayName: 'Anthropic Setup Token',
       model: ApiModelFixtures.ANTHROPIC_MODEL,
       baseUrl: 'https://api.anthropic.com/v1',
       envKey: 'INTEG_TEST_ANTHROPIC_OAUTH_TOKEN',

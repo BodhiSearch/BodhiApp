@@ -1,6 +1,9 @@
 pub mod anthropic_model;
 mod api_alias_repository;
 pub(crate) mod api_model_alias_entity;
+pub(crate) mod llm_liberty_credentials_entity;
+pub mod llm_liberty_credentials_repository;
+pub mod llm_liberty_envelope;
 mod api_model_service;
 mod auth_scoped_api_models;
 mod auth_scoped_data;
@@ -29,6 +32,9 @@ mod test_api_model_service;
 #[cfg(test)]
 #[path = "test_download_repository.rs"]
 mod test_download_repository;
+#[cfg(test)]
+#[path = "test_llm_liberty_credentials_repository.rs"]
+mod test_llm_liberty_credentials_repository;
 #[cfg(test)]
 #[path = "test_download_repository_isolation.rs"]
 mod test_download_repository_isolation;
@@ -69,4 +75,11 @@ pub use user_alias_repository::UserAliasRepository;
 // Entity re-exports for entities that were previously in db/entities
 pub use api_model_alias_entity::ApiModelEntity;
 pub use download_request_entity::DownloadRequestEntity;
+pub use llm_liberty_credentials_entity::LlmLibertyCredentialsEntity;
+pub use llm_liberty_credentials_repository::LlmLibertyCredentialsRepository;
+pub use llm_liberty_envelope::{
+  LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate,
+  LlmLibertyOauthEndpoints, LlmLibertyRequestParts, LlmLibertySummary,
+  ResolvedLlmLibertyCredentials,
+};
 pub use user_alias_entity::UserAliasEntity;

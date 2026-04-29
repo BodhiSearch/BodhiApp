@@ -63,7 +63,6 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
     // Should show extension detection UI for supported browsers
     await this.page.waitForSelector(
       `${this.selectors.extensionNotFound}, ${this.selectors.extensionFound}, ${this.selectors.extensionDetecting}`,
-      { timeout: 5000 }
     );
   }
 

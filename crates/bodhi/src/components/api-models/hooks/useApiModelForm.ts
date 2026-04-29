@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { ApiAliasResponse, ApiFormat, ApiKey, TestCreds } from '@bodhiapp/ts-client';
+import { ApiAliasResponse, ApiFormat, ApiKey, LlmLibertyEnvelope, TestCreds } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
@@ -59,10 +59,11 @@ export function useApiModelForm({
           models: initialData?.models?.map((m) => getApiModelId(m, initialData?.prefix)) || [],
           prefix: initialData?.prefix || '',
           usePrefix: Boolean(initialData?.prefix),
-          useApiKey: initialData?.has_api_key === true, // true = has key, checkbox checked
+          useApiKey: initialData?.has_api_key === true,
           forward_all_with_prefix: initialData?.forward_all_with_prefix || false,
           extra_headers: serializeJsonField(initialData?.extra_headers),
           extra_body: serializeJsonField(initialData?.extra_body),
+          llm_liberty_envelope: '',
         }
       : mode === 'setup'
         ? {
@@ -76,6 +77,7 @@ export function useApiModelForm({
             forward_all_with_prefix: false,
             extra_headers: '',
             extra_body: '',
+            llm_liberty_envelope: '',
           }
         : {
             api_format: 'openai',
@@ -88,6 +90,7 @@ export function useApiModelForm({
             forward_all_with_prefix: false,
             extra_headers: '',
             extra_body: '',
+            llm_liberty_envelope: '',
           },
   });
 
@@ -175,6 +178,7 @@ export function useApiModelForm({
     setValue('base_url', preset?.baseUrl ?? '');
     setValue('extra_headers', presetHeaders);
     setValue('extra_body', presetBody);
+    setValue('llm_liberty_envelope', '');
     fetchModels.clearModels();
     testConnection.resetStatus();
   };
@@ -201,30 +205,66 @@ export function useApiModelForm({
     setValue('models', allModels);
   };
 
+  const parseLlmLibertyEnvelope = (): LlmLibertyEnvelope | null => {
+    const text = watchedValues.llm_liberty_envelope;
+    if (!text?.trim()) return null;
+    try {
+      return JSON.parse(text) as LlmLibertyEnvelope;
+    } catch {
+      return null;
+    }
+  };
+
   // Test connection wrapper — build TestPromptRequest from form state
   const handleTestConnection = async () => {
+    const fmt = watchedValues.api_format as ApiFormat;
+
+    if (fmt === 'llm_liberty_oauth') {
+      const model = watchedValues.models?.[0];
+      if (!model) return;
+      const aliasId = isEditMode ? initialData?.id : undefined;
+      if (aliasId) {
+        await testConnection.testConnection({
+          api_format: 'llm_liberty_oauth',
+          id: aliasId,
+          model,
+          prompt: DEFAULT_TEST_PROMPT,
+        });
+        return;
+      }
+      const env = parseLlmLibertyEnvelope();
+      if (!env) return;
+      await testConnection.testConnection({
+        api_format: 'llm_liberty_oauth',
+        envelope: env,
+        model,
+        prompt: DEFAULT_TEST_PROMPT,
+      });
+      return;
+    }
+
     if (!watchedValues.base_url) return;
 
-    let creds: TestCreds | undefined;
+    let creds: TestCreds;
     const apiKey = watchedValues.useApiKey ? watchedValues.api_key : undefined;
     const id = !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined;
     if (apiKey) {
-      creds = { type: 'api_key' as const, value: apiKey as ApiKey };
+      creds = { type: 'api_key', value: apiKey as ApiKey };
     } else if (id) {
-      creds = { type: 'id' as const, value: id };
+      creds = { type: 'id', value: id };
     } else {
-      creds = { type: 'api_key' as const, value: null };
+      creds = { type: 'api_key', value: null };
     }
 
     const extraHeaders = parseJsonField(watchedValues.extra_headers);
     const extraBody = parseJsonField(watchedValues.extra_body);
 
     await testConnection.testConnection({
+      api_format: fmt,
       creds,
       base_url: watchedValues.base_url,
       model: watchedValues.models?.[0] || 'gpt-3.5-turbo',
       prompt: DEFAULT_TEST_PROMPT,
-      api_format: watchedValues.api_format as ApiFormat,
       ...(extraHeaders !== null ? { extra_headers: extraHeaders } : {}),
       ...(extraBody !== null ? { extra_body: extraBody } : {}),
     });
@@ -232,11 +272,26 @@ export function useApiModelForm({
 
   // Fetch models wrapper
   const handleFetchModels = async () => {
+    const fmt = watchedValues.api_format as ApiFormat;
+
+    if (fmt === 'llm_liberty_oauth') {
+      const aliasId = isEditMode ? initialData?.id : undefined;
+      const env = aliasId ? undefined : parseLlmLibertyEnvelope() ?? undefined;
+      if (!aliasId && !env) return;
+      await fetchModels.fetchModels({
+        apiFormat: 'llm_liberty_oauth',
+        baseUrl: '',
+        id: aliasId,
+        llmLibertyEnvelope: env,
+      });
+      return;
+    }
+
     await fetchModels.fetchModels({
       apiKey: watchedValues.useApiKey ? watchedValues.api_key : undefined,
       id: !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined,
       baseUrl: watchedValues.base_url || '',
-      apiFormat: watchedValues.api_format as ApiFormat,
+      apiFormat: fmt,
       extraHeaders: parseJsonField(watchedValues.extra_headers),
       extraBody: parseJsonField(watchedValues.extra_body),
     });
@@ -264,9 +319,15 @@ export function useApiModelForm({
   };
 
   // Computed values
-  const canTest = Boolean(watchedValues.base_url);
+  const isLlmLibertyCreate =
+    watchedValues.api_format === 'llm_liberty_oauth' && !isEditMode;
+  const hasEnvelope = Boolean(watchedValues.llm_liberty_envelope?.trim());
 
-  const canFetch = Boolean(watchedValues.base_url);
+  const canTest = isLlmLibertyCreate
+    ? hasEnvelope && Boolean(watchedValues.models?.[0])
+    : Boolean(watchedValues.base_url);
+
+  const canFetch = isLlmLibertyCreate ? hasEnvelope : Boolean(watchedValues.base_url);
 
   // Show extras section when the preset declares defaults for either field.
   const showExtras = Boolean(
@@ -306,10 +367,16 @@ export function useApiModelForm({
       canTest,
       isLoading: testConnection.isLoading,
       status: testConnection.status,
-      disabledReason: testConnection.getMissingRequirements({
-        base_url: watchedValues.base_url || '',
-        model: watchedValues.models?.[0] || '',
-      }),
+      disabledReason: isLlmLibertyCreate
+        ? !hasEnvelope
+          ? 'Paste the LLM Liberty envelope to test connection'
+          : !watchedValues.models?.[0]
+            ? 'You need to add at least one model to test connection'
+            : ''
+        : testConnection.getMissingRequirements({
+            base_url: watchedValues.base_url || '',
+            model: watchedValues.models?.[0] || '',
+          }),
     },
 
     // Fetch models
@@ -319,11 +386,15 @@ export function useApiModelForm({
       isLoading: fetchModels.isLoading,
       status: fetchModels.status,
       availableModels: fetchModels.availableModels,
-      disabledReason: fetchModels.getFetchDisabledReason({
-        apiKey: watchedValues.api_key,
-        baseUrl: watchedValues.base_url || '',
-        apiFormat: watchedValues.api_format as ApiFormat,
-      }),
+      disabledReason: isLlmLibertyCreate
+        ? hasEnvelope
+          ? ''
+          : 'Paste the LLM Liberty envelope to fetch models'
+        : fetchModels.getFetchDisabledReason({
+            apiKey: watchedValues.api_key,
+            baseUrl: watchedValues.base_url || '',
+            apiFormat: watchedValues.api_format as ApiFormat,
+          }),
     },
 
     // Actions

@@ -14,7 +14,10 @@ use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::{test_db_service, AppServiceStubBuilder, TestDbService};
 use services::AuthContext;
 use services::{ApiAliasRepository, ApiFormat, ResourceRole};
-use services::{ApiKeyUpdate, ApiModelRequest, FetchModelsRequest, TestCreds, TestPromptRequest};
+use services::{
+  ApiKeyUpdate, ApiModelRequest, DefaultApiModelRequest, DefaultFetchModelsRequest,
+  DefaultTestPromptRequest, FetchModelsRequest, TestCreds, TestPromptRequest,
+};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -94,8 +97,7 @@ async fn test_update_api_model_rejects_keep_when_api_format_changes(
     .await?;
 
   // Attempt to switch format to anthropic_oauth while keeping the stored key.
-  let update_form = ApiModelRequest {
-    api_format: ApiFormat::AnthropicOAuth,
+  let update_form = ApiModelRequest::default_for(ApiFormat::AnthropicOAuth, DefaultApiModelRequest {
     base_url: "https://api.anthropic.com/v1".to_string(),
     api_key: ApiKeyUpdate::Keep,
     models: vec![],
@@ -103,7 +105,7 @@ async fn test_update_api_model_rejects_keep_when_api_format_changes(
     forward_all_with_prefix: true,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::put(format!("{}/{}", ENDPOINT_MODELS_API, "stored-alias")).json(update_form)?)
@@ -163,15 +165,14 @@ async fn test_api_models_test_id_uses_stored_api_format(
     .await?;
 
   // Payload claims openai; handler must use stored anthropic_oauth instead.
-  let test_request = TestPromptRequest {
+  let test_request = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
     creds: TestCreds::Id("oauth-alias".to_string()),
     base_url: "https://placeholder.example.com/v1".to_string(),
     model: "claude-sonnet-4-5-20250929".to_string(),
     prompt: "hi".to_string(),
-    api_format: ApiFormat::OpenAI,
     extra_headers: None,
     extra_body: None,
-  };
+  });
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(&format!("{}/test", ENDPOINT_MODELS_API)).json(test_request)?)
     .await?;
@@ -222,13 +223,12 @@ async fn test_api_models_fetch_models_id_uses_stored_api_format(
     .build()
     .await?;
 
-  let fetch_request = FetchModelsRequest {
+  let fetch_request = FetchModelsRequest::default_for(ApiFormat::OpenAI, DefaultFetchModelsRequest {
     creds: TestCreds::Id("oauth-alias".to_string()),
     base_url: "https://placeholder.example.com/v1".to_string(),
-    api_format: ApiFormat::OpenAI,
     extra_headers: None,
     extra_body: None,
-  };
+  });
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(&format!("{}/fetch-models", ENDPOINT_MODELS_API)).json(fetch_request)?)
     .await?;

@@ -6,6 +6,7 @@
 **/coverage/
 **/.nyc_output/
 **/*.tsbuildinfo
+tests-js/data/local/
 
 # Vite
 **/.vite/

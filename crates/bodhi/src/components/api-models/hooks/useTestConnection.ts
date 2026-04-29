@@ -15,11 +15,14 @@ export function useTestConnection({ mode: _mode = 'create', initialData: _initia
   const testMutation = useTestApiModel();
   const { toast, dismiss } = useToast();
 
-  const canTest = (data: Pick<TestPromptRequest, 'base_url' | 'model'>) => {
-    return Boolean(data.base_url && data.model);
+  const canTest = (data: TestPromptRequest) => {
+    if (data.api_format === 'llm_liberty_oauth') {
+      return Boolean((data.id || data.envelope) && data.model);
+    }
+    return Boolean(data.base_url);
   };
 
-  const getMissingRequirements = (data: Pick<TestPromptRequest, 'base_url' | 'model'>) => {
+  const getMissingRequirements = (data: { base_url: string; model: string }) => {
     const missing = [];
     if (!data.base_url) missing.push('base URL');
     if (!data.model) missing.push('at least one model');

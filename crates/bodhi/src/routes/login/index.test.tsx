@@ -380,12 +380,17 @@ describe('MultiTenantLoginContent', () => {
       render(<LoginPage />, { wrapper: createWrapper() });
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('Select Organization')).toBeInTheDocument();
-    });
+    // State B is gated on chained user -> tenants queries. Wait on the AuthCard
+    // state marker (only flips once both have resolved) with an explicit timeout
+    // so the assertion is robust under suite load.
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('login-page').querySelector('[data-test-state="select"]')).not.toBeNull();
+      },
+      { timeout: 5000 }
+    );
 
-    const card = screen.getByTestId('login-page').querySelector('[data-test-state="select"]');
-    expect(card).toBeInTheDocument();
+    expect(screen.getByText('Select Organization')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Workspace 1' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Workspace 2' })).toBeInTheDocument();
   });

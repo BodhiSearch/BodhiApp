@@ -24,7 +24,7 @@ use services::{
 };
 use services::{
   ApiAliasBuilder, ApiAliasResponse, ApiFormat, ApiFormat::OpenAI, ApiKey, ApiKeyUpdate,
-  ApiModelRequest, ResourceRole,
+  ApiModelRequest, DefaultApiModelRequest, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -103,8 +103,7 @@ async fn test_sync_models_handler_success(
   );
 
   // First create an API model
-  let create_form = ApiModelRequest {
-    api_format: OpenAI,
+  let create_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
     base_url: "https://api.openai.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123".to_string())?),
     models: vec![],
@@ -112,7 +111,7 @@ async fn test_sync_models_handler_success(
     forward_all_with_prefix: true,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   let create_response = test_router(app_service.clone())
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
@@ -268,8 +267,7 @@ async fn test_sync_models_rejects_non_forward_all(
   );
 
   // Create a non-forward_all alias with explicit models
-  let create_form = ApiModelRequest {
-    api_format: OpenAI,
+  let create_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
     base_url: "https://api.openai.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123".to_string())?),
     models: vec!["gpt-4".to_string()],
@@ -277,7 +275,7 @@ async fn test_sync_models_rejects_non_forward_all(
     forward_all_with_prefix: false,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   let create_response = test_router(app_service.clone())
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
@@ -341,8 +339,7 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
   );
 
   // Create an AnthropicOAuth alias with extra fields via the create endpoint
-  let create_form = ApiModelRequest {
-    api_format: ApiFormat::AnthropicOAuth,
+  let create_form = ApiModelRequest::default_for(ApiFormat::AnthropicOAuth, DefaultApiModelRequest {
     base_url: "https://api.anthropic.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string())?),
     models: vec![],
@@ -350,7 +347,7 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
     forward_all_with_prefix: true,
     extra_headers: Some(extra_headers),
     extra_body: Some(extra_body),
-  };
+  });
 
   let create_response = test_router(app_service.clone())
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)

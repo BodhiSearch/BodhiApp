@@ -65,10 +65,10 @@ use services::{
   PaginatedDownloadResponse, PaginatedTokenResponse, PaginatedUserAccessResponse,
   PaginatedUserAliasResponse, RefreshRequest, RefreshResponse, RefreshSource, RequestedMcpServer,
   RequestedResources, RequestedResourcesV1, ResourceRole, SettingInfo, SettingMetadata,
-  SettingService, SettingSource, TestCreds, TestPromptRequest, TestPromptResponse, TokenCreated,
-  TokenDetail, TokenScope, TokenStatus, UpdateSettingRequest, UpdateTokenRequest,
-  UserAccessStatusResponse, UserAliasRequest, UserAliasResponse, UserInfo, UserListResponse,
-  UserScope,
+  LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate, LlmLibertySummary, SettingService, SettingSource,
+  TestCreds, TestPromptRequest, TestPromptResponse, TokenCreated, TokenDetail, TokenScope,
+  TokenStatus, UpdateSettingRequest, UpdateTokenRequest, UserAccessStatusResponse, UserAliasRequest,
+  UserAliasResponse, UserInfo, UserListResponse, UserScope,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -315,6 +315,9 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             ApiModelRequest,
             ApiKey,
             ApiKeyUpdate,
+            LlmLibertyEnvelope,
+            LlmLibertyEnvelopeUpdate,
+            LlmLibertySummary,
             TestCreds,
             TestPromptRequest,
             TestPromptResponse,

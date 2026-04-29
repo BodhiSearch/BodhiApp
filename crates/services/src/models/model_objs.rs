@@ -19,6 +19,8 @@ use std::{
 use utoipa::ToSchema;
 use validator::{Validate, ValidationErrors};
 
+use super::llm_liberty_envelope::LlmLibertySummary;
+
 // =============================================================================
 // BuilderError
 // =============================================================================
@@ -785,6 +787,9 @@ pub enum ApiFormat {
   #[serde(rename = "gemini")]
   #[strum(serialize = "gemini")]
   Gemini,
+  #[serde(rename = "llm_liberty_oauth")]
+  #[strum(serialize = "llm_liberty_oauth")]
+  LlmLibertyOauth,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder)]
@@ -813,6 +818,7 @@ pub struct ApiAlias {
 }
 
 impl ApiAlias {
+  #[allow(clippy::too_many_arguments)]
   pub fn new(
     id: impl Into<String>,
     api_format: ApiFormat,
@@ -1139,22 +1145,12 @@ pub enum RawApiKeyUpdate {
 // ApiModelRequest (input for create and update)
 // =============================================================================
 
-/// Input request for creating or updating an API model configuration.
-// Used as `ValidatedJson<ApiModelRequest>` in handlers for both create and update (PUT).
+/// Inner request shape for the five non-llm-liberty `api_format` values.
+/// Shared across `openai`, `openai_responses`, `anthropic`, `anthropic_oauth`, `gemini`.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema, derive_builder::Builder)]
-#[schema(example = json!({
-    "api_format": "openai",
-    "base_url": "https://api.openai.com/v1",
-    "api_key": {"action": "set", "value": "sk-..."},
-    "models": ["gpt-4", "gpt-3.5-turbo"],
-    "prefix": "openai"
-}))]
 #[builder(setter(into, strip_option), build_fn(error = BuilderError))]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
-pub struct ApiModelRequest {
-  /// API format/protocol (e.g., "openai")
-  pub api_format: ApiFormat,
-
+pub struct DefaultApiModelRequest {
   /// API base URL
   #[validate(custom(function = "crate::validate_http_url"))]
   pub base_url: String,
@@ -1190,6 +1186,179 @@ pub struct ApiModelRequest {
   pub extra_body: Option<serde_json::Value>,
 }
 
+/// Request shape for `api_format == "llm_liberty_oauth"`. Carries the full envelope
+/// (or `Keep` to leave existing credentials untouched on update).
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
+pub struct LlmLibertyApiModelRequest {
+  /// Envelope update action — Keep (update only) or Set (create/replace credentials).
+  #[serde(default)]
+  pub envelope: super::llm_liberty_envelope::LlmLibertyEnvelopeUpdate,
+
+  /// List of available models
+  #[serde(default)]
+  pub models: Vec<String>,
+
+  /// Optional prefix for model namespacing
+  #[serde(default)]
+  pub prefix: Option<String>,
+
+  /// Whether to forward all requests with this prefix
+  #[serde(default)]
+  pub forward_all_with_prefix: bool,
+}
+
+/// Input request for creating or updating an API model configuration.
+/// Discriminated by `api_format` — `llm_liberty_oauth` uses `LlmLibertyApiModelRequest`,
+/// every other format uses `DefaultApiModelRequest`.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(tag = "api_format")]
+#[schema(example = json!({
+    "api_format": "openai",
+    "base_url": "https://api.openai.com/v1",
+    "api_key": {"action": "set", "value": "sk-..."},
+    "models": ["gpt-4", "gpt-3.5-turbo"],
+    "prefix": "openai"
+}))]
+pub enum ApiModelRequest {
+  #[serde(rename = "openai")]
+  Openai(DefaultApiModelRequest),
+  #[serde(rename = "openai_responses")]
+  OpenaiResponses(DefaultApiModelRequest),
+  #[serde(rename = "anthropic")]
+  Anthropic(DefaultApiModelRequest),
+  #[serde(rename = "anthropic_oauth")]
+  AnthropicOauth(DefaultApiModelRequest),
+  #[serde(rename = "gemini")]
+  Gemini(DefaultApiModelRequest),
+  #[serde(rename = "llm_liberty_oauth")]
+  LlmLibertyOauth(LlmLibertyApiModelRequest),
+}
+
+impl Validate for ApiModelRequest {
+  fn validate(&self) -> Result<(), ValidationErrors> {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => d.validate(),
+      Self::LlmLibertyOauth(d) => d.validate(),
+    }
+  }
+}
+
+impl ApiModelRequest {
+  pub fn api_format(&self) -> ApiFormat {
+    match self {
+      Self::Openai(_) => ApiFormat::OpenAI,
+      Self::OpenaiResponses(_) => ApiFormat::OpenAIResponses,
+      Self::Anthropic(_) => ApiFormat::Anthropic,
+      Self::AnthropicOauth(_) => ApiFormat::AnthropicOAuth,
+      Self::Gemini(_) => ApiFormat::Gemini,
+      Self::LlmLibertyOauth(_) => ApiFormat::LlmLibertyOauth,
+    }
+  }
+
+  pub fn models(&self) -> &[String] {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => &d.models,
+      Self::LlmLibertyOauth(d) => &d.models,
+    }
+  }
+
+  pub fn prefix(&self) -> Option<&str> {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => d.prefix.as_deref(),
+      Self::LlmLibertyOauth(d) => d.prefix.as_deref(),
+    }
+  }
+
+  pub fn forward_all_with_prefix(&self) -> bool {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => d.forward_all_with_prefix,
+      Self::LlmLibertyOauth(d) => d.forward_all_with_prefix,
+    }
+  }
+
+  pub fn as_default(&self) -> Option<&DefaultApiModelRequest> {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => Some(d),
+      Self::LlmLibertyOauth(_) => None,
+    }
+  }
+
+  pub fn as_llm_liberty(&self) -> Option<&LlmLibertyApiModelRequest> {
+    match self {
+      Self::LlmLibertyOauth(d) => Some(d),
+      _ => None,
+    }
+  }
+
+  /// Build a default-shape variant for any non-llm-liberty format. Panics on
+  /// `ApiFormat::LlmLibertyOauth` — that variant must be constructed directly.
+  pub fn default_for(format: ApiFormat, inner: DefaultApiModelRequest) -> Self {
+    match format {
+      ApiFormat::OpenAI => Self::Openai(inner),
+      ApiFormat::OpenAIResponses => Self::OpenaiResponses(inner),
+      ApiFormat::Anthropic => Self::Anthropic(inner),
+      ApiFormat::AnthropicOAuth => Self::AnthropicOauth(inner),
+      ApiFormat::Gemini => Self::Gemini(inner),
+      ApiFormat::LlmLibertyOauth => {
+        panic!("ApiModelRequest::default_for: use LlmLibertyOauth variant directly")
+      }
+    }
+  }
+}
+
+impl FetchModelsRequest {
+  /// Build a default-shape variant for any non-llm-liberty format.
+  pub fn default_for(format: ApiFormat, inner: DefaultFetchModelsRequest) -> Self {
+    match format {
+      ApiFormat::OpenAI => Self::Openai(inner),
+      ApiFormat::OpenAIResponses => Self::OpenaiResponses(inner),
+      ApiFormat::Anthropic => Self::Anthropic(inner),
+      ApiFormat::AnthropicOAuth => Self::AnthropicOauth(inner),
+      ApiFormat::Gemini => Self::Gemini(inner),
+      ApiFormat::LlmLibertyOauth => {
+        panic!("FetchModelsRequest::default_for: use LlmLibertyOauth variant directly")
+      }
+    }
+  }
+}
+
+impl TestPromptRequest {
+  /// Build a default-shape variant for any non-llm-liberty format.
+  pub fn default_for(format: ApiFormat, inner: DefaultTestPromptRequest) -> Self {
+    match format {
+      ApiFormat::OpenAI => Self::Openai(inner),
+      ApiFormat::OpenAIResponses => Self::OpenaiResponses(inner),
+      ApiFormat::Anthropic => Self::Anthropic(inner),
+      ApiFormat::AnthropicOAuth => Self::AnthropicOauth(inner),
+      ApiFormat::Gemini => Self::Gemini(inner),
+      ApiFormat::LlmLibertyOauth => {
+        panic!("TestPromptRequest::default_for: use LlmLibertyOauth variant directly")
+      }
+    }
+  }
+}
+
 fn default_api_key_keep() -> ApiKeyUpdate {
   ApiKeyUpdate::Keep
 }
@@ -1217,23 +1386,13 @@ impl Default for TestCreds {
   }
 }
 
-fn default_api_format_openai() -> ApiFormat {
-  ApiFormat::OpenAI
-}
-
 // =============================================================================
 // TestPromptRequest / TestPromptResponse
 // =============================================================================
 
-/// Request to test API connectivity with a prompt
+/// Inner request for the five non-llm-liberty `api_format` values.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-#[schema(example = json!({
-    "creds": {"type": "api_key", "value": "sk-..."},
-    "base_url": "https://api.openai.com/v1",
-    "model": "gpt-4",
-    "prompt": "Hello, how are you?"
-}))]
-pub struct TestPromptRequest {
+pub struct DefaultTestPromptRequest {
   /// Credentials to use for testing
   #[serde(default)]
   pub creds: TestCreds,
@@ -1250,10 +1409,6 @@ pub struct TestPromptRequest {
   #[validate(length(min = 1, max = 30))]
   pub prompt: String,
 
-  /// API format to use for the test request (defaults to OpenAI Chat Completions)
-  #[serde(default = "default_api_format_openai")]
-  pub api_format: ApiFormat,
-
   /// Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden.
   #[serde(default)]
   #[validate(custom(function = "crate::validate_extra_headers_no_auth"))]
@@ -1262,6 +1417,97 @@ pub struct TestPromptRequest {
   /// Optional extra fields to merge into the request body
   #[serde(default)]
   pub extra_body: Option<serde_json::Value>,
+}
+
+/// Inner request for `api_format == "llm_liberty_oauth"`. Either `id` (use stored creds)
+/// or `envelope` (use the provided envelope directly) must be set, never both.
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct LlmLibertyTestPromptRequest {
+  /// Edit mode: alias id whose stored credentials should be used.
+  #[serde(default)]
+  pub id: Option<String>,
+
+  /// Create mode: full envelope (mutually exclusive with `id`).
+  #[serde(default)]
+  pub envelope: Option<super::llm_liberty_envelope::LlmLibertyEnvelope>,
+
+  /// Model to use for testing
+  #[validate(length(min = 1))]
+  pub model: String,
+
+  /// Test prompt (max 30 characters for cost control)
+  #[validate(length(min = 1, max = 30))]
+  pub prompt: String,
+}
+
+/// Request to test API connectivity with a prompt. Discriminated on `api_format`.
+#[allow(clippy::large_enum_variant)]  // TODO: Box
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(tag = "api_format")]
+#[schema(example = json!({
+    "api_format": "openai",
+    "creds": {"type": "api_key", "value": "sk-..."},
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-4",
+    "prompt": "Hello, how are you?"
+}))]
+pub enum TestPromptRequest {
+  #[serde(rename = "openai")]
+  Openai(DefaultTestPromptRequest),
+  #[serde(rename = "openai_responses")]
+  OpenaiResponses(DefaultTestPromptRequest),
+  #[serde(rename = "anthropic")]
+  Anthropic(DefaultTestPromptRequest),
+  #[serde(rename = "anthropic_oauth")]
+  AnthropicOauth(DefaultTestPromptRequest),
+  #[serde(rename = "gemini")]
+  Gemini(DefaultTestPromptRequest),
+  #[serde(rename = "llm_liberty_oauth")]
+  LlmLibertyOauth(LlmLibertyTestPromptRequest),
+}
+
+impl Validate for TestPromptRequest {
+  fn validate(&self) -> Result<(), ValidationErrors> {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => d.validate(),
+      Self::LlmLibertyOauth(d) => d.validate(),
+    }
+  }
+}
+
+impl TestPromptRequest {
+  pub fn api_format(&self) -> ApiFormat {
+    match self {
+      Self::Openai(_) => ApiFormat::OpenAI,
+      Self::OpenaiResponses(_) => ApiFormat::OpenAIResponses,
+      Self::Anthropic(_) => ApiFormat::Anthropic,
+      Self::AnthropicOauth(_) => ApiFormat::AnthropicOAuth,
+      Self::Gemini(_) => ApiFormat::Gemini,
+      Self::LlmLibertyOauth(_) => ApiFormat::LlmLibertyOauth,
+    }
+  }
+
+  pub fn as_default(&self) -> Option<&DefaultTestPromptRequest> {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => Some(d),
+      Self::LlmLibertyOauth(_) => None,
+    }
+  }
+
+  pub fn as_llm_liberty(&self) -> Option<&LlmLibertyTestPromptRequest> {
+    match self {
+      Self::LlmLibertyOauth(d) => Some(d),
+      _ => None,
+    }
+  }
 }
 
 /// Response from testing API connectivity
@@ -1299,14 +1545,9 @@ impl TestPromptResponse {
 // FetchModelsRequest / FetchModelsResponse
 // =============================================================================
 
-/// Request to fetch available models from provider
+/// Inner request for the five non-llm-liberty `api_format` values.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-#[schema(example = json!({
-    "creds": {"type": "api_key", "value": null},
-    "base_url": "http://localhost:8080/v1",
-    "api_format": "openai"
-}))]
-pub struct FetchModelsRequest {
+pub struct DefaultFetchModelsRequest {
   /// Credentials to use for fetching models
   #[serde(default)]
   pub creds: TestCreds,
@@ -1314,10 +1555,6 @@ pub struct FetchModelsRequest {
   /// API base URL (required - always needed to know where to fetch models from)
   #[validate(custom(function = "crate::validate_http_url"))]
   pub base_url: String,
-
-  /// API format to use for fetching models (defaults to OpenAI Chat Completions)
-  #[serde(default = "default_api_format_openai")]
-  pub api_format: ApiFormat,
 
   /// Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden.
   #[serde(default)]
@@ -1327,6 +1564,87 @@ pub struct FetchModelsRequest {
   /// Optional extra fields to merge into the request body
   #[serde(default)]
   pub extra_body: Option<serde_json::Value>,
+}
+
+/// Inner request for `api_format == "llm_liberty_oauth"`. Either `id` (use stored creds)
+/// or `envelope` (use the provided envelope directly) must be set, never both.
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+pub struct LlmLibertyFetchModelsRequest {
+  /// Edit mode: alias id whose stored credentials should be used.
+  #[serde(default)]
+  pub id: Option<String>,
+
+  /// Create mode: full envelope (mutually exclusive with `id`).
+  #[serde(default)]
+  pub envelope: Option<super::llm_liberty_envelope::LlmLibertyEnvelope>,
+}
+
+/// Request to fetch available models from provider. Discriminated on `api_format`.
+#[allow(clippy::large_enum_variant)]  // TODO: Box
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(tag = "api_format")]
+#[schema(example = json!({
+    "api_format": "openai",
+    "creds": {"type": "api_key", "value": null},
+    "base_url": "http://localhost:8080/v1"
+}))]
+pub enum FetchModelsRequest {
+  #[serde(rename = "openai")]
+  Openai(DefaultFetchModelsRequest),
+  #[serde(rename = "openai_responses")]
+  OpenaiResponses(DefaultFetchModelsRequest),
+  #[serde(rename = "anthropic")]
+  Anthropic(DefaultFetchModelsRequest),
+  #[serde(rename = "anthropic_oauth")]
+  AnthropicOauth(DefaultFetchModelsRequest),
+  #[serde(rename = "gemini")]
+  Gemini(DefaultFetchModelsRequest),
+  #[serde(rename = "llm_liberty_oauth")]
+  LlmLibertyOauth(LlmLibertyFetchModelsRequest),
+}
+
+impl Validate for FetchModelsRequest {
+  fn validate(&self) -> Result<(), ValidationErrors> {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => d.validate(),
+      Self::LlmLibertyOauth(d) => d.validate(),
+    }
+  }
+}
+
+impl FetchModelsRequest {
+  pub fn api_format(&self) -> ApiFormat {
+    match self {
+      Self::Openai(_) => ApiFormat::OpenAI,
+      Self::OpenaiResponses(_) => ApiFormat::OpenAIResponses,
+      Self::Anthropic(_) => ApiFormat::Anthropic,
+      Self::AnthropicOauth(_) => ApiFormat::AnthropicOAuth,
+      Self::Gemini(_) => ApiFormat::Gemini,
+      Self::LlmLibertyOauth(_) => ApiFormat::LlmLibertyOauth,
+    }
+  }
+
+  pub fn as_default(&self) -> Option<&DefaultFetchModelsRequest> {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => Some(d),
+      Self::LlmLibertyOauth(_) => None,
+    }
+  }
+
+  pub fn as_llm_liberty(&self) -> Option<&LlmLibertyFetchModelsRequest> {
+    match self {
+      Self::LlmLibertyOauth(d) => Some(d),
+      _ => None,
+    }
+  }
 }
 
 /// Returns model IDs only (not full metadata) to minimize information exposure —
@@ -1529,6 +1847,9 @@ pub struct ApiAliasResponse {
   pub extra_headers: Option<serde_json::Value>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub extra_body: Option<serde_json::Value>,
+  /// Non-secret summary of LLM Liberty OAuth credentials (only present for llm_liberty_oauth format).
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub llm_liberty: Option<LlmLibertySummary>,
   #[schema(value_type = String, format = "date-time")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time")]
@@ -1549,6 +1870,7 @@ impl From<ApiAlias> for ApiAliasResponse {
       forward_all_with_prefix: alias.forward_all_with_prefix,
       extra_headers: alias.extra_headers,
       extra_body: alias.extra_body,
+      llm_liberty: None,
       created_at: alias.created_at,
       updated_at: alias.updated_at,
     }
@@ -1558,6 +1880,14 @@ impl From<ApiAlias> for ApiAliasResponse {
 impl ApiAliasResponse {
   pub fn with_has_api_key(mut self, v: bool) -> Self {
     self.has_api_key = v;
+    self
+  }
+
+  pub fn with_llm_liberty(
+    mut self,
+    summary: Option<LlmLibertySummary>,
+  ) -> Self {
+    self.llm_liberty = summary;
     self
   }
 }

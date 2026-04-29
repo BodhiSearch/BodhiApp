@@ -6,7 +6,10 @@ use axum::{
   Json,
 };
 use services::Alias;
-use services::{AliasResponse, DataServiceError, PaginatedAliasResponse, UserAliasResponse};
+use services::{
+  AliasResponse, ApiAliasResponse, ApiFormat, DataServiceError, LlmLibertySummary,
+  PaginatedAliasResponse, UserAliasResponse,
+};
 
 /// List all model aliases as discriminated union (user, model, and API aliases)
 #[utoipa::path(
@@ -101,11 +104,46 @@ pub async fn models_index(
     std::collections::HashMap::new()
   };
 
-  // Convert to AliasResponse and attach metadata
+  // Pre-fetch llm_liberty summaries for any LlmLibertyOauth API aliases on this page so the
+  // chat UI can route requests by `provider` without a follow-up alias-detail call.
+  let llm_liberty_summaries: std::collections::HashMap<String, LlmLibertySummary> = {
+    let llm_liberty_ids: Vec<String> = paginated_aliases
+      .iter()
+      .filter_map(|alias| match alias {
+        Alias::Api(a) if a.api_format == ApiFormat::LlmLibertyOauth => Some(a.id.clone()),
+        _ => None,
+      })
+      .collect();
+    if llm_liberty_ids.is_empty() {
+      std::collections::HashMap::new()
+    } else {
+      let tenant_id = auth_scope.require_tenant_id()?;
+      let user_id = auth_scope.require_user_id()?;
+      let db_service = auth_scope.db_service();
+      let mut map = std::collections::HashMap::new();
+      for id in llm_liberty_ids {
+        if let Ok(Some(summary)) = db_service
+          .get_llm_liberty_summary(tenant_id, user_id, &id)
+          .await
+        {
+          map.insert(id, summary);
+        }
+      }
+      map
+    }
+  };
+
+  // Convert to AliasResponse and attach metadata / llm_liberty summary.
   let data: Vec<AliasResponse> = paginated_aliases
     .into_iter()
     .map(|alias| {
-      let response = AliasResponse::from(alias.clone());
+      let response = match &alias {
+        Alias::Api(a) if a.api_format == ApiFormat::LlmLibertyOauth => {
+          let summary = llm_liberty_summaries.get(&a.id).cloned();
+          AliasResponse::Api(ApiAliasResponse::from(a.clone()).with_llm_liberty(summary))
+        }
+        _ => AliasResponse::from(alias.clone()),
+      };
       // Try to find metadata for this alias
       let key = match alias {
         Alias::User(u) => Some((u.repo.to_string(), u.filename, u.snapshot)),

@@ -17,7 +17,7 @@ export const SENTINEL_API_KEY = 'bodhiapp_sentinel_api_key_ignored';
 
 type PiApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages' | 'google-generative-ai';
 
-function apiFormatToPiApi(apiFormat: ApiFormat): PiApi {
+function apiFormatToPiApi(apiFormat: ApiFormat, provider?: string | null): PiApi {
   switch (apiFormat) {
     case 'openai_responses':
       return 'openai-responses';
@@ -26,23 +26,31 @@ function apiFormatToPiApi(apiFormat: ApiFormat): PiApi {
       return 'anthropic-messages';
     case 'gemini':
       return 'google-generative-ai';
+    case 'llm_liberty_oauth':
+      return provider === 'anthropic' ? 'anthropic-messages' : 'openai-completions';
     default:
       return 'openai-completions';
   }
 }
 
-function apiFormatToProvider(apiFormat: ApiFormat): string {
+function apiFormatToProvider(apiFormat: ApiFormat, provider?: string | null): string {
   if (apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth') return 'anthropic';
   if (apiFormat === 'gemini') return 'google';
+  if (apiFormat === 'llm_liberty_oauth' && provider === 'anthropic') return 'anthropic';
   return 'openai';
 }
 
-function buildModel(modelId: string, baseUrl: string, apiFormat: ApiFormat = 'openai'): Model<PiApi> {
+function buildModel(
+  modelId: string,
+  baseUrl: string,
+  apiFormat: ApiFormat = 'openai',
+  provider?: string | null
+): Model<PiApi> {
   return {
     id: modelId,
     name: modelId,
-    api: apiFormatToPiApi(apiFormat),
-    provider: apiFormatToProvider(apiFormat),
+    api: apiFormatToPiApi(apiFormat, provider),
+    provider: apiFormatToProvider(apiFormat, provider),
     baseUrl,
     reasoning: false,
     input: ['text'],
@@ -67,11 +75,12 @@ function createBodhiStreamFn(getApiToken: () => string | undefined): StreamFn {
   };
 }
 
-function getBaseUrl(apiFormat: ApiFormat = 'openai'): string {
+function getBaseUrl(apiFormat: ApiFormat = 'openai', provider?: string | null): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
   // Anthropic SDK appends `/v1/messages`; Gemini SDK appends `/models/{id}:generateContent`.
   if (apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth') return `${origin}/anthropic`;
   if (apiFormat === 'gemini') return `${origin}/v1beta`;
+  if (apiFormat === 'llm_liberty_oauth' && provider === 'anthropic') return `${origin}/anthropic`;
   return `${origin}/v1`;
 }
 
@@ -180,6 +189,7 @@ async function restoreMessagesForChat(): Promise<void> {
   const agent = getOrCreateAgent();
   const modelId = settingsStore.model || 'unknown';
   const apiFormat = settingsStore.apiFormat;
+  const llmLibertyProvider = settingsStore.llmLibertyProvider;
 
   const restored: AgentMessage[] = messages.flatMap((m): AgentMessage[] => {
     if (m.role === 'user') {
@@ -203,8 +213,8 @@ async function restoreMessagesForChat(): Promise<void> {
         {
           role: 'assistant' as const,
           content: [{ type: 'text' as const, text: m.content }],
-          api: apiFormatToPiApi(apiFormat),
-          provider: apiFormatToProvider(apiFormat),
+          api: apiFormatToPiApi(apiFormat, llmLibertyProvider),
+          provider: apiFormatToProvider(apiFormat, llmLibertyProvider),
           model: modelId,
           usage: {
             input: 0,
@@ -251,8 +261,8 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     }
 
     const agent = getOrCreateAgent();
-    const baseUrl = getBaseUrl(settingsStore.apiFormat);
-    const model = buildModel(modelId, baseUrl, settingsStore.apiFormat);
+    const baseUrl = getBaseUrl(settingsStore.apiFormat, settingsStore.llmLibertyProvider);
+    const model = buildModel(modelId, baseUrl, settingsStore.apiFormat, settingsStore.llmLibertyProvider);
 
     agent.state.model = model;
     agent.state.tools = tools;
@@ -366,9 +376,9 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
   syncAgentSettings: (tools) => {
     const agent = getOrCreateAgent();
     const settings = useChatSettingsStore.getState();
-    const baseUrl = getBaseUrl(settings.apiFormat);
+    const baseUrl = getBaseUrl(settings.apiFormat, settings.llmLibertyProvider);
     if (settings.model) {
-      agent.state.model = buildModel(settings.model, baseUrl, settings.apiFormat);
+      agent.state.model = buildModel(settings.model, baseUrl, settings.apiFormat, settings.llmLibertyProvider);
     }
     if (tools) {
       agent.state.tools = tools;

@@ -93,6 +93,7 @@ vi.mock('@/stores/chatSettingsStore', () => {
     useChatSettingsStore: create(() => ({
       model: '',
       apiFormat: 'openai',
+      llmLibertyProvider: null,
       stream: true,
       stream_enabled: true,
       temperature_enabled: false,
@@ -111,6 +112,7 @@ vi.mock('@/stores/chatSettingsStore', () => {
       maxToolIterations_enabled: true,
       setModel: vi.fn(),
       setApiFormat: vi.fn(),
+      setLlmLibertyProvider: vi.fn(),
       setStream: vi.fn(),
       setStreamEnabled: vi.fn(),
       setTemperature: vi.fn(),

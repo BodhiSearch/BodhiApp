@@ -65,7 +65,7 @@ export class RESTPage {
     // Wait for loading state to confirm request started (prevents stale state race condition)
     await this.page
       .locator(this.selectors.loading)
-      .waitFor({ timeout: 5000 })
+      .waitFor()
       .catch(() => {});
     await this.page.locator(this.selectors.terminal).waitFor();
   }

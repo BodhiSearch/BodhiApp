@@ -15,7 +15,9 @@ use crate::mcps::{
 };
 use crate::models::{
   ApiAlias, ApiAliasRepository, ApiModel, DownloadRepository, DownloadRequestEntity,
-  ModelMetadataEntity, ModelMetadataRepository, UserAlias, UserAliasRepository,
+  LlmLibertyCredentialsRepository, LlmLibertyEnvelope, LlmLibertySummary,
+  ModelMetadataEntity, ModelMetadataRepository, ResolvedLlmLibertyCredentials, UserAlias,
+  UserAliasRepository,
 };
 use crate::settings::{DbSetting, SettingsRepository};
 use crate::tokens::{TokenEntity, TokenRepository};
@@ -1274,6 +1276,91 @@ impl AccessRequestRepository for TestDbService {
   }
 }
 
+#[async_trait::async_trait]
+impl LlmLibertyCredentialsRepository for TestDbService {
+  async fn create_llm_liberty_credentials(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    api_alias_id: &str,
+    envelope: &LlmLibertyEnvelope,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .create_llm_liberty_credentials(tenant_id, user_id, api_alias_id, envelope)
+      .await
+      .tap(|_| self.notify("create_llm_liberty_credentials"))
+  }
+
+  async fn update_llm_liberty_credentials(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    api_alias_id: &str,
+    envelope: &LlmLibertyEnvelope,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .update_llm_liberty_credentials(tenant_id, user_id, api_alias_id, envelope)
+      .await
+      .tap(|_| self.notify("update_llm_liberty_credentials"))
+  }
+
+  async fn update_llm_liberty_tokens(
+    &self,
+    tenant_id: &str,
+    api_alias_id: &str,
+    new_access_token: &str,
+    new_refresh_token: &str,
+    new_expires_at: chrono::DateTime<chrono::Utc>,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .update_llm_liberty_tokens(tenant_id, api_alias_id, new_access_token, new_refresh_token, new_expires_at)
+      .await
+      .tap(|_| self.notify("update_llm_liberty_tokens"))
+  }
+
+  async fn get_llm_liberty_credentials(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    api_alias_id: &str,
+  ) -> Result<Option<ResolvedLlmLibertyCredentials>, DbError> {
+    self
+      .inner
+      .get_llm_liberty_credentials(tenant_id, user_id, api_alias_id)
+      .await
+      .tap(|_| self.notify("get_llm_liberty_credentials"))
+  }
+
+  async fn get_llm_liberty_summary(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    api_alias_id: &str,
+  ) -> Result<Option<LlmLibertySummary>, DbError> {
+    self
+      .inner
+      .get_llm_liberty_summary(tenant_id, user_id, api_alias_id)
+      .await
+      .tap(|_| self.notify("get_llm_liberty_summary"))
+  }
+
+  async fn delete_llm_liberty_credentials(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    api_alias_id: &str,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_llm_liberty_credentials(tenant_id, user_id, api_alias_id)
+      .await
+      .tap(|_| self.notify("delete_llm_liberty_credentials"))
+  }
+}
+
 // Composite mock using mockall::mock! that preserves MockDbService name
 mockall::mock! {
   pub DbService {}
@@ -1421,6 +1508,16 @@ mockall::mock! {
     async fn create_auth_config_header(&self, tenant_id: &str, config_entity: &McpAuthConfigEntity, params: Vec<McpAuthConfigParamEntity>) -> Result<McpAuthConfigEntity, DbError>;
     async fn create_auth_config_oauth(&self, tenant_id: &str, config_entity: &McpAuthConfigEntity, oauth_detail: &McpOAuthConfigDetailEntity) -> Result<(McpAuthConfigEntity, McpOAuthConfigDetailEntity), DbError>;
     async fn store_oauth_token(&self, tenant_id: &str, mcp_id: Option<String>, user_id: &str, row: &McpOAuthTokenEntity) -> Result<McpOAuthTokenEntity, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl LlmLibertyCredentialsRepository for DbService {
+    async fn create_llm_liberty_credentials(&self, tenant_id: &str, user_id: &str, api_alias_id: &str, envelope: &LlmLibertyEnvelope) -> Result<(), DbError>;
+    async fn update_llm_liberty_credentials(&self, tenant_id: &str, user_id: &str, api_alias_id: &str, envelope: &LlmLibertyEnvelope) -> Result<(), DbError>;
+    async fn update_llm_liberty_tokens(&self, tenant_id: &str, api_alias_id: &str, new_access_token: &str, new_refresh_token: &str, new_expires_at: chrono::DateTime<chrono::Utc>) -> Result<(), DbError>;
+    async fn get_llm_liberty_credentials(&self, tenant_id: &str, user_id: &str, api_alias_id: &str) -> Result<Option<ResolvedLlmLibertyCredentials>, DbError>;
+    async fn get_llm_liberty_summary(&self, tenant_id: &str, user_id: &str, api_alias_id: &str) -> Result<Option<LlmLibertySummary>, DbError>;
+    async fn delete_llm_liberty_credentials(&self, tenant_id: &str, user_id: &str, api_alias_id: &str) -> Result<(), DbError>;
   }
 
   #[async_trait::async_trait]

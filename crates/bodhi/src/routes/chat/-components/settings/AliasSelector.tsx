@@ -25,6 +25,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
   const model = useChatSettingsStore((s) => s.model);
   const setModel = useChatSettingsStore((s) => s.setModel);
   const setApiFormat = useChatSettingsStore((s) => s.setApiFormat);
+  const setLlmLibertyProvider = useChatSettingsStore((s) => s.setLlmLibertyProvider);
   const queryClient = useQueryClient();
 
   // Handle refresh button click
@@ -52,12 +53,15 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
   const selectedAlias = useMemo(() => modelToAliasMap.get(model ?? ''), [modelToAliasMap, model]);
   const selectedApiFormat: ApiFormat =
     selectedAlias && isApiAlias(selectedAlias) ? (selectedAlias.api_format as ApiFormat) : 'openai';
+  const selectedLlmLibertyProvider: string | null =
+    selectedAlias && isApiAlias(selectedAlias) ? (selectedAlias.llm_liberty?.provider ?? null) : null;
 
   // Sync apiFormat when the selected model changes (e.g., from URL params or chat history restore)
   useEffect(() => {
     if (!model || models.length === 0) return;
     setApiFormat(selectedApiFormat);
-  }, [model, models.length, selectedApiFormat, setApiFormat]);
+    setLlmLibertyProvider(selectedLlmLibertyProvider);
+  }, [model, models.length, selectedApiFormat, selectedLlmLibertyProvider, setApiFormat, setLlmLibertyProvider]);
 
   // Transform models array to match ComboBoxResponsive's Status type
   const modelStatuses = models.flatMap((m) => {
@@ -132,8 +136,10 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
             const alias = modelToAliasMap.get(value);
             if (alias && isApiAlias(alias)) {
               setApiFormat(alias.api_format as ApiFormat);
+              setLlmLibertyProvider(alias.llm_liberty?.provider ?? null);
             } else {
               setApiFormat('openai');
+              setLlmLibertyProvider(null);
             }
           }}
           statuses={modelStatuses}

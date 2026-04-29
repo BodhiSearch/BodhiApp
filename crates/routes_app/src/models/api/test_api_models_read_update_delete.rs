@@ -18,7 +18,8 @@ use services::test_utils::{
 };
 use services::AuthContext;
 use services::{
-  ApiAliasResponse, ApiKey, ApiKeyUpdate, ApiModel, ApiModelRequest, MockAiApiService,
+  ApiAliasResponse, ApiKey, ApiKeyUpdate, ApiModel, ApiModelRequest, DefaultApiModelRequest,
+  MockAiApiService,
 };
 use services::{ApiFormat::OpenAI, ResourceRole};
 use std::sync::Arc;
@@ -47,6 +48,7 @@ fn create_expected_response(
     forward_all_with_prefix: false,
     extra_headers: None,
     extra_body: None,
+    llm_liberty: None,
     created_at,
     updated_at,
   }
@@ -201,8 +203,7 @@ async fn test_update_api_model_handler_success(
     .build()
     .await?;
 
-  let update_form = ApiModelRequest {
-    api_format: OpenAI,
+  let update_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
     base_url: input_url.to_string(), // Updated URL with potential trailing slashes
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-updated123456789".to_string())?), // New API key
     models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
@@ -210,7 +211,7 @@ async fn test_update_api_model_handler_success(
     forward_all_with_prefix: false,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   // Make PUT request to update existing API model
   let response = test_router(Arc::new(app_service))
@@ -255,8 +256,7 @@ async fn test_update_api_model_handler_not_found(
     .build()
     .await?;
 
-  let update_form = ApiModelRequest {
-    api_format: OpenAI,
+  let update_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
     base_url: "https://api.openai.com/v2".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-updated123456789".to_string())?),
     models: vec!["gpt-4-turbo".to_string()],
@@ -264,7 +264,7 @@ async fn test_update_api_model_handler_not_found(
     forward_all_with_prefix: false,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   // Make PUT request to update non-existent API model
   let response = test_router(Arc::new(app_service))

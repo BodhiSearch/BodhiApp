@@ -20,8 +20,8 @@ use services::{
   test_utils::{
     openai_model, sea_context, AppServiceStubBuilder, SeaTestContext, TEST_TENANT_B_ID,
   },
-  ApiAliasResponse, ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, AppService, MockAiApiService,
-  ResourceRole, Tenant,
+  ApiAliasResponse, ApiFormat, ApiKey, ApiKeyUpdate, ApiModelRequest, AppService,
+  DefaultApiModelRequest, MockAiApiService, ResourceRole, Tenant,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -67,8 +67,7 @@ async fn isolation_router(
 }
 
 fn create_form(base_url: &str) -> ApiModelRequest {
-  ApiModelRequest {
-    api_format: ApiFormat::OpenAI,
+  ApiModelRequest::default_for(ApiFormat::OpenAI, DefaultApiModelRequest {
     base_url: base_url.to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test-key-12345".to_string()).unwrap()),
     models: vec!["gpt-4".to_string()],
@@ -76,7 +75,7 @@ fn create_form(base_url: &str) -> ApiModelRequest {
     forward_all_with_prefix: false,
     extra_headers: None,
     extra_body: None,
-  }
+  })
 }
 
 #[rstest]

@@ -2,7 +2,8 @@ use crate::app_access_requests::AccessRequestRepository;
 use crate::db::DbCore;
 use crate::mcps::{McpRepository, McpServerRepository};
 use crate::models::{
-  ApiAliasRepository, DownloadRepository, ModelMetadataRepository, UserAliasRepository,
+  ApiAliasRepository, DownloadRepository, LlmLibertyCredentialsRepository,
+  ModelMetadataRepository, UserAliasRepository,
 };
 use crate::settings::SettingsRepository;
 use crate::tenants::TenantRepository;
@@ -15,6 +16,7 @@ use crate::users::AccessRepository;
 pub trait DbService:
   DownloadRepository
   + ApiAliasRepository
+  + LlmLibertyCredentialsRepository
   + ModelMetadataRepository
   + AccessRepository
   + AccessRequestRepository
@@ -34,6 +36,7 @@ pub trait DbService:
 impl<T> DbService for T where
   T: DownloadRepository
     + ApiAliasRepository
+    + LlmLibertyCredentialsRepository
     + ModelMetadataRepository
     + AccessRepository
     + AccessRequestRepository

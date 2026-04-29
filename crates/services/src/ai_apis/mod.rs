@@ -1,6 +1,7 @@
 mod ai_api_service;
 pub mod ai_provider_client;
 mod error;
+pub mod llm_liberty;
 pub(crate) mod provider_anthropic;
 pub(crate) mod provider_anthropic_oauth;
 pub(crate) mod provider_gemini;

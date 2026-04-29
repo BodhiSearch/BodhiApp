@@ -253,7 +253,7 @@ export class AllUsersPage extends BasePage {
 
   async getUserCount() {
     // Wait for at least one table row to ensure table is loaded
-    await this.page.waitForSelector(this.selectors.tableRow, { timeout: 5000 });
+    await this.page.waitForSelector(this.selectors.tableRow);
 
     // Now count all rows
     const rows = await this.page.locator(this.selectors.tableRow).count();

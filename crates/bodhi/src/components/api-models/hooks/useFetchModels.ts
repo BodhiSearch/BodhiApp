@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { ApiFormat, FetchModelsRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
+import { ApiFormat, ApiKey, FetchModelsRequest, LlmLibertyEnvelope, TestCreds } from '@bodhiapp/ts-client';
 
 import { useFetchApiModels } from '@/hooks/models';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +22,8 @@ interface FetchModelsData {
   apiFormat: ApiFormat;
   extraHeaders?: unknown;
   extraBody?: unknown;
+  /** For api_format === 'llm_liberty_oauth' in create mode, the parsed envelope. */
+  llmLibertyEnvelope?: LlmLibertyEnvelope;
 }
 
 export function useFetchModels({
@@ -37,41 +39,60 @@ export function useFetchModels({
   const { toast, dismiss } = useToast();
 
   const canFetch = (data: FetchModelsData) => {
+    if (data.apiFormat === 'llm_liberty_oauth') {
+      return Boolean(data.id || data.llmLibertyEnvelope);
+    }
     return Boolean(data.baseUrl);
   };
 
   const getFetchDisabledReason = (data: FetchModelsData) => {
+    if (data.apiFormat === 'llm_liberty_oauth') {
+      if (!data.id && !data.llmLibertyEnvelope) {
+        return 'Paste the LLM Liberty envelope to fetch models';
+      }
+      return '';
+    }
     if (!data.baseUrl) {
       return 'You need to add base URL to fetch models';
     }
     return '';
   };
 
+  const buildRequest = (data: FetchModelsData): FetchModelsRequest => {
+    if (data.apiFormat === 'llm_liberty_oauth') {
+      const aliasId = data.id ?? (mode === 'edit' ? initialData?.id : undefined);
+      if (aliasId) {
+        return { api_format: 'llm_liberty_oauth', id: aliasId };
+      }
+      if (!data.llmLibertyEnvelope) {
+        throw new Error('LLM Liberty envelope is required to fetch models in create mode');
+      }
+      return { api_format: 'llm_liberty_oauth', envelope: data.llmLibertyEnvelope };
+    }
+
+    let creds: TestCreds;
+    if (data.apiKey) {
+      creds = { type: 'api_key', value: data.apiKey as ApiKey };
+    } else if (mode === 'edit' && initialData?.id) {
+      creds = { type: 'id', value: initialData.id };
+    } else {
+      creds = { type: 'api_key', value: null };
+    }
+
+    return {
+      api_format: data.apiFormat,
+      creds,
+      base_url: data.baseUrl,
+      ...(data.extraHeaders !== null && data.extraHeaders !== undefined ? { extra_headers: data.extraHeaders } : {}),
+      ...(data.extraBody !== null && data.extraBody !== undefined ? { extra_body: data.extraBody } : {}),
+    } as FetchModelsRequest;
+  };
+
   const fetchModels = async (data: FetchModelsData) => {
     dismiss();
     setStatus('loading');
 
-    // Build TestCreds discriminated union
-    let creds: TestCreds | undefined;
-
-    if (data.apiKey) {
-      // Use provided API key directly
-      creds = { type: 'api_key' as const, value: data.apiKey as ApiKey };
-    } else if (mode === 'edit' && initialData?.id) {
-      // Look up stored credentials by ID in edit mode
-      creds = { type: 'id' as const, value: initialData.id };
-    } else {
-      // No authentication (public API)
-      creds = { type: 'api_key' as const, value: null };
-    }
-
-    const fetchData: FetchModelsRequest = {
-      creds,
-      base_url: data.baseUrl,
-      api_format: data.apiFormat,
-      ...(data.extraHeaders !== null && data.extraHeaders !== undefined ? { extra_headers: data.extraHeaders } : {}),
-      ...(data.extraBody !== null && data.extraBody !== undefined ? { extra_body: data.extraBody } : {}),
-    };
+    const fetchData = buildRequest(data);
 
     try {
       const response = await fetchModelsMutation.mutateAsync(fetchData);

@@ -57,6 +57,7 @@ const defaultSessionSettings: SessionOnlySettings = {
 export const defaultSettings: ChatSettings & SessionOnlySettings = {
   model: '',
   apiFormat: 'openai',
+  llmLibertyProvider: null,
   stream: true,
   temperature_enabled: false,
   top_p_enabled: false,
@@ -82,6 +83,7 @@ type EnabledKey = `${string}_enabled` & keyof AllSettings;
 export interface ChatSettingsStoreState extends ChatSettings, SessionOnlySettings {
   setModel: (model: string) => void;
   setApiFormat: (format: ApiFormat) => void;
+  setLlmLibertyProvider: (provider: string | null) => void;
   setSetting: <K extends SettingKey>(key: K, value: AllSettings[K] | undefined) => void;
   setEnabled: (key: EnabledKey, enabled: boolean) => void;
 
@@ -139,6 +141,8 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
   setModel: (model) => set({ model }),
 
   setApiFormat: (apiFormat) => set({ apiFormat }),
+
+  setLlmLibertyProvider: (llmLibertyProvider) => set({ llmLibertyProvider }),
 
   setSetting: (key, value) => {
     if (value === undefined) {
@@ -254,10 +258,12 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
       // continues with the same alias after deleting a chat or starting fresh.
       const currentModel = get().model;
       const currentApiFormat = get().apiFormat;
+      const currentLlmLibertyProvider = get().llmLibertyProvider;
       set({
         ...defaultSettings,
         model: currentModel,
         apiFormat: currentApiFormat,
+        llmLibertyProvider: currentLlmLibertyProvider,
         ...sessionToken,
       });
       return;
@@ -268,10 +274,12 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
     } else {
       const currentModel = get().model;
       const currentApiFormat = get().apiFormat;
+      const currentLlmLibertyProvider = get().llmLibertyProvider;
       set({
         ...defaultSettings,
         model: currentModel,
         apiFormat: currentApiFormat,
+        llmLibertyProvider: currentLlmLibertyProvider,
         ...sessionToken,
       });
     }
@@ -282,6 +290,7 @@ export const useChatSettingsStore = create<ChatSettingsStoreState>((set, get) =>
     const settings: PersistedChatSettings = {
       model: state.model,
       apiFormat: state.apiFormat,
+      llmLibertyProvider: state.llmLibertyProvider,
       stream: state.stream,
       stream_enabled: state.stream_enabled,
       seed: state.seed,

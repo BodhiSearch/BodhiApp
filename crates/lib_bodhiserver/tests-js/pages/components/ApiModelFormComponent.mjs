@@ -34,7 +34,8 @@ export class ApiModelFormComponent {
     openai: 'OpenAI - Completions',
     openai_responses: 'OpenAI - Responses',
     anthropic: 'Anthropic',
-    anthropic_oauth: 'Anthropic (Claude Code OAuth)',
+    anthropic_oauth: 'Anthropic Setup Token',
+    llm_liberty_oauth: 'LLM Liberty OAuth',
     gemini: 'Google Gemini',
   };
 
@@ -64,6 +65,9 @@ export class ApiModelFormComponent {
       await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
         'https://generativelanguage.googleapis.com/v1beta'
       );
+    } else if (format === 'llm_liberty_oauth') {
+      // Envelope input replaces the base_url + api_key + extras fields.
+      await expect(this.page.locator('[data-testid="llm-liberty-envelope-input"]')).toBeVisible();
     }
   }
 
@@ -106,6 +110,20 @@ export class ApiModelFormComponent {
   async fillBasicInfo(apiKey, baseUrl = 'https://api.openai.com/v1') {
     await this.fillBaseUrl(baseUrl);
     await this.fillApiKey(apiKey);
+  }
+
+  // LLM Liberty envelope methods (api_format = "llm_liberty_oauth")
+  async fillLlmLibertyEnvelope(envelope) {
+    const json = typeof envelope === 'string' ? envelope : JSON.stringify(envelope, null, 2);
+    const locator = this.page.locator('[data-testid="llm-liberty-envelope-input"]');
+    await locator.clear();
+    await locator.fill(json);
+    // Summary panel renders only after JSON parses successfully + version/provider/required fields validate.
+    await expect(this.page.locator('[data-testid="llm-liberty-envelope-summary"]')).toBeVisible();
+  }
+
+  async expectLlmLibertyEnvelopeError(substring) {
+    await expect(this.page.locator('[data-testid="llm-liberty-envelope-error"]')).toContainText(substring);
   }
 
   // Extra Headers / Extra Body methods

@@ -7322,6 +7322,17 @@
           },
           "extra_headers": {},
           "extra_body": {},
+          "llm_liberty": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LlmLibertySummary",
+                "description": "Non-secret summary of LLM Liberty OAuth credentials (only present for llm_liberty_oauth format)."
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7340,7 +7351,8 @@
           "openai_responses",
           "anthropic",
           "anthropic_oauth",
-          "gemini"
+          "gemini",
+          "llm_liberty_oauth"
         ]
       },
       "ApiFormatsResponse": {
@@ -7479,51 +7491,135 @@
         "description": "Discriminated union of provider-specific model metadata.\nStored as JSON in `api_model_aliases.models`."
       },
       "ApiModelRequest": {
-        "type": "object",
-        "description": "Input request for creating or updating an API model configuration.",
-        "required": [
-          "api_format",
-          "base_url",
-          "models"
-        ],
-        "properties": {
-          "api_format": {
-            "$ref": "#/components/schemas/ApiFormat",
-            "description": "API format/protocol (e.g., \"openai\")"
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultApiModelRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "openai"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "base_url": {
-            "type": "string",
-            "description": "API base URL"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultApiModelRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "openai_responses"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "api_key": {
-            "$ref": "#/components/schemas/ApiKeyUpdate",
-            "description": "API key update action (Keep/Set with Some or None)"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultApiModelRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "anthropic"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "models": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of available models"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultApiModelRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "anthropic_oauth"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "prefix": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Optional prefix for model namespacing (e.g., \"azure/\" for \"azure/gpt-4\")"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultApiModelRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "gemini"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "forward_all_with_prefix": {
-            "type": "boolean",
-            "description": "Whether to forward all requests with this prefix (true) or only selected models (false)"
-          },
-          "extra_headers": {
-            "description": "Optional extra HTTP headers to send upstream. Cannot include `Authorization`\nor `x-api-key` — those are owned by provider clients."
-          },
-          "extra_body": {
-            "description": "Optional extra fields to merge into the request body sent upstream"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LlmLibertyApiModelRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "llm_liberty_oauth"
+                    ]
+                  }
+                }
+              }
+            ]
           }
-        },
+        ],
+        "description": "Input request for creating or updating an API model configuration.\nDiscriminated by `api_format` — `llm_liberty_oauth` uses `LlmLibertyApiModelRequest`,\nevery other format uses `DefaultApiModelRequest`.",
         "example": {
           "api_format": "openai",
           "api_key": {
@@ -8242,6 +8338,104 @@
           }
         }
       },
+      "DefaultApiModelRequest": {
+        "type": "object",
+        "description": "Inner request shape for the five non-llm-liberty `api_format` values.\nShared across `openai`, `openai_responses`, `anthropic`, `anthropic_oauth`, `gemini`.",
+        "required": [
+          "base_url",
+          "models"
+        ],
+        "properties": {
+          "base_url": {
+            "type": "string",
+            "description": "API base URL"
+          },
+          "api_key": {
+            "$ref": "#/components/schemas/ApiKeyUpdate",
+            "description": "API key update action (Keep/Set with Some or None)"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of available models"
+          },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional prefix for model namespacing (e.g., \"azure/\" for \"azure/gpt-4\")"
+          },
+          "forward_all_with_prefix": {
+            "type": "boolean",
+            "description": "Whether to forward all requests with this prefix (true) or only selected models (false)"
+          },
+          "extra_headers": {
+            "description": "Optional extra HTTP headers to send upstream. Cannot include `Authorization`\nor `x-api-key` — those are owned by provider clients."
+          },
+          "extra_body": {
+            "description": "Optional extra fields to merge into the request body sent upstream"
+          }
+        }
+      },
+      "DefaultFetchModelsRequest": {
+        "type": "object",
+        "description": "Inner request for the five non-llm-liberty `api_format` values.",
+        "required": [
+          "base_url"
+        ],
+        "properties": {
+          "creds": {
+            "$ref": "#/components/schemas/TestCreds",
+            "description": "Credentials to use for fetching models"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "API base URL (required - always needed to know where to fetch models from)"
+          },
+          "extra_headers": {
+            "description": "Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden."
+          },
+          "extra_body": {
+            "description": "Optional extra fields to merge into the request body"
+          }
+        }
+      },
+      "DefaultTestPromptRequest": {
+        "type": "object",
+        "description": "Inner request for the five non-llm-liberty `api_format` values.",
+        "required": [
+          "base_url",
+          "model",
+          "prompt"
+        ],
+        "properties": {
+          "creds": {
+            "$ref": "#/components/schemas/TestCreds",
+            "description": "Credentials to use for testing"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "API base URL"
+          },
+          "model": {
+            "type": "string",
+            "description": "Model to use for testing"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Test prompt (max 30 characters for cost control)"
+          },
+          "extra_headers": {
+            "description": "Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden."
+          },
+          "extra_body": {
+            "description": "Optional extra fields to merge into the request body"
+          }
+        }
+      },
       "DeploymentMode": {
         "type": "string",
         "enum": [
@@ -8393,31 +8587,135 @@
         }
       },
       "FetchModelsRequest": {
-        "type": "object",
-        "description": "Request to fetch available models from provider",
-        "required": [
-          "base_url"
-        ],
-        "properties": {
-          "creds": {
-            "$ref": "#/components/schemas/TestCreds",
-            "description": "Credentials to use for fetching models"
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultFetchModelsRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "openai"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "base_url": {
-            "type": "string",
-            "description": "API base URL (required - always needed to know where to fetch models from)"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultFetchModelsRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "openai_responses"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "api_format": {
-            "$ref": "#/components/schemas/ApiFormat",
-            "description": "API format to use for fetching models (defaults to OpenAI Chat Completions)"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultFetchModelsRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "anthropic"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "extra_headers": {
-            "description": "Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden."
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultFetchModelsRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "anthropic_oauth"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "extra_body": {
-            "description": "Optional extra fields to merge into the request body"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultFetchModelsRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "gemini"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LlmLibertyFetchModelsRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "llm_liberty_oauth"
+                    ]
+                  }
+                }
+              }
+            ]
           }
-        },
+        ],
+        "description": "Request to fetch available models from provider. Discriminated on `api_format`.",
         "example": {
           "api_format": "openai",
           "base_url": "http://localhost:8080/v1",
@@ -8595,6 +8893,278 @@
             "format": "int32",
             "example": 10,
             "minimum": 0
+          }
+        }
+      },
+      "LlmLibertyApiEndpoints": {
+        "type": "object",
+        "required": [
+          "base_url",
+          "chat_url"
+        ],
+        "properties": {
+          "base_url": {
+            "type": "string"
+          },
+          "chat_url": {
+            "type": "string"
+          },
+          "models_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LlmLibertyApiModelRequest": {
+        "type": "object",
+        "description": "Request shape for `api_format == \"llm_liberty_oauth\"`. Carries the full envelope\n(or `Keep` to leave existing credentials untouched on update).",
+        "properties": {
+          "envelope": {
+            "$ref": "#/components/schemas/LlmLibertyEnvelopeUpdate",
+            "description": "Envelope update action — Keep (update only) or Set (create/replace credentials)."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of available models"
+          },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional prefix for model namespacing"
+          },
+          "forward_all_with_prefix": {
+            "type": "boolean",
+            "description": "Whether to forward all requests with this prefix"
+          }
+        }
+      },
+      "LlmLibertyAuthSpec": {
+        "type": "object",
+        "required": [
+          "in",
+          "key",
+          "scheme"
+        ],
+        "properties": {
+          "in": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "scheme": {
+            "type": "string"
+          }
+        }
+      },
+      "LlmLibertyEnvelope": {
+        "type": "object",
+        "description": "The JSON blob emitted by `npx @bodhiapp/llm-liberty@latest login`.\n\nVersion field allows BodhiApp to detect breaking changes in the envelope\nschema (major-version bump = breaking). Currently only `\"1.0.0\"` is accepted.",
+        "required": [
+          "version",
+          "provider",
+          "access_token",
+          "refresh_token",
+          "expires_at",
+          "auth",
+          "oauth",
+          "api"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "Envelope schema version — must be \"1.0.0\"."
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider identifier, e.g. \"anthropic\". Only \"anthropic\" is supported in v1."
+          },
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix epoch seconds when the access token expires."
+          },
+          "auth": {
+            "$ref": "#/components/schemas/LlmLibertyAuthSpec"
+          },
+          "oauth": {
+            "$ref": "#/components/schemas/LlmLibertyOauthEndpoints"
+          },
+          "api": {
+            "$ref": "#/components/schemas/LlmLibertyApiEndpoints"
+          },
+          "headers": {},
+          "body": {},
+          "extra": {}
+        }
+      },
+      "LlmLibertyEnvelopeUpdate": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Keep the stored credentials unchanged.",
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "keep"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Replace with a new envelope (atomic re-paste).",
+            "required": [
+              "value",
+              "action"
+            ],
+            "properties": {
+              "value": {
+                "$ref": "#/components/schemas/LlmLibertyEnvelope",
+                "description": "Replace with a new envelope (atomic re-paste)."
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "set"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Tagged envelope update action — either keep the existing credentials or replace them."
+      },
+      "LlmLibertyFetchModelsRequest": {
+        "type": "object",
+        "description": "Inner request for `api_format == \"llm_liberty_oauth\"`. Either `id` (use stored creds)\nor `envelope` (use the provided envelope directly) must be set, never both.",
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Edit mode: alias id whose stored credentials should be used."
+          },
+          "envelope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LlmLibertyEnvelope",
+                "description": "Create mode: full envelope (mutually exclusive with `id`)."
+              }
+            ]
+          }
+        }
+      },
+      "LlmLibertyOauthEndpoints": {
+        "type": "object",
+        "required": [
+          "authorize_url",
+          "token_url",
+          "client_id"
+        ],
+        "properties": {
+          "authorize_url": {
+            "type": "string"
+          },
+          "token_url": {
+            "type": "string"
+          },
+          "revoke_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LlmLibertySummary": {
+        "type": "object",
+        "description": "Non-secret summary of stored LLM Liberty OAuth credentials for API responses.",
+        "required": [
+          "provider",
+          "envelope_version",
+          "expires_at",
+          "has_refresh_token"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "envelope_version": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix epoch seconds — when the stored access token expires."
+          },
+          "has_refresh_token": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LlmLibertyTestPromptRequest": {
+        "type": "object",
+        "description": "Inner request for `api_format == \"llm_liberty_oauth\"`. Either `id` (use stored creds)\nor `envelope` (use the provided envelope directly) must be set, never both.",
+        "required": [
+          "model",
+          "prompt"
+        ],
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Edit mode: alias id whose stored credentials should be used."
+          },
+          "envelope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LlmLibertyEnvelope",
+                "description": "Create mode: full envelope (mutually exclusive with `id`)."
+              }
+            ]
+          },
+          "model": {
+            "type": "string",
+            "description": "Model to use for testing"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Test prompt (max 30 characters for cost control)"
           }
         }
       },
@@ -10388,42 +10958,137 @@
         "description": "Credentials for test/fetch operations"
       },
       "TestPromptRequest": {
-        "type": "object",
-        "description": "Request to test API connectivity with a prompt",
-        "required": [
-          "base_url",
-          "model",
-          "prompt"
-        ],
-        "properties": {
-          "creds": {
-            "$ref": "#/components/schemas/TestCreds",
-            "description": "Credentials to use for testing"
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultTestPromptRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "openai"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "base_url": {
-            "type": "string",
-            "description": "API base URL"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultTestPromptRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "openai_responses"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "model": {
-            "type": "string",
-            "description": "Model to use for testing"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultTestPromptRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "anthropic"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "prompt": {
-            "type": "string",
-            "description": "Test prompt (max 30 characters for cost control)"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultTestPromptRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "anthropic_oauth"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "api_format": {
-            "$ref": "#/components/schemas/ApiFormat",
-            "description": "API format to use for the test request (defaults to OpenAI Chat Completions)"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefaultTestPromptRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "gemini"
+                    ]
+                  }
+                }
+              }
+            ]
           },
-          "extra_headers": {
-            "description": "Optional extra HTTP headers. `Authorization` / `x-api-key` are forbidden."
-          },
-          "extra_body": {
-            "description": "Optional extra fields to merge into the request body"
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LlmLibertyTestPromptRequest"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "api_format"
+                ],
+                "properties": {
+                  "api_format": {
+                    "type": "string",
+                    "enum": [
+                      "llm_liberty_oauth"
+                    ]
+                  }
+                }
+              }
+            ]
           }
-        },
+        ],
+        "description": "Request to test API connectivity with a prompt. Discriminated on `api_format`.",
         "example": {
+          "api_format": "openai",
           "base_url": "https://api.openai.com/v1",
           "creds": {
             "type": "api_key",

@@ -120,7 +120,10 @@ impl AiApiService for DefaultAiApiService {
           .test_connection(model, prompt)
           .await
       }
-      ApiFormat::AnthropicOAuth => {
+      // For LlmLibertyOauth, the route handler resolves credentials and passes
+      // the access_token as api_key + envelope headers/body as extra_headers/body,
+      // so the upstream call is identical to AnthropicOAuth.
+      ApiFormat::AnthropicOAuth | ApiFormat::LlmLibertyOauth => {
         AnthropicOAuthProviderClient::new(
           api_key,
           base_url.to_string(),
@@ -163,7 +166,7 @@ impl AiApiService for DefaultAiApiService {
           .models()
           .await
       }
-      ApiFormat::AnthropicOAuth => {
+      ApiFormat::AnthropicOAuth | ApiFormat::LlmLibertyOauth => {
         AnthropicOAuthProviderClient::new(
           api_key,
           base_url.to_string(),
@@ -211,7 +214,10 @@ impl AiApiService for DefaultAiApiService {
           .forward(method, api_path, prefix, request, qp, ch)
           .await
       }
-      ApiFormat::AnthropicOAuth => {
+      // For LlmLibertyOauth, the route handler resolves credentials, patches
+      // alias.extra_headers/extra_body from the envelope, and passes the
+      // access_token as api_key before reaching here — identical to AnthropicOAuth.
+      ApiFormat::AnthropicOAuth | ApiFormat::LlmLibertyOauth => {
         AnthropicOAuthProviderClient::new(
           api_key,
           api_alias.base_url.clone(),

@@ -19,6 +19,7 @@ mod m20250101_000017_drop_toolsets;
 mod m20250101_000018_drop_mcp_tools_columns;
 mod m20250101_000019_drop_models_cache;
 mod m20250101_000020_api_alias_extra_fields;
+mod m20250101_000021_api_model_oauth_credentials;
 use sea_orm_migration::prelude::*;
 
 pub struct Migrator;
@@ -48,6 +49,7 @@ impl MigratorTrait for Migrator {
       Box::new(m20250101_000018_drop_mcp_tools_columns::Migration),
       Box::new(m20250101_000019_drop_models_cache::Migration),
       Box::new(m20250101_000020_api_alias_extra_fields::Migration),
+      Box::new(m20250101_000021_api_model_oauth_credentials::Migration),
     ]
   }
 }

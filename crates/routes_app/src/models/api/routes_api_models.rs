@@ -5,9 +5,11 @@ use crate::{
   ENDPOINT_MODELS_API_FORMATS, ENDPOINT_MODELS_API_TEST,
 };
 use axum::{extract::Path, http::StatusCode, Json};
+use services::models::LlmLibertyRequestParts;
 use services::{
-  ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiModelRequest, FetchModelsRequest,
-  FetchModelsResponse, TestCreds, TestPromptRequest, TestPromptResponse,
+  ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiModelRequest, DefaultFetchModelsRequest,
+  FetchModelsRequest, FetchModelsResponse, LlmLibertyFetchModelsRequest,
+  LlmLibertyTestPromptRequest, TestCreds, TestPromptRequest, TestPromptResponse,
 };
 
 /// Get a specific API model configuration
@@ -165,52 +167,100 @@ pub async fn api_models_test(
   let tenant_id = auth_scope.require_tenant_id()?;
   let user_id = auth_scope.require_user_id()?;
 
-  // Resolve credentials using TestCreds enum
-  let result = match &payload.creds {
-    TestCreds::ApiKey(api_key) => {
-      // Use provided API key directly (or None for no authentication)
+  let api_format = payload.api_format();
+  let result = match payload {
+    TestPromptRequest::LlmLibertyOauth(d) => {
+      let LlmLibertyTestPromptRequest {
+        id,
+        envelope,
+        model,
+        prompt,
+      } = d;
+      let parts: Result<LlmLibertyRequestParts, BodhiErrorResponse> = match (id, envelope) {
+        (Some(_), Some(_)) | (None, None) => Err(BodhiErrorResponse::from(
+          services::ObjValidationError::LlmLibertyEnvelopeInvalid(
+            "exactly one of `id` or `envelope` must be provided".into(),
+          ),
+        )),
+        (Some(id), None) => {
+          let creds = crate::providers::resolve_llm_liberty_credentials(&auth_scope, &id)
+            .await
+            .map_err(BodhiErrorResponse::from)?;
+          Ok(creds.into_request_parts())
+        }
+        (None, Some(env)) => {
+          env.validate_supported().map_err(BodhiErrorResponse::from)?;
+          Ok(env.to_request_parts())
+        }
+      };
+      let LlmLibertyRequestParts {
+        access_token,
+        base_url,
+        extra_headers,
+        extra_body,
+      } = parts?;
       ai_api
         .test_prompt(
-          api_key.as_option().map(|s| s.to_string()),
-          payload.base_url.trim_end_matches('/'),
-          &payload.model,
-          &payload.prompt,
-          &payload.api_format,
-          payload.extra_headers.clone(),
-          payload.extra_body.clone(),
+          access_token,
+          base_url.trim_end_matches('/'),
+          &model,
+          &prompt,
+          &api_format,
+          extra_headers,
+          extra_body,
         )
         .await
     }
-    TestCreds::Id(id) => {
-      // Look up stored model configuration by ID
-      let api_model = db
-        .get_api_model_alias(tenant_id, user_id, id)
-        .await?
-        .ok_or_else(|| {
-          BodhiErrorResponse::from(services::EntityError::NotFound(format!(
-            "API model '{}' not found",
-            id
-          )))
-        })?;
-
-      // Get stored key (may be None if no key configured)
-      let stored_key = db.get_api_key_for_alias(tenant_id, user_id, id).await?;
-
-      ai_api
-        .test_prompt(
-          stored_key,
-          api_model.base_url.trim_end_matches('/'),
-          &payload.model,
-          &payload.prompt,
-          &api_model.api_format,
-          api_model.extra_headers.clone(),
-          api_model.extra_body.clone(),
-        )
-        .await
+    other => {
+      let d = match other {
+        TestPromptRequest::Openai(d)
+        | TestPromptRequest::OpenaiResponses(d)
+        | TestPromptRequest::Anthropic(d)
+        | TestPromptRequest::AnthropicOauth(d)
+        | TestPromptRequest::Gemini(d) => d,
+        TestPromptRequest::LlmLibertyOauth(_) => unreachable!(),
+      };
+      match d.creds {
+        TestCreds::ApiKey(api_key) => {
+          ai_api
+            .test_prompt(
+              api_key.as_option().map(|s| s.to_string()),
+              d.base_url.trim_end_matches('/'),
+              &d.model,
+              &d.prompt,
+              &api_format,
+              d.extra_headers.clone(),
+              d.extra_body.clone(),
+            )
+            .await
+        }
+        TestCreds::Id(id) => {
+          let api_model = db
+            .get_api_model_alias(tenant_id, user_id, &id)
+            .await?
+            .ok_or_else(|| {
+              BodhiErrorResponse::from(services::EntityError::NotFound(format!(
+                "API model '{}' not found",
+                id
+              )))
+            })?;
+          let stored_key = db.get_api_key_for_alias(tenant_id, user_id, &id).await?;
+          ai_api
+            .test_prompt(
+              stored_key,
+              api_model.base_url.trim_end_matches('/'),
+              &d.model,
+              &d.prompt,
+              &api_model.api_format,
+              api_model.extra_headers.clone(),
+              api_model.extra_body.clone(),
+            )
+            .await
+        }
+      }
     }
   };
 
-  // Return success/failure response based on result
   match result {
     Ok(response) => Ok(Json(TestPromptResponse::success(response))),
     Err(err) => Ok(Json(TestPromptResponse::failure(err.to_string()))),
@@ -248,44 +298,85 @@ pub async fn api_models_fetch_models(
   let tenant_id = auth_scope.require_tenant_id()?;
   let user_id = auth_scope.require_user_id()?;
 
-  // Resolve credentials using TestCreds enum
-  let models = match &payload.creds {
-    TestCreds::ApiKey(api_key) => {
-      // Use provided API key directly (or None for no authentication)
+  let api_format = payload.api_format();
+  let models = match payload {
+    FetchModelsRequest::LlmLibertyOauth(LlmLibertyFetchModelsRequest { id, envelope }) => {
+      let parts = match (id, envelope) {
+        (Some(_), Some(_)) | (None, None) => {
+          return Err(BodhiErrorResponse::from(
+            services::ObjValidationError::LlmLibertyEnvelopeInvalid(
+              "exactly one of `id` or `envelope` must be provided".into(),
+            ),
+          ));
+        }
+        (Some(id), None) => crate::providers::resolve_llm_liberty_credentials(&auth_scope, &id)
+          .await
+          .map_err(BodhiErrorResponse::from)?
+          .into_request_parts(),
+        (None, Some(env)) => {
+          env.validate_supported().map_err(BodhiErrorResponse::from)?;
+          env.to_request_parts()
+        }
+      };
+      let LlmLibertyRequestParts {
+        access_token,
+        base_url,
+        extra_headers,
+        extra_body,
+      } = parts;
       ai_api
         .fetch_models(
-          api_key.as_option().map(|s| s.to_string()),
-          payload.base_url.trim_end_matches('/'),
-          &payload.api_format,
-          payload.extra_headers.clone(),
-          payload.extra_body.clone(),
+          access_token,
+          base_url.trim_end_matches('/'),
+          &api_format,
+          extra_headers,
+          extra_body,
         )
         .await?
     }
-    TestCreds::Id(id) => {
-      // Look up stored model configuration by ID
-      let api_model = db
-        .get_api_model_alias(tenant_id, user_id, id)
-        .await?
-        .ok_or_else(|| {
-          BodhiErrorResponse::from(services::EntityError::NotFound(format!(
-            "API model '{}' not found",
-            id
-          )))
-        })?;
-
-      // Get stored key (may be None if no key configured)
-      let stored_key = db.get_api_key_for_alias(tenant_id, user_id, id).await?;
-
-      ai_api
-        .fetch_models(
-          stored_key,
-          api_model.base_url.trim_end_matches('/'),
-          &api_model.api_format,
-          api_model.extra_headers.clone(),
-          api_model.extra_body.clone(),
-        )
-        .await?
+    other => {
+      let d: DefaultFetchModelsRequest = match other {
+        FetchModelsRequest::Openai(d)
+        | FetchModelsRequest::OpenaiResponses(d)
+        | FetchModelsRequest::Anthropic(d)
+        | FetchModelsRequest::AnthropicOauth(d)
+        | FetchModelsRequest::Gemini(d) => d,
+        FetchModelsRequest::LlmLibertyOauth(_) => unreachable!(),
+      };
+      match d.creds {
+        TestCreds::ApiKey(api_key) => {
+          ai_api
+            .fetch_models(
+              api_key.as_option().map(|s| s.to_string()),
+              d.base_url.trim_end_matches('/'),
+              &api_format,
+              d.extra_headers.clone(),
+              d.extra_body.clone(),
+            )
+            .await?
+        }
+        TestCreds::Id(id) => {
+          let api_model = db
+            .get_api_model_alias(tenant_id, user_id, &id)
+            .await?
+            .ok_or_else(|| {
+              BodhiErrorResponse::from(services::EntityError::NotFound(format!(
+                "API model '{}' not found",
+                id
+              )))
+            })?;
+          let stored_key = db.get_api_key_for_alias(tenant_id, user_id, &id).await?;
+          ai_api
+            .fetch_models(
+              stored_key,
+              api_model.base_url.trim_end_matches('/'),
+              &api_model.api_format,
+              api_model.extra_headers.clone(),
+              api_model.extra_body.clone(),
+            )
+            .await?
+        }
+      }
     }
   };
 
@@ -320,6 +411,7 @@ pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, BodhiError
       ApiFormat::OpenAIResponses,
       ApiFormat::Anthropic,
       ApiFormat::AnthropicOAuth,
+      ApiFormat::LlmLibertyOauth,
       ApiFormat::Gemini,
     ],
   }))
@@ -372,6 +464,10 @@ pub async fn api_models_sync(
 #[cfg(test)]
 #[path = "test_api_models_create.rs"]
 mod test_api_models_create;
+
+#[cfg(test)]
+#[path = "test_api_models_llm_liberty.rs"]
+mod test_api_models_llm_liberty;
 
 #[cfg(test)]
 #[path = "test_api_models_read_update_delete.rs"]

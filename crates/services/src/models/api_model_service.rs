@@ -2,7 +2,11 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use crate::db::{DbError, DbService, TimeService};
-use crate::models::{ApiAlias, ApiAliasResponse, ApiKeyUpdate, ApiModel, ApiModelRequest};
+use crate::models::llm_liberty_envelope::LlmLibertyEnvelopeUpdate;
+use crate::models::{
+  ApiAlias, ApiAliasResponse, ApiFormat, ApiKeyUpdate, ApiModel, ApiModelRequest,
+  DefaultApiModelRequest, LlmLibertyApiModelRequest, LlmLibertyRequestParts,
+};
 use crate::new_ulid;
 use crate::AiApiService;
 use errmeta::{AppError, EntityError, ErrorType};
@@ -108,75 +112,31 @@ impl ApiModelService for DefaultApiModelService {
     user_id: &str,
     form: ApiModelRequest,
   ) -> Result<ApiAliasResponse, ApiModelServiceError> {
-    validate_forward_all(&form)?;
-    validate_extra_headers(&form.extra_headers)?;
-
+    validate_forward_all_enum(&form)?;
     let now = self.time_service.utc_now();
     let id = new_ulid();
+    let api_format = form.api_format();
 
-    // Extract API key from form
-    let api_key_option = match form.api_key {
-      ApiKeyUpdate::Set(key) => key.into_inner(),
-      ApiKeyUpdate::Keep => None, // For create, Keep means no key
-    };
-
-    let base_url = form.base_url.trim_end_matches('/').to_string();
-
-    // Fetch all models from provider and validate/filter based on mode
-    let provider_models = self
-      .ai_api_service
-      .fetch_models(
-        api_key_option.clone(),
-        &base_url,
-        &form.api_format,
-        form.extra_headers.clone(),
-        form.extra_body.clone(),
-      )
-      .await
-      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
-
-    let models: Vec<ApiModel> = if form.forward_all_with_prefix {
-      provider_models
-    } else {
-      let provider_ids: HashSet<&str> = provider_models.iter().map(|m| m.id()).collect();
-      for selected_id in &form.models {
-        if !provider_ids.contains(selected_id.as_str()) {
-          return Err(ApiModelServiceError::ModelNotFoundAtProvider(
-            selected_id.clone(),
-          ));
-        }
+    match form {
+      ApiModelRequest::LlmLibertyOauth(d) => {
+        self
+          .create_llm_liberty(tenant_id, user_id, id, api_format, now, d)
+          .await
       }
-      let selected_ids: HashSet<&str> = form.models.iter().map(|s| s.as_str()).collect();
-      provider_models
-        .into_iter()
-        .filter(|m| selected_ids.contains(m.id()))
-        .collect()
-    };
-
-    let api_alias = ApiAlias::new(
-      id,
-      form.api_format,
-      base_url,
-      models,
-      form.prefix,
-      form.forward_all_with_prefix,
-      now,
-      form.extra_headers,
-      form.extra_body,
-    );
-
-    self
-      .db_service
-      .create_api_model_alias(tenant_id, user_id, &api_alias, api_key_option)
-      .await?;
-
-    let has_api_key = self
-      .db_service
-      .get_api_key_for_alias(tenant_id, user_id, &api_alias.id)
-      .await?
-      .is_some();
-
-    Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
+      other => {
+        let d = match other {
+          ApiModelRequest::Openai(d)
+          | ApiModelRequest::OpenaiResponses(d)
+          | ApiModelRequest::Anthropic(d)
+          | ApiModelRequest::AnthropicOauth(d)
+          | ApiModelRequest::Gemini(d) => d,
+          ApiModelRequest::LlmLibertyOauth(_) => unreachable!(),
+        };
+        self
+          .create_default(tenant_id, user_id, id, api_format, now, d)
+          .await
+      }
+    }
   }
 
   async fn update(
@@ -186,98 +146,36 @@ impl ApiModelService for DefaultApiModelService {
     id: &str,
     form: ApiModelRequest,
   ) -> Result<ApiAliasResponse, ApiModelServiceError> {
-    validate_forward_all(&form)?;
-    validate_extra_headers(&form.extra_headers)?;
+    validate_forward_all_enum(&form)?;
 
-    // Get existing API model
-    let mut api_alias = self
+    let api_alias = self
       .db_service
       .get_api_model_alias(tenant_id, user_id, id)
       .await?
       .ok_or_else(|| EntityError::NotFound(format!("API model '{}' not found", id)))?;
 
-    // Changing api_format invalidates the stored api_key (different provider).
-    // Require callers to supply a new key — rejecting `Keep` binds frontend/backend.
-    if form.api_format != api_alias.api_format && matches!(form.api_key, ApiKeyUpdate::Keep) {
-      return Err(ApiModelServiceError::Validation(
-        crate::ObjValidationError::ApiFormatChangedRequiresNewKey,
-      ));
-    }
+    let api_format = form.api_format();
 
-    // Convert ApiKeyUpdate to the raw form for repository
-    let api_key_update = form.api_key.into_raw_update();
-
-    let base_url = form.base_url.trim_end_matches('/').to_string();
-
-    // Resolve API key for model fetching (use updated key if provided, else existing)
-    let fetch_key = match &api_key_update {
-      crate::RawApiKeyUpdate::Set(key_opt) => key_opt.clone(),
-      crate::RawApiKeyUpdate::Keep => {
+    match form {
+      ApiModelRequest::LlmLibertyOauth(d) => {
         self
-          .db_service
-          .get_api_key_for_alias(tenant_id, user_id, id)
-          .await?
+          .update_llm_liberty(tenant_id, user_id, id, api_format, api_alias, d)
+          .await
       }
-    };
-
-    // Fetch all models from provider and validate/filter based on mode
-    let provider_models = self
-      .ai_api_service
-      .fetch_models(
-        fetch_key,
-        &base_url,
-        &form.api_format,
-        form.extra_headers.clone(),
-        form.extra_body.clone(),
-      )
-      .await
-      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
-
-    let models: Vec<ApiModel> = if form.forward_all_with_prefix {
-      provider_models
-    } else {
-      let provider_ids: HashSet<&str> = provider_models.iter().map(|m| m.id()).collect();
-      for selected_id in &form.models {
-        if !provider_ids.contains(selected_id.as_str()) {
-          return Err(ApiModelServiceError::ModelNotFoundAtProvider(
-            selected_id.clone(),
-          ));
-        }
+      other => {
+        let d = match other {
+          ApiModelRequest::Openai(d)
+          | ApiModelRequest::OpenaiResponses(d)
+          | ApiModelRequest::Anthropic(d)
+          | ApiModelRequest::AnthropicOauth(d)
+          | ApiModelRequest::Gemini(d) => d,
+          ApiModelRequest::LlmLibertyOauth(_) => unreachable!(),
+        };
+        self
+          .update_default(tenant_id, user_id, id, api_format, api_alias, d)
+          .await
       }
-      let selected_ids: HashSet<&str> = form.models.iter().map(|s| s.as_str()).collect();
-      provider_models
-        .into_iter()
-        .filter(|m| selected_ids.contains(m.id()))
-        .collect()
-    };
-
-    // Update all fields
-    api_alias.api_format = form.api_format;
-    api_alias.base_url = base_url;
-    api_alias.models = models.into();
-    api_alias.prefix = if form.prefix.as_ref().is_some_and(|p| p.is_empty()) {
-      None
-    } else {
-      form.prefix
-    };
-    api_alias.forward_all_with_prefix = form.forward_all_with_prefix;
-    api_alias.extra_headers = form.extra_headers;
-    api_alias.extra_body = form.extra_body;
-    api_alias.updated_at = self.time_service.utc_now();
-
-    self
-      .db_service
-      .update_api_model_alias(tenant_id, user_id, id, &api_alias, api_key_update)
-      .await?;
-
-    // Check if API key exists after update
-    let has_api_key = self
-      .db_service
-      .get_api_key_for_alias(tenant_id, user_id, id)
-      .await?
-      .is_some();
-
-    Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
+    }
   }
 
   async fn delete(
@@ -318,6 +216,14 @@ impl ApiModelService for DefaultApiModelService {
       .await?
       .ok_or_else(|| EntityError::NotFound(format!("API model '{}' not found", id)))?;
 
+    if api_alias.api_format == ApiFormat::LlmLibertyOauth {
+      let summary = self
+        .db_service
+        .get_llm_liberty_summary(tenant_id, user_id, id)
+        .await?;
+      return Ok(ApiAliasResponse::from(api_alias).with_llm_liberty(summary));
+    }
+
     let has_api_key = self
       .db_service
       .get_api_key_for_alias(tenant_id, user_id, id)
@@ -345,23 +251,43 @@ impl ApiModelService for DefaultApiModelService {
       ));
     }
 
-    // Get API key (optional)
-    let api_key = self
-      .db_service
-      .get_api_key_for_alias(tenant_id, user_id, id)
-      .await
-      .ok()
-      .flatten();
+    let (api_key, base_url, extra_headers, extra_body) =
+      if api_alias.api_format == ApiFormat::LlmLibertyOauth {
+        let creds = self
+          .db_service
+          .get_llm_liberty_credentials(tenant_id, user_id, id)
+          .await?;
+        match creds {
+          Some(c) => {
+            let LlmLibertyRequestParts {
+              access_token,
+              base_url,
+              extra_headers,
+              extra_body,
+            } = c.into_request_parts();
+            (access_token, base_url, extra_headers, extra_body)
+          }
+          None => (None, api_alias.base_url.clone(), None, None),
+        }
+      } else {
+        let key = self
+          .db_service
+          .get_api_key_for_alias(tenant_id, user_id, id)
+          .await
+          .ok()
+          .flatten();
+        (key, api_alias.base_url.clone(), api_alias.extra_headers.clone(), api_alias.extra_body.clone())
+      };
 
     // Fetch models from remote API synchronously
     let models = self
       .ai_api_service
       .fetch_models(
         api_key.clone(),
-        &api_alias.base_url,
+        &base_url,
         &api_alias.api_format,
-        api_alias.extra_headers.clone(),
-        api_alias.extra_body.clone(),
+        extra_headers,
+        extra_body,
       )
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
@@ -379,24 +305,341 @@ impl ApiModelService for DefaultApiModelService {
       .await?
       .ok_or_else(|| EntityError::NotFound(format!("API model '{}' not found", id)))?;
 
-    let has_api_key = api_key.is_some();
+    if updated_alias.api_format == ApiFormat::LlmLibertyOauth {
+      let summary = self
+        .db_service
+        .get_llm_liberty_summary(tenant_id, user_id, id)
+        .await?;
+      return Ok(ApiAliasResponse::from(updated_alias).with_llm_liberty(summary));
+    }
 
-    Ok(ApiAliasResponse::from(updated_alias).with_has_api_key(has_api_key))
+    Ok(ApiAliasResponse::from(updated_alias).with_has_api_key(api_key.is_some()))
   }
 }
 
 // =============================================================================
-// Shared validation helper
+// Per-variant helpers (default / llm_liberty)
 // =============================================================================
 
-fn validate_forward_all(form: &ApiModelRequest) -> Result<(), ApiModelServiceError> {
-  if form.forward_all_with_prefix {
-    if form.prefix.is_none() || form.prefix.as_ref().is_none_or(|p| p.trim().is_empty()) {
+impl DefaultApiModelService {
+  async fn create_default(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: String,
+    api_format: ApiFormat,
+    now: chrono::DateTime<chrono::Utc>,
+    form: DefaultApiModelRequest,
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
+    validate_extra_headers(&form.extra_headers)?;
+
+    let api_key_option = match form.api_key {
+      ApiKeyUpdate::Set(key) => key.into_inner(),
+      ApiKeyUpdate::Keep => None,
+    };
+
+    let base_url = form.base_url.trim_end_matches('/').to_string();
+
+    let provider_models = self
+      .ai_api_service
+      .fetch_models(
+        api_key_option.clone(),
+        &base_url,
+        &api_format,
+        form.extra_headers.clone(),
+        form.extra_body.clone(),
+      )
+      .await
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+
+    let models = filter_models(provider_models, form.forward_all_with_prefix, &form.models)?;
+
+    let api_alias = ApiAlias::new(
+      id,
+      api_format,
+      base_url,
+      models,
+      form.prefix,
+      form.forward_all_with_prefix,
+      now,
+      form.extra_headers,
+      form.extra_body,
+    );
+
+    self
+      .db_service
+      .create_api_model_alias(tenant_id, user_id, &api_alias, api_key_option)
+      .await?;
+
+    let has_api_key = self
+      .db_service
+      .get_api_key_for_alias(tenant_id, user_id, &api_alias.id)
+      .await?
+      .is_some();
+
+    Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
+  }
+
+  async fn create_llm_liberty(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: String,
+    api_format: ApiFormat,
+    now: chrono::DateTime<chrono::Utc>,
+    form: LlmLibertyApiModelRequest,
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
+    let envelope = match form.envelope {
+      LlmLibertyEnvelopeUpdate::Set(env) => env,
+      LlmLibertyEnvelopeUpdate::Keep => {
+        return Err(ApiModelServiceError::Validation(
+          crate::ObjValidationError::LlmLibertyEnvelopeRequired,
+        ));
+      }
+    };
+    envelope.validate_supported()?;
+
+    let LlmLibertyRequestParts {
+      access_token,
+      base_url,
+      extra_headers,
+      extra_body,
+    } = envelope.to_request_parts();
+
+    let provider_models = self
+      .ai_api_service
+      .fetch_models(access_token, &base_url, &api_format, extra_headers, extra_body)
+      .await
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+
+    let models = filter_models(provider_models, form.forward_all_with_prefix, &form.models)?;
+
+    let api_alias = ApiAlias::new(
+      id,
+      api_format,
+      base_url,
+      models,
+      form.prefix,
+      form.forward_all_with_prefix,
+      now,
+      None,
+      None,
+    );
+
+    self
+      .db_service
+      .create_api_model_alias(tenant_id, user_id, &api_alias, None)
+      .await?;
+
+    self
+      .db_service
+      .create_llm_liberty_credentials(tenant_id, user_id, &api_alias.id, &envelope)
+      .await?;
+
+    let summary = self
+      .db_service
+      .get_llm_liberty_summary(tenant_id, user_id, &api_alias.id)
+      .await?;
+
+    Ok(ApiAliasResponse::from(api_alias).with_llm_liberty(summary))
+  }
+
+  async fn update_default(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+    api_format: ApiFormat,
+    mut api_alias: ApiAlias,
+    form: DefaultApiModelRequest,
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
+    validate_extra_headers(&form.extra_headers)?;
+
+    if api_format != api_alias.api_format && matches!(form.api_key, ApiKeyUpdate::Keep) {
+      return Err(ApiModelServiceError::Validation(
+        crate::ObjValidationError::ApiFormatChangedRequiresNewKey,
+      ));
+    }
+
+    let api_key_update = form.api_key.into_raw_update();
+    let base_url = form.base_url.trim_end_matches('/').to_string();
+
+    let fetch_key = match &api_key_update {
+      crate::RawApiKeyUpdate::Set(key_opt) => key_opt.clone(),
+      crate::RawApiKeyUpdate::Keep => {
+        self
+          .db_service
+          .get_api_key_for_alias(tenant_id, user_id, id)
+          .await?
+      }
+    };
+
+    let provider_models = self
+      .ai_api_service
+      .fetch_models(
+        fetch_key,
+        &base_url,
+        &api_format,
+        form.extra_headers.clone(),
+        form.extra_body.clone(),
+      )
+      .await
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+
+    let models = filter_models(provider_models, form.forward_all_with_prefix, &form.models)?;
+
+    api_alias.api_format = api_format;
+    api_alias.base_url = base_url;
+    api_alias.models = models.into();
+    api_alias.prefix = if form.prefix.as_ref().is_some_and(|p| p.is_empty()) {
+      None
+    } else {
+      form.prefix
+    };
+    api_alias.forward_all_with_prefix = form.forward_all_with_prefix;
+    api_alias.extra_headers = form.extra_headers;
+    api_alias.extra_body = form.extra_body;
+    api_alias.updated_at = self.time_service.utc_now();
+
+    self
+      .db_service
+      .update_api_model_alias(tenant_id, user_id, id, &api_alias, api_key_update)
+      .await?;
+
+    let has_api_key = self
+      .db_service
+      .get_api_key_for_alias(tenant_id, user_id, id)
+      .await?
+      .is_some();
+
+    Ok(ApiAliasResponse::from(api_alias).with_has_api_key(has_api_key))
+  }
+
+  async fn update_llm_liberty(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+    api_format: ApiFormat,
+    mut api_alias: ApiAlias,
+    form: LlmLibertyApiModelRequest,
+  ) -> Result<ApiAliasResponse, ApiModelServiceError> {
+    let (parts, new_envelope) = match form.envelope {
+      LlmLibertyEnvelopeUpdate::Set(env) => {
+        env.validate_supported()?;
+        let parts = env.to_request_parts();
+        (parts, Some(env))
+      }
+      LlmLibertyEnvelopeUpdate::Keep => {
+        let creds = self
+          .db_service
+          .get_llm_liberty_credentials(tenant_id, user_id, id)
+          .await?;
+        let parts = match creds {
+          Some(c) => c.into_request_parts(),
+          None => LlmLibertyRequestParts {
+            access_token: None,
+            base_url: api_alias.base_url.clone(),
+            extra_headers: None,
+            extra_body: None,
+          },
+        };
+        (parts, None)
+      }
+    };
+    let LlmLibertyRequestParts {
+      access_token: fetch_key,
+      base_url,
+      extra_headers,
+      extra_body,
+    } = parts;
+
+    let provider_models = self
+      .ai_api_service
+      .fetch_models(fetch_key, &base_url, &api_format, extra_headers, extra_body)
+      .await
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+
+    let models = filter_models(provider_models, form.forward_all_with_prefix, &form.models)?;
+
+    api_alias.api_format = api_format;
+    api_alias.base_url = base_url;
+    api_alias.models = models.into();
+    api_alias.prefix = if form.prefix.as_ref().is_some_and(|p| p.is_empty()) {
+      None
+    } else {
+      form.prefix
+    };
+    api_alias.forward_all_with_prefix = form.forward_all_with_prefix;
+    api_alias.extra_headers = None;
+    api_alias.extra_body = None;
+    api_alias.updated_at = self.time_service.utc_now();
+
+    self
+      .db_service
+      .update_api_model_alias(
+        tenant_id,
+        user_id,
+        id,
+        &api_alias,
+        crate::RawApiKeyUpdate::Keep,
+      )
+      .await?;
+
+    if let Some(envelope) = new_envelope {
+      self
+        .db_service
+        .update_llm_liberty_credentials(tenant_id, user_id, id, &envelope)
+        .await?;
+    }
+
+    let summary = self
+      .db_service
+      .get_llm_liberty_summary(tenant_id, user_id, id)
+      .await?;
+
+    Ok(ApiAliasResponse::from(api_alias).with_llm_liberty(summary))
+  }
+}
+
+// =============================================================================
+// Shared helpers
+// =============================================================================
+
+fn filter_models(
+  provider_models: Vec<ApiModel>,
+  forward_all: bool,
+  selected: &[String],
+) -> Result<Vec<ApiModel>, ApiModelServiceError> {
+  if forward_all {
+    return Ok(provider_models);
+  }
+  let provider_ids: HashSet<&str> = provider_models.iter().map(|m| m.id()).collect();
+  for s in selected {
+    if !provider_ids.contains(s.as_str()) {
+      return Err(ApiModelServiceError::ModelNotFoundAtProvider(s.clone()));
+    }
+  }
+  let selected_ids: HashSet<&str> = selected.iter().map(|s| s.as_str()).collect();
+  Ok(
+    provider_models
+      .into_iter()
+      .filter(|m| selected_ids.contains(m.id()))
+      .collect(),
+  )
+}
+
+fn validate_forward_all_enum(form: &ApiModelRequest) -> Result<(), ApiModelServiceError> {
+  let forward_all = form.forward_all_with_prefix();
+  let prefix = form.prefix();
+  let models = form.models();
+  if forward_all {
+    if prefix.is_none() || prefix.is_some_and(|p| p.trim().is_empty()) {
       return Err(ApiModelServiceError::Validation(
         crate::ObjValidationError::ForwardAllRequiresPrefix,
       ));
     }
-  } else if form.models.is_empty() {
+  } else if models.is_empty() {
     let mut errors = validator::ValidationErrors::new();
     let mut err = validator::ValidationError::new("models_required");
     err.message =

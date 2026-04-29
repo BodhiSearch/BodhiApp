@@ -1,5 +1,17 @@
-import type { ApiFormat, ApiKey, ApiKeyUpdate, ApiModel, ApiModelRequest, ApiAliasResponse } from '@bodhiapp/ts-client';
+import type {
+  ApiFormat,
+  ApiKey,
+  ApiKeyUpdate,
+  ApiModel,
+  ApiModelRequest,
+  ApiAliasResponse,
+  LlmLibertyEnvelope,
+} from '@bodhiapp/ts-client';
 import * as z from 'zod';
+
+import { validateLlmLibertyEnvelope } from './llmLibertyEnvelope';
+
+const LLM_LIBERTY_OAUTH_FORMAT = 'llm_liberty_oauth';
 
 // API format presets for AI APIs
 export const API_FORMAT_PRESETS = {
@@ -19,7 +31,7 @@ export const API_FORMAT_PRESETS = {
     models: [] as string[],
   },
   anthropic_oauth: {
-    name: 'Anthropic (Claude Code OAuth)',
+    name: 'Anthropic Setup Token',
     baseUrl: 'https://api.anthropic.com/v1',
     models: [] as string[],
     defaultHeaders: {
@@ -31,6 +43,12 @@ export const API_FORMAT_PRESETS = {
       max_tokens: 4096,
       system: [{ type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." }],
     },
+  },
+  llm_liberty_oauth: {
+    name: 'LLM Liberty OAuth',
+    // No baseUrl — the envelope provides it; the form hides the BaseUrlInput for this format.
+    baseUrl: '',
+    models: [] as string[],
   },
   gemini: {
     name: 'Google Gemini',
@@ -77,98 +95,88 @@ const validateJsonObjectField = (value: string | undefined, fieldName: string, c
   }
 };
 
-// Zod schema for creating API models
-export const createApiModelSchema = z
-  .object({
-    api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
-    base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
-    api_key: z.string().optional(),
-    models: z.array(z.string().min(1, 'Model name cannot be empty')).max(1000, 'Maximum 1000 models allowed'),
-    prefix: z.string().optional(),
-    usePrefix: z.boolean().default(false),
-    useApiKey: z.boolean().default(false),
-    forward_all_with_prefix: z.boolean().default(false),
-    extra_headers: z.string().optional(),
-    extra_body: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    // Only validate API key when useApiKey checkbox is checked
-    if (data.useApiKey && data.api_key !== undefined) {
-      if (data.api_key.length < 1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.too_small,
-          minimum: 1,
-          type: 'string',
-          inclusive: true,
-          path: ['api_key'],
-          message: 'API key must not be empty',
-        });
-      }
-      if (data.api_key.length > 4096) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.too_big,
-          maximum: 4096,
-          type: 'string',
-          inclusive: true,
-          path: ['api_key'],
-          message: 'API key is too long (max 4096 characters)',
-        });
-      }
-    }
-    // Validate that prefix is required when forward_all_with_prefix is true
-    if (data.forward_all_with_prefix && (!data.prefix || data.prefix.trim() === '')) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['prefix'],
-        message: 'Prefix is required when forwarding all requests with prefix',
-      });
-    }
-    // When NOT using forward_all_with_prefix, require at least one model
-    if (!data.forward_all_with_prefix && data.models.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.too_small,
-        minimum: 1,
-        type: 'array',
-        inclusive: true,
-        path: ['models'],
-        message: 'At least one model must be selected',
-      });
-    }
-    // Validate extra_headers and extra_body as valid JSON objects when non-empty
-    validateJsonObjectField(data.extra_headers, 'extra_headers', ctx);
-    validateJsonObjectField(data.extra_body, 'extra_body', ctx);
-  });
+interface SchemaFlags {
+  /** Envelope JSON must be present for llm_liberty_oauth (true on create, false on update). */
+  envelopeRequired: boolean;
+  /** API key must be non-empty when useApiKey is on (true on create, false on update where empty == keep). */
+  apiKeyMinLengthRequired: boolean;
+}
 
-// Zod schema for updating API models
-export const updateApiModelSchema = z
-  .object({
-    api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
-    base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
-    api_key: z.string().optional(),
-    models: z.array(z.string().min(1, 'Model name cannot be empty')).max(1000, 'Maximum 1000 models allowed'),
-    prefix: z.string().optional(),
-    usePrefix: z.boolean().default(false),
-    useApiKey: z.boolean().default(false),
-    forward_all_with_prefix: z.boolean().default(false),
-    extra_headers: z.string().optional(),
-    extra_body: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    // Only validate API key when useApiKey checkbox is checked AND user provided a value
-    // Empty api_key in update mode means "keep existing key"
-    if (data.useApiKey && data.api_key !== undefined && data.api_key.trim().length > 0) {
-      if (data.api_key.length > 4096) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.too_big,
-          maximum: 4096,
-          type: 'string',
-          inclusive: true,
-          path: ['api_key'],
-          message: 'API key is too long (max 4096 characters)',
-        });
+const baseShape = {
+  api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
+  base_url: z.string().optional(),
+  api_key: z.string().optional(),
+  models: z.array(z.string().min(1, 'Model name cannot be empty')).max(1000, 'Maximum 1000 models allowed'),
+  prefix: z.string().optional(),
+  usePrefix: z.boolean().default(false),
+  useApiKey: z.boolean().default(false),
+  forward_all_with_prefix: z.boolean().default(false),
+  extra_headers: z.string().optional(),
+  extra_body: z.string().optional(),
+  llm_liberty_envelope: z.string().optional(),
+};
+
+function buildApiModelSchema({ envelopeRequired, apiKeyMinLengthRequired }: SchemaFlags) {
+  return z.object(baseShape).superRefine((data, ctx) => {
+    const isLlmLiberty = data.api_format === LLM_LIBERTY_OAUTH_FORMAT;
+
+    if (isLlmLiberty) {
+      const text = data.llm_liberty_envelope?.trim() ?? '';
+      if (!text) {
+        if (envelopeRequired) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['llm_liberty_envelope'],
+            message: 'LLM Liberty OAuth credentials are required',
+          });
+        }
+        // empty + !envelopeRequired = "keep existing", no further validation
+      } else {
+        const result = validateLlmLibertyEnvelope(text);
+        if (!result.ok) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['llm_liberty_envelope'],
+            message: result.error,
+          });
+        }
       }
+    } else {
+      if (!data.base_url || !data.base_url.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['base_url'], message: 'Base URL is required' });
+      } else {
+        try {
+          new URL(data.base_url);
+        } catch {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['base_url'], message: 'Base URL must be a valid URL' });
+        }
+      }
+      if (data.useApiKey && data.api_key !== undefined) {
+        if (apiKeyMinLengthRequired && data.api_key.length < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.too_small,
+            minimum: 1,
+            type: 'string',
+            inclusive: true,
+            path: ['api_key'],
+            message: 'API key must not be empty',
+          });
+        }
+        if (data.api_key.length > 4096) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.too_big,
+            maximum: 4096,
+            type: 'string',
+            inclusive: true,
+            path: ['api_key'],
+            message: 'API key is too long (max 4096 characters)',
+          });
+        }
+      }
+      validateJsonObjectField(data.extra_headers, 'extra_headers', ctx);
+      validateJsonObjectField(data.extra_body, 'extra_body', ctx);
     }
-    // Validate that prefix is required when forward_all_with_prefix is true
+
     if (data.forward_all_with_prefix && (!data.prefix || data.prefix.trim() === '')) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -176,7 +184,6 @@ export const updateApiModelSchema = z
         message: 'Prefix is required when forwarding all requests with prefix',
       });
     }
-    // When NOT using forward_all_with_prefix, require at least one model
     if (!data.forward_all_with_prefix && data.models.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.too_small,
@@ -187,10 +194,18 @@ export const updateApiModelSchema = z
         message: 'At least one model must be selected',
       });
     }
-    // Validate extra_headers and extra_body as valid JSON objects when non-empty
-    validateJsonObjectField(data.extra_headers, 'extra_headers', ctx);
-    validateJsonObjectField(data.extra_body, 'extra_body', ctx);
   });
+}
+
+export const createApiModelSchema = buildApiModelSchema({
+  envelopeRequired: true,
+  apiKeyMinLengthRequired: true,
+});
+
+export const updateApiModelSchema = buildApiModelSchema({
+  envelopeRequired: false,
+  apiKeyMinLengthRequired: false,
+});
 
 // Form data types
 export type ApiModelFormData = z.infer<typeof createApiModelSchema>;
@@ -205,53 +220,82 @@ export const parseJsonField = (value: string | undefined): unknown | null => {
   }
 };
 
-export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModelRequest => ({
-  api_format: formData.api_format as ApiFormat,
-  base_url: formData.base_url,
-  api_key:
+export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModelRequest => {
+  if (formData.api_format === LLM_LIBERTY_OAUTH_FORMAT) {
+    if (!formData.llm_liberty_envelope) {
+      throw new Error('LLM Liberty OAuth credentials are required');
+    }
+    const envelope = JSON.parse(formData.llm_liberty_envelope) as LlmLibertyEnvelope;
+    return {
+      api_format: 'llm_liberty_oauth',
+      envelope: { action: 'set', value: envelope },
+      models: formData.models,
+      prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
+      forward_all_with_prefix: formData.forward_all_with_prefix,
+    };
+  }
+
+  const apiKey: ApiKeyUpdate =
     formData.useApiKey && formData.api_key
-      ? { action: 'set' as const, value: formData.api_key as ApiKey }
-      : { action: 'set' as const, value: null },
-  models: formData.models,
-  prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
-  forward_all_with_prefix: formData.forward_all_with_prefix,
-  extra_headers: parseJsonField(formData.extra_headers),
-  extra_body: parseJsonField(formData.extra_body),
-});
+      ? { action: 'set', value: formData.api_key as ApiKey }
+      : { action: 'set', value: null };
+
+  return {
+    api_format: formData.api_format as ApiFormat,
+    base_url: formData.base_url || '',
+    api_key: apiKey,
+    models: formData.models,
+    prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
+    forward_all_with_prefix: formData.forward_all_with_prefix,
+    extra_headers: parseJsonField(formData.extra_headers),
+    extra_body: parseJsonField(formData.extra_body),
+  } as ApiModelRequest;
+};
 
 export const convertFormToUpdateRequest = (
   formData: UpdateApiModelFormData,
   initialData?: ApiAliasResponse
-): ApiModelRequest => ({
-  api_format: formData.api_format as ApiFormat,
-  base_url: formData.base_url,
-  api_key: (() => {
-    // Checkbox is checked - user wants to have an API key
+): ApiModelRequest => {
+  if (formData.api_format === LLM_LIBERTY_OAUTH_FORMAT) {
+    const envelope: import('@bodhiapp/ts-client').LlmLibertyEnvelopeUpdate =
+      formData.llm_liberty_envelope && formData.llm_liberty_envelope.trim()
+        ? { action: 'set', value: JSON.parse(formData.llm_liberty_envelope) as LlmLibertyEnvelope }
+        : { action: 'keep' };
+
+    return {
+      api_format: 'llm_liberty_oauth',
+      envelope,
+      models: formData.models,
+      prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
+      forward_all_with_prefix: formData.forward_all_with_prefix,
+    };
+  }
+
+  const apiKey: ApiKeyUpdate = (() => {
     if (formData.useApiKey) {
-      // User typed a new key value
       if (formData.api_key && formData.api_key.trim().length > 0) {
-        return { action: 'set' as const, value: formData.api_key as ApiKey };
+        return { action: 'set', value: formData.api_key as ApiKey };
+      } else if (initialData?.has_api_key) {
+        return { action: 'keep' };
+      } else {
+        return { action: 'set', value: null };
       }
-      // User didn't type anything - keep existing key if we have one
-      else if (initialData?.has_api_key) {
-        return { action: 'keep' as const };
-      }
-      // User didn't type anything and no existing key
-      else {
-        return { action: 'set' as const, value: null };
-      }
+    } else {
+      return { action: 'set', value: null };
     }
-    // Checkbox is unchecked - remove API key
-    else {
-      return { action: 'set' as const, value: null };
-    }
-  })() as ApiKeyUpdate,
-  models: formData.models,
-  prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
-  forward_all_with_prefix: formData.forward_all_with_prefix,
-  extra_headers: parseJsonField(formData.extra_headers),
-  extra_body: parseJsonField(formData.extra_body),
-});
+  })();
+
+  return {
+    api_format: formData.api_format as ApiFormat,
+    base_url: formData.base_url || '',
+    api_key: apiKey,
+    models: formData.models,
+    prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
+    forward_all_with_prefix: formData.forward_all_with_prefix,
+    extra_headers: parseJsonField(formData.extra_headers),
+    extra_body: parseJsonField(formData.extra_body),
+  } as ApiModelRequest;
+};
 
 export const serializeJsonField = (value: unknown | null | undefined): string => {
   if (value === null || value === undefined) return '';
@@ -265,24 +309,16 @@ export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData =>
   models: apiData.models.map((m) => getApiModelId(m, apiData.prefix)),
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
-  useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
+  useApiKey: apiData.has_api_key,
   forward_all_with_prefix: apiData.forward_all_with_prefix || false,
   extra_headers: serializeJsonField(apiData.extra_headers),
   extra_body: serializeJsonField(apiData.extra_body),
+  llm_liberty_envelope: '',
 });
 
-export const convertApiToUpdateForm = (apiData: ApiAliasResponse): UpdateApiModelFormData => ({
-  api_format: apiData.api_format,
-  base_url: apiData.base_url,
-  api_key: '',
-  models: apiData.models.map((m) => getApiModelId(m, apiData.prefix)),
-  prefix: apiData.prefix || '',
-  usePrefix: Boolean(apiData.prefix),
-  useApiKey: apiData.has_api_key, // true = has key stored, checkbox checked
-  forward_all_with_prefix: apiData.forward_all_with_prefix || false,
-  extra_headers: serializeJsonField(apiData.extra_headers),
-  extra_body: serializeJsonField(apiData.extra_body),
-});
+// Schemas share the same shape; the update form differs only in the inferred type.
+export const convertApiToUpdateForm = (apiData: ApiAliasResponse): UpdateApiModelFormData =>
+  convertApiToForm(apiData) as UpdateApiModelFormData;
 
 // Helper function to mask API key for display
 export const maskApiKey = (apiKey: string): string => {

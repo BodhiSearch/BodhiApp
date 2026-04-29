@@ -108,11 +108,11 @@ export class SetupApiModelsPage extends SetupBasePage {
   }
 
   async expectSuccessToast(message = 'API Model Created') {
-    await this.page.waitForSelector(`text=${message}`, { timeout: 5000 });
+    await this.page.waitForSelector(`text=${message}`);
   }
 
   async expectErrorToast(message = 'Failed to Create API Model') {
-    await this.page.waitForSelector(`text=${message}`, { timeout: 5000 });
+    await this.page.waitForSelector(`text=${message}`);
   }
 
   async expectNavigationToBrowserExtension() {

@@ -20,11 +20,11 @@ mod tenants;
 mod tokens;
 
 // -- AI & external API services
-mod ai_apis;
+pub mod ai_apis;
 pub mod inference;
 mod mcps;
 // -- Model & data management
-mod models;
+pub mod models;
 
 // -- Persistence
 pub mod db;

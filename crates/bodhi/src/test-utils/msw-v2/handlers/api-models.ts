@@ -565,7 +565,7 @@ export function mockApiModelsEmpty() {
  */
 export function mockApiFormatsDefault() {
   return mockApiFormats({
-    data: ['openai', 'openai_responses', 'anthropic', 'anthropic_oauth'],
+    data: ['openai', 'openai_responses', 'anthropic', 'anthropic_oauth', 'gemini', 'llm_liberty_oauth'],
   });
 }
 

@@ -16,7 +16,8 @@ use services::test_utils::{test_db_service, AppServiceStubBuilder, TestDbService
 use services::AuthContext;
 use services::{ApiAliasResponse, ApiFormat, ResourceRole};
 use services::{
-  ApiKey, ApiKeyUpdate, ApiModelRequest, FetchModelsRequest, TestCreds, TestPromptRequest,
+  ApiKey, ApiKeyUpdate, ApiModelRequest, DefaultApiModelRequest, DefaultFetchModelsRequest,
+  DefaultTestPromptRequest, FetchModelsRequest, TestCreds, TestPromptRequest,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -110,8 +111,7 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
     .build()
     .await?;
 
-  let create_form = ApiModelRequest {
-    api_format: ApiFormat::OpenAI,
+  let create_form = ApiModelRequest::default_for(ApiFormat::OpenAI, DefaultApiModelRequest {
     base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec!["gpt-4".to_string()],
@@ -119,7 +119,7 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
     forward_all_with_prefix: false,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
@@ -152,8 +152,7 @@ async fn test_create_api_model_handler_validation_error_empty_models(
     .build()
     .await?;
 
-  let create_form = ApiModelRequest {
-    api_format: ApiFormat::OpenAI,
+  let create_form = ApiModelRequest::default_for(ApiFormat::OpenAI, DefaultApiModelRequest {
     base_url: "https://api.openai.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![], // Invalid: empty models array
@@ -161,7 +160,7 @@ async fn test_create_api_model_handler_validation_error_empty_models(
     forward_all_with_prefix: false,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
@@ -197,8 +196,7 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
     .build()
     .await?;
 
-  let create_form = ApiModelRequest {
-    api_format: ApiFormat::OpenAI,
+  let create_form = ApiModelRequest::default_for(ApiFormat::OpenAI, DefaultApiModelRequest {
     base_url: "https://api.openai.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![], // Empty models is valid for forward_all mode
@@ -206,7 +204,7 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
     forward_all_with_prefix: true,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
@@ -239,8 +237,7 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
     .build()
     .await?;
 
-  let create_form = ApiModelRequest {
-    api_format: ApiFormat::OpenAI,
+  let create_form = ApiModelRequest::default_for(ApiFormat::OpenAI, DefaultApiModelRequest {
     base_url: "https://api.openai.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
     models: vec![],
@@ -248,7 +245,7 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
     forward_all_with_prefix: true,
     extra_headers: None,
     extra_body: None,
-  };
+  });
 
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
@@ -268,58 +265,53 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
 #[rstest]
 fn test_creds_enum_validation() {
   // Test with ApiKey credentials
-  let test_request_with_key = TestPromptRequest {
+  let test_request_with_key = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
     creds: TestCreds::ApiKey(ApiKey::some("sk-direct-key".to_string()).unwrap()),
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
-    api_format: ApiFormat::OpenAI,
     extra_headers: None,
     extra_body: None,
-  };
+  });
   assert!(test_request_with_key.validate().is_ok());
 
   // Test with Id credentials
-  let test_request_with_id = TestPromptRequest {
+  let test_request_with_id = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
     creds: TestCreds::Id("stored-model-id".to_string()),
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
-    api_format: ApiFormat::OpenAI,
     extra_headers: None,
     extra_body: None,
-  };
+  });
   assert!(test_request_with_id.validate().is_ok());
 
   // Test with no authentication (ApiKey(None))
-  let test_request_no_auth = TestPromptRequest {
+  let test_request_no_auth = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
     creds: TestCreds::ApiKey(ApiKey::none()),
     base_url: "https://api.openai.com/v1".to_string(),
     model: "gpt-4".to_string(),
     prompt: "Hello".to_string(),
-    api_format: ApiFormat::OpenAI,
     extra_headers: None,
     extra_body: None,
-  };
+  });
   assert!(test_request_no_auth.validate().is_ok());
 
   // Test FetchModelsRequest variants
-  let fetch_request_with_key = FetchModelsRequest {
+  let fetch_request_with_key = FetchModelsRequest::default_for(ApiFormat::OpenAI, DefaultFetchModelsRequest {
     creds: TestCreds::ApiKey(ApiKey::some("sk-direct-key".to_string()).unwrap()),
     base_url: "https://api.openai.com/v1".to_string(),
-    api_format: ApiFormat::OpenAI,
     extra_headers: None,
     extra_body: None,
-  };
+  });
   assert!(fetch_request_with_key.validate().is_ok());
 
-  let fetch_request_with_id = FetchModelsRequest {
+  let fetch_request_with_id = FetchModelsRequest::default_for(ApiFormat::OpenAI, DefaultFetchModelsRequest {
     creds: TestCreds::Id("stored-model-id".to_string()),
     base_url: "https://api.openai.com/v1".to_string(),
-    api_format: ApiFormat::OpenAI,
     extra_headers: None,
     extra_body: None,
-  };
+  });
   assert!(fetch_request_with_id.validate().is_ok());
 }
 
@@ -330,8 +322,7 @@ fn test_anthropic_oauth_format_accepted_by_api_model_request() {
   let extra_body =
     serde_json::json!({"system": [{"type": "text", "text": "You are Claude Code."}]});
 
-  let request = ApiModelRequest {
-    api_format: ApiFormat::AnthropicOAuth,
+  let request = ApiModelRequest::default_for(ApiFormat::AnthropicOAuth, DefaultApiModelRequest {
     base_url: "https://api.anthropic.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string()).unwrap()),
     models: vec!["claude-3-5-sonnet".to_string()],
@@ -339,12 +330,12 @@ fn test_anthropic_oauth_format_accepted_by_api_model_request() {
     forward_all_with_prefix: false,
     extra_headers: Some(extra_headers),
     extra_body: Some(extra_body),
-  };
+  });
 
   assert!(request.validate().is_ok());
 
   // Verify serde roundtrip preserves anthropic_oauth format name
-  let serialized = serde_json::to_value(&request.api_format).unwrap();
+  let serialized = serde_json::to_value(request.api_format()).unwrap();
   assert_eq!("anthropic_oauth", serialized.as_str().unwrap());
 }
 
@@ -357,8 +348,7 @@ fn test_api_model_request_rejects_pass_through_auth_in_extra_headers(
   #[case] extra_headers: serde_json::Value,
   #[case] forbidden_key: &str,
 ) {
-  let request = ApiModelRequest {
-    api_format: ApiFormat::AnthropicOAuth,
+  let request = ApiModelRequest::default_for(ApiFormat::AnthropicOAuth, DefaultApiModelRequest {
     base_url: "https://api.anthropic.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-token".to_string()).unwrap()),
     models: vec!["claude-3".to_string()],
@@ -366,7 +356,7 @@ fn test_api_model_request_rejects_pass_through_auth_in_extra_headers(
     forward_all_with_prefix: false,
     extra_headers: Some(extra_headers),
     extra_body: None,
-  };
+  });
   let errs = request.validate().unwrap_err();
   let msg = format!("{}", errs);
   assert!(
@@ -379,27 +369,25 @@ fn test_api_model_request_rejects_pass_through_auth_in_extra_headers(
 
 #[rstest]
 fn test_test_prompt_request_rejects_pass_through_auth() {
-  let request = TestPromptRequest {
+  let request = TestPromptRequest::default_for(ApiFormat::AnthropicOAuth, DefaultTestPromptRequest {
     creds: TestCreds::ApiKey(ApiKey::some("sk-ant-token".to_string()).unwrap()),
     base_url: "https://api.anthropic.com/v1".to_string(),
     model: "claude-3".to_string(),
     prompt: "hi".to_string(),
-    api_format: ApiFormat::AnthropicOAuth,
     extra_headers: Some(serde_json::json!({"authorization": "Bearer x"})),
     extra_body: None,
-  };
+  });
   assert!(request.validate().is_err());
 }
 
 #[rstest]
 fn test_fetch_models_request_rejects_pass_through_auth() {
-  let request = FetchModelsRequest {
+  let request = FetchModelsRequest::default_for(ApiFormat::AnthropicOAuth, DefaultFetchModelsRequest {
     creds: TestCreds::ApiKey(ApiKey::some("sk-ant-token".to_string()).unwrap()),
     base_url: "https://api.anthropic.com/v1".to_string(),
-    api_format: ApiFormat::AnthropicOAuth,
     extra_headers: Some(serde_json::json!({"x-api-key": "sk-x"})),
     extra_body: None,
-  };
+  });
   assert!(request.validate().is_err());
 }
 
@@ -421,8 +409,7 @@ async fn test_create_api_model_http_error_code_for_pass_through_auth(
     .db_service(Arc::new(db_service))
     .build()
     .await?;
-  let create_form = ApiModelRequest {
-    api_format: ApiFormat::AnthropicOAuth,
+  let create_form = ApiModelRequest::default_for(ApiFormat::AnthropicOAuth, DefaultApiModelRequest {
     base_url: "https://api.anthropic.com/v1".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-token".to_string())?),
     models: vec!["claude-3".to_string()],
@@ -430,7 +417,7 @@ async fn test_create_api_model_http_error_code_for_pass_through_auth(
     forward_all_with_prefix: false,
     extra_headers: Some(extra_headers),
     extra_body: None,
-  };
+  });
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
@@ -460,8 +447,7 @@ async fn test_create_api_model_http_error_code_for_x_goog_api_key(
     .ai_api_service(Arc::new(mock_ai))
     .build()
     .await?;
-  let create_form = ApiModelRequest {
-    api_format: ApiFormat::Gemini,
+  let create_form = ApiModelRequest::default_for(ApiFormat::Gemini, DefaultApiModelRequest {
     base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
     api_key: ApiKeyUpdate::Set(ApiKey::some("AIza-token".to_string())?),
     models: vec!["gemini-2.5-flash".to_string()],
@@ -469,7 +455,7 @@ async fn test_create_api_model_http_error_code_for_x_goog_api_key(
     forward_all_with_prefix: false,
     extra_headers: Some(json!({"X-Goog-Api-Key": "AIza-xxx"})),
     extra_body: None,
-  };
+  });
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;

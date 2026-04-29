@@ -37,13 +37,26 @@ export const API_PROVIDERS: ApiProvider[] = [
   },
   {
     id: 'anthropic-oauth',
-    name: 'Anthropic (Claude Code OAuth)',
+    name: 'Anthropic Setup Token',
     format: 'anthropic_oauth' as ApiFormat,
     baseUrl: 'https://api.anthropic.com/v1',
-    description: 'Access Claude models using Claude Code OAuth Bearer token (sk-ant-oat01-*)',
+    description:
+      'Access Claude models using the long-lived setup token from the `claude setup-token` CLI command (sk-ant-oat01-*)',
     docUrl: 'https://console.anthropic.com/settings/keys',
     commonModels: ['claude-sonnet-4-5-20250929', 'claude-opus-4-5-20251101', 'claude-haiku-4-5-20251001'],
     icon: '🔐',
+    category: 'popular',
+  },
+  {
+    id: 'llm-liberty-oauth',
+    name: 'LLM Liberty OAuth',
+    format: 'llm_liberty_oauth' as ApiFormat,
+    baseUrl: 'https://api.anthropic.com/v1',
+    description:
+      'Access Anthropic Claude models via full OAuth flow. Run `npx @bodhiapp/llm-liberty@latest login anthropic` to get credentials, then paste the JSON envelope here.',
+    docUrl: 'https://github.com/BodhiSearch/llm-liberty',
+    commonModels: ['claude-sonnet-4-5-20250929', 'claude-opus-4-5-20251101', 'claude-haiku-4-5-20251001'],
+    icon: '🔑',
     category: 'popular',
   },
   {

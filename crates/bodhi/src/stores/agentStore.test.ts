@@ -101,6 +101,7 @@ vi.mock('@/stores/chatSettingsStore', () => {
     useChatSettingsStore: create(() => ({
       model: 'test-model',
       apiFormat: 'openai',
+      llmLibertyProvider: null,
       systemPrompt: 'Be helpful',
       systemPrompt_enabled: true,
       api_token: undefined,
@@ -165,6 +166,7 @@ describe('agentStore', () => {
     useChatSettingsStore.setState({
       model: 'test-model',
       apiFormat: 'openai',
+      llmLibertyProvider: null,
       systemPrompt: 'Be helpful',
       systemPrompt_enabled: true,
       api_token: undefined,
@@ -218,11 +220,37 @@ describe('agentStore', () => {
     });
 
     it.each([
-      ['anthropic' as const, 'claude-sonnet-4-5-20250929'],
-      ['anthropic_oauth' as const, 'claude-haiku-4-5-20251001'],
-    ])('routes %s format via pi-ai anthropic-messages provider with /anthropic baseUrl', async (apiFormat, modelId) => {
+      ['anthropic' as const, 'claude-sonnet-4-5-20250929', null],
+      ['anthropic_oauth' as const, 'claude-haiku-4-5-20251001', null],
+      ['llm_liberty_oauth' as const, 'claude-haiku-4-5-20251001', 'anthropic'],
+    ])(
+      'routes %s format via pi-ai anthropic-messages provider with /anthropic baseUrl',
+      async (apiFormat, modelId, llmLibertyProvider) => {
+        mockPrompt.mockResolvedValueOnce(undefined);
+        useChatSettingsStore.setState({ model: modelId, apiFormat, llmLibertyProvider });
+
+        await act(async () => {
+          await useAgentStore.getState().append('hi');
+        });
+
+        expect(mockModelSetter).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: modelId,
+            api: 'anthropic-messages',
+            provider: 'anthropic',
+            baseUrl: expect.stringMatching(/\/anthropic$/),
+          })
+        );
+      }
+    );
+
+    it('falls back to openai routing for llm_liberty_oauth with unknown provider', async () => {
       mockPrompt.mockResolvedValueOnce(undefined);
-      useChatSettingsStore.setState({ model: modelId, apiFormat });
+      useChatSettingsStore.setState({
+        model: 'codex-future-model',
+        apiFormat: 'llm_liberty_oauth',
+        llmLibertyProvider: 'codex',
+      });
 
       await act(async () => {
         await useAgentStore.getState().append('hi');
@@ -230,10 +258,31 @@ describe('agentStore', () => {
 
       expect(mockModelSetter).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: modelId,
-          api: 'anthropic-messages',
-          provider: 'anthropic',
-          baseUrl: expect.stringMatching(/\/anthropic$/),
+          id: 'codex-future-model',
+          api: 'openai-completions',
+          provider: 'openai',
+          baseUrl: expect.stringMatching(/\/v1$/),
+        })
+      );
+    });
+
+    it('falls back to openai routing for llm_liberty_oauth with null provider', async () => {
+      mockPrompt.mockResolvedValueOnce(undefined);
+      useChatSettingsStore.setState({
+        model: 'unknown-llm-liberty',
+        apiFormat: 'llm_liberty_oauth',
+        llmLibertyProvider: null,
+      });
+
+      await act(async () => {
+        await useAgentStore.getState().append('hi');
+      });
+
+      expect(mockModelSetter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          api: 'openai-completions',
+          provider: 'openai',
+          baseUrl: expect.stringMatching(/\/v1$/),
         })
       );
     });

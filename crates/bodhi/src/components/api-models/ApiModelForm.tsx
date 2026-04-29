@@ -10,6 +10,7 @@ import { ApiKeyInput } from '@/components/api-models/form/ApiKeyInput';
 import { BaseUrlInput } from '@/components/api-models/form/BaseUrlInput';
 import { ExtrasSection } from '@/components/api-models/form/ExtrasSection';
 import { ForwardModeSelector } from '@/components/api-models/form/ForwardModeSelector';
+import { LlmLibertyEnvelopeInput } from '@/components/api-models/form/LlmLibertyEnvelopeInput';
 import { ModelSelectionSection } from '@/components/api-models/form/ModelSelectionSection';
 import { PrefixInput } from '@/components/api-models/form/PrefixInput';
 import { useApiModelForm } from '@/components/api-models/hooks/useApiModelForm';
@@ -90,17 +91,42 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             onValueChange={formLogic.handleApiFormatChange}
           />
 
-          {/* Base URL Input */}
-          <BaseUrlInput {...formLogic.register('base_url')} error={formLogic.errors.base_url?.message} />
+          {formLogic.watchedValues.api_format === 'llm_liberty_oauth' ? (
+            /* LLM Liberty OAuth: envelope replaces base_url, api_key, and extras */
+            <LlmLibertyEnvelopeInput
+              value={formLogic.watchedValues.llm_liberty_envelope || ''}
+              onChange={(value) => formLogic.setValue('llm_liberty_envelope', value)}
+              error={formLogic.errors.llm_liberty_envelope?.message}
+              mode={formLogic.mode}
+              hasStoredCredentials={Boolean(initialData?.llm_liberty)}
+            />
+          ) : (
+            <>
+              {/* Base URL Input */}
+              <BaseUrlInput {...formLogic.register('base_url')} error={formLogic.errors.base_url?.message} />
 
-          {/* API Key Input */}
-          <ApiKeyInput
-            {...formLogic.register('api_key')}
-            mode={formLogic.mode}
-            enabled={formLogic.watchedValues.useApiKey}
-            onEnabledChange={(enabled) => formLogic.setValue('useApiKey', enabled)}
-            error={formLogic.errors.api_key?.message}
-          />
+              {/* API Key Input */}
+              <ApiKeyInput
+                {...formLogic.register('api_key')}
+                mode={formLogic.mode}
+                enabled={formLogic.watchedValues.useApiKey}
+                onEnabledChange={(enabled) => formLogic.setValue('useApiKey', enabled)}
+                error={formLogic.errors.api_key?.message}
+              />
+
+              {/* Extra Headers and Body (conditionally shown for formats with defaults) */}
+              {formLogic.showExtras && (
+                <ExtrasSection
+                  extraHeaders={formLogic.watchedValues.extra_headers || ''}
+                  extraBody={formLogic.watchedValues.extra_body || ''}
+                  onExtraHeadersChange={(value) => formLogic.setValue('extra_headers', value)}
+                  onExtraBodyChange={(value) => formLogic.setValue('extra_body', value)}
+                  extraHeadersError={formLogic.errors.extra_headers?.message}
+                  extraBodyError={formLogic.errors.extra_body?.message}
+                />
+              )}
+            </>
+          )}
 
           {/* Prefix Input */}
           <PrefixInput
@@ -119,18 +145,6 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             prefix={formLogic.watchedValues.prefix}
             error={formLogic.errors.forward_all_with_prefix?.message}
           />
-
-          {/* Extra Headers and Body (conditionally shown for formats with defaults) */}
-          {formLogic.showExtras && (
-            <ExtrasSection
-              extraHeaders={formLogic.watchedValues.extra_headers || ''}
-              extraBody={formLogic.watchedValues.extra_body || ''}
-              onExtraHeadersChange={(value) => formLogic.setValue('extra_headers', value)}
-              onExtraBodyChange={(value) => formLogic.setValue('extra_body', value)}
-              extraHeadersError={formLogic.errors.extra_headers?.message}
-              extraBodyError={formLogic.errors.extra_body?.message}
-            />
-          )}
 
           {/* Model Selection */}
           <ModelSelectionSection

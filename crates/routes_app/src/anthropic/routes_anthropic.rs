@@ -7,6 +7,7 @@ use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
 use services::inference::LlmEndpoint;
+use services::models::LlmLibertyRequestParts;
 use services::{Alias, ApiAlias, ApiFormat, ApiModel, DataServiceError};
 use std::collections::{HashMap, HashSet};
 
@@ -53,11 +54,11 @@ async fn resolve_anthropic_alias(
       BodhiErrorResponse::from(DataServiceError::AliasNotFound(model.to_string()))
     })?;
 
-  let api_alias = match alias {
+  let mut api_alias = match alias {
     Alias::Api(api_alias)
       if matches!(
         api_alias.api_format,
-        ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
+        ApiFormat::Anthropic | ApiFormat::AnthropicOAuth | ApiFormat::LlmLibertyOauth
       ) =>
     {
       api_alias
@@ -65,13 +66,29 @@ async fn resolve_anthropic_alias(
     _ => {
       return Err(
         OAIRouteError::InvalidRequest(format!(
-          "Model '{}' is not configured for Anthropic Messages API format. Configure an alias with 'anthropic' or 'anthropic_oauth' format.",
+          "Model '{}' is not configured for Anthropic Messages API format. Configure an alias with 'anthropic', 'anthropic_oauth', or 'llm_liberty_oauth' format.",
           model
         ))
         .into(),
       );
     }
   };
+
+  if api_alias.api_format == ApiFormat::LlmLibertyOauth {
+    let creds = crate::providers::resolve_llm_liberty_credentials(auth_scope, &api_alias.id)
+      .await
+      .map_err(BodhiErrorResponse::from)?;
+    let LlmLibertyRequestParts {
+      access_token,
+      base_url,
+      extra_headers,
+      extra_body,
+    } = creds.into_request_parts();
+    api_alias.base_url = base_url;
+    api_alias.extra_headers = extra_headers;
+    api_alias.extra_body = extra_body;
+    return Ok((api_alias, access_token));
+  }
 
   let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
   Ok((api_alias, api_key))
@@ -92,7 +109,7 @@ async fn list_user_anthropic_aliases(
         Alias::Api(api_alias)
           if matches!(
             api_alias.api_format,
-            ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
+            ApiFormat::Anthropic | ApiFormat::AnthropicOAuth | ApiFormat::LlmLibertyOauth
           ) =>
         {
           Some(api_alias)

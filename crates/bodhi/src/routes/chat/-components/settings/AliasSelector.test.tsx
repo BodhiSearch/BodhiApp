@@ -39,8 +39,10 @@ vi.mock('@/stores/chatSettingsStore', () => {
   const store = create(() => ({
     model: '',
     apiFormat: 'openai',
+    llmLibertyProvider: null,
     setModel: vi.fn(),
     setApiFormat: vi.fn(),
+    setLlmLibertyProvider: vi.fn(),
   }));
   return { useChatSettingsStore: store };
 });
@@ -137,6 +139,7 @@ describe('AliasSelector', () => {
       model: '',
       setModel: vi.fn(),
       setApiFormat: vi.fn(),
+      setLlmLibertyProvider: vi.fn(),
     });
   });
 
@@ -346,11 +349,15 @@ describe('AliasSelector', () => {
         apiFormat: 'openai' as const,
         modelId: 'gpt-4',
         models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
+        expectedProvider: null as string | null,
+        llmLibertySummary: null as null | { provider: string; envelope_version: string; expires_at: number; has_refresh_token: boolean },
       },
       {
         apiFormat: 'openai_responses' as const,
         modelId: 'gpt-4o',
         models: [{ id: 'gpt-4o', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
+        expectedProvider: null as string | null,
+        llmLibertySummary: null as null | { provider: string; envelope_version: string; expires_at: number; has_refresh_token: boolean },
       },
       {
         apiFormat: 'anthropic' as const,
@@ -364,6 +371,8 @@ describe('AliasSelector', () => {
             provider: 'anthropic' as const,
           },
         ],
+        expectedProvider: null as string | null,
+        llmLibertySummary: null as null | { provider: string; envelope_version: string; expires_at: number; has_refresh_token: boolean },
       },
       {
         apiFormat: 'anthropic_oauth' as const,
@@ -377,39 +386,78 @@ describe('AliasSelector', () => {
             provider: 'anthropic' as const,
           },
         ],
+        expectedProvider: null as string | null,
+        llmLibertySummary: null as null | { provider: string; envelope_version: string; expires_at: number; has_refresh_token: boolean },
       },
-    ])('calls setApiFormat with $apiFormat when API model is selected', ({ apiFormat, modelId, models }) => {
-      const mockSetApiFormat = vi.fn();
-      useChatSettingsStore.setState({ model: '', setModel: vi.fn(), setApiFormat: mockSetApiFormat });
-
-      const apiModels = [
-        {
-          source: 'api',
-          id: 'test-api',
-          api_format: apiFormat,
-          base_url: 'https://api.example.com/v1',
-          has_api_key: true,
-          models,
-          forward_all_with_prefix: false,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
+      {
+        apiFormat: 'llm_liberty_oauth' as const,
+        modelId: 'claude-haiku-4-5-20251001',
+        models: [
+          {
+            id: 'claude-haiku-4-5-20251001',
+            display_name: 'Claude 3 Haiku',
+            created_at: '2024-01-01T00:00:00Z',
+            type: 'model',
+            provider: 'anthropic' as const,
+          },
+        ],
+        expectedProvider: 'anthropic' as string | null,
+        llmLibertySummary: {
+          provider: 'anthropic',
+          envelope_version: 'v1',
+          expires_at: 1_900_000_000,
+          has_refresh_token: true,
         },
-      ];
+      },
+    ])(
+      'calls setApiFormat with $apiFormat and setLlmLibertyProvider when API model is selected',
+      ({ apiFormat, modelId, models, expectedProvider, llmLibertySummary }) => {
+        const mockSetApiFormat = vi.fn();
+        const mockSetLlmLibertyProvider = vi.fn();
+        useChatSettingsStore.setState({
+          model: '',
+          setModel: vi.fn(),
+          setApiFormat: mockSetApiFormat,
+          setLlmLibertyProvider: mockSetLlmLibertyProvider,
+        });
 
-      render(<AliasSelector models={apiModels} tooltip="Select a model" />, {
-        wrapper: createWrapper(),
-      });
+        const apiModels = [
+          {
+            source: 'api',
+            id: 'test-api',
+            api_format: apiFormat,
+            base_url: 'https://api.example.com/v1',
+            has_api_key: true,
+            models,
+            forward_all_with_prefix: false,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            llm_liberty: llmLibertySummary,
+          },
+        ];
 
-      const select = screen.getByRole('combobox');
-      fireEvent.click(select);
-      fireEvent.click(screen.getByText(modelId));
+        render(<AliasSelector models={apiModels} tooltip="Select a model" />, {
+          wrapper: createWrapper(),
+        });
 
-      expect(mockSetApiFormat).toHaveBeenCalledWith(apiFormat);
-    });
+        const select = screen.getByRole('combobox');
+        fireEvent.click(select);
+        fireEvent.click(screen.getByText(modelId));
 
-    it('calls setApiFormat with openai when local model is selected', () => {
+        expect(mockSetApiFormat).toHaveBeenCalledWith(apiFormat);
+        expect(mockSetLlmLibertyProvider).toHaveBeenCalledWith(expectedProvider);
+      }
+    );
+
+    it('calls setApiFormat with openai and clears llmLibertyProvider when local model is selected', () => {
       const mockSetApiFormat = vi.fn();
-      useChatSettingsStore.setState({ model: '', setModel: vi.fn(), setApiFormat: mockSetApiFormat });
+      const mockSetLlmLibertyProvider = vi.fn();
+      useChatSettingsStore.setState({
+        model: '',
+        setModel: vi.fn(),
+        setApiFormat: mockSetApiFormat,
+        setLlmLibertyProvider: mockSetLlmLibertyProvider,
+      });
 
       const localModels = [
         {
@@ -433,6 +481,7 @@ describe('AliasSelector', () => {
       fireEvent.click(screen.getByText('my-local-model'));
 
       expect(mockSetApiFormat).toHaveBeenCalledWith('openai');
+      expect(mockSetLlmLibertyProvider).toHaveBeenCalledWith(null);
     });
 
     it('falls back to displaying unknown selected model', () => {
