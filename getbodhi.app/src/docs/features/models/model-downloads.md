@@ -1,98 +1,68 @@
 ---
 title: 'Model Downloads'
-description: "Download model files from HuggingFace repositories into Bodhi's local storage"
-order: 212
+description: 'Pull GGUF model files from HuggingFace into Bodhi’s local cache, with background progress and idempotent retries'
+order: 30
 ---
 
-# Download Models
+# Model Downloads
 
-Bodhi App allows you to download model files directly from HuggingFace repositories. This feature stores the downloaded model files locally, making them available for use with Bodhi App.
+The Downloads page at `/ui/models/files/pull/` is where you fetch GGUF files from HuggingFace into the shared local cache that Bodhi reads from. Downloads run in the background, survive page reloads, and update progress in real time so you can keep working while large files transfer.
 
-## Overview
+If you have not yet decided whether you need a local file or a remote provider, see [Models, Aliases, and Files](/docs/concepts/models-aliases-files).
 
-When you request to download a model file, you simply provide the HuggingFace repository name and the specific filename of the model (usually a GGUF file). The system then creates a download request and processes it asynchronously.
+## How it works
 
-Key points:
-
-- **Asynchronous Processing:** Download requests are handled in the background. You can monitor the status of your downloads on the Download Models page.
-- **Real-Time Progress Tracking:** See download progress with percentage completion and bytes downloaded/total.
-- **Background Downloads:** Downloads continue even if you navigate away from the page or close the browser.
-- **Idempotency:** If the requested file already exists (based on its repository, filename, and snapshot), the system returns the existing download request rather than creating a duplicate.
-- **Error Reporting:** If an error occurs (for example, if the file already exists), the system will notify you with an error message.
-
-## How It Works
-
-1. **Submit a Download Request:**
-   - Navigate to the Download Models page at <a href="/ui/models/files/pull/" target="_blank" rel="noopener noreferrer">/ui/models/files/pull/</a>.
-   - Provide the **repository** (e.g., `TheBloke/Mistral-7B-Instruct-v0.1-GGUF`) and the **filename** (e.g., `mistral-7b-instruct-v0.1.Q8_0.gguf`).
-   - The system creates a new download request or returns an existing request if the file is already present.
-
-2. **Processing the Request:**
-   - The download request is saved with a status of `pending`.
-   - An asynchronous process starts downloading the model file from the specified HuggingFace repository.
-   - The status of the download (such as `pending`, `completed`, or `error`) is updated and can be viewed on the Downloads page.
-
-3. **Monitoring Downloads:**
-   - On the Downloads page, you can see a table listing all your download requests with details such as repository, filename, status, and timestamp.
-   - **Real-Time Progress:** Active downloads show a progress bar with percentage completion and bytes downloaded (e.g., "1.2 GB / 4.5 GB - 27%").
-   - **Background Processing:** Downloads continue in the background even if you navigate to other pages or close your browser. The progress is automatically updated when you return to the Downloads page.
-   - **Automatic Updates:** The UI automatically polls for progress updates to keep the download status current.
-   - For any download with an error status, you can expand the row to view detailed error messages.
+You give Bodhi a HuggingFace repository ID and a filename. Bodhi creates a download request, kicks off the transfer in the background, and persists progress so you can navigate away (or close the browser) without losing it.
 
 <img
-  src="/doc-images/download-models.jpeg"
-  alt="Download Models Page"
+  src="/doc-images/download-models.jpg"
+  alt="Download Models page showing a downloads table with repo, filename, status, and a progress bar"
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-## Error Handling
+**Submitting a request**:
 
-If a download request cannot be processed, you may see error messages such as:
+1. Open `/ui/models/files/pull/`.
+2. Enter the **repository** (e.g. `TheBloke/Mistral-7B-Instruct-v0.1-GGUF`) and **filename** (e.g. `mistral-7b-instruct-v0.1.Q8_0.gguf`).
+3. Submit. If the same repo/filename/snapshot is already in flight or already downloaded, Bodhi returns the existing record instead of duplicating work.
 
-- **File Already Exists:**
-  The model file already exists in your local storage.
-- **Network Error:**
-  A network was not available during the download process.
+**Setup wizard**: during first-run setup the same flow appears as the Download Models step, with a curated list of recommended chat and embedding models so you can get to a working chat without copy-pasting repo names.
 
-These errors help you understand the state of your request and take appropriate action, such as checking for duplicate downloads, retrying.
+## Status types
 
-## Download Status Tracking
+Each download row shows one of:
 
-### Status Types
+- **Pending** — queued, will start shortly.
+- **In Progress** — actively transferring. Row expands to show the progress bar, bytes transferred / total, percentage, and (when reported by HuggingFace's library) speed and ETA.
+- **Completed** — file is on disk; the auto-generated model alias is ready to use.
+- **Error** — expand the row for the underlying message.
 
-Downloads can have the following statuses:
+The page polls the server while any download is in progress and stops polling once everything is settled, so an idle Downloads page is cheap.
 
-- **Pending**: Download has been queued and will start shortly
-- **In Progress**: Download is actively transferring data (shows progress bar)
-- **Completed**: Download finished successfully, model is ready to use
-- **Error**: Download failed (expand row for error details)
+## Background behaviour
 
-### Progress Information
+- **Navigate freely** — leaving the page does not pause the download.
+- **Close the browser** — the server keeps pulling.
+- **Multiple downloads** — run in parallel, no manual queueing required.
+- **Resume on restart** — if Bodhi restarts mid-download, in-flight transfers resume on the next launch via the HuggingFace library's caching behaviour.
 
-For downloads in progress, you'll see:
+## Common errors
 
-- **Progress Bar**: Visual representation of completion percentage
-- **Bytes Downloaded**: Amount transferred (e.g., "1.2 GB")
-- **Total Size**: Complete file size (e.g., "4.5 GB")
-- **Percentage**: Completion percentage (e.g., "27%")
-- **Download Speed**: Transfer speed provided by HuggingFace library (optimized for maximum performance)
-- **Time Remaining**: Estimated time to completion provided by HuggingFace library
+- **File already exists** — the requested repo/filename/snapshot is already cached. Look on the [Model Files](/docs/features/models/model-files) page; it is ready to use.
+- **Network error** — no connectivity to HuggingFace. Retry once the network is back.
+- **Repository or file not found** — typo in the repo or filename. Check the model card on HuggingFace for the exact strings (filenames are case-sensitive and quantization-specific).
+- **Auth required** — some HuggingFace repos are gated. Configure a HuggingFace token in [App Settings](/docs/features/settings/app-settings) and retry.
 
-### Background Download Behavior
+For unresolved errors, see [Troubleshooting](/docs/support/troubleshooting).
 
-Downloads continue running in the background:
+## After a download completes
 
-- Navigate freely within Bodhi App while downloads proceed
-- Close the browser - downloads continue on the server
-- Return anytime to check progress on the Downloads page
-- Check the Downloads page to see when downloads complete
-- Multiple downloads can run simultaneously
+- The file shows up on the [Model Files](/docs/features/models/model-files) page.
+- Bodhi auto-creates a Model File Alias named `{repo}:{quantization}` (for example `QuantFactory/Meta-Llama-3-8B-Instruct-GGUF:Q8_0`). Use this directly from chat, or copy it into a User Defined Alias if you want to override parameters — see [Model Aliases](/docs/features/models/model-alias).
+- The chat picker refreshes; the new model is selectable immediately.
 
-## Next Steps
+## Where to go next
 
-After submitting a download request:
-
-- Monitor its status on the Downloads page with real-time progress updates
-- If the status is `completed`, the model file is ready for use in model aliases
-- If the status is `error`, expand the row to review the detailed error message and resolve the issue
-- For failed downloads, submit a new download request to retry
+- Configure inference parameters and chat templates — [Model Aliases](/docs/features/models/model-alias).
+- Manage cached files (preview, delete) — [Model Files](/docs/features/models/model-files).
+- Prefer a hosted provider instead? — [API Models](/docs/features/models/api-models).

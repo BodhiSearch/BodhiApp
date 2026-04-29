@@ -1,170 +1,140 @@
 ---
 title: 'User Access Requests'
-description: 'Request and receive a role to access Bodhi App as a new user'
+description: 'Request a role to access Bodhi App after your first OAuth login'
 order: 241
 ---
 
 # User Access Requests
 
-## Overview
+After OAuth-logging in for the first time, new users land on a Request Access page rather than directly on the Chat UI. This page covers that flow from the user's perspective. For the operator side — approving, rejecting, picking a role — see [User Management](/docs/features/auth/user-management).
 
-After authenticating with OAuth2, new users must request access from an administrator or manager before they can use Bodhi App. This page describes the user onboarding flow from the new user's perspective.
+User access requests are entirely separate from [App Access Management](/docs/features/auth/app-access-management), which handles consent for third-party apps wanting to use your MCPs and APIs.
 
-**Key Points**:
+## First user is automatically Admin
 
-- OAuth2 authentication required first
-- Self-service request submission (single button, no forms to fill)
-- Admin or manager approval required before any access is granted
-- Request status tracked as Pending, Approved, or Rejected
-- Completely separate from [app access management](/docs/features/auth/app-access-management), which handles third-party application permissions
+If you're the very first person to OAuth-log into a fresh Bodhi instance, you skip the Request Access flow entirely. You land on Chat as Admin and can immediately start approving subsequent requests. This is determined server-side by checking whether any users exist in the database when OAuth completes.
 
-**First User Exception**: The very first user to log in via OAuth automatically becomes Admin. No access request is needed. This is determined by checking whether any users exist in the database during OAuth login.
+## The flow, step by step
 
-## Access Request Workflow
+### 1. Log in with OAuth
 
-### Step 1: Log In with OAuth
+1. Open Bodhi (e.g. `http://localhost:1135`).
+2. Click **Login**.
+3. You're redirected to the configured OAuth provider (PKCE flow).
+4. Authenticate with your existing credentials.
+5. Bodhi receives the authorization code, validates the JWT, and creates a session.
 
-1. Navigate to Bodhi App (e.g., `http://localhost:1135`)
-2. Click "Login"
-3. You are redirected to the configured OAuth provider (OAuth2 PKCE flow)
-4. Authenticate with your credentials
-5. Return to Bodhi App
+On first login, you're automatically routed to `/ui/request-access/`.
 
-On first login, you are automatically redirected to the Request Access page at `/ui/request-access/`.
+### 2. Submit the request
 
-### Step 2: Submit Access Request
-
-The Request Access page displays your user information (email/username from OAuth) and a single "Request Access" button. There is no message field or additional form input.
-
-1. Review the information on the page
-2. Click **Request Access**
-3. Your request is saved to the database with **Pending** status
-
-Admins and managers are not automatically notified. They must check the pending requests page themselves.
+The Request Access page shows your email/username from OAuth and a single **Request Access** button. There's no message field — the request is just "this user wants in."
 
 <img
   src="/doc-images/access-request.jpg"
-  alt="Request Access Page"
+  alt="Request Access page"
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-### Step 3: Wait for Approval
+Click **Request Access**. A row is inserted into the requests table with status **Pending**. Admins and managers are not notified — they have to look at their queue.
 
-After submitting, you see an "Access Request Pending" screen showing:
+### 3. Wait
 
-- Your request status
-- The submission date (MM/DD/YYYY format)
-- A message that your request is under review
+The page transitions to an "Access Request Pending" view that shows your status and the submission date.
 
 <img
   src="/doc-images/access-pending.jpg"
-  alt="Access Request Pending Status"
+  alt="Access Request Pending status"
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-**While waiting**:
+While pending:
 
-- You cannot access any Bodhi App features (chat, models, settings, etc.)
-- Navigating to any protected page redirects you back to the Request Access page
-- You can log out and log back in to check status
-- The request cannot be cancelled once submitted
-- The pending state persists across page reloads
+- All protected pages redirect you back to this screen.
+- You can log out and log back in; the pending state persists.
+- You cannot cancel the request — it stays in the queue until reviewed.
+- No estimated approval time is shown. It depends entirely on operator availability.
 
-### Step 4: Approval or Rejection
+### 4. Approval or rejection
 
-An admin or manager reviews your request from the [User Management](/docs/features/auth/user-management) page.
+A Manager or Admin reviews your request from the Users page and clicks Approve or Reject. The reviewer also picks the role you'll receive on approval.
 
-**If Approved**:
+**If approved:**
 
-1. The approver selects a role for you (User, PowerUser, Manager, or Admin)
-2. Your active session is invalidated (you are logged out automatically)
-3. Log in again via OAuth
-4. You are redirected to the Chat page with your assigned role
-5. You now have full access based on your role
+1. Your active session is invalidated server-side.
+2. You're effectively logged out.
+3. Log in again via OAuth.
+4. You land on Chat with your assigned role.
 
-**If Rejected**:
+**If rejected:**
 
-1. Your pending request is removed
-2. On next login, the system finds no pending request and shows the Request Access page again
-3. You can submit a new request immediately (no cooldown period, no attempt limit)
+1. Your row is marked Rejected.
+2. On next login, the system shows the Request Access page again with no indication of the previous rejection.
+3. You can submit a new request immediately.
 
-## Approval Hierarchy
+## What role will I get?
 
-The approver's own role determines which roles they can assign:
+The reviewer picks. Their own role bounds what they can hand out:
 
-| Approver Role | Can Assign                          |
-| ------------- | ----------------------------------- |
-| **Admin**     | User, PowerUser, Manager, Admin     |
-| **Manager**   | User, PowerUser, Manager            |
-| **PowerUser** | Cannot approve user access requests |
+| Reviewer role | Roles they can assign you            |
+| ------------- | ------------------------------------ |
+| **Admin**     | User, PowerUser, Manager, Admin      |
+| **Manager**   | User, PowerUser, Manager             |
+| **PowerUser** | (cannot review user access requests) |
 
-For example, a Manager cannot assign the Admin role. If a Manager views a pending request, the Admin role option does not appear in the role dropdown.
+So a Manager-led team will never auto-promote you to Admin — that requires an existing Admin to act.
 
-## Request Status Types
+The reviewer can also change your role later from the Users page if your responsibilities shift. See the role capability matrix on [Auth Overview](/docs/features/auth/overview).
 
-| Status       | Meaning        | What to Do                                           |
-| ------------ | -------------- | ---------------------------------------------------- |
-| **Pending**  | Under review   | Wait for admin/manager decision                      |
-| **Approved** | Access granted | Log out and log back in to use Bodhi App             |
-| **Rejected** | Access denied  | Request Access page shown again; re-request any time |
+## Status values
 
-## Frequently Asked Questions
+| Status       | What it means  | What to do                                                   |
+| ------------ | -------------- | ------------------------------------------------------------ |
+| **Pending**  | Under review   | Wait. Check back periodically. No notification is sent.      |
+| **Approved** | Access granted | Log out and log back in to pick up the new role.             |
+| **Rejected** | Access denied  | Submit a new request from the Request Access page if needed. |
+
+## FAQ
 
 ### How long does approval take?
 
-Approval time depends on administrator availability. There is no SLA or estimated time displayed. The admin must manually check the pending requests page.
+Depends on operator availability — there's no SLA. Reviewers must manually check the pending queue.
 
-### Can I request access again if rejected?
+### Can I get notified when I'm approved?
 
-Yes. When your request is rejected, the Request Access page appears again with no indication of the previous rejection. You can click "Request Access" immediately to submit a new request.
+Not built-in. You'll know because your old session is invalidated and the Request Access screen shows again on next login — at which point logging in routes you to Chat instead.
 
 ### Can I cancel my request?
 
-No. Once submitted, the request stays in the admin queue as Pending until reviewed. There is no cancel button.
+No. Once submitted, the row stays as Pending until a Manager or Admin reviews it.
 
-### What role do I get when approved?
+### Can I re-request after rejection?
 
-The approver selects your role during approval. See the [Approval Hierarchy](#approval-hierarchy) section for which roles each approver can assign. Administrators can modify your role later from the Users page.
+Yes, immediately. There's no cooldown and no attempt limit. The system doesn't tell the reviewer "this user was rejected before."
 
-### Can I use Bodhi App while waiting?
+### Why was my session invalidated when I was approved?
 
-No. All protected pages redirect to the Request Access page until your request is approved and you re-authenticate.
-
-### Why was my session invalidated after approval?
-
-When your request is approved, the server invalidates your existing session so that your next login picks up the newly assigned role. You must log in again via OAuth to receive the updated session with your role.
+So your next login picks up the newly assigned role. Sessions cache the role at login time; invalidating them forces a fresh OAuth round-trip with up-to-date role information.
 
 ## Troubleshooting
 
-### Request Button Disabled
+### Request button does nothing or stays disabled
 
-**Possible Causes**:
+It briefly disables while the submission is in flight. If it stays disabled:
 
-- The button is disabled while the request is being submitted (in-flight state)
-- You already have a pending request (duplicate prevention at the database level)
-- Network error during submission
+- Refresh the page — you may already have a pending request (one per user is enforced).
+- Check the network tab for an error response.
 
-**Solutions**:
+### Still on Request Access after I was told I'm approved
 
-- Wait a moment for the submission to complete
-- Refresh the page if the button remains disabled
-- Check whether you already see the "pending" status message
+Your old session is still active in the browser. Log out fully (clear cookies if needed) and log back in via OAuth.
 
-### Still See Request Access Page After Approval
+### Submitted but the page shows the request form again
 
-**Cause**: Your old session is still active (it was invalidated server-side on approval).
+Most likely your request was rejected, not approved. There's no rejection notice — the page just resets to "request access." Click the button to submit a new one.
 
-**Solution**:
+## See also
 
-1. Log out completely
-2. Clear browser cache if necessary
-3. Log in again -- you should be redirected to the Chat page
-
-### No Pending Request Found After Submission
-
-If you submitted a request but the page shows the request form again (not the pending status), your request may have been rejected. Submit a new request.
-
-## Related Documentation
-
-- [User Management (Admin Guide)](/docs/features/auth/user-management) -- Admin perspective on reviewing requests
-- [App Access Management](/docs/features/auth/app-access-management) -- Separate feature for third-party app permissions
+- [Auth Overview](/docs/features/auth/overview) — role × capability matrix and token model
+- [User Management](/docs/features/auth/user-management) — the operator side of this flow
+- [App Access Management](/docs/features/auth/app-access-management) — the unrelated third-party app consent flow

@@ -1,7 +1,7 @@
 ---
 title: 'Getting Started'
 description: 'SDK reference for integrating React applications with Bodhi using @bodhiapp/bodhi-js-react — provider setup, hooks, models, chat, embeddings, and MCP tools'
-order: 253
+order: 0
 ---
 
 # Getting Started with Bodhi JS SDK

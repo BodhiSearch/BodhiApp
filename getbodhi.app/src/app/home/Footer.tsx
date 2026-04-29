@@ -38,7 +38,10 @@ function FooterComponent() {
               <Link href="/docs/features/mcps/setup" className="text-sm text-muted-foreground hover:text-violet-600">
                 MCP Tools
               </Link>
-              <Link href="/docs/troubleshooting" className="text-sm text-muted-foreground hover:text-violet-600">
+              <Link
+                href="/docs/support/troubleshooting"
+                className="text-sm text-muted-foreground hover:text-violet-600"
+              >
                 Troubleshooting
               </Link>
             </nav>

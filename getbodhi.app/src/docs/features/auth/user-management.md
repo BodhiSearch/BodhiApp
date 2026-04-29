@@ -1,36 +1,24 @@
 ---
 title: 'User Management'
-description: 'Admin dashboard for managing users, roles, and access requests'
+description: 'Approve access requests, change user roles, and remove users from the Users page'
 order: 242
 ---
 
 # User Management
 
-## Overview
+The Users page is the manager / admin console for everything role- and access-related. From here you approve new users who have requested access, change existing users' roles, and remove users who should no longer have access. For the user-side perspective on requesting access, see [User Access Requests](/docs/features/auth/user-access-requests).
 
-Bodhi App provides comprehensive user management for administrators and managers. From the Users page, you can manage existing users, approve access requests, assign roles, and control system access.
+**Required role:** Manager or Admin. PowerUser does not have access to user management.
 
-**Key Capabilities**:
+**URL:** `/ui/users/`
 
-- View all registered users
-- Approve or reject access requests
-- Assign and modify user roles
-- Remove users from the system
-- Track user registration and activity
+## What you can do here
 
-**Access Requirements**: This page requires Manager or Admin role.
-
-## Accessing User Management
-
-**Navigation**: Settings → Users → <a href="/ui/users/" target="_blank" rel="noopener noreferrer">/ui/users/</a>
-
-**URL**: <a href="http://localhost:1135/ui/users/" target="_blank" rel="noopener noreferrer">http://localhost:1135/ui/users/</a>
-
-**Required Role**: Manager or Admin (PowerUser does not have access to user management)
-
-## User List Tab
-
-The Users tab displays all registered users in your Bodhi App instance.
+- Browse the list of registered users with their current role
+- Approve or reject pending user access requests, choosing the role on approval
+- Change a user's role (within the limits of your own role)
+- Remove a user from the system
+- Review the full audit history of access requests (pending, approved, rejected)
 
 <img
   src="/doc-images/users.jpg"
@@ -38,129 +26,94 @@ The Users tab displays all registered users in your Bodhi App instance.
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-### Table Columns
+## Tabs at a glance
 
-The user table displays:
+The page has three tabs:
 
-- **Username**: User's identifier
-- **Role**: Current role (User, PowerUser, Manager, Admin)
-- **Actions**: Role modification and removal buttons
+- **Users** — current registered users.
+- **Access Requests** — pending user access requests waiting for review.
+- **All Requests** — full audit log of user _and_ app access requests across all states.
 
-### Viewing Users
+## Roles, briefly
 
-**Sorting**:
+Bodhi uses four assignable roles in a strict hierarchy: `User < PowerUser < Manager < Admin`. Each role inherits everything below it. The full capability matrix is on [Auth Overview](/docs/features/auth/overview); the short form here is enough for day-to-day decisions:
 
-- Interactive sorting is not currently enabled
-- Default sort order: Most recently updated users appear first
-- Columns are not clickable for sorting
+- **User** — chat + embeddings APIs, manage own MCPs and chats.
+- **PowerUser** — adds: download/delete models, create user aliases, configure API models, mint API tokens, register external apps.
+- **Manager** — adds: approve user access requests, change roles up to Manager, maintain the pre-registered MCP catalog.
+- **Admin** — full system access including settings and Admin role management.
 
-**Pagination**:
+## Approving user access requests
 
-- Default page size: 10 users per page
-- Navigate with page controls at bottom of table
+When a new user OAuth-logs in, they're routed to a Request Access screen. Once they click the button, their request shows up on the **Access Requests** tab here.
 
-**Search/Filter**:
+1. Open **Settings → Users → Access Requests** (or `/ui/users/access-requests/`).
+2. Find the pending row for the user.
+3. Pick a role from the dropdown — the dropdown only shows roles you're allowed to grant (see below).
+4. Click **Approve** or **Reject**.
+5. If approved, the user's existing session is invalidated. They re-log in and land on Chat with the role you assigned.
 
-- Search and filter capabilities are not currently available
-- View all users through pagination
+The role is chosen **at approval time** — there is no auto-assignment. Most operators start new users with the User role and promote later.
 
-## Understanding User Roles
+### Approval hierarchy
 
-Bodhi App uses hierarchical role-based access control. Each role grants specific permissions, and higher roles inherit all lower role permissions.
+| Approver role | Can assign roles                |
+| ------------- | ------------------------------- |
+| **Admin**     | User, PowerUser, Manager, Admin |
+| **Manager**   | User, PowerUser, Manager        |
+| **PowerUser** | (cannot approve)                |
 
-### Role Hierarchy (Low to High)
+A Manager who opens a pending request will not see Admin in the role dropdown.
 
-1. **User**: Basic access to chat and embeddings APIs
-2. **PowerUser**: Can download and delete model files, plus all User capabilities
-3. **Manager**: Can manage users and approve access requests, plus all PowerUser capabilities (cannot manage other Admins)
-4. **Admin**: Full system access, all permissions including managing all users
+### Rejection
 
-### Role Permission Matrix
+Click **Reject**. The request moves to "Rejected" status, the user is not notified, and they can submit a new request immediately on next login (no cooldown, no attempt cap).
 
-| Feature                    | User | PowerUser | Manager | Admin |
-| -------------------------- | ---- | --------- | ------- | ----- |
-| Chat & Embeddings API      | ✅   | ✅        | ✅      | ✅    |
-| Download Models            | ❌   | ✅        | ✅      | ✅    |
-| Delete Models              | ❌   | ✅        | ✅      | ✅    |
-| Create Local Model Aliases | ❌   | ✅        | ✅      | ✅    |
-| Configure API Models       | ❌   | ✅        | ✅      | ✅    |
-| Generate API Tokens        | ❌   | ✅        | ✅      | ✅    |
-| User Management            | ❌   | ❌        | ✅\*    | ✅    |
-| Access Request Approval    | ❌   | ❌        | ✅\*    | ✅    |
-| View Settings              | ❌   | ❌        | ❌      | ✅    |
-| Edit Settings              | ❌   | ❌        | ❌      | ✅    |
-| System Configuration       | ❌   | ❌        | ❌      | ✅    |
+## Changing a user's role
 
-\*Manager can only manage Users, PowerUsers, and other Managers (not Admins)
+From the **Users** tab, click the role dropdown next to a user.
 
-### Role Assignment Rules
+**Restrictions:**
 
-- **Cannot modify users with higher role**: Managers cannot modify Admins (but can modify other Managers)
-- **Cannot modify your own role**: Users cannot change their own role
-- **Last admin protection**: The last admin in the system cannot downgrade their own role or remove themselves
+- You cannot modify your own role.
+- You cannot modify a user whose current role is higher than yours.
+- You cannot assign a role higher than your own.
+- The last remaining Admin in the system is protected from being demoted.
 
-## Modifying User Roles
+**What happens after a role change:**
 
-Administrators and Managers can change user roles to grant or restrict permissions.
+- The new role takes effect immediately in the database.
+- The user's active sessions are invalidated server-side.
+- The user is logged out across all their browsers.
+- On next login, they pick up the new role.
+- No notification is sent — the change is silent on the user's side.
 
-**Steps**:
+## Removing a user
 
-1. Locate user in Users tab
-2. Click the role dropdown in the Actions column
-3. Select new role from list
-4. Confirmation dialog appears
-5. Confirm role change
-6. Role updates immediately
-7. User's active sessions are invalidated and user is logged out
-8. User will see new permissions on next login
+Click the remove icon in the Actions column on the **Users** tab and confirm.
 
-**Restrictions**:
+**What's preserved:** chat history, API tokens, downloaded model files, and aliases the user created. Removal is a soft delete — the user can later submit a fresh access request with the same email and be re-approved.
 
-- Cannot modify your own role
-- Cannot assign a role higher than your own
-- Cannot modify users with roles higher than yours
+**What's revoked:** the user's account, all active sessions, and effectively the ability of any of their tokens to authenticate (token validation requires an active user).
 
-**Effects of Role Change**:
+**You cannot:**
 
-- User's permissions update immediately in the database
-- All active sessions for that user are invalidated immediately
-- User is automatically logged out from all sessions
-- User must log in again to access Bodhi App with new role
-- No explicit notification shown, but user will have new permissions after re-login
-- Action is logged in server logs
+- Delete your own account.
+- Delete the last remaining Admin.
 
-## Removing Users
+## All Requests tab
 
-Remove users from the system when access should be permanently revoked.
+The **All Requests** tab is a unified audit view covering both user access requests and app access requests. Columns:
 
-**Steps**:
+| Column   | Notes                                                             |
+| -------- | ----------------------------------------------------------------- |
+| Username | Who the request belongs to                                        |
+| Date     | Submission date for pending; last-update date for processed       |
+| Status   | Pending, Approved, or Rejected                                    |
+| Reviewer | Username of the approver/rejector (blank for pending)             |
+| Actions  | Role dropdown + Approve / Reject for pending; empty for processed |
 
-1. Locate user in Users tab
-2. Click delete/remove icon in Actions column
-3. Confirm removal in dialog
-4. User is removed from system
-
-**Effects of User Removal**:
-
-- User account removed from system (soft delete)
-- All active sessions terminated immediately
-- **User's data is preserved**:
-  - Chat history remains in the system
-  - API tokens created by the user are preserved
-  - Model files downloaded by the user remain
-  - Model aliases created by the user are preserved
-- User can request access again with the same email address
-- If re-approved, user is treated as a new access request
-
-**Warnings**:
-
-- You cannot delete your own account
-- The last admin in the system is protected from deletion
-- User removal can be reversed by approving a new access request from the same user
-
-## Access Requests Tab
-
-The Access Requests tab displays all user access requests (pending, approved, and rejected).
+You can act on a pending request from this view directly. App access requests show alongside user access requests; for the dedicated app-access flow see [App Access Management](/docs/features/auth/app-access-management).
 
 <img
   src="/doc-images/request-all.jpg"
@@ -168,142 +121,33 @@ The Access Requests tab displays all user access requests (pending, approved, an
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-For the user-facing workflow, see [User Access Requests](/docs/features/auth/user-access-requests). For third-party app access management, see [App Access Management](/docs/features/auth/app-access-management).
+## Operating tips
 
-### Viewing Access Requests
-
-**Table Columns**:
-
-- Username
-- Email
-- Status (Pending, Approved, Rejected)
-- Requested Date
-- Actions (Approve, Reject buttons for pending requests)
-
-**Filtering**:
-
-- Default view shows all requests (pending and historical)
-- Most recently updated requests appear first
-
-**Pagination**:
-
-- Default page size: 10 requests per page
-- Navigate with page controls at bottom of table
-
-### Approving Access Requests
-
-Grant system access to new users who have requested it.
-
-**Steps**:
-
-1. Locate pending request in Access Requests tab
-2. Click "Approve" button
-3. **Select role for the new user**:
-   - Admin can assign any role (User, PowerUser, Manager, or Admin)
-   - Manager can only assign User, PowerUser, or Manager roles (not Admin)
-4. Confirm approval
-5. Request status changes to "Approved"
-6. User's existing session is invalidated and they are logged out
-7. User can log in again and access Bodhi App with assigned role
-
-**Role Selection**: Role is selected by the approver during the approval process (not automatically assigned)
-
-### Rejecting Access Requests
-
-Deny access to users who should not have system access.
-
-**Steps**:
-
-1. Locate pending request in Access Requests tab
-2. Click "Reject" button
-3. Confirm rejection (no rejection reason can be provided)
-4. Request status changes to "Rejected"
-5. User can see rejection status when they check the access request page
-6. No notification is sent to the user
-
-**User Can Re-request**: Yes, rejected users can submit new access requests. There is no cooldown period or maximum attempt limit.
-
-### Request History
-
-View all access requests regardless of status for audit purposes.
-
-- Request history is retained indefinitely in the database
-- Historical requests provide audit trail for user access management
-- Server logs provide additional auditing beyond the requests table
-
-## Best Practices
-
-### User Approval
-
-- Process access requests in a timely manner (no specific SLA defined)
-- Verify user identity through your organization's authentication provider (OAuth)
-- Start new users with User role, promote as needed based on their responsibilities
-- Consider documenting your approval criteria in internal procedures
-
-### Role Management
-
-- Use principle of least privilege
-- Grant minimum role required for user's tasks:
-  - **User**: General users who only need chat and embedding access
-  - **PowerUser**: Users who need to download and delete models
-  - **Manager**: Trusted users who can help with user management
-- Review user roles periodically as responsibilities change
-
-### Security
-
-- User activity is logged in server logs (no built-in activity dashboard currently)
-- Sessions are automatically invalidated on role change - user must re-login
-- Regularly review user list for inactive accounts
-- No automatic inactivity timeout is currently enforced
+- **Least privilege.** Start new users at User. Promote to PowerUser when they need to manage models, mint tokens, or register apps. Use Manager for trusted operators only.
+- **Audit periodically.** The All Requests tab is permanent — useful for reviewing who approved which requests after the fact.
+- **Sessions invalidate on changes.** Any role change or removal forces re-login. Tell affected users so they don't think the app is broken.
 
 ## Troubleshooting
 
-### User Cannot Login After Approval
+### "Cannot modify users with higher role"
 
-**Symptoms**: User was approved but still cannot access Bodhi App
+You can only act on users at or below your own role. Ask an Admin to handle the action.
 
-**Solutions**:
+### Role dropdown is empty or disabled
 
-- Verify user status in table shows "Approved"
-- User must logout completely and login again after approval
-- Session is automatically cleared on approval
-- If issue persists, check server logs for authentication errors
+You're trying to act on yourself, on a user with a higher role, or on the last Admin. None of those are permitted.
 
-### Cannot Modify User Role
+### Approved user still sees the Request Access screen
 
-**Symptoms**: Role dropdown disabled or change fails
+Their old session was invalidated server-side, but their browser hasn't realized yet. Have them log out fully and log back in.
 
-**Possible Causes**:
+### Submitted request not visible
 
-- You lack sufficient permissions (not Manager/Admin)
-- Target user has role equal to or higher than yours
-- Attempting to modify your own role
-- Last admin protection (cannot modify the last admin's role)
+Refresh the page. If it still doesn't appear, check that the user actually clicked the **Request Access** button (not just the OAuth login). The button submits the row.
 
-### Access Request Not Appearing
+## See also
 
-**Symptoms**: User submitted request but admin doesn't see it
-
-**Solutions**:
-
-- Refresh the page to ensure latest data is displayed
-- Verify the email address matches between user and request
-- Check server logs for any submission errors
-- Ensure database connection is working properly
-
-### Common Error Messages
-
-**"Cannot modify users with higher role"**: You can only modify users with your role or below in the hierarchy.
-
-**"Cannot modify your own role"**: Users cannot change their own role for security reasons.
-
-**"Last admin protected"**: The last admin in the system cannot be demoted or removed.
-
-**"User not found"**: The user may have been deleted. Refresh the page to see current users.
-
-## Related Documentation
-
-- [User Access Requests](/docs/features/auth/user-access-requests) - User perspective on requesting access
-- [App Access Management](/docs/features/auth/app-access-management) - Managing third-party app access
-- [API Tokens](/docs/features/auth/api-tokens) - Programmatic access
-- [Settings](/docs/features/settings/app-settings) - System configuration
+- [Auth Overview](/docs/features/auth/overview) — role × capability matrix
+- [User Access Requests](/docs/features/auth/user-access-requests) — the user-facing onboarding flow
+- [App Access Management](/docs/features/auth/app-access-management) — third-party app access requests
+- [API Tokens](/docs/features/auth/api-tokens) — programmatic credentials

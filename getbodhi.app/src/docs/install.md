@@ -8,6 +8,8 @@ order: 101
 
 Bodhi App is available for multiple platforms including desktop apps (Windows, macOS, Linux) and Docker containers. Choose the installation method that best suits your environment.
 
+> **Skip ahead:** Already installed? See **[Concepts → Overview](/docs/concepts/overview)** to learn the mental model, or jump to **[Features](/docs/features)** to start using Bodhi App.
+
 ## System Requirements
 
 - **Memory:** 16GB RAM recommended for local model inference; 2GB RAM minimum for API-only workflows
@@ -229,13 +231,13 @@ Configure remote AI API providers to use cloud models alongside local ones.
 
 **Why Configure API Models?**
 
-- Access latest frontier models (GPT-4, Claude 3.5, etc.)
+- Access latest frontier models from OpenAI, Anthropic, Gemini, and Groq
 - No local GPU required
 - Complement local models with cloud capabilities
 
 **Steps:**
 
-1. Select provider template (OpenAI, Anthropic, Groq, Together AI, Custom)
+1. Select provider template (OpenAI Chat Completions, OpenAI Responses, Anthropic, Anthropic OAuth, or Gemini — Groq and other OpenAI-compatible providers can be added via the OpenAI Chat Completions template with a custom base URL)
 2. Enter API key
 3. Configure base URL (auto-filled for known providers)
 4. Optional: Enable and set prefix
@@ -365,6 +367,8 @@ Setup complete! Time to start using Bodhi App.
 ---
 
 ## Troubleshooting
+
+> The section below covers wizard-specific issues only. For general runtime, network, MCP, or access-request troubleshooting see **[Support → Troubleshooting](/docs/support/troubleshooting)**.
 
 ### Setup Wizard Not Appearing
 

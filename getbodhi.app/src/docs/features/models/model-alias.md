@@ -1,34 +1,44 @@
 ---
-title: 'Models'
-description: 'Browse, configure, and manage all models in Bodhi — local aliases, GGUF files, and API models in one unified list'
-order: 205
+title: 'Model Aliases'
+description: 'Create, edit, and manage model aliases — the named recipes Bodhi uses to launch llama.cpp with the right file and parameters'
+order: 10
 ---
 
-# Models
+# Model Aliases
 
-The Models page (`/ui/models/`) is the central hub for managing all models available in Bodhi App. It displays three types of models in a unified table:
+A **model alias** is the named recipe Bodhi uses to launch llama.cpp: which GGUF file to load, which chat template to apply, what default request parameters to use, and which command-line flags to pass to the inference server. Aliases are what you type into a chat client's `model` field — local files alone aren't usable until an alias points at them.
 
-1. **User Defined Model Aliases** — Custom YAML configurations with tailored request and context parameters. Source badge: **user**.
-2. **GGUF Model File Defined Aliases** — Direct references to downloaded GGUF model files that use embedded metadata for automatic configuration. Source badge: **model**.
-3. **API Models** — Cloud-based models from providers like OpenAI, Anthropic, Google Gemini, OpenRouter, and HuggingFace. Source badge: **API**. See [API Models](/docs/features/models/api-models) for configuration details.
+If the difference between a _file_, an _alias_, and an _API model_ is fuzzy, read [Models, Aliases, and Files](/docs/concepts/models-aliases-files) first.
 
-## GGUF Model Metadata
+## The Models page
 
-For local GGUF models, Bodhi App can extract capabilities directly from the GGUF file headers. A preview modal shows metadata including:
+The Models page at `/ui/models/` lists everything Bodhi can answer with — local aliases and remote API models — in one sortable table.
 
-- **Capabilities**: vision, audio, thinking support, function calling, structured output
-- **Context Limits**: max input tokens, max output tokens
-- **Architecture**: format, family, parameter count, quantization level
+<img
+  src="/doc-images/models-page.jpg"
+  alt="Models page with the unified list of local aliases and API models"
+  class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
+/>
 
-You can refresh metadata for any model from the preview modal or per-row refresh button on the Models page.
+**Source badges** tell you which kind of entry each row is:
 
-## User Defined Model Alias
+- **user** — a User Defined Alias you (or another admin) created.
+- **model** — an alias auto-generated from a downloaded GGUF file. Read-only.
+- **API** — a remote API model. See [API Models](/docs/features/models/api-models).
 
-A User Defined Model Alias is essentially a YAML configuration file that contains default request parameters as well as server (context) parameters. This approach makes it easy to reuse and switch between specific model setups without having to reconfigure complex settings each time.
+**Per-row actions**: Chat (jump straight to the chat UI with this model selected), Edit, Preview (capabilities, context window, architecture pulled from GGUF headers), Refresh metadata, New from Model (create a User alias pre-filled with this row's repo and filename), and an external link to the HuggingFace repo or provider URL. Hover over column values to copy them.
 
-### Sample Model Alias YAML File
+## Two flavors of local alias
 
-All User Defined Model Aliases can be found in the `$BODHI_HOME/aliases` folder. A sample model alias file is shown below:
+### User Defined Alias
+
+A YAML record under `$BODHI_HOME/aliases/`. You control the alias name, request parameters, and llama.cpp flags. Editable, renameable, deletable.
+
+### Model File Alias
+
+When you download a GGUF, Bodhi auto-creates a read-only alias named `{repo}:{quantization}` (for example, `QuantFactory/Meta-Llama-3-8B-Instruct-GGUF:Q8_0`). Capabilities, context size, and other metadata come from the embedded GGUF headers. Use this when you just want to chat without configuring anything; copy it to a User Defined Alias if you need to override parameters.
+
+## Sample alias YAML
 
 ```yaml
 alias: llama3:instruct
@@ -50,140 +60,66 @@ request_params:
     - <|eot_id|>
 ```
 
-A Model Alias YAML file includes the following keys:
+**Field reference**:
 
-- **alias:** (required) A unique name for your model configuration. This is used to reference the model in chat settings and API calls.
-- **repo:** (required) The source repository (typically from HuggingFace).
-- **filename:** (required) The specific GGUF model file used.
-- **snapshot:** (optional) Controls which version/snapshot of a model to use. Leave blank for the latest version, or specify a commit hash for a specific snapshot. This allows you to pin to a specific model version for reproducibility.
+- `alias` _(required)_ — unique name for this configuration; this is the value clients put in the `model` field.
+- `repo` _(required)_ — HuggingFace repository ID.
+- `filename` _(required)_ — the specific GGUF file in the repo.
+- `snapshot` _(optional)_ — pin to a commit hash. Leave empty for the latest snapshot.
+- `context_params` _(optional)_ — array of llama-server flags applied at process startup. One flag per array entry.
+- `request_params` _(optional)_ — defaults applied to every request that does not override them: `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `max_tokens`, `seed`, and up to four `stop` sequences.
 
-- **context_params:** (optional) Array of llama-server command-line arguments for inference configuration. Each argument should be a complete flag with its value.
-  - Common arguments:
-    - `--ctx-size <n>`: Maximum context size in tokens (e.g., `--ctx-size 2048`)
-    - `--threads <n>`: Number of CPU threads to use (e.g., `--threads 4`)
-    - `--parallel <n>`: Number of parallel requests (e.g., `--parallel 1`)
-    - `--n-predict <n>`: Maximum tokens to generate (e.g., `--n-predict 4096`)
-    - `--n-keep <n>`: Tokens to keep from initial prompt (e.g., `--n-keep 24`)
+For the full set of llama-server CLI flags, see the [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/tree/master/tools/server). Server-wide defaults that apply across aliases live under [App Settings](/docs/features/settings/app-settings).
 
-  **Advanced Configuration**: For complete list of available llama-server arguments, see [llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/tree/master/tools/server). Additional server parameters can also be configured through the Settings dashboard - see [App Settings](/docs/features/settings/app-settings) page.
+## Creating or editing an alias
 
-- **request_params:** Default request parameters applied if not specified during a request:
-  - **frequency_penalty:** Reduces repetition.
-  - **max_tokens:** Limits the length of responses.
-  - **presence_penalty:** Encourages topic diversity.
-  - **seed:** Ensures reproducible outputs.
-  - **stop:** Up to four sequences that, when encountered, halt the response.
-  - **temperature:** Adjusts the randomness of responses.
-  - **top_p:** Sets the token probability threshold.
-
-## GGUF Model File Defined Alias
-
-A GGUF Model File Defined Alias leverages complete metadata embedded in the GGUF file. In this case, all the default request and context parameters are used, and you cannot override them. This method is the quickest, most direct way to run a model within the app.
-
-The model alias ID for this type is typically a combination of the model repository and the quantization detail. For example, for a repo `QuantFactory/Meta-Llama-3-8B-Instruct-GGUF` and filename `Meta-Llama-3-8B-Instruct.Q8_0.gguf`, the model alias ID would be:
-
-```
-QuantFactory/Meta-Llama-3-8B-Instruct-GGUF:Q8_0
-```
-
-## How Model Aliases Work
-
-For a **User Defined Model Alias**, when you reference the alias ID in your chat settings or API calls (using the `model` parameter), Bodhi App will:
-
-1. Launch the LLM inference server (if not already running) with the `context_params` command-line arguments.
-2. Apply the `request_params` as the default settings on the request.
-3. Forward the request to the inference server.
-4. Stream back the response received from the inference server.
-
-Similarly, for a **GGUF Model File Defined Alias**, the process is:
-
-1. Launch the LLM inference server, if not already running, with default server settings.
-2. Forward the request to the inference server.
-3. Stream back the response.
-
-This approach offers several advantages:
-
-- **Simplicity:** Manage complex configuration details with a single, easy-to-reference alias.
-- **Speed:** Quickly start running inferences against a downloaded GGUF file without additional configuration.
-- **Consistency:** Ensure that the same parameters are applied across multiple chat sessions or API interactions.
-- **Flexibility:** Easily update your configurations via the UI or API, with the server restarting to apply new settings.
-
-## Models Page
-
-The Models page provides a unified view of all available models in Bodhi App, displaying all model types in a single sortable, paginated table.
-
-**Table Columns**:
-
-- **Name**: Model alias or API model ID
-- **API Format/Repo**: API format (for API models) or HuggingFace repository (for local models)
-- **File/Endpoint**: Base URL (for API models) or GGUF filename (for local models)
-- **Type**: Source badge — "user" (user-created alias), "model" (GGUF file alias), or "API" (cloud provider)
-- **Prefix**: Prefix configured for API models (if any)
-- **Forward All**: Whether an API model forwards all provider models via prefix routing
-
-**Page Actions**:
-
-- **New Model Alias** button — navigate to `/ui/models/alias/new` to create a local model alias
-- **New API Model** button — navigate to `/ui/models/api/new` to configure a cloud provider
-- **Edit** — edit user-defined aliases (`/ui/models/alias/edit`) or API models (`/ui/models/api/edit`)
-- **Chat** — start a chat session with any model
-- **Preview** — open a modal showing model details, capabilities, and metadata
-- **Refresh** — refresh GGUF metadata from file headers
-- **New from Model** — create a new alias from an existing GGUF model file (pre-fills repo/filename)
-- **External Link** — open HuggingFace repository or provider URL
-- Copy configuration details with hover-to-copy on column values
-
-<img
-  src="/doc-images/models-page.jpeg"
-  alt="Models Page"
-  class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
-/>
-
-## Model Alias Form
-
-Create a new alias at <a href="/ui/models/alias/new" target="_blank" rel="noopener noreferrer">/ui/models/alias/new</a>, or edit an existing one at <a href="/ui/models/alias/edit" target="_blank" rel="noopener noreferrer">/ui/models/alias/edit</a>. Both forms are also accessible from the Models page action buttons.
+Open the form at `/ui/models/alias/new/` (or click "Edit" on a row in the Models page). You can also click "New from Model" on a model-file alias to pre-fill the form with that file's repo and filename.
 
 <img
   src="/doc-images/model-alias.jpg"
-  alt="Model Alias Form showing context parameters as command-line arguments"
+  alt="Model Alias form: alias name, repo, filename, context parameters, and a collapsible request parameters section"
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-**Key Form Fields**:
+**Form fields**:
 
-- **Alias**: Unique identifier for your model configuration
-- **Repo/Filename/Snapshot**: Model source from HuggingFace
-- **Context Parameters**: llama-server CLI arguments (one per line in format `--flag value`)
-- **Request Parameters**: Default inference parameters (collapsible section)
+- **Alias** — unique identifier. Must not collide with any other alias or API-model ID.
+- **Repo / Filename / Snapshot** — points at the GGUF file. The file must already be downloaded (see [Model Downloads](/docs/features/models/model-downloads)).
+- **Context Parameters** — one llama-server flag per line in `--flag value` form.
+- **Request Parameters** — collapsible section for the inference defaults listed above.
 
-## Best Practices and Reference Configurations
+Save and the alias appears in the Models page immediately. The next chat or API request that uses the alias name launches llama.cpp with the configured flags (or reuses the running process if it is already up).
 
-Bodhi App's Model Alias system is designed to simplify advanced model configuration. By leveraging aliases, you can ensure that each chat session uses a clear, consistent setup tailored to your requirements.
+## How a request flows through an alias
 
-## Performance Considerations
+When a request arrives with a `model` value that matches a **User Defined Alias**:
 
-When configuring model aliases, consider these key performance factors:
+1. Bodhi launches the llama.cpp server with the alias's `context_params` if it is not already running for this alias.
+2. The alias's `request_params` are merged in as defaults — explicit values in the request win.
+3. The request is forwarded to llama.cpp.
+4. The response (streamed or whole) flows back to the client.
 
-### Memory Usage vs Thread Count
+For a **Model File Alias**, step 1 uses default server flags and step 2 is skipped. Either way, idle llama.cpp processes are torn down after the keep-alive window so resources free up between sessions.
 
-- Higher thread counts (`n_threads`) can improve inference speed
-- But each thread requires additional memory
-- Recommended: Start with `n_threads` = number of CPU cores / 2
+## Performance notes
 
-### Context Size Impact
+A few rules of thumb that show up repeatedly:
 
-- Larger context sizes (`n_ctx`) allow for longer conversations
-- But increase memory usage and initial load time
-- Recommended: Start with 2048 tokens and adjust based on needs
+- **Threads vs memory** — more `--threads` can mean faster inference, but each thread costs RAM. Start at half your CPU core count.
+- **Context size** — `--ctx-size` is a memory and load-time multiplier. 2048 is a safe baseline; raise it only when you actually need longer conversations.
+- **Quantization** — Q4_K_M is small but loses some quality; Q8_0 is roughly twice the size with near-full-precision behavior. Test on representative prompts.
+- **Stop sequences** — the right `stop` list prevents wasted generation when the model would otherwise keep producing template tokens.
 
-### Quantization Effects
+For deeper tuning advice (variant selection, hardware-specific flags, concurrency), see the upcoming Advanced section.
 
-- Lower bit models (Q4_K_M) use less memory but may reduce quality
-- Higher bit models (Q8_0) provide better quality but use more memory
-- Recommended: Test different quantization levels for your use case
+## Common pitfalls
 
-### Optimization Tips
+- _"My alias points at a file that isn't downloaded."_ — saving still succeeds; the failure surfaces only when chat tries to launch llama.cpp. Download the file first or remove the alias.
+- _"Chat says 'model not found' even though I see the alias."_ — make sure the `model` field in the request matches the alias name exactly, including any prefix (API models only).
+- _"I want to share aliases across machines."_ — copy the YAML files in `$BODHI_HOME/aliases/`. They are plain text and portable.
 
-- Set `n_parallel` based on your expected concurrent usage
-- Use `n_keep` to maintain important context while reducing memory usage
-- Consider using `stop` sequences to prevent unnecessary token generation
+## Where to go next
+
+- Need to download the file the alias points at? See [Model Downloads](/docs/features/models/model-downloads).
+- Cleaning up disk space or auditing local files? See [Model Files](/docs/features/models/model-files).
+- Configuring a remote provider instead of running locally? See [API Models](/docs/features/models/api-models).

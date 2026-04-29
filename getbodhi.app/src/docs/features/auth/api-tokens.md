@@ -1,452 +1,168 @@
 ---
 title: 'API Tokens'
-description: 'Create and manage database-backed API tokens for secure programmatic access'
+description: 'Mint, scope, and rotate database-backed API tokens for programmatic access'
 order: 243
 ---
 
-# API Token Management
+# API Tokens
 
-Create and manage database-backed API tokens for programmatic access to Bodhi App. Tokens support scope-based permissions and use cryptographic security for safe integration with external applications.
+API tokens are how programs — CLI scripts, CI jobs, third-party tools, your own backends — authenticate to Bodhi without going through OAuth in a browser. They're database-backed, scope-limited, and revocable from the same UI that issued them.
 
-## Overview
+For the bigger picture (roles vs scopes, token format, when to use a session cookie instead) start at [Auth Overview](/docs/features/auth/overview).
 
-API tokens provide persistent programmatic access to Bodhi App's API endpoints without requiring interactive browser sessions. Unlike session-based authentication (browser cookies), API tokens are designed for automated systems, scripts, CI/CD pipelines, and external integrations.
+**Required role to mint tokens:** PowerUser or higher.
 
-**Key Features**:
+**URL:** `/ui/tokens/`
 
-- Database-backed persistence with cryptographic security
-- SHA-256 hashing for secure storage
-- Scope-based permissions for fine-grained access control
-- One-time display security pattern
-- Active/inactive status toggle
-- User-linked lifecycle (tokens invalidated when user removed)
-
-## How API Tokens Work
-
-Bodhi App uses a secure database-backed token architecture:
-
-**Token Lifecycle**:
-
-1. **Creation**: User creates token via UI with name and selected scopes
-2. **Generation**: Bodhi App generates cryptographically secure token string
-3. **One-Time Display**: Token displayed ONCE in modal (must copy now)
-4. **Hashing**: Token hashed with SHA-256 before database storage
-5. **Authentication**: Future API requests include token in Authorization header
-6. **Validation**: Bodhi App hashes provided token and compares to stored hash
-7. **Authorization**: Scope-based permissions checked against request endpoint
-
-**Security Model**:
-
-- Original token value NEVER stored (only SHA-256 hash)
-- Token cannot be retrieved after creation (one-time display)
-- Tokens can be activated/deactivated without deletion
-- Scope restrictions limit token capabilities
-- User removal automatically invalidates all user's tokens
-
-**Architecture**:
+## Token format
 
 ```
-User creates token → Generate secure string → Display ONCE → Hash with SHA-256 → Store hash in database
-                                                     ↓
-API request with token → Hash provided token → Compare hashes → Check scopes → Allow/deny
+bodhiapp_<base64url_random>.<client_id>
 ```
 
-## Creating API Tokens
+- The random portion is 32 cryptographically random bytes, base64url-encoded.
+- The `<client_id>` suffix scopes the token to a tenant.
+- The full token is hashed with SHA-256 before storage — only the hash and the first 8 chars (the prefix) are kept. The original is shown exactly once at creation.
 
-<img
-  src="/doc-images/api-tokens.jpg"
-  alt="API Token Creation Modal"
-  class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
-/>
-
-### Step 1: Navigate to Tokens Page
-
-**From Navigation**:
-
-- Click **Settings** in sidebar
-- Click **Tokens** in submenu
-- Or navigate directly to: <a href="http://localhost:1135/ui/tokens/" target="_blank" rel="noopener noreferrer">http://localhost:1135/ui/tokens/</a>
-
-### Step 2: Click New API Token
-
-Click the **New API Token** button to open the creation dialog.
-
-### Step 3: Enter Token Name (Optional)
-
-Token name is optional but recommended for identifying tokens later. Provide a descriptive name to identify the token's purpose.
-
-**Name Examples**:
-
-- `CI/CD Pipeline - GitHub Actions`
-- `Mobile App - Production`
-- `Data Analytics Script`
-- `Integration Test Suite`
-
-**Naming Guidelines**:
-
-- Choose a descriptive name to identify this token
-- Include environment if applicable (prod/staging/dev)
-- Examples: "Production API", "Development Access", "CI/CD Pipeline"
-
-### Step 4: Select Scopes
-
-Choose permissions granted to this token. Each scope enables access to specific API capabilities.
-
-**Available Scopes**:
-
-Bodhi App supports three token scopes:
-
-1. **Token User** (`scope_token_user`) — Read-Only Access:
-   - Chat completions API (`/bodhi/v1/chat/completions`)
-   - Embeddings API (`/bodhi/v1/embeddings`)
-   - Model listing (read-only access to `/bodhi/v1/models`)
-   - Cannot download or delete models
-   - Ideal for: Chat applications, embedding generation, model discovery
-
-2. **Token Power User** (`scope_token_power_user`) — Limited Write Access:
-   - All Token User capabilities
-   - Download models from HuggingFace
-   - Delete existing models
-   - **Note**: Token Power User has more restrictions than a logged-in PowerUser role
-   - Ideal for: Automated model management, CI/CD pipelines
-
-3. **Token Admin** (`scope_token_admin`) — Administrative Access:
-   - All Token Power User capabilities
-   - Administrative API endpoints
-   - Ideal for: Automation scripts requiring admin-level access
-
-**Important**: Token-based access has additional restrictions compared to logged-in user sessions, even with the same scope name.
-
-> **Note on Naming**: Token scopes ("Token User" and "Token Power User") have similar names to user roles ("User" and "PowerUser") but represent different authorization systems. Token scopes control API access for programmatic clients, while user roles control UI and session-based access. A logged-in PowerUser has broader capabilities than a Token Power User scope.
-
-**Scope Selection Tips**:
-
-- Select minimum required scopes (principle of least privilege)
-- **Scopes cannot be changed after creation** - choose carefully
-- To change scope: Create new token with desired scope and deactivate old token
-- Token limited to selected scopes only
-
-### Step 5: Generate Token
-
-Click **Generate Token** button to create the token.
-
-### Step 6: Copy Token (CRITICAL - One-Time Display)
-
-**WARNING: Token Shown Only Once**
-
-The token is displayed ONLY ONCE after creation. You MUST copy it now.
-
-**Critical Steps**:
-
-1. Token appears in modal dialog
-2. Click **Copy** button to copy to clipboard
-3. Store token securely immediately:
-   - Password manager
-   - Environment variables
-   - Encrypted configuration file
-   - Secret management service
-4. Click **Close** or **Done** to dismiss dialog
-5. **Token hidden forever** - cannot be retrieved later
-
-**If You Lose the Token**:
-
-- Tokens cannot be retrieved after closing dialog
-- Create new token with same configuration
-- Deactivate lost token
-- Update applications with new token
-
-**Security Warning**:
-
-- Token grants API access to your Bodhi App instance
-- Treat like password - never share
-- Never commit to version control
-- Never log in plaintext
-- Store in secure location
-
-## Using API Tokens
-
-### Authorization Header Format
-
-Include token in `Authorization` header as Bearer token:
+You send it as a Bearer token:
 
 ```bash
 curl http://localhost:1135/bodhi/v1/chat/completions \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Authorization: Bearer bodhiapp_xxxxx.yyyyy" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "model-alias",
-    "messages": [{"role": "user", "content": "Hello, how are you?"}]
+    "model": "<your-model-alias>",
+    "messages": [{"role": "user", "content": "Hello"}]
   }'
 ```
 
-**Header Format**: `Authorization: Bearer <token>`
+## Token scopes (only two)
 
-**Base URL**: `http://localhost:1135/bodhi/v1` (adjust host/port as needed)
+API tokens carry one of two scopes:
 
-### API Endpoints Supporting Token Authentication
+| Scope         | What it can do                                                                |
+| ------------- | ----------------------------------------------------------------------------- |
+| **User**      | Chat completions, embeddings, list models / aliases. Read-only for resources. |
+| **PowerUser** | Everything User can do, plus download and delete model files.                 |
 
-API tokens work with all Bodhi App API endpoints based on their scope:
+That's the whole list. There is **no** Manager-scope or Admin-scope token. Manager and Admin operations — approving access requests, editing settings, changing roles — are session-only by design. If you need to script those operations, the answer is "you can't, on purpose."
 
-**Token User Scope**:
+A token's scope is also bounded by the issuing user:
 
-- `/bodhi/v1/chat/completions` - Chat completions
-- `/bodhi/v1/models` - List models (read-only)
-- `/bodhi/v1/embeddings` - Generate embeddings
+- A User-role human cannot mint any token (they don't have access to the Tokens page).
+- A PowerUser human can mint User- or PowerUser-scope tokens.
+- An Admin human can mint User- or PowerUser-scope tokens (still no Admin-scope).
 
-**Token Power User Scope**:
+> **Don't confuse this with user roles.** "PowerUser" the role is what a logged-in human is. "PowerUser" the scope is what their token can do. The role can do strictly more (it can do all four-role things including Manager/Admin if applicable). See [Auth Overview](/docs/features/auth/overview) for the side-by-side comparison.
 
-- All Token User endpoints
-- Model download endpoints
-- Model deletion endpoints
+## Creating a token
 
-See [API Reference](/docs/developer/openapi-reference) for complete endpoint reference.
+<img
+  src="/doc-images/api-tokens.jpg"
+  alt="API token creation modal"
+  class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
+/>
 
-## Managing API Tokens
+1. Open **Settings → Tokens** (or `/ui/tokens/`).
+2. Click **New API Token**.
+3. (Optional) Give it a descriptive name like `CI - GitHub Actions` or `Dev laptop`. The name is metadata; it doesn't affect auth.
+4. Pick a scope — **User** or **PowerUser**. **The scope is immutable after creation.** To change scope, mint a new token and deactivate the old one.
+5. Click **Generate Token**.
+6. **Copy the token immediately.** It's shown exactly once. After you close the dialog, it cannot be recovered — only re-created.
 
-### Viewing Tokens
+Store the token like a password: a password manager, an environment variable in a `.env` file (gitignored), or a secret manager (Vault, AWS Secrets Manager, etc.). Do not commit it. Do not log it.
 
-The Tokens page displays all tokens created by the current user in a table.
+## Using a token
 
-**Table Columns**:
-
-- **Name**: Token identifier you provided
-- **Scope**: Granted permissions (Token User or Token Power User)
-- **Status**: Active (green badge) or Inactive (gray badge) with toggle switch to activate/deactivate
-- **Created At**: Creation timestamp
-- **Updated At**: Last modification timestamp
-
-**Token Values Not Shown**:
-
-- Token values are NEVER displayed after creation
-- Only token metadata visible
-- Cannot retrieve original token value
-
-### Activating/Deactivating Tokens
-
-Toggle token status without deleting it.
-
-**Steps**:
-
-1. Locate token in tokens table
-2. Click toggle switch in Status column
-3. Status changes immediately:
-   - **Active** (green badge): Token can authenticate API requests
-   - **Inactive** (gray badge): Token cannot authenticate
-4. API requests using inactive tokens fail immediately with authentication error
-
-**When to Deactivate**:
-
-- Temporarily disable access without deletion
-- Rotate tokens (deactivate old, create new)
-- Emergency access revocation
-- Testing token validation logic
-
-**Reactivation**:
-
-- Toggle switch again to reactivate
-- Token resumes working immediately
-- Same token value (hash unchanged)
-
-### Token Lifecycle and Expiration
-
-**Token Expiration**:
-
-- API tokens do not expire
-- They remain valid indefinitely until deactivated or deleted
-
-**Token States**:
-
-- **Created**: Tokens are created in **Active** status and ready for immediate use
-- **Active**: Can authenticate API requests
-- **Inactive**: Cannot authenticate - returns authentication error
-- No automatic expiration or deactivation based on inactivity
-
-**User Removal Impact**:
-
-- User deletion invalidates ALL user's tokens
-- Tokens automatically deactivated
-- Cannot reactivate after user removal
-
-### Token Deletion
-
-Deactivate tokens you no longer need. Inactive tokens cannot authenticate API requests, providing similar security to deletion.
-
-## Security Best Practices
-
-### Secure Token Storage
-
-✅ **Recommended Storage Methods**:
-
-- **Password Managers**: 1Password, Bitwarden, LastPass
-- **Environment Variables**: `.env` files (excluded from Git)
-- **Secret Management Services**: HashiCorp Vault, AWS Secrets Manager, Azure Key Vault
-- **Encrypted Configuration**: Files encrypted at rest
-
-❌ **Never Store Tokens**:
-
-- In Git repositories (public or private)
-- In application code
-- In plaintext logs
-- In browser localStorage (use session-based auth for browsers)
-- In shared documents or wikis
-
-### Token Rotation Strategy
-
-**Rotation Frequency**:
-
-- No specific rotation frequency is recommended by Bodhi App
-- Rotate tokens based on your organization's security policies and requirements
-- Consider your risk tolerance and compliance needs
-
-**Rotation Process**:
-
-1. Create new token with same scopes
-2. Update applications to use new token
-3. Test new token works correctly
-4. Deactivate old token
-5. Keep deactivated token for audit trail or delete if UI available
-
-**When to Rotate**:
-
-- Regular schedule (quarterly, annually)
-- After team member departure
-- If token possibly exposed
-- Security audit recommendations
-
-### Scope Minimization
-
-Grant only required scopes using principle of least privilege.
-
-**Examples**:
-
-**Read-Only Application**:
+Authorization header format:
 
 ```
-Scope: Token User
-Use Case: Chat application, model discovery dashboard, embedding generation
-Capabilities: Read-only access to models, chat completions, embeddings
+Authorization: Bearer <token>
 ```
 
-**Model Management Application**:
+That's the only accepted format. `Authorization: <token>` (missing `Bearer `) and `Bearer <token>` (missing the header name) both fail.
 
-```
-Scope: Token Power User
-Use Case: CI/CD pipeline, automated model management
-Capabilities: All Token User capabilities + model download/deletion
-```
+Tokens work against any Bodhi API endpoint that the scope is allowed to call:
 
-**Principle of Least Privilege**:
+- **User-scope tokens**: `POST /bodhi/v1/chat/completions`, `POST /bodhi/v1/embeddings`, `GET /bodhi/v1/models`, plus the OpenAI / Anthropic / Gemini compatibility surfaces for the same operations.
+- **PowerUser-scope tokens**: all of the above, plus model download and delete endpoints.
 
-- Use **Token User** for applications that only need to query models
-- Use **Token Power User** only when model management is required
-- Never use Token Power User scope for pure chat or embedding applications
+For the full per-endpoint scope requirement table, see the embedded API reference (Swagger UI) on your deployed instance.
 
-### Monitoring Token Usage
+## Managing tokens
 
-**Security Monitoring**:
+The Tokens page lists every token you've created with these columns:
 
-- Review token list regularly
-- Deactivate unused tokens
-- Rotate tokens on schedule
-- Monitor application logs for authentication failures
+| Column     | Notes                                          |
+| ---------- | ---------------------------------------------- |
+| Name       | What you typed at creation                     |
+| Scope      | User or PowerUser                              |
+| Status     | Active or Inactive (toggle to switch)          |
+| Created At | Timestamp                                      |
+| Updated At | Timestamp of the last status / metadata change |
+
+Token values are never re-displayed. Only metadata is visible after creation.
+
+### Activating / deactivating
+
+Flip the Status toggle. An inactive token fails authentication immediately on the next request — useful for temporary disable, rotation, or emergency revocation. Reactivating restores the same token (no value change).
+
+### Lifetimes
+
+Tokens do not auto-expire. They live until you deactivate them or until the issuing user is removed (which invalidates all of their tokens). Plan your own rotation cadence based on your security policy.
+
+## Rotation
+
+To rotate a token:
+
+1. Mint a new token with the same scope.
+2. Update your application / pipeline to use the new value.
+3. Confirm the new token works.
+4. Deactivate the old token from the Tokens page.
+
+Common reasons to rotate: scheduled cadence (quarterly, annually), team member departure, suspected exposure, post-audit cleanup.
+
+## Best practices
+
+- **Least scope.** Use `User` for chat-only or embedding-only workloads. Reserve `PowerUser` for pipelines that genuinely need to download or delete models.
+- **One token per integration.** Don't reuse the same token across CI, your laptop, and a staging service. Separate tokens make it possible to revoke one without breaking the others.
+- **Name them.** A descriptive name in the Tokens table is the only way to remember what each token is for after a few months.
+- **Watch for auth failures.** Recurring 401/403 from a single token is a signal it was deactivated, the issuing user was removed, or the scope is wrong for the endpoint you're calling.
 
 ## Troubleshooting
 
-### Token Authentication Fails
+### "Invalid authentication token"
 
-**Symptoms**: API requests return authentication error
+The token isn't recognized. Common causes:
 
-**Common Error Messages**:
+- Extra whitespace before or after the token (especially when copy-pasted from a terminal).
+- The token was truncated in transit.
+- The header is malformed — must be exactly `Authorization: Bearer <token>`.
 
-- **"Invalid authentication token"**: Token is not recognized or formatted incorrectly
-- **"Inactive token"**: Token exists but has been deactivated
-- **"Unauthorized"**: Token is valid but lacks required permissions
+Re-copy from your secret store and retry.
 
-**Possible Causes & Solutions**:
+### "Inactive token"
 
-1. **Token Copied Incorrectly**:
-   - Verify no extra spaces before/after token
-   - Check entire token copied (no truncation)
-   - Try copying again from secure storage
+The token exists but its Status is Inactive. Toggle it back on, or mint a replacement.
 
-2. **Token Inactive**:
-   - Check token status in Tokens page
-   - Reactivate if accidentally deactivated
-   - Create new token if intentionally deactivated
+### "Unauthorized" / "Insufficient permissions"
 
-3. **Wrong Authorization Header Format**:
-   - Correct: `Authorization: Bearer YOUR_TOKEN`
-   - Incorrect: `Authorization: YOUR_TOKEN` (missing "Bearer ")
-   - Incorrect: `Bearer YOUR_TOKEN` (missing "Authorization:" header)
+The token is valid but its scope doesn't cover the endpoint. Check the Scope column in the Tokens page. If you need higher scope, mint a new token — scopes are immutable.
 
-4. **Token Expiration**:
-   - Tokens currently do not expire automatically
-   - If authentication fails, check token is still active in UI
+### Token works for chat but not for model download
 
-5. **User Removed**:
-   - Token invalidated when user deleted
-   - Create new token with active user account
+You have a User-scope token. Model download requires PowerUser scope. Mint a new PowerUser-scope token and update your pipeline.
 
-6. **Insufficient Permissions**:
-   - Token scope does not allow requested operation
-   - Check token scope in tokens list
-   - Create new token with appropriate scope
+### I lost the token after creation
 
-### Token Lost After Creation
+Tokens are not retrievable. Mint a replacement and deactivate the old one (it's already useless to you, but cleaning it up keeps the table tidy).
 
-**Symptoms**: Forgot to copy token from one-time display
+### My old token still works for a few seconds after I deactivated it
 
-**Solution**:
+Token validation hits an in-memory cache; revocation is near-instant but not strictly synchronous. A few seconds and it'll fail.
 
-- Tokens CANNOT be retrieved after creation
-- Create new token:
-  1. Navigate to Tokens page
-  2. Click **New API Token**
-  3. Enter same name (or append "-v2")
-  4. Select same scopes
-  5. **Copy token immediately this time**
-- Deactivate lost token:
-  1. Find original token in table
-  2. Toggle to Inactive
-- Update applications with new token
+## See also
 
-**Prevention**:
-
-- Always copy token immediately
-- Store in password manager before closing dialog
-- Test token works before closing dialog
-
-### Scope Permission Denied
-
-**Symptoms**: API returns permission denied error with valid token
-
-**Common Error Messages**:
-
-- **"Insufficient permissions for this operation"**: Token scope does not allow this action
-- **"Unauthorized"**: Token valid but lacks required scope
-
-**Cause**: Token lacks required scope for API endpoint
-
-**Solutions**:
-
-1. **Check Token Scopes**:
-   - View token scopes in the tokens list UI
-   - Scopes are displayed in the table for easy identification
-   - Verify required scope for endpoint
-
-2. **Create New Token with Correct Scopes**:
-   - **Scopes cannot be modified after token creation**
-   - Create new token with required scopes
-   - Update application configuration with new token
-   - Deactivate old token
-
-3. **Verify Endpoint Requirements**:
-   - See [API Reference](/docs/developer/openapi-reference) for scope requirements
-   - Token User: Read-only endpoints (chat, embeddings, models list)
-   - Token Power User: Model management endpoints (download, delete)
-
-## Related Documentation
-
-- [API Reference](/docs/developer/openapi-reference) - API endpoint documentation
-- [Bodhi JS SDK](/docs/developer/bodhi-js-sdk/getting-started) - SDK integration guide
-- [User Management](/docs/features/auth/user-management) - Managing users and roles
+- [Auth Overview](/docs/features/auth/overview) — roles vs scopes, when to use sessions vs tokens
+- [Bodhi JS SDK](/docs/developer/bodhi-js-sdk/getting-started) — typed client that handles auth for you
+- [App Access Management](/docs/features/auth/app-access-management) — for third-party apps that need their own scoped credentials

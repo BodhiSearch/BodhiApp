@@ -1,146 +1,99 @@
 ---
 title: 'MCP Usage'
-description: 'Using the MCP Playground and MCP tools in Bodhi App chat conversations'
-order: 237
+description: 'Enable MCP tools in chat conversations, control whitelists per chat, and read tool execution feedback'
+order: 5
 ---
 
 # MCP Usage
 
-Once MCP servers and instances are configured (see [MCP Setup](/docs/features/mcps/setup)), you can test tools in the Playground and use them in chat conversations through the agentic loop.
+Once you have a working MCP instance (see [Setup](/docs/features/mcps/setup)), there are two places to use its tools:
 
-## MCP Playground
+- The **chat interface** — the model decides when to call tools mid-conversation.
+- The **[Playground](/docs/features/mcps/playground)** — you call tools manually with hand-crafted inputs.
 
-The Playground at `/ui/mcps/playground?id=<mcpId>` provides an interactive environment for testing individual MCP tools. Access it by clicking the play button on any MCP instance in the list.
+This page covers chat. For deeper chat-side mechanics — tool-call rendering, the agentic loop, abort handling — see [Tool Calling in Chat](/docs/features/chat/tool-calling).
 
-<img
-  src="/doc-images/mcp-playground.jpg"
-  alt="MCP Playground with tool sidebar and form parameters"
-  class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
-/>
+## Enable MCPs for a conversation
 
-### Layout
+Open the chat at `/ui/chat/`. Next to the message input is a **plug icon**. Click it to open the MCPs popover.
 
-The Playground uses a two-panel layout:
+The popover lists every MCP instance you own:
 
-- **Tool Sidebar** (left) -- Lists all tools from the MCP instance's cached tool inventory. Each tool shows its name and description. Non-whitelisted tools appear dimmed (at 50% opacity). A refresh button re-fetches tools from the server, and a timestamp shows when tools were last updated.
+- A checkbox per MCP enables or disables all of its whitelisted tools at once. The checkbox shows three states: **checked** (all tools enabled), **unchecked** (none), or **indeterminate** (some).
+- An expand chevron reveals individual tools. Each tool has its own checkbox so you can pick a subset.
+- A tool count indicator (e.g. `3/5`) shows how many tools are currently enabled out of those available.
 
-- **Execution Area** (right) -- Displays the selected tool's details, parameter inputs, execute button, and results.
+A small **badge** on the plug icon counts the total number of enabled tools across all MCPs — at-a-glance visibility for what the model is allowed to call.
 
-### Selecting a Tool
+Selections persist across popover open/close and across new chat sessions in the same browser.
 
-Click any tool in the sidebar to select it. The execution area updates to show:
+## Tool whitelisting at two layers
 
-- The tool name and description.
-- A warning alert if the tool is **not whitelisted** in the instance's tool filter. The warning reads: "This tool is not whitelisted. Execution may be rejected by the server."
-- Parameter input fields generated from the tool's JSON Schema.
+There are two places tools can be filtered, and it helps to keep them straight:
 
-### Entering Parameters
+1. **Instance-level whitelist** (set on the [Setup](/docs/features/mcps/setup) edit form) — limits which tools the MCP exposes at all. Tools that are not on this whitelist do not appear in the popover.
+2. **Per-conversation enable** (set in the chat popover) — picks, from the whitelist, which tools the model can call right now.
 
-Two input modes are available, toggled via **Form** and **JSON** buttons above the parameter area:
+The popover only shows tools that pass both filters. If an instance has zero whitelisted tools, the row is dimmed with a tooltip explaining why.
 
-**Form Mode** -- Renders schema-driven form fields based on the tool's `input_schema`:
+### Why an MCP shows as unavailable
 
-- **String** parameters render as text inputs.
-- **Number/Integer** parameters render as number inputs.
-- **Boolean** parameters render as checkboxes.
-- **Array/Object** parameters render as textarea fields expecting JSON.
-- Required fields are marked with a red asterisk.
-- Field descriptions from the schema appear as helper text.
+The popover dims a row and disables its checkboxes when the instance is not usable. Hover for the reason:
 
-**JSON Mode** -- A raw JSON textarea for entering all parameters as a JSON object. Syntax errors display an "Invalid JSON" message below the editor.
+- **Disabled by administrator** — the parent server is disabled. Ask the admin to re-enable it.
+- **Disabled by user** — the instance itself is toggled off. Re-enable on the [Setup](/docs/features/mcps/setup) edit page.
+- **Tools not yet discovered** — you never clicked **Fetch Tools** on the edit form. Open it and discover.
+- **All tools blocked by filter** — the whitelist is empty. Open the edit form and tick at least one.
 
-The two modes stay synchronized. Editing a value in form mode updates the JSON representation, and valid JSON edits update the form fields when switching back. This bidirectional sync is maintained in real time.
+## Sending a message with tools enabled
 
-### Executing a Tool
+Type a prompt that needs a tool ("List the Python files in this repo", "What's the latest tag on github.com/BodhiSearch/BodhiApp?") and send it. The agentic loop runs:
 
-Click **Execute** to send the tool call to the MCP server. The request is sent to `POST /bodhi/v1/apps/mcps/<mcpId>/tools/<toolName>/execute` with the cleaned parameters (empty strings and undefined values are stripped).
+1. The model receives your message plus definitions of every enabled tool.
+2. It may answer in plain text, or it may emit one or more tool-call requests.
+3. Bodhi executes each tool call against the right MCP instance.
+4. The result is fed back to the model as a tool message.
+5. The model produces its final answer (which may itself trigger more tool calls).
 
-During execution, a spinner appears on the button. When execution completes, the result section appears below.
+A single response can chain several rounds of calls before settling.
 
-### Viewing Results
+## Reading tool execution in chat
 
-Results display in a panel with a status badge and three tabs:
+Every tool call renders as a collapsible card inside the conversation, between the user turn and the model's final answer.
 
-- **Status Badge** -- Shows either a green **Success** badge or a red **Error** badge based on whether the response contains a `result` field or an `error` field.
+The card header shows:
 
-- **Response Tab** -- Shows the result payload as syntax-highlighted JSON. For error responses, the error message displays in red monospace text.
+- The tool name and the source MCP slug.
+- A status badge:
+  - **Calling…** (blue, with spinner) — execution in progress. The card auto-expands while it is calling.
+  - **Completed** (green, with check) — execution succeeded.
+  - **Error** (red, with X) — execution failed.
 
-- **Raw JSON Tab** -- Shows the complete response object including both result and metadata.
+The expanded body shows:
 
-- **Request Tab** -- Shows the JSON that was sent: the tool name and parameters object.
+- **Arguments** — the JSON the model sent, pretty-printed.
+- **Result** — the tool's response, pretty-printed. Errors render with a red label and tinted background.
 
-A **Copy** button in the header copies the currently displayed tab content to the clipboard.
+Cards auto-collapse once the call completes. Click to expand or collapse at any time. If a single response triggers multiple tool calls, each renders as its own card; results are matched to the right call internally.
 
-### Refreshing Tools
+## Errors and failure modes
 
-Click the refresh icon in the sidebar header to re-fetch tools from the MCP server. This calls `POST /bodhi/v1/apps/mcps/<mcpId>/tools/refresh` and updates the cached tool list. The last-refreshed timestamp updates to reflect the new fetch time.
+| Symptom                                           | Likely cause                             | What to do                                                                                                       |
+| ------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Card shows **Error** with a 401/403 message       | OAuth token expired or revoked           | Open the instance edit page → Disconnect → Connect to re-authorize                                               |
+| Card shows **Error** with a 404                   | Tool name no longer exists on the server | Re-fetch tools on the edit form; whitelist may need updating                                                     |
+| Card shows **Error** but the request looked right | Server-side issue                        | Reproduce in the [Playground](/docs/features/mcps/playground) — its raw-JSON tab makes the failure mode explicit |
+| Tool not appearing in popover                     | Instance whitelist or instance disabled  | Check Setup edit page; re-fetch and re-whitelist                                                                 |
+| Plug icon badge count is zero                     | No tools enabled in this conversation    | Open popover, tick the tools you want                                                                            |
 
-### Disabled Instance Behavior
+For protocol-level debugging — request payloads, response shapes — the [Playground](/docs/features/mcps/playground) is the right tool. The chat UI is intentionally lossy; it shows what users need to see, not the wire-level detail.
 
-If an MCP instance is disabled (via the enabled toggle on the edit page), tool execution in the Playground returns an error response. The tools remain visible and selectable, but the server rejects execution requests.
+## Switching tools mid-conversation
 
-## Chat Integration
+The popover stays accessible during a conversation. You can enable or disable tools between turns; the next message picks up the new selection. Existing turns and their tool cards stay rendered as-is.
 
-MCP tools integrate directly into the chat interface, enabling an agentic workflow where the LLM can request tool calls that Bodhi executes and feeds back into the conversation.
+## Where to next
 
-### MCPs Popover
-
-The chat input area includes a plug icon button that opens the MCPs popover. This popover lists all of the user's MCP instances with per-MCP and per-tool enable/disable controls.
-
-**Badge Count** -- When tools are enabled, a badge on the plug icon shows the total number of enabled tools across all MCPs.
-
-**MCP Rows** -- Each MCP instance appears as a row with:
-
-- An expand/collapse chevron to reveal individual tools.
-- A checkbox to enable or disable all of the MCP's visible tools at once. The checkbox shows three states: checked (all tools enabled), unchecked (no tools enabled), or indeterminate (some tools enabled).
-- The MCP slug and a tool count indicator (e.g., "3/5").
-
-**Tool Rows** -- Expanding an MCP reveals its whitelisted tools, each with an individual checkbox to enable or disable that specific tool.
-
-**Unavailability Handling** -- MCPs that are not available for use appear dimmed with disabled controls. Hovering over an unavailable MCP shows a tooltip explaining the reason:
-
-- "Disabled by administrator" -- The parent MCP server is disabled.
-- "Disabled by user" -- The MCP instance itself is disabled.
-- "Tools not yet discovered" -- The tools cache is empty.
-- "All tools blocked by filter" -- The tools filter is set to an empty list.
-
-**Selection Persistence** -- MCP tool selections persist across popover open/close cycles and across new chat sessions. Selections are maintained as long as the browser session is active.
-
-### Agentic Loop
-
-When MCP tools are enabled in the chat popover and the user sends a message, the following agentic loop occurs:
-
-1. **User Message** -- The user types a message and sends it.
-2. **LLM Response with Tool Call** -- The LLM analyzes the message along with the available tool definitions and may respond with one or more tool call requests instead of (or in addition to) text.
-3. **Bodhi Executes Tools** -- Bodhi intercepts the tool call requests, routes them to the appropriate MCP server, and executes the specified tools with the provided arguments.
-4. **Results Fed Back** -- Tool execution results are added to the conversation as tool-role messages and sent back to the LLM.
-5. **LLM Generates Final Response** -- The LLM incorporates the tool results and generates its final text response to the user.
-
-This loop can involve multiple rounds of tool calls before the LLM produces its final answer.
-
-### Tool Call Display
-
-When the LLM requests a tool call, the chat UI renders a collapsible tool call section within the conversation:
-
-**Header** -- Shows the tool name, the source MCP slug, and a status badge:
-
-- **Calling...** (blue, with spinner) -- Tool execution is in progress. The section auto-expands during this state.
-- **Completed** (green, with check icon) -- Tool execution finished successfully.
-- **Error** (red, with X icon) -- Tool execution returned an error.
-
-**Expanded Content** -- When expanded, the section shows:
-
-- **Arguments** -- The JSON arguments the LLM passed to the tool, pretty-printed in a scrollable code block.
-- **Result** -- The tool's response, pretty-printed in a scrollable code block. Error results display with a red "Error" label and a tinted background.
-
-The section auto-collapses after execution completes. Users can click to expand or collapse it at any time.
-
-### Multiple Tool Calls
-
-The LLM may request multiple tool calls in a single response. Each tool call renders as its own collapsible section, and results are matched to their corresponding calls by `tool_call_id`. All pending calls show the "Calling..." state simultaneously during execution.
-
-## Related Documentation
-
-- [MCP Setup](/docs/features/mcps/setup) -- Registering servers and creating instances
-- [Chat UI](/docs/features/chat/chat-ui) -- Full chat interface documentation
-- [Access Requests](/docs/features/auth/user-access-requests) -- OAuth access request flow for third-party apps
+- [Tool Calling in Chat](/docs/features/chat/tool-calling) — deeper detail on the agentic loop, abort handling, and how the chat UI consumes tool messages.
+- [Playground](/docs/features/mcps/playground) — manual tool runs when you want to debug.
+- [Setup](/docs/features/mcps/setup) — change instance whitelists or auth state.

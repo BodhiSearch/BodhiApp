@@ -1,7 +1,7 @@
 ---
 title: 'Advanced Patterns'
 description: 'Advanced SDK usage — login with MCP access requests, agentic tool calling, extension SDK, custom client configuration, error handling'
-order: 254
+order: 1
 ---
 
 # Advanced Integration Patterns

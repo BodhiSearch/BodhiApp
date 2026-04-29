@@ -1,66 +1,58 @@
 ---
 title: 'Model Files'
-description: 'View and manage the model files downloaded from HuggingFace.'
-order: 215
+description: 'List, inspect, and remove the GGUF files Bodhi has cached locally for inference'
+order: 20
 ---
 
 # Model Files
 
-Model Files in Bodhi App provide an overview of the downloaded GGUF models from HuggingFace repositories. This page lists all GGUF model files stored locally along with their repository information, file size, and other metadata. It also offers a direct link to the corresponding HuggingFace repository for each model file.
+The Model Files page at `/ui/models/files/` shows every GGUF that lives in your local HuggingFace cache — the actual weight files Bodhi reads when it runs llama.cpp. Files and aliases are independent: deleting a file doesn't remove the aliases pointing at it, and deleting an alias doesn't free disk space. This page is the place to manage the file side.
 
-**Note**: This page displays locally downloaded GGUF models only. For information about configuring API models from providers like OpenAI and others, see [API Models](/docs/features/models/api-models).
+If you want to _download_ a new GGUF, head to [Model Downloads](/docs/features/models/model-downloads). For configuring a remote provider, see [API Models](/docs/features/models/api-models).
 
-## Overview
+## What you see
 
-This page displays all the GGUF model files that you have downloaded into your local HuggingFace cache. Bodhi App focuses on GGUF format models for local inference, which are optimized for CPU and GPU execution using llama.cpp.
+For each cached file the table shows:
 
-For each file, you can see details such as:
-
-- **Repository:** The source repository of the model (typically from HuggingFace).
-- **Filename:** The name of the GGUF model file (includes quantization level like Q4_K_M, Q8_0).
-- **Size:** The storage space used by the model file.
-- **Updated At:** The timestamp when the file was last updated.
-- **Snapshot:** An identifier for the file version (if available).
-
-An action button is provided for each model file so that you can quickly open the corresponding HuggingFace repository in a new tab.
+- **Repository** — the HuggingFace source (e.g. `QuantFactory/Meta-Llama-3-8B-Instruct-GGUF`).
+- **Filename** — the GGUF file, including the quantization suffix (`Q4_K_M`, `Q8_0`, etc.).
+- **Size** — disk space used. GGUFs typically range from a few hundred MB up to tens of GB.
+- **Updated At** — the cache timestamp.
+- **Snapshot** — the snapshot ID from HuggingFace (lets you tell two versions of the same filename apart).
 
 <img
-  src="/doc-images/model-files.jpeg"
-  alt="Model Files Page"
+  src="/doc-images/model-files.jpg"
+  alt="Model Files page listing locally cached GGUF files with repo, filename, size, and snapshot"
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-## How It Works
+## Per-row actions
 
-When you navigate to the Model Files page, Bodhi App retrieves and displays all the downloaded model files from your local cache. For each model file, the available action buttons include:
+- **Open in HuggingFace** — opens the source repository in a new tab. Useful for checking model cards, license terms, and alternative quantizations.
+- **Preview** — modal showing the metadata Bodhi extracted from the GGUF headers: capabilities (vision, audio, thinking, function calling, structured output), context window limits, architecture family, parameter count, and quantization level.
+- **Delete** — removes the file from local disk. Aliases still pointing at the file will fail the next time they try to launch llama.cpp.
 
-- **Open in HuggingFace:** Clicking this button opens the corresponding repository homepage in your browser.
-- **Delete:** Remove model files from local disk.
-- **Preview:** Open a modal showing model metadata, capabilities, and architecture details extracted from GGUF headers.
+## Where the files live
 
-## Benefits
+Bodhi does not host its own model cache. GGUFs are stored under the standard HuggingFace cache directory (`~/.cache/huggingface/hub/...` on macOS and Linux, the platform-equivalent path on Windows). That means:
 
-Using the Model Files page, you are able to:
+- Other tools that respect the HF cache (`llama.cpp` CLI, `ollama`, LM Studio, etc.) can use the same files. No duplication.
+- Files persist across Bodhi reinstalls.
+- On Docker, mount the cache directory into the container if you want downloads to survive container recreates.
 
-- **Quickly access** the list of downloaded GGUF models.
-- **Monitor storage usage** by viewing the file sizes (GGUF models can range from hundreds of MB to tens of GB).
-- **Easily navigate** to the HuggingFace repository to check for updates, model cards, or additional quantization options.
-- **Manage your local models** in a central location for a streamlined workflow.
-- **Verify downloads** by checking file metadata and snapshot information.
+## GGUF in one paragraph
 
-## GGUF Format
+GGUF is the binary format llama.cpp uses for quantized weights. Each file embeds the chat template, tokenizer, architecture descriptor, and capability flags alongside the weights, so Bodhi can read the metadata without parsing every model's config separately. Quantization levels (Q4, Q5, Q8 and so on) trade quality for size — see the model card on HuggingFace to pick the right one for your hardware. Bodhi does not currently support non-GGUF local formats; for anything else, configure an [API Model](/docs/features/models/api-models) pointing at a hosted endpoint.
 
-Bodhi App uses the GGUF (GPT-Generated Unified Format) for local model inference:
+## Cleaning up
 
-- **Optimized Performance**: GGUF models are optimized for CPU and GPU execution
-- **Quantization Support**: Different quantization levels (Q4, Q5, Q8, etc.) balance quality and resource usage
-- **Metadata Embedded**: GGUF files contain model metadata for automatic configuration
-- **Cross-Platform**: Works on macOS, Windows, and Linux with appropriate hardware acceleration
+A few patterns we see often:
 
-For information about using non-GGUF models through API providers, see [API Models](/docs/features/models/api-models).
+- **Removing an unused quantization** — if you grabbed both Q4_K_M and Q8_0 to compare, delete the one you don't keep using.
+- **Verifying a flaky download** — open the Preview modal; if the metadata looks malformed, delete and re-download from the [Model Downloads](/docs/features/models/model-downloads) page.
+- **Auditing storage** — sort by Size to find the heaviest files. Llama-3-70B and similar large models occupy 30+ GB at higher quantization levels.
 
-## Best Practices
+## Where to go next
 
-- Regularly review the Model Files page to ensure that your local cache is up-to-date.
-- Use the link to navigate to the HuggingFace repository for further details about each model.
-- Use the Preview modal to check model capabilities before creating an alias.
+- Need a model that isn't here yet? Head to [Model Downloads](/docs/features/models/model-downloads).
+- Want to wrap a file in your own configuration (custom temperature, stop sequences, server flags)? Create a User Defined Alias — see [Model Aliases](/docs/features/models/model-alias).

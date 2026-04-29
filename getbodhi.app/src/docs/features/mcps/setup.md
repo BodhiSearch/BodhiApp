@@ -1,20 +1,23 @@
 ---
 title: 'MCP Setup'
-description: 'Registering MCP servers and creating user MCP instances in Bodhi App'
-order: 236
+description: 'Connect to an MCP server and create a user MCP instance with whitelisted tools'
+order: 1
 ---
 
 # MCP Setup
 
-Bodhi App integrates with external tool providers through the Model Context Protocol (MCP). Setup involves two layers: **MCP Servers** managed by administrators, and **MCP Instances** created by individual users.
+Setting up an MCP integration in Bodhi App is a two-layer flow:
 
-## MCP Servers
+1. **Server** — published once by an admin in the workspace catalog (or, optionally, supplied URL-by-URL by individual users). Defines where to connect and how to authenticate.
+2. **Instance** — created per user. Combines a server with the user's own credentials, a tool whitelist, and an enabled flag.
 
-MCP Servers are admin-managed endpoints that define where Bodhi connects to access external tools. Manage them at `/ui/mcps/servers/`.
+This page walks the user-side workflow. The admin-side workflow lives at [Pre-registered Servers](/docs/features/mcps/pre-registered-servers).
 
-### Server List
+> Skip ahead: deciding which auth method a server expects? Jump to [Auth Methods](/docs/features/mcps/auth-methods).
 
-The MCP Servers page displays all registered servers in a table with columns for name, URL, status, and MCP instance count. Admins can toggle a server's enabled/disabled state directly from the list via a switch control. Expanding a row reveals the auth configurations associated with that server.
+## Browse available servers
+
+Open `/ui/mcps/servers/` to see every server published in the workspace catalog. The page shows a table with name, URL, status (enabled / disabled), and how many user instances exist against each row. Expanding a row surfaces the auth configurations attached — useful for confirming what kind of credential the server expects before you instantiate it.
 
 <img
   src="/doc-images/mcp-servers-list.jpg"
@@ -22,68 +25,16 @@ The MCP Servers page displays all registered servers in a table with columns for
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-Admins see edit and toggle controls; non-admin users see a read-only view with status badges.
+Non-admins see status badges; admins see toggle switches and an **Edit** button on each row.
 
-### Creating a Server
+## Manage your instances
 
-Click **New MCP Server** to register a new endpoint. Required fields:
+Open `/ui/mcps/` to see your own MCP instances. Each row shows:
 
-- **URL** -- The MCP server endpoint (e.g., `https://mcp.example.com/mcp`). The name field auto-populates from the URL's second-level domain when left blank.
-- **Name** -- A human-readable label (max 100 characters).
-
-Optional fields:
-
-- **Description** -- Brief description of the server's purpose (max 255 characters).
-- **Enabled** -- Toggle whether users can create instances against this server (defaults to on).
-
-### Authentication Configuration
-
-An optional collapsible section on the new server form lets admins configure authentication. Expand **Authentication Configuration (Optional)** to reveal the auth type selector with three options:
-
-#### None (Public)
-
-No authentication is required. Requests to the MCP server are sent without credentials. This is the default.
-
-#### Header
-
-Send a static API key or bearer token with every request. Fields:
-
-- **Name** -- Label for this auth configuration (e.g., "Production API Key").
-- **Header Key** -- The HTTP header name (e.g., `Authorization`).
-- **Header Value** -- The secret value (e.g., `Bearer sk-...`). Displayed as a password field. Stored server-side with AES-256-GCM encryption.
-
-#### OAuth
-
-Two registration sub-types are available, selectable via the **Registration Type** dropdown:
-
-**Dynamic Registration** -- When selected (or when auto-DCR is active on the new server page), Bodhi automatically discovers the MCP server's OAuth endpoints by calling a discovery API. If discovery succeeds, the authorization endpoint, token endpoint, registration endpoint, and supported scopes are auto-populated. Bodhi then performs Dynamic Client Registration per RFC 7591/8414 at submit time, obtaining `client_id` and `client_secret` without manual entry.
-
-If auto-discovery fails, the form silently falls back to pre-registered mode so the admin can fill in credentials manually.
-
-**Pre-Registered** -- The admin manually provides:
-
-- **Client ID** -- The OAuth client identifier.
-- **Client Secret** (optional) -- The client secret if applicable.
-- **Authorization Endpoint** -- The OAuth authorization URL.
-- **Token Endpoint** -- The OAuth token exchange URL.
-- **Scopes** (optional) -- Space-separated OAuth scopes.
-
-### Server View Page
-
-The server detail page at `/ui/mcps/servers/view?id=<serverId>` shows server properties and lists all auth configurations. Admins can:
-
-- Add new auth configurations directly from this page using the inline **Add Auth Config** form. This form supports the same header and OAuth types as the new server form, but uses `enableAutoDcr={false}` -- discovery errors are displayed rather than silently falling back.
-- Delete existing auth configurations with a confirmation dialog. Deleting an auth config also removes all associated OAuth tokens and leaves linked MCP instances without authentication.
-
-### Editing a Server
-
-The edit page at `/ui/mcps/servers/edit?id=<serverId>` allows updating the URL, name, description, and enabled state. If the URL changes, a confirmation dialog warns that cached tools and tool filters on all linked MCP instances will be cleared. Auth configurations are displayed read-only with a delete option.
-
-## MCP Instances
-
-MCP Instances are user-level connections to registered MCP servers. Each user creates their own instances to control which tools they use. Manage them at `/ui/mcps/`.
-
-### Instance List
+- The instance name and description.
+- The underlying server URL.
+- A status badge — **Active**, **Disabled** (instance toggled off), or **Server Disabled** (server toggled off by admin).
+- Action buttons for playground, edit, and delete.
 
 <img
   src="/doc-images/mcp-instances-list.jpg"
@@ -91,55 +42,86 @@ MCP Instances are user-level connections to registered MCP servers. Each user cr
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-The My MCPs page shows a table of the user's instances with columns for name, server URL, tool count, and status. Status badges indicate:
+Playground and edit are disabled when the parent server is disabled.
 
-- **Active** -- Enabled with whitelisted tools.
-- **No Tools** -- Enabled but no tools whitelisted.
-- **Disabled** -- Instance is turned off.
+## Create an instance
 
-Each row provides action buttons for playground, edit, and delete. The playground and edit buttons are disabled if the parent server is disabled.
+Click **New MCP** on the **My MCPs** page. The form has four steps; what you see in step 3 depends on the auth template the admin attached to the server.
 
-### Creating an Instance
+### 1. Pick a server
 
-Click **New MCP** to open the creation form. The workflow:
+A searchable combobox lists every enabled server in the catalog. Search filters by name, URL, and description. Admins also see an **Add New MCP Server** option that jumps to the catalog form.
 
-1. **Select an MCP Server** -- A searchable combobox lists all enabled servers. Search filters by name, URL, and description. Admins see an "Add New MCP Server" option at the bottom.
+When you pick a server, Bodhi auto-fills:
 
-2. **Fill Instance Details**:
-   - **Name** -- Friendly label for this instance.
-   - **Slug** -- Unique identifier using letters, numbers, and hyphens (max 24 characters). Auto-generated from the server URL's hostname.
-   - **Description** (optional).
-   - **Enable MCP** -- Toggle to make the instance active (defaults to on).
+- **Name** — copied from the server name (you can change it).
+- **Slug** — derived from the URL's hostname (letters, numbers, and hyphens; max 24 chars).
+- **Description** — copied from the server, optional.
 
-3. **Configure Authentication** -- A dropdown lists available auth configurations for the selected server:
-   - **Public (No Auth)** -- No credentials sent.
-   - Any header or OAuth auth configs registered on the server.
-   - Admins see a **+ New Auth Config** option that redirects to the server settings page.
+### 2. Confirm details
 
-   For **header** auth, selecting a config displays a summary showing the config name, header key, and whether a value is configured.
+Adjust name, slug, description as needed. Toggle **Enable MCP** off if you want to create the instance without making it active yet (you can flip it on later from the edit page).
 
-   For **OAuth** auth, selecting a config reveals a **Connect** button. Clicking Connect:
-   - Saves the current form state to session storage.
-   - Redirects to the OAuth provider's authorization page.
-   - After approval, the callback page at `/ui/mcps/oauth/callback` exchanges the authorization code for a token and redirects back to the form with a green **Connected** badge.
-   - A **Disconnect** button removes the OAuth token and returns to the auth config dropdown.
+### 3. Authentication
 
-4. **Discover and Select Tools** -- Click **Fetch Tools** to query the MCP server for available tools. Each tool appears with a checkbox, name, and description. Use **Select All** / **Deselect All** for bulk control. The counter shows `N/M selected`. Only selected (whitelisted) tools are available for execution.
+This is the branch that depends on what the admin templated. The auth dropdown shows **Public (No Auth)** plus every auth config attached to the server. Pick one.
 
-5. **Create** -- The Create button is disabled until tools have been fetched. Submit to save the instance and return to the list.
+#### Branch A — Public
 
-### Editing an Instance
+No credentials needed. Skip to step 4.
 
-Navigate to the edit form via the pencil icon on the list page. The form pre-populates all fields including cached tools and their selection state. The MCP server selector is read-only in edit mode. For OAuth instances, the edit page shows the current connection status and allows disconnect/reconnect.
+#### Branch B — Header
 
-Click **Update MCP** to save changes.
+A summary panel appears showing the auth config name and the field(s) the server expects (e.g. `Authorization`, `X-API-Key`). Each field renders as a password input with a show / hide toggle.
 
-### Deleting an Instance
+Paste the secret value (e.g. `Bearer sk-...`). Bodhi encrypts it server-side before storing.
 
-Click the trash icon on the list page. A confirmation dialog asks for confirmation before permanent deletion.
+> See [Auth Methods → Header-based](/docs/features/mcps/auth-methods) for when this is the right choice.
 
-## Related Documentation
+#### Branch C — OAuth (preregistered or DCR)
 
-- [MCP Usage](/docs/features/mcps/usage) -- Playground, chat integration, and tool execution
-- [Chat UI](/docs/features/chat/chat-ui) -- Conversational AI interface
-- [Access Requests](/docs/features/auth/user-access-requests) -- OAuth access request flow for third-party apps
+A summary panel appears showing the auth config name, the registration type (Pre-Registered or Dynamic Registration), and the auth server URL. Click **Connect** to start the OAuth flow:
+
+1. Bodhi saves the form state to session storage so it survives the redirect.
+2. Your browser is redirected to the OAuth provider's authorization page.
+3. After you approve, the provider redirects back to `/ui/mcps/oauth/callback/`.
+4. Bodhi exchanges the authorization code for tokens, then returns you to the form with a green **Connected** badge.
+
+A **Disconnect** button beside the badge revokes the stored token and returns the form to the unconnected state — useful if you authorized as the wrong account.
+
+The two OAuth branches behave the same from your perspective; the difference is whether the admin pre-pasted a `client_id` or whether Bodhi registered itself dynamically. Both are described in [Auth Methods](/docs/features/mcps/auth-methods).
+
+> Admin escape hatch: if no suitable auth config is attached, admins see a **+ New Auth Config** option in the dropdown that jumps to the server detail page so they can add one without leaving the flow.
+
+### 4. Save
+
+Click **Create MCP**. The instance is saved and you are returned to the **My MCPs** list. Tool discovery and whitelisting happen on the same form when you reopen it for edit (see below).
+
+## Edit an instance
+
+Click the pencil icon on the **My MCPs** row to reopen the form. The server selector is read-only in edit mode; everything else is editable. For OAuth instances, the connected state is preserved — Disconnect / Connect lets you re-authorize without recreating the instance.
+
+This is also where you fetch and whitelist tools:
+
+1. Click **Fetch Tools** — Bodhi calls the MCP server, lists every tool it advertises, and shows them with checkboxes.
+2. Tick the tools you want to allow. **Select All** / **Deselect All** speed up bulk changes. The counter shows `N/M selected`.
+3. Click **Update MCP** to save.
+
+Only whitelisted tools fire when a model requests them in chat or the playground. Non-whitelisted tools are blocked even if the model tries.
+
+## Delete an instance
+
+Click the trash icon on the **My MCPs** row. A confirmation dialog asks before permanent deletion. Deletion removes any stored OAuth token bundle for the instance.
+
+## Troubleshooting
+
+- **"Server Disabled" badge** — the admin has turned off the parent server. Ask them to re-enable it; you cannot create or edit instances against a disabled server.
+- **OAuth dance fails** — usually a redirect-URI or scope mismatch on the provider side. Confirm the admin templated the correct auth endpoints.
+- **Connect button does nothing** — the authorization URL did not pass URL validation. Check the server's auth template.
+- **No tools after Fetch** — the server returned an empty tool list. Re-check connection state in the [Playground](/docs/features/mcps/playground); it surfaces the connection error directly.
+
+## Where to next
+
+- [Auth Methods](/docs/features/mcps/auth-methods) — picking between Header / OAuth preregistered / OAuth DCR.
+- [Usage in Chat](/docs/features/mcps/usage) — flip MCPs on for a conversation and let the model call tools.
+- [Playground](/docs/features/mcps/playground) — manual tool runner for debugging.

@@ -1,7 +1,7 @@
 ---
 title: 'FAQ'
 description: 'Frequently asked questions about Bodhi App'
-order: 500
+order: 0
 ---
 
 # FAQ
@@ -63,7 +63,7 @@ Go to `/ui/models/files/pull/`, provide the HuggingFace repository name and file
 
 ### What should I do if a model download fails?
 
-Verify your network connection and review error messages on the Downloads page. See [Troubleshooting](/docs/troubleshooting).
+Verify your network connection and review error messages on the Downloads page. See [Troubleshooting](/docs/support/troubleshooting).
 
 ### What Docker variants are available?
 
@@ -140,7 +140,7 @@ The Bodhi App browser extension exposes authenticated endpoints to any webpage, 
 
 ### What should I do if I encounter issues?
 
-See the [Troubleshooting](/docs/troubleshooting) page. If problems persist, reach out via [Discord](https://discord.gg/bodhiapp) or [GitHub Issues](https://github.com/BodhiSearch/BodhiApp/issues).
+See the [Troubleshooting](/docs/support/troubleshooting) page. If problems persist, reach out via [Discord](https://discord.gg/bodhiapp) or [GitHub Issues](https://github.com/BodhiSearch/BodhiApp/issues).
 
 ### How do I update Bodhi App?
 

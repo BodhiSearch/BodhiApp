@@ -1,20 +1,25 @@
 ---
 title: 'Chat UI'
-description: "A comprehensive guide to using Bodhi App's Chat Interface"
-order: 201
+description: "Walkthrough of Bodhi App's built-in chat interface — layout, streaming, model picker, conversation history"
+order: 0
 ---
 
 # Chat UI
 
-Bodhi App's Chat UI provides a conversational AI interface with support for streaming responses, tool calling, MCP integration, and fine-grained parameter control.
+Bodhi App ships with a full-featured chat interface at `/ui/chat/`. This page is a tour of what's on screen, how messages flow, and where your conversations live.
 
-## Overview
+If you came here to set up tools or tweak sampling, jump ahead:
 
-The Chat UI features a three-panel design:
+- **Tools and agents:** [Tool Calling in Chat](/docs/features/chat/tool-calling)
+- **Sampling and system prompt:** [Parameters and System Prompt](/docs/features/chat/parameters-and-system-prompt)
 
-- **Chat History Panel (Left):** View and manage past conversations.
-- **Main Chat Panel (Center):** Interact with the AI assistant.
-- **Settings Panel (Right):** Configure AI behavior using sampling parameters.
+## Layout at a glance
+
+The chat UI uses a three-panel design:
+
+- **Chat History (left):** previous conversations, grouped by recency.
+- **Main Chat (center):** the active conversation and message input.
+- **Settings (right):** model picker, sampling parameters, system prompt.
 
 <img
   src="/doc-images/chat-ui.jpg"
@@ -22,470 +27,115 @@ The Chat UI features a three-panel design:
   class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%] mx-auto block"
 />
 
-Conversations and settings are stored locally in your browser's LocalStorage. Data is private but will be lost if you clear your browser data.
+Both side panels are collapsible — click the chevrons to maximise the chat area. The open/closed state is remembered across reloads.
 
-## Streaming Responses
+## Picking a model
 
-Bodhi App uses real-time streaming to display AI responses as they are generated.
+You must select a model before the send button activates. The dropdown in the Settings panel shows everything Bodhi can route to:
 
-**How It Works**:
+- **Local model aliases** — GGUF models served by llama.cpp on this machine
+- **API models** — remote providers you've configured (OpenAI, Anthropic, Gemini, Groq, OpenRouter, ...)
 
-- When you send a message, it appears immediately in the chat
-- The AI assistant's response streams token-by-token as it is generated
-- You can watch the response build in real-time instead of waiting for completion
+The dropdown is searchable. Below the picker, a small **API Format** label shows which wire format Bodhi will use for the selected model (OpenAI, Anthropic, Gemini, etc.). Switching models mid-conversation starts a fresh context for the next message.
 
-**Stop Generation**:
+For deeper detail on model types, see [Models → Overview](/docs/features/models/overview).
 
-- Currently there is no option to stop streaming mid-way
-- Navigating away from the page drops the network connection, but the backend continues processing the request until complete
+## Sending a message
 
-**Technical Details**:
+Type in the input at the bottom of the main panel and press **Enter** (or click the send icon). While the assistant is responding:
 
-- Uses Server-Sent Events (SSE) for real-time streaming
-- Responses are saved to LocalStorage as they complete
+- Tokens stream in token-by-token via Server-Sent Events.
+- Markdown renders live — code blocks, tables, lists, and blockquotes all formatted as they arrive.
+- Code blocks pick up syntax highlighting once the language is detected.
+- A **Stop** button appears next to the input; click it to abort the in-flight response.
 
-**Benefits**:
+Each completed assistant message shows token counts and inference speed (e.g. `Speed 25.3 t/s`) below the bubble. For local GGUF models the speed reflects your hardware; for API models it's bounded by the provider's network.
 
-- Faster perceived response time (see output immediately)
-- Better user experience (no blank waiting screen)
-- More natural conversation flow
+### Copying responses
 
-## Tool Calling
+Every assistant message has a copy button on hover. Each code block within a response also has its own copy button — useful for grabbing a snippet without the surrounding prose.
 
-Models with tool calling support can invoke tools during a conversation. When tools are enabled, the model can decide to call a tool to gather information or perform actions before generating its final response.
+### If something goes wrong
 
-**How It Works**:
+If the request fails before streaming starts, your input is restored to the text field so you can edit and retry. Errors surface as a toast at the bottom right. Common cases:
 
-1. You send a message to the model
-2. The model generates a `tool_call` specifying which tool to invoke and with what arguments
-3. Bodhi executes the tool call against the MCP server
-4. The tool result is returned to the model
-5. The model generates its final response incorporating the tool result
+- **Network connection failed** — Bodhi server is unreachable or the connection dropped.
+- **Model unavailable** — the local model is still loading, or the API provider is down.
+- **Rate limit exceeded** — slow down or switch to a different provider.
 
-This loop can repeat multiple times in a single conversation turn. The maximum number of iterations is configurable in the settings panel (defaults to 5).
+If streaming was interrupted partway, the partial response is saved with an error marker so you don't lose what was generated.
 
-**Tool Call Display in Chat**:
+## Message types you'll see
 
-Each tool call appears as a collapsible section in the conversation:
+A conversation in Bodhi can contain four kinds of message:
 
-- **Tool name** and **source** (MCP slug) shown in the header
-- **Status badge** indicates the current state:
-  - "Calling..." (blue, with spinner) while the tool is executing
-  - "Completed" (green, with checkmark) when execution succeeds
-  - "Error" (red) when execution fails
-- **Arguments**: JSON of the parameters passed to the tool, shown in a collapsible code block
-- **Result**: The tool's response, shown in a collapsible code block after execution completes
+- **User** — what you typed.
+- **Assistant** — the model's reply, with markdown and optional thinking block.
+- **Tool call / tool result** — when the model invokes an MCP tool. Rendered as a collapsible card with status badge, arguments, and result. See [Tool Calling](/docs/features/chat/tool-calling) for the full lifecycle.
+- **Thinking** — for reasoning-capable models, the internal chain-of-thought is surfaced in a collapsible section inside the assistant bubble. Click to expand or collapse.
 
-Tool calls auto-expand while executing and collapse once completed. You can click the header to expand or collapse any tool call at any time.
+## Conversation history
 
-**Parallel Tool Execution**:
+The left panel lists previous chats grouped by Today, Yesterday, and Previous 7 Days. Click any row to reopen that conversation; hover to reveal a delete control.
 
-When the model requests multiple tool calls in a single turn, they are executed in parallel for faster response times.
+Conversations are stored **locally in your browser** using IndexedDB (via Dexie). This means:
 
-## Thinking Model Support
+- History survives reloads, browser restarts, and offline use.
+- Conversations are scoped to your browser profile — they are never sent to the server beyond the messages required to generate each reply.
+- Clearing site data, or switching browsers/devices, will lose the history. There is no cloud sync.
+- Bodhi keeps the most recent **1000** chats per user; older ones are pruned automatically.
+- Each chat record carries its own settings snapshot and enabled-tools selection, so reopening a conversation restores the exact configuration it was running under.
 
-Models with a "thinking" capability expose their internal reasoning process. When a thinking model is used, the LLM's internal reasoning is displayed in a collapsible section within the assistant's message, allowing you to inspect how the model arrived at its response.
+If you need to share a conversation across devices, copy the messages out manually — there is no built-in export today.
 
-## MCP Integration
+### Starting a new chat
 
-Model Context Protocol (MCP) servers extend the model's capabilities by providing additional tools. MCPs configured in the [MCP Setup page](/docs/features/mcps/setup) are available for use in the chat UI.
+Two ways:
 
-**MCPs Popover**:
+- Click the **+** button in the chat input area.
+- Click the **+ New Chat** entry at the top of the history panel.
 
-The MCPs popover is accessible via the plug icon button in the chat input area. It provides:
+A new chat clears the active context but keeps your selected model and settings. The chat record is created in the database the moment you send your first message.
 
-- A list of all configured MCP instances
-- A badge on the plug icon showing the count of currently enabled MCP tools
-- Per-MCP enable/disable toggle (checkbox enables or disables all tools for that MCP)
-- Expandable per-tool enable/disable toggles within each MCP
-- Tool count display showing enabled vs. total tools per MCP (e.g., "3/5")
+## Markdown and code rendering
 
-**MCP Availability**:
+Bodhi App renders responses with a Markdown pipeline that supports:
 
-An MCP appears as available in the popover when:
+- Headings, bold/italic, lists, blockquotes, tables.
+- Fenced code blocks with automatic language detection and syntax highlighting.
+- Light and dark themes — code blocks adapt automatically.
+- Inline code (`like this`).
 
-- The MCP server is enabled by the administrator
-- The MCP instance is enabled by the user
-- Tools have been discovered (tools cache is populated)
-- The tools filter is not empty (if a filter is configured)
+For best results, ask the model to wrap code in fenced blocks with a language tag (e.g. ```python).
 
-Unavailable MCPs are shown dimmed with a tooltip explaining the reason (e.g., "Disabled by administrator", "Tools not yet discovered").
+## Mobile and responsive behaviour
 
-**MCP Tool Selection Persistence**:
+On smaller screens the side panels collapse into drawer overlays:
 
-Tool selections persist across popover open/close cycles and across new chat sessions within the same browser session. Selections are stored in browser LocalStorage.
+- **Mobile:** single-column chat, sidebars open on demand.
+- **Tablet:** sidebars collapse to icons, expand on hover or tap.
+- **Desktop:** both sidebars docked, all controls visible.
 
-**Agentic Loop with MCPs**:
+The collapse/expand state is persisted independently for each side.
 
-When MCP tools are enabled and the model decides to call one:
+## Where things live
 
-1. User sends a message
-2. Model generates a tool call targeting an MCP tool
-3. Bodhi executes the tool call against the MCP server via the backend API
-4. The tool result is returned to the model
-5. The model generates its response (or makes additional tool calls)
+A quick map for power users:
 
-The tool call UI shows collapsible sections with status badges, arguments JSON, and result display.
+| Concern                                   | Location                              |
+| ----------------------------------------- | ------------------------------------- |
+| Active conversation messages              | IndexedDB (`bodhi-chat` database)     |
+| Per-conversation settings + enabled tools | IndexedDB (alongside the chat record) |
+| Global default sampling settings          | Browser `localStorage`                |
+| Sidebar open/closed state                 | Browser `localStorage`                |
+| Model catalog, MCP catalog                | Bodhi server (synced via API)         |
 
-## The Chat History Panel
+The chat UI never sends history to a third party. Only the messages required for the current request go to the model provider, exactly like a `curl` call to `/v1/chat/completions` would.
 
-The left panel displays previous conversations grouped by time period (Today, Yesterday, Previous 7 Days). You can click on any conversation to reopen it. A delete option lets you permanently remove a conversation from browser LocalStorage.
+## Related
 
-**LocalStorage Data Structure**:
-
-- Conversations are stored under the key `bodhi-chats`
-- Current active chat ID is stored in `bodhi-current-chat`
-- Sidebar state (open/closed) persists in `sidebar-history-open`
-
-**Data Persistence**:
-
-- Chat history survives page reloads and browser restarts
-- Storage limits depend on your browser (typically 5-10MB)
-- Data is private to your browser and not sent to any server
-
-**Clear Chat History**:
-
-- Chats are stored only in browser LocalStorage
-- When you clear chat history, it deletes the chats from browser LocalStorage
-- Conversations are never sent to the server
-
-## The Main Chat Panel
-
-The center panel is where the conversation happens:
-
-- Type your message in the input field at the bottom
-- Press **Enter** (or click the send icon) to submit your message
-- Click the **+** icon to start a new chat
-- Responses stream in real-time with rich Markdown rendering and syntax-highlighted code blocks
-- Copy responses or individual code blocks using the copy button
-
-## Chat Statistics
-
-Bodhi App displays performance metrics for each AI response.
-
-**Metrics Displayed**:
-
-- **Token counts**: Query and response token counts
-- **Speed**: Processing speed in tokens per second (e.g., "Speed 25.3 t/s")
-- Statistics appear below each completed AI message
-- Metrics are saved with chat history
-
-**Statistics by Model Type**:
-
-- **Local GGUF Models**: Show inference speed based on hardware (CPU/GPU)
-- **API Models**: Statistics display varies by provider and network conditions
-
-## The Settings Panel
-
-The right panel provides configuration parameters to fine-tune AI behavior.
-
-**Panel Controls**:
-
-- Sidebar can be collapsed to maximize chat space
-- Settings are saved globally in browser LocalStorage
-- Settings apply to new messages and conversations
-- Settings changes do not affect already completed conversations
-- Each parameter has a tooltip explaining its purpose
-
-### Model Selection (Required)
-
-You must select a model before sending messages.
-
-**Available Models**:
-
-- **Local Model Aliases**: GGUF models configured on your device
-- **API Models**: Models from providers (OpenAI, Anthropic, Groq, Together AI)
-- Models are shown in a single searchable dropdown
-
-**Model Dropdown**:
-
-- Searchable dropdown showing all available models
-- Selecting a model enables the send button
-- Switching models mid-conversation starts a new context
-
-### Temperature (0-2)
-
-Controls randomness and creativity in responses.
-
-**Range**: 0.0 to 2.0
-**Control Type**: Slider with numeric input
-
-**Parameter Priority** (highest to lowest):
-
-1. Chat UI settings (if manually configured)
-2. Model alias settings (if using alias)
-3. GGUF file defaults (if using model file directly)
-
-**Guidance**:
-
-- **0.0-0.3**: Focused, deterministic output (technical tasks, factual responses)
-- **0.4-0.7**: Balanced creativity and coherence (general conversation)
-- **0.8-1.2**: Creative and varied responses (creative writing, brainstorming)
-- **1.3-2.0**: Highly random and experimental (artistic generation)
-
-### Max Tokens
-
-Maximum length of the AI response in tokens.
-
-**Current Limit**: Currently hard-coded to max to 2,048 tokens, leave it unchecked to use the model default
-**Control Type**: Numeric input
-
-**Guidance**:
-
-- **100-500**: Short responses (quick answers, summaries)
-- **500-2000**: Standard responses (detailed explanations)
-- **2000-4000**: Long-form content (essays, articles)
-- **4000-8192**: Extended content (long articles, documentation)
-
-**Note**: Longer responses consume more resources and take longer to generate.
-
-### Top P (Nucleus Sampling)
-
-Alternative to temperature for controlling response diversity.
-
-**Range**: 0.0 to 1.0
-**Control Type**: Slider with numeric input
-
-**Guidance**:
-
-- **0.1-0.5**: Focused responses with limited vocabulary
-- **0.6-0.9**: Balanced diversity
-- **0.95-1.0**: Full vocabulary, maximum diversity
-
-**Note**: Can be used together with Temperature for fine-grained control.
-
-### Top K
-
-Limits token selection to the top K most probable tokens.
-
-**Control Type**: Numeric input
-
-**Note**: Interacts with Top P and Temperature to control token selection.
-
-### Frequency Penalty
-
-Reduces repetition by penalizing tokens based on their frequency in the text so far.
-
-**Control Type**: Slider with numeric input
-
-**Effects**:
-
-- **Positive values**: Reduce repetition (model less likely to repeat words)
-- **Negative values**: Encourage repetition
-- **Zero**: No frequency penalty applied
-
-### Presence Penalty
-
-Reduces repetition by penalizing tokens that have already appeared.
-
-**Control Type**: Slider with numeric input
-
-**Note**: Works differently from Frequency Penalty - penalizes any token that appeared, regardless of how often.
-
-### Stop Sequences
-
-Custom sequences that stop response generation when encountered.
-
-**Control Type**: Tag-based input
-
-- Press **Enter** to create a stop sequence badge
-- Click on a badge to remove it
-- Add multiple stop sequences as needed
-
-**Examples**:
-
-- `\n\n` - Stop at double newline (paragraph breaks)
-- `###` - Stop at specific marker
-- `Human:` - Stop before conversation turn
-
-**Use Cases**:
-
-- Structured output generation
-- Preventing over-generation
-
-### System Prompt
-
-Sets instructions or context for the AI assistant.
-
-**Format**: Multi-line text input
-**Character Limit**: No limit
-**Storage**: Saved in browser LocalStorage as a global user setting
-
-**Examples**:
-
-```
-You are a helpful coding assistant specialized in Python.
-Provide concise code examples with explanations.
-```
-
-```
-Respond concisely in 2-3 sentences maximum.
-Use simple language appropriate for beginners.
-```
-
-```
-You are a creative writing assistant.
-Help users brainstorm ideas and develop compelling narratives.
-```
-
-**Tips**:
-
-- Be specific about desired behavior
-- Include output format instructions if needed
-- Test different prompts to find what works best
-
-### API Token
-
-API token for authenticated requests.
-
-**Use Case**: Enter an API token to test authenticated access to Bodhi App APIs
-
-- Alternative to session-based authentication
-- Useful for testing API token functionality
-- Token-based access to chat completions
-
-**Storage**: Stored in LocalStorage for convenience
-
-**Note**: API tokens grant access to Bodhi App features. Keep them secure and remove after testing.
-
-### Parameter Controls
-
-**Toggle Switches**:
-
-- Each parameter has an enable/disable toggle
-- When disabled, the backend default value is used
-- This allows testing different configurations without manual reset
-
-**Settings Persistence**:
-
-- Settings persist globally in LocalStorage
-- Settings apply to all new messages and conversations
-- Sidebar state (open/closed) saved in `sidebar-settings-open`
-
-### Understanding Sampling Parameters
-
-Bodhi App uses llama.cpp as its inference engine. All sampling parameters (Temperature, Top P, Top K, Frequency Penalty, Presence Penalty) are passed directly to llama.cpp for processing.
-
-**Parameter Interaction**:
-
-- These parameters can be used together and interact in complex ways
-- Different models may respond differently to the same parameter values
-- Experimentation is key to finding optimal settings for your use case
-
-**For Technical Details**: See [llama.cpp documentation](https://github.com/ggerganov/llama.cpp) for in-depth information on parameter ranges, defaults, and interactions.
-
-### Reference Configurations
-
-For advanced users, here are sample configurations for common use cases:
-
-**Creative Writing**:
-
-```yaml
-Temperature: 0.8
-Top P: 0.9
-Presence Penalty: 0.6
-Frequency Penalty: 0.3
-Max Tokens: 2048
-```
-
-**Technical Responses**:
-
-```yaml
-Temperature: 0.2
-Top P: 1.0
-Presence Penalty: 0.1
-Frequency Penalty: 0.1
-Max Tokens: 1024
-```
-
-**Balanced Conversation**:
-
-```yaml
-Temperature: 0.5
-Top P: 1.0
-Presence Penalty: 0.4
-Frequency Penalty: 0.4
-Max Tokens: 1500
-```
-
-## Collapsible Panels & Starting a New Chat
-
-Both the Chat History and Settings Panels are collapsible, allowing you to maximize chat space.
-
-**Panel State Persistence**:
-
-- Left sidebar (history): Stored in `sidebar-history-open` LocalStorage key
-- Right sidebar (settings): Stored in `sidebar-settings-open` LocalStorage key
-- Panel states persist across page reloads and browser sessions
-
-You have two options to start a new conversation:
-
-- Click the **+** button in the chat input area
-- Use the new chat option in the Chat History Panel
-
-**New Chat Behavior**:
-
-- Clears current conversation context
-- Retains your selected model and settings
-- LocalStorage entry is created when the first message is sent
-
-## Error Handling
-
-Bodhi App includes error handling to ensure a smooth chat experience.
-
-**Input Restoration**:
-
-- If an error occurs before streaming starts, your input is restored to the text field
-- You can edit and retry your message without retyping
-- Simply press Enter to resend
-
-**Error Display**:
-
-- Errors are shown in a toast notification at the bottom right of the screen
-- The message remains in your input field so you can retry
-- Partial responses (if streaming was interrupted) are stored with error state
-
-**Common Errors**:
-
-- **"Network connection failed"**: Check your internet connection and try again
-- **"Model unavailable"**: The selected model may be loading or unavailable. Try a different model or wait a moment
-- **"Request timeout"**: The request took too long. Try with a shorter prompt or different model
-- **"Rate limit exceeded"**: Too many requests in a short time. Wait a moment before trying again
-
-## Mobile and Responsive Design
-
-The Chat UI adapts to different screen sizes.
-
-**Responsive Behavior**:
-
-- **Mobile**: Sidebars become drawer overlays, single-column chat layout, simplified settings panel
-- **Tablet**: Collapsible sidebars adapt to available space
-- **Desktop**: Fixed dual sidebars with optional collapse, full settings panel with all controls visible
-
-## Advanced Features
-
-**Copy Functionality**:
-
-- Copy entire messages with copy button
-- Copy individual code blocks
-- Visual feedback indicates successful copy
-
-**Markdown Rendering**:
-
-- Rich text formatting (bold, italic, lists, headings)
-- Code blocks with syntax highlighting for common programming languages
-- Tables and blockquotes
-- Clean, readable formatting in light and dark themes
-
-**Code Highlighting**:
-
-- Automatic language detection for code blocks
-- Syntax highlighting adapts to your selected theme
-- Copy button on all code blocks for easy code reuse
-
-## Related Documentation
-
-- [Model Aliases](/docs/features/models/model-alias) - Configure local GGUF models
-- [API Models](/docs/features/models/api-models) - Set up API providers
-- [API Tokens](/docs/features/auth/api-tokens) - Create tokens for programmatic access
-- [Application Settings](/docs/features/settings/app-settings) - System configuration
+- [Tool Calling in Chat](/docs/features/chat/tool-calling) — how MCP tools surface and execute mid-conversation
+- [Parameters and System Prompt](/docs/features/chat/parameters-and-system-prompt) — sliders, stop sequences, system prompt overrides
+- [Models → Overview](/docs/features/models/overview) — local aliases vs. API models
+- [MCPs → Overview](/docs/features/mcps/overview) — what MCP servers are and how to add them
+- [Auth → Overview](/docs/features/auth/overview) — roles required to use chat

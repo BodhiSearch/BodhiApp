@@ -1,159 +1,153 @@
 ---
 title: 'App Access Management'
-description: 'Review and manage access requests from third-party applications'
+description: 'Review and grant scoped access to third-party apps that want to use your MCPs and APIs'
 order: 244
 ---
 
 # App Access Management
 
-## Overview
+When a third-party app — typically built with the [Bodhi JS SDK](/docs/developer/bodhi-js-sdk/getting-started) — wants to call your Bodhi instance on a user's behalf, it doesn't get a free pass. It creates an _app access request_ that you review, scope down, and either approve or deny. This page covers the review experience and the audit views.
 
-When a third-party application (built with the bodhi-js-sdk) wants to access your MCP servers or API resources through Bodhi App, it creates an access request that you review and approve or deny. This page describes the user-facing review flow and the All Requests page.
+App access requests are unrelated to [User Access Requests](/docs/features/auth/user-access-requests), which gate human onboarding. The two flows share a UI tab (All Requests) but use different request types and different review screens.
 
-**Key Points**:
+## What this gives you
 
-- You control exactly which resources each app can access
-- You can down-scope the role an app receives (e.g., app requests PowerUser, you grant User)
-- Apps can only receive User or PowerUser roles -- never Manager or Admin
-- Unreviewed requests expire after 10 minutes
-- Completely separate from [user access requests](/docs/features/auth/user-access-requests), which handle new user onboarding
+- Granular consent: you pick which specific MCP servers and which API model instances the app can use.
+- Scope cap: apps can only ever receive a `User` or `PowerUser` scoped token — never `Manager` or `Admin`.
+- Time-boxed reviews: requests expire 10 minutes after creation if not acted on.
+- Auditable: every approval / denial is recorded with the reviewer's username.
 
-## Reviewing an App Access Request
+## The review flow
 
-When a third-party app initiates an access request, you are redirected to the review page at `/ui/apps/access-requests/review?id=<request-id>`.
+When the third-party app initiates the request, the user is redirected to the review page at `/ui/apps/access-requests/review?id=<request-id>`. The user reviewing is whoever is logged into Bodhi at that moment — they need a role of PowerUser or higher to approve.
 
-### What You See
+### What you see on the review page
 
-The review page displays:
+- **App identity** — the app's name (or client ID if no name is set) and an optional description provided at registration.
+- **Requested tools** — for each tool type the app asked for, a checkbox to include it and a dropdown to pick the specific instance you'll grant.
+- **Requested MCP servers** — for each MCP server, a toggle and a dropdown of available instances.
+- **Approved role** — the role the app's token will carry once issued.
 
-- **App name** (or client ID if no name is set) and optional description
-- **Requested tools**: Each tool type the app wants to use, with available instances you can select
-- **Requested MCP servers**: Each MCP server the app wants to connect to, with available instances
-- **Approved role**: A dropdown to select the role the app will receive
+### Granular selection
 
-### Selecting Resources
+Selection is _not_ all-or-nothing. You can approve some resources and exclude others within the same request:
 
-Resource selection is granular -- it is not all-or-nothing:
+- Each tool requires a valid instance with an API key configured. Instances without keys or that are disabled won't appear in the dropdown.
+- Each MCP server requires an enabled instance. Disabled MCPs are filtered out.
+- Unchecking a resource removes it from the grant. The Approve button label updates to "Approve Selected" once you've excluded anything.
+- Approve is disabled until every _included_ resource has a valid instance picked.
 
-- **Tools**: Each requested tool type has a checkbox to include or exclude it, and a dropdown to select which specific instance to grant. Only instances that are enabled and have an API key configured appear as valid options.
-- **MCP servers**: Each requested MCP server has a toggle to include or exclude it, and a dropdown to select which specific instance to grant. Only enabled instances appear as valid options.
+### Picking the role
 
-You can approve some resources and deny others within the same request. The "Approve All" button label changes to "Approve Selected" when you uncheck any resources.
+The role dropdown shows only roles you can grant. The cap is `PowerUser` regardless of who's reviewing:
 
-### Selecting a Role
-
-The role dropdown shows only roles you are allowed to grant:
-
-| Your Role     | Roles You Can Grant for Apps |
+| Reviewer role | Roles you can grant for apps |
 | ------------- | ---------------------------- |
 | **PowerUser** | User, PowerUser              |
 | **Manager**   | User, PowerUser              |
 | **Admin**     | User, PowerUser              |
 
-Apps are limited to **User** and **PowerUser** roles. Manager and Admin are never available for app tokens, regardless of who is reviewing.
+So even an Admin cannot hand an external app Manager- or Admin-equivalent powers. This is by design — apps can only do what a programmatic User or PowerUser scope allows.
 
-If the app requested PowerUser but you want to grant less access, select User from the dropdown. The app receives a token scoped to the role you select.
+If the app asked for `PowerUser` and you only want to grant `User`, just pick `User` from the dropdown. The token is downgraded silently — the app gets less than it asked for and operates within the lower scope.
 
-### Approving or Denying
+### Approve or deny
 
-- **Approve**: Click "Approve All" (or "Approve Selected"). The app receives a scoped token that works only for the approved resources and role. The Approve button is disabled until all included tools and MCP servers have a valid instance selected and a role is chosen.
-- **Deny**: Click "Deny". The app receives no token and is notified of the denial.
+- **Approve** — click "Approve All" or "Approve Selected". The app receives an OAuth token scoped to the role you picked and the resources you checked. Done.
+- **Deny** — click "Deny". No token is issued. The app is notified through its callback.
 
-Both actions are final for this request. The app can create a new request if needed.
+Both actions are final. The app can create a fresh request if it needs a different grant.
 
-## Flow Types
+## Flow types
 
-The access request can use one of two flow types, determined by the third-party app:
+The third-party app picks one of two redirect models when it initiates the request:
 
-### Popup Flow
+### Popup flow
 
-The review page opens in a popup window. After you approve or deny, the window closes automatically. The third-party app detects the result through its callback mechanism.
+The review page opens in a popup window. Approval or denial closes the popup, and the app detects the result via its callback mechanism in the parent window.
 
-### Redirect Flow
+### Redirect flow
 
-You are redirected to the review page in your current browser tab. After you approve or deny:
+The review page replaces the current tab. After action:
 
-- If a redirect URL was configured, you are sent back to the third-party app
-- Otherwise, a status page is shown (Approved, Denied, or Expired)
+- If the app provided a redirect URL at registration, you're sent back to it.
+- Otherwise, a status page is shown (Approved / Denied / Expired).
 
-## Request Expiry
+## Expiry
 
-App access requests expire **10 minutes** after creation. If you do not review the request within that window:
+App access requests expire **10 minutes** after creation. If you don't review within that window:
 
-- The review page shows an "Expired" status
-- The app must create a new access request
-- Expired requests cannot be approved or denied retroactively
+- The review page shows "Expired".
+- The app must create a new request to try again.
+- Expired requests cannot be revived — even by an Admin.
 
-## What Happens After Approval
+This is intentionally short so that abandoned requests can't accumulate or be approved retroactively.
 
-When you approve a request, the third-party app receives a scoped OAuth token. This token:
+## What the app gets after approval
 
-- Only grants access to the specific resource instances you selected
-- Operates under the role you chose (User or PowerUser)
-- Is bound to the app's client identity
+A scoped OAuth token bound to:
 
-The app cannot escalate its permissions beyond what you granted.
+- The app's client identity (so it can't be used by anyone else).
+- The role you selected (User or PowerUser).
+- The specific MCP server instances and API model instances you checked.
 
-## All Requests Page
+The app cannot escalate beyond what you granted. To add resources, the app must request again and you must re-approve.
 
-Administrators and managers can view all app access requests from the User Management area.
+## All Requests view (audit)
 
-**Navigation**: Settings > Users > All Requests tab, or navigate directly to `/ui/users/access-requests`
+Manager and Admin users can review the full history of app access requests from **Settings → Users → All Requests** (`/ui/users/access-requests`). The page lists user _and_ app access requests in a unified table:
 
-**Required Role**: Manager or Admin
+| Column   | Notes                                                   |
+| -------- | ------------------------------------------------------- |
+| Username | Who the request belongs to                              |
+| Date     | Submission date for pending; last update for processed  |
+| Status   | Pending, Approved, or Rejected                          |
+| Reviewer | Username of the approver / rejector (blank for pending) |
+| Actions  | Available on pending rows; empty for processed          |
 
-The page displays a table with:
+Pending rows can be acted on directly here. Processed rows are read-only audit entries.
 
-| Column       | Description                                                        |
-| ------------ | ------------------------------------------------------------------ |
-| **Username** | The user who received or is receiving the request                  |
-| **Date**     | Submission date (for pending) or last update date (for processed)  |
-| **Status**   | Badge showing Pending, Approved, or Rejected                       |
-| **Reviewer** | Who approved or rejected the request (blank for pending)           |
-| **Actions**  | Role selection, Approve, and Reject buttons (for pending requests) |
+## Privilege escalation guardrail
 
-Pending requests can be acted on directly from this page. Processed requests are shown for audit purposes.
+The cap at PowerUser is enforced server-side, not just in the UI dropdown:
 
-## Privilege Escalation Protection
+- A User-role human cannot approve any app access request (they can't reach the review page).
+- A PowerUser, Manager, or Admin can approve up to PowerUser scope for an app.
+- No one can grant Manager or Admin scope to an app — those scopes are session-only and don't exist as token scopes.
 
-The system enforces that you cannot grant an app more access than you have yourself:
-
-- If you are a User, you can only grant User role
-- If you are a PowerUser, Manager, or Admin, you can grant User or PowerUser
-- Manager and Admin roles are never available for apps
-
-This prevents a scenario where an app could accumulate permissions beyond what any single user intended to grant.
+This prevents an attacker who compromises an Admin's browser from issuing themselves a Manager-equivalent app token.
 
 ## Troubleshooting
 
-### Review Page Shows "Expired"
+### Review page shows "Expired"
 
-The request was not reviewed within 10 minutes. The third-party app needs to create a new access request.
+The 10-minute window elapsed. Have the app initiate a new request.
 
-### Approve Button Disabled
+### Approve button is disabled
 
-All included tool types and MCP servers must have a valid instance selected, and a role must be chosen. Check that:
+Every included tool and MCP server must have a valid instance selected, and the Approved Role must be set. Look for:
 
-- Each enabled tool has an instance selected from the dropdown
-- Each enabled MCP server has an instance selected
-- Instances must be enabled (and for tools, must have an API key configured)
-- A role is selected in the Approved Role dropdown
+- Tools without an API-keyed instance.
+- MCP servers without an enabled instance.
+- Empty role dropdown.
 
-### No Instances Available
+You can uncheck the unsatisfied resource(s) instead of configuring them, and approve only the rest.
 
-If a tool type or MCP server shows "No instances configured" or "All instances are disabled":
+### "No instances available" for a resource
 
-- For tools: Create and enable an instance with an API key before approving
-- For MCP servers: Create and enable an MCP instance before approving
+Either no instance exists yet or all existing ones are disabled. To proceed:
 
-You can uncheck the resource to exclude it from the approval and approve the remaining resources.
+- Configure or enable an instance from the relevant page (Models / API or MCPs / Servers), then return to the review.
+- Or uncheck the resource and approve the remainder.
 
-### Review Page Shows Error
+### "Failed to load access request"
 
-If the review page shows "Failed to load access request", the request ID may be invalid or the request may have already been processed. Check the All Requests page for its current status.
+The request ID in the URL is invalid, or the request was already processed. Check the All Requests page for current status.
 
-## Related Documentation
+## See also
 
-- [User Access Requests](/docs/features/auth/user-access-requests) -- Separate feature for new user onboarding
-- [User Management](/docs/features/auth/user-management) -- Admin perspective on user and request management
-- [API Tokens](/docs/features/auth/api-tokens) -- Database-backed tokens for direct programmatic access
+- [Auth Overview](/docs/features/auth/overview) — roles vs scopes; why apps cap at PowerUser
+- [User Access Requests](/docs/features/auth/user-access-requests) — the unrelated human onboarding flow
+- [User Management](/docs/features/auth/user-management) — operator console, including All Requests
+- [API Tokens](/docs/features/auth/api-tokens) — direct programmatic credentials (vs OAuth-issued app tokens)
+- [Bodhi JS SDK](/docs/developer/bodhi-js-sdk/getting-started) — building third-party apps that use this flow

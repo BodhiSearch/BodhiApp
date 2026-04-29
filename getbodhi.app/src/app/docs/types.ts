@@ -44,4 +44,5 @@ export interface DocGroup {
 
 export interface MetaData {
   order: number;
+  title?: string;
 }
