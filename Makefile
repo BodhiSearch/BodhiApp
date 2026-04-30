@@ -63,10 +63,10 @@ dev.deps.down: ## Stop dev PostgreSQL databases (keep volumes)
 dev.deps.clear: ## Stop dev PostgreSQL databases and remove volumes
 	docker compose -f docker/docker-compose.dev.yml down -v
 
-test.backend.default: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
+test.backend: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
 	cargo test --no-fail-fast
 
-test.backend: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
+test.backend.all: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
 	cargo test --no-fail-fast
 	cargo test -p bodhi --features native --no-fail-fast
 

@@ -7,13 +7,13 @@ use reqwest::StatusCode;
 use rstest::rstest;
 use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
-use services::models::llm_liberty_envelope::{
-  LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyEnvelope, LlmLibertyOauthEndpoints,
-};
+use services::models::llm_liberty_envelope::LlmLibertyEnvelope;
 use services::{
   inference::{InferenceError, LlmEndpoint, MockInferenceService},
-  test_utils::{anthropic_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
-  ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiService, ResourceRole,
+  test_utils::{
+    anthropic_model, test_llm_liberty_envelope, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID,
+  },
+  ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiClientFactory, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -97,34 +97,18 @@ async fn test_messages_create_forwards_to_anthropic_oauth_alias() -> anyhow::Res
   Ok(())
 }
 
+// expires_at far in the future so ensure_fresh_credentials short-circuits without HTTP.
 fn liberty_envelope(provider: &str, access_token: &str) -> LlmLibertyEnvelope {
-  LlmLibertyEnvelope {
-    version: "1.0.0".into(),
-    provider: provider.into(),
-    access_token: access_token.into(),
-    refresh_token: "refresh-test".into(),
-    expires_at: (chrono::Utc::now() + chrono::Duration::hours(8)).timestamp(),
-    auth: LlmLibertyAuthSpec {
-      location: "header".into(),
-      key: "Authorization".into(),
-      scheme: "Bearer".into(),
-    },
-    oauth: LlmLibertyOauthEndpoints {
-      authorize_url: "https://oauth.example/authorize".into(),
-      token_url: "https://oauth.example/token".into(),
-      revoke_url: None,
-      client_id: "client-id-public".into(),
-      client_secret: None,
-    },
-    api: LlmLibertyApiEndpoints {
-      base_url: "https://api.anthropic.com/v1".into(),
-      chat_url: "https://api.anthropic.com/v1/messages".into(),
-      models_url: Some("https://api.anthropic.com/v1/models".into()),
-    },
-    headers: serde_json::json!({}),
-    body: serde_json::json!({}),
-    extra: None,
-  }
+  let mut env = test_llm_liberty_envelope();
+  env.provider = provider.to_string();
+  env.access_token = access_token.to_string();
+  env.refresh_token = "refresh-test".into();
+  env.expires_at = (chrono::Utc::now() + chrono::Duration::days(365)).timestamp();
+  env.oauth.client_id = "client-id-public".into();
+  env.api.base_url = "https://api.anthropic.com/v1".into();
+  env.api.chat_url = "https://api.anthropic.com/v1/messages".into();
+  env.api.models_url = Some("https://api.anthropic.com/v1/models".into());
+  env
 }
 
 #[rstest]
@@ -155,7 +139,7 @@ async fn test_messages_create_forwards_to_llm_liberty_oauth_alias() -> anyhow::R
     )
     .await?;
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_safe_http_client().returning(|| {
     services::SafeReqwest::builder()
       .allow_private_ips()
@@ -187,7 +171,10 @@ async fn test_messages_create_forwards_to_llm_liberty_oauth_alias() -> anyhow::R
       Ok(Box::new(client) as Box<dyn services::AiApiClient>)
     });
 
-  let app_service = builder.ai_api_service(Arc::new(mock_ai)).build().await?;
+  let app_service = builder
+    .ai_api_client_factory(Arc::new(mock_ai))
+    .build()
+    .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route(
@@ -250,8 +237,12 @@ async fn test_messages_create_rejects_llm_liberty_non_anthropic_provider() -> an
   // Inference must NOT be invoked when the provider guard rejects.
   mock_inference.expect_forward_remote_with_params().times(0);
 
+  // Use the real factory so for_resolved_credentials returns
+  // LibertyProviderUnsupported (BadRequest) for the openai-codex provider.
+  let real_factory = services::DefaultAiApiClientFactory::new()?;
   let app_service = builder
     .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(Arc::new(real_factory))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);

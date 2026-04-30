@@ -1,4 +1,4 @@
-use super::{AiApiService, DefaultAiApiService};
+use super::{AiApiClientFactory, DefaultAiApiClientFactory};
 use crate::models::{ApiAlias, ApiFormat};
 use crate::test_utils::fixed_dt;
 use anyhow_trace::anyhow_trace;
@@ -26,7 +26,7 @@ fn make_anthropic_alias(url: &str) -> ApiAlias {
 async fn test_test_prompt_anthropic_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let expected_body = serde_json::json!({
     "model": "claude-sonnet-4-5-20250929",
@@ -63,7 +63,7 @@ async fn test_test_prompt_anthropic_success() -> anyhow::Result<()> {
 async fn test_test_prompt_anthropic_malformed_response() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("POST", "/messages")
@@ -89,7 +89,7 @@ async fn test_test_prompt_anthropic_malformed_response() -> anyhow::Result<()> {
 async fn test_fetch_models_anthropic_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("GET", "/models")
@@ -131,7 +131,7 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
   // All IDs across both pages must be returned.
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock_page1 = server
     .mock("GET", "/models")

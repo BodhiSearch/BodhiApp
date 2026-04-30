@@ -1,4 +1,4 @@
-use super::{AiApiService, DefaultAiApiService};
+use super::{AiApiClientFactory, DefaultAiApiClientFactory};
 use crate::models::{ApiAlias, ApiFormat};
 use crate::test_utils::fixed_dt;
 use anyhow_trace::anyhow_trace;
@@ -57,7 +57,7 @@ fn make_alias(url: &str, format: ApiFormat) -> ApiAlias {
 async fn test_prompt_success_openai() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("POST", "/chat/completions")
     .match_header("Authorization", "Bearer test-key")
@@ -81,7 +81,7 @@ async fn test_prompt_success_openai() -> anyhow::Result<()> {
 async fn test_prompt_success_openai_responses() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("POST", "/responses")
     .match_header("Authorization", "Bearer test-key")
@@ -105,7 +105,7 @@ async fn test_prompt_success_openai_responses() -> anyhow::Result<()> {
 async fn test_prompt_success_anthropic() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("POST", "/messages")
     .match_header("x-api-key", "test-key")
@@ -129,7 +129,7 @@ async fn test_prompt_success_anthropic() -> anyhow::Result<()> {
 async fn test_prompt_success_anthropic_oauth() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("POST", "/messages")
     .match_header("Authorization", "Bearer test-token")
@@ -153,7 +153,7 @@ async fn test_prompt_success_anthropic_oauth() -> anyhow::Result<()> {
 async fn test_prompt_success_gemini() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("POST", "/models/gemini-2.5-flash:generateContent")
     .match_header("x-goog-api-key", "test-key")
@@ -192,7 +192,7 @@ async fn test_prompt_401_unauthorized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("POST", path)
     .with_status(401)
@@ -223,7 +223,7 @@ async fn test_prompt_401_unauthorized(
 async fn test_fetch_models_success_openai() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("GET", "/models")
     .with_status(200)
@@ -247,7 +247,7 @@ async fn test_fetch_models_success_openai() -> anyhow::Result<()> {
 async fn test_fetch_models_success_gemini() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("GET", "/models")
     .with_status(200)
@@ -271,7 +271,7 @@ async fn test_fetch_models_success_gemini() -> anyhow::Result<()> {
 async fn test_fetch_models_success_anthropic() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("GET", "/models")
     .with_status(200)
@@ -302,7 +302,7 @@ async fn test_fetch_models_success_anthropic() -> anyhow::Result<()> {
 async fn test_fetch_models_401(#[case] api_format: ApiFormat) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let _mock = server
     .mock("GET", "/models")
     .with_status(401)
@@ -338,7 +338,7 @@ async fn test_fetch_models_401(#[case] api_format: ApiFormat) -> anyhow::Result<
 async fn test_forward_passthrough(#[case] api_format: ApiFormat) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let alias = make_alias(&url, api_format);
 
   let body = json!({"model": "some-model", "messages": []});

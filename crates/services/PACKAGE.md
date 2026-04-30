@@ -52,9 +52,9 @@
 - `src/users/access_repository.rs` — User access request repository trait
 
 ### AI Services (`ai_apis/`)
-- `src/ai_apis/ai_api_service.rs` — `AiApiService` trait: external AI API integration
+- `src/ai_apis/ai_api_client_factory.rs` — `AiApiClientFactory` trait: external AI API integration
 - `src/ai_apis/ai_provider_client.rs` — `AIProviderClient` strategy trait; `OpenAIProviderClient`, `OpenAIResponsesProviderClient`, `AnthropicProviderClient`, `AnthropicOAuthProviderClient`. `merge_extra_body()` merges config `extra_body` into incoming request body (prepends `"system"` arrays; other keys fall back when incoming lacks them).
-- `src/ai_apis/error.rs` — `AiApiServiceError`
+- `src/ai_apis/error.rs` — `AiApiClientFactoryError`
 
 ### MCP Services (`mcps/`)
 - `src/mcps/mcp_objs.rs` — `McpServer`, `Mcp`, MCP auth config types, validation constants
@@ -107,7 +107,7 @@
 | AuthService | `AuthServiceError` | (none) | `Reqwest`, `AuthServiceApiError`, `TokenExchangeError` |
 | DbService | `DbError` | (none) | `SeaOrmError`, `StrumParse`, `TokenValidation`, `EncryptionError`, `PrefixExists`, `ItemNotFound`, `MultipleAppInstance`, `Conversion` |
 | SessionService | `SessionServiceError` | (none) | `SqlxError`, `SessionStoreError`, `DbSetup` |
-| AiApiService | `AiApiServiceError` | (none) | `Reqwest`, `ApiError`, `Unauthorized`, `NotFound`, `RateLimit`, `PromptTooLong` |
+| AiApiClientFactory | `AiApiClientFactoryError` | (none) | `Reqwest`, `ApiError`, `Unauthorized`, `NotFound`, `RateLimit`, `PromptTooLong` |
 | McpService | `McpError` | (none) | `McpNotFound`, `McpUrlNotAllowed`, `McpDisabled`, `ToolNotFound`, `SlugExists`, `DbError` |
 | TokenService | `TokenServiceError` | (none) | service-specific variants |
 | InferenceService | `InferenceError` | (none) | `Unsupported` and other variants |
@@ -170,9 +170,9 @@
 
 **Short-name passthrough accessors** (D1-D9, excluding D2 which is auth-scoped above): `settings()`, `auth_flow()`, `network()`, `sessions()`, `db()`, `hub()`, `ai_api()`, `time()`, `inference()`.
 
-**AiApiService**: `forward_request_with_method(method, url, body, api_key)` uses `http::Method` for type-safe HTTP method dispatch. `SafeReqwest` provides `request(method, url)` as a generic method alongside `get`/`post`/`delete`. `fetch_models` returns `Vec<ApiModel>` and delegates to `AIProviderClient` strategy pattern.
+**AiApiClientFactory**: Factory that creates per-request `AiApiClient` instances via `for_alias`, `for_envelope`, or `for_resolved_credentials`. `AiApiClient::forward_request_with_method(method, url, body, api_key)` uses `http::Method` for type-safe HTTP method dispatch. `SafeReqwest` provides `request(method, url)` as a generic method alongside `get`/`post`/`delete`. `fetch_models` returns `Vec<ApiModel>` and delegates to `AIProviderClient` strategy pattern.
 
-**AIProviderClient** (`ai_apis/ai_provider_client.rs`): Strategy trait for multi-provider model fetching. Concrete impls: `OpenAIProviderClient`, `OpenAIResponsesProviderClient`, `AnthropicProviderClient`, `AnthropicOAuthProviderClient`. Instantiated directly in `DefaultAiApiService` methods based on `ApiFormat`.
+**AIProviderClient** (`ai_apis/ai_provider_client.rs`): Strategy trait for multi-provider model fetching. Concrete impls: `OpenAIProviderClient`, `OpenAIResponsesProviderClient`, `AnthropicProviderClient`, `AnthropicOAuthProviderClient`. Instantiated directly in `DefaultAiApiClientFactory` methods based on `ApiFormat`.
 
 **ApiModelService**: `create()`/`update()` validate model IDs against the remote provider (fetches model list). `ModelNotFoundAtProvider` error if a requested model doesn't exist at the provider.
 
@@ -222,4 +222,4 @@ All requests start as drafts. Status: `draft` → `approved` | `denied` | `faile
 
 ## Service Initialization Order
 
-1. TimeService → 2. DbService → 3. SettingService → 4. AuthService → 5. SessionService → 6. TenantService → 7. HubService, DataService, CacheService → 8. ConcurrencyService, NetworkService → 9. AiApiService → 10. McpService → 11. TokenService → 12. InferenceService → 13. AccessRequestService → 14. QueueProducer
+1. TimeService → 2. DbService → 3. SettingService → 4. AuthService → 5. SessionService → 6. TenantService → 7. HubService, DataService, CacheService → 8. ConcurrencyService, NetworkService → 9. AiApiClientFactory → 10. McpService → 11. TokenService → 12. InferenceService → 13. AccessRequestService → 14. QueueProducer

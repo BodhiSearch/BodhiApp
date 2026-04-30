@@ -234,13 +234,13 @@ pub async fn build_live_test_router() -> anyhow::Result<(
     .expect("setting_service should be set")
     .keep_alive()
     .await;
-  let ai_api_service = app_service_stub
-    .ai_api_service
+  let ai_api_client_factory = app_service_stub
+    .ai_api_client_factory
     .clone()
-    .expect("ai_api_service should be set");
+    .expect("ai_api_client_factory should be set");
   app_service_stub.inference_service = Some(Arc::new(StandaloneInferenceService::new(
     ctx.clone(),
-    ai_api_service,
+    ai_api_client_factory,
     keep_alive_secs,
   )));
 

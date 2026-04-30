@@ -4,7 +4,7 @@ use axum::response::Response;
 use serde_json::Value;
 use services::{
   inference::{InferenceError, InferenceService, LlmEndpoint},
-  AiApiService, Alias, ApiAlias,
+  AiApiClientFactory, Alias, ApiAlias,
 };
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -14,7 +14,7 @@ use tracing::{debug, info, warn};
 #[derive(Debug)]
 pub struct StandaloneInferenceService {
   ctx: Arc<dyn SharedContext>,
-  ai_api_service: Arc<dyn AiApiService>,
+  ai_api_client_factory: Arc<dyn AiApiClientFactory>,
   keep_alive_secs: RwLock<i64>,
   timer_handle: RwLock<Option<JoinHandle<()>>>,
 }
@@ -22,12 +22,12 @@ pub struct StandaloneInferenceService {
 impl StandaloneInferenceService {
   pub fn new(
     ctx: Arc<dyn SharedContext>,
-    ai_api_service: Arc<dyn AiApiService>,
+    ai_api_client_factory: Arc<dyn AiApiClientFactory>,
     keep_alive_secs: i64,
   ) -> Self {
     Self {
       ctx,
-      ai_api_service,
+      ai_api_client_factory,
       keep_alive_secs: RwLock::new(keep_alive_secs),
       timer_handle: RwLock::new(None),
     }
@@ -134,7 +134,7 @@ impl InferenceService for StandaloneInferenceService {
     client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response, InferenceError> {
     proxy_to_remote(
-      &self.ai_api_service,
+      &self.ai_api_client_factory,
       endpoint,
       request,
       api_alias,
@@ -174,7 +174,7 @@ impl InferenceService for StandaloneInferenceService {
 }
 
 pub(crate) async fn proxy_to_remote(
-  ai_api_service: &Arc<dyn AiApiService>,
+  ai_api_client_factory: &Arc<dyn AiApiClientFactory>,
   endpoint: LlmEndpoint,
   request: Value,
   api_alias: &ApiAlias,
@@ -189,7 +189,7 @@ pub(crate) async fn proxy_to_remote(
   } else {
     None
   };
-  ai_api_service
+  ai_api_client_factory
     .for_alias(api_alias, api_key)
     .map_err(InferenceError::from)?
     .forward_request_with_method(method, &api_path, body, query_params, client_headers)

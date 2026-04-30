@@ -2,17 +2,19 @@ use crate::standalone_inference::proxy_to_remote;
 use axum::response::Response;
 use serde_json::Value;
 use services::inference::{InferenceError, InferenceService, LlmEndpoint};
-use services::{AiApiService, Alias, ApiAlias};
+use services::{AiApiClientFactory, Alias, ApiAlias};
 use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct MultitenantInferenceService {
-  ai_api_service: Arc<dyn AiApiService>,
+  ai_api_client_factory: Arc<dyn AiApiClientFactory>,
 }
 
 impl MultitenantInferenceService {
-  pub fn new(ai_api_service: Arc<dyn AiApiService>) -> Self {
-    Self { ai_api_service }
+  pub fn new(ai_api_client_factory: Arc<dyn AiApiClientFactory>) -> Self {
+    Self {
+      ai_api_client_factory,
+    }
   }
 }
 
@@ -37,7 +39,7 @@ impl InferenceService for MultitenantInferenceService {
     client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response, InferenceError> {
     proxy_to_remote(
-      &self.ai_api_service,
+      &self.ai_api_client_factory,
       endpoint,
       request,
       api_alias,

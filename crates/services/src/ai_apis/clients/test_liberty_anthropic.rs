@@ -1,12 +1,13 @@
 use crate::ai_apis::clients::liberty_anthropic::LibertyAnthropicClient;
+use crate::ai_apis::error::AiApiClientFactoryError;
 use crate::ai_apis::llm_liberty::refresh::MockLlmLibertyRefresh;
 use crate::ai_apis::llm_liberty::LlmLibertyRefreshError;
 use crate::ai_apis::AiApiClient;
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
+use crate::test_utils::{test_llm_liberty_envelope, test_resolved_llm_liberty_credentials};
 use crate::SafeReqwest;
 use anyhow_trace::anyhow_trace;
 use axum::http::Method;
-use chrono::{Duration, Utc};
 use mockito::Server;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
@@ -20,36 +21,10 @@ fn safe_http() -> SafeReqwest {
 }
 
 fn make_envelope(chat_url: &str, models_url: Option<&str>) -> LlmLibertyEnvelope {
-  use crate::models::llm_liberty_envelope::{
-    LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyOauthEndpoints,
-  };
-  LlmLibertyEnvelope {
-    version: "1.0.0".into(),
-    provider: "anthropic".into(),
-    access_token: "test-access-token".into(),
-    refresh_token: "test-refresh-token".into(),
-    expires_at: (Utc::now() + Duration::hours(1)).timestamp(),
-    auth: LlmLibertyAuthSpec {
-      location: "header".into(),
-      key: "Authorization".into(),
-      scheme: "Bearer".into(),
-    },
-    oauth: LlmLibertyOauthEndpoints {
-      authorize_url: "https://oauth.example/authorize".into(),
-      token_url: "https://oauth.example/token".into(),
-      revoke_url: None,
-      client_id: "client-id".into(),
-      client_secret: None,
-    },
-    api: LlmLibertyApiEndpoints {
-      base_url: "https://api.example.com".into(),
-      chat_url: chat_url.to_string(),
-      models_url: models_url.map(String::from),
-    },
-    headers: serde_json::json!({}),
-    body: serde_json::json!({}),
-    extra: None,
-  }
+  let mut env = test_llm_liberty_envelope();
+  env.api.chat_url = chat_url.to_string();
+  env.api.models_url = models_url.map(String::from);
+  env
 }
 
 fn make_creds(
@@ -57,24 +32,12 @@ fn make_creds(
   models_url: Option<&str>,
   access_token: &str,
 ) -> ResolvedLlmLibertyCredentials {
-  ResolvedLlmLibertyCredentials {
-    access_token: access_token.to_string(),
-    refresh_token: "refresh-token".to_string(),
-    expires_at: Utc::now() + Duration::hours(1),
-    tenant_id: "tenant-a".to_string(),
-    provider: "anthropic".to_string(),
-    auth_scheme: "Bearer".to_string(),
-    auth_key: "Authorization".to_string(),
-    oauth_token_url: "https://oauth.example/token".to_string(),
-    oauth_client_id: "client-id".to_string(),
-    oauth_client_secret: None,
-    api_base_url: "https://api.example.com".to_string(),
-    api_chat_url: chat_url.to_string(),
-    api_models_url: models_url.map(String::from),
-    headers_json: serde_json::json!({}),
-    body_json: serde_json::json!({}),
-    extra_json: None,
-  }
+  let mut creds = test_resolved_llm_liberty_credentials();
+  creds.access_token = access_token.to_string();
+  creds.refresh_token = "refresh-token".to_string();
+  creds.api_chat_url = chat_url.to_string();
+  creds.api_models_url = models_url.map(String::from);
+  creds
 }
 
 #[rstest]
@@ -281,6 +244,36 @@ async fn forward_skips_retry_when_no_alias_id() -> anyhow::Result<()> {
     .await?;
 
   assert_eq!(401, result.status().as_u16());
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn forward_returns_not_found_for_unknown_path() -> anyhow::Result<()> {
+  let server = Server::new_async().await;
+  let chat_url = format!("{}/v1/messages", server.url());
+
+  let envelope = make_envelope(&chat_url, None);
+  let client = LibertyAnthropicClient::from_envelope(&envelope, safe_http());
+
+  let result = client
+    .forward_request_with_method(
+      &Method::POST,
+      "/foo",
+      Some(serde_json::json!({"any": "body"})),
+      None,
+      None,
+    )
+    .await;
+
+  match result {
+    Err(AiApiClientFactoryError::NotFound(path)) => assert_eq!("/foo", path),
+    other => panic!(
+      "expected NotFound for unknown path, got: {:?}",
+      other.is_err()
+    ),
+  }
   Ok(())
 }
 

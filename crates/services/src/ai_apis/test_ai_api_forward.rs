@@ -1,4 +1,4 @@
-use super::{AiApiService, DefaultAiApiService};
+use super::{AiApiClientFactory, DefaultAiApiClientFactory};
 use crate::models::{ApiAlias, ApiFormat};
 use crate::test_utils::{fixed_dt, openai_model};
 use anyhow_trace::anyhow_trace;
@@ -99,7 +99,7 @@ async fn test_forward_chat_completion_model_prefix_handling(
     .with_body(r#"{"choices":[{"message":{"content":"Hi there!"}}]}"#)
     .create_async()
     .await;
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let response = service
     .for_alias(&api_alias, Some("test-key".to_string()))?
     .forward_request_with_method(
@@ -156,7 +156,7 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
     .create_async()
     .await;
 
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let response = service
     .for_alias(&api_alias, None)?
     .forward_request_with_method(
@@ -197,7 +197,7 @@ async fn test_forward_request_with_method_dispatch(
   let mut server = Server::new_async().await;
   let url = server.url();
   let api_alias = make_api_alias(&url);
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let path = if query_params.is_some() {
     "/responses?after=ts_123"
@@ -234,7 +234,7 @@ async fn test_forward_request_with_method_dispatch(
 async fn test_forward_request_with_method_anthropic_headers() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let api_alias = ApiAlias::new(
     "anthropic-api",
@@ -279,7 +279,7 @@ async fn test_forward_request_with_method_anthropic_headers() -> anyhow::Result<
 async fn test_forward_request_with_method_client_headers_forwarded() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let api_alias = ApiAlias::new(
     "anthropic-api",
@@ -329,7 +329,7 @@ async fn test_forward_request_client_anthropic_version_used_not_default() -> any
   // (the default must NOT be injected — reqwest appends, not replaces).
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let api_alias = ApiAlias::new(
     "anthropic-api",
@@ -379,7 +379,7 @@ async fn test_forward_request_default_anthropic_version_injected_when_absent() -
   // When client does not supply anthropic-version, BodhiApp injects the default.
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let api_alias = ApiAlias::new(
     "anthropic-api",

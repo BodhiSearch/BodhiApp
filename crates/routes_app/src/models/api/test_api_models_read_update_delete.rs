@@ -19,7 +19,7 @@ use services::test_utils::{
 use services::AuthContext;
 use services::{
   ApiAliasResponse, ApiKey, ApiKeyUpdate, ApiModel, ApiModelRequest, DefaultApiModelRequest,
-  MockAiApiService,
+  MockAiApiClientFactory,
 };
 use services::{ApiFormat::OpenAI, ResourceRole};
 use std::sync::Arc;
@@ -191,7 +191,7 @@ async fn test_update_api_model_handler_success(
   // Seed database with existing API model
   seed_test_api_models(&db_service, base_time).await?;
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().returning(|_, _| {
     let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
     client
@@ -203,7 +203,7 @@ async fn test_update_api_model_handler_success(
   // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 

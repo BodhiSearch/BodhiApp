@@ -28,7 +28,7 @@ pub(crate) async fn resolve_api_key_for_alias(
 /// `services::ai_apis::llm_liberty::ensure_fresh_credentials`, which serializes
 /// concurrent refreshes for the same alias on a single node via a per-alias mutex.
 ///
-/// Reuses the `AiApiService`'s shared `SafeReqwest` (Arc-shared internally) instead
+/// Reuses the `AiApiClientFactory`'s shared `SafeReqwest` (Arc-shared internally) instead
 /// of building a new one per call — the upstream OAuth-token endpoint is reached
 /// from the same connection pool as model traffic.
 pub(crate) async fn resolve_llm_liberty_credentials(

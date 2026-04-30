@@ -1,6 +1,6 @@
 use super::anthropic_shared::{extract_anthropic_completion_text, parse_anthropic_models_page};
 use crate::ai_apis::ai_api_client::AiApiClient;
-use crate::ai_apis::error::{AiApiServiceError, Result};
+use crate::ai_apis::error::{AiApiClientFactoryError, Result};
 use crate::ai_apis::provider_shared::forward_to_upstream;
 use crate::models::ApiModel;
 use crate::SafeReqwest;
@@ -72,7 +72,7 @@ impl AiApiClient for AnthropicClient {
     let status = response.status();
     if !status.is_success() {
       let body = response.text().await.unwrap_or_default();
-      return Err(AiApiServiceError::status_to_error(status, body));
+      return Err(AiApiClientFactoryError::status_to_error(status, body));
     }
     let body: Value = response.json().await?;
     Ok(extract_anthropic_completion_text(&body))
@@ -92,7 +92,7 @@ impl AiApiClient for AnthropicClient {
       let status = response.status();
       if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
-        return Err(AiApiServiceError::status_to_error(status, body));
+        return Err(AiApiClientFactoryError::status_to_error(status, body));
       }
       let body: Value = response.json().await?;
       let page_models = parse_anthropic_models_page(&body);

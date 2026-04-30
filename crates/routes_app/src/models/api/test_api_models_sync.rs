@@ -74,7 +74,7 @@ async fn test_sync_models_handler_success(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   // Set up mock AI API service with expectations
-  let mut mock_ai = services::MockAiApiService::new();
+  let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().returning(|_, _| {
     let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
     client.expect_fetch_models().returning(|| {
@@ -91,7 +91,7 @@ async fn test_sync_models_handler_success(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .ai_api_service(Arc::new(mock_ai))
+      .ai_api_client_factory(Arc::new(mock_ai))
       .build()
       .await?,
   );
@@ -243,7 +243,7 @@ async fn test_sync_models_rejects_non_forward_all(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   // Mock AI returns models for the create validation call; sync should not reach it
-  let mut mock_ai = services::MockAiApiService::new();
+  let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().returning(|_, _| {
     let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
     client
@@ -255,7 +255,7 @@ async fn test_sync_models_rejects_non_forward_all(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .ai_api_service(Arc::new(mock_ai))
+      .ai_api_client_factory(Arc::new(mock_ai))
       .build()
       .await?,
   );
@@ -312,7 +312,7 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
   let expected_extra_body = extra_body.clone();
 
   // Set up mock AI API service: expect for_alias to receive the alias's extra fields
-  let mut mock_ai = services::MockAiApiService::new();
+  let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai
     .expect_for_alias()
     .withf(move |alias, _| {
@@ -334,7 +334,7 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .ai_api_service(Arc::new(mock_ai))
+      .ai_api_client_factory(Arc::new(mock_ai))
       .build()
       .await?,
   );

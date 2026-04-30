@@ -15,14 +15,14 @@ use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::test_utils::{openai_model, test_db_service, AppServiceStubBuilder, TestDbService};
 use services::AuthContext;
 use services::{
-  ApiAliasResponse, ApiKeyUpdate, ApiModelRequest, DefaultApiModelRequest, MockAiApiService,
+  ApiAliasResponse, ApiKeyUpdate, ApiModelRequest, DefaultApiModelRequest, MockAiApiClientFactory,
 };
 use services::{ApiFormat::OpenAI, ResourceRole};
 use std::sync::Arc;
 use tower::ServiceExt;
 
-fn make_mock_ai() -> MockAiApiService {
-  let mut mock_ai = MockAiApiService::new();
+fn make_mock_ai() -> MockAiApiClientFactory {
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().returning(|_, _| {
     let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
     client.expect_fetch_models().returning(|| {
@@ -259,7 +259,7 @@ async fn test_api_model_prefix_lifecycle(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .ai_api_service(Arc::new(make_mock_ai()))
+      .ai_api_client_factory(Arc::new(make_mock_ai()))
       .build()
       .await?,
   );
@@ -368,7 +368,7 @@ async fn test_create_api_model_duplicate_prefix_error(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .ai_api_service(Arc::new(make_mock_ai()))
+      .ai_api_client_factory(Arc::new(make_mock_ai()))
       .build()
       .await?,
   );
@@ -433,7 +433,7 @@ async fn test_update_api_model_duplicate_prefix_error(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .ai_api_service(Arc::new(make_mock_ai()))
+      .ai_api_client_factory(Arc::new(make_mock_ai()))
       .build()
       .await?,
   );

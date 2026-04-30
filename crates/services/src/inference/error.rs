@@ -1,4 +1,4 @@
-use crate::{AiApiServiceError, ErrorType};
+use crate::{AiApiClientFactoryError, ErrorType};
 use errmeta_derive::ErrorMeta;
 
 #[derive(Debug, thiserror::Error, ErrorMeta)]
@@ -13,7 +13,7 @@ pub enum InferenceError {
   ModelNotFound(String),
 
   #[error(transparent)]
-  AiApi(#[from] AiApiServiceError),
+  AiApi(#[from] AiApiClientFactoryError),
 
   #[error("inference internal error: {0}")]
   #[error_meta(error_type = ErrorType::InternalServer)]

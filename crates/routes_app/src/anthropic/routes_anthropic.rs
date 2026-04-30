@@ -45,7 +45,8 @@ fn extract_anthropic_headers(headers: &HeaderMap) -> Option<Vec<(String, String)
   }
 }
 
-#[allow(clippy::large_enum_variant)] // TODO
+// Stack-only value used once per request; boxing both arms is overkill.
+#[allow(clippy::large_enum_variant)]
 enum AnthropicAliasResolution {
   Native {
     alias: ApiAlias,
@@ -90,15 +91,8 @@ async fn resolve_anthropic_alias(
     let creds = crate::providers::resolve_llm_liberty_credentials(auth_scope, &api_alias.id)
       .await
       .map_err(BodhiErrorResponse::from)?;
-    if creds.provider != "anthropic" {
-      return Err(
-        OAIRouteError::InvalidRequest(format!(
-          "Alias '{}' uses llm_liberty provider '{}'; only 'anthropic' is supported on this route.",
-          api_alias.id, creds.provider
-        ))
-        .into(),
-      );
-    }
+    // Provider verification (creds.provider == "anthropic") lives in the
+    // factory's for_resolved_credentials -> LibertyProviderUnsupported (BadRequest).
     return Ok(AnthropicAliasResolution::Liberty {
       alias: api_alias,
       creds,
@@ -175,8 +169,8 @@ pub async fn anthropic_messages_create_handler(
       .await
       .map_err(BodhiErrorResponse::from)?,
     AnthropicAliasResolution::Liberty { alias, creds } => {
-      let tenant_id = auth_scope.tenant_id().unwrap_or("");
-      let user_id = auth_scope.auth_context().user_id().unwrap_or("");
+      let tenant_id = auth_scope.require_tenant_id()?;
+      let user_id = auth_scope.require_user_id()?;
       auth_scope
         .ai_api()
         .for_resolved_credentials(&creds, &alias, tenant_id, user_id)?

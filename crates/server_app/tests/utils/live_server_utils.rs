@@ -18,7 +18,7 @@ use services::{
     access_token_claims, build_token, test_auth_service, OfflineHubService, StubNetworkService,
     StubQueue,
   },
-  AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService, DefaultAppService,
+  AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiClientFactory, DefaultAppService,
   DefaultEnvWrapper, DefaultMcpService, DefaultSessionService, DefaultSettingService,
   DefaultTenantService, EnvWrapper, HfHubService, LocalConcurrencyService, LocalDataService,
   MokaCacheService, SettingService, TenantService, UserIdClaims, BODHI_AUTH_REALM, BODHI_AUTH_URL,
@@ -216,8 +216,8 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   // Build cache service
   let cache_service = Arc::new(MokaCacheService::default());
 
-  // Build AI API service
-  let ai_api_service = Arc::new(DefaultAiApiService::new()?);
+  // Build AI API Client Factory
+  let ai_api_client_factory = Arc::new(DefaultAiApiClientFactory::new()?);
 
   // Build concurrency service
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
@@ -254,14 +254,14 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let keep_alive_secs = setting_service.keep_alive().await;
   let inference_service: Arc<dyn InferenceService> = Arc::new(StandaloneInferenceService::new(
     ctx,
-    ai_api_service.clone(),
+    ai_api_client_factory.clone(),
     keep_alive_secs,
   ));
   let api_model_service: Arc<dyn services::ApiModelService> =
     Arc::new(services::DefaultApiModelService::new(
       db_service.clone(),
       time_service.clone(),
-      ai_api_service.clone(),
+      ai_api_client_factory.clone(),
     ));
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
@@ -276,7 +276,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     tenant_service,
     cache_service,
     time_service,
-    ai_api_service,
+    ai_api_client_factory,
     concurrency_service,
     queue_producer,
     network_service,
@@ -600,7 +600,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   // Auth service uses fake URL — never called (cache is seeded by ExternalTokenSimulator)
   let auth_service = Arc::new(test_auth_service(&auth_server_url));
   let cache_service = Arc::new(MokaCacheService::default());
-  let ai_api_service = Arc::new(DefaultAiApiService::new()?);
+  let ai_api_client_factory = Arc::new(DefaultAiApiClientFactory::new()?);
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
   let queue_producer: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
   let tenant_service: Arc<dyn TenantService> = Arc::new(tenant_service);
@@ -629,14 +629,14 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   let keep_alive_secs = setting_service.keep_alive().await;
   let inference_service: Arc<dyn InferenceService> = Arc::new(StandaloneInferenceService::new(
     ctx,
-    ai_api_service.clone(),
+    ai_api_client_factory.clone(),
     keep_alive_secs,
   ));
   let api_model_service: Arc<dyn services::ApiModelService> =
     Arc::new(services::DefaultApiModelService::new(
       db_service.clone(),
       time_service.clone(),
-      ai_api_service.clone(),
+      ai_api_client_factory.clone(),
     ));
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
@@ -651,7 +651,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     tenant_service,
     cache_service,
     time_service,
-    ai_api_service,
+    ai_api_client_factory,
     concurrency_service,
     queue_producer,
     network_service,
@@ -970,7 +970,7 @@ pub async fn setup_multitenant_app_service(
   let cache_service = Arc::new(MokaCacheService::default());
 
   // Build AI API service
-  let ai_api_service = Arc::new(DefaultAiApiService::new()?);
+  let ai_api_client_factory = Arc::new(DefaultAiApiClientFactory::new()?);
 
   // Build concurrency service
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
@@ -1007,14 +1007,14 @@ pub async fn setup_multitenant_app_service(
   let keep_alive_secs = setting_service.keep_alive().await;
   let inference_service: Arc<dyn InferenceService> = Arc::new(StandaloneInferenceService::new(
     ctx,
-    ai_api_service.clone(),
+    ai_api_client_factory.clone(),
     keep_alive_secs,
   ));
   let api_model_service: Arc<dyn services::ApiModelService> =
     Arc::new(services::DefaultApiModelService::new(
       db_service.clone(),
       time_service.clone(),
-      ai_api_service.clone(),
+      ai_api_client_factory.clone(),
     ));
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
@@ -1029,7 +1029,7 @@ pub async fn setup_multitenant_app_service(
     tenant_service,
     cache_service,
     time_service,
-    ai_api_service,
+    ai_api_client_factory,
     concurrency_service,
     queue_producer,
     network_service,

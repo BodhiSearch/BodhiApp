@@ -2,7 +2,7 @@ use super::anthropic_shared::{
   apply_bearer_auth_and_version, extract_anthropic_completion_text, parse_anthropic_models_page,
 };
 use crate::ai_apis::ai_api_client::AiApiClient;
-use crate::ai_apis::error::{AiApiServiceError, Result};
+use crate::ai_apis::error::{AiApiClientFactoryError, Result};
 use crate::ai_apis::llm_liberty::{LlmLibertyRefresh, LlmLibertyRefreshError};
 use crate::ai_apis::provider_shared::{forward_to_upstream, merge_extra_body};
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
@@ -29,6 +29,8 @@ pub(crate) struct LibertyAnthropicClient {
 }
 
 impl LibertyAnthropicClient {
+  /// Inline-envelope flow (test/fetch-models before save): no alias yet, no
+  /// prefix, `NoOpRefresh` so 401-retry is skipped via the empty-alias_id guard.
   pub(crate) fn from_envelope(envelope: &LlmLibertyEnvelope, client: SafeReqwest) -> Self {
     Self {
       client,
@@ -45,6 +47,8 @@ impl LibertyAnthropicClient {
     }
   }
 
+  /// Saved-alias flow: owns 401-retry-with-force-refresh via the injected
+  /// `LlmLibertyRefresh`; on UNAUTHORIZED rotates `access_token` in-place and retries once.
   pub(crate) fn from_credentials(
     creds: &ResolvedLlmLibertyCredentials,
     alias_id: &str,
@@ -91,7 +95,7 @@ impl LibertyAnthropicClient {
     query_params: Option<&[(String, String)]>,
     client_headers: Option<&[(String, String)]>,
   ) -> Result<Response> {
-    let target_url = resolve_url(api_path, &self.chat_url, self.models_url.as_deref());
+    let target_url = resolve_url(api_path, &self.chat_url, self.models_url.as_deref())?;
     let is_messages = api_path == "/messages";
     let merged_request = match (request, &self.extra_body) {
       (Some(body), Some(extra)) if is_messages => Some(merge_extra_body(body, extra)),
@@ -134,7 +138,7 @@ impl AiApiClient for LibertyAnthropicClient {
     let status = response.status();
     if !status.is_success() {
       let body = response.text().await.unwrap_or_default();
-      return Err(AiApiServiceError::status_to_error(status, body));
+      return Err(AiApiClientFactoryError::status_to_error(status, body));
     }
     let body: Value = response.json().await?;
     Ok(extract_anthropic_completion_text(&body))
@@ -157,7 +161,7 @@ impl AiApiClient for LibertyAnthropicClient {
       let status = response.status();
       if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
-        return Err(AiApiServiceError::status_to_error(status, body));
+        return Err(AiApiClientFactoryError::status_to_error(status, body));
       }
       let body: Value = response.json().await?;
       let page_models = parse_anthropic_models_page(&body);
@@ -200,7 +204,7 @@ impl AiApiClient for LibertyAnthropicClient {
       .refresh
       .force_refresh(&self.tenant_id, &self.user_id, &self.alias_id)
       .await
-      .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?;
+      .map_err(|e| AiApiClientFactoryError::ApiError(e.to_string()))?;
 
     {
       let mut token = self.access_token.lock().expect("liberty client token lock");
@@ -227,16 +231,19 @@ fn value_to_opt(v: &Value) -> Option<Value> {
   }
 }
 
-fn resolve_url(api_path: &str, chat_url: &str, models_url: Option<&str>) -> String {
+/// LibertyAnthropic only proxies `/messages` and `/models*`; any other path is
+/// rejected with `NotFound` to fail fast on misrouted callers.
+fn resolve_url(api_path: &str, chat_url: &str, models_url: Option<&str>) -> Result<String> {
   if api_path == "/messages" || api_path.starts_with("/messages?") {
-    return chat_url.to_string();
+    return Ok(chat_url.to_string());
   }
   if api_path.starts_with("/models") {
     if let Some(mu) = models_url {
-      return mu.to_string();
+      return Ok(mu.to_string());
     }
+    return Err(AiApiClientFactoryError::NotFound(api_path.to_string()));
   }
-  format!("{}{}", chat_url, api_path)
+  Err(AiApiClientFactoryError::NotFound(api_path.to_string()))
 }
 
 #[derive(Debug)]

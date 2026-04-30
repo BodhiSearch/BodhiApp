@@ -4,7 +4,7 @@ use crate::{
   db::{DbService, TimeService},
   inference::{InferenceService, MockInferenceService},
   test_utils::{test_db_service, test_db_service_with_temp_dir, SettingServiceStub, TestDbService},
-  AccessRequestService, AiApiService, ApiModelService, AppService, AuthService, CacheService,
+  AccessRequestService, AiApiClientFactory, ApiModelService, AppService, AuthService, CacheService,
   ConcurrencyService, DataService, DefaultApiModelService, DefaultDownloadService,
   DefaultMcpService, DefaultSessionService, DefaultTenantService, DownloadService, HfHubService,
   HubService, LocalConcurrencyService, LocalDataService, McpService, MockAuthService,
@@ -72,8 +72,8 @@ pub struct AppServiceStub {
 
   // Business logic - depends on core infrastructure
   pub data_service: Option<Arc<dyn DataService>>,
-  #[builder(default = "self.default_ai_api_service()")]
-  pub ai_api_service: Option<Arc<dyn AiApiService>>,
+  #[builder(default = "self.default_ai_api_client_factory()")]
+  pub ai_api_client_factory: Option<Arc<dyn AiApiClientFactory>>,
   #[builder(default = "self.default_inference_service()")]
   pub inference_service: Option<Arc<dyn InferenceService>>,
   #[builder(default = "self.default_concurrency_service()")]
@@ -173,8 +173,8 @@ impl AppServiceStubBuilder {
     ))
   }
 
-  fn default_ai_api_service(&self) -> Option<Arc<dyn AiApiService>> {
-    let mut mock = crate::MockAiApiService::new();
+  fn default_ai_api_client_factory(&self) -> Option<Arc<dyn AiApiClientFactory>> {
+    let mut mock = crate::MockAiApiClientFactory::new();
     // safe_http_client is called by routes_app/providers when resolving
     // LlmLibertyOauth credentials; pre-configure a working stub so tests that
     // exercise that path don't need to wire it themselves.
@@ -200,13 +200,13 @@ impl AppServiceStubBuilder {
       .and_then(|o| o.as_ref())
       .cloned()
       .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
-    let ai_api_service: Arc<dyn AiApiService> = self
-      .ai_api_service
+    let ai_api_client_factory: Arc<dyn AiApiClientFactory> = self
+      .ai_api_client_factory
       .as_ref()
       .and_then(|o| o.as_ref())
       .cloned()
       .unwrap_or_else(|| {
-        let mut mock = crate::MockAiApiService::new();
+        let mut mock = crate::MockAiApiClientFactory::new();
         mock.expect_safe_http_client().returning(|| {
           crate::SafeReqwest::builder()
             .allow_private_ips()
@@ -218,7 +218,7 @@ impl AppServiceStubBuilder {
     Some(Arc::new(DefaultApiModelService::new(
       db_service,
       time_service,
-      ai_api_service,
+      ai_api_client_factory,
     )))
   }
 
@@ -496,11 +496,11 @@ impl AppService for AppServiceStub {
     self.data_service.clone().unwrap()
   }
 
-  fn ai_api_service(&self) -> Arc<dyn AiApiService> {
+  fn ai_api_client_factory(&self) -> Arc<dyn AiApiClientFactory> {
     self
-      .ai_api_service
+      .ai_api_client_factory
       .clone()
-      .expect("ai_api_service not configured in test stub - call with_ai_api_service() or build with default")
+      .expect("ai_api_client_factory not configured in test stub - call with_ai_api_client_factory() or build with default")
   }
 
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService> {

@@ -1,7 +1,7 @@
 use crate::{
   db::{DbService, TimeService},
   inference::InferenceService,
-  AccessRequestService, AiApiService, ApiModelService, AuthService, CacheService,
+  AccessRequestService, AiApiClientFactory, ApiModelService, AuthService, CacheService,
   ConcurrencyService, DataService, DownloadService, HubService, McpService, NetworkService,
   QueueProducer, SessionService, SettingService, TenantService, TokenService,
 };
@@ -27,7 +27,7 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn time_service(&self) -> Arc<dyn TimeService>;
 
-  fn ai_api_service(&self) -> Arc<dyn AiApiService>;
+  fn ai_api_client_factory(&self) -> Arc<dyn AiApiClientFactory>;
 
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService>;
 
@@ -64,7 +64,7 @@ pub struct DefaultAppService {
   tenant_service: Arc<dyn TenantService>,
   cache_service: Arc<dyn CacheService>,
   time_service: Arc<dyn TimeService>,
-  ai_api_service: Arc<dyn AiApiService>,
+  ai_api_client_factory: Arc<dyn AiApiClientFactory>,
   concurrency_service: Arc<dyn ConcurrencyService>,
   queue_producer: Arc<dyn QueueProducer>,
   network_service: Arc<dyn NetworkService>,
@@ -113,8 +113,8 @@ impl AppService for DefaultAppService {
     self.time_service.clone()
   }
 
-  fn ai_api_service(&self) -> Arc<dyn AiApiService> {
-    self.ai_api_service.clone()
+  fn ai_api_client_factory(&self) -> Arc<dyn AiApiClientFactory> {
+    self.ai_api_client_factory.clone()
   }
 
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService> {

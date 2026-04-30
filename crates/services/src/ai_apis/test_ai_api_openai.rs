@@ -1,4 +1,4 @@
-use super::{AiApiService, AiApiServiceError, DefaultAiApiService};
+use super::{AiApiClientFactory, AiApiClientFactoryError, DefaultAiApiClientFactory};
 use crate::models::{ApiAlias, ApiFormat, ApiModel};
 use crate::test_utils::{fixed_dt, openai_model};
 use anyhow_trace::anyhow_trace;
@@ -40,7 +40,7 @@ fn make_alias_for(url: &str, format: ApiFormat) -> ApiAlias {
 async fn test_test_prompt_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -74,7 +74,7 @@ async fn test_test_prompt_success() -> anyhow::Result<()> {
 async fn test_test_prompt_openai_responses_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let expected_body = serde_json::json!({
     "model": "gpt-4o",
@@ -116,7 +116,7 @@ async fn test_test_prompt_openai_responses_success() -> anyhow::Result<()> {
 async fn test_fetch_models_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("GET", "/models")
@@ -157,7 +157,7 @@ async fn test_fetch_models_success() -> anyhow::Result<()> {
 async fn test_api_unauthorized_error() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -172,7 +172,10 @@ async fn test_api_unauthorized_error() -> anyhow::Result<()> {
     .test_prompt("gpt-3.5-turbo", "Hello")
     .await;
 
-  assert!(matches!(result, Err(AiApiServiceError::Unauthorized(_))));
+  assert!(matches!(
+    result,
+    Err(AiApiClientFactoryError::Unauthorized(_))
+  ));
 
   Ok(())
 }
@@ -181,7 +184,7 @@ async fn test_api_unauthorized_error() -> anyhow::Result<()> {
 #[anyhow_trace]
 #[tokio::test]
 async fn test_model_not_found() -> anyhow::Result<()> {
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let mut server = Server::new_async().await;
   let url = server.url();
 
@@ -198,7 +201,7 @@ async fn test_model_not_found() -> anyhow::Result<()> {
     .test_prompt("unknown-model", "Hello")
     .await;
 
-  assert!(matches!(result, Err(AiApiServiceError::NotFound(_))));
+  assert!(matches!(result, Err(AiApiClientFactoryError::NotFound(_))));
 
   Ok(())
 }
@@ -223,7 +226,7 @@ async fn test_test_prompt_success_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -257,7 +260,7 @@ async fn test_test_prompt_failure_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("POST", "/chat/completions")
@@ -298,7 +301,7 @@ async fn test_fetch_models_success_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("GET", "/models")
@@ -332,7 +335,7 @@ async fn test_fetch_models_failure_parameterized(
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("GET", "/models")
@@ -357,18 +360,18 @@ async fn test_fetch_models_failure_parameterized(
 // =============================================================================
 
 #[rstest]
-#[case::unauthorized(401, "Unauthorized", AiApiServiceError::Unauthorized("".to_string()))]
-#[case::not_found(404, "Not Found", AiApiServiceError::NotFound("".to_string()))]
+#[case::unauthorized(401, "Unauthorized", AiApiClientFactoryError::Unauthorized("".to_string()))]
+#[case::not_found(404, "Not Found", AiApiClientFactoryError::NotFound("".to_string()))]
 #[anyhow_trace]
 #[tokio::test]
 async fn test_test_prompt_openai_responses_errors(
   #[case] status_code: u16,
   #[case] response_body: &str,
-  #[case] expected_error: AiApiServiceError,
+  #[case] expected_error: AiApiClientFactoryError,
 ) -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("POST", "/responses")
@@ -399,7 +402,7 @@ async fn test_test_prompt_openai_responses_errors(
 async fn test_test_prompt_openai_responses_malformed_output() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   // output array has no item with type == "message" → falls back to "No response"
   let _mock = server

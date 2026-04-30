@@ -101,7 +101,7 @@ Or use `matches!` for error variant + field checks:
 ```rust
 assert!(matches!(
   result.unwrap_err(),
-  AiApiServiceError::PromptTooLong { max_length: 30, actual_length: 31 }
+  AiApiClientFactoryError::PromptTooLong { max_length: 30, actual_length: 31 }
 ));
 ```
 

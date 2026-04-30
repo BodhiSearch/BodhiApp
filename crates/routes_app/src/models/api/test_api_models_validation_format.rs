@@ -85,11 +85,11 @@ async fn test_update_api_model_rejects_keep_when_api_format_changes(
     )
     .await?;
 
-  let mock_ai = services::MockAiApiService::new();
+  let mock_ai = services::MockAiApiClientFactory::new();
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_arc)
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 
@@ -150,7 +150,7 @@ async fn test_api_models_test_id_uses_stored_api_format(
     .await?;
 
   // Mock: test_prompt must be called with AnthropicOAuth (not OpenAI from payload).
-  let mut mock_ai = services::MockAiApiService::new();
+  let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai
     .expect_for_alias()
     .withf(|alias, _| alias.api_format == ApiFormat::AnthropicOAuth)
@@ -166,7 +166,7 @@ async fn test_api_models_test_id_uses_stored_api_format(
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_arc)
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 
@@ -219,7 +219,7 @@ async fn test_api_models_fetch_models_id_uses_stored_api_format(
     )
     .await?;
 
-  let mut mock_ai = services::MockAiApiService::new();
+  let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai
     .expect_for_alias()
     .withf(|alias, _| alias.api_format == ApiFormat::AnthropicOAuth)
@@ -235,7 +235,7 @@ async fn test_api_models_fetch_models_id_uses_stored_api_format(
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_arc)
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 

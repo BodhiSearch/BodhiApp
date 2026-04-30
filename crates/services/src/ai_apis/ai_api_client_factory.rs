@@ -5,7 +5,7 @@ use super::clients::gemini::GeminiClient;
 use super::clients::liberty_anthropic::LibertyAnthropicClient;
 use super::clients::openai::OpenAiClient;
 use super::clients::openai_responses::OpenAiResponsesClient;
-use super::error::{AiApiServiceError, Result};
+use super::error::{AiApiClientFactoryError, Result};
 use super::llm_liberty::{DefaultLlmLibertyRefresh, LlmLibertyRefresh};
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
 use crate::models::{ApiAlias, ApiFormat};
@@ -18,7 +18,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 30;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
-pub trait AiApiService: Send + Sync + std::fmt::Debug {
+pub trait AiApiClientFactory: Send + Sync + std::fmt::Debug {
   fn for_alias(&self, alias: &ApiAlias, api_key: Option<String>) -> Result<Box<dyn AiApiClient>>;
 
   fn for_envelope(&self, envelope: &LlmLibertyEnvelope) -> Result<Box<dyn AiApiClient>>;
@@ -35,12 +35,12 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
 }
 
 #[derive(Debug, Clone)]
-pub struct DefaultAiApiService {
+pub struct DefaultAiApiClientFactory {
   client: SafeReqwest,
   refresh: Arc<dyn LlmLibertyRefresh>,
 }
 
-impl DefaultAiApiService {
+impl DefaultAiApiClientFactory {
   pub fn with_db(db: Arc<dyn crate::db::DbService>) -> Result<Self> {
     let client = SafeReqwest::builder()
       .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
@@ -70,7 +70,7 @@ impl DefaultAiApiService {
 }
 
 #[async_trait]
-impl AiApiService for DefaultAiApiService {
+impl AiApiClientFactory for DefaultAiApiClientFactory {
   fn safe_http_client(&self) -> SafeReqwest {
     self.client.clone()
   }
@@ -110,10 +110,9 @@ impl AiApiService for DefaultAiApiService {
         prefix,
         self.client.clone(),
       )),
-      ApiFormat::LlmLibertyOauth => return Err(AiApiServiceError::ApiError(
-        "LlmLibertyOauth aliases must be constructed via for_envelope or for_resolved_credentials"
-          .to_string(),
-      )),
+      ApiFormat::LlmLibertyOauth => {
+        return Err(AiApiClientFactoryError::LibertyRequiresCredentials)
+      }
     };
     Ok(client)
   }
@@ -124,10 +123,9 @@ impl AiApiService for DefaultAiApiService {
         envelope,
         self.client.clone(),
       ))),
-      other => Err(AiApiServiceError::ApiError(format!(
-        "LLM Liberty provider '{}' is not supported",
-        other
-      ))),
+      other => Err(AiApiClientFactoryError::LibertyProviderUnsupported(
+        other.to_string(),
+      )),
     }
   }
 
@@ -148,10 +146,9 @@ impl AiApiService for DefaultAiApiService {
         self.refresh.clone(),
         self.client.clone(),
       ))),
-      other => Err(AiApiServiceError::ApiError(format!(
-        "LLM Liberty provider '{}' is not supported",
-        other
-      ))),
+      other => Err(AiApiClientFactoryError::LibertyProviderUnsupported(
+        other.to_string(),
+      )),
     }
   }
 }

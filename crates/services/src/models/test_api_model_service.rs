@@ -7,7 +7,7 @@ use crate::test_utils::{
   gemini_model, openai_model, test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID,
   TEST_USER_ID,
 };
-use crate::MockAiApiService;
+use crate::MockAiApiClientFactory;
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
@@ -72,7 +72,7 @@ async fn test_create_forward_all_stores_all_models(
   let expected_models = two_models_for(&api_format);
   let expected_models_clone = expected_models.clone();
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().times(1).returning(move |_, _| {
     let models = expected_models_clone.clone();
     let mut client = MockAiApiClient::new();
@@ -143,7 +143,7 @@ async fn test_create_non_forward_all_validates_and_filters(
   let expected_model = provider_models[0].clone();
   let provider_models_clone = provider_models.clone();
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().times(1).returning(move |_, _| {
     let models = provider_models_clone.clone();
     let mut client = MockAiApiClient::new();
@@ -194,7 +194,7 @@ async fn test_update_forward_all_stores_all_models(
   let expected_models = two_models_for(&api_format);
   let expected_models_clone = expected_models.clone();
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   // create() fetches once, update() fetches once — each for_alias call returns a fresh client
   mock_ai.expect_for_alias().times(2).returning(move |_, _| {
     let models = expected_models_clone.clone();
@@ -273,7 +273,7 @@ async fn test_update_non_forward_all_validates_and_filters(
   let provider_models = two_named_models_for(&api_format, "model-p", "model-q");
   let provider_models_clone = provider_models.clone();
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   // create() calls for_alias once, update() calls for_alias once
   mock_ai.expect_for_alias().times(2).returning(move |_, _| {
     let models = provider_models_clone.clone();
@@ -344,7 +344,7 @@ async fn test_create_rejects_extra_headers_pass_through_auth(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
-  let mock_ai = MockAiApiService::new();
+  let mock_ai = MockAiApiClientFactory::new();
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service, time_service, Arc::new(mock_ai));
 
@@ -389,7 +389,7 @@ async fn test_update_rejects_api_format_change(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   // Only create() calls for_alias; update() must bail before for_alias.
   mock_ai.expect_for_alias().times(1).returning(|_, _| {
     let mut client = MockAiApiClient::new();
@@ -458,7 +458,7 @@ async fn test_create_gemini_preserves_bare_name(
   let provider_models = vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))];
   let provider_models_clone = provider_models.clone();
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().times(1).returning(move |_, _| {
     let models = provider_models_clone.clone();
     let mut client = MockAiApiClient::new();
@@ -533,7 +533,7 @@ async fn test_update_gemini_preserves_bare_name(
   let provider_models = vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))];
   let provider_models_clone = provider_models.clone();
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().times(2).returning(move |_, _| {
     let models = provider_models_clone.clone();
     let mut client = MockAiApiClient::new();
@@ -611,7 +611,7 @@ async fn test_create_openai_with_prefix_no_mutation(
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().times(1).returning(|_, _| {
     let mut client = MockAiApiClient::new();
     client
@@ -660,7 +660,7 @@ async fn test_create_rejects_extra_headers_x_goog_api_key(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
-  let mock_ai = MockAiApiService::new();
+  let mock_ai = MockAiApiClientFactory::new();
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service, time_service, Arc::new(mock_ai));
 

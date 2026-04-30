@@ -13,15 +13,12 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
-use services::models::llm_liberty_envelope::{
-  LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyOauthEndpoints,
-};
 use services::test_utils::{
-  anthropic_model, test_db_service, AppServiceStubBuilder, TestDbService,
+  anthropic_model, test_db_service, test_llm_liberty_envelope, AppServiceStubBuilder, TestDbService,
 };
 use services::{
   ApiAliasResponse, ApiFormat, ApiModelRequest, AuthContext, LlmLibertyApiModelRequest,
-  LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate, MockAiApiService, ResourceRole,
+  LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate, MockAiApiClientFactory, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -62,33 +59,15 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 }
 
 fn valid_envelope() -> LlmLibertyEnvelope {
-  LlmLibertyEnvelope {
-    version: "1.0.0".into(),
-    provider: "anthropic".into(),
-    access_token: "access-test".into(),
-    refresh_token: "refresh-test".into(),
-    expires_at: 9999999999,
-    auth: LlmLibertyAuthSpec {
-      location: "header".into(),
-      key: "Authorization".into(),
-      scheme: "Bearer".into(),
-    },
-    oauth: LlmLibertyOauthEndpoints {
-      authorize_url: "https://oauth.example/authorize".into(),
-      token_url: "https://oauth.example/token".into(),
-      revoke_url: None,
-      client_id: "client-id-public".into(),
-      client_secret: None,
-    },
-    api: LlmLibertyApiEndpoints {
-      base_url: "https://api.anthropic.com/v1".into(),
-      chat_url: "https://api.anthropic.com/v1/messages".into(),
-      models_url: Some("https://api.anthropic.com/v1/models".into()),
-    },
-    headers: json!({}),
-    body: json!({}),
-    extra: None,
-  }
+  let mut env = test_llm_liberty_envelope();
+  env.access_token = "access-test".into();
+  env.refresh_token = "refresh-test".into();
+  env.expires_at = 9999999999;
+  env.oauth.client_id = "client-id-public".into();
+  env.api.base_url = "https://api.anthropic.com/v1".into();
+  env.api.chat_url = "https://api.anthropic.com/v1/messages".into();
+  env.api.models_url = Some("https://api.anthropic.com/v1/models".into());
+  env
 }
 
 #[rstest]
@@ -100,7 +79,7 @@ async fn create_201_with_valid_envelope(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_envelope().returning(|_| {
     let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
     client
@@ -111,7 +90,7 @@ async fn create_201_with_valid_envelope(
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 
@@ -145,10 +124,10 @@ async fn create_400_when_envelope_version_unsupported(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mock_ai = MockAiApiService::new();
+  let mock_ai = MockAiApiClientFactory::new();
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 
@@ -195,10 +174,10 @@ async fn create_400_when_required_envelope_field_missing(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mock_ai = MockAiApiService::new();
+  let mock_ai = MockAiApiClientFactory::new();
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 
@@ -241,10 +220,10 @@ async fn create_400_when_envelope_provider_unsupported(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mock_ai = MockAiApiService::new();
+  let mock_ai = MockAiApiClientFactory::new();
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 
@@ -281,7 +260,7 @@ async fn update_replaces_credentials_when_envelope_set(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_envelope().returning(|_| {
     let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
     client
@@ -293,7 +272,7 @@ async fn update_replaces_credentials_when_envelope_set(
   let db_arc = Arc::new(db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_arc.clone())
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
   let app_service: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -351,7 +330,7 @@ async fn update_keeps_credentials_when_envelope_keep(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai.expect_for_envelope().returning(|_| {
     let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
     client
@@ -372,7 +351,7 @@ async fn update_keeps_credentials_when_envelope_keep(
   let db_arc = Arc::new(db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_arc.clone())
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
   let app_service: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -435,10 +414,10 @@ async fn test_endpoint_400_when_id_and_envelope_both_present(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mock_ai = MockAiApiService::new();
+  let mock_ai = MockAiApiClientFactory::new();
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 
@@ -466,10 +445,10 @@ async fn test_endpoint_400_when_neither_id_nor_envelope(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let mock_ai = MockAiApiService::new();
+  let mock_ai = MockAiApiClientFactory::new();
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .ai_api_service(Arc::new(mock_ai))
+    .ai_api_client_factory(Arc::new(mock_ai))
     .build()
     .await?;
 

@@ -6,8 +6,8 @@ use services::{
   db::{DbCore, DbService, DefaultDbService, DefaultTimeService, TimeService},
   hash_key,
   inference::InferenceService,
-  AccessRequestService, AiApiService, AuthService, BootstrapParts, CacheService, DataService,
-  DefaultAccessRequestService, DefaultAiApiService, DefaultAppService, DefaultMcpService,
+  AccessRequestService, AiApiClientFactory, AuthService, BootstrapParts, CacheService, DataService,
+  DefaultAccessRequestService, DefaultAiApiClientFactory, DefaultAppService, DefaultMcpService,
   DefaultNetworkService, DefaultSessionService, DefaultSettingService, DefaultTenantService,
   DeploymentMode, HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
   LocalConcurrencyService, LocalDataService, McpService, MokaCacheService, MultiTenantDataService,
@@ -149,7 +149,7 @@ impl AppServiceBuilder {
     let session_service = Self::build_session_service(&setting_service).await?;
     let cache_service = self.get_or_build_cache_service();
     let auth_service = Self::build_auth_service(&setting_service).await;
-    let ai_api_service = Self::build_ai_api_service(db_service.clone())?;
+    let ai_api_client_factory = Self::build_ai_api_client_factory(db_service.clone())?;
     let concurrency_service = Self::build_concurrency_service();
     let access_request_service = Self::build_access_request_service(
       &setting_service,
@@ -185,14 +185,16 @@ impl AppServiceBuilder {
     );
 
     let inference_service: Arc<dyn InferenceService> = if is_multi_tenant {
-      Arc::new(MultitenantInferenceService::new(ai_api_service.clone()))
+      Arc::new(MultitenantInferenceService::new(
+        ai_api_client_factory.clone(),
+      ))
     } else {
       let ctx =
         Arc::new(DefaultSharedContext::new(hub_service.clone(), setting_service.clone()).await);
       let keep_alive_secs = setting_service.keep_alive().await;
       Arc::new(StandaloneInferenceService::new(
         ctx,
-        ai_api_service.clone(),
+        ai_api_client_factory.clone(),
         keep_alive_secs,
       ))
     };
@@ -201,7 +203,7 @@ impl AppServiceBuilder {
       Arc::new(services::DefaultApiModelService::new(
         db_service.clone(),
         time_service.clone(),
-        ai_api_service.clone(),
+        ai_api_client_factory.clone(),
       ));
 
     let download_service: Arc<dyn services::DownloadService> = Arc::new(
@@ -218,7 +220,7 @@ impl AppServiceBuilder {
       tenant_service,
       cache_service,
       time_service,
-      ai_api_service,
+      ai_api_client_factory,
       concurrency_service,
       queue_producer,
       network_service,
@@ -312,12 +314,14 @@ impl AppServiceBuilder {
   }
 
   /// Builds the AI API service.
-  fn build_ai_api_service(
+  fn build_ai_api_client_factory(
     db_service: Arc<dyn DbService>,
-  ) -> Result<Arc<dyn AiApiService>, BootstrapError> {
-    Ok(Arc::new(DefaultAiApiService::with_db(db_service).map_err(
-      |e| BootstrapError::UnexpectedError(services::AppError::code(&e), e.to_string()),
-    )?))
+  ) -> Result<Arc<dyn AiApiClientFactory>, BootstrapError> {
+    Ok(Arc::new(
+      DefaultAiApiClientFactory::with_db(db_service).map_err(|e| {
+        BootstrapError::UnexpectedError(services::AppError::code(&e), e.to_string())
+      })?,
+    ))
   }
 
   /// Builds the concurrency service.

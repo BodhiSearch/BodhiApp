@@ -1,4 +1,4 @@
-use crate::ai_apis::error::AiApiServiceError;
+use crate::ai_apis::error::AiApiClientFactoryError;
 use crate::db::{DbError, DbService};
 use crate::models::llm_liberty_credentials_repository::LlmLibertyCredentialsRepository;
 use crate::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
@@ -61,7 +61,7 @@ pub enum LlmLibertyRefreshError {
   Db(#[from] DbError),
 
   #[error(transparent)]
-  AiApi(#[from] AiApiServiceError),
+  AiApi(#[from] AiApiClientFactoryError),
 
   #[error("LLM Liberty credentials not found for alias '{0}'.")]
   #[error_meta(error_type = ErrorType::NotFound, code = "llm_liberty_refresh-not_found")]
@@ -178,22 +178,22 @@ async fn do_refresh(
 
   let resp = http
     .post(&creds.oauth_token_url)
-    .map_err(AiApiServiceError::from)?
+    .map_err(AiApiClientFactoryError::from)?
     .header("Content-Type", "application/json")
     .json(&body)
     .send()
     .await
-    .map_err(AiApiServiceError::from)?;
+    .map_err(AiApiClientFactoryError::from)?;
 
   let status = resp.status();
   if !status.is_success() {
     let text = resp.text().await.unwrap_or_default();
     return Err(LlmLibertyRefreshError::AiApi(
-      AiApiServiceError::status_to_error(status, text),
+      AiApiClientFactoryError::status_to_error(status, text),
     ));
   }
 
-  let json: serde_json::Value = resp.json().await.map_err(AiApiServiceError::from)?;
+  let json: serde_json::Value = resp.json().await.map_err(AiApiClientFactoryError::from)?;
 
   let new_access = json["access_token"]
     .as_str()

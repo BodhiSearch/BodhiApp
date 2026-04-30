@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 use services::ai_apis::ai_api_client::MockAiApiClient;
 use services::inference::LlmEndpoint;
 use services::test_utils::fixed_dt;
-use services::{AiApiClient, ApiAlias, ApiFormat, MockAiApiService};
+use services::{AiApiClient, ApiAlias, ApiFormat, MockAiApiClientFactory};
 use std::sync::Arc;
 
 fn make_test_api_alias() -> ApiAlias {
@@ -74,7 +74,7 @@ async fn test_proxy_to_remote_method_dispatch(
   let request_cl = request.clone();
   let query_params_cl = query_params.clone();
 
-  let mut mock_ai = MockAiApiService::new();
+  let mut mock_ai = MockAiApiClientFactory::new();
   mock_ai
     .expect_for_alias()
     .times(1)
@@ -104,7 +104,7 @@ async fn test_proxy_to_remote_method_dispatch(
       Ok(Box::new(client) as Box<dyn AiApiClient>)
     });
 
-  let ai_service: Arc<dyn services::AiApiService> = Arc::new(mock_ai);
+  let ai_service: Arc<dyn services::AiApiClientFactory> = Arc::new(mock_ai);
   let api_alias = make_test_api_alias();
 
   let result = proxy_to_remote(

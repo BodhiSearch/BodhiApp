@@ -2,7 +2,7 @@
 
 ## Overview
 
-Services that make HTTP calls (AuthService, AiApiService) use `mockito::Server` to mock external endpoints. The pattern creates a temporary HTTP server and passes its URL to the service under test.
+Services that make HTTP calls (AuthService, AiApiClientFactory) use `mockito::Server` to mock external endpoints. The pattern creates a temporary HTTP server and passes its URL to the service under test.
 
 ## Basic Pattern
 
@@ -66,12 +66,12 @@ async fn test_auth_register_client() -> anyhow::Result<()> {
 }
 ```
 
-## AiApiService Testing
+## AiApiClientFactory Testing
 
-AiApiService accepts the URL at call-time rather than construction time:
+`AiApiClientFactory` accepts the URL at call-time rather than construction time:
 
 ```rust
-use crate::ai_api_service::{AiApiService, DefaultAiApiService};
+use crate::ai_apis::{AiApiClientFactory, DefaultAiApiClientFactory};
 use crate::test_utils::MockDbService;
 
 #[rstest]
@@ -80,7 +80,7 @@ async fn test_api_call_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
   let mock_db = MockDbService::new();
-  let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+  let service = DefaultAiApiClientFactory::with_db_service(Arc::new(mock_db));
 
   let _mock = server
     .mock("POST", "/chat/completions")

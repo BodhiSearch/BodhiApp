@@ -1,4 +1,4 @@
-use super::{AiApiService, DefaultAiApiService};
+use super::{AiApiClientFactory, DefaultAiApiClientFactory};
 use crate::models::{ApiAlias, ApiFormat};
 use crate::test_utils::{fixed_dt, openai_model};
 use anyhow_trace::anyhow_trace;
@@ -14,7 +14,7 @@ use serde_json::json;
 async fn test_test_prompt_anthropic_oauth_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let extra_headers = json!({"anthropic-beta": "oauth-2025-04-20"});
   let extra_body = json!({
@@ -67,7 +67,7 @@ async fn test_test_prompt_anthropic_oauth_success() -> anyhow::Result<()> {
 async fn test_fetch_models_anthropic_oauth_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let extra_headers = json!({
     "anthropic-beta": "oauth-2025-04-20",
@@ -117,7 +117,7 @@ async fn test_fetch_models_anthropic_oauth_success() -> anyhow::Result<()> {
 async fn test_forward_request_anthropic_oauth_merges_body() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let extra_headers = json!({"anthropic-beta": "oauth-2025-04-20"});
   let extra_body = json!({
@@ -179,7 +179,7 @@ async fn test_forward_request_anthropic_oauth_merges_body() -> anyhow::Result<()
 async fn test_forward_request_anthropic_oauth_prepends_system() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let extra_headers = json!({"anthropic-beta": "oauth-2025-04-20"});
   let extra_body = json!({
@@ -245,7 +245,7 @@ async fn test_forward_request_anthropic_oauth_version_injected_when_absent() -> 
   // the default should be injected.
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let extra_headers = json!({"anthropic-beta": "oauth-2025-04-20"});
 

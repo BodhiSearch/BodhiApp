@@ -1,4 +1,4 @@
-use super::error::{AiApiServiceError, Result};
+use super::error::{AiApiClientFactoryError, Result};
 use crate::models::ApiModel;
 use crate::SafeReqwest;
 use async_openai::types::models::Model as OpenAIModel;
@@ -23,7 +23,7 @@ pub(crate) async fn fetch_openai_models(
   let status = response.status();
   if !status.is_success() {
     let body = response.text().await.unwrap_or_default();
-    return Err(AiApiServiceError::status_to_error(status, body));
+    return Err(AiApiClientFactoryError::status_to_error(status, body));
   }
 
   let body: Value = response.json().await?;
@@ -148,7 +148,7 @@ pub(crate) async fn forward_to_upstream(
 
   let axum_response = builder
     .body(body)
-    .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?;
+    .map_err(|e| AiApiClientFactoryError::ApiError(e.to_string()))?;
 
   Ok(axum_response)
 }

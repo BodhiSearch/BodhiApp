@@ -70,12 +70,16 @@ Every new route must:
 
 ## Anthropic Proxy: LlmLibertyOauth Path
 
-`src/anthropic/routes_anthropic.rs` proxies `/anthropic/v1/messages` and `/anthropic/v1/models*`. For `ApiFormat::LlmLibertyOauth` aliases, the resolver in `resolve_anthropic_alias`:
-1. Calls `providers::resolve_llm_liberty_credentials` (delegates to `services::ai_apis::llm_liberty::ensure_fresh_credentials` — per-alias mutex, skew-window refresh).
-2. **Verifies `creds.provider == "anthropic"`** before forwarding — future llm-liberty providers (openai-codex, google-gemini, …) get their own routes; this guard rejects mis-routed envelopes with a 400.
-3. Rewrites `api_alias.{base_url, extra_headers, extra_body}` from the resolved envelope so the inference service sees a fully-populated alias.
+`src/anthropic/routes_anthropic.rs` proxies `/anthropic/v1/messages` and `/anthropic/v1/models*`. The resolver `resolve_anthropic_alias` returns an `AnthropicAliasResolution` enum with two arms:
 
-**401-retry-with-force-refresh**: `anthropic_messages_create_handler` clones the request body+params+headers up-front, makes the upstream call, and on `StatusCode::UNAUTHORIZED` from a `LlmLibertyOauth` alias calls `providers::resolve_llm_liberty_credentials_with_force_refresh` (which delegates to `services::ai_apis::llm_liberty::force_refresh_credentials`, bypassing the skew check) and retries the upstream call once. A second 401 surfaces to the user untouched. This handles the case where Anthropic invalidates access tokens before `expires_at` (e.g. third-party-usage flagging).
+1. `Native { alias, api_key }` — `Anthropic` and `AnthropicOAuth` formats. Handler forwards via `auth_scope.inference().forward_remote_with_params(...)`.
+2. `Liberty { alias, creds }` — `LlmLibertyOauth` format. Liberty credentials are resolved via `providers::resolve_llm_liberty_credentials` (delegates to `services::ai_apis::llm_liberty::ensure_fresh_credentials` — per-alias mutex, skew-window refresh). The handler then builds a `LibertyAnthropicClient` via `auth_scope.ai_api().for_resolved_credentials(&creds, &alias, tenant_id, user_id)?` and calls `forward_request_with_method(...)`. The Liberty client owns the upstream call **and** the 401-retry-with-force-refresh — the route handler does not retry.
+
+**Provider verification** (`creds.provider == "anthropic"`) lives inside the factory's `for_resolved_credentials`; it returns `AiApiClientFactoryError::LibertyProviderUnsupported(...)` (BadRequest) for mis-routed envelopes (e.g. an `openai-codex` envelope on a misconfigured alias). The route handler does not duplicate this check.
+
+**401-retry-with-force-refresh** lives inside `LibertyAnthropicClient::forward_request_with_method`: it makes the upstream call, and on `StatusCode::UNAUTHORIZED` calls the injected `LlmLibertyRefresh::force_refresh(tenant_id, user_id, alias_id)` (which bypasses the skew check), mutates the client's bound access_token in place, and retries once. A second 401 surfaces to the user untouched. This handles the case where Anthropic invalidates access tokens before `expires_at` (e.g. third-party-usage flagging).
+
+`tenant_id`/`user_id` for the Liberty arm come from `auth_scope.require_tenant_id()? / require_user_id()?` so missing auth context surfaces as a typed `AuthContextError` (auto-converted to `AnthropicApiError`) rather than silently producing a malformed refresh call.
 
 ## Key Workflow Gotchas (Critical)
 

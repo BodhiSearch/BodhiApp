@@ -1,4 +1,4 @@
-use super::{AiApiService, DefaultAiApiService};
+use super::{AiApiClientFactory, DefaultAiApiClientFactory};
 use crate::models::{ApiAlias, ApiFormat, ApiModel};
 use crate::test_utils::{fixed_dt, gemini_model};
 use anyhow_trace::anyhow_trace;
@@ -43,7 +43,7 @@ fn make_gemini_alias_no_key(url: &str) -> ApiAlias {
 async fn test_test_prompt_gemini_success() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let expected_body = json!({
     "contents": [{"role": "user", "parts": [{"text": "Hello"}]}]
@@ -79,7 +79,7 @@ async fn test_test_prompt_gemini_success() -> anyhow::Result<()> {
 async fn test_fetch_models_gemini_passes_through_embedding_only() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("GET", "/models")
@@ -114,7 +114,7 @@ async fn test_fetch_models_gemini_passes_through_embedding_only() -> anyhow::Res
 async fn test_fetch_models_gemini_preserves_display_name() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
 
   let _mock = server
     .mock("GET", "/models")
@@ -151,7 +151,7 @@ async fn test_fetch_models_gemini_preserves_display_name() -> anyhow::Result<()>
 async fn test_forward_gemini_forwards_query_params() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let api_alias = make_gemini_alias(&url);
 
   let body = json!({
@@ -190,7 +190,7 @@ async fn test_forward_gemini_forwards_query_params() -> anyhow::Result<()> {
 async fn test_forward_request_gemini_passes_through() -> anyhow::Result<()> {
   let mut server = Server::new_async().await;
   let url = server.url();
-  let service = DefaultAiApiService::new()?;
+  let service = DefaultAiApiClientFactory::new()?;
   let api_alias = make_gemini_alias(&url);
 
   let body = json!({

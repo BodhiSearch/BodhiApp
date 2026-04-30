@@ -3,13 +3,23 @@ use errmeta::{impl_error_from, AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum AiApiServiceError {
+pub enum AiApiClientFactoryError {
   #[error(transparent)]
   Reqwest(#[from] ReqwestError),
 
   #[error("API error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ApiError(String),
+
+  #[error(
+    "LlmLibertyOauth aliases must be constructed via for_envelope or for_resolved_credentials."
+  )]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "ai_api_client_factory_error-liberty_requires_credentials")]
+  LibertyRequiresCredentials,
+
+  #[error("LLM Liberty provider '{0}' is not supported.")]
+  #[error_meta(error_type = ErrorType::BadRequest, code = "ai_api_client_factory_error-liberty_provider_unsupported")]
+  LibertyProviderUnsupported(String),
 
   #[error("API authentication failed: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
@@ -39,7 +49,7 @@ pub enum AiApiServiceError {
   UrlValidation(#[from] UrlValidationError),
 }
 
-impl AiApiServiceError {
+impl AiApiClientFactoryError {
   /// Convert an HTTP status code and body into the appropriate error variant.
   pub fn status_to_error(status: reqwest::StatusCode, body: String) -> Self {
     match status {
@@ -53,8 +63,8 @@ impl AiApiServiceError {
 
 impl_error_from!(
   reqwest::Error,
-  AiApiServiceError::Reqwest,
+  AiApiClientFactoryError::Reqwest,
   crate::ReqwestError
 );
 
-pub(crate) type Result<T> = std::result::Result<T, AiApiServiceError>;
+pub(crate) type Result<T> = std::result::Result<T, AiApiClientFactoryError>;

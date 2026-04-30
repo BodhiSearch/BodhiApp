@@ -2,7 +2,7 @@ use crate::{
   auth::AuthContextError,
   db::{DbService, TimeService},
   inference::InferenceService,
-  AccessRequestService, AiApiService, AppService, AuthContext, AuthScopedApiModelService,
+  AccessRequestService, AiApiClientFactory, AppService, AuthContext, AuthScopedApiModelService,
   AuthScopedDataService, AuthScopedDownloadService, AuthScopedMcpService, AuthScopedTenantService,
   AuthScopedTokenService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
   CacheService, ConcurrencyService, DataService, HubService, NetworkService, QueueProducer,
@@ -126,8 +126,8 @@ impl AuthScopedAppService {
   }
 
   /// D8: AI API domain
-  pub fn ai_api(&self) -> Arc<dyn AiApiService> {
-    self.app_service.ai_api_service()
+  pub fn ai_api(&self) -> Arc<dyn AiApiClientFactory> {
+    self.app_service.ai_api_client_factory()
   }
 
   /// D9: Time domain
@@ -170,8 +170,8 @@ impl AuthScopedAppService {
     self.app_service.network_service()
   }
 
-  pub fn ai_api_service(&self) -> Arc<dyn AiApiService> {
-    self.app_service.ai_api_service()
+  pub fn ai_api_client_factory(&self) -> Arc<dyn AiApiClientFactory> {
+    self.app_service.ai_api_client_factory()
   }
 
   pub fn queue_producer(&self) -> Arc<dyn QueueProducer> {

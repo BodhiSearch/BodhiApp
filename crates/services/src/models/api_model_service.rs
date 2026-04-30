@@ -8,7 +8,7 @@ use crate::models::{
   DefaultApiModelRequest, LlmLibertyApiModelRequest,
 };
 use crate::new_ulid;
-use crate::{AiApiClient, AiApiService};
+use crate::{AiApiClient, AiApiClientFactory};
 use errmeta::{AppError, EntityError, ErrorType};
 use std::collections::HashSet;
 
@@ -101,7 +101,7 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
 pub struct DefaultApiModelService {
   db_service: Arc<dyn DbService>,
   time_service: Arc<dyn TimeService>,
-  ai_api_service: Arc<dyn AiApiService>,
+  ai_api_client_factory: Arc<dyn AiApiClientFactory>,
 }
 
 #[async_trait]
@@ -273,7 +273,7 @@ impl ApiModelService for DefaultApiModelService {
             ))
           })?;
         let client = self
-          .ai_api_service
+          .ai_api_client_factory
           .for_resolved_credentials(&creds, &api_alias, tenant_id, user_id)
           .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
         (client, None)
@@ -285,7 +285,7 @@ impl ApiModelService for DefaultApiModelService {
           .ok()
           .flatten();
         let client = self
-          .ai_api_service
+          .ai_api_client_factory
           .for_alias(&api_alias, key.clone())
           .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
         (client, key)
@@ -345,7 +345,7 @@ impl DefaultApiModelService {
     let base_url = form.base_url.trim_end_matches('/').to_string();
 
     let provider_models = self
-      .ai_api_service
+      .ai_api_client_factory
       .for_alias(
         &ApiAlias::new(
           String::new(),
@@ -413,7 +413,7 @@ impl DefaultApiModelService {
     envelope.validate_supported()?;
 
     let provider_models = self
-      .ai_api_service
+      .ai_api_client_factory
       .for_envelope(&envelope)
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?
       .fetch_models()
@@ -478,7 +478,7 @@ impl DefaultApiModelService {
     };
 
     let provider_models = self
-      .ai_api_service
+      .ai_api_client_factory
       .for_alias(
         &ApiAlias::new(
           api_alias.id.clone(),
@@ -541,7 +541,7 @@ impl DefaultApiModelService {
         env.validate_supported()?;
         let base_url = env.api.base_url.clone();
         let client = self
-          .ai_api_service
+          .ai_api_client_factory
           .for_envelope(&env)
           .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
         (client, base_url, Some(env))
@@ -559,7 +559,7 @@ impl DefaultApiModelService {
           })?;
         let base_url = creds.api_base_url.clone();
         let client = self
-          .ai_api_service
+          .ai_api_client_factory
           .for_resolved_credentials(&creds, &api_alias, tenant_id, user_id)
           .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
         (client, base_url, None)

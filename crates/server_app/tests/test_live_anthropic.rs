@@ -1,7 +1,7 @@
 //! End-to-end live tests for the Anthropic Messages API proxy endpoints at
 //! `/anthropic/v1/*`. Uses a mockito server as the upstream Anthropic provider
 //! and verifies:
-//! - request headers injected by `AiApiService::forward_request_with_method`
+//! - request headers injected by `AiApiClient::forward_request_with_method`
 //!   match the Anthropic spec (`x-api-key` + `anthropic-version`)
 //! - client-sent `anthropic-*` headers are extracted by the route handler and
 //!   forwarded to upstream
