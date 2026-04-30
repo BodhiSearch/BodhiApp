@@ -2,7 +2,8 @@ use super::{AiApiClientFactory, DefaultAiApiClientFactory};
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
 use crate::models::{ApiAlias, ApiFormat};
 use crate::test_utils::{
-  fixed_dt, test_llm_liberty_envelope, test_resolved_llm_liberty_credentials,
+  fixed_dt, test_llm_liberty_envelope, test_llm_liberty_envelope_codex,
+  test_resolved_llm_liberty_credentials, test_resolved_llm_liberty_credentials_codex,
 };
 use anyhow_trace::anyhow_trace;
 use errmeta::AppError;
@@ -33,6 +34,12 @@ fn make_creds(provider: &str) -> ResolvedLlmLibertyCredentials {
   let mut creds = test_resolved_llm_liberty_credentials();
   creds.provider = provider.to_string();
   creds.api_base_url = "https://api.example.com/v1".to_string();
+  creds.api_models_url = None;
+  creds
+}
+
+fn make_codex_creds() -> ResolvedLlmLibertyCredentials {
+  let mut creds = test_resolved_llm_liberty_credentials_codex();
   creds.api_models_url = None;
   creds
 }
@@ -82,7 +89,7 @@ fn for_envelope_succeeds_for_anthropic_provider() -> anyhow::Result<()> {
 #[anyhow_trace]
 fn for_envelope_returns_error_for_unsupported_provider() -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
-  let envelope = make_envelope("openai-codex");
+  let envelope = make_envelope("google-gemini");
   let err = match service.for_envelope(&envelope) {
     Err(e) => e,
     Ok(_) => panic!("expected error for unsupported provider"),
@@ -93,9 +100,31 @@ fn for_envelope_returns_error_for_unsupported_provider() -> anyhow::Result<()> {
   );
   let msg = err.to_string();
   assert!(
-    msg.contains("openai-codex"),
+    msg.contains("google-gemini"),
     "expected provider name in error: {msg}"
   );
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+fn for_envelope_succeeds_for_openai_codex_provider() -> anyhow::Result<()> {
+  let service = DefaultAiApiClientFactory::new()?;
+  let mut envelope = test_llm_liberty_envelope_codex();
+  envelope.api.models_url = None;
+  let result = service.for_envelope(&envelope);
+  assert!(result.is_ok());
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+fn for_resolved_credentials_succeeds_for_openai_codex_provider() -> anyhow::Result<()> {
+  let service = DefaultAiApiClientFactory::new()?;
+  let creds = make_codex_creds();
+  let alias = make_alias(ApiFormat::LlmLibertyOauth);
+  let result = service.for_resolved_credentials(&creds, &alias, "tenant-a", "user-a");
+  assert!(result.is_ok());
   Ok(())
 }
 

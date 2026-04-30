@@ -8985,7 +8985,7 @@
           },
           "provider": {
             "type": "string",
-            "description": "Provider identifier, e.g. \"anthropic\". Only \"anthropic\" is supported in v1."
+            "description": "Provider identifier, e.g. \"anthropic\" or \"openai-codex\"."
           },
           "access_token": {
             "type": "string"

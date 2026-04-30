@@ -25,6 +25,7 @@ export class ChatSettingsPage extends BasePage {
     // Sliders (these might need adjustment based on actual implementation)
     temperatureSlider: '[data-testid="temperature-slider"]',
     maxTokensSlider: '[data-testid="max-tokens-slider"]',
+    maxTokensEnabledToggle: '[data-testid="setting-max-tokens-toggle"]',
     topPSlider: '[data-testid="top-p-slider"]',
 
     // System prompt
@@ -218,6 +219,21 @@ export class ChatSettingsPage extends BasePage {
     const maxTokensSlider = this.page.locator(this.selectors.maxTokensSlider);
     if (await maxTokensSlider.isVisible()) {
       await maxTokensSlider.fill(value.toString());
+    }
+
+    await this.waitForSPAReady();
+  }
+
+  /** Toggle the Max Tokens enable switch. */
+  async setMaxTokensEnabled(enabled) {
+    await this.openSettings();
+
+    const toggle = this.page.locator(this.selectors.maxTokensEnabledToggle);
+    await expect(toggle).toBeVisible();
+    const isOn = (await toggle.getAttribute('data-state')) === 'checked';
+    if (isOn !== enabled) {
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('data-state', enabled ? 'checked' : 'unchecked');
     }
 
     await this.waitForSPAReady();

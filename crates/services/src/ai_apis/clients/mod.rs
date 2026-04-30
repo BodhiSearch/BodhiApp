@@ -3,6 +3,7 @@ pub(crate) mod anthropic_oauth;
 pub(crate) mod anthropic_shared;
 pub(crate) mod gemini;
 pub(crate) mod liberty_anthropic;
+pub(crate) mod liberty_codex;
 pub(crate) mod openai;
 pub(crate) mod openai_responses;
 

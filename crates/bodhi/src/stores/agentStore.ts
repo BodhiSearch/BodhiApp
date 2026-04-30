@@ -27,7 +27,9 @@ function apiFormatToPiApi(apiFormat: ApiFormat, provider?: string | null): PiApi
     case 'gemini':
       return 'google-generative-ai';
     case 'llm_liberty_oauth':
-      return provider === 'anthropic' ? 'anthropic-messages' : 'openai-completions';
+      if (provider === 'anthropic') return 'anthropic-messages';
+      if (provider === 'openai-codex') return 'openai-responses';
+      return 'openai-completions';
     default:
       return 'openai-completions';
   }
@@ -37,6 +39,7 @@ function apiFormatToProvider(apiFormat: ApiFormat, provider?: string | null): st
   if (apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth') return 'anthropic';
   if (apiFormat === 'gemini') return 'google';
   if (apiFormat === 'llm_liberty_oauth' && provider === 'anthropic') return 'anthropic';
+  if (apiFormat === 'llm_liberty_oauth' && provider === 'openai-codex') return 'openai';
   return 'openai';
 }
 
@@ -56,8 +59,8 @@ function buildModel(
     input: ['text'],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128000,
-    // pi-ai's google provider min-clamps to maxTokens; 0 produces invalid `maxOutputTokens: 0` in Gemini requests.
-    maxTokens: 4096,
+    // 0 disables pi-ai's model.maxTokens fallback in buildBaseOptions; the user-facing toggle is authoritative.
+    maxTokens: 0,
   };
 }
 
@@ -81,6 +84,7 @@ function getBaseUrl(apiFormat: ApiFormat = 'openai', provider?: string | null): 
   if (apiFormat === 'anthropic' || apiFormat === 'anthropic_oauth') return `${origin}/anthropic`;
   if (apiFormat === 'gemini') return `${origin}/v1beta`;
   if (apiFormat === 'llm_liberty_oauth' && provider === 'anthropic') return `${origin}/anthropic`;
+  if (apiFormat === 'llm_liberty_oauth' && provider === 'openai-codex') return `${origin}/v1`;
   return `${origin}/v1`;
 }
 

@@ -287,6 +287,28 @@ describe('agentStore', () => {
       );
     });
 
+    it('routes llm_liberty_oauth openai-codex via pi-ai openai-responses with /v1 baseUrl', async () => {
+      mockPrompt.mockResolvedValueOnce(undefined);
+      useChatSettingsStore.setState({
+        model: 'gpt-5.2',
+        apiFormat: 'llm_liberty_oauth',
+        llmLibertyProvider: 'openai-codex',
+      });
+
+      await act(async () => {
+        await useAgentStore.getState().append('hi');
+      });
+
+      expect(mockModelSetter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'gpt-5.2',
+          api: 'openai-responses',
+          provider: 'openai',
+          baseUrl: expect.stringMatching(/\/v1$/),
+        })
+      );
+    });
+
     it('routes gemini format via pi-ai google-generative-ai provider with /v1beta baseUrl', async () => {
       mockPrompt.mockResolvedValueOnce(undefined);
       useChatSettingsStore.setState({ model: 'gemini-2.5-flash', apiFormat: 'gemini' });

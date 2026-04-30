@@ -1,3 +1,4 @@
+use crate::auth::AuthContextError;
 use crate::{ReqwestError, UrlValidationError};
 use errmeta::{impl_error_from, AppError, ErrorType};
 
@@ -6,6 +7,9 @@ use errmeta::{impl_error_from, AppError, ErrorType};
 pub enum AiApiClientFactoryError {
   #[error(transparent)]
   Reqwest(#[from] ReqwestError),
+
+  #[error(transparent)]
+  Auth(#[from] AuthContextError),
 
   #[error("API error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]

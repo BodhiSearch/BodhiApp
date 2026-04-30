@@ -2,11 +2,12 @@ use crate::{
   auth::AuthContextError,
   db::{DbService, TimeService},
   inference::InferenceService,
-  AccessRequestService, AiApiClientFactory, AppService, AuthContext, AuthScopedApiModelService,
-  AuthScopedDataService, AuthScopedDownloadService, AuthScopedMcpService, AuthScopedTenantService,
-  AuthScopedTokenService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
-  CacheService, ConcurrencyService, DataService, HubService, NetworkService, QueueProducer,
-  SessionService, SettingService, TenantService,
+  AccessRequestService, AiApiClientFactory, AppService, AuthContext, AuthScopedAiApiClientFactory,
+  AuthScopedApiModelService, AuthScopedDataService, AuthScopedDownloadService,
+  AuthScopedMcpService, AuthScopedTenantService, AuthScopedTokenService,
+  AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService, CacheService,
+  ConcurrencyService, DataService, HubService, NetworkService, QueueProducer, SessionService,
+  SettingService, TenantService,
 };
 use std::sync::Arc;
 
@@ -125,9 +126,10 @@ impl AuthScopedAppService {
     self.app_service.hub_service()
   }
 
-  /// D8: AI API domain
-  pub fn ai_api(&self) -> Arc<dyn AiApiClientFactory> {
-    self.app_service.ai_api_client_factory()
+  /// D8: AI API domain (auth-scoped — auto-injects tenant_id/user_id when
+  /// constructing Liberty clients via `for_resolved_credentials`).
+  pub fn ai_api(&self) -> AuthScopedAiApiClientFactory {
+    AuthScopedAiApiClientFactory::new(self.app_service.clone(), self.auth_context.clone())
   }
 
   /// D9: Time domain

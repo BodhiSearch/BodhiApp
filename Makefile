@@ -6,7 +6,7 @@ include Makefile.website.mk
 
 .DEFAULT_GOAL := help
 
-.PHONY: help test test.backend test.ui test.e2e test.e2e.standalone test.e2e.multi_tenant test.coverage \
+.PHONY: help test test.backend test.ui test.e2e test.e2e.standalone test.e2e.multi_tenant test.e2e.local test.coverage \
 	test.deps.up test.deps.down \
 	dev.deps.up dev.deps.down dev.deps.clear \
 	build build.native build.dev-server build.ui build.ui-clean build.ui-rebuild build.ts-client \
@@ -88,6 +88,9 @@ test.e2e.standalone: build.dev-server ## Run only the standalone E2E project
 
 test.e2e.multi_tenant: build.dev-server ## Run only the multi_tenant E2E project
 	cd crates/lib_bodhiserver && npm install && npm run test:playwright:multi_tenant
+
+test.e2e.local: build.dev-server ## Run local-only LLM Liberty OAuth E2E specs (needs data/local/*.json envelopes)
+	$(MAKE) -C crates/lib_bodhiserver e2e.local
 
 test: test.backend test.ui test.e2e.standalone ## Run all tests (backend, UI, E2E)
 

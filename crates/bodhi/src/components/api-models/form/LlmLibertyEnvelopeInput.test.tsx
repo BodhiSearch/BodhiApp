@@ -66,11 +66,20 @@ describe('LlmLibertyEnvelopeInput', () => {
   });
 
   it('rejects an unsupported provider', () => {
-    const bad = JSON.stringify({ ...JSON.parse(VALID_ENVELOPE), provider: 'openai-codex' });
+    const bad = JSON.stringify({ ...JSON.parse(VALID_ENVELOPE), provider: 'google-gemini' });
     const { textarea } = renderInput();
     fireEvent.change(textarea, { target: { value: bad } });
     const error = screen.getByTestId('llm-liberty-envelope-error');
-    expect(error.textContent).toContain('openai-codex');
+    expect(error.textContent).toContain('google-gemini');
+  });
+
+  it('accepts openai-codex provider envelope', () => {
+    const codexEnvelope = JSON.stringify({ ...JSON.parse(VALID_ENVELOPE), provider: 'openai-codex' });
+    const { textarea } = renderInput();
+    fireEvent.change(textarea, { target: { value: codexEnvelope } });
+    const summary = screen.getByTestId('llm-liberty-envelope-summary');
+    expect(summary.textContent).toContain('openai-codex');
+    expect(screen.queryByTestId('llm-liberty-envelope-error')).toBeNull();
   });
 
   it('clears summary and error when input is emptied', () => {

@@ -429,6 +429,18 @@ describe('AliasSelector', () => {
           has_refresh_token: true,
         },
       },
+      {
+        apiFormat: 'llm_liberty_oauth' as const,
+        modelId: 'gpt-5.2',
+        models: [{ id: 'gpt-5.2', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
+        expectedProvider: 'openai-codex' as string | null,
+        llmLibertySummary: {
+          provider: 'openai-codex',
+          envelope_version: 'v1',
+          expires_at: 1_900_000_000,
+          has_refresh_token: true,
+        },
+      },
     ])(
       'calls setApiFormat with $apiFormat and setLlmLibertyProvider when API model is selected',
       ({ apiFormat, modelId, models, expectedProvider, llmLibertySummary }) => {

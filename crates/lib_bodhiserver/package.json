@@ -14,6 +14,7 @@
     "test:playwright:ui": "playwright test --config=playwright.config.mjs --ui",
     "test:playwright:headed": "playwright test --config=playwright.config.mjs --headed",
     "test:playwright:scheduled": "playwright test --config=playwright.config.mjs --reporter=list --grep @scheduled",
+    "test:playwright:local": "cross-env BODHI_E2E_LOCAL=1 playwright test --config=playwright.config.mjs --reporter=list --project standalone -- tests-js/specs/api-models/api-llm-liberty-*.spec.mjs",
     "test:all": "npm run test:run && npm run test:playwright",
     "format": "biome format --write .",
     "format:check": "biome format .",

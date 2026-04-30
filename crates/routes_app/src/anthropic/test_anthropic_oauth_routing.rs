@@ -221,15 +221,12 @@ async fn test_messages_create_rejects_llm_liberty_non_anthropic_provider() -> an
   db_service
     .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
     .await?;
-  // Simulates a future-provider envelope routed through the anthropic proxy
-  // (e.g. an openai-codex envelope on a misconfigured alias). The proxy must
-  // reject before forwarding.
   db_service
     .create_llm_liberty_credentials(
       TEST_TENANT_ID,
       TEST_USER_ID,
       alias_id,
-      &liberty_envelope("openai-codex", "should-not-be-used"),
+      &liberty_envelope("google-gemini", "should-not-be-used"),
     )
     .await?;
 

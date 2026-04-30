@@ -168,22 +168,18 @@ pub async fn anthropic_messages_create_handler(
       )
       .await
       .map_err(BodhiErrorResponse::from)?,
-    AnthropicAliasResolution::Liberty { alias, creds } => {
-      let tenant_id = auth_scope.require_tenant_id()?;
-      let user_id = auth_scope.require_user_id()?;
-      auth_scope
-        .ai_api()
-        .for_resolved_credentials(&creds, &alias, tenant_id, user_id)?
-        .forward_request_with_method(
-          &Method::POST,
-          "/messages",
-          Some(request),
-          params_opt,
-          client_headers,
-        )
-        .await
-        .map_err(BodhiErrorResponse::from)?
-    }
+    AnthropicAliasResolution::Liberty { alias, creds } => auth_scope
+      .ai_api()
+      .for_resolved_credentials(&creds, &alias)?
+      .forward_request_with_method(
+        &Method::POST,
+        "/messages",
+        Some(request),
+        params_opt,
+        client_headers,
+      )
+      .await
+      .map_err(BodhiErrorResponse::from)?,
   };
 
   Ok(response)

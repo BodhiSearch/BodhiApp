@@ -99,6 +99,50 @@ describe('SettingSlider', () => {
     expect(onEnabledChange).toHaveBeenCalledWith(false);
   });
 
+  it('seeds value from defaultValue on toggle-on when value is undefined', () => {
+    const onValueChange = vi.fn();
+    const onEnabledChange = vi.fn();
+    render(
+      <SettingSlider
+        {...defaultProps}
+        value={undefined}
+        enabled={false}
+        max={2048}
+        defaultValue={2048}
+        onValueChange={onValueChange}
+        onEnabledChange={onEnabledChange}
+      />
+    );
+
+    onValueChange.mockClear();
+    fireEvent.click(screen.getByRole('switch'));
+
+    expect(onValueChange).toHaveBeenCalledWith(2048);
+    expect(onEnabledChange).toHaveBeenCalledWith(true);
+  });
+
+  it('does not re-seed value on toggle-on when value is already set', () => {
+    const onValueChange = vi.fn();
+    const onEnabledChange = vi.fn();
+    render(
+      <SettingSlider
+        {...defaultProps}
+        value={1024}
+        enabled={false}
+        max={2048}
+        defaultValue={2048}
+        onValueChange={onValueChange}
+        onEnabledChange={onEnabledChange}
+      />
+    );
+
+    onValueChange.mockClear();
+    fireEvent.click(screen.getByRole('switch'));
+
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(onEnabledChange).toHaveBeenCalledWith(true);
+  });
+
   describe('loading and disabled states', () => {
     it('disables all interactive elements when loading', () => {
       render(<SettingSlider {...defaultProps} isLoading={true} />);

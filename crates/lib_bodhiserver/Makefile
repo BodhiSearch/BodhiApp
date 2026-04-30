@@ -1,5 +1,5 @@
 # E2E (Playwright) suite for BodhiApp running against the bodhiserver_dev binary.
-.PHONY: help install-js test test.e2e test.e2e.standalone test.e2e.multi_tenant format download-extension clean
+.PHONY: help install-js test test.e2e test.e2e.standalone test.e2e.multi_tenant e2e.local format download-extension clean
 .DEFAULT_GOAL := help
 
 help: ## Show this help message
@@ -20,6 +20,9 @@ test.e2e.standalone: install-js ## Run only the standalone (SQLite) project
 
 test.e2e.multi_tenant: install-js ## Run only the multi_tenant (Postgres) project
 	npm run test:playwright:multi_tenant
+
+e2e.local: install-js ## Run local-only LLM Liberty OAuth E2E specs (needs data/local/*.json and BODHI_E2E_LOCAL=1)
+	npm run test:playwright:local
 
 format: install-js ## Format JS sources
 	npm run format

@@ -15,11 +15,23 @@ use rstest::rstest;
 use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::{
-  test_utils::{openai_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
-  ApiAliasBuilder, ApiFormat, AuthContext, ResourceRole,
+  models::llm_liberty_envelope::LlmLibertyEnvelope,
+  test_utils::{
+    openai_model, test_llm_liberty_envelope_codex, AppServiceStubBuilder, TEST_TENANT_ID,
+    TEST_USER_ID,
+  },
+  ApiAliasBuilder, ApiFormat, AuthContext, DefaultAiApiClientFactory, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
+
+fn codex_liberty_envelope_errors(access_token: &str) -> LlmLibertyEnvelope {
+  let mut env = test_llm_liberty_envelope_codex();
+  env.access_token = access_token.to_string();
+  env.refresh_token = "refresh-test".into();
+  env.expires_at = (chrono::Utc::now() + chrono::Duration::days(365)).timestamp();
+  env
+}
 
 // ============================================================================
 // validate_responses_request — error paths
@@ -436,6 +448,68 @@ async fn test_responses_cancel_missing_model_param() -> anyhow::Result<()> {
   assert_eq!(
     "oai_route_error-invalid_request",
     body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+// ============================================================================
+// LLM Liberty OAuth — error paths
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_responses_create_rejects_liberty_with_unsupported_provider() -> anyhow::Result<()> {
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_data_service().await;
+  let db_service = builder.get_db_service().await;
+  let alias_id = "gemini-liberty-alias";
+  let api_alias = ApiAliasBuilder::test_default()
+    .id(alias_id)
+    .api_format(ApiFormat::LlmLibertyOauth)
+    .base_url("https://api.example.com/gemini")
+    .models(vec![openai_model("gemini-model")])
+    .build_with_time(db_service.now())
+    .unwrap();
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
+    .await?;
+  let mut unsupported_env = codex_liberty_envelope_errors("token");
+  unsupported_env.provider = "google-gemini".to_string();
+  db_service
+    .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &unsupported_env)
+    .await?;
+
+  let real_factory = DefaultAiApiClientFactory::new()?;
+  let app_service = builder
+    .ai_api_client_factory(Arc::new(real_factory))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route("/v1/responses", post(responses_create_handler))
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/responses")
+        .json(json!({"model": "gemini-model", "input": "hi"}))?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  let message = body["error"]["message"].as_str().unwrap_or("");
+  assert!(
+    message.contains("google-gemini") || message.to_lowercase().contains("provider"),
+    "expected provider-mismatch message, got: {}",
+    message
   );
   Ok(())
 }

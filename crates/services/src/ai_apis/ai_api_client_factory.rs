@@ -3,6 +3,7 @@ use super::clients::anthropic::AnthropicClient;
 use super::clients::anthropic_oauth::AnthropicOauthClient;
 use super::clients::gemini::GeminiClient;
 use super::clients::liberty_anthropic::LibertyAnthropicClient;
+use super::clients::liberty_codex::LibertyCodexClient;
 use super::clients::openai::OpenAiClient;
 use super::clients::openai_responses::OpenAiResponsesClient;
 use super::error::{AiApiClientFactoryError, Result};
@@ -123,6 +124,10 @@ impl AiApiClientFactory for DefaultAiApiClientFactory {
         envelope,
         self.client.clone(),
       ))),
+      "openai-codex" => Ok(Box::new(LibertyCodexClient::from_envelope(
+        envelope,
+        self.client.clone(),
+      ))),
       other => Err(AiApiClientFactoryError::LibertyProviderUnsupported(
         other.to_string(),
       )),
@@ -138,6 +143,15 @@ impl AiApiClientFactory for DefaultAiApiClientFactory {
   ) -> Result<Box<dyn AiApiClient>> {
     match creds.provider.as_str() {
       "anthropic" => Ok(Box::new(LibertyAnthropicClient::from_credentials(
+        creds,
+        &alias.id,
+        alias.prefix.clone(),
+        tenant_id,
+        user_id,
+        self.refresh.clone(),
+        self.client.clone(),
+      ))),
+      "openai-codex" => Ok(Box::new(LibertyCodexClient::from_credentials(
         creds,
         &alias.id,
         alias.prefix.clone(),

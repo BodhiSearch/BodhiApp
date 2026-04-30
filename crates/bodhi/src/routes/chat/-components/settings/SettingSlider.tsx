@@ -61,8 +61,14 @@ export function SettingSlider({
           </span>
           <Switch
             id={`${id}-toggle`}
+            data-testid={`${id}-toggle`}
             checked={enabled}
-            onCheckedChange={onEnabledChange}
+            onCheckedChange={(checked) => {
+              if (checked && value == null) {
+                onValueChange(currentValue);
+              }
+              onEnabledChange(checked);
+            }}
             disabled={isLoading}
             size="sm"
           />

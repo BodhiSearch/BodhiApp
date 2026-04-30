@@ -1916,7 +1916,7 @@ export interface components {
         LlmLibertyEnvelope: {
             /** @description Envelope schema version — must be "1.0.0". */
             version: string;
-            /** @description Provider identifier, e.g. "anthropic". Only "anthropic" is supported in v1. */
+            /** @description Provider identifier, e.g. "anthropic" or "openai-codex". */
             provider: string;
             access_token: string;
             refresh_token: string;

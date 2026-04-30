@@ -228,10 +228,10 @@ async fn create_400_when_envelope_provider_unsupported(
     .await?;
 
   let mut env = valid_envelope();
-  env.provider = "openai-codex".into();
+  env.provider = "google-gemini".into();
   let req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
     envelope: LlmLibertyEnvelopeUpdate::Set(env),
-    models: vec!["claude-haiku-4-5-20251001".into()],
+    models: vec!["gemini-model".into()],
     prefix: None,
     forward_all_with_prefix: false,
   });
@@ -244,7 +244,7 @@ async fn create_400_when_envelope_provider_unsupported(
   let body: Value = response.json().await?;
   let message = body["error"]["message"].as_str().unwrap_or("");
   assert!(
-    message.to_lowercase().contains("provider") || message.contains("openai-codex"),
+    message.to_lowercase().contains("provider") || message.contains("google-gemini"),
     "expected provider-related error message, got: {}",
     message
   );

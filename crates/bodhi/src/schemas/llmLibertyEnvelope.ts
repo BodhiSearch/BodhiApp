@@ -46,11 +46,11 @@ const envelopeSchema = z
         message: `Unsupported envelope version "${data.version}". Expected "1.0.0".`,
       });
     }
-    if (data.provider !== 'anthropic') {
+    if (data.provider !== 'anthropic' && data.provider !== 'openai-codex') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['provider'],
-        message: `Unsupported provider "${data.provider}". Only "anthropic" is supported in v1.`,
+        message: `Unsupported provider "${data.provider}". Only "anthropic" and "openai-codex" are supported in this version.`,
       });
     }
   });

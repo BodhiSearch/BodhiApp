@@ -184,7 +184,7 @@ pub async fn api_models_test(
                 id
               )))
             })?;
-          ai_api.for_resolved_credentials(&creds, &alias, tenant_id, user_id)?
+          ai_api.for_resolved_credentials(&creds, &alias)?
         }
         services::LlmLibertyCredsSource::Inline(env) => {
           env.validate_supported().map_err(BodhiErrorResponse::from)?;
@@ -298,7 +298,7 @@ pub async fn api_models_fetch_models(
               )))
             })?;
           ai_api
-            .for_resolved_credentials(&creds, &alias, tenant_id, user_id)?
+            .for_resolved_credentials(&creds, &alias)?
             .fetch_models()
             .await?
         }

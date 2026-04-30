@@ -749,7 +749,7 @@ export type LlmLibertyEnvelope = {
      */
     version: string;
     /**
-     * Provider identifier, e.g. "anthropic". Only "anthropic" is supported in v1.
+     * Provider identifier, e.g. "anthropic" or "openai-codex".
      */
     provider: string;
     access_token: string;

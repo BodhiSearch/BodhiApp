@@ -141,10 +141,11 @@ test.describe('LLM Liberty OAuth - Anthropic end-to-end (local only)', () => {
     // 5. Persist the alias.
     await apiModelFormPage.createModel();
 
-    // 6. Drive the chat UI. The agent store routes llm_liberty_oauth +
-    //    provider=anthropic to /anthropic/v1/messages via pi-agent-core.
+    // 6. Drive the chat UI. Routes llm_liberty_oauth + provider=anthropic to
+    //    /anthropic/v1/messages via pi-agent-core.
     await chatPage.navigateToChat();
     await chatSettingsPage.selectModel(HAIKU_MODEL);
+    await chatSettingsPage.setMaxTokensEnabled(true);
 
     await chatPage.sendMessage(SMOKE_QUESTION);
     await chatPage.waitForResponseComplete();

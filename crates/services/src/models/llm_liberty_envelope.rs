@@ -43,7 +43,7 @@ pub struct LlmLibertyApiEndpoints {
 pub struct LlmLibertyEnvelope {
   /// Envelope schema version — must be "1.0.0".
   pub version: String,
-  /// Provider identifier, e.g. "anthropic". Only "anthropic" is supported in v1.
+  /// Provider identifier, e.g. "anthropic" or "openai-codex".
   pub provider: String,
   pub access_token: String,
   pub refresh_token: String,
@@ -72,9 +72,9 @@ impl LlmLibertyEnvelope {
         "Unsupported llm-liberty envelope version '{}'. Expected '1.0.0'.",
         self.version
       )
-    } else if self.provider != "anthropic" {
+    } else if !matches!(self.provider.as_str(), "anthropic" | "openai-codex") {
       format!(
-        "Unsupported provider '{}'. Only 'anthropic' is supported in this version.",
+        "Unsupported provider '{}'. Only 'anthropic' and 'openai-codex' are supported in this version.",
         self.provider
       )
     } else if self.access_token.is_empty() {
@@ -215,6 +215,26 @@ mod tests {
   #[rstest]
   fn validate_supported_accepts_well_formed_envelope() {
     assert_eq!(Ok(()), valid_envelope().validate_supported());
+  }
+
+  #[rstest]
+  fn validate_supported_accepts_codex_provider() {
+    let mut env = valid_envelope();
+    env.provider = "openai-codex".into();
+    assert_eq!(Ok(()), env.validate_supported());
+  }
+
+  #[rstest]
+  fn validate_supported_rejects_unknown_provider() {
+    let mut env = valid_envelope();
+    env.provider = "google-gemini".into();
+    let err = env
+      .validate_supported()
+      .expect_err("expected validation error");
+    assert!(matches!(
+      err,
+      ObjValidationError::LlmLibertyEnvelopeInvalid(_)
+    ));
   }
 
   #[rstest]

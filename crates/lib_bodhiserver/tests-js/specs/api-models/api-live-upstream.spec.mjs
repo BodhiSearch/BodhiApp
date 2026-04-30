@@ -10,6 +10,7 @@ import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
+import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
@@ -86,6 +87,7 @@ test.describe('Live upstream - API token', () => {
   let modelsPage;
   let formPage;
   let chatPage;
+  let chatSettingsPage;
   let tokensPage;
   let authServerConfig;
   let testCredentials;
@@ -106,6 +108,7 @@ test.describe('Live upstream - API token', () => {
     modelsPage = new ModelsListPage(page, sharedServerUrl);
     formPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
+    chatSettingsPage = new ChatSettingsPage(page, sharedServerUrl);
     tokensPage = new TokensPage(page, sharedServerUrl);
   });
 
@@ -201,7 +204,8 @@ test.describe('Live upstream - API token', () => {
         }
       });
 
-      // Chat UI integration: verify each format works end-to-end in the chat page
+      // Plain anthropic (no extraBody) needs Max Tokens toggle on; anthropic_oauth
+      // has extraBody.max_tokens server-merged so it doesn't.
       await test.step('Chat UI for each format', async () => {
         for (const [formatKey, formatConfig] of Object.entries(ApiModelFixtures.API_FORMATS)) {
           const { effectiveModel } = models[formatKey];
@@ -209,6 +213,9 @@ test.describe('Live upstream - API token', () => {
           await chatPage.waitForChatPageLoad();
           await chatPage.selectModel(effectiveModel);
           await chatPage.waitForApiFormat(formatConfig.formatDisplayName);
+          if (formatKey === 'anthropic') {
+            await chatSettingsPage.setMaxTokensEnabled(true);
+          }
           await chatPage.sendMessage(formatConfig.chatQuestion);
           await chatPage.waitForResponseComplete();
           const response = await chatPage.getLastAssistantMessage();

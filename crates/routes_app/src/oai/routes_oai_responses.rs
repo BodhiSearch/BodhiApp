@@ -7,11 +7,13 @@ use async_openai::types::responses::{
   CreateResponse, DeleteResponse as OaiDeleteResponse, Response as OaiResponse,
 };
 use axum::extract::{Path, Query};
+use axum::http::Method;
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
 use services::inference::LlmEndpoint;
-use services::{Alias, ApiFormat};
+use services::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
+use services::{Alias, ApiAlias, ApiFormat};
 use std::collections::HashMap;
 
 fn validate_responses_request(request: &serde_json::Value) -> Result<(), OAIRouteError> {
@@ -52,20 +54,40 @@ fn validate_response_id(id: &str) -> Result<(), OAIRouteError> {
   Ok(())
 }
 
+// Stack-only value used once per request; boxing both arms is overkill.
+#[allow(clippy::large_enum_variant)]
+enum ResponsesAliasResolution {
+  Native {
+    alias: ApiAlias,
+    api_key: Option<String>,
+  },
+  Liberty {
+    alias: ApiAlias,
+    creds: ResolvedLlmLibertyCredentials,
+  },
+}
+
 async fn resolve_responses_alias(
   auth_scope: &AuthScope,
   model: &str,
-) -> Result<(services::ApiAlias, Option<String>), OaiApiError> {
+) -> Result<ResponsesAliasResolution, OaiApiError> {
   let alias = auth_scope.data().find_alias(model).await.ok_or_else(|| {
     OaiApiError::from(services::DataServiceError::AliasNotFound(model.to_string()))
   })?;
 
   let api_alias = match alias {
-    Alias::Api(api_alias) if api_alias.api_format == ApiFormat::OpenAIResponses => api_alias,
+    Alias::Api(api_alias)
+      if matches!(
+        api_alias.api_format,
+        ApiFormat::OpenAIResponses | ApiFormat::LlmLibertyOauth
+      ) =>
+    {
+      api_alias
+    }
     _ => {
       return Err(
         OAIRouteError::InvalidRequest(format!(
-          "Model '{}' is not configured for Responses API format. Configure an alias with 'openai_responses' format.",
+          "Model '{}' is not configured for Responses API format. Configure an alias with 'openai_responses' or 'llm_liberty_oauth' format.",
           model
         ))
         .into(),
@@ -73,8 +95,23 @@ async fn resolve_responses_alias(
     }
   };
 
+  if api_alias.api_format == ApiFormat::LlmLibertyOauth {
+    let creds = crate::providers::resolve_llm_liberty_credentials(auth_scope, &api_alias.id)
+      .await
+      .map_err(OaiApiError::from)?;
+    // Provider verification (creds.provider == "openai-codex") lives in the
+    // factory's for_resolved_credentials -> LibertyProviderUnsupported (BadRequest).
+    return Ok(ResponsesAliasResolution::Liberty {
+      alias: api_alias,
+      creds,
+    });
+  }
+
   let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
-  Ok((api_alias, api_key))
+  Ok(ResponsesAliasResolution::Native {
+    alias: api_alias,
+    api_key,
+  })
 }
 
 fn extract_model_param(params: &HashMap<String, String>) -> Result<String, OAIRouteError> {
@@ -85,6 +122,38 @@ fn extract_model_param(params: &HashMap<String, String>) -> Result<String, OAIRo
     .ok_or_else(|| {
       OAIRouteError::InvalidRequest("Query parameter 'model' is required for routing.".to_string())
     })
+}
+
+// Native via inference service; Liberty via per-provider client (forwarded unconditionally — upstream returns its own status).
+async fn dispatch_responses_op(
+  auth_scope: &AuthScope,
+  resolution: ResponsesAliasResolution,
+  native_endpoint: LlmEndpoint,
+  liberty_method: Method,
+  liberty_path: String,
+  query_params: Option<Vec<(String, String)>>,
+) -> Result<Response, OaiApiError> {
+  match resolution {
+    ResponsesAliasResolution::Native { alias, api_key } => auth_scope
+      .inference()
+      .forward_remote_with_params(
+        native_endpoint,
+        serde_json::Value::Null,
+        &alias,
+        api_key,
+        query_params,
+        None,
+      )
+      .await
+      .map_err(OaiApiError::from),
+    ResponsesAliasResolution::Liberty { alias, creds } => auth_scope
+      .ai_api()
+      .for_resolved_credentials(&creds, &alias)
+      .map_err(OaiApiError::from)?
+      .forward_request_with_method(&liberty_method, &liberty_path, None, query_params, None)
+      .await
+      .map_err(OaiApiError::from),
+  }
 }
 
 fn upstream_query_params(params: &HashMap<String, String>) -> Option<Vec<(String, String)>> {
@@ -135,7 +204,7 @@ pub async fn responses_create_handler(
     .expect("validated by validate_responses_request")
     .to_string();
 
-  let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
+  let resolution = resolve_responses_alias(&auth_scope, &model).await?;
   let params: Vec<(String, String)> = query_params.into_iter().collect();
   let params_opt = if params.is_empty() {
     None
@@ -143,20 +212,36 @@ pub async fn responses_create_handler(
     Some(params)
   };
 
-  let response = auth_scope
-    .inference()
-    .forward_remote_with_params(
-      LlmEndpoint::Responses,
-      request,
-      &api_alias,
+  match resolution {
+    ResponsesAliasResolution::Native {
+      alias: api_alias,
       api_key,
-      params_opt,
-      None,
-    )
-    .await
-    .map_err(OaiApiError::from)?;
-
-  Ok(response)
+    } => {
+      let response = auth_scope
+        .inference()
+        .forward_remote_with_params(
+          LlmEndpoint::Responses,
+          request,
+          &api_alias,
+          api_key,
+          params_opt,
+          None,
+        )
+        .await
+        .map_err(OaiApiError::from)?;
+      Ok(response)
+    }
+    ResponsesAliasResolution::Liberty { alias, creds } => {
+      let response = auth_scope
+        .ai_api()
+        .for_resolved_credentials(&creds, &alias)
+        .map_err(OaiApiError::from)?
+        .forward_request_with_method(&Method::POST, "/responses", Some(request), params_opt, None)
+        .await
+        .map_err(OaiApiError::from)?;
+      Ok(response)
+    }
+  }
 }
 
 #[utoipa::path(
@@ -186,22 +271,17 @@ pub async fn responses_get_handler(
 ) -> Result<Response, OaiApiError> {
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
-  let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
-
-  let response = auth_scope
-    .inference()
-    .forward_remote_with_params(
-      LlmEndpoint::ResponsesGet(response_id),
-      serde_json::Value::Null,
-      &api_alias,
-      api_key,
-      upstream_query_params(&params),
-      None,
-    )
-    .await
-    .map_err(OaiApiError::from)?;
-
-  Ok(response)
+  let resolution = resolve_responses_alias(&auth_scope, &model).await?;
+  let liberty_path = format!("/responses/{}", response_id);
+  dispatch_responses_op(
+    &auth_scope,
+    resolution,
+    LlmEndpoint::ResponsesGet(response_id),
+    Method::GET,
+    liberty_path,
+    upstream_query_params(&params),
+  )
+  .await
 }
 
 #[utoipa::path(
@@ -231,22 +311,17 @@ pub async fn responses_delete_handler(
 ) -> Result<Response, OaiApiError> {
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
-  let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
-
-  let response = auth_scope
-    .inference()
-    .forward_remote_with_params(
-      LlmEndpoint::ResponsesDelete(response_id),
-      serde_json::Value::Null,
-      &api_alias,
-      api_key,
-      upstream_query_params(&params),
-      None,
-    )
-    .await
-    .map_err(OaiApiError::from)?;
-
-  Ok(response)
+  let resolution = resolve_responses_alias(&auth_scope, &model).await?;
+  let liberty_path = format!("/responses/{}", response_id);
+  dispatch_responses_op(
+    &auth_scope,
+    resolution,
+    LlmEndpoint::ResponsesDelete(response_id),
+    Method::DELETE,
+    liberty_path,
+    upstream_query_params(&params),
+  )
+  .await
 }
 
 #[utoipa::path(
@@ -276,22 +351,17 @@ pub async fn responses_input_items_handler(
 ) -> Result<Response, OaiApiError> {
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
-  let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
-
-  let response = auth_scope
-    .inference()
-    .forward_remote_with_params(
-      LlmEndpoint::ResponsesInputItems(response_id),
-      serde_json::Value::Null,
-      &api_alias,
-      api_key,
-      upstream_query_params(&params),
-      None,
-    )
-    .await
-    .map_err(OaiApiError::from)?;
-
-  Ok(response)
+  let resolution = resolve_responses_alias(&auth_scope, &model).await?;
+  let liberty_path = format!("/responses/{}/input_items", response_id);
+  dispatch_responses_op(
+    &auth_scope,
+    resolution,
+    LlmEndpoint::ResponsesInputItems(response_id),
+    Method::GET,
+    liberty_path,
+    upstream_query_params(&params),
+  )
+  .await
 }
 
 #[utoipa::path(
@@ -321,22 +391,17 @@ pub async fn responses_cancel_handler(
 ) -> Result<Response, OaiApiError> {
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
-  let (api_alias, api_key) = resolve_responses_alias(&auth_scope, &model).await?;
-
-  let response = auth_scope
-    .inference()
-    .forward_remote_with_params(
-      LlmEndpoint::ResponsesCancel(response_id),
-      serde_json::Value::Null,
-      &api_alias,
-      api_key,
-      upstream_query_params(&params),
-      None,
-    )
-    .await
-    .map_err(OaiApiError::from)?;
-
-  Ok(response)
+  let resolution = resolve_responses_alias(&auth_scope, &model).await?;
+  let liberty_path = format!("/responses/{}/cancel", response_id);
+  dispatch_responses_op(
+    &auth_scope,
+    resolution,
+    LlmEndpoint::ResponsesCancel(response_id),
+    Method::POST,
+    liberty_path,
+    upstream_query_params(&params),
+  )
+  .await
 }
 
 #[cfg(test)]
