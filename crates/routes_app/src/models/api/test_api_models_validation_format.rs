@@ -85,10 +85,7 @@ async fn test_update_api_model_rejects_keep_when_api_format_changes(
     )
     .await?;
 
-  let mut mock_ai = services::MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![]));
+  let mock_ai = services::MockAiApiService::new();
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_arc)
@@ -130,7 +127,6 @@ async fn test_api_models_test_id_uses_stored_api_format(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use mockall::predicate::*;
   use services::test_utils::{anthropic_model, TEST_TENANT_ID};
   use services::ApiAliasBuilder;
 
@@ -156,10 +152,17 @@ async fn test_api_models_test_id_uses_stored_api_format(
   // Mock: test_prompt must be called with AnthropicOAuth (not OpenAI from payload).
   let mut mock_ai = services::MockAiApiService::new();
   mock_ai
-    .expect_test_prompt()
-    .withf(|_, _, _, _, fmt, _, _| *fmt == ApiFormat::AnthropicOAuth)
+    .expect_for_alias()
+    .withf(|alias, _| alias.api_format == ApiFormat::AnthropicOAuth)
     .times(1)
-    .returning(|_, _, _, _, _, _, _| Ok("ok".to_string()));
+    .returning(|_, _| {
+      let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+      client
+        .expect_test_prompt()
+        .times(1)
+        .returning(|_, _| Ok("ok".to_string()));
+      Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+    });
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_arc)
@@ -218,10 +221,17 @@ async fn test_api_models_fetch_models_id_uses_stored_api_format(
 
   let mut mock_ai = services::MockAiApiService::new();
   mock_ai
-    .expect_fetch_models()
-    .withf(|_, _, fmt, _, _| *fmt == ApiFormat::AnthropicOAuth)
+    .expect_for_alias()
+    .withf(|alias, _| alias.api_format == ApiFormat::AnthropicOAuth)
     .times(1)
-    .returning(|_, _, _, _, _| Ok(vec![]));
+    .returning(|_, _| {
+      let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+      client
+        .expect_fetch_models()
+        .times(1)
+        .returning(|| Ok(vec![]));
+      Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+    });
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_arc)

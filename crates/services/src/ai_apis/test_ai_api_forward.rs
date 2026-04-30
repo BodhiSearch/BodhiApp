@@ -101,11 +101,13 @@ async fn test_forward_chat_completion_model_prefix_handling(
     .await;
   let service = DefaultAiApiService::new()?;
   let response = service
-    .forward_request(
+    .for_alias(&api_alias, Some("test-key".to_string()))?
+    .forward_request_with_method(
+      &Method::POST,
       "/chat/completions",
-      &api_alias,
-      Some("test-key".to_string()),
-      serde_json::from_value(incoming_request)?,
+      Some(incoming_request),
+      None,
+      None,
     )
     .await?;
   assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -156,11 +158,13 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
 
   let service = DefaultAiApiService::new()?;
   let response = service
-    .forward_request(
+    .for_alias(&api_alias, None)?
+    .forward_request_with_method(
+      &Method::POST,
       "/chat/completions",
-      &api_alias,
+      Some(request),
       None,
-      serde_json::from_value(request)?,
+      None,
     )
     .await?;
 
@@ -215,15 +219,8 @@ async fn test_forward_request_with_method_dispatch(
     .await;
 
   let response = service
-    .forward_request_with_method(
-      &method,
-      "/responses",
-      &api_alias,
-      None,
-      body,
-      query_params,
-      None,
-    )
+    .for_alias(&api_alias, None)?
+    .forward_request_with_method(&method, "/responses", body, query_params, None)
     .await?;
 
   assert_eq!(axum::http::StatusCode::OK, response.status());
@@ -262,11 +259,10 @@ async fn test_forward_request_with_method_anthropic_headers() -> anyhow::Result<
     .await;
 
   let response = service
+    .for_alias(&api_alias, Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",
-      &api_alias,
-      Some("test-key".to_string()),
       Some(json!({"model":"claude-sonnet-4-5-20250929","max_tokens":1,"messages":[]})),
       None,
       None,
@@ -308,11 +304,10 @@ async fn test_forward_request_with_method_client_headers_forwarded() -> anyhow::
     .await;
 
   let response = service
+    .for_alias(&api_alias, Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",
-      &api_alias,
-      Some("test-key".to_string()),
       Some(json!({"model":"claude-sonnet-4-5-20250929","max_tokens":1,"messages":[]})),
       None,
       Some(vec![(
@@ -359,11 +354,10 @@ async fn test_forward_request_client_anthropic_version_used_not_default() -> any
     .await;
 
   let response = service
+    .for_alias(&api_alias, Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",
-      &api_alias,
-      Some("test-key".to_string()),
       Some(json!({"model":"claude-sonnet-4-5-20250929","max_tokens":1,"messages":[]})),
       None,
       Some(vec![(
@@ -410,11 +404,10 @@ async fn test_forward_request_default_anthropic_version_injected_when_absent() -
     .await;
 
   let response = service
+    .for_alias(&api_alias, Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",
-      &api_alias,
-      Some("test-key".to_string()),
       Some(json!({"model":"claude-sonnet-4-5-20250929","max_tokens":1,"messages":[]})),
       None,
       None, // no client_headers — default must be injected

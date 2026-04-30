@@ -3,9 +3,10 @@ use anyhow_trace::anyhow_trace;
 use axum::http::Method;
 use rstest::rstest;
 use serde_json::{json, Value};
+use services::ai_apis::ai_api_client::MockAiApiClient;
 use services::inference::LlmEndpoint;
 use services::test_utils::fixed_dt;
-use services::{ApiAlias, ApiFormat, MockAiApiService};
+use services::{AiApiClient, ApiAlias, ApiFormat, MockAiApiService};
 use std::sync::Arc;
 
 fn make_test_api_alias() -> ApiAlias {
@@ -27,13 +28,6 @@ fn make_test_api_alias() -> ApiAlias {
     None,
     None,
   )
-}
-
-fn ok_response() -> axum::response::Response {
-  axum::response::Response::builder()
-    .status(200)
-    .body(axum::body::Body::empty())
-    .unwrap()
 }
 
 #[rstest]
@@ -82,19 +76,33 @@ async fn test_proxy_to_remote_method_dispatch(
 
   let mut mock_ai = MockAiApiService::new();
   mock_ai
-    .expect_forward_request_with_method()
-    .withf(move |method, _path, _alias, _key, body, params, _headers| {
-      let method_ok = *method == expected_method_cl;
-      let body_ok = if expect_body {
-        body.as_ref() == Some(&request_cl)
-      } else {
-        body.is_none()
-      };
-      let params_ok = *params == query_params_cl;
-      method_ok && body_ok && params_ok
-    })
+    .expect_for_alias()
     .times(1)
-    .return_once(|_, _, _, _, _, _, _| Ok(ok_response()));
+    .return_once(move |_, _| {
+      let mut client = MockAiApiClient::new();
+      client
+        .expect_forward_request_with_method()
+        .withf(move |method, _path, body, params, _headers| {
+          let method_ok = *method == expected_method_cl;
+          let body_ok = if expect_body {
+            body.as_ref() == Some(&request_cl)
+          } else {
+            body.is_none()
+          };
+          let params_ok = *params == query_params_cl;
+          method_ok && body_ok && params_ok
+        })
+        .times(1)
+        .return_once(|_, _, _, _, _| {
+          Ok(
+            axum::response::Response::builder()
+              .status(200)
+              .body(axum::body::Body::empty())
+              .unwrap(),
+          )
+        });
+      Ok(Box::new(client) as Box<dyn AiApiClient>)
+    });
 
   let ai_service: Arc<dyn services::AiApiService> = Arc::new(mock_ai);
   let api_alias = make_test_api_alias();

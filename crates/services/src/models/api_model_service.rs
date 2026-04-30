@@ -5,10 +5,10 @@ use crate::db::{DbError, DbService, TimeService};
 use crate::models::llm_liberty_envelope::LlmLibertyEnvelopeUpdate;
 use crate::models::{
   ApiAlias, ApiAliasResponse, ApiFormat, ApiKeyUpdate, ApiModel, ApiModelRequest,
-  DefaultApiModelRequest, LlmLibertyApiModelRequest, LlmLibertyRequestParts,
+  DefaultApiModelRequest, LlmLibertyApiModelRequest,
 };
 use crate::new_ulid;
-use crate::AiApiService;
+use crate::{AiApiClient, AiApiService};
 use errmeta::{AppError, EntityError, ErrorType};
 use std::collections::HashSet;
 
@@ -260,24 +260,23 @@ impl ApiModelService for DefaultApiModelService {
       ));
     }
 
-    let (api_key, base_url, extra_headers, extra_body) =
+    let (client, api_key): (Box<dyn AiApiClient>, Option<String>) =
       if api_alias.api_format == ApiFormat::LlmLibertyOauth {
         let creds = self
           .db_service
           .get_llm_liberty_credentials(tenant_id, user_id, id)
-          .await?;
-        match creds {
-          Some(c) => {
-            let LlmLibertyRequestParts {
-              access_token,
-              base_url,
-              extra_headers,
-              extra_body,
-            } = c.into_request_parts();
-            (access_token, base_url, extra_headers, extra_body)
-          }
-          None => (None, api_alias.base_url.clone(), None, None),
-        }
+          .await?
+          .ok_or_else(|| {
+            ApiModelServiceError::AiApi(format!(
+              "LLM Liberty credentials not found for alias '{}'",
+              id
+            ))
+          })?;
+        let client = self
+          .ai_api_service
+          .for_resolved_credentials(&creds, &api_alias, tenant_id, user_id)
+          .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+        (client, None)
       } else {
         let key = self
           .db_service
@@ -285,24 +284,15 @@ impl ApiModelService for DefaultApiModelService {
           .await
           .ok()
           .flatten();
-        (
-          key,
-          api_alias.base_url.clone(),
-          api_alias.extra_headers.clone(),
-          api_alias.extra_body.clone(),
-        )
+        let client = self
+          .ai_api_service
+          .for_alias(&api_alias, key.clone())
+          .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+        (client, key)
       };
 
-    // Fetch models from remote API synchronously
-    let models = self
-      .ai_api_service
-      .fetch_models(
-        api_key.clone(),
-        &base_url,
-        &api_alias.api_format,
-        extra_headers,
-        extra_body,
-      )
+    let models = client
+      .fetch_models()
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -356,13 +346,22 @@ impl DefaultApiModelService {
 
     let provider_models = self
       .ai_api_service
-      .fetch_models(
+      .for_alias(
+        &ApiAlias::new(
+          String::new(),
+          api_format.clone(),
+          base_url.clone(),
+          vec![],
+          form.prefix.clone(),
+          false,
+          now,
+          form.extra_headers.clone(),
+          form.extra_body.clone(),
+        ),
         api_key_option.clone(),
-        &base_url,
-        &api_format,
-        form.extra_headers.clone(),
-        form.extra_body.clone(),
       )
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?
+      .fetch_models()
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -413,22 +412,11 @@ impl DefaultApiModelService {
     };
     envelope.validate_supported()?;
 
-    let LlmLibertyRequestParts {
-      access_token,
-      base_url,
-      extra_headers,
-      extra_body,
-    } = envelope.to_request_parts();
-
     let provider_models = self
       .ai_api_service
-      .fetch_models(
-        access_token,
-        &base_url,
-        &api_format,
-        extra_headers,
-        extra_body,
-      )
+      .for_envelope(&envelope)
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?
+      .fetch_models()
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -437,7 +425,7 @@ impl DefaultApiModelService {
     let api_alias = ApiAlias::new(
       id,
       api_format,
-      base_url,
+      envelope.api.base_url.clone(),
       models,
       form.prefix,
       form.forward_all_with_prefix,
@@ -491,13 +479,22 @@ impl DefaultApiModelService {
 
     let provider_models = self
       .ai_api_service
-      .fetch_models(
+      .for_alias(
+        &ApiAlias::new(
+          api_alias.id.clone(),
+          api_format.clone(),
+          base_url.clone(),
+          vec![],
+          form.prefix.clone(),
+          false,
+          api_alias.created_at,
+          form.extra_headers.clone(),
+          form.extra_body.clone(),
+        ),
         fetch_key,
-        &base_url,
-        &api_format,
-        form.extra_headers.clone(),
-        form.extra_body.clone(),
       )
+      .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?
+      .fetch_models()
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -539,46 +536,45 @@ impl DefaultApiModelService {
     mut api_alias: ApiAlias,
     form: LlmLibertyApiModelRequest,
   ) -> Result<ApiAliasResponse, ApiModelServiceError> {
-    let (parts, new_envelope) = match form.envelope {
+    let (client, new_base_url, new_envelope) = match form.envelope {
       LlmLibertyEnvelopeUpdate::Set(env) => {
         env.validate_supported()?;
-        let parts = env.to_request_parts();
-        (parts, Some(env))
+        let base_url = env.api.base_url.clone();
+        let client = self
+          .ai_api_service
+          .for_envelope(&env)
+          .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+        (client, base_url, Some(env))
       }
       LlmLibertyEnvelopeUpdate::Keep => {
         let creds = self
           .db_service
           .get_llm_liberty_credentials(tenant_id, user_id, id)
-          .await?;
-        let parts = match creds {
-          Some(c) => c.into_request_parts(),
-          None => LlmLibertyRequestParts {
-            access_token: None,
-            base_url: api_alias.base_url.clone(),
-            extra_headers: None,
-            extra_body: None,
-          },
-        };
-        (parts, None)
+          .await?
+          .ok_or_else(|| {
+            ApiModelServiceError::AiApi(format!(
+              "LLM Liberty credentials not found for alias '{}'",
+              id
+            ))
+          })?;
+        let base_url = creds.api_base_url.clone();
+        let client = self
+          .ai_api_service
+          .for_resolved_credentials(&creds, &api_alias, tenant_id, user_id)
+          .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
+        (client, base_url, None)
       }
     };
-    let LlmLibertyRequestParts {
-      access_token: fetch_key,
-      base_url,
-      extra_headers,
-      extra_body,
-    } = parts;
 
-    let provider_models = self
-      .ai_api_service
-      .fetch_models(fetch_key, &base_url, &api_format, extra_headers, extra_body)
+    let provider_models = client
+      .fetch_models()
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
     let models = filter_models(provider_models, form.forward_all_with_prefix, &form.models)?;
 
     api_alias.api_format = api_format;
-    api_alias.base_url = base_url;
+    api_alias.base_url = new_base_url;
     api_alias.models = models.into();
     api_alias.prefix = if form.prefix.as_ref().is_some_and(|p| p.is_empty()) {
       None

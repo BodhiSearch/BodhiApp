@@ -13,7 +13,7 @@ use services::models::llm_liberty_envelope::{
 use services::{
   inference::{InferenceError, LlmEndpoint, MockInferenceService},
   test_utils::{anthropic_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
-  ApiAliasBuilder, ApiFormat, AuthContext, ResourceRole,
+  ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiService, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -155,21 +155,39 @@ async fn test_messages_create_forwards_to_llm_liberty_oauth_alias() -> anyhow::R
     )
     .await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, key, _params, _headers| {
-      *endpoint == LlmEndpoint::AnthropicMessages
-        && alias.id == "liberty-alias"
-        && key.as_deref() == Some("resolved-bearer-token")
+  let mut mock_ai = MockAiApiService::new();
+  mock_ai.expect_safe_http_client().returning(|| {
+    services::SafeReqwest::builder()
+      .allow_private_ips()
+      .build()
+      .unwrap()
+  });
+  mock_ai
+    .expect_for_resolved_credentials()
+    .withf(|creds, alias, _, _| {
+      creds.access_token == "resolved-bearer-token" && alias.id == "liberty-alias"
     })
     .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
+    .returning(|_, _, _, _| {
+      let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+      client
+        .expect_forward_request_with_method()
+        .times(1)
+        .returning(|_, _, _, _, _| {
+          Ok(
+            axum::response::Response::builder()
+              .status(200)
+              .header("content-type", "application/json")
+              .body(axum::body::Body::from(
+                r#"{"id":"msg-123","content":[{"type":"text","text":"Hi"}]}"#,
+              ))
+              .unwrap(),
+          )
+        });
+      Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+    });
 
-  let app_service = builder
-    .inference_service(Arc::new(mock_inference))
-    .build()
-    .await?;
+  let app_service = builder.ai_api_service(Arc::new(mock_ai)).build().await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
   let app = Router::new()
     .route(

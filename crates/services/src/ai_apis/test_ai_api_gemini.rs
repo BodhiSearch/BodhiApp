@@ -23,6 +23,20 @@ fn make_gemini_alias(url: &str) -> ApiAlias {
   )
 }
 
+fn make_gemini_alias_no_key(url: &str) -> ApiAlias {
+  ApiAlias::new(
+    String::new(),
+    ApiFormat::Gemini,
+    url,
+    vec![],
+    None,
+    false,
+    fixed_dt(),
+    None,
+    None,
+  )
+}
+
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
@@ -49,16 +63,10 @@ async fn test_test_prompt_gemini_success() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_gemini_alias_no_key(&url);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gemini-2.5-flash",
-      "Hello",
-      &ApiFormat::Gemini,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gemini-2.5-flash", "Hello")
     .await?;
   assert_eq!("Tuesday", result);
 
@@ -82,14 +90,10 @@ async fn test_fetch_models_gemini_passes_through_embedding_only() -> anyhow::Res
     .create_async()
     .await;
 
+  let alias = make_gemini_alias_no_key(&url);
   let models = service
-    .fetch_models(
-      Some("test-key".to_string()),
-      &url,
-      &ApiFormat::Gemini,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .fetch_models()
     .await?;
 
   assert_eq!(3, models.len());
@@ -121,14 +125,10 @@ async fn test_fetch_models_gemini_preserves_display_name() -> anyhow::Result<()>
     .create_async()
     .await;
 
+  let alias = make_gemini_alias_no_key(&url);
   let models = service
-    .fetch_models(
-      Some("test-key".to_string()),
-      &url,
-      &ApiFormat::Gemini,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .fetch_models()
     .await?;
 
   let flash = models
@@ -169,11 +169,10 @@ async fn test_forward_gemini_forwards_query_params() -> anyhow::Result<()> {
     .await;
 
   let response = service
+    .for_alias(&api_alias, Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/models/gemini-2.5-flash:generateContent",
-      &api_alias,
-      Some("test-key".to_string()),
       Some(body),
       Some(vec![("alt".to_string(), "sse".to_string())]),
       None,
@@ -211,11 +210,10 @@ async fn test_forward_request_gemini_passes_through() -> anyhow::Result<()> {
     .await;
 
   let response = service
+    .for_alias(&api_alias, Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/models/gemini-2.5-flash:generateContent",
-      &api_alias,
-      Some("test-key".to_string()),
       Some(body),
       None,
       None,

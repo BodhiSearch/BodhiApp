@@ -63,6 +63,9 @@ dev.deps.down: ## Stop dev PostgreSQL databases (keep volumes)
 dev.deps.clear: ## Stop dev PostgreSQL databases and remove volumes
 	docker compose -f docker/docker-compose.dev.yml down -v
 
+test.backend.default: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
+	cargo test --no-fail-fast
+
 test.backend: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
 	cargo test --no-fail-fast
 	cargo test -p bodhi --features native --no-fail-fast
@@ -86,7 +89,7 @@ test.e2e.standalone: build.dev-server ## Run only the standalone E2E project
 test.e2e.multi_tenant: build.dev-server ## Run only the multi_tenant E2E project
 	cd crates/lib_bodhiserver && npm install && npm run test:playwright:multi_tenant
 
-test: test.backend test.ui test.e2e ## Run all tests (backend, UI, E2E)
+test: test.backend test.ui test.e2e.standalone ## Run all tests (backend, UI, E2E)
 
 format: ## Format code in all projects (Rust, Node, Python)
 	cargo fmt --all

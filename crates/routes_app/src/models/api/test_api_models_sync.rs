@@ -9,7 +9,6 @@ use axum::{
   routing::{delete, get, post, put},
   Router,
 };
-use mockall::predicate;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
@@ -76,22 +75,17 @@ async fn test_sync_models_handler_success(
 ) -> anyhow::Result<()> {
   // Set up mock AI API service with expectations
   let mut mock_ai = services::MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .with(
-      predicate::eq(Some("sk-test123".to_string())),
-      predicate::eq("https://api.openai.com/v1"),
-      predicate::eq(services::ApiFormat::OpenAI),
-      predicate::eq(None),
-      predicate::eq(None),
-    )
-    .returning(|_, _, _, _, _| {
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client.expect_fetch_models().returning(|| {
       Ok(vec![
         openai_model("gpt-4"),
         openai_model("gpt-3.5-turbo"),
         openai_model("gpt-4-turbo"),
       ])
     });
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
 
   // Create app service with clean database and mock AI service
   let app_service = Arc::new(
@@ -250,16 +244,13 @@ async fn test_sync_models_rejects_non_forward_all(
 ) -> anyhow::Result<()> {
   // Mock AI returns models for the create validation call; sync should not reach it
   let mut mock_ai = services::MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .with(
-      predicate::eq(Some("sk-test123".to_string())),
-      predicate::eq("https://api.openai.com/v1"),
-      predicate::eq(services::ApiFormat::OpenAI),
-      predicate::eq(None),
-      predicate::eq(None),
-    )
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4")]));
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .returning(|| Ok(vec![openai_model("gpt-4")]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
@@ -320,20 +311,24 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
   let expected_extra_headers = extra_headers.clone();
   let expected_extra_body = extra_body.clone();
 
-  // Set up mock AI API service: expect fetch_models to receive the alias's extra fields
+  // Set up mock AI API service: expect for_alias to receive the alias's extra fields
   let mut mock_ai = services::MockAiApiService::new();
   mock_ai
-    .expect_fetch_models()
-    .withf(move |_, _, api_format, eh, eb| {
-      *api_format == ApiFormat::AnthropicOAuth
-        && eh.as_ref() == Some(&expected_extra_headers)
-        && eb.as_ref() == Some(&expected_extra_body)
+    .expect_for_alias()
+    .withf(move |alias, _| {
+      alias.api_format == ApiFormat::AnthropicOAuth
+        && alias.extra_headers.as_ref() == Some(&expected_extra_headers)
+        && alias.extra_body.as_ref() == Some(&expected_extra_body)
     })
-    .returning(|_, _, _, _, _| {
-      Ok(vec![
-        anthropic_model("claude-sonnet-4-5-20250929"),
-        anthropic_model("claude-haiku-4-5-20251001"),
-      ])
+    .returning(|_, _| {
+      let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+      client.expect_fetch_models().returning(|| {
+        Ok(vec![
+          anthropic_model("claude-sonnet-4-5-20250929"),
+          anthropic_model("claude-haiku-4-5-20251001"),
+        ])
+      });
+      Ok(Box::new(client) as Box<dyn services::AiApiClient>)
     });
 
   let app_service = Arc::new(

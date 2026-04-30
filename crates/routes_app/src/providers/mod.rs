@@ -1,7 +1,5 @@
 use crate::shared::AuthScope;
-use services::ai_apis::llm_liberty::{
-  ensure_fresh_credentials, force_refresh_credentials, LlmLibertyRefreshError,
-};
+use services::ai_apis::llm_liberty::{ensure_fresh_credentials, LlmLibertyRefreshError};
 use services::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
 
 /// Resolve the stored API key for a given alias, returning None if no key is configured
@@ -46,22 +44,4 @@ pub(crate) async fn resolve_llm_liberty_credentials(
   let http = auth_scope.ai_api().safe_http_client();
   let db = auth_scope.db();
   ensure_fresh_credentials(&*db, &http, &tenant_id, &user_id, api_alias_id).await
-}
-
-/// Force a token refresh regardless of skew window. Used by the upstream-401 retry
-/// path: the provider may invalidate tokens before `expires_at` (e.g. third-party
-/// usage flagging), in which case we rotate before retrying.
-pub(crate) async fn resolve_llm_liberty_credentials_with_force_refresh(
-  auth_scope: &AuthScope,
-  api_alias_id: &str,
-) -> Result<ResolvedLlmLibertyCredentials, LlmLibertyRefreshError> {
-  let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
-  let user_id = auth_scope
-    .auth_context()
-    .user_id()
-    .unwrap_or("")
-    .to_string();
-  let http = auth_scope.ai_api().safe_http_client();
-  let db = auth_scope.db();
-  force_refresh_credentials(&*db, &http, &tenant_id, &user_id, api_alias_id).await
 }

@@ -101,9 +101,13 @@ async fn create_201_with_valid_envelope(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![anthropic_model("claude-haiku-4-5-20251001")]));
+  mock_ai.expect_for_envelope().returning(|_| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .returning(|| Ok(vec![anthropic_model("claude-haiku-4-5-20251001")]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
@@ -278,9 +282,13 @@ async fn update_replaces_credentials_when_envelope_set(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![anthropic_model("claude-haiku-4-5-20251001")]));
+  mock_ai.expect_for_envelope().returning(|_| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .returning(|| Ok(vec![anthropic_model("claude-haiku-4-5-20251001")]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
 
   let db_arc = Arc::new(db_service);
   let app_service = AppServiceStubBuilder::default()
@@ -344,9 +352,22 @@ async fn update_keeps_credentials_when_envelope_keep(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let mut mock_ai = MockAiApiService::new();
+  mock_ai.expect_for_envelope().returning(|_| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .returning(|| Ok(vec![anthropic_model("claude-haiku-4-5-20251001")]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
   mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![anthropic_model("claude-haiku-4-5-20251001")]));
+    .expect_for_resolved_credentials()
+    .returning(|_, _, _, _| {
+      let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+      client
+        .expect_fetch_models()
+        .returning(|| Ok(vec![anthropic_model("claude-haiku-4-5-20251001")]));
+      Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+    });
 
   let db_arc = Arc::new(db_service);
   let app_service = AppServiceStubBuilder::default()

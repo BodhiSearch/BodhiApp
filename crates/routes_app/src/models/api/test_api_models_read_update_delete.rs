@@ -192,9 +192,13 @@ async fn test_update_api_model_handler_success(
   seed_test_api_models(&db_service, base_time).await?;
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4-turbo"), openai_model("gpt-4")]));
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .returning(|| Ok(vec![openai_model("gpt-4-turbo"), openai_model("gpt-4")]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
 
   // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()

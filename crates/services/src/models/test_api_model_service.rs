@@ -1,3 +1,4 @@
+use crate::ai_apis::ai_api_client::MockAiApiClient;
 use crate::models::{
   ApiAliasRepository, ApiFormat, ApiKeyUpdate, ApiModel, ApiModelRequest, ApiModelService,
   DefaultApiModelRequest, DefaultApiModelService,
@@ -72,10 +73,15 @@ async fn test_create_forward_all_stores_all_models(
   let expected_models_clone = expected_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .times(1)
-    .returning(move |_, _, _, _, _| Ok(expected_models_clone.clone()));
+  mock_ai.expect_for_alias().times(1).returning(move |_, _| {
+    let models = expected_models_clone.clone();
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(move || Ok(models.clone()));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -138,10 +144,15 @@ async fn test_create_non_forward_all_validates_and_filters(
   let provider_models_clone = provider_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .times(1)
-    .returning(move |_, _, _, _, _| Ok(provider_models_clone.clone()));
+  mock_ai.expect_for_alias().times(1).returning(move |_, _| {
+    let models = provider_models_clone.clone();
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(move || Ok(models.clone()));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -184,11 +195,16 @@ async fn test_update_forward_all_stores_all_models(
   let expected_models_clone = expected_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
-  // create() fetches once, update() fetches once
-  mock_ai
-    .expect_fetch_models()
-    .times(2)
-    .returning(move |_, _, _, _, _| Ok(expected_models_clone.clone()));
+  // create() fetches once, update() fetches once — each for_alias call returns a fresh client
+  mock_ai.expect_for_alias().times(2).returning(move |_, _| {
+    let models = expected_models_clone.clone();
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(move || Ok(models.clone()));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -258,11 +274,16 @@ async fn test_update_non_forward_all_validates_and_filters(
   let provider_models_clone = provider_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
-  // create() calls fetch_models once, update() calls fetch_models once
-  mock_ai
-    .expect_fetch_models()
-    .times(2)
-    .returning(move |_, _, _, _, _| Ok(provider_models_clone.clone()));
+  // create() calls for_alias once, update() calls for_alias once
+  mock_ai.expect_for_alias().times(2).returning(move |_, _| {
+    let models = provider_models_clone.clone();
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(move || Ok(models.clone()));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -369,11 +390,15 @@ async fn test_update_rejects_api_format_change(
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
   let mut mock_ai = MockAiApiService::new();
-  // Only create() fetches; update() must bail before fetch_models.
-  mock_ai
-    .expect_fetch_models()
-    .times(1)
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4")]));
+  // Only create() calls for_alias; update() must bail before for_alias.
+  mock_ai.expect_for_alias().times(1).returning(|_, _| {
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(|| Ok(vec![openai_model("gpt-4")]));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service, time_service, Arc::new(mock_ai));
@@ -434,10 +459,15 @@ async fn test_create_gemini_preserves_bare_name(
   let provider_models_clone = provider_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .times(1)
-    .returning(move |_, _, _, _, _| Ok(provider_models_clone.clone()));
+  mock_ai.expect_for_alias().times(1).returning(move |_, _| {
+    let models = provider_models_clone.clone();
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(move || Ok(models.clone()));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -504,10 +534,15 @@ async fn test_update_gemini_preserves_bare_name(
   let provider_models_clone = provider_models.clone();
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .times(2)
-    .returning(move |_, _, _, _, _| Ok(provider_models_clone.clone()));
+  mock_ai.expect_for_alias().times(2).returning(move |_, _| {
+    let models = provider_models_clone.clone();
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(move || Ok(models.clone()));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
@@ -577,10 +612,14 @@ async fn test_create_openai_with_prefix_no_mutation(
   let db_service = Arc::new(db_service);
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .times(1)
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4")]));
+  mock_ai.expect_for_alias().times(1).returning(|_, _| {
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(|| Ok(vec![openai_model("gpt-4")]));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
 
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));

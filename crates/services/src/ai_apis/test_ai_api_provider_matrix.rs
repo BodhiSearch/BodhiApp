@@ -66,16 +66,10 @@ async fn test_prompt_success_openai() -> anyhow::Result<()> {
     .with_body(openai_chat_response())
     .create_async()
     .await;
+  let alias = make_alias(&url, ApiFormat::OpenAI);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gpt-4",
-      "hi",
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gpt-4", "hi")
     .await?;
   assert_eq!("ok", result);
   Ok(())
@@ -96,16 +90,10 @@ async fn test_prompt_success_openai_responses() -> anyhow::Result<()> {
     .with_body(r#"{"output": [{"type": "message", "content": [{"text": "ok"}]}]}"#)
     .create_async()
     .await;
+  let alias = make_alias(&url, ApiFormat::OpenAIResponses);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gpt-4o",
-      "hi",
-      &ApiFormat::OpenAIResponses,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gpt-4o", "hi")
     .await?;
   assert_eq!("ok", result);
   Ok(())
@@ -126,16 +114,10 @@ async fn test_prompt_success_anthropic() -> anyhow::Result<()> {
     .with_body(anthropic_message_response())
     .create_async()
     .await;
+  let alias = make_alias(&url, ApiFormat::Anthropic);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "claude-3",
-      "hi",
-      &ApiFormat::Anthropic,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("claude-3", "hi")
     .await?;
   assert_eq!("ok", result);
   Ok(())
@@ -156,79 +138,12 @@ async fn test_prompt_success_anthropic_oauth() -> anyhow::Result<()> {
     .with_body(anthropic_message_response())
     .create_async()
     .await;
+  let alias = make_alias(&url, ApiFormat::AnthropicOAuth);
   let result = service
-    .test_prompt(
-      Some("test-token".to_string()),
-      &url,
-      "claude-3",
-      "hi",
-      &ApiFormat::AnthropicOAuth,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-token".to_string()))?
+    .test_prompt("claude-3", "hi")
     .await?;
   assert_eq!("ok", result);
-  Ok(())
-}
-
-// LlmLibertyOauth shares the AnthropicOAuth provider client (Bearer token,
-// /messages endpoint). Duplicate the success-path test so a future split of
-// the dispatch arm doesn't silently break LlmLibertyOauth.
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_prompt_success_llm_liberty_oauth() -> anyhow::Result<()> {
-  let mut server = Server::new_async().await;
-  let url = server.url();
-  let service = DefaultAiApiService::new()?;
-  let _mock = server
-    .mock("POST", "/messages")
-    .match_header("Authorization", "Bearer test-token")
-    .with_status(200)
-    .with_header("content-type", "application/json")
-    .with_body(anthropic_message_response())
-    .create_async()
-    .await;
-  let result = service
-    .test_prompt(
-      Some("test-token".to_string()),
-      &url,
-      "claude-3",
-      "hi",
-      &ApiFormat::LlmLibertyOauth,
-      None,
-      None,
-    )
-    .await?;
-  assert_eq!("ok", result);
-  Ok(())
-}
-
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_fetch_models_success_llm_liberty_oauth() -> anyhow::Result<()> {
-  let mut server = Server::new_async().await;
-  let url = server.url();
-  let service = DefaultAiApiService::new()?;
-  let _mock = server
-    .mock("GET", "/models")
-    .with_status(200)
-    .with_header("content-type", "application/json")
-    .with_body(anthropic_models_response())
-    .create_async()
-    .await;
-  let models = service
-    .fetch_models(
-      Some("test-token".to_string()),
-      &url,
-      &ApiFormat::LlmLibertyOauth,
-      None,
-      None,
-    )
-    .await?;
-  assert_eq!(1, models.len());
-  assert_eq!("claude-3", models[0].id());
   Ok(())
 }
 
@@ -247,16 +162,10 @@ async fn test_prompt_success_gemini() -> anyhow::Result<()> {
     .with_body(gemini_generate_response())
     .create_async()
     .await;
+  let alias = make_alias(&url, ApiFormat::Gemini);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gemini-2.5-flash",
-      "hi",
-      &ApiFormat::Gemini,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gemini-2.5-flash", "hi")
     .await?;
   assert_eq!("ok", result);
   Ok(())
@@ -269,7 +178,6 @@ async fn test_prompt_success_gemini() -> anyhow::Result<()> {
 #[case::openai_responses(ApiFormat::OpenAIResponses, "/responses", "some-model")]
 #[case::anthropic(ApiFormat::Anthropic, "/messages", "some-model")]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth, "/messages", "some-model")]
-#[case::llm_liberty_oauth(ApiFormat::LlmLibertyOauth, "/messages", "some-model")]
 #[case::gemini(
   ApiFormat::Gemini,
   "/models/gemini-2.5-flash:generateContent",
@@ -292,16 +200,10 @@ async fn test_prompt_401_unauthorized(
     .with_body(r#"{"error": "unauthorized"}"#)
     .create_async()
     .await;
+  let alias = make_alias(&url, api_format);
   let err = service
-    .test_prompt(
-      Some("bad-key".to_string()),
-      &url,
-      model,
-      "hi",
-      &api_format,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("bad-key".to_string()))?
+    .test_prompt(model, "hi")
     .await
     .expect_err("should fail with 401");
   let msg = format!("{}", err);
@@ -329,14 +231,10 @@ async fn test_fetch_models_success_openai() -> anyhow::Result<()> {
     .with_body(openai_models_response())
     .create_async()
     .await;
+  let alias = make_alias(&url, ApiFormat::OpenAI);
   let models = service
-    .fetch_models(
-      Some("key".to_string()),
-      &url,
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("key".to_string()))?
+    .fetch_models()
     .await?;
   assert_eq!(1, models.len());
   assert_eq!("gpt-4", models[0].id());
@@ -357,14 +255,10 @@ async fn test_fetch_models_success_gemini() -> anyhow::Result<()> {
     .with_body(gemini_models_response())
     .create_async()
     .await;
+  let alias = make_alias(&url, ApiFormat::Gemini);
   let models = service
-    .fetch_models(
-      Some("key".to_string()),
-      &url,
-      &ApiFormat::Gemini,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("key".to_string()))?
+    .fetch_models()
     .await?;
   assert_eq!(1, models.len());
   assert_eq!("gemini-2.5-flash", models[0].id());
@@ -385,14 +279,10 @@ async fn test_fetch_models_success_anthropic() -> anyhow::Result<()> {
     .with_body(anthropic_models_response())
     .create_async()
     .await;
+  let alias = make_alias(&url, ApiFormat::Anthropic);
   let models = service
-    .fetch_models(
-      Some("key".to_string()),
-      &url,
-      &ApiFormat::Anthropic,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("key".to_string()))?
+    .fetch_models()
     .await?;
   assert_eq!(1, models.len());
   assert_eq!("claude-3", models[0].id());
@@ -406,7 +296,6 @@ async fn test_fetch_models_success_anthropic() -> anyhow::Result<()> {
 #[case::openai_responses(ApiFormat::OpenAIResponses)]
 #[case::anthropic(ApiFormat::Anthropic)]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth)]
-#[case::llm_liberty_oauth(ApiFormat::LlmLibertyOauth)]
 #[case::gemini(ApiFormat::Gemini)]
 #[anyhow_trace]
 #[tokio::test]
@@ -421,8 +310,10 @@ async fn test_fetch_models_401(#[case] api_format: ApiFormat) -> anyhow::Result<
     .with_body(r#"{"error": "unauthorized"}"#)
     .create_async()
     .await;
+  let alias = make_alias(&url, api_format);
   let err = service
-    .fetch_models(Some("bad-key".to_string()), &url, &api_format, None, None)
+    .for_alias(&alias, Some("bad-key".to_string()))?
+    .fetch_models()
     .await
     .expect_err("should fail with 401");
   let msg = format!("{}", err);
@@ -441,7 +332,6 @@ async fn test_fetch_models_401(#[case] api_format: ApiFormat) -> anyhow::Result<
 #[case::openai_responses(ApiFormat::OpenAIResponses)]
 #[case::anthropic(ApiFormat::Anthropic)]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth)]
-#[case::llm_liberty_oauth(ApiFormat::LlmLibertyOauth)]
 #[case::gemini(ApiFormat::Gemini)]
 #[anyhow_trace]
 #[tokio::test]
@@ -461,15 +351,8 @@ async fn test_forward_passthrough(#[case] api_format: ApiFormat) -> anyhow::Resu
     .await;
 
   let response = service
-    .forward_request_with_method(
-      &Method::POST,
-      "/chat/completions",
-      &alias,
-      Some("key".to_string()),
-      Some(body),
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("key".to_string()))?
+    .forward_request_with_method(&Method::POST, "/chat/completions", Some(body), None, None)
     .await?;
 
   assert_eq!(axum::http::StatusCode::OK, response.status());

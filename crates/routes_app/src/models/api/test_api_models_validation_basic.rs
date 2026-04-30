@@ -193,9 +193,11 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let mut mock_ai = services::MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![]));
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client.expect_fetch_models().returning(|| Ok(vec![]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .ai_api_service(Arc::new(mock_ai))
@@ -481,9 +483,11 @@ async fn test_create_api_model_http_error_code_for_x_goog_api_key(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let mut mock_ai = services::MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![]));
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client.expect_fetch_models().returning(|| Ok(vec![]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .ai_api_service(Arc::new(mock_ai))

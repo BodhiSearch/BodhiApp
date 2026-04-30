@@ -5,10 +5,10 @@ use crate::{
   ENDPOINT_MODELS_API_FORMATS, ENDPOINT_MODELS_API_TEST,
 };
 use axum::{extract::Path, http::StatusCode, Json};
-use services::models::LlmLibertyRequestParts;
 use services::{
-  ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiModelRequest, DefaultFetchModelsRequest,
-  FetchModelsRequest, FetchModelsResponse, TestCreds, TestPromptRequest, TestPromptResponse,
+  ApiAlias, ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiModelRequest,
+  DefaultFetchModelsRequest, FetchModelsRequest, FetchModelsResponse, TestCreds, TestPromptRequest,
+  TestPromptResponse,
 };
 
 /// Get a specific API model configuration
@@ -170,35 +170,28 @@ pub async fn api_models_test(
   let result = match payload {
     TestPromptRequest::LlmLibertyOauth(d) => {
       let (source, model, prompt) = d.into_parts().map_err(BodhiErrorResponse::from)?;
-      let parts = match source {
+      let client = match source {
         services::LlmLibertyCredsSource::Saved(id) => {
           let creds = crate::providers::resolve_llm_liberty_credentials(&auth_scope, &id)
             .await
             .map_err(BodhiErrorResponse::from)?;
-          creds.into_request_parts()
+          let alias = db
+            .get_api_model_alias(tenant_id, user_id, &id)
+            .await?
+            .ok_or_else(|| {
+              BodhiErrorResponse::from(services::EntityError::NotFound(format!(
+                "API model '{}' not found",
+                id
+              )))
+            })?;
+          ai_api.for_resolved_credentials(&creds, &alias, tenant_id, user_id)?
         }
         services::LlmLibertyCredsSource::Inline(env) => {
           env.validate_supported().map_err(BodhiErrorResponse::from)?;
-          env.to_request_parts()
+          ai_api.for_envelope(&env)?
         }
       };
-      let LlmLibertyRequestParts {
-        access_token,
-        base_url,
-        extra_headers,
-        extra_body,
-      } = parts;
-      ai_api
-        .test_prompt(
-          access_token,
-          base_url.trim_end_matches('/'),
-          &model,
-          &prompt,
-          &api_format,
-          extra_headers,
-          extra_body,
-        )
-        .await
+      client.test_prompt(&model, &prompt).await
     }
     other => {
       let d = match other {
@@ -212,15 +205,21 @@ pub async fn api_models_test(
       match d.creds {
         TestCreds::ApiKey(api_key) => {
           ai_api
-            .test_prompt(
+            .for_alias(
+              &ApiAlias::new(
+                String::new(),
+                api_format,
+                d.base_url.trim_end_matches('/').to_string(),
+                vec![],
+                None,
+                false,
+                Default::default(),
+                d.extra_headers.clone(),
+                d.extra_body.clone(),
+              ),
               api_key.as_option().map(|s| s.to_string()),
-              d.base_url.trim_end_matches('/'),
-              &d.model,
-              &d.prompt,
-              &api_format,
-              d.extra_headers.clone(),
-              d.extra_body.clone(),
-            )
+            )?
+            .test_prompt(&d.model, &d.prompt)
             .await
         }
         TestCreds::Id(id) => {
@@ -235,15 +234,8 @@ pub async fn api_models_test(
             })?;
           let stored_key = db.get_api_key_for_alias(tenant_id, user_id, &id).await?;
           ai_api
-            .test_prompt(
-              stored_key,
-              api_model.base_url.trim_end_matches('/'),
-              &d.model,
-              &d.prompt,
-              &api_model.api_format,
-              api_model.extra_headers.clone(),
-              api_model.extra_body.clone(),
-            )
+            .for_alias(&api_model, stored_key)?
+            .test_prompt(&d.model, &d.prompt)
             .await
         }
       }
@@ -291,33 +283,30 @@ pub async fn api_models_fetch_models(
   let models = match payload {
     FetchModelsRequest::LlmLibertyOauth(d) => {
       let source = d.into_source().map_err(BodhiErrorResponse::from)?;
-      let parts = match source {
+      match source {
         services::LlmLibertyCredsSource::Saved(id) => {
-          crate::providers::resolve_llm_liberty_credentials(&auth_scope, &id)
+          let creds = crate::providers::resolve_llm_liberty_credentials(&auth_scope, &id)
             .await
-            .map_err(BodhiErrorResponse::from)?
-            .into_request_parts()
+            .map_err(BodhiErrorResponse::from)?;
+          let alias = db
+            .get_api_model_alias(tenant_id, user_id, &id)
+            .await?
+            .ok_or_else(|| {
+              BodhiErrorResponse::from(services::EntityError::NotFound(format!(
+                "API model '{}' not found",
+                id
+              )))
+            })?;
+          ai_api
+            .for_resolved_credentials(&creds, &alias, tenant_id, user_id)?
+            .fetch_models()
+            .await?
         }
         services::LlmLibertyCredsSource::Inline(env) => {
           env.validate_supported().map_err(BodhiErrorResponse::from)?;
-          env.to_request_parts()
+          ai_api.for_envelope(&env)?.fetch_models().await?
         }
-      };
-      let LlmLibertyRequestParts {
-        access_token,
-        base_url,
-        extra_headers,
-        extra_body,
-      } = parts;
-      ai_api
-        .fetch_models(
-          access_token,
-          base_url.trim_end_matches('/'),
-          &api_format,
-          extra_headers,
-          extra_body,
-        )
-        .await?
+      }
     }
     other => {
       let d: DefaultFetchModelsRequest = match other {
@@ -331,13 +320,21 @@ pub async fn api_models_fetch_models(
       match d.creds {
         TestCreds::ApiKey(api_key) => {
           ai_api
-            .fetch_models(
+            .for_alias(
+              &ApiAlias::new(
+                String::new(),
+                api_format,
+                d.base_url.trim_end_matches('/').to_string(),
+                vec![],
+                None,
+                false,
+                Default::default(),
+                d.extra_headers.clone(),
+                d.extra_body.clone(),
+              ),
               api_key.as_option().map(|s| s.to_string()),
-              d.base_url.trim_end_matches('/'),
-              &api_format,
-              d.extra_headers.clone(),
-              d.extra_body.clone(),
-            )
+            )?
+            .fetch_models()
             .await?
         }
         TestCreds::Id(id) => {
@@ -352,20 +349,18 @@ pub async fn api_models_fetch_models(
             })?;
           let stored_key = db.get_api_key_for_alias(tenant_id, user_id, &id).await?;
           ai_api
-            .fetch_models(
-              stored_key,
-              api_model.base_url.trim_end_matches('/'),
-              &api_model.api_format,
-              api_model.extra_headers.clone(),
-              api_model.extra_body.clone(),
-            )
+            .for_alias(&api_model, stored_key)?
+            .fetch_models()
             .await?
         }
       }
     }
   };
 
-  let model_ids: Vec<String> = models.iter().map(|m| m.id().to_string()).collect();
+  let model_ids: Vec<String> = models
+    .iter()
+    .map(|m: &services::ApiModel| m.id().to_string())
+    .collect();
   Ok(Json(FetchModelsResponse { models: model_ids }))
 }
 

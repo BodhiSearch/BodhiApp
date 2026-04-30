@@ -1,13 +1,54 @@
 use crate::ai_apis::error::AiApiServiceError;
-use crate::db::DbError;
+use crate::db::{DbError, DbService};
 use crate::models::llm_liberty_credentials_repository::LlmLibertyCredentialsRepository;
 use crate::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
 use crate::SafeReqwest;
+use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use errmeta::{AppError, ErrorType};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+#[async_trait]
+pub trait LlmLibertyRefresh: Send + Sync + std::fmt::Debug {
+  async fn force_refresh(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    alias_id: &str,
+  ) -> Result<ResolvedLlmLibertyCredentials, LlmLibertyRefreshError>;
+}
+
+pub struct DefaultLlmLibertyRefresh {
+  db: Arc<dyn DbService>,
+  http: SafeReqwest,
+}
+
+impl std::fmt::Debug for DefaultLlmLibertyRefresh {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("DefaultLlmLibertyRefresh").finish()
+  }
+}
+
+impl DefaultLlmLibertyRefresh {
+  pub fn new(db: Arc<dyn DbService>, http: SafeReqwest) -> Self {
+    Self { db, http }
+  }
+}
+
+#[async_trait]
+impl LlmLibertyRefresh for DefaultLlmLibertyRefresh {
+  async fn force_refresh(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    alias_id: &str,
+  ) -> Result<ResolvedLlmLibertyCredentials, LlmLibertyRefreshError> {
+    force_refresh_credentials(self.db.as_ref(), &self.http, tenant_id, user_id, alias_id).await
+  }
+}
 
 /// How many seconds before actual expiry we consider the token "about to expire".
 const REFRESH_SKEW_SECS: i64 = 60;

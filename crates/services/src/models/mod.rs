@@ -79,7 +79,6 @@ pub use llm_liberty_credentials_entity::LlmLibertyCredentialsEntity;
 pub use llm_liberty_credentials_repository::LlmLibertyCredentialsRepository;
 pub use llm_liberty_envelope::{
   LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate,
-  LlmLibertyOauthEndpoints, LlmLibertyRequestParts, LlmLibertySummary,
-  ResolvedLlmLibertyCredentials,
+  LlmLibertyOauthEndpoints, LlmLibertySummary, ResolvedLlmLibertyCredentials,
 };
 pub use user_alias_entity::UserAliasEntity;

@@ -1,9 +1,24 @@
 use super::{AiApiService, DefaultAiApiService};
-use crate::models::ApiFormat;
+use crate::models::{ApiAlias, ApiFormat};
+use crate::test_utils::fixed_dt;
 use anyhow_trace::anyhow_trace;
 use mockito::Server;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
+
+fn make_anthropic_alias(url: &str) -> ApiAlias {
+  ApiAlias::new(
+    String::new(),
+    ApiFormat::Anthropic,
+    url,
+    vec![],
+    None,
+    false,
+    fixed_dt(),
+    None,
+    None,
+  )
+}
 
 #[rstest]
 #[anyhow_trace]
@@ -32,16 +47,10 @@ async fn test_test_prompt_anthropic_success() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_anthropic_alias(&url);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "claude-sonnet-4-5-20250929",
-      "Hello",
-      &ApiFormat::Anthropic,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("claude-sonnet-4-5-20250929", "Hello")
     .await?;
   assert_eq!("Hi there!", result);
 
@@ -64,16 +73,10 @@ async fn test_test_prompt_anthropic_malformed_response() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_anthropic_alias(&url);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "claude-sonnet-4-5-20250929",
-      "Hello",
-      &ApiFormat::Anthropic,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("claude-sonnet-4-5-20250929", "Hello")
     .await?;
   assert_eq!("No response", result);
 
@@ -106,14 +109,10 @@ async fn test_fetch_models_anthropic_success() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_anthropic_alias(&url);
   let models = service
-    .fetch_models(
-      Some("test-key".to_string()),
-      &url,
-      &ApiFormat::Anthropic,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .fetch_models()
     .await?;
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
   assert_eq!(
@@ -169,14 +168,10 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_anthropic_alias(&url);
   let models = service
-    .fetch_models(
-      Some("test-key".to_string()),
-      &url,
-      &ApiFormat::Anthropic,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .fetch_models()
     .await?;
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
   assert_eq!(

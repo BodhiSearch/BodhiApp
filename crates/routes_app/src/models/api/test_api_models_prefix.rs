@@ -23,12 +23,16 @@ use tower::ServiceExt;
 
 fn make_mock_ai() -> MockAiApiService {
   let mut mock_ai = MockAiApiService::new();
-  mock_ai.expect_fetch_models().returning(|_, _, _, _, _| {
-    Ok(vec![
-      openai_model("gpt-4"),
-      openai_model("gpt-3.5-turbo"),
-      openai_model("claude-3"),
-    ])
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client.expect_fetch_models().returning(|| {
+      Ok(vec![
+        openai_model("gpt-4"),
+        openai_model("gpt-3.5-turbo"),
+        openai_model("claude-3"),
+      ])
+    });
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
   });
   mock_ai
 }

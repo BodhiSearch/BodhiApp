@@ -190,15 +190,9 @@ pub(crate) async fn proxy_to_remote(
     None
   };
   ai_api_service
-    .forward_request_with_method(
-      method,
-      &api_path,
-      api_alias,
-      api_key,
-      body,
-      query_params,
-      client_headers,
-    )
+    .for_alias(api_alias, api_key)
+    .map_err(InferenceError::from)?
+    .forward_request_with_method(method, &api_path, body, query_params, client_headers)
     .await
     .map_err(InferenceError::from)
 }

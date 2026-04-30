@@ -41,16 +41,20 @@ async fn test_test_prompt_anthropic_oauth_success() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = ApiAlias::new(
+    String::new(),
+    ApiFormat::AnthropicOAuth,
+    url.clone(),
+    vec![],
+    None,
+    false,
+    fixed_dt(),
+    Some(extra_headers),
+    Some(extra_body),
+  );
   let result = service
-    .test_prompt(
-      Some("oauth-token-123".to_string()),
-      &url,
-      "claude-sonnet-4-5-20250929",
-      "Hello",
-      &ApiFormat::AnthropicOAuth,
-      Some(extra_headers),
-      Some(extra_body),
-    )
+    .for_alias(&alias, Some("oauth-token-123".to_string()))?
+    .test_prompt("claude-sonnet-4-5-20250929", "Hello")
     .await?;
   assert_eq!("Hi from OAuth!", result);
 
@@ -86,14 +90,20 @@ async fn test_fetch_models_anthropic_oauth_success() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = ApiAlias::new(
+    String::new(),
+    ApiFormat::AnthropicOAuth,
+    url.clone(),
+    vec![],
+    None,
+    false,
+    fixed_dt(),
+    Some(extra_headers),
+    None,
+  );
   let models = service
-    .fetch_models(
-      Some("oauth-token-123".to_string()),
-      &url,
-      &ApiFormat::AnthropicOAuth,
-      Some(extra_headers),
-      None,
-    )
+    .for_alias(&alias, Some("oauth-token-123".to_string()))?
+    .fetch_models()
     .await?;
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
   assert_eq!(vec!["claude-sonnet-4-5-20250929"], model_ids);
@@ -155,15 +165,8 @@ async fn test_forward_request_anthropic_oauth_merges_body() -> anyhow::Result<()
   });
 
   let response = service
-    .forward_request_with_method(
-      &Method::POST,
-      "/messages",
-      &api_alias,
-      Some("oauth-token-123".to_string()),
-      Some(incoming),
-      None,
-      None,
-    )
+    .for_alias(&api_alias, Some("oauth-token-123".to_string()))?
+    .forward_request_with_method(&Method::POST, "/messages", Some(incoming), None, None)
     .await?;
 
   assert_eq!(axum::http::StatusCode::OK, response.status());
@@ -226,15 +229,8 @@ async fn test_forward_request_anthropic_oauth_prepends_system() -> anyhow::Resul
   });
 
   let response = service
-    .forward_request_with_method(
-      &Method::POST,
-      "/messages",
-      &api_alias,
-      Some("oauth-token-123".to_string()),
-      Some(incoming),
-      None,
-      None,
-    )
+    .for_alias(&api_alias, Some("oauth-token-123".to_string()))?
+    .forward_request_with_method(&Method::POST, "/messages", Some(incoming), None, None)
     .await?;
 
   assert_eq!(axum::http::StatusCode::OK, response.status());
@@ -276,11 +272,10 @@ async fn test_forward_request_anthropic_oauth_version_injected_when_absent() -> 
     .await;
 
   let response = service
+    .for_alias(&api_alias, Some("oauth-token-123".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",
-      &api_alias,
-      Some("oauth-token-123".to_string()),
       Some(json!({"model":"claude-sonnet-4-5-20250929","max_tokens":1,"messages":[]})),
       None,
       None,

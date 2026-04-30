@@ -1,10 +1,38 @@
 use super::{AiApiService, AiApiServiceError, DefaultAiApiService};
-use crate::models::{ApiFormat, ApiModel};
-use crate::test_utils::openai_model;
+use crate::models::{ApiAlias, ApiFormat, ApiModel};
+use crate::test_utils::{fixed_dt, openai_model};
 use anyhow_trace::anyhow_trace;
 use mockito::Server;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
+
+fn make_openai_alias(url: &str) -> ApiAlias {
+  ApiAlias::new(
+    String::new(),
+    ApiFormat::OpenAI,
+    url,
+    vec![],
+    None,
+    false,
+    fixed_dt(),
+    None,
+    None,
+  )
+}
+
+fn make_alias_for(url: &str, format: ApiFormat) -> ApiAlias {
+  ApiAlias::new(
+    String::new(),
+    format,
+    url,
+    vec![],
+    None,
+    false,
+    fixed_dt(),
+    None,
+    None,
+  )
+}
 
 #[rstest]
 #[anyhow_trace]
@@ -30,16 +58,10 @@ async fn test_test_prompt_success() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_openai_alias(&url);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gpt-3.5-turbo",
-      "Hello",
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gpt-3.5-turbo", "Hello")
     .await?;
   assert_eq!("Hello response", result);
 
@@ -78,50 +100,12 @@ async fn test_test_prompt_openai_responses_success() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_alias_for(&url, ApiFormat::OpenAIResponses);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gpt-4o",
-      "Hello",
-      &ApiFormat::OpenAIResponses,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gpt-4o", "Hello")
     .await?;
   assert_eq!("Hello response", result);
-
-  Ok(())
-}
-
-#[rstest]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_test_prompt_too_long() -> anyhow::Result<()> {
-  let server = Server::new_async().await;
-  let url = server.url();
-  let service = DefaultAiApiService::new()?;
-
-  let long_prompt = "a".repeat(31);
-  let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gpt-3.5-turbo",
-      &long_prompt,
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
-    .await;
-
-  assert!(matches!(
-    result,
-    Err(AiApiServiceError::PromptTooLong {
-      max_length: 30,
-      actual_length: 31
-    })
-  ));
 
   Ok(())
 }
@@ -150,14 +134,10 @@ async fn test_fetch_models_success() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_openai_alias(&url);
   let models = service
-    .fetch_models(
-      Some("test-key".to_string()),
-      &url,
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .fetch_models()
     .await?;
   assert_eq!(
     vec![
@@ -186,16 +166,10 @@ async fn test_api_unauthorized_error() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_openai_alias(&url);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gpt-3.5-turbo",
-      "Hello",
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gpt-3.5-turbo", "Hello")
     .await;
 
   assert!(matches!(result, Err(AiApiServiceError::Unauthorized(_))));
@@ -218,16 +192,10 @@ async fn test_model_not_found() -> anyhow::Result<()> {
     .create_async()
     .await;
 
+  let alias = make_openai_alias(&url);
   let result = service
-    .test_prompt(
-      Some("invalid-key".to_string()),
-      &url,
-      "unknown-model",
-      "Hello",
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("invalid-key".to_string()))?
+    .test_prompt("unknown-model", "Hello")
     .await;
 
   assert!(matches!(result, Err(AiApiServiceError::NotFound(_))));
@@ -266,16 +234,10 @@ async fn test_test_prompt_success_parameterized(
     .create_async()
     .await;
 
+  let alias = make_openai_alias(&url);
   let result = service
-    .test_prompt(
-      api_key.map(|s| s.to_string()),
-      &url,
-      "gpt-3.5-turbo",
-      "Hello",
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, api_key.map(|s| s.to_string()))?
+    .test_prompt("gpt-3.5-turbo", "Hello")
     .await?;
 
   assert_eq!(expected_response, result);
@@ -305,16 +267,10 @@ async fn test_test_prompt_failure_parameterized(
     .create_async()
     .await;
 
+  let alias = make_openai_alias(&url);
   let result = service
-    .test_prompt(
-      api_key.map(|s| s.to_string()),
-      &url,
-      "gpt-3.5-turbo",
-      "Hello",
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, api_key.map(|s| s.to_string()))?
+    .test_prompt("gpt-3.5-turbo", "Hello")
     .await;
 
   assert!(result.is_err());
@@ -352,14 +308,10 @@ async fn test_fetch_models_success_parameterized(
     .create_async()
     .await;
 
+  let alias = make_openai_alias(&url);
   let result = service
-    .fetch_models(
-      api_key.map(|s| s.to_string()),
-      &url,
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, api_key.map(|s| s.to_string()))?
+    .fetch_models()
     .await?;
 
   let result_ids: Vec<&str> = result.iter().map(|m| m.id()).collect();
@@ -389,14 +341,10 @@ async fn test_fetch_models_failure_parameterized(
     .create_async()
     .await;
 
+  let alias = make_openai_alias(&url);
   let result = service
-    .fetch_models(
-      api_key.map(|s| s.to_string()),
-      &url,
-      &ApiFormat::OpenAI,
-      None,
-      None,
-    )
+    .for_alias(&alias, api_key.map(|s| s.to_string()))?
+    .fetch_models()
     .await;
 
   assert!(result.is_err());
@@ -429,16 +377,10 @@ async fn test_test_prompt_openai_responses_errors(
     .create_async()
     .await;
 
+  let alias = make_alias_for(&url, ApiFormat::OpenAIResponses);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gpt-4o",
-      "Hello",
-      &ApiFormat::OpenAIResponses,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gpt-4o", "Hello")
     .await;
 
   assert!(result.is_err());
@@ -468,16 +410,10 @@ async fn test_test_prompt_openai_responses_malformed_output() -> anyhow::Result<
     .create_async()
     .await;
 
+  let alias = make_alias_for(&url, ApiFormat::OpenAIResponses);
   let result = service
-    .test_prompt(
-      Some("test-key".to_string()),
-      &url,
-      "gpt-4o",
-      "Hello",
-      &ApiFormat::OpenAIResponses,
-      None,
-      None,
-    )
+    .for_alias(&alias, Some("test-key".to_string()))?
+    .test_prompt("gpt-4o", "Hello")
     .await?;
 
   assert_eq!("No response", result);

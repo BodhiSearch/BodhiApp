@@ -108,30 +108,6 @@ impl LlmLibertyEnvelope {
     };
     Err(ObjValidationError::LlmLibertyEnvelopeInvalid(reason))
   }
-
-  /// Build the request-shape parameters needed to call an upstream provider client
-  /// directly from a not-yet-persisted envelope (test/fetch-models flow before save).
-  pub fn to_request_parts(&self) -> LlmLibertyRequestParts {
-    LlmLibertyRequestParts {
-      access_token: Some(self.access_token.clone()),
-      base_url: derive_base_url(&self.api),
-      extra_headers: value_to_opt(&self.headers),
-      extra_body: value_to_opt(&self.body),
-    }
-  }
-}
-
-/// llm-liberty envelopes set `api.base_url` to the host (e.g. `https://api.anthropic.com`)
-/// and put the version segment in `api.chat_url` (`https://api.anthropic.com/v1/messages`).
-/// Provider clients downstream append `/messages` and `/models` to the alias's `base_url`,
-/// so we must give them the versioned base. Derive it by stripping the trailing path
-/// segment from `chat_url` (typically `/messages`); fall back to envelope `base_url`
-/// only if `chat_url` doesn't have a path.
-fn derive_base_url(api: &LlmLibertyApiEndpoints) -> String {
-  match api.chat_url.rsplit_once('/') {
-    Some((parent, _last)) if !parent.is_empty() => parent.to_string(),
-    _ => api.base_url.clone(),
-  }
 }
 
 // =============================================================================
@@ -195,50 +171,6 @@ pub struct ResolvedLlmLibertyCredentials {
   pub headers_json: serde_json::Value,
   pub body_json: serde_json::Value,
   pub extra_json: Option<serde_json::Value>,
-}
-
-impl ResolvedLlmLibertyCredentials {
-  /// Build the request-shape parameters needed to call an upstream provider client.
-  /// Consumes self to avoid cloning the JSON values.
-  pub fn into_request_parts(self) -> LlmLibertyRequestParts {
-    LlmLibertyRequestParts {
-      access_token: Some(self.access_token),
-      base_url: self.api_base_url,
-      extra_headers: value_to_opt_owned(self.headers_json),
-      extra_body: value_to_opt_owned(self.body_json),
-    }
-  }
-}
-
-// =============================================================================
-// Common request-parts shape used by api_model_service and route handlers
-// =============================================================================
-
-/// The four parameters every provider-client constructor needs:
-/// `(api_key, base_url, extra_headers, extra_body)`. Constructed from either an
-/// envelope (create/test) or resolved stored credentials (sync/forward).
-#[derive(Debug, Clone)]
-pub struct LlmLibertyRequestParts {
-  pub access_token: Option<String>,
-  pub base_url: String,
-  pub extra_headers: Option<serde_json::Value>,
-  pub extra_body: Option<serde_json::Value>,
-}
-
-fn value_to_opt(v: &serde_json::Value) -> Option<serde_json::Value> {
-  if v.is_null() {
-    None
-  } else {
-    Some(v.clone())
-  }
-}
-
-fn value_to_opt_owned(v: serde_json::Value) -> Option<serde_json::Value> {
-  if v.is_null() {
-    None
-  } else {
-    Some(v)
-  }
 }
 
 #[cfg(test)]

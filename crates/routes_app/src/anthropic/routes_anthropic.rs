@@ -2,12 +2,12 @@ use crate::oai::OAIRouteError;
 use crate::shared::AuthScope;
 use crate::{AnthropicApiError, BodhiErrorResponse, JsonRejectionError};
 use axum::extract::{Path, Query};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{HeaderMap, Method};
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
 use services::inference::LlmEndpoint;
-use services::models::LlmLibertyRequestParts;
+use services::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
 use services::{Alias, ApiAlias, ApiFormat, ApiModel, DataServiceError};
 use std::collections::{HashMap, HashSet};
 
@@ -45,16 +45,28 @@ fn extract_anthropic_headers(headers: &HeaderMap) -> Option<Vec<(String, String)
   }
 }
 
+#[allow(clippy::large_enum_variant)] // TODO
+enum AnthropicAliasResolution {
+  Native {
+    alias: ApiAlias,
+    api_key: Option<String>,
+  },
+  Liberty {
+    alias: ApiAlias,
+    creds: ResolvedLlmLibertyCredentials,
+  },
+}
+
 async fn resolve_anthropic_alias(
   auth_scope: &AuthScope,
   model: &str,
-) -> Result<(ApiAlias, Option<String>), BodhiErrorResponse> {
+) -> Result<AnthropicAliasResolution, BodhiErrorResponse> {
   let alias =
     auth_scope.data().find_alias(model).await.ok_or_else(|| {
       BodhiErrorResponse::from(DataServiceError::AliasNotFound(model.to_string()))
     })?;
 
-  let mut api_alias = match alias {
+  let api_alias = match alias {
     Alias::Api(api_alias)
       if matches!(
         api_alias.api_format,
@@ -78,9 +90,6 @@ async fn resolve_anthropic_alias(
     let creds = crate::providers::resolve_llm_liberty_credentials(auth_scope, &api_alias.id)
       .await
       .map_err(BodhiErrorResponse::from)?;
-    // Forward-compat guard: an envelope from a future llm-liberty provider
-    // (openai-codex, google-gemini, …) must not be routed through Anthropic's
-    // upstream. Reject loudly rather than send a malformed request.
     if creds.provider != "anthropic" {
       return Err(
         OAIRouteError::InvalidRequest(format!(
@@ -90,20 +99,17 @@ async fn resolve_anthropic_alias(
         .into(),
       );
     }
-    let LlmLibertyRequestParts {
-      access_token,
-      base_url,
-      extra_headers,
-      extra_body,
-    } = creds.into_request_parts();
-    api_alias.base_url = base_url;
-    api_alias.extra_headers = extra_headers;
-    api_alias.extra_body = extra_body;
-    return Ok((api_alias, access_token));
+    return Ok(AnthropicAliasResolution::Liberty {
+      alias: api_alias,
+      creds,
+    });
   }
 
   let api_key = crate::providers::resolve_api_key_for_alias(auth_scope, &api_alias.id).await;
-  Ok((api_alias, api_key))
+  Ok(AnthropicAliasResolution::Native {
+    alias: api_alias,
+    api_key,
+  })
 }
 
 async fn list_user_anthropic_aliases(
@@ -146,7 +152,7 @@ pub async fn anthropic_messages_create_handler(
     .ok_or_else(AnthropicApiError::missing_model)?
     .to_string();
 
-  let (api_alias, api_key) = resolve_anthropic_alias(&auth_scope, &model).await?;
+  let resolution = resolve_anthropic_alias(&auth_scope, &model).await?;
   let client_headers = extract_anthropic_headers(&headers);
   let params: Vec<(String, String)> = query_params.into_iter().collect();
   let params_opt = if params.is_empty() {
@@ -155,58 +161,36 @@ pub async fn anthropic_messages_create_handler(
     Some(params)
   };
 
-  // For LlmLibertyOauth aliases the upstream may invalidate access tokens before
-  // expires_at (third-party usage flagging). Retry once with a force-refreshed
-  // token on a 401. Clone the request body+headers so the retry has fresh inputs.
-  let is_llm_liberty = api_alias.api_format == ApiFormat::LlmLibertyOauth;
-  let retry_inputs =
-    is_llm_liberty.then(|| (request.clone(), params_opt.clone(), client_headers.clone()));
-
-  let response = auth_scope
-    .inference()
-    .forward_remote_with_params(
-      LlmEndpoint::AnthropicMessages,
-      request,
-      &api_alias,
-      api_key,
-      params_opt,
-      client_headers,
-    )
-    .await
-    .map_err(BodhiErrorResponse::from)?;
-
-  if response.status() == StatusCode::UNAUTHORIZED {
-    if let Some((retry_request, retry_params, retry_headers)) = retry_inputs {
-      let creds = crate::providers::resolve_llm_liberty_credentials_with_force_refresh(
-        &auth_scope,
-        &api_alias.id,
+  let response = match resolution {
+    AnthropicAliasResolution::Native { alias, api_key } => auth_scope
+      .inference()
+      .forward_remote_with_params(
+        LlmEndpoint::AnthropicMessages,
+        request,
+        &alias,
+        api_key,
+        params_opt,
+        client_headers,
       )
       .await
-      .map_err(BodhiErrorResponse::from)?;
-      let LlmLibertyRequestParts {
-        access_token,
-        base_url,
-        extra_headers,
-        extra_body,
-      } = creds.into_request_parts();
-      let mut retry_alias = api_alias.clone();
-      retry_alias.base_url = base_url;
-      retry_alias.extra_headers = extra_headers;
-      retry_alias.extra_body = extra_body;
-      return auth_scope
-        .inference()
-        .forward_remote_with_params(
-          LlmEndpoint::AnthropicMessages,
-          retry_request,
-          &retry_alias,
-          access_token,
-          retry_params,
-          retry_headers,
+      .map_err(BodhiErrorResponse::from)?,
+    AnthropicAliasResolution::Liberty { alias, creds } => {
+      let tenant_id = auth_scope.tenant_id().unwrap_or("");
+      let user_id = auth_scope.auth_context().user_id().unwrap_or("");
+      auth_scope
+        .ai_api()
+        .for_resolved_credentials(&creds, &alias, tenant_id, user_id)?
+        .forward_request_with_method(
+          &Method::POST,
+          "/messages",
+          Some(request),
+          params_opt,
+          client_headers,
         )
         .await
-        .map_err(|e| BodhiErrorResponse::from(e).into());
+        .map_err(BodhiErrorResponse::from)?
     }
-  }
+  };
 
   Ok(response)
 }

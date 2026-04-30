@@ -75,9 +75,13 @@ async fn test_create_api_model_handler_success(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")]));
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .returning(|| Ok(vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
   // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
@@ -138,9 +142,13 @@ async fn test_create_api_model_handler_generates_uuid(
   seed_test_api_models(&db_service, base_time).await?;
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("gpt-4")]));
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .returning(|| Ok(vec![openai_model("gpt-4")]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
 
   // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()
@@ -192,9 +200,13 @@ async fn test_create_api_model_handler_anthropic_oauth_stores_extra_fields(
   let extra_body = json!({"system": [{"type": "text", "text": "You are Claude Code..."}]});
 
   let mut mock_ai = MockAiApiService::new();
-  mock_ai
-    .expect_fetch_models()
-    .returning(|_, _, _, _, _| Ok(vec![openai_model("claude-3-5-sonnet")]));
+  mock_ai.expect_for_alias().returning(|_, _| {
+    let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .returning(|| Ok(vec![openai_model("claude-3-5-sonnet")]));
+    Ok(Box::new(client) as Box<dyn services::AiApiClient>)
+  });
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))

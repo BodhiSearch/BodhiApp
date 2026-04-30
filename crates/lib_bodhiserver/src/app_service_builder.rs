@@ -149,7 +149,7 @@ impl AppServiceBuilder {
     let session_service = Self::build_session_service(&setting_service).await?;
     let cache_service = self.get_or_build_cache_service();
     let auth_service = Self::build_auth_service(&setting_service).await;
-    let ai_api_service = Self::build_ai_api_service()?;
+    let ai_api_service = Self::build_ai_api_service(db_service.clone())?;
     let concurrency_service = Self::build_concurrency_service();
     let access_request_service = Self::build_access_request_service(
       &setting_service,
@@ -312,10 +312,12 @@ impl AppServiceBuilder {
   }
 
   /// Builds the AI API service.
-  fn build_ai_api_service() -> Result<Arc<dyn AiApiService>, BootstrapError> {
-    Ok(Arc::new(DefaultAiApiService::new().map_err(|e| {
-      BootstrapError::UnexpectedError(services::AppError::code(&e), e.to_string())
-    })?))
+  fn build_ai_api_service(
+    db_service: Arc<dyn DbService>,
+  ) -> Result<Arc<dyn AiApiService>, BootstrapError> {
+    Ok(Arc::new(DefaultAiApiService::with_db(db_service).map_err(
+      |e| BootstrapError::UnexpectedError(services::AppError::code(&e), e.to_string()),
+    )?))
   }
 
   /// Builds the concurrency service.
