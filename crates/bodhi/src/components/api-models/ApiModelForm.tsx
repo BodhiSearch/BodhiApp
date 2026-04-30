@@ -89,6 +89,7 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             value={formLogic.watchedValues.api_format}
             options={formLogic.apiFormatsData}
             onValueChange={formLogic.handleApiFormatChange}
+            disabled={isEditMode}
           />
 
           {formLogic.watchedValues.api_format === 'llm_liberty_oauth' ? (

@@ -69,6 +69,11 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
     query_params: Option<Vec<(String, String)>>,
     client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response>;
+
+  /// Shared `SafeReqwest` instance used by all upstream calls. Cheap to clone
+  /// (Arc-shared `reqwest::Client` underneath) — callers should clone, not
+  /// build their own. Used by routes_app/providers/* for the OAuth refresh path.
+  fn safe_http_client(&self) -> SafeReqwest;
 }
 
 #[derive(Debug, Clone)]
@@ -88,6 +93,10 @@ impl DefaultAiApiService {
 
 #[async_trait]
 impl AiApiService for DefaultAiApiService {
+  fn safe_http_client(&self) -> SafeReqwest {
+    self.client.clone()
+  }
+
   async fn test_prompt(
     &self,
     api_key: Option<String>,

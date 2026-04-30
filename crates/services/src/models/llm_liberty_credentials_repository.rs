@@ -1,10 +1,12 @@
 use super::llm_liberty_credentials_entity::{self as creds_entity, LlmLibertyCredentialsView};
-use super::llm_liberty_envelope::{LlmLibertyEnvelope, LlmLibertySummary, ResolvedLlmLibertyCredentials};
-use crate::db::{DbError, DefaultDbService};
+use super::llm_liberty_envelope::{
+  LlmLibertyEnvelope, LlmLibertySummary, ResolvedLlmLibertyCredentials,
+};
 use crate::db::encryption::{decrypt_api_key, encrypt_api_key};
+use crate::db::{DbError, DefaultDbService};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sea_orm::{ActiveValue::Set, EntityTrait};
+use sea_orm::{ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 
 // =============================================================================
 // Trait
@@ -88,8 +90,7 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
       encrypt_api_key(&self.encryption_key, &envelope.refresh_token)
         .map_err(|e| DbError::EncryptionError(e.to_string()))?;
 
-    let expires_at =
-      DateTime::from_timestamp(envelope.expires_at, 0).unwrap_or(now);
+    let expires_at = DateTime::from_timestamp(envelope.expires_at, 0).unwrap_or(now);
 
     let model = creds_entity::ActiveModel {
       api_alias_id: Set(api_alias_id.to_string()),
@@ -150,8 +151,7 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
       encrypt_api_key(&self.encryption_key, &envelope.refresh_token)
         .map_err(|e| DbError::EncryptionError(e.to_string()))?;
 
-    let expires_at =
-      DateTime::from_timestamp(envelope.expires_at, 0).unwrap_or(now);
+    let expires_at = DateTime::from_timestamp(envelope.expires_at, 0).unwrap_or(now);
     let api_alias_id_owned = api_alias_id.to_string();
     let tenant_id_owned = tenant_id.to_string();
     let user_id_owned = user_id.to_string();
@@ -160,8 +160,9 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // Verify ownership before updating
-          let exists = creds_entity::Entity::find_by_id(&api_alias_id_owned)
+          // Verify ownership before updating; missing or cross-tenant row returns NotFound
+          // so the caller can surface the failure (vs. a silent no-op).
+          let owns = creds_entity::Entity::find_by_id(&api_alias_id_owned)
             .into_partial_model::<LlmLibertyCredentialsView>()
             .one(txn)
             .await
@@ -169,8 +170,11 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
             .map(|v| v.tenant_id == tenant_id_owned && v.user_id == user_id_owned)
             .unwrap_or(false);
 
-          if !exists {
-            return Ok(());
+          if !owns {
+            return Err(DbError::ItemNotFound {
+              id: api_alias_id_owned,
+              item_type: "llm_liberty_credentials".to_string(),
+            });
           }
 
           let model = creds_entity::ActiveModel {
@@ -229,26 +233,39 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
         .map_err(|e| DbError::EncryptionError(e.to_string()))?;
     let now = self.time_service.utc_now();
     let api_alias_id_owned = api_alias_id.to_string();
+    let tenant_id_owned = tenant_id.to_string();
 
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          let model = creds_entity::ActiveModel {
-            api_alias_id: Set(api_alias_id_owned),
-            encrypted_access_token: Set(enc_access),
-            access_salt: Set(access_salt),
-            access_nonce: Set(access_nonce),
-            encrypted_refresh_token: Set(enc_refresh),
-            refresh_salt: Set(refresh_salt),
-            refresh_nonce: Set(refresh_nonce),
-            expires_at: Set(new_expires_at),
-            updated_at: Set(now),
-            ..Default::default()
-          };
-          creds_entity::Entity::update(model)
+          // SQLite has no RLS; filter explicitly so a wrong tenant_id can't rotate
+          // another tenant's tokens via a known alias_id.
+          let res = creds_entity::Entity::update_many()
+            .col_expr(
+              creds_entity::Column::EncryptedAccessToken,
+              enc_access.into(),
+            )
+            .col_expr(creds_entity::Column::AccessSalt, access_salt.into())
+            .col_expr(creds_entity::Column::AccessNonce, access_nonce.into())
+            .col_expr(
+              creds_entity::Column::EncryptedRefreshToken,
+              enc_refresh.into(),
+            )
+            .col_expr(creds_entity::Column::RefreshSalt, refresh_salt.into())
+            .col_expr(creds_entity::Column::RefreshNonce, refresh_nonce.into())
+            .col_expr(creds_entity::Column::ExpiresAt, new_expires_at.into())
+            .col_expr(creds_entity::Column::UpdatedAt, now.into())
+            .filter(creds_entity::Column::ApiAliasId.eq(&api_alias_id_owned))
+            .filter(creds_entity::Column::TenantId.eq(&tenant_id_owned))
             .exec(txn)
             .await
             .map_err(DbError::from)?;
+          if res.rows_affected == 0 {
+            return Err(DbError::ItemNotFound {
+              id: api_alias_id_owned,
+              item_type: "llm_liberty_credentials".to_string(),
+            });
+          }
           Ok(())
         })
       })
@@ -281,18 +298,27 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
             return Ok(None);
           }
 
-          let access_token =
-            decrypt_api_key(&encryption_key, &row.encrypted_access_token, &row.access_salt, &row.access_nonce)
-              .map_err(|e| DbError::EncryptionError(e.to_string()))?;
-          let refresh_token =
-            decrypt_api_key(&encryption_key, &row.encrypted_refresh_token, &row.refresh_salt, &row.refresh_nonce)
-              .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+          let access_token = decrypt_api_key(
+            &encryption_key,
+            &row.encrypted_access_token,
+            &row.access_salt,
+            &row.access_nonce,
+          )
+          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+          let refresh_token = decrypt_api_key(
+            &encryption_key,
+            &row.encrypted_refresh_token,
+            &row.refresh_salt,
+            &row.refresh_nonce,
+          )
+          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
 
           Ok(Some(ResolvedLlmLibertyCredentials {
             access_token,
             refresh_token,
             expires_at: row.expires_at,
             tenant_id: row.tenant_id,
+            provider: row.provider,
             auth_scheme: row.auth_scheme,
             auth_key: row.auth_key,
             oauth_token_url: row.oauth_token_url,
@@ -360,8 +386,8 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // Verify ownership before deleting
-          let exists = creds_entity::Entity::find_by_id(&api_alias_id_owned)
+          // Verify ownership before deleting; missing or cross-tenant row returns NotFound.
+          let owns = creds_entity::Entity::find_by_id(&api_alias_id_owned)
             .into_partial_model::<LlmLibertyCredentialsView>()
             .one(txn)
             .await
@@ -369,12 +395,17 @@ impl LlmLibertyCredentialsRepository for DefaultDbService {
             .map(|v| v.tenant_id == tenant_id_owned && v.user_id == user_id_owned)
             .unwrap_or(false);
 
-          if exists {
-            creds_entity::Entity::delete_by_id(api_alias_id_owned)
-              .exec(txn)
-              .await
-              .map_err(DbError::from)?;
+          if !owns {
+            return Err(DbError::ItemNotFound {
+              id: api_alias_id_owned,
+              item_type: "llm_liberty_credentials".to_string(),
+            });
           }
+
+          creds_entity::Entity::delete_by_id(api_alias_id_owned)
+            .exec(txn)
+            .await
+            .map_err(DbError::from)?;
           Ok(())
         })
       })

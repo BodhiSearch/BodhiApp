@@ -82,15 +82,18 @@ async fn test_create_forward_all_stores_all_models(
 
   let extra_headers = extra_headers_for(&api_format);
   let extra_body = extra_body_for(&api_format);
-  let form = ApiModelRequest::default_for(api_format, DefaultApiModelRequest {
-    base_url: "https://api.example.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec![],
-    prefix: Some("test".to_string()),
-    forward_all_with_prefix: true,
-    extra_headers: extra_headers.clone(),
-    extra_body: extra_body.clone(),
-  });
+  let form = ApiModelRequest::default_for(
+    api_format,
+    DefaultApiModelRequest {
+      base_url: "https://api.example.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec![],
+      prefix: Some("test".to_string()),
+      forward_all_with_prefix: true,
+      extra_headers: extra_headers.clone(),
+      extra_body: extra_body.clone(),
+    },
+  );
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(result.forward_all_with_prefix);
@@ -143,15 +146,18 @@ async fn test_create_non_forward_all_validates_and_filters(
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
-  let form = ApiModelRequest::default_for(api_format, DefaultApiModelRequest {
-    base_url: "https://api.example.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["model-x".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let form = ApiModelRequest::default_for(
+    api_format,
+    DefaultApiModelRequest {
+      base_url: "https://api.example.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["model-x".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert!(!result.forward_all_with_prefix);
@@ -189,28 +195,34 @@ async fn test_update_forward_all_stores_all_models(
 
   let extra_headers = extra_headers_for(&api_format);
   let extra_body = extra_body_for(&api_format);
-  let create_form = ApiModelRequest::default_for(api_format.clone(), DefaultApiModelRequest {
-    base_url: "https://api.example.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec![],
-    prefix: Some("initial".to_string()),
-    forward_all_with_prefix: true,
-    extra_headers: extra_headers.clone(),
-    extra_body: extra_body.clone(),
-  });
+  let create_form = ApiModelRequest::default_for(
+    api_format.clone(),
+    DefaultApiModelRequest {
+      base_url: "https://api.example.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec![],
+      prefix: Some("initial".to_string()),
+      forward_all_with_prefix: true,
+      extra_headers: extra_headers.clone(),
+      extra_body: extra_body.clone(),
+    },
+  );
   let created = service
     .create(TEST_TENANT_ID, TEST_USER_ID, create_form)
     .await?;
 
-  let update_form = ApiModelRequest::default_for(api_format, DefaultApiModelRequest {
-    base_url: "https://api.example.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec![],
-    prefix: Some("test".to_string()),
-    forward_all_with_prefix: true,
-    extra_headers: extra_headers.clone(),
-    extra_body: extra_body.clone(),
-  });
+  let update_form = ApiModelRequest::default_for(
+    api_format,
+    DefaultApiModelRequest {
+      base_url: "https://api.example.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec![],
+      prefix: Some("test".to_string()),
+      forward_all_with_prefix: true,
+      extra_headers: extra_headers.clone(),
+      extra_body: extra_body.clone(),
+    },
+  );
   let result = service
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
@@ -255,28 +267,34 @@ async fn test_update_non_forward_all_validates_and_filters(
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
-  let create_form = ApiModelRequest::default_for(api_format.clone(), DefaultApiModelRequest {
-    base_url: "https://api.example.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["model-p".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let create_form = ApiModelRequest::default_for(
+    api_format.clone(),
+    DefaultApiModelRequest {
+      base_url: "https://api.example.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["model-p".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   let created = service
     .create(TEST_TENANT_ID, TEST_USER_ID, create_form)
     .await?;
 
-  let update_form = ApiModelRequest::default_for(api_format, DefaultApiModelRequest {
-    base_url: "https://api.example.com/v2".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["model-p".to_string(), "model-q".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let update_form = ApiModelRequest::default_for(
+    api_format,
+    DefaultApiModelRequest {
+      base_url: "https://api.example.com/v2".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["model-p".to_string(), "model-q".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   let result = service
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
@@ -309,15 +327,18 @@ async fn test_create_rejects_extra_headers_pass_through_auth(
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service, time_service, Arc::new(mock_ai));
 
-  let form = ApiModelRequest::default_for(ApiFormat::AnthropicOAuth, DefaultApiModelRequest {
-    base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["claude-3".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: Some(extra_headers),
-    extra_body: None,
-  });
+  let form = ApiModelRequest::default_for(
+    ApiFormat::AnthropicOAuth,
+    DefaultApiModelRequest {
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["claude-3".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: Some(extra_headers),
+      extra_body: None,
+    },
+  );
 
   let err = service
     .create(TEST_TENANT_ID, TEST_USER_ID, form)
@@ -333,12 +354,15 @@ async fn test_create_rejects_extra_headers_pass_through_auth(
   Ok(())
 }
 
-// api_format change + ApiKeyUpdate::Keep must be rejected (stored key is provider-specific).
+// api_format is immutable on edit — any attempt to change it must be rejected,
+// regardless of the api_key action. Switching FROM/TO LlmLibertyOauth would
+// orphan or silently lose the sibling api_model_oauth_credentials row; for
+// uniformity we forbid the change for all formats.
 #[rstest]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_update_rejects_api_format_change_with_keep_key(
+async fn test_update_rejects_api_format_change(
   #[future]
   #[from(test_db_service)]
   db_service: TestDbService,
@@ -354,36 +378,43 @@ async fn test_update_rejects_api_format_change_with_keep_key(
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service, time_service, Arc::new(mock_ai));
 
-  let create_form = ApiModelRequest::default_for(ApiFormat::OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let create_form = ApiModelRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Set(crate::ApiKey::some("sk-x".into()).unwrap()),
+      models: vec!["gpt-4".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   let created = service
     .create(TEST_TENANT_ID, TEST_USER_ID, create_form)
     .await?;
 
-  let update_form = ApiModelRequest::default_for(ApiFormat::AnthropicOAuth, DefaultApiModelRequest {
-    base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec![],
-    prefix: Some("anth/".to_string()),
-    forward_all_with_prefix: true,
-    extra_headers: None,
-    extra_body: None,
-  });
+  // Even with a fresh api_key, switching format must be rejected.
+  let update_form = ApiModelRequest::default_for(
+    ApiFormat::AnthropicOAuth,
+    DefaultApiModelRequest {
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Set(crate::ApiKey::some("sk-ant-oat01-y".into()).unwrap()),
+      models: vec![],
+      prefix: Some("anth/".to_string()),
+      forward_all_with_prefix: true,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   let err = service
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await
-    .expect_err("must reject Keep when api_format changes");
+    .expect_err("must reject api_format change");
   let msg = format!("{}", err);
   assert!(
-    msg.contains("Changing api_format requires a new api_key"),
-    "expected ApiFormatChangedRequiresNewKey, got: {}",
+    msg.contains("api_format cannot be changed"),
+    "expected ApiFormatImmutableOnEdit, got: {}",
     msg
   );
   Ok(())
@@ -411,15 +442,18 @@ async fn test_create_gemini_preserves_bare_name(
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
-  let form = ApiModelRequest::default_for(ApiFormat::Gemini, DefaultApiModelRequest {
-    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gemini-2.5-flash".to_string()],
-    prefix: Some("gmn/".to_string()),
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let form = ApiModelRequest::default_for(
+    ApiFormat::Gemini,
+    DefaultApiModelRequest {
+      base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gemini-2.5-flash".to_string()],
+      prefix: Some("gmn/".to_string()),
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert_eq!(1, result.models.len());
@@ -478,28 +512,34 @@ async fn test_update_gemini_preserves_bare_name(
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
-  let create_form = ApiModelRequest::default_for(ApiFormat::Gemini, DefaultApiModelRequest {
-    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gemini-2.5-flash".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let create_form = ApiModelRequest::default_for(
+    ApiFormat::Gemini,
+    DefaultApiModelRequest {
+      base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gemini-2.5-flash".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   let created = service
     .create(TEST_TENANT_ID, TEST_USER_ID, create_form)
     .await?;
 
-  let update_form = ApiModelRequest::default_for(ApiFormat::Gemini, DefaultApiModelRequest {
-    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gemini-2.5-flash".to_string()],
-    prefix: Some("gmn/".to_string()),
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let update_form = ApiModelRequest::default_for(
+    ApiFormat::Gemini,
+    DefaultApiModelRequest {
+      base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gemini-2.5-flash".to_string()],
+      prefix: Some("gmn/".to_string()),
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   let result = service
     .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
     .await?;
@@ -545,15 +585,18 @@ async fn test_create_openai_with_prefix_no_mutation(
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
 
-  let form = ApiModelRequest::default_for(ApiFormat::OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string()],
-    prefix: Some("oai/".to_string()),
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let form = ApiModelRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gpt-4".to_string()],
+      prefix: Some("oai/".to_string()),
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let result = service.create(TEST_TENANT_ID, TEST_USER_ID, form).await?;
   assert_eq!(1, result.models.len());
@@ -582,15 +625,18 @@ async fn test_create_rejects_extra_headers_x_goog_api_key(
   let time_service = Arc::new(FrozenTimeService::default());
   let service = DefaultApiModelService::new(db_service, time_service, Arc::new(mock_ai));
 
-  let form = ApiModelRequest::default_for(ApiFormat::Gemini, DefaultApiModelRequest {
-    base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gemini-2.5-flash".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: Some(extra_headers),
-    extra_body: None,
-  });
+  let form = ApiModelRequest::default_for(
+    ApiFormat::Gemini,
+    DefaultApiModelRequest {
+      base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gemini-2.5-flash".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: Some(extra_headers),
+      extra_body: None,
+    },
+  );
 
   let err = service
     .create(TEST_TENANT_ID, TEST_USER_ID, form)

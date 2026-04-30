@@ -2,7 +2,7 @@ use crate::oai::OAIRouteError;
 use crate::shared::AuthScope;
 use crate::{AnthropicApiError, BodhiErrorResponse, JsonRejectionError};
 use axum::extract::{Path, Query};
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
@@ -78,6 +78,18 @@ async fn resolve_anthropic_alias(
     let creds = crate::providers::resolve_llm_liberty_credentials(auth_scope, &api_alias.id)
       .await
       .map_err(BodhiErrorResponse::from)?;
+    // Forward-compat guard: an envelope from a future llm-liberty provider
+    // (openai-codex, google-gemini, …) must not be routed through Anthropic's
+    // upstream. Reject loudly rather than send a malformed request.
+    if creds.provider != "anthropic" {
+      return Err(
+        OAIRouteError::InvalidRequest(format!(
+          "Alias '{}' uses llm_liberty provider '{}'; only 'anthropic' is supported on this route.",
+          api_alias.id, creds.provider
+        ))
+        .into(),
+      );
+    }
     let LlmLibertyRequestParts {
       access_token,
       base_url,
@@ -143,6 +155,13 @@ pub async fn anthropic_messages_create_handler(
     Some(params)
   };
 
+  // For LlmLibertyOauth aliases the upstream may invalidate access tokens before
+  // expires_at (third-party usage flagging). Retry once with a force-refreshed
+  // token on a 401. Clone the request body+headers so the retry has fresh inputs.
+  let is_llm_liberty = api_alias.api_format == ApiFormat::LlmLibertyOauth;
+  let retry_inputs =
+    is_llm_liberty.then(|| (request.clone(), params_opt.clone(), client_headers.clone()));
+
   let response = auth_scope
     .inference()
     .forward_remote_with_params(
@@ -155,6 +174,39 @@ pub async fn anthropic_messages_create_handler(
     )
     .await
     .map_err(BodhiErrorResponse::from)?;
+
+  if response.status() == StatusCode::UNAUTHORIZED {
+    if let Some((retry_request, retry_params, retry_headers)) = retry_inputs {
+      let creds = crate::providers::resolve_llm_liberty_credentials_with_force_refresh(
+        &auth_scope,
+        &api_alias.id,
+      )
+      .await
+      .map_err(BodhiErrorResponse::from)?;
+      let LlmLibertyRequestParts {
+        access_token,
+        base_url,
+        extra_headers,
+        extra_body,
+      } = creds.into_request_parts();
+      let mut retry_alias = api_alias.clone();
+      retry_alias.base_url = base_url;
+      retry_alias.extra_headers = extra_headers;
+      retry_alias.extra_body = extra_body;
+      return auth_scope
+        .inference()
+        .forward_remote_with_params(
+          LlmEndpoint::AnthropicMessages,
+          retry_request,
+          &retry_alias,
+          access_token,
+          retry_params,
+          retry_headers,
+        )
+        .await
+        .map_err(|e| BodhiErrorResponse::from(e).into());
+    }
+  }
 
   Ok(response)
 }

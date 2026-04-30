@@ -350,14 +350,24 @@ describe('AliasSelector', () => {
         modelId: 'gpt-4',
         models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
         expectedProvider: null as string | null,
-        llmLibertySummary: null as null | { provider: string; envelope_version: string; expires_at: number; has_refresh_token: boolean },
+        llmLibertySummary: null as null | {
+          provider: string;
+          envelope_version: string;
+          expires_at: number;
+          has_refresh_token: boolean;
+        },
       },
       {
         apiFormat: 'openai_responses' as const,
         modelId: 'gpt-4o',
         models: [{ id: 'gpt-4o', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' as const }],
         expectedProvider: null as string | null,
-        llmLibertySummary: null as null | { provider: string; envelope_version: string; expires_at: number; has_refresh_token: boolean },
+        llmLibertySummary: null as null | {
+          provider: string;
+          envelope_version: string;
+          expires_at: number;
+          has_refresh_token: boolean;
+        },
       },
       {
         apiFormat: 'anthropic' as const,
@@ -372,7 +382,12 @@ describe('AliasSelector', () => {
           },
         ],
         expectedProvider: null as string | null,
-        llmLibertySummary: null as null | { provider: string; envelope_version: string; expires_at: number; has_refresh_token: boolean },
+        llmLibertySummary: null as null | {
+          provider: string;
+          envelope_version: string;
+          expires_at: number;
+          has_refresh_token: boolean;
+        },
       },
       {
         apiFormat: 'anthropic_oauth' as const,
@@ -387,7 +402,12 @@ describe('AliasSelector', () => {
           },
         ],
         expectedProvider: null as string | null,
-        llmLibertySummary: null as null | { provider: string; envelope_version: string; expires_at: number; has_refresh_token: boolean },
+        llmLibertySummary: null as null | {
+          provider: string;
+          envelope_version: string;
+          expires_at: number;
+          has_refresh_token: boolean;
+        },
       },
       {
         apiFormat: 'llm_liberty_oauth' as const,

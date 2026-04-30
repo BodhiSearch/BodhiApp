@@ -29,9 +29,11 @@ function StatefulHarness({
   return <LlmLibertyEnvelopeInput value={value} onChange={setValue} {...rest} />;
 }
 
-function renderInput(overrides: Omit<React.ComponentProps<typeof LlmLibertyEnvelopeInput>, 'value' | 'onChange'> = {
-  mode: 'create',
-}) {
+function renderInput(
+  overrides: Omit<React.ComponentProps<typeof LlmLibertyEnvelopeInput>, 'value' | 'onChange'> = {
+    mode: 'create',
+  }
+) {
   const utils = render(<StatefulHarness {...overrides} />);
   const textarea = screen.getByTestId('llm-liberty-envelope-input') as HTMLTextAreaElement;
   return { ...utils, textarea };

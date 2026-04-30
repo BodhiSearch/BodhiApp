@@ -321,15 +321,18 @@ async fn test_create_api_model_forward_all_requires_prefix(
   );
 
   // Try to create API model with forward_all=true but no prefix
-  let create_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string()],
-    prefix: None,                  // No prefix provided
-    forward_all_with_prefix: true, // But forward_all is enabled
-    extra_headers: None,
-    extra_body: None,
-  });
+  let create_form = ApiModelRequest::default_for(
+    OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gpt-4".to_string()],
+      prefix: None,                  // No prefix provided
+      forward_all_with_prefix: true, // But forward_all is enabled
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let response = test_router(app_service)
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
@@ -367,15 +370,18 @@ async fn test_create_api_model_duplicate_prefix_error(
   );
 
   // Create first API model with prefix
-  let first_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string()],
-    prefix: Some("azure/".to_string()),
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let first_form = ApiModelRequest::default_for(
+    OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gpt-4".to_string()],
+      prefix: Some("azure/".to_string()),
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let response = test_router(app_service.clone())
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(first_form)?)
@@ -384,15 +390,18 @@ async fn test_create_api_model_duplicate_prefix_error(
   assert_eq!(response.status(), StatusCode::CREATED);
 
   // Try to create second API model with same prefix
-  let second_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["claude-3".to_string()],
-    prefix: Some("azure/".to_string()), // Same prefix
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let second_form = ApiModelRequest::default_for(
+    OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["claude-3".to_string()],
+      prefix: Some("azure/".to_string()), // Same prefix
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let response = test_router(app_service)
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(second_form)?)
@@ -426,15 +435,18 @@ async fn test_update_api_model_duplicate_prefix_error(
   );
 
   // Create first API model with prefix "azure/"
-  let first_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["gpt-4".to_string()],
-    prefix: Some("azure/".to_string()),
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let first_form = ApiModelRequest::default_for(
+    OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gpt-4".to_string()],
+      prefix: Some("azure/".to_string()),
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let response = test_router(app_service.clone())
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(first_form)?)
@@ -443,15 +455,18 @@ async fn test_update_api_model_duplicate_prefix_error(
   assert_eq!(response.status(), StatusCode::CREATED);
 
   // Create second API model with different prefix "anthropic/"
-  let second_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["claude-3".to_string()],
-    prefix: Some("anthropic/".to_string()),
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let second_form = ApiModelRequest::default_for(
+    OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["claude-3".to_string()],
+      prefix: Some("anthropic/".to_string()),
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let response = test_router(app_service.clone())
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(second_form)?)
@@ -462,15 +477,18 @@ async fn test_update_api_model_duplicate_prefix_error(
   let second_model_id = second_model.id;
 
   // Try to update second model to use first model's prefix
-  let update_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Keep,
-    models: vec!["claude-3".to_string()],
-    prefix: Some("azure/".to_string()), // Trying to use existing prefix
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let update_form = ApiModelRequest::default_for(
+    OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["claude-3".to_string()],
+      prefix: Some("azure/".to_string()), // Trying to use existing prefix
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   let response = test_router(app_service)
     .oneshot(

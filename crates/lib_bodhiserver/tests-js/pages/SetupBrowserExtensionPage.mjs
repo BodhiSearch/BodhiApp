@@ -62,7 +62,7 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
   async expectSupportedBrowserUI() {
     // Should show extension detection UI for supported browsers
     await this.page.waitForSelector(
-      `${this.selectors.extensionNotFound}, ${this.selectors.extensionFound}, ${this.selectors.extensionDetecting}`,
+      `${this.selectors.extensionNotFound}, ${this.selectors.extensionFound}, ${this.selectors.extensionDetecting}`
     );
   }
 

@@ -85,15 +85,18 @@ async fn test_create_api_model_handler_success(
     .build()
     .await?;
 
-  let create_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
-    base_url: input_url.to_string(),
-    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
-    models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let create_form = ApiModelRequest::default_for(
+    OpenAI,
+    DefaultApiModelRequest {
+      base_url: input_url.to_string(),
+      api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
+      models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   // Make POST request to create API model
   let response = test_router(Arc::new(app_service))
@@ -146,15 +149,18 @@ async fn test_create_api_model_handler_generates_uuid(
     .build()
     .await?;
 
-  let create_form = ApiModelRequest::default_for(OpenAI, DefaultApiModelRequest {
-    base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
-    models: vec!["gpt-4".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: None,
-    extra_body: None,
-  });
+  let create_form = ApiModelRequest::default_for(
+    OpenAI,
+    DefaultApiModelRequest {
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
+      models: vec!["gpt-4".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
 
   // Make POST request to create API model (should succeed since ULIDs are unique)
   let response = test_router(Arc::new(app_service))
@@ -196,15 +202,18 @@ async fn test_create_api_model_handler_anthropic_oauth_stores_extra_fields(
     .build()
     .await?;
 
-  let create_form = ApiModelRequest::default_for(ApiFormat::AnthropicOAuth, DefaultApiModelRequest {
-    base_url: "https://api.anthropic.com/v1".to_string(),
-    api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string())?),
-    models: vec!["claude-3-5-sonnet".to_string()],
-    prefix: None,
-    forward_all_with_prefix: false,
-    extra_headers: Some(extra_headers.clone()),
-    extra_body: Some(extra_body.clone()),
-  });
+  let create_form = ApiModelRequest::default_for(
+    ApiFormat::AnthropicOAuth,
+    DefaultApiModelRequest {
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string())?),
+      models: vec!["claude-3-5-sonnet".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: Some(extra_headers.clone()),
+      extra_body: Some(extra_body.clone()),
+    },
+  );
 
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)

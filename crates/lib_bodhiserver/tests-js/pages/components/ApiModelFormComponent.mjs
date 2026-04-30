@@ -123,7 +123,9 @@ export class ApiModelFormComponent {
   }
 
   async expectLlmLibertyEnvelopeError(substring) {
-    await expect(this.page.locator('[data-testid="llm-liberty-envelope-error"]')).toContainText(substring);
+    await expect(this.page.locator('[data-testid="llm-liberty-envelope-error"]')).toContainText(
+      substring
+    );
   }
 
   // Extra Headers / Extra Body methods

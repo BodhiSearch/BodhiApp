@@ -109,6 +109,14 @@ react-hook-form + zod schema + ts-client types. Schemas in `src/schemas/`:
 - `convertFormToApi()` / `convertApiToForm()` for type conversion between form and API formats
 - Types re-exported from `@bodhiapp/ts-client`
 
+### API Models: `api_format` Is Read-Only on Edit
+
+`ApiFormatSelector` is `disabled` when `mode === 'edit'` and renders a "Format cannot be changed after creation. Delete and recreate the alias to use a different format." hint. Server enforces the same invariant via `ObjValidationError::ApiFormatImmutableOnEdit`. The `LlmLibertyOauth` variant has sibling-table credentials that would orphan on switch-out; locking format-change UI-side keeps the contract consistent across all variants.
+
+### LLM Liberty OAuth Envelope (paste-in flow)
+
+`src/components/api-models/form/LlmLibertyEnvelopeInput.tsx` validates pasted JSON via `src/schemas/llmLibertyEnvelope.ts` (zod). Required leaves: `version="1.0.0"`, `provider="anthropic"`, non-empty `access_token` / `refresh_token`, `auth.{in,key,scheme}`, `oauth.{token_url,client_id}`. NOT validated client-side (server is source of truth): `oauth.authorize_url`, `api.*_url`, `expires_at` integer. Textarea uses `autoComplete=off / spellCheck=false / data-1p-ignore / data-lpignore` to prevent password-manager/spellcheck leakage of pasted secrets.
+
 ### App Initialization Flow
 
 `AppInitializer` (`src/components/AppInitializer.tsx`) checks `/bodhi/v1/info` status and redirects:

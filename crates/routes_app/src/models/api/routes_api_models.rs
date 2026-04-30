@@ -8,8 +8,7 @@ use axum::{extract::Path, http::StatusCode, Json};
 use services::models::LlmLibertyRequestParts;
 use services::{
   ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiModelRequest, DefaultFetchModelsRequest,
-  FetchModelsRequest, FetchModelsResponse, LlmLibertyFetchModelsRequest,
-  LlmLibertyTestPromptRequest, TestCreds, TestPromptRequest, TestPromptResponse,
+  FetchModelsRequest, FetchModelsResponse, TestCreds, TestPromptRequest, TestPromptResponse,
 };
 
 /// Get a specific API model configuration
@@ -170,27 +169,17 @@ pub async fn api_models_test(
   let api_format = payload.api_format();
   let result = match payload {
     TestPromptRequest::LlmLibertyOauth(d) => {
-      let LlmLibertyTestPromptRequest {
-        id,
-        envelope,
-        model,
-        prompt,
-      } = d;
-      let parts: Result<LlmLibertyRequestParts, BodhiErrorResponse> = match (id, envelope) {
-        (Some(_), Some(_)) | (None, None) => Err(BodhiErrorResponse::from(
-          services::ObjValidationError::LlmLibertyEnvelopeInvalid(
-            "exactly one of `id` or `envelope` must be provided".into(),
-          ),
-        )),
-        (Some(id), None) => {
+      let (source, model, prompt) = d.into_parts().map_err(BodhiErrorResponse::from)?;
+      let parts = match source {
+        services::LlmLibertyCredsSource::Saved(id) => {
           let creds = crate::providers::resolve_llm_liberty_credentials(&auth_scope, &id)
             .await
             .map_err(BodhiErrorResponse::from)?;
-          Ok(creds.into_request_parts())
+          creds.into_request_parts()
         }
-        (None, Some(env)) => {
+        services::LlmLibertyCredsSource::Inline(env) => {
           env.validate_supported().map_err(BodhiErrorResponse::from)?;
-          Ok(env.to_request_parts())
+          env.to_request_parts()
         }
       };
       let LlmLibertyRequestParts {
@@ -198,7 +187,7 @@ pub async fn api_models_test(
         base_url,
         extra_headers,
         extra_body,
-      } = parts?;
+      } = parts;
       ai_api
         .test_prompt(
           access_token,
@@ -300,20 +289,16 @@ pub async fn api_models_fetch_models(
 
   let api_format = payload.api_format();
   let models = match payload {
-    FetchModelsRequest::LlmLibertyOauth(LlmLibertyFetchModelsRequest { id, envelope }) => {
-      let parts = match (id, envelope) {
-        (Some(_), Some(_)) | (None, None) => {
-          return Err(BodhiErrorResponse::from(
-            services::ObjValidationError::LlmLibertyEnvelopeInvalid(
-              "exactly one of `id` or `envelope` must be provided".into(),
-            ),
-          ));
+    FetchModelsRequest::LlmLibertyOauth(d) => {
+      let source = d.into_source().map_err(BodhiErrorResponse::from)?;
+      let parts = match source {
+        services::LlmLibertyCredsSource::Saved(id) => {
+          crate::providers::resolve_llm_liberty_credentials(&auth_scope, &id)
+            .await
+            .map_err(BodhiErrorResponse::from)?
+            .into_request_parts()
         }
-        (Some(id), None) => crate::providers::resolve_llm_liberty_credentials(&auth_scope, &id)
-          .await
-          .map_err(BodhiErrorResponse::from)?
-          .into_request_parts(),
-        (None, Some(env)) => {
+        services::LlmLibertyCredsSource::Inline(env) => {
           env.validate_supported().map_err(BodhiErrorResponse::from)?;
           env.to_request_parts()
         }
@@ -391,11 +376,11 @@ pub async fn api_models_fetch_models(
     tag = API_TAG_MODELS_API,
     operation_id = "getApiFormats",
     summary = "Get Available API Formats",
-    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), 'anthropic_oauth' (Anthropic via OAuth Bearer token), and 'gemini' (Google Gemini).",
+    description = "Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), 'anthropic_oauth' (Anthropic via long-lived setup token), 'llm_liberty_oauth' (Anthropic via llm-liberty OAuth envelope), and 'gemini' (Google Gemini).",
     responses(
         (status = 200, description = "API formats retrieved successfully", body = ApiFormatsResponse,
          example = json!({
-             "data": ["openai", "openai_responses", "anthropic", "anthropic_oauth", "gemini"]
+             "data": ["openai", "openai_responses", "anthropic", "anthropic_oauth", "llm_liberty_oauth", "gemini"]
          })),
     ),
     security(

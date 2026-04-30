@@ -156,6 +156,15 @@ impl ApiModelService for DefaultApiModelService {
 
     let api_format = form.api_format();
 
+    // Format is immutable on edit. The LlmLibertyOauth variant has its own
+    // sibling-table credentials that would orphan on switch-out and silently
+    // 404 on switch-in; the simpler contract is to forbid changes entirely.
+    if api_format != api_alias.api_format {
+      return Err(ApiModelServiceError::Validation(
+        crate::ObjValidationError::ApiFormatImmutableOnEdit,
+      ));
+    }
+
     match form {
       ApiModelRequest::LlmLibertyOauth(d) => {
         self
@@ -276,7 +285,12 @@ impl ApiModelService for DefaultApiModelService {
           .await
           .ok()
           .flatten();
-        (key, api_alias.base_url.clone(), api_alias.extra_headers.clone(), api_alias.extra_body.clone())
+        (
+          key,
+          api_alias.base_url.clone(),
+          api_alias.extra_headers.clone(),
+          api_alias.extra_body.clone(),
+        )
       };
 
     // Fetch models from remote API synchronously
@@ -408,7 +422,13 @@ impl DefaultApiModelService {
 
     let provider_models = self
       .ai_api_service
-      .fetch_models(access_token, &base_url, &api_format, extra_headers, extra_body)
+      .fetch_models(
+        access_token,
+        &base_url,
+        &api_format,
+        extra_headers,
+        extra_body,
+      )
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
@@ -455,12 +475,7 @@ impl DefaultApiModelService {
   ) -> Result<ApiAliasResponse, ApiModelServiceError> {
     validate_extra_headers(&form.extra_headers)?;
 
-    if api_format != api_alias.api_format && matches!(form.api_key, ApiKeyUpdate::Keep) {
-      return Err(ApiModelServiceError::Validation(
-        crate::ObjValidationError::ApiFormatChangedRequiresNewKey,
-      ));
-    }
-
+    // Format equality is enforced upstream in `update`; api_format == api_alias.api_format here.
     let api_key_update = form.api_key.into_raw_update();
     let base_url = form.base_url.trim_end_matches('/').to_string();
 

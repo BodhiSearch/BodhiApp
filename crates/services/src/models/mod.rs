@@ -1,9 +1,6 @@
 pub mod anthropic_model;
 mod api_alias_repository;
 pub(crate) mod api_model_alias_entity;
-pub(crate) mod llm_liberty_credentials_entity;
-pub mod llm_liberty_credentials_repository;
-pub mod llm_liberty_envelope;
 mod api_model_service;
 mod auth_scoped_api_models;
 mod auth_scoped_data;
@@ -15,6 +12,9 @@ mod download_service;
 pub mod gemini_model;
 pub mod gguf;
 mod hub_service;
+pub(crate) mod llm_liberty_credentials_entity;
+pub mod llm_liberty_credentials_repository;
+pub mod llm_liberty_envelope;
 pub(crate) mod model_metadata_entity;
 mod model_metadata_repository;
 pub mod model_objs;
@@ -33,11 +33,11 @@ mod test_api_model_service;
 #[path = "test_download_repository.rs"]
 mod test_download_repository;
 #[cfg(test)]
-#[path = "test_llm_liberty_credentials_repository.rs"]
-mod test_llm_liberty_credentials_repository;
-#[cfg(test)]
 #[path = "test_download_repository_isolation.rs"]
 mod test_download_repository_isolation;
+#[cfg(test)]
+#[path = "test_llm_liberty_credentials_repository.rs"]
+mod test_llm_liberty_credentials_repository;
 #[cfg(test)]
 #[path = "test_model_metadata_global.rs"]
 mod test_model_metadata_global;

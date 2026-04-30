@@ -1,4 +1,4 @@
-use super::refresh::{ensure_fresh_credentials, LlmLibertyRefreshError};
+use super::refresh::{ensure_fresh_credentials, force_refresh_credentials, LlmLibertyRefreshError};
 use crate::models::llm_liberty_credentials_repository::MockLlmLibertyCredentialsRepository;
 use crate::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
 use crate::SafeReqwest;
@@ -11,12 +11,16 @@ use rstest::rstest;
 const TENANT_A: &str = "tenant-a";
 const USER_A: &str = "user-a";
 
-fn make_creds(token_url: &str, expires_at: chrono::DateTime<chrono::Utc>) -> ResolvedLlmLibertyCredentials {
+fn make_creds(
+  token_url: &str,
+  expires_at: chrono::DateTime<chrono::Utc>,
+) -> ResolvedLlmLibertyCredentials {
   ResolvedLlmLibertyCredentials {
     access_token: "access-old".to_string(),
     refresh_token: "refresh-old".to_string(),
     expires_at,
     tenant_id: TENANT_A.to_string(),
+    provider: "anthropic".to_string(),
     auth_scheme: "Bearer".to_string(),
     auth_key: "Authorization".to_string(),
     oauth_token_url: token_url.to_string(),
@@ -83,9 +87,7 @@ async fn refresh_persists_rotated_tokens_when_expired() -> anyhow::Result<()> {
     .mock("POST", "/oauth/token")
     .with_status(200)
     .with_header("content-type", "application/json")
-    .with_body(
-      r#"{"access_token":"access-new","refresh_token":"refresh-new","expires_in":28800}"#,
-    )
+    .with_body(r#"{"access_token":"access-new","refresh_token":"refresh-new","expires_in":28800}"#)
     .create_async()
     .await;
 
@@ -155,9 +157,7 @@ async fn refresh_concurrent_requests_serialize() -> anyhow::Result<()> {
     .expect_at_most(1)
     .with_status(200)
     .with_header("content-type", "application/json")
-    .with_body(
-      r#"{"access_token":"access-new","refresh_token":"refresh-new","expires_in":28800}"#,
-    )
+    .with_body(r#"{"access_token":"access-new","refresh_token":"refresh-new","expires_in":28800}"#)
     .create_async()
     .await;
 
@@ -239,5 +239,77 @@ async fn refresh_returns_not_found_when_no_credentials_row() -> anyhow::Result<(
 
   let result = ensure_fresh_credentials(&repo, &safe_http(), TENANT_A, USER_A, alias_id).await;
   assert!(matches!(result, Err(LlmLibertyRefreshError::NotFound(_))));
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn refresh_rejects_response_missing_expires_in() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let token_url = format!("{}/oauth/token", server.url());
+  let alias_id = "alias-missing-expires-in";
+
+  let _mock = server
+    .mock("POST", "/oauth/token")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"access_token":"access-new","refresh_token":"refresh-new"}"#)
+    .create_async()
+    .await;
+
+  let mut repo = MockLlmLibertyCredentialsRepository::new();
+  let creds = make_creds(&token_url, Utc::now() - Duration::minutes(5));
+  repo
+    .expect_get_llm_liberty_credentials()
+    .returning(move |_, _, _| Ok(Some(creds.clone())));
+  repo
+    .expect_update_llm_liberty_tokens()
+    .times(0)
+    .returning(|_, _, _, _, _| Ok(()));
+
+  let result = ensure_fresh_credentials(&repo, &safe_http(), TENANT_A, USER_A, alias_id).await;
+  assert!(matches!(
+    result,
+    Err(LlmLibertyRefreshError::MissingExpiresIn)
+  ));
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn force_refresh_rotates_even_when_token_within_skew() -> anyhow::Result<()> {
+  // Token expires 30 minutes from now (well outside skew). force_refresh must
+  // still hit the OAuth endpoint and persist new tokens.
+  let mut server = Server::new_async().await;
+  let token_url = format!("{}/oauth/token", server.url());
+  let alias_id = "alias-force-refresh";
+
+  let mock = server
+    .mock("POST", "/oauth/token")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(
+      r#"{"access_token":"access-forced","refresh_token":"refresh-forced","expires_in":28800}"#,
+    )
+    .create_async()
+    .await;
+
+  let mut repo = MockLlmLibertyCredentialsRepository::new();
+  let creds = make_creds(&token_url, Utc::now() + Duration::minutes(30));
+  repo
+    .expect_get_llm_liberty_credentials()
+    .returning(move |_, _, _| Ok(Some(creds.clone())));
+  repo
+    .expect_update_llm_liberty_tokens()
+    .withf(|_, _, access, refresh, _| access == "access-forced" && refresh == "refresh-forced")
+    .times(1)
+    .returning(|_, _, _, _, _| Ok(()));
+
+  let result = force_refresh_credentials(&repo, &safe_http(), TENANT_A, USER_A, alias_id).await?;
+  assert_eq!("access-forced", result.access_token);
+  assert_eq!("refresh-forced", result.refresh_token);
+  mock.assert_async().await;
   Ok(())
 }

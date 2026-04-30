@@ -76,6 +76,12 @@ export function LlmLibertyEnvelopeInput({
         onChange={(e) => handleChange(e.target.value)}
         placeholder={PLACEHOLDER}
         rows={8}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        data-1p-ignore="true"
+        data-lpignore="true"
         className={`font-mono text-xs ${displayError ? 'border-destructive' : ''}`}
       />
       {displayError && (

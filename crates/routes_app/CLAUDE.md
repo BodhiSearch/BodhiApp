@@ -68,6 +68,15 @@ Every new route must:
 6. Import from `@bodhiapp/ts-client` in frontend (not hand-rolled types)
 7. Verify: `cargo test -p routes_app -- openapi` and `cd crates/bodhi && npm test`
 
+## Anthropic Proxy: LlmLibertyOauth Path
+
+`src/anthropic/routes_anthropic.rs` proxies `/anthropic/v1/messages` and `/anthropic/v1/models*`. For `ApiFormat::LlmLibertyOauth` aliases, the resolver in `resolve_anthropic_alias`:
+1. Calls `providers::resolve_llm_liberty_credentials` (delegates to `services::ai_apis::llm_liberty::ensure_fresh_credentials` — per-alias mutex, skew-window refresh).
+2. **Verifies `creds.provider == "anthropic"`** before forwarding — future llm-liberty providers (openai-codex, google-gemini, …) get their own routes; this guard rejects mis-routed envelopes with a 400.
+3. Rewrites `api_alias.{base_url, extra_headers, extra_body}` from the resolved envelope so the inference service sees a fully-populated alias.
+
+**401-retry-with-force-refresh**: `anthropic_messages_create_handler` clones the request body+params+headers up-front, makes the upstream call, and on `StatusCode::UNAUTHORIZED` from a `LlmLibertyOauth` alias calls `providers::resolve_llm_liberty_credentials_with_force_refresh` (which delegates to `services::ai_apis::llm_liberty::force_refresh_credentials`, bypassing the skew check) and retries the upstream call once. A second 401 surfaces to the user untouched. This handles the case where Anthropic invalidates access tokens before `expires_at` (e.g. third-party-usage flagging).
+
 ## Key Workflow Gotchas (Critical)
 
 **Session clearing on role change**: When a user's role changes, all sessions must be cleared via `session_service`. The handler logs but does not fail if clearing errors.

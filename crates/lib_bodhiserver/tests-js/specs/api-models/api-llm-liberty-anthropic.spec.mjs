@@ -85,10 +85,15 @@ function loadEnvelope() {
   return parsed;
 }
 
+// OFFLINE-ONLY EXCEPTION TO feedback_no_skip_for_missing_env.md.
+// This spec drives a live OAuth flow against Anthropic. Tokens are short-lived
+// (~8h) and the refresh token may be revoked when flagged as third-party usage,
+// so we cannot store a long-lived envelope as a CI secret. Local-only by design.
+// Run with: BODHI_E2E_LOCAL=1 npm run test:playwright -- <filter>
 test.describe('LLM Liberty OAuth - Anthropic end-to-end (local only)', () => {
   test.skip(
     !process.env.BODHI_E2E_LOCAL,
-    'Set BODHI_E2E_LOCAL=1 to run; needs tests-js/data/local/anthropic.json from `npx @bodhiapp/llm-liberty@latest login anthropic`.'
+    'Set BODHI_E2E_LOCAL=1 to run; needs tests-js/data/local/anthropic.json from `npx @bodhiapp/llm-liberty@latest login anthropic`. See file-top comment for the no-skip-for-missing-env exception rationale.'
   );
 
   let envelope;

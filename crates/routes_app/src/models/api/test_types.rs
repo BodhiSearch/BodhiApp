@@ -33,43 +33,55 @@ fn test_create_api_model_form_validation() {
 
 #[test]
 fn test_prompt_request_validation() {
-  let too_long = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
-    creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    model: "gpt-4".to_string(),
-    prompt: "This prompt is way too long and exceeds the 30 character limit".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let too_long = TestPromptRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultTestPromptRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "This prompt is way too long and exceeds the 30 character limit".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(too_long.validate().is_err());
 
-  let valid = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
-    creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    model: "gpt-4".to_string(),
-    prompt: "Hello, how are you?".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let valid = TestPromptRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultTestPromptRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello, how are you?".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(valid.validate().is_ok());
 }
 
 #[test]
 fn test_fetch_models_request_validation() {
-  let invalid = FetchModelsRequest::default_for(ApiFormat::OpenAI, DefaultFetchModelsRequest {
-    creds: TestCreds::ApiKey(ApiKey::none()),
-    base_url: "not-a-url".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let invalid = FetchModelsRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultFetchModelsRequest {
+      creds: TestCreds::ApiKey(ApiKey::none()),
+      base_url: "not-a-url".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(invalid.validate().is_err());
 
-  let valid = FetchModelsRequest::default_for(ApiFormat::OpenAI, DefaultFetchModelsRequest {
-    creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let valid = FetchModelsRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultFetchModelsRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(valid.validate().is_ok());
 }
 
@@ -125,66 +137,84 @@ fn test_response_builders() {
 #[test]
 fn test_test_prompt_request_credentials_validation() {
   // ApiKey with some value - should pass
-  let with_api_key = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
-    creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    model: "gpt-4".to_string(),
-    prompt: "Hello".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let with_api_key = TestPromptRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultTestPromptRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(with_api_key.validate().is_ok());
 
   // ApiKey with None (no authentication) - should pass
-  let no_auth = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
-    creds: TestCreds::ApiKey(ApiKey::none()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    model: "gpt-4".to_string(),
-    prompt: "Hello".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let no_auth = TestPromptRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultTestPromptRequest {
+      creds: TestCreds::ApiKey(ApiKey::none()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(no_auth.validate().is_ok());
 
   // Id-based credentials - should pass
-  let with_id = TestPromptRequest::default_for(ApiFormat::OpenAI, DefaultTestPromptRequest {
-    creds: TestCreds::Id("openai-model".to_string()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    model: "gpt-4".to_string(),
-    prompt: "Hello".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let with_id = TestPromptRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultTestPromptRequest {
+      creds: TestCreds::Id("openai-model".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(with_id.validate().is_ok());
 }
 
 #[test]
 fn test_fetch_models_request_credentials_validation() {
   // ApiKey with some value - should pass
-  let with_api_key = FetchModelsRequest::default_for(ApiFormat::OpenAI, DefaultFetchModelsRequest {
-    creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let with_api_key = FetchModelsRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultFetchModelsRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(with_api_key.validate().is_ok());
 
   // ApiKey with None (no authentication) - should pass
-  let no_auth = FetchModelsRequest::default_for(ApiFormat::OpenAI, DefaultFetchModelsRequest {
-    creds: TestCreds::ApiKey(ApiKey::none()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let no_auth = FetchModelsRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultFetchModelsRequest {
+      creds: TestCreds::ApiKey(ApiKey::none()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(no_auth.validate().is_ok());
 
   // Id-based credentials - should pass
-  let with_id = FetchModelsRequest::default_for(ApiFormat::OpenAI, DefaultFetchModelsRequest {
-    creds: TestCreds::Id("openai-model".to_string()),
-    base_url: "https://api.openai.com/v1".to_string(),
-    extra_headers: None,
-    extra_body: None,
-  });
+  let with_id = FetchModelsRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultFetchModelsRequest {
+      creds: TestCreds::Id("openai-model".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
   assert!(with_id.validate().is_ok());
 }
 

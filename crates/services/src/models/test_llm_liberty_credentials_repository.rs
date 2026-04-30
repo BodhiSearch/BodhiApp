@@ -1,3 +1,4 @@
+use crate::db::DbError;
 use crate::models::llm_liberty_credentials_repository::LlmLibertyCredentialsRepository;
 use crate::models::llm_liberty_envelope::{
   LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyEnvelope, LlmLibertyOauthEndpoints,
@@ -79,7 +80,11 @@ async fn test_create_then_get_round_trip_decrypts(
   let alias_id = "alias-rt-1";
   create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
 
-  let envelope = make_envelope("access-1", "refresh-1", (Utc::now() + Duration::hours(8)).timestamp());
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
   ctx
     .service
     .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
@@ -109,13 +114,21 @@ async fn test_update_credentials_replaces_atomically(
   let alias_id = "alias-rt-2";
   create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
 
-  let env_v1 = make_envelope("access-1", "refresh-1", (Utc::now() + Duration::hours(8)).timestamp());
+  let env_v1 = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
   ctx
     .service
     .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &env_v1)
     .await?;
 
-  let env_v2 = make_envelope("access-2", "refresh-2", (Utc::now() + Duration::hours(8)).timestamp());
+  let env_v2 = make_envelope(
+    "access-2",
+    "refresh-2",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
   ctx
     .service
     .update_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &env_v2)
@@ -143,7 +156,11 @@ async fn test_update_tokens_only_changes_token_columns(
   let alias_id = "alias-rt-3";
   create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
 
-  let envelope = make_envelope("access-1", "refresh-1", (Utc::now() + Duration::hours(8)).timestamp());
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
   ctx
     .service
     .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
@@ -187,7 +204,11 @@ async fn test_get_returns_none_for_other_tenant(
   let alias_id = "alias-rt-isolation-1";
   create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
 
-  let envelope = make_envelope("access-1", "refresh-1", (Utc::now() + Duration::hours(8)).timestamp());
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
   ctx
     .service
     .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
@@ -214,7 +235,11 @@ async fn test_get_returns_none_for_other_user_same_tenant(
   let alias_id = "alias-rt-isolation-2";
   create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
 
-  let envelope = make_envelope("access-1", "refresh-1", (Utc::now() + Duration::hours(8)).timestamp());
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
   ctx
     .service
     .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
@@ -240,7 +265,11 @@ async fn test_delete_cascades_on_alias_delete(
   let alias_id = "alias-rt-cascade";
   create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
 
-  let envelope = make_envelope("access-1", "refresh-1", (Utc::now() + Duration::hours(8)).timestamp());
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
   ctx
     .service
     .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
@@ -293,6 +322,158 @@ async fn test_get_summary_returns_non_secret_fields_only(
     .expect("summary");
   assert_eq!("anthropic", summary.provider);
   assert_eq!("1.0.0", summary.envelope_version);
+  assert_eq!(expires_at_secs, summary.expires_at);
   assert!(summary.has_refresh_token);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_update_credentials_returns_not_found_when_row_missing(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let alias_id = "alias-missing-update";
+  create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
+
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
+  let err = ctx
+    .service
+    .update_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
+    .await
+    .expect_err("expected ItemNotFound");
+  assert!(matches!(err, DbError::ItemNotFound { .. }));
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_update_credentials_returns_not_found_for_cross_tenant(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let alias_id = "alias-cross-tenant-update";
+  create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
+  ctx
+    .service
+    .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
+    .await?;
+
+  let env_attack = make_envelope(
+    "attacker-access",
+    "attacker-refresh",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
+  let err = ctx
+    .service
+    .update_llm_liberty_credentials(TEST_TENANT_B_ID, TEST_USER_ID, alias_id, &env_attack)
+    .await
+    .expect_err("expected ItemNotFound");
+  assert!(matches!(err, DbError::ItemNotFound { .. }));
+
+  // Original row untouched.
+  let resolved = ctx
+    .service
+    .get_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id)
+    .await?
+    .expect("credentials row");
+  assert_eq!("access-1", resolved.access_token);
+  assert_eq!("refresh-1", resolved.refresh_token);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_delete_credentials_returns_not_found_for_cross_tenant(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let alias_id = "alias-cross-tenant-delete";
+  create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
+  ctx
+    .service
+    .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
+    .await?;
+
+  let err = ctx
+    .service
+    .delete_llm_liberty_credentials(TEST_TENANT_B_ID, TEST_USER_ID, alias_id)
+    .await
+    .expect_err("expected ItemNotFound");
+  assert!(matches!(err, DbError::ItemNotFound { .. }));
+
+  // Row still present.
+  assert!(ctx
+    .service
+    .get_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id)
+    .await?
+    .is_some());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_update_tokens_returns_not_found_for_cross_tenant(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let alias_id = "alias-cross-tenant-rotate";
+  create_alias(&ctx, TEST_TENANT_ID, TEST_USER_ID, alias_id).await?;
+  let envelope = make_envelope(
+    "access-1",
+    "refresh-1",
+    (Utc::now() + Duration::hours(8)).timestamp(),
+  );
+  ctx
+    .service
+    .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
+    .await?;
+
+  let err = ctx
+    .service
+    .update_llm_liberty_tokens(
+      TEST_TENANT_B_ID,
+      alias_id,
+      "attacker-access",
+      "attacker-refresh",
+      Utc::now() + Duration::hours(2),
+    )
+    .await
+    .expect_err("expected ItemNotFound");
+  assert!(matches!(err, DbError::ItemNotFound { .. }));
+
+  // Original tokens untouched.
+  let resolved = ctx
+    .service
+    .get_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id)
+    .await?
+    .expect("credentials row");
+  assert_eq!("access-1", resolved.access_token);
   Ok(())
 }

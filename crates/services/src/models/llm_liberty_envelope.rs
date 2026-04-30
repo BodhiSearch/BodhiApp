@@ -52,12 +52,16 @@ pub struct LlmLibertyEnvelope {
   pub auth: LlmLibertyAuthSpec,
   pub oauth: LlmLibertyOauthEndpoints,
   pub api: LlmLibertyApiEndpoints,
-  #[serde(default)]
+  #[serde(default = "empty_json_object")]
   pub headers: serde_json::Value,
-  #[serde(default)]
+  #[serde(default = "empty_json_object")]
   pub body: serde_json::Value,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub extra: Option<serde_json::Value>,
+}
+
+fn empty_json_object() -> serde_json::Value {
+  serde_json::json!({})
 }
 
 impl LlmLibertyEnvelope {
@@ -83,6 +87,22 @@ impl LlmLibertyEnvelope {
       "oauth.client_id is required.".into()
     } else if self.api.chat_url.is_empty() {
       "api.chat_url is required.".into()
+    } else if self.auth.location != "header" {
+      // v1 only supports header-based auth (Bearer); reject query/body schemes loudly.
+      format!(
+        "Unsupported auth.in '{}'. Only 'header' is supported in this version.",
+        self.auth.location
+      )
+    } else if self.auth.key != "Authorization" {
+      format!(
+        "Unsupported auth.key '{}'. Only 'Authorization' is supported in this version.",
+        self.auth.key
+      )
+    } else if self.auth.scheme != "Bearer" {
+      format!(
+        "Unsupported auth.scheme '{}'. Only 'Bearer' is supported in this version.",
+        self.auth.scheme
+      )
     } else {
       return Ok(());
     };
@@ -94,10 +114,23 @@ impl LlmLibertyEnvelope {
   pub fn to_request_parts(&self) -> LlmLibertyRequestParts {
     LlmLibertyRequestParts {
       access_token: Some(self.access_token.clone()),
-      base_url: self.api.base_url.clone(),
+      base_url: derive_base_url(&self.api),
       extra_headers: value_to_opt(&self.headers),
       extra_body: value_to_opt(&self.body),
     }
+  }
+}
+
+/// llm-liberty envelopes set `api.base_url` to the host (e.g. `https://api.anthropic.com`)
+/// and put the version segment in `api.chat_url` (`https://api.anthropic.com/v1/messages`).
+/// Provider clients downstream append `/messages` and `/models` to the alias's `base_url`,
+/// so we must give them the versioned base. Derive it by stripping the trailing path
+/// segment from `chat_url` (typically `/messages`); fall back to envelope `base_url`
+/// only if `chat_url` doesn't have a path.
+fn derive_base_url(api: &LlmLibertyApiEndpoints) -> String {
+  match api.chat_url.rsplit_once('/') {
+    Some((parent, _last)) if !parent.is_empty() => parent.to_string(),
+    _ => api.base_url.clone(),
   }
 }
 
@@ -148,6 +181,9 @@ pub struct ResolvedLlmLibertyCredentials {
   pub refresh_token: String,
   pub expires_at: chrono::DateTime<chrono::Utc>,
   pub tenant_id: String,
+  /// The llm-liberty provider id ("anthropic" in v1). Routes that target a
+  /// specific upstream MUST verify this matches before forwarding.
+  pub provider: String,
   pub auth_scheme: String,
   pub auth_key: String,
   pub oauth_token_url: String,
@@ -202,5 +238,93 @@ fn value_to_opt_owned(v: serde_json::Value) -> Option<serde_json::Value> {
     None
   } else {
     Some(v)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::models::llm_liberty_envelope::{
+    LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyEnvelope, LlmLibertyOauthEndpoints,
+  };
+  use crate::ObjValidationError;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+
+  fn valid_envelope() -> LlmLibertyEnvelope {
+    LlmLibertyEnvelope {
+      version: "1.0.0".into(),
+      provider: "anthropic".into(),
+      access_token: "access".into(),
+      refresh_token: "refresh".into(),
+      expires_at: 0,
+      auth: LlmLibertyAuthSpec {
+        location: "header".into(),
+        key: "Authorization".into(),
+        scheme: "Bearer".into(),
+      },
+      oauth: LlmLibertyOauthEndpoints {
+        authorize_url: "https://oauth.example/authorize".into(),
+        token_url: "https://oauth.example/token".into(),
+        revoke_url: None,
+        client_id: "client".into(),
+        client_secret: None,
+      },
+      api: LlmLibertyApiEndpoints {
+        base_url: "https://api.example".into(),
+        chat_url: "https://api.example/messages".into(),
+        models_url: None,
+      },
+      headers: serde_json::json!({}),
+      body: serde_json::json!({}),
+      extra: None,
+    }
+  }
+
+  #[rstest]
+  fn validate_supported_accepts_well_formed_envelope() {
+    assert_eq!(Ok(()), valid_envelope().validate_supported());
+  }
+
+  #[rstest]
+  #[case::query_in("query", "Authorization", "Bearer")]
+  #[case::wrong_key("header", "X-Api-Key", "Bearer")]
+  #[case::wrong_scheme("header", "Authorization", "Basic")]
+  fn validate_supported_rejects_non_bearer_header_auth(
+    #[case] location: &str,
+    #[case] key: &str,
+    #[case] scheme: &str,
+  ) {
+    let mut env = valid_envelope();
+    env.auth.location = location.into();
+    env.auth.key = key.into();
+    env.auth.scheme = scheme.into();
+    let err = env
+      .validate_supported()
+      .expect_err("expected validation error");
+    assert!(matches!(
+      err,
+      ObjValidationError::LlmLibertyEnvelopeInvalid(_)
+    ));
+  }
+
+  #[rstest]
+  fn deserializes_with_default_empty_object_for_headers_and_body() {
+    let json = serde_json::json!({
+      "version": "1.0.0",
+      "provider": "anthropic",
+      "access_token": "a",
+      "refresh_token": "r",
+      "expires_at": 0,
+      "auth": {"in": "header", "key": "Authorization", "scheme": "Bearer"},
+      "oauth": {
+        "authorize_url": "https://x", "token_url": "https://x", "client_id": "c"
+      },
+      "api": {
+        "base_url": "https://x", "chat_url": "https://x/m"
+      }
+    });
+    let env: LlmLibertyEnvelope = serde_json::from_value(json).unwrap();
+    assert_eq!(serde_json::json!({}), env.headers);
+    assert_eq!(serde_json::json!({}), env.body);
   }
 }

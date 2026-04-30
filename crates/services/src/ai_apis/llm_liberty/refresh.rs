@@ -29,6 +29,10 @@ pub enum LlmLibertyRefreshError {
   #[error("LLM Liberty refresh response is missing access_token.")]
   #[error_meta(error_type = ErrorType::Authentication, code = "llm_liberty_refresh-missing_access_token")]
   MissingAccessToken,
+
+  #[error("LLM Liberty refresh response is missing expires_in.")]
+  #[error_meta(error_type = ErrorType::Authentication, code = "llm_liberty_refresh-missing_expires_in")]
+  MissingExpiresIn,
 }
 
 // Per-alias async mutexes. A global std::sync::Mutex guards insertion into the
@@ -89,6 +93,38 @@ pub async fn ensure_fresh_credentials<R: LlmLibertyCredentialsRepository + ?Size
   Ok(refreshed)
 }
 
+/// Force a refresh regardless of skew window. Used by the upstream-401 retry path:
+/// the provider may invalidate access tokens before `expires_at` (e.g. third-party
+/// usage flagging), in which case we must rotate before retrying.
+pub async fn force_refresh_credentials<R: LlmLibertyCredentialsRepository + ?Sized>(
+  db: &R,
+  http: &SafeReqwest,
+  tenant_id: &str,
+  user_id: &str,
+  alias_id: &str,
+) -> Result<ResolvedLlmLibertyCredentials, LlmLibertyRefreshError> {
+  let lock = alias_lock(alias_id);
+  let _guard = lock.lock().await;
+
+  let creds = db
+    .get_llm_liberty_credentials(tenant_id, user_id, alias_id)
+    .await?
+    .ok_or_else(|| LlmLibertyRefreshError::NotFound(alias_id.to_string()))?;
+
+  let refreshed = do_refresh(http, &creds).await?;
+
+  db.update_llm_liberty_tokens(
+    tenant_id,
+    alias_id,
+    &refreshed.access_token,
+    &refreshed.refresh_token,
+    refreshed.expires_at,
+  )
+  .await?;
+
+  Ok(refreshed)
+}
+
 async fn do_refresh(
   http: &SafeReqwest,
   creds: &ResolvedLlmLibertyCredentials,
@@ -128,7 +164,9 @@ async fn do_refresh(
     .unwrap_or(&creds.refresh_token)
     .to_string();
 
-  let expires_in = json["expires_in"].as_i64().unwrap_or(28800);
+  let expires_in = json["expires_in"]
+    .as_i64()
+    .ok_or(LlmLibertyRefreshError::MissingExpiresIn)?;
   let new_expires_at = Utc::now() + Duration::seconds(expires_in);
 
   Ok(ResolvedLlmLibertyCredentials {
@@ -138,4 +176,3 @@ async fn do_refresh(
     ..creds.clone()
   })
 }
-

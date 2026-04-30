@@ -13,15 +13,15 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
+use services::models::llm_liberty_envelope::{
+  LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyOauthEndpoints,
+};
 use services::test_utils::{
   anthropic_model, test_db_service, AppServiceStubBuilder, TestDbService,
 };
 use services::{
   ApiAliasResponse, ApiFormat, ApiModelRequest, AuthContext, LlmLibertyApiModelRequest,
   LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate, MockAiApiService, ResourceRole,
-};
-use services::models::llm_liberty_envelope::{
-  LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyOauthEndpoints,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -172,6 +172,62 @@ async fn create_400_when_envelope_version_unsupported(
   Ok(())
 }
 
+/// Each case: a mutator that clears one required leaf, plus the substring
+/// that must appear in the BadRequest message.
+#[rstest]
+#[case::auth_in("auth.in", |env: &mut LlmLibertyEnvelope| env.auth.location = String::new())]
+#[case::auth_key("auth.key", |env: &mut LlmLibertyEnvelope| env.auth.key = String::new())]
+#[case::auth_scheme("auth.scheme", |env: &mut LlmLibertyEnvelope| env.auth.scheme = String::new())]
+#[case::oauth_token_url("oauth.token_url", |env: &mut LlmLibertyEnvelope| env.oauth.token_url = String::new())]
+#[case::oauth_client_id("oauth.client_id", |env: &mut LlmLibertyEnvelope| env.oauth.client_id = String::new())]
+#[case::api_chat_url("api.chat_url", |env: &mut LlmLibertyEnvelope| env.api.chat_url = String::new())]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn create_400_when_required_envelope_field_missing(
+  #[case] field_substr: &str,
+  #[case] mutator: fn(&mut LlmLibertyEnvelope),
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let mock_ai = MockAiApiService::new();
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .ai_api_service(Arc::new(mock_ai))
+    .build()
+    .await?;
+
+  let mut env = valid_envelope();
+  mutator(&mut env);
+  let req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    envelope: LlmLibertyEnvelopeUpdate::Set(env),
+    models: vec!["claude-haiku-4-5-20251001".into()],
+    prefix: None,
+    forward_all_with_prefix: false,
+  });
+
+  let response = test_router(Arc::new(app_service))
+    .oneshot(Request::post(ENDPOINT_MODELS_API).json(req)?)
+    .await?;
+  assert_eq!(
+    StatusCode::BAD_REQUEST,
+    response.status(),
+    "field={}",
+    field_substr
+  );
+
+  let body: Value = response.json().await?;
+  let message = body["error"]["message"].as_str().unwrap_or("");
+  assert!(
+    message.contains(field_substr),
+    "expected '{}' in message, got: {}",
+    field_substr,
+    message
+  );
+  Ok(())
+}
+
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -259,9 +315,7 @@ async fn update_replaces_credentials_when_envelope_set(
     forward_all_with_prefix: false,
   });
   let update_response = test_router(app_service.clone())
-    .oneshot(
-      Request::put(&format!("{}/{}", ENDPOINT_MODELS_API, alias_id)).json(update_req)?,
-    )
+    .oneshot(Request::put(&format!("{}/{}", ENDPOINT_MODELS_API, alias_id)).json(update_req)?)
     .await?;
   assert_eq!(StatusCode::OK, update_response.status());
 
@@ -324,9 +378,7 @@ async fn update_keeps_credentials_when_envelope_keep(
     forward_all_with_prefix: false,
   });
   let update_response = test_router(app_service.clone())
-    .oneshot(
-      Request::put(&format!("{}/{}", ENDPOINT_MODELS_API, alias_id)).json(update_req)?,
-    )
+    .oneshot(Request::put(&format!("{}/{}", ENDPOINT_MODELS_API, alias_id)).json(update_req)?)
     .await?;
   assert_eq!(StatusCode::OK, update_response.status());
 
@@ -345,10 +397,7 @@ async fn update_keeps_credentials_when_envelope_keep(
 
   // Prefix updated
   let updated_response = test_router(app_service.clone())
-    .oneshot(
-      Request::get(&format!("{}/{}", ENDPOINT_MODELS_API, alias_id))
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get(&format!("{}/{}", ENDPOINT_MODELS_API, alias_id)).body(Body::empty())?)
     .await?;
   assert_eq!(StatusCode::OK, updated_response.status());
   let body = updated_response.json::<ApiAliasResponse>().await?;

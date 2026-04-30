@@ -49,6 +49,12 @@ export function ApiFormatSelector({
         </SelectContent>
       </Select>
 
+      {disabled && (
+        <p className="text-sm text-muted-foreground" data-testid={`${testId}-locked-hint`}>
+          Format cannot be changed after creation. Delete and recreate the alias to use a different format.
+        </p>
+      )}
+
       {error && (
         <p className="text-sm text-destructive" data-testid={`${testId}-error`}>
           {error}

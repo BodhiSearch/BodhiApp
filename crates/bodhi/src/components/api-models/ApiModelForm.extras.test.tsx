@@ -340,11 +340,9 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     expect(capturedRequestBody!.extra_headers).toBe(expected);
   });
 
-  it('switching api_format in edit mode resets form to preset defaults', async () => {
-    const user = userEvent.setup();
+  it('api_format selector is disabled in edit mode (immutable contract)', async () => {
     server.use(...mockApiFormats({ data: ['openai', 'anthropic_oauth'] }));
 
-    // Stored alias has format=openai and a stored api key.
     const storedAlias: ApiAliasResponse = {
       ...mockApiAliasResponse,
       api_format: 'openai',
@@ -357,22 +355,11 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       });
     });
 
-    // Initially (edit + has_api_key), the checkbox is shown.
     await waitFor(() => {
-      expect(screen.getByTestId('api-key-input-checkbox')).toBeInTheDocument();
+      const trigger = screen.getByTestId('api-format-selector');
+      expect(trigger).toHaveAttribute('data-disabled');
     });
-
-    // Switch format → form resets to preset defaults; useApiKey unchecked.
-    // The user must cancel or refresh to restore the stored key state.
-    await selectFormat(user, 'Anthropic Setup Token');
-
-    await waitFor(() => {
-      expect(screen.getByTestId('api-key-input-checkbox')).not.toBeChecked();
-    });
-    // Extras populated from the new format's preset.
-    await waitFor(() => {
-      expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('api-format-selector-locked-hint')).toBeInTheDocument();
   });
 
   it('edit round-trip preserves extra_headers key with empty-string value', async () => {

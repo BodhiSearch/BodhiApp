@@ -171,6 +171,67 @@ async fn test_prompt_success_anthropic_oauth() -> anyhow::Result<()> {
   Ok(())
 }
 
+// LlmLibertyOauth shares the AnthropicOAuth provider client (Bearer token,
+// /messages endpoint). Duplicate the success-path test so a future split of
+// the dispatch arm doesn't silently break LlmLibertyOauth.
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_prompt_success_llm_liberty_oauth() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+  let _mock = server
+    .mock("POST", "/messages")
+    .match_header("Authorization", "Bearer test-token")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(anthropic_message_response())
+    .create_async()
+    .await;
+  let result = service
+    .test_prompt(
+      Some("test-token".to_string()),
+      &url,
+      "claude-3",
+      "hi",
+      &ApiFormat::LlmLibertyOauth,
+      None,
+      None,
+    )
+    .await?;
+  assert_eq!("ok", result);
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_fetch_models_success_llm_liberty_oauth() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let service = DefaultAiApiService::new()?;
+  let _mock = server
+    .mock("GET", "/models")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(anthropic_models_response())
+    .create_async()
+    .await;
+  let models = service
+    .fetch_models(
+      Some("test-token".to_string()),
+      &url,
+      &ApiFormat::LlmLibertyOauth,
+      None,
+      None,
+    )
+    .await?;
+  assert_eq!(1, models.len());
+  assert_eq!("claude-3", models[0].id());
+  Ok(())
+}
+
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
@@ -208,6 +269,7 @@ async fn test_prompt_success_gemini() -> anyhow::Result<()> {
 #[case::openai_responses(ApiFormat::OpenAIResponses, "/responses", "some-model")]
 #[case::anthropic(ApiFormat::Anthropic, "/messages", "some-model")]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth, "/messages", "some-model")]
+#[case::llm_liberty_oauth(ApiFormat::LlmLibertyOauth, "/messages", "some-model")]
 #[case::gemini(
   ApiFormat::Gemini,
   "/models/gemini-2.5-flash:generateContent",
@@ -344,6 +406,7 @@ async fn test_fetch_models_success_anthropic() -> anyhow::Result<()> {
 #[case::openai_responses(ApiFormat::OpenAIResponses)]
 #[case::anthropic(ApiFormat::Anthropic)]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth)]
+#[case::llm_liberty_oauth(ApiFormat::LlmLibertyOauth)]
 #[case::gemini(ApiFormat::Gemini)]
 #[anyhow_trace]
 #[tokio::test]
@@ -378,6 +441,7 @@ async fn test_fetch_models_401(#[case] api_format: ApiFormat) -> anyhow::Result<
 #[case::openai_responses(ApiFormat::OpenAIResponses)]
 #[case::anthropic(ApiFormat::Anthropic)]
 #[case::anthropic_oauth(ApiFormat::AnthropicOAuth)]
+#[case::llm_liberty_oauth(ApiFormat::LlmLibertyOauth)]
 #[case::gemini(ApiFormat::Gemini)]
 #[anyhow_trace]
 #[tokio::test]

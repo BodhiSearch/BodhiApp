@@ -174,7 +174,17 @@ impl AppServiceStubBuilder {
   }
 
   fn default_ai_api_service(&self) -> Option<Arc<dyn AiApiService>> {
-    Some(Arc::new(crate::MockAiApiService::new()))
+    let mut mock = crate::MockAiApiService::new();
+    // safe_http_client is called by routes_app/providers when resolving
+    // LlmLibertyOauth credentials; pre-configure a working stub so tests that
+    // exercise that path don't need to wire it themselves.
+    mock.expect_safe_http_client().returning(|| {
+      crate::SafeReqwest::builder()
+        .allow_private_ips()
+        .build()
+        .unwrap()
+    });
+    Some(Arc::new(mock))
   }
 
   fn default_api_model_service(&self) -> Option<Arc<dyn ApiModelService>> {
@@ -195,7 +205,16 @@ impl AppServiceStubBuilder {
       .as_ref()
       .and_then(|o| o.as_ref())
       .cloned()
-      .unwrap_or_else(|| Arc::new(crate::MockAiApiService::new()));
+      .unwrap_or_else(|| {
+        let mut mock = crate::MockAiApiService::new();
+        mock.expect_safe_http_client().returning(|| {
+          crate::SafeReqwest::builder()
+            .allow_private_ips()
+            .build()
+            .unwrap()
+        });
+        Arc::new(mock)
+      });
     Some(Arc::new(DefaultApiModelService::new(
       db_service,
       time_service,

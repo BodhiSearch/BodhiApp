@@ -15,9 +15,8 @@ use crate::mcps::{
 };
 use crate::models::{
   ApiAlias, ApiAliasRepository, ApiModel, DownloadRepository, DownloadRequestEntity,
-  LlmLibertyCredentialsRepository, LlmLibertyEnvelope, LlmLibertySummary,
-  ModelMetadataEntity, ModelMetadataRepository, ResolvedLlmLibertyCredentials, UserAlias,
-  UserAliasRepository,
+  LlmLibertyCredentialsRepository, LlmLibertyEnvelope, LlmLibertySummary, ModelMetadataEntity,
+  ModelMetadataRepository, ResolvedLlmLibertyCredentials, UserAlias, UserAliasRepository,
 };
 use crate::settings::{DbSetting, SettingsRepository};
 use crate::tokens::{TokenEntity, TokenRepository};
@@ -1316,7 +1315,13 @@ impl LlmLibertyCredentialsRepository for TestDbService {
   ) -> Result<(), DbError> {
     self
       .inner
-      .update_llm_liberty_tokens(tenant_id, api_alias_id, new_access_token, new_refresh_token, new_expires_at)
+      .update_llm_liberty_tokens(
+        tenant_id,
+        api_alias_id,
+        new_access_token,
+        new_refresh_token,
+        new_expires_at,
+      )
       .await
       .tap(|_| self.notify("update_llm_liberty_tokens"))
   }

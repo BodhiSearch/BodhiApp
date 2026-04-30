@@ -276,7 +276,7 @@ export function useApiModelForm({
 
     if (fmt === 'llm_liberty_oauth') {
       const aliasId = isEditMode ? initialData?.id : undefined;
-      const env = aliasId ? undefined : parseLlmLibertyEnvelope() ?? undefined;
+      const env = aliasId ? undefined : (parseLlmLibertyEnvelope() ?? undefined);
       if (!aliasId && !env) return;
       await fetchModels.fetchModels({
         apiFormat: 'llm_liberty_oauth',
@@ -319,8 +319,7 @@ export function useApiModelForm({
   };
 
   // Computed values
-  const isLlmLibertyCreate =
-    watchedValues.api_format === 'llm_liberty_oauth' && !isEditMode;
+  const isLlmLibertyCreate = watchedValues.api_format === 'llm_liberty_oauth' && !isEditMode;
   const hasEnvelope = Boolean(watchedValues.llm_liberty_envelope?.trim());
 
   const canTest = isLlmLibertyCreate

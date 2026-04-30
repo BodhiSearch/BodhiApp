@@ -2,8 +2,8 @@ use crate::app_access_requests::AccessRequestRepository;
 use crate::db::DbCore;
 use crate::mcps::{McpRepository, McpServerRepository};
 use crate::models::{
-  ApiAliasRepository, DownloadRepository, LlmLibertyCredentialsRepository,
-  ModelMetadataRepository, UserAliasRepository,
+  ApiAliasRepository, DownloadRepository, LlmLibertyCredentialsRepository, ModelMetadataRepository,
+  UserAliasRepository,
 };
 use crate::settings::SettingsRepository;
 use crate::tenants::TenantRepository;

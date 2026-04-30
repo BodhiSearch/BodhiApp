@@ -50,9 +50,7 @@ impl MigrationTrait for Migration {
       .create_table(
         Table::create()
           .table(ApiModelOauthCredentials::Table)
-          .col(
-            string(ApiModelOauthCredentials::ApiAliasId).primary_key(),
-          )
+          .col(string(ApiModelOauthCredentials::ApiAliasId).primary_key())
           .foreign_key(
             ForeignKey::create()
               .name("fk_api_model_oauth_creds_alias_id")
@@ -74,7 +72,9 @@ impl MigrationTrait for Migration {
           .col(string(ApiModelOauthCredentials::EncryptedRefreshToken))
           .col(string(ApiModelOauthCredentials::RefreshSalt))
           .col(string(ApiModelOauthCredentials::RefreshNonce))
-          .col(timestamp_with_time_zone(ApiModelOauthCredentials::ExpiresAt))
+          .col(timestamp_with_time_zone(
+            ApiModelOauthCredentials::ExpiresAt,
+          ))
           .col(string(ApiModelOauthCredentials::AuthIn))
           .col(string(ApiModelOauthCredentials::AuthKey))
           .col(string(ApiModelOauthCredentials::AuthScheme))
@@ -86,11 +86,15 @@ impl MigrationTrait for Migration {
           .col(string(ApiModelOauthCredentials::ApiBaseUrl))
           .col(string(ApiModelOauthCredentials::ApiChatUrl))
           .col(string_null(ApiModelOauthCredentials::ApiModelsUrl))
-          .col(json(ApiModelOauthCredentials::HeadersJson))
-          .col(json(ApiModelOauthCredentials::BodyJson))
-          .col(json_null(ApiModelOauthCredentials::ExtraJson))
-          .col(timestamp_with_time_zone(ApiModelOauthCredentials::CreatedAt))
-          .col(timestamp_with_time_zone(ApiModelOauthCredentials::UpdatedAt))
+          .col(json_binary(ApiModelOauthCredentials::HeadersJson).default("{}"))
+          .col(json_binary(ApiModelOauthCredentials::BodyJson).default("{}"))
+          .col(json_binary_null(ApiModelOauthCredentials::ExtraJson))
+          .col(timestamp_with_time_zone(
+            ApiModelOauthCredentials::CreatedAt,
+          ))
+          .col(timestamp_with_time_zone(
+            ApiModelOauthCredentials::UpdatedAt,
+          ))
           .to_owned(),
       )
       .await?;
@@ -115,17 +119,23 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
+    manager
+      .create_index(
+        Index::create()
+          .name("idx_api_model_oauth_creds_expires_at")
+          .table(ApiModelOauthCredentials::Table)
+          .col(ApiModelOauthCredentials::ExpiresAt)
+          .to_owned(),
+      )
+      .await?;
+
     if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
       let conn = manager.get_connection();
       conn
-        .execute_unprepared(
-          "ALTER TABLE api_model_oauth_credentials ENABLE ROW LEVEL SECURITY;",
-        )
+        .execute_unprepared("ALTER TABLE api_model_oauth_credentials ENABLE ROW LEVEL SECURITY;")
         .await?;
       conn
-        .execute_unprepared(
-          "ALTER TABLE api_model_oauth_credentials FORCE ROW LEVEL SECURITY;",
-        )
+        .execute_unprepared("ALTER TABLE api_model_oauth_credentials FORCE ROW LEVEL SECURITY;")
         .await?;
       conn
         .execute_unprepared(
@@ -149,9 +159,7 @@ impl MigrationTrait for Migration {
         )
         .await?;
       conn
-        .execute_unprepared(
-          "ALTER TABLE api_model_oauth_credentials DISABLE ROW LEVEL SECURITY;",
-        )
+        .execute_unprepared("ALTER TABLE api_model_oauth_credentials DISABLE ROW LEVEL SECURITY;")
         .await?;
     }
     manager

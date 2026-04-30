@@ -1419,6 +1419,33 @@ pub struct DefaultTestPromptRequest {
   pub extra_body: Option<serde_json::Value>,
 }
 
+/// Internal credential source for LlmLibertyOauth requests. Either points to a
+/// saved alias (stored credentials) or carries an inline envelope. The wire
+/// format keeps `id` and `envelope` as parallel optional fields for backward
+/// compatibility; `try_from_pair` is the single XOR enforcement point.
+#[derive(Debug, Clone)]
+pub enum LlmLibertyCredsSource {
+  Saved(String),
+  Inline(Box<super::llm_liberty_envelope::LlmLibertyEnvelope>),
+}
+
+impl LlmLibertyCredsSource {
+  pub fn try_from_pair(
+    id: Option<String>,
+    envelope: Option<super::llm_liberty_envelope::LlmLibertyEnvelope>,
+  ) -> Result<Self, crate::ObjValidationError> {
+    match (id, envelope) {
+      (Some(_), Some(_)) | (None, None) => {
+        Err(crate::ObjValidationError::LlmLibertyEnvelopeInvalid(
+          "exactly one of `id` or `envelope` must be provided".into(),
+        ))
+      }
+      (Some(id), None) => Ok(Self::Saved(id)),
+      (None, Some(env)) => Ok(Self::Inline(Box::new(env))),
+    }
+  }
+}
+
 /// Inner request for `api_format == "llm_liberty_oauth"`. Either `id` (use stored creds)
 /// or `envelope` (use the provided envelope directly) must be set, never both.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
@@ -1440,8 +1467,18 @@ pub struct LlmLibertyTestPromptRequest {
   pub prompt: String,
 }
 
+impl LlmLibertyTestPromptRequest {
+  /// Decompose into (source, model, prompt) with XOR enforcement on `id`/`envelope`.
+  pub fn into_parts(
+    self,
+  ) -> Result<(LlmLibertyCredsSource, String, String), crate::ObjValidationError> {
+    let source = LlmLibertyCredsSource::try_from_pair(self.id, self.envelope)?;
+    Ok((source, self.model, self.prompt))
+  }
+}
+
 /// Request to test API connectivity with a prompt. Discriminated on `api_format`.
-#[allow(clippy::large_enum_variant)]  // TODO: Box
+#[allow(clippy::large_enum_variant)] // TODO: Box
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "api_format")]
 #[schema(example = json!({
@@ -1579,8 +1616,15 @@ pub struct LlmLibertyFetchModelsRequest {
   pub envelope: Option<super::llm_liberty_envelope::LlmLibertyEnvelope>,
 }
 
+impl LlmLibertyFetchModelsRequest {
+  /// Resolve `id`/`envelope` into a single `LlmLibertyCredsSource` with XOR enforcement.
+  pub fn into_source(self) -> Result<LlmLibertyCredsSource, crate::ObjValidationError> {
+    LlmLibertyCredsSource::try_from_pair(self.id, self.envelope)
+  }
+}
+
 /// Request to fetch available models from provider. Discriminated on `api_format`.
-#[allow(clippy::large_enum_variant)]  // TODO: Box
+#[allow(clippy::large_enum_variant)] // TODO: Box
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "api_format")]
 #[schema(example = json!({
@@ -1883,10 +1927,7 @@ impl ApiAliasResponse {
     self
   }
 
-  pub fn with_llm_liberty(
-    mut self,
-    summary: Option<LlmLibertySummary>,
-  ) -> Self {
+  pub fn with_llm_liberty(mut self, summary: Option<LlmLibertySummary>) -> Self {
     self.llm_liberty = summary;
     self
   }

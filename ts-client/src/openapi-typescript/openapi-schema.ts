@@ -669,7 +669,7 @@ export interface paths {
         };
         /**
          * Get Available API Formats
-         * @description Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), 'anthropic_oauth' (Anthropic via OAuth Bearer token), and 'gemini' (Google Gemini).
+         * @description Retrieves list of supported API formats/protocols: 'openai' (Chat Completions), 'openai_responses' (Responses API), 'anthropic' (Messages API), 'anthropic_oauth' (Anthropic via long-lived setup token), 'llm_liberty_oauth' (Anthropic via llm-liberty OAuth envelope), and 'gemini' (Google Gemini).
          */
         get: operations["getApiFormats"];
         put?: never;
@@ -5856,6 +5856,7 @@ export interface operations {
                      *         "openai_responses",
                      *         "anthropic",
                      *         "anthropic_oauth",
+                     *         "llm_liberty_oauth",
                      *         "gemini"
                      *       ]
                      *     } */

@@ -36,6 +36,10 @@ pub enum ObjValidationError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   ApiFormatChangedRequiresNewKey,
 
+  #[error("api_format cannot be changed after creation. Delete and recreate the alias to use a different format.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ApiFormatImmutableOnEdit,
+
   #[error("llm_liberty_envelope is required when creating an LLM Liberty OAuth alias.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   LlmLibertyEnvelopeRequired,

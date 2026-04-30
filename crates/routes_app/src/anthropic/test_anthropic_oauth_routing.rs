@@ -7,6 +7,9 @@ use reqwest::StatusCode;
 use rstest::rstest;
 use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
+use services::models::llm_liberty_envelope::{
+  LlmLibertyApiEndpoints, LlmLibertyAuthSpec, LlmLibertyEnvelope, LlmLibertyOauthEndpoints,
+};
 use services::{
   inference::{InferenceError, LlmEndpoint, MockInferenceService},
   test_utils::{anthropic_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
@@ -91,6 +94,179 @@ async fn test_messages_create_forwards_to_anthropic_oauth_alias() -> anyhow::Res
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+fn liberty_envelope(provider: &str, access_token: &str) -> LlmLibertyEnvelope {
+  LlmLibertyEnvelope {
+    version: "1.0.0".into(),
+    provider: provider.into(),
+    access_token: access_token.into(),
+    refresh_token: "refresh-test".into(),
+    expires_at: (chrono::Utc::now() + chrono::Duration::hours(8)).timestamp(),
+    auth: LlmLibertyAuthSpec {
+      location: "header".into(),
+      key: "Authorization".into(),
+      scheme: "Bearer".into(),
+    },
+    oauth: LlmLibertyOauthEndpoints {
+      authorize_url: "https://oauth.example/authorize".into(),
+      token_url: "https://oauth.example/token".into(),
+      revoke_url: None,
+      client_id: "client-id-public".into(),
+      client_secret: None,
+    },
+    api: LlmLibertyApiEndpoints {
+      base_url: "https://api.anthropic.com/v1".into(),
+      chat_url: "https://api.anthropic.com/v1/messages".into(),
+      models_url: Some("https://api.anthropic.com/v1/models".into()),
+    },
+    headers: serde_json::json!({}),
+    body: serde_json::json!({}),
+    extra: None,
+  }
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_messages_create_forwards_to_llm_liberty_oauth_alias() -> anyhow::Result<()> {
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_data_service().await;
+  let db_service = builder.get_db_service().await;
+  let alias_id = "liberty-alias";
+  let api_alias = ApiAliasBuilder::test_default()
+    .id(alias_id)
+    .api_format(ApiFormat::LlmLibertyOauth)
+    .base_url("https://api.anthropic.com/v1")
+    .models(vec![anthropic_model("claude-haiku-4-5-20251001")])
+    .build_with_time(db_service.now())
+    .unwrap();
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
+    .await?;
+  db_service
+    .create_llm_liberty_credentials(
+      TEST_TENANT_ID,
+      TEST_USER_ID,
+      alias_id,
+      &liberty_envelope("anthropic", "resolved-bearer-token"),
+    )
+    .await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  mock_inference
+    .expect_forward_remote_with_params()
+    .withf(|endpoint, _req, alias, key, _params, _headers| {
+      *endpoint == LlmEndpoint::AnthropicMessages
+        && alias.id == "liberty-alias"
+        && key.as_deref() == Some("resolved-bearer-token")
+    })
+    .times(1)
+    .return_once(|_, _, _, _, _, _| ok_response());
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route(
+      "/anthropic/v1/messages",
+      post(anthropic_messages_create_handler),
+    )
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/anthropic/v1/messages")
+        .json(json!({
+          "model": "claude-haiku-4-5-20251001",
+          "max_tokens": 100,
+          "messages": [{"role": "user", "content": "hi"}]
+        }))?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_messages_create_rejects_llm_liberty_non_anthropic_provider() -> anyhow::Result<()> {
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_data_service().await;
+  let db_service = builder.get_db_service().await;
+  let alias_id = "liberty-codex-alias";
+  let api_alias = ApiAliasBuilder::test_default()
+    .id(alias_id)
+    .api_format(ApiFormat::LlmLibertyOauth)
+    .base_url("https://api.openai.com/v1")
+    .models(vec![anthropic_model("claude-haiku-4-5-20251001")])
+    .build_with_time(db_service.now())
+    .unwrap();
+  db_service
+    .create_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &api_alias, None)
+    .await?;
+  // Simulates a future-provider envelope routed through the anthropic proxy
+  // (e.g. an openai-codex envelope on a misconfigured alias). The proxy must
+  // reject before forwarding.
+  db_service
+    .create_llm_liberty_credentials(
+      TEST_TENANT_ID,
+      TEST_USER_ID,
+      alias_id,
+      &liberty_envelope("openai-codex", "should-not-be-used"),
+    )
+    .await?;
+
+  let mut mock_inference = MockInferenceService::new();
+  // Inference must NOT be invoked when the provider guard rejects.
+  mock_inference.expect_forward_remote_with_params().times(0);
+
+  let app_service = builder
+    .inference_service(Arc::new(mock_inference))
+    .build()
+    .await?;
+  let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
+  let app = Router::new()
+    .route(
+      "/anthropic/v1/messages",
+      post(anthropic_messages_create_handler),
+    )
+    .with_state(router_state);
+
+  let response = app
+    .oneshot(
+      Request::post("/anthropic/v1/messages")
+        .json(json!({
+          "model": "claude-haiku-4-5-20251001",
+          "max_tokens": 100,
+          "messages": [{"role": "user", "content": "hi"}]
+        }))?
+        .with_auth_context(AuthContext::test_session(
+          TEST_USER_ID,
+          "testuser",
+          ResourceRole::User,
+        )),
+    )
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  let message = body["error"]["message"].as_str().unwrap_or("");
+  assert!(
+    message.contains("openai-codex") || message.to_lowercase().contains("provider"),
+    "expected provider-mismatch message, got: {}",
+    message
+  );
   Ok(())
 }
 

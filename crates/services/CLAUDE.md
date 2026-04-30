@@ -33,6 +33,9 @@ All mutating DbService operations on tenant-scoped rows use `begin_tenant_txn(te
 ### API Token Format
 `bodhiapp_<base64url_random>.<client_id>` — prefix lookup is cross-tenant by design; tenant resolved from `client_id` suffix after hash verification.
 
+### `api_format` Is Immutable on Edit
+`ApiModelService::update` rejects any change to `api_format` with `ObjValidationError::ApiFormatImmutableOnEdit`. The `LlmLibertyOauth` variant has a sibling-table credentials row that would orphan on switch-out (FK CASCADE only fires on alias DELETE) and silently 404 on switch-in; locking the contract for all formats eliminates a class of state-coherence bugs. To change format, delete and recreate the alias.
+
 ### Error Layer Separation
 - **Services layer**: Domain errors (`TokenServiceError`, `McpError`, etc.) — all implement `AppError` via `errmeta_derive`
 - **Auth context errors**: `AuthContextError` in `src/auth/auth_context.rs`
@@ -51,8 +54,11 @@ Each domain module follows `*_objs.rs` pattern for types and `error.rs` for erro
 - `auth/auth_objs.rs` — `ResourceRole` (Anonymous/Guest/User/PowerUser/Manager/Admin), `TokenScope`, `UserScope`, `AppRole`, `UserInfo`
 - `auth/auth_context.rs` — `AuthContext` enum (Anonymous{deployment}/Session/MultiTenantSession/ApiToken/ExternalApp), `AuthContextError`. `Session.role` and `MultiTenantSession.role` are `ResourceRole` (not Option).
 - `tokens/token_objs.rs` — `TokenStatus`, `TokenDetail`, `CreateTokenRequest`, `UpdateTokenRequest`
-- `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `DownloadStatus`, `ApiModelRequest`, `ApiAliasResponse` (has `has_api_key: bool`), `UserAliasRequest`, `ApiFormat` enum (`OpenAI`, `OpenAIResponses`, `Anthropic`, `AnthropicOAuth`), `ApiModel` discriminated enum (`#[serde(tag="provider")]` with `OpenAI`/`Anthropic` variants), `ApiModelVec` newtype (DB-storable `Vec<ApiModel>`)
+- `models/model_objs.rs` — `Repo`, `HubFile`, `Alias` (User/Model/Api), `OAIRequestParams`, `DownloadStatus`, `ApiModelRequest`, `ApiAliasResponse` (has `has_api_key: bool`, optional `llm_liberty: LlmLibertySummary`), `UserAliasRequest`, `ApiFormat` enum (`OpenAI`, `OpenAIResponses`, `Anthropic`, `AnthropicOAuth`, `LlmLibertyOauth`, `Gemini`), `ApiModel` discriminated enum (`#[serde(tag="provider")]` with `OpenAI`/`Anthropic` variants), `ApiModelVec` newtype (DB-storable `Vec<ApiModel>`)
 - `models/anthropic_model.rs` — `AnthropicModel` struct (full Anthropic ModelInfo schema with capabilities)
+- `models/llm_liberty_envelope.rs` — `LlmLibertyEnvelope` (versioned paste-in JSON contract from `npx @bodhiapp/llm-liberty@latest login`), `LlmLibertyEnvelopeUpdate` ({action: keep|set}), `LlmLibertySummary` (non-secret fields for `ApiAliasResponse`), `ResolvedLlmLibertyCredentials` (decrypted, includes `provider` field that anthropic-proxy verifies before forwarding)
+- `models/llm_liberty_credentials_entity.rs` + `llm_liberty_credentials_repository.rs` — sibling table `api_model_oauth_credentials` (1:1 FK to `api_model_aliases.id`, ON DELETE CASCADE). Per-row salt+nonce AES-GCM for both `access_token` and `refresh_token`; `oauth_client_secret` plaintext (known public installed-app secret). Repository methods return `DbError::ItemNotFound` on missing/cross-tenant rows — never silent `Ok(())`.
+- `ai_apis/llm_liberty/refresh.rs` — reactive token refresh with per-alias `tokio::sync::Mutex` registry. `ensure_fresh_credentials` (skew-window check) and `force_refresh_credentials` (used by upstream-401 retry path) reuse the same lock.
 - `settings/setting_objs.rs` — `Setting`, `EnvType`, `AppType`, `LogLevel`
 - `tenants/tenant_objs.rs` — `DeploymentMode` (Standalone/MultiTenant), `AppStatus` (Setup/Ready/ResourceAdmin), `Tenant` (includes `created_by: Option<String>`)
 - `tenants/spi_types.rs` — `SpiTenant`, `SpiTenantListResponse`, `SpiCreateTenantRequest`, `SpiCreateTenantResponse`
