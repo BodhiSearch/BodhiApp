@@ -1,11 +1,11 @@
 use crate::BootstrapError;
-use server_core::{DefaultSharedContext, MultitenantInferenceService, StandaloneInferenceService};
+use server_core::{DefaultSharedContext, LocalLlamaImpl};
 use services::EnvType;
 use services::IoError;
 use services::{
   db::{DbCore, DbService, DefaultDbService, DefaultTimeService, TimeService},
   hash_key,
-  inference::InferenceService,
+  inference::LocalLlama,
   AccessRequestService, AiApiClientFactory, AuthService, BootstrapParts, CacheService, DataService,
   DefaultAccessRequestService, DefaultAiApiClientFactory, DefaultAppService, DefaultMcpService,
   DefaultNetworkService, DefaultSessionService, DefaultSettingService, DefaultTenantService,
@@ -149,7 +149,19 @@ impl AppServiceBuilder {
     let session_service = Self::build_session_service(&setting_service).await?;
     let cache_service = self.get_or_build_cache_service();
     let auth_service = Self::build_auth_service(&setting_service).await;
-    let ai_api_client_factory = Self::build_ai_api_client_factory(db_service.clone())?;
+
+    // Build local llama runtime in standalone mode; multi-tenant has none.
+    let local_llama: Option<Arc<dyn LocalLlama>> = if is_multi_tenant {
+      None
+    } else {
+      let ctx =
+        Arc::new(DefaultSharedContext::new(hub_service.clone(), setting_service.clone()).await);
+      let keep_alive_secs = setting_service.keep_alive().await;
+      Some(Arc::new(LocalLlamaImpl::new(ctx, keep_alive_secs)))
+    };
+
+    let ai_api_client_factory =
+      Self::build_ai_api_client_factory(db_service.clone(), local_llama.clone())?;
     let concurrency_service = Self::build_concurrency_service();
     let access_request_service = Self::build_access_request_service(
       &setting_service,
@@ -184,21 +196,6 @@ impl AppServiceBuilder {
       services::DefaultTokenService::new(db_service.clone(), time_service.clone()),
     );
 
-    let inference_service: Arc<dyn InferenceService> = if is_multi_tenant {
-      Arc::new(MultitenantInferenceService::new(
-        ai_api_client_factory.clone(),
-      ))
-    } else {
-      let ctx =
-        Arc::new(DefaultSharedContext::new(hub_service.clone(), setting_service.clone()).await);
-      let keep_alive_secs = setting_service.keep_alive().await;
-      Arc::new(StandaloneInferenceService::new(
-        ctx,
-        ai_api_client_factory.clone(),
-        keep_alive_secs,
-      ))
-    };
-
     let api_model_service: Arc<dyn services::ApiModelService> =
       Arc::new(services::DefaultApiModelService::new(
         db_service.clone(),
@@ -227,7 +224,7 @@ impl AppServiceBuilder {
       access_request_service,
       mcp_service,
       token_service,
-      inference_service,
+      local_llama,
       api_model_service,
       download_service,
     );
@@ -316,9 +313,10 @@ impl AppServiceBuilder {
   /// Builds the AI API service.
   fn build_ai_api_client_factory(
     db_service: Arc<dyn DbService>,
+    local_llama: Option<Arc<dyn LocalLlama>>,
   ) -> Result<Arc<dyn AiApiClientFactory>, BootstrapError> {
     Ok(Arc::new(
-      DefaultAiApiClientFactory::with_db(db_service).map_err(|e| {
+      DefaultAiApiClientFactory::with_db(db_service, local_llama).map_err(|e| {
         BootstrapError::UnexpectedError(services::AppError::code(&e), e.to_string())
       })?,
     ))

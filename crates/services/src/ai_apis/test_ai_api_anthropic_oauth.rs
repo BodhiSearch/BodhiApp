@@ -1,5 +1,5 @@
 use super::{AiApiClientFactory, DefaultAiApiClientFactory};
-use crate::models::{ApiAlias, ApiFormat};
+use crate::models::{Alias, ApiAlias, ApiFormat};
 use crate::test_utils::{fixed_dt, openai_model};
 use anyhow_trace::anyhow_trace;
 use axum::http::Method;
@@ -53,7 +53,10 @@ async fn test_test_prompt_anthropic_oauth_success() -> anyhow::Result<()> {
     Some(extra_body),
   );
   let result = service
-    .for_alias(&alias, Some("oauth-token-123".to_string()))?
+    .for_alias(
+      &Alias::Api(alias.clone()),
+      Some("oauth-token-123".to_string()),
+    )?
     .test_prompt("claude-sonnet-4-5-20250929", "Hello")
     .await?;
   assert_eq!("Hi from OAuth!", result);
@@ -102,7 +105,10 @@ async fn test_fetch_models_anthropic_oauth_success() -> anyhow::Result<()> {
     None,
   );
   let models = service
-    .for_alias(&alias, Some("oauth-token-123".to_string()))?
+    .for_alias(
+      &Alias::Api(alias.clone()),
+      Some("oauth-token-123".to_string()),
+    )?
     .fetch_models()
     .await?;
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
@@ -165,7 +171,10 @@ async fn test_forward_request_anthropic_oauth_merges_body() -> anyhow::Result<()
   });
 
   let response = service
-    .for_alias(&api_alias, Some("oauth-token-123".to_string()))?
+    .for_alias(
+      &Alias::Api(api_alias.clone()),
+      Some("oauth-token-123".to_string()),
+    )?
     .forward_request_with_method(&Method::POST, "/messages", Some(incoming), None, None)
     .await?;
 
@@ -229,7 +238,10 @@ async fn test_forward_request_anthropic_oauth_prepends_system() -> anyhow::Resul
   });
 
   let response = service
-    .for_alias(&api_alias, Some("oauth-token-123".to_string()))?
+    .for_alias(
+      &Alias::Api(api_alias.clone()),
+      Some("oauth-token-123".to_string()),
+    )?
     .forward_request_with_method(&Method::POST, "/messages", Some(incoming), None, None)
     .await?;
 
@@ -272,7 +284,10 @@ async fn test_forward_request_anthropic_oauth_version_injected_when_absent() -> 
     .await;
 
   let response = service
-    .for_alias(&api_alias, Some("oauth-token-123".to_string()))?
+    .for_alias(
+      &Alias::Api(api_alias.clone()),
+      Some("oauth-token-123".to_string()),
+    )?
     .forward_request_with_method(
       &Method::POST,
       "/messages",

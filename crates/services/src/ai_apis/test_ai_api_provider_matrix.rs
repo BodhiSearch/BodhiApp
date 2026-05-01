@@ -1,5 +1,5 @@
 use super::{AiApiClientFactory, DefaultAiApiClientFactory};
-use crate::models::{ApiAlias, ApiFormat};
+use crate::models::{Alias, ApiAlias, ApiFormat};
 use crate::test_utils::fixed_dt;
 use anyhow_trace::anyhow_trace;
 use axum::http::Method;
@@ -68,7 +68,7 @@ async fn test_prompt_success_openai() -> anyhow::Result<()> {
     .await;
   let alias = make_alias(&url, ApiFormat::OpenAI);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gpt-4", "hi")
     .await?;
   assert_eq!("ok", result);
@@ -92,7 +92,7 @@ async fn test_prompt_success_openai_responses() -> anyhow::Result<()> {
     .await;
   let alias = make_alias(&url, ApiFormat::OpenAIResponses);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gpt-4o", "hi")
     .await?;
   assert_eq!("ok", result);
@@ -116,7 +116,7 @@ async fn test_prompt_success_anthropic() -> anyhow::Result<()> {
     .await;
   let alias = make_alias(&url, ApiFormat::Anthropic);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("claude-3", "hi")
     .await?;
   assert_eq!("ok", result);
@@ -140,7 +140,7 @@ async fn test_prompt_success_anthropic_oauth() -> anyhow::Result<()> {
     .await;
   let alias = make_alias(&url, ApiFormat::AnthropicOAuth);
   let result = service
-    .for_alias(&alias, Some("test-token".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-token".to_string()))?
     .test_prompt("claude-3", "hi")
     .await?;
   assert_eq!("ok", result);
@@ -164,7 +164,7 @@ async fn test_prompt_success_gemini() -> anyhow::Result<()> {
     .await;
   let alias = make_alias(&url, ApiFormat::Gemini);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gemini-2.5-flash", "hi")
     .await?;
   assert_eq!("ok", result);
@@ -202,7 +202,7 @@ async fn test_prompt_401_unauthorized(
     .await;
   let alias = make_alias(&url, api_format);
   let err = service
-    .for_alias(&alias, Some("bad-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("bad-key".to_string()))?
     .test_prompt(model, "hi")
     .await
     .expect_err("should fail with 401");
@@ -233,7 +233,7 @@ async fn test_fetch_models_success_openai() -> anyhow::Result<()> {
     .await;
   let alias = make_alias(&url, ApiFormat::OpenAI);
   let models = service
-    .for_alias(&alias, Some("key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("key".to_string()))?
     .fetch_models()
     .await?;
   assert_eq!(1, models.len());
@@ -257,7 +257,7 @@ async fn test_fetch_models_success_gemini() -> anyhow::Result<()> {
     .await;
   let alias = make_alias(&url, ApiFormat::Gemini);
   let models = service
-    .for_alias(&alias, Some("key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("key".to_string()))?
     .fetch_models()
     .await?;
   assert_eq!(1, models.len());
@@ -281,7 +281,7 @@ async fn test_fetch_models_success_anthropic() -> anyhow::Result<()> {
     .await;
   let alias = make_alias(&url, ApiFormat::Anthropic);
   let models = service
-    .for_alias(&alias, Some("key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("key".to_string()))?
     .fetch_models()
     .await?;
   assert_eq!(1, models.len());
@@ -312,7 +312,7 @@ async fn test_fetch_models_401(#[case] api_format: ApiFormat) -> anyhow::Result<
     .await;
   let alias = make_alias(&url, api_format);
   let err = service
-    .for_alias(&alias, Some("bad-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("bad-key".to_string()))?
     .fetch_models()
     .await
     .expect_err("should fail with 401");
@@ -351,7 +351,7 @@ async fn test_forward_passthrough(#[case] api_format: ApiFormat) -> anyhow::Resu
     .await;
 
   let response = service
-    .for_alias(&alias, Some("key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("key".to_string()))?
     .forward_request_with_method(&Method::POST, "/chat/completions", Some(body), None, None)
     .await?;
 

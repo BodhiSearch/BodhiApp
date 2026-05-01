@@ -1,25 +1,23 @@
 use crate::embeddings_handler;
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{mock_ai_factory_returning, RequestAuthContextExt};
 use anyhow_trace::anyhow_trace;
 use async_openai::types::embeddings::{
   CreateEmbeddingRequest, CreateEmbeddingResponse, EmbeddingInput,
 };
 use axum::{extract::Request, response::Response, routing::post, Router};
-use mockall::predicate::{eq, function};
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use rstest::rstest;
 use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::{
-  inference::{InferenceError, LlmEndpoint, MockInferenceService},
   test_utils::{openai_model, AppServiceStubBuilder},
-  Alias, AuthContext, ResourceRole,
+  AiApiClientFactoryError, AuthContext, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
 
-fn embeddings_axum_response() -> Result<Response, InferenceError> {
+fn embeddings_axum_response() -> Result<Response, AiApiClientFactoryError> {
   let response = json! {{
     "object": "list",
     "data": [
@@ -57,23 +55,10 @@ async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
     user: None,
     dimensions: None,
   };
-  let request_value = serde_json::to_value(&request)?;
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_local()
-    .with(
-      eq(LlmEndpoint::Embeddings),
-      eq(request_value),
-      function(
-        |alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct"),
-      ),
-    )
-    .times(1)
-    .return_once(move |_, _, _| embeddings_axum_response());
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(embeddings_axum_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);

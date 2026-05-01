@@ -3,6 +3,7 @@ mod auth_context;
 mod auth_server_test_client;
 mod env;
 mod mcp;
+mod mock_ai_factory;
 mod router;
 
 pub use assertions::*;
@@ -10,6 +11,7 @@ pub use auth_context::*;
 pub use auth_server_test_client::*;
 pub use env::*;
 pub use mcp::*;
+pub use mock_ai_factory::*;
 pub use router::*;
 
 #[macro_export]

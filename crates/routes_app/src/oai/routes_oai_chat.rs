@@ -142,46 +142,46 @@ pub async fn chat_completions_handler(
     .await
     .ok_or_else(|| OaiApiError::from(services::DataServiceError::AliasNotFound(model)))?;
 
-  let inference = auth_scope.inference();
-
   use services::{Alias, ApiFormat};
-  let response = match alias {
-    Alias::User(_) | Alias::Model(_) => inference
-      .forward_local(LlmEndpoint::ChatCompletions, request, alias)
-      .await
-      .map_err(OaiApiError::from)?,
-    Alias::Api(ref api_alias)
-      if matches!(
-        api_alias.api_format,
-        ApiFormat::OpenAI | ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
-      ) =>
-    {
-      let api_key = crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
-      let params: Vec<(String, String)> = query_params.into_iter().collect();
-      let params_opt = if params.is_empty() {
-        None
-      } else {
-        Some(params)
-      };
-      inference
-        .forward_remote_with_params(
-          LlmEndpoint::ChatCompletions,
-          request,
-          api_alias,
-          api_key,
-          params_opt,
-          None,
-        )
-        .await
-        .map_err(OaiApiError::from)?
-    }
-    Alias::Api(ref api_alias) => {
+  // Reject api_formats whose upstream has no /chat/completions surface.
+  if let Alias::Api(ref api_alias) = alias {
+    if !matches!(
+      api_alias.api_format,
+      ApiFormat::OpenAI | ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
+    ) {
       return Err(OaiApiError::from(OAIRouteError::InvalidRequest(format!(
         "Model is configured with '{}' format which does not support the chat completions endpoint. Use the responses API endpoint instead.",
         api_alias.api_format
       ))));
     }
+  }
+
+  let api_key = match &alias {
+    Alias::Api(api_alias) => {
+      crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await
+    }
+    _ => None,
   };
+  let params: Vec<(String, String)> = query_params.into_iter().collect();
+  let params_opt = if params.is_empty() {
+    None
+  } else {
+    Some(params)
+  };
+  let endpoint = LlmEndpoint::ChatCompletions;
+  let response = auth_scope
+    .ai_api()
+    .for_alias(&alias, api_key)
+    .map_err(OaiApiError::from)?
+    .forward_request_with_method(
+      endpoint.http_method(),
+      &endpoint.api_path(),
+      Some(request),
+      params_opt,
+      None,
+    )
+    .await
+    .map_err(OaiApiError::from)?;
 
   Ok(response)
 }
@@ -241,41 +241,42 @@ pub async fn embeddings_handler(
     .await
     .ok_or_else(|| OaiApiError::from(services::DataServiceError::AliasNotFound(model)))?;
 
-  let inference = auth_scope.inference();
-
   use services::{Alias, ApiFormat};
-  let response = match alias {
-    Alias::User(_) | Alias::Model(_) => inference
-      .forward_local(LlmEndpoint::Embeddings, request_value, alias)
-      .await
-      .map_err(OaiApiError::from)?,
-    Alias::Api(ref api_alias) if api_alias.api_format != ApiFormat::OpenAIResponses => {
-      let api_key = crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await;
-      let params: Vec<(String, String)> = query_params.into_iter().collect();
-      let params_opt = if params.is_empty() {
-        None
-      } else {
-        Some(params)
-      };
-      inference
-        .forward_remote_with_params(
-          LlmEndpoint::Embeddings,
-          request_value,
-          api_alias,
-          api_key,
-          params_opt,
-          None,
-        )
-        .await
-        .map_err(OaiApiError::from)?
-    }
-    Alias::Api(ref api_alias) => {
+  if let Alias::Api(ref api_alias) = alias {
+    if api_alias.api_format == ApiFormat::OpenAIResponses {
       return Err(OaiApiError::from(OAIRouteError::InvalidRequest(format!(
         "Model is configured with '{}' format which does not support the embeddings endpoint.",
         api_alias.api_format
       ))));
     }
+  }
+
+  let api_key = match &alias {
+    Alias::Api(api_alias) => {
+      crate::providers::resolve_api_key_for_alias(&auth_scope, &api_alias.id).await
+    }
+    _ => None,
   };
+  let params: Vec<(String, String)> = query_params.into_iter().collect();
+  let params_opt = if params.is_empty() {
+    None
+  } else {
+    Some(params)
+  };
+  let endpoint = LlmEndpoint::Embeddings;
+  let response = auth_scope
+    .ai_api()
+    .for_alias(&alias, api_key)
+    .map_err(OaiApiError::from)?
+    .forward_request_with_method(
+      endpoint.http_method(),
+      &endpoint.api_path(),
+      Some(request_value),
+      params_opt,
+      None,
+    )
+    .await
+    .map_err(OaiApiError::from)?;
 
   Ok(response)
 }

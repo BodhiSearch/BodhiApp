@@ -156,18 +156,22 @@ pub async fn anthropic_messages_create_handler(
   };
 
   let response = match resolution {
-    AnthropicAliasResolution::Native { alias, api_key } => auth_scope
-      .inference()
-      .forward_remote_with_params(
-        LlmEndpoint::AnthropicMessages,
-        request,
-        &alias,
-        api_key,
-        params_opt,
-        client_headers,
-      )
-      .await
-      .map_err(BodhiErrorResponse::from)?,
+    AnthropicAliasResolution::Native { alias, api_key } => {
+      let endpoint = LlmEndpoint::AnthropicMessages;
+      auth_scope
+        .ai_api()
+        .for_alias(&Alias::Api(alias), api_key)
+        .map_err(BodhiErrorResponse::from)?
+        .forward_request_with_method(
+          endpoint.http_method(),
+          &endpoint.api_path(),
+          Some(request),
+          params_opt,
+          client_headers,
+        )
+        .await
+        .map_err(BodhiErrorResponse::from)?
+    }
     AnthropicAliasResolution::Liberty { alias, creds } => auth_scope
       .ai_api()
       .for_resolved_credentials(&creds, &alias)?

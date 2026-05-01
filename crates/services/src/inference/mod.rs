@@ -1,9 +1,8 @@
-mod error;
-mod inference_service;
-mod noop;
+mod llm_endpoint;
+pub mod local_llama;
 
-pub use error::InferenceError;
+pub use llm_endpoint::LlmEndpoint;
+pub use local_llama::LocalLlama;
+pub use local_llama::LocalLlamaError;
 #[cfg(any(test, feature = "test-utils"))]
-pub use inference_service::MockInferenceService;
-pub use inference_service::{InferenceService, LlmEndpoint};
-pub use noop::NoopInferenceService;
+pub use local_llama::MockLocalLlama;

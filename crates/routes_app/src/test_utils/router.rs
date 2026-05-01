@@ -1,14 +1,15 @@
 use crate::build_routes;
 use axum::{body::Body, http::Request, Router};
 use chrono::Utc;
-use server_core::{DefaultSharedContext, SharedContext, StandaloneInferenceService};
+use server_core::{DefaultSharedContext, LocalLlamaImpl, SharedContext};
 use services::{
   db::DbService,
+  inference::LocalLlama,
   test_utils::{
     access_token_claims, build_token, AppServiceStubBuilder, StubNetworkService, StubQueue,
     TEST_CLIENT_ID, TEST_TENANT_ID,
   },
-  AppService, SessionService, Tenant, {TokenEntity, TokenStatus},
+  AppService, DefaultAiApiClientFactory, SessionService, Tenant, {TokenEntity, TokenStatus},
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
@@ -227,22 +228,21 @@ pub async fn build_live_test_router() -> anyhow::Result<(
   let ctx: Arc<dyn SharedContext> =
     Arc::new(DefaultSharedContext::new(hub_service, setting_service).await);
 
-  // Wire StandaloneInferenceService with the real SharedContext so live inference works
+  // Wire LocalLlamaImpl with the real SharedContext and rebuild the factory
+  // with local_llama support so the unified AiApiClientFactory can dispatch
+  // local + remote uniformly.
   let keep_alive_secs = app_service_stub
     .setting_service
     .as_ref()
     .expect("setting_service should be set")
     .keep_alive()
     .await;
-  let ai_api_client_factory = app_service_stub
-    .ai_api_client_factory
-    .clone()
-    .expect("ai_api_client_factory should be set");
-  app_service_stub.inference_service = Some(Arc::new(StandaloneInferenceService::new(
-    ctx.clone(),
-    ai_api_client_factory,
-    keep_alive_secs,
-  )));
+  let local_llama: Arc<dyn LocalLlama> =
+    Arc::new(LocalLlamaImpl::new(ctx.clone(), keep_alive_secs));
+  app_service_stub.local_llama = Some(local_llama.clone());
+  app_service_stub.ai_api_client_factory = Some(Arc::new(
+    DefaultAiApiClientFactory::new()?.with_local_llama(local_llama),
+  ));
 
   let app_service: Arc<dyn AppService> = Arc::new(app_service_stub);
 

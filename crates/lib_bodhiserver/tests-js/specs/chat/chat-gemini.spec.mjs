@@ -57,7 +57,8 @@ test.describe('Chat UI - Gemini format', () => {
     try {
       await chatPage.navigateToChat();
       await chatPage.selectModel(GEMINI_FORMAT.model);
-      await chatPage.sendMessage(GEMINI_FORMAT.chatQuestion);
+      await chatPage.waitForModelSelected();
+      await chatPage.sendMessage(GEMINI_FORMAT.chatQuestion, { maxTokens: true });
       await chatPage.waitForResponseComplete();
 
       const reply = await chatPage.getLastAssistantMessage();

@@ -4,12 +4,14 @@ use super::clients::anthropic_oauth::AnthropicOauthClient;
 use super::clients::gemini::GeminiClient;
 use super::clients::liberty_anthropic::LibertyAnthropicClient;
 use super::clients::liberty_codex::LibertyCodexClient;
+use super::clients::local_llama::LocalLlamaClient;
 use super::clients::openai::OpenAiClient;
 use super::clients::openai_responses::OpenAiResponsesClient;
 use super::error::{AiApiClientFactoryError, Result};
 use super::llm_liberty::{DefaultLlmLibertyRefresh, LlmLibertyRefresh};
+use crate::inference::LocalLlama;
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
-use crate::models::{ApiAlias, ApiFormat};
+use crate::models::{Alias, ApiAlias, ApiFormat};
 use crate::SafeReqwest;
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -20,7 +22,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 30;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AiApiClientFactory: Send + Sync + std::fmt::Debug {
-  fn for_alias(&self, alias: &ApiAlias, api_key: Option<String>) -> Result<Box<dyn AiApiClient>>;
+  fn for_alias(&self, alias: &Alias, api_key: Option<String>) -> Result<Box<dyn AiApiClient>>;
 
   fn for_envelope(&self, envelope: &LlmLibertyEnvelope) -> Result<Box<dyn AiApiClient>>;
 
@@ -39,16 +41,24 @@ pub trait AiApiClientFactory: Send + Sync + std::fmt::Debug {
 pub struct DefaultAiApiClientFactory {
   client: SafeReqwest,
   refresh: Arc<dyn LlmLibertyRefresh>,
+  local_llama: Option<Arc<dyn LocalLlama>>,
 }
 
 impl DefaultAiApiClientFactory {
-  pub fn with_db(db: Arc<dyn crate::db::DbService>) -> Result<Self> {
+  pub fn with_db(
+    db: Arc<dyn crate::db::DbService>,
+    local_llama: Option<Arc<dyn LocalLlama>>,
+  ) -> Result<Self> {
     let client = SafeReqwest::builder()
       .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
       .allow_private_ips()
       .build()?;
     let refresh = Arc::new(DefaultLlmLibertyRefresh::new(db, client.clone()));
-    Ok(Self { client, refresh })
+    Ok(Self {
+      client,
+      refresh,
+      local_llama,
+    })
   }
 
   #[cfg(any(test, feature = "test-utils"))]
@@ -61,12 +71,23 @@ impl DefaultAiApiClientFactory {
     Ok(Self {
       client,
       refresh: Arc::new(NoOpRefresh),
+      local_llama: None,
     })
   }
 
   #[cfg(any(test, feature = "test-utils"))]
   pub fn new_with_refresh(client: SafeReqwest, refresh: Arc<dyn LlmLibertyRefresh>) -> Self {
-    Self { client, refresh }
+    Self {
+      client,
+      refresh,
+      local_llama: None,
+    }
+  }
+
+  #[cfg(any(test, feature = "test-utils"))]
+  pub fn with_local_llama(mut self, local_llama: Arc<dyn LocalLlama>) -> Self {
+    self.local_llama = Some(local_llama);
+    self
   }
 }
 
@@ -76,46 +97,54 @@ impl AiApiClientFactory for DefaultAiApiClientFactory {
     self.client.clone()
   }
 
-  fn for_alias(&self, alias: &ApiAlias, api_key: Option<String>) -> Result<Box<dyn AiApiClient>> {
-    let prefix = alias.prefix.clone();
-    let client: Box<dyn AiApiClient> = match alias.api_format {
-      ApiFormat::OpenAI => Box::new(OpenAiClient::new(
-        api_key,
-        alias.base_url.clone(),
-        prefix,
-        self.client.clone(),
-      )),
-      ApiFormat::OpenAIResponses => Box::new(OpenAiResponsesClient::new(
-        api_key,
-        alias.base_url.clone(),
-        prefix,
-        self.client.clone(),
-      )),
-      ApiFormat::Anthropic => Box::new(AnthropicClient::new(
-        api_key,
-        alias.base_url.clone(),
-        prefix,
-        self.client.clone(),
-      )),
-      ApiFormat::AnthropicOAuth => Box::new(AnthropicOauthClient::new(
-        api_key,
-        alias.base_url.clone(),
-        prefix,
-        alias.extra_headers.clone(),
-        alias.extra_body.clone(),
-        self.client.clone(),
-      )),
-      ApiFormat::Gemini => Box::new(GeminiClient::new(
-        api_key,
-        alias.base_url.clone(),
-        prefix,
-        self.client.clone(),
-      )),
-      ApiFormat::LlmLibertyOauth => {
-        return Err(AiApiClientFactoryError::LibertyRequiresCredentials)
+  fn for_alias(&self, alias: &Alias, api_key: Option<String>) -> Result<Box<dyn AiApiClient>> {
+    match alias {
+      Alias::User(_) | Alias::Model(_) => match &self.local_llama {
+        Some(rt) => Ok(Box::new(LocalLlamaClient::new(rt.clone(), alias.clone()))),
+        None => Err(AiApiClientFactoryError::LocalNotSupportedInCluster),
+      },
+      Alias::Api(api_alias) => {
+        let prefix = api_alias.prefix.clone();
+        let client: Box<dyn AiApiClient> = match api_alias.api_format {
+          ApiFormat::OpenAI => Box::new(OpenAiClient::new(
+            api_key,
+            api_alias.base_url.clone(),
+            prefix,
+            self.client.clone(),
+          )),
+          ApiFormat::OpenAIResponses => Box::new(OpenAiResponsesClient::new(
+            api_key,
+            api_alias.base_url.clone(),
+            prefix,
+            self.client.clone(),
+          )),
+          ApiFormat::Anthropic => Box::new(AnthropicClient::new(
+            api_key,
+            api_alias.base_url.clone(),
+            prefix,
+            self.client.clone(),
+          )),
+          ApiFormat::AnthropicOAuth => Box::new(AnthropicOauthClient::new(
+            api_key,
+            api_alias.base_url.clone(),
+            prefix,
+            api_alias.extra_headers.clone(),
+            api_alias.extra_body.clone(),
+            self.client.clone(),
+          )),
+          ApiFormat::Gemini => Box::new(GeminiClient::new(
+            api_key,
+            api_alias.base_url.clone(),
+            prefix,
+            self.client.clone(),
+          )),
+          ApiFormat::LlmLibertyOauth => {
+            return Err(AiApiClientFactoryError::LibertyRequiresCredentials)
+          }
+        };
+        Ok(client)
       }
-    };
-    Ok(client)
+    }
   }
 
   fn for_envelope(&self, envelope: &LlmLibertyEnvelope) -> Result<Box<dyn AiApiClient>> {

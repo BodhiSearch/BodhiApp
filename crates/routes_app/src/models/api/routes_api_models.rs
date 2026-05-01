@@ -206,7 +206,7 @@ pub async fn api_models_test(
         TestCreds::ApiKey(api_key) => {
           ai_api
             .for_alias(
-              &ApiAlias::new(
+              &services::Alias::Api(ApiAlias::new(
                 String::new(),
                 api_format,
                 d.base_url.trim_end_matches('/').to_string(),
@@ -216,7 +216,7 @@ pub async fn api_models_test(
                 Default::default(),
                 d.extra_headers.clone(),
                 d.extra_body.clone(),
-              ),
+              )),
               api_key.as_option().map(|s| s.to_string()),
             )?
             .test_prompt(&d.model, &d.prompt)
@@ -234,7 +234,7 @@ pub async fn api_models_test(
             })?;
           let stored_key = db.get_api_key_for_alias(tenant_id, user_id, &id).await?;
           ai_api
-            .for_alias(&api_model, stored_key)?
+            .for_alias(&services::Alias::Api(api_model), stored_key)?
             .test_prompt(&d.model, &d.prompt)
             .await
         }
@@ -321,7 +321,7 @@ pub async fn api_models_fetch_models(
         TestCreds::ApiKey(api_key) => {
           ai_api
             .for_alias(
-              &ApiAlias::new(
+              &services::Alias::Api(ApiAlias::new(
                 String::new(),
                 api_format,
                 d.base_url.trim_end_matches('/').to_string(),
@@ -331,7 +331,7 @@ pub async fn api_models_fetch_models(
                 Default::default(),
                 d.extra_headers.clone(),
                 d.extra_body.clone(),
-              ),
+              )),
               api_key.as_option().map(|s| s.to_string()),
             )?
             .fetch_models()
@@ -349,7 +349,7 @@ pub async fn api_models_fetch_models(
             })?;
           let stored_key = db.get_api_key_for_alias(tenant_id, user_id, &id).await?;
           ai_api
-            .for_alias(&api_model, stored_key)?
+            .for_alias(&services::Alias::Api(api_model), stored_key)?
             .fetch_models()
             .await?
         }

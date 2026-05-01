@@ -1,5 +1,5 @@
 use super::{AiApiClientFactory, AiApiClientFactoryError, DefaultAiApiClientFactory};
-use crate::models::{ApiAlias, ApiFormat, ApiModel};
+use crate::models::{Alias, ApiAlias, ApiFormat, ApiModel};
 use crate::test_utils::{fixed_dt, openai_model};
 use anyhow_trace::anyhow_trace;
 use mockito::Server;
@@ -60,7 +60,7 @@ async fn test_test_prompt_success() -> anyhow::Result<()> {
 
   let alias = make_openai_alias(&url);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gpt-3.5-turbo", "Hello")
     .await?;
   assert_eq!("Hello response", result);
@@ -102,7 +102,7 @@ async fn test_test_prompt_openai_responses_success() -> anyhow::Result<()> {
 
   let alias = make_alias_for(&url, ApiFormat::OpenAIResponses);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gpt-4o", "Hello")
     .await?;
   assert_eq!("Hello response", result);
@@ -136,7 +136,7 @@ async fn test_fetch_models_success() -> anyhow::Result<()> {
 
   let alias = make_openai_alias(&url);
   let models = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .fetch_models()
     .await?;
   assert_eq!(
@@ -168,7 +168,7 @@ async fn test_api_unauthorized_error() -> anyhow::Result<()> {
 
   let alias = make_openai_alias(&url);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gpt-3.5-turbo", "Hello")
     .await;
 
@@ -197,7 +197,7 @@ async fn test_model_not_found() -> anyhow::Result<()> {
 
   let alias = make_openai_alias(&url);
   let result = service
-    .for_alias(&alias, Some("invalid-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("invalid-key".to_string()))?
     .test_prompt("unknown-model", "Hello")
     .await;
 
@@ -239,7 +239,7 @@ async fn test_test_prompt_success_parameterized(
 
   let alias = make_openai_alias(&url);
   let result = service
-    .for_alias(&alias, api_key.map(|s| s.to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), api_key.map(|s| s.to_string()))?
     .test_prompt("gpt-3.5-turbo", "Hello")
     .await?;
 
@@ -272,7 +272,7 @@ async fn test_test_prompt_failure_parameterized(
 
   let alias = make_openai_alias(&url);
   let result = service
-    .for_alias(&alias, api_key.map(|s| s.to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), api_key.map(|s| s.to_string()))?
     .test_prompt("gpt-3.5-turbo", "Hello")
     .await;
 
@@ -313,7 +313,7 @@ async fn test_fetch_models_success_parameterized(
 
   let alias = make_openai_alias(&url);
   let result = service
-    .for_alias(&alias, api_key.map(|s| s.to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), api_key.map(|s| s.to_string()))?
     .fetch_models()
     .await?;
 
@@ -346,7 +346,7 @@ async fn test_fetch_models_failure_parameterized(
 
   let alias = make_openai_alias(&url);
   let result = service
-    .for_alias(&alias, api_key.map(|s| s.to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), api_key.map(|s| s.to_string()))?
     .fetch_models()
     .await;
 
@@ -382,7 +382,7 @@ async fn test_test_prompt_openai_responses_errors(
 
   let alias = make_alias_for(&url, ApiFormat::OpenAIResponses);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gpt-4o", "Hello")
     .await;
 
@@ -415,7 +415,7 @@ async fn test_test_prompt_openai_responses_malformed_output() -> anyhow::Result<
 
   let alias = make_alias_for(&url, ApiFormat::OpenAIResponses);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gpt-4o", "Hello")
     .await?;
 

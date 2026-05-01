@@ -1,5 +1,5 @@
 use super::{AiApiClientFactory, DefaultAiApiClientFactory};
-use crate::models::{ApiAlias, ApiFormat};
+use crate::models::{Alias, ApiAlias, ApiFormat};
 use crate::test_utils::{fixed_dt, openai_model};
 use anyhow_trace::anyhow_trace;
 use axum::http::Method;
@@ -101,7 +101,7 @@ async fn test_forward_chat_completion_model_prefix_handling(
     .await;
   let service = DefaultAiApiClientFactory::new()?;
   let response = service
-    .for_alias(&api_alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(api_alias.clone()), Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/chat/completions",
@@ -158,7 +158,7 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
 
   let service = DefaultAiApiClientFactory::new()?;
   let response = service
-    .for_alias(&api_alias, None)?
+    .for_alias(&Alias::Api(api_alias.clone()), None)?
     .forward_request_with_method(
       &Method::POST,
       "/chat/completions",
@@ -219,7 +219,7 @@ async fn test_forward_request_with_method_dispatch(
     .await;
 
   let response = service
-    .for_alias(&api_alias, None)?
+    .for_alias(&Alias::Api(api_alias.clone()), None)?
     .forward_request_with_method(&method, "/responses", body, query_params, None)
     .await?;
 
@@ -259,7 +259,7 @@ async fn test_forward_request_with_method_anthropic_headers() -> anyhow::Result<
     .await;
 
   let response = service
-    .for_alias(&api_alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(api_alias.clone()), Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",
@@ -304,7 +304,7 @@ async fn test_forward_request_with_method_client_headers_forwarded() -> anyhow::
     .await;
 
   let response = service
-    .for_alias(&api_alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(api_alias.clone()), Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",
@@ -354,7 +354,7 @@ async fn test_forward_request_client_anthropic_version_used_not_default() -> any
     .await;
 
   let response = service
-    .for_alias(&api_alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(api_alias.clone()), Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",
@@ -404,7 +404,7 @@ async fn test_forward_request_default_anthropic_version_injected_when_absent() -
     .await;
 
   let response = service
-    .for_alias(&api_alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(api_alias.clone()), Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/messages",

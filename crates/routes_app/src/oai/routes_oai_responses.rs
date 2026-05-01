@@ -124,7 +124,7 @@ fn extract_model_param(params: &HashMap<String, String>) -> Result<String, OAIRo
     })
 }
 
-// Native via inference service; Liberty via per-provider client (forwarded unconditionally — upstream returns its own status).
+// Native and Liberty both forwarded via the unified ai_api() factory.
 async fn dispatch_responses_op(
   auth_scope: &AuthScope,
   resolution: ResponsesAliasResolution,
@@ -135,12 +135,13 @@ async fn dispatch_responses_op(
 ) -> Result<Response, OaiApiError> {
   match resolution {
     ResponsesAliasResolution::Native { alias, api_key } => auth_scope
-      .inference()
-      .forward_remote_with_params(
-        native_endpoint,
-        serde_json::Value::Null,
-        &alias,
-        api_key,
+      .ai_api()
+      .for_alias(&Alias::Api(alias), api_key)
+      .map_err(OaiApiError::from)?
+      .forward_request_with_method(
+        native_endpoint.http_method(),
+        &native_endpoint.api_path(),
+        None,
         query_params,
         None,
       )
@@ -217,13 +218,15 @@ pub async fn responses_create_handler(
       alias: api_alias,
       api_key,
     } => {
+      let endpoint = LlmEndpoint::Responses;
       let response = auth_scope
-        .inference()
-        .forward_remote_with_params(
-          LlmEndpoint::Responses,
-          request,
-          &api_alias,
-          api_key,
+        .ai_api()
+        .for_alias(&Alias::Api(api_alias), api_key)
+        .map_err(OaiApiError::from)?
+        .forward_request_with_method(
+          endpoint.http_method(),
+          &endpoint.api_path(),
+          Some(request),
           params_opt,
           None,
         )

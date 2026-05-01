@@ -1,5 +1,5 @@
 use super::{AiApiClientFactory, DefaultAiApiClientFactory};
-use crate::models::{ApiAlias, ApiFormat, ApiModel};
+use crate::models::{Alias, ApiAlias, ApiFormat, ApiModel};
 use crate::test_utils::{fixed_dt, gemini_model};
 use anyhow_trace::anyhow_trace;
 use axum::http::Method;
@@ -65,7 +65,7 @@ async fn test_test_prompt_gemini_success() -> anyhow::Result<()> {
 
   let alias = make_gemini_alias_no_key(&url);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("gemini-2.5-flash", "Hello")
     .await?;
   assert_eq!("Tuesday", result);
@@ -92,7 +92,7 @@ async fn test_fetch_models_gemini_passes_through_embedding_only() -> anyhow::Res
 
   let alias = make_gemini_alias_no_key(&url);
   let models = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .fetch_models()
     .await?;
 
@@ -127,7 +127,7 @@ async fn test_fetch_models_gemini_preserves_display_name() -> anyhow::Result<()>
 
   let alias = make_gemini_alias_no_key(&url);
   let models = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .fetch_models()
     .await?;
 
@@ -169,7 +169,7 @@ async fn test_forward_gemini_forwards_query_params() -> anyhow::Result<()> {
     .await;
 
   let response = service
-    .for_alias(&api_alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(api_alias.clone()), Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/models/gemini-2.5-flash:generateContent",
@@ -210,7 +210,7 @@ async fn test_forward_request_gemini_passes_through() -> anyhow::Result<()> {
     .await;
 
   let response = service
-    .for_alias(&api_alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(api_alias.clone()), Some("test-key".to_string()))?
     .forward_request_with_method(
       &Method::POST,
       "/models/gemini-2.5-flash:generateContent",

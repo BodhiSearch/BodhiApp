@@ -1,5 +1,5 @@
 use super::{AiApiClientFactory, DefaultAiApiClientFactory};
-use crate::models::{ApiAlias, ApiFormat};
+use crate::models::{Alias, ApiAlias, ApiFormat};
 use crate::test_utils::fixed_dt;
 use anyhow_trace::anyhow_trace;
 use mockito::Server;
@@ -49,7 +49,7 @@ async fn test_test_prompt_anthropic_success() -> anyhow::Result<()> {
 
   let alias = make_anthropic_alias(&url);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("claude-sonnet-4-5-20250929", "Hello")
     .await?;
   assert_eq!("Hi there!", result);
@@ -75,7 +75,7 @@ async fn test_test_prompt_anthropic_malformed_response() -> anyhow::Result<()> {
 
   let alias = make_anthropic_alias(&url);
   let result = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .test_prompt("claude-sonnet-4-5-20250929", "Hello")
     .await?;
   assert_eq!("No response", result);
@@ -111,7 +111,7 @@ async fn test_fetch_models_anthropic_success() -> anyhow::Result<()> {
 
   let alias = make_anthropic_alias(&url);
   let models = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .fetch_models()
     .await?;
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
@@ -170,7 +170,7 @@ async fn test_fetch_models_anthropic_pagination() -> anyhow::Result<()> {
 
   let alias = make_anthropic_alias(&url);
   let models = service
-    .for_alias(&alias, Some("test-key".to_string()))?
+    .for_alias(&Alias::Api(alias.clone()), Some("test-key".to_string()))?
     .fetch_models()
     .await?;
   let model_ids: Vec<&str> = models.iter().map(|m| m.id()).collect();

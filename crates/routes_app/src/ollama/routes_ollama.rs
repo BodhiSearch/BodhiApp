@@ -328,46 +328,47 @@ pub async fn ollama_model_chat_handler(
     })
   })?;
 
-  let inference = auth_scope.inference();
-
   use services::Alias as AliasType;
-  let oai_response = match alias {
-    AliasType::User(_) | AliasType::Model(_) => inference
-      .forward_local(LlmEndpoint::ChatCompletions, request_value, alias)
-      .await
-      .map_err(|e| {
-        Json(OllamaError {
-          error: format!("chat completion error: {e}"),
-        })
-      })?,
-    AliasType::Api(ref api_alias) => {
+  let api_key = match &alias {
+    AliasType::Api(api_alias) => {
       let tenant_id = auth_scope.tenant_id().unwrap_or("").to_string();
       let user_id = auth_scope
         .auth_context()
         .user_id()
         .unwrap_or("")
         .to_string();
-      let api_key = auth_scope
+      auth_scope
         .db_service()
         .get_api_key_for_alias(&tenant_id, &user_id, &api_alias.id)
         .await
         .ok()
-        .flatten();
-      inference
-        .forward_remote(
-          LlmEndpoint::ChatCompletions,
-          request_value,
-          api_alias,
-          api_key,
-        )
-        .await
-        .map_err(|e| {
-          Json(OllamaError {
-            error: format!("chat completion error: {e}"),
-          })
-        })?
+        .flatten()
     }
+    _ => None,
   };
+
+  let endpoint = LlmEndpoint::ChatCompletions;
+  let oai_response = auth_scope
+    .ai_api()
+    .for_alias(&alias, api_key)
+    .map_err(|e| {
+      Json(OllamaError {
+        error: format!("chat completion error: {e}"),
+      })
+    })?
+    .forward_request_with_method(
+      endpoint.http_method(),
+      &endpoint.api_path(),
+      Some(request_value),
+      None,
+      None,
+    )
+    .await
+    .map_err(|e| {
+      Json(OllamaError {
+        error: format!("chat completion error: {e}"),
+      })
+    })?;
 
   // InferenceService returns axum::response::Response directly
   // For non-streaming responses, we need to convert the entire response body

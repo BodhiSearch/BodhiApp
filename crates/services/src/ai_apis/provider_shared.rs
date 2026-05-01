@@ -7,6 +7,24 @@ use axum::http::Method;
 use axum::response::Response;
 use serde_json::Value;
 
+pub(crate) fn convert_reqwest_to_axum(reqwest_response: reqwest::Response) -> Result<Response> {
+  let status = reqwest_response.status();
+  let headers = reqwest_response.headers().clone();
+
+  let mut builder = Response::builder().status(status.as_u16());
+  for (key, value) in &headers {
+    if let Ok(value_str) = value.to_str() {
+      builder = builder.header(key.as_str(), value_str);
+    }
+  }
+
+  let body = Body::from_stream(reqwest_response.bytes_stream());
+
+  builder
+    .body(body)
+    .map_err(|e| AiApiClientFactoryError::ApiError(format!("Failed to build axum response: {}", e)))
+}
+
 pub(crate) async fn fetch_openai_models(
   client: &SafeReqwest,
   api_key: Option<&str>,

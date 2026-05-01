@@ -1,6 +1,6 @@
 use crate::{
   db::{DbService, TimeService},
-  inference::InferenceService,
+  inference::LocalLlama,
   AccessRequestService, AiApiClientFactory, ApiModelService, AuthService, CacheService,
   ConcurrencyService, DataService, DownloadService, HubService, McpService, NetworkService,
   QueueProducer, SessionService, SettingService, TenantService, TokenService,
@@ -41,7 +41,7 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn token_service(&self) -> Arc<dyn TokenService>;
 
-  fn inference_service(&self) -> Arc<dyn InferenceService>;
+  fn local_llama(&self) -> Option<Arc<dyn LocalLlama>>;
 
   fn api_model_service(&self) -> Arc<dyn ApiModelService>;
 
@@ -71,7 +71,7 @@ pub struct DefaultAppService {
   access_request_service: Arc<dyn AccessRequestService>,
   mcp_service: Arc<dyn McpService>,
   token_service: Arc<dyn TokenService>,
-  inference_service: Arc<dyn InferenceService>,
+  local_llama: Option<Arc<dyn LocalLlama>>,
   api_model_service: Arc<dyn ApiModelService>,
   download_service: Arc<dyn DownloadService>,
 }
@@ -141,8 +141,8 @@ impl AppService for DefaultAppService {
     self.token_service.clone()
   }
 
-  fn inference_service(&self) -> Arc<dyn InferenceService> {
-    self.inference_service.clone()
+  fn local_llama(&self) -> Option<Arc<dyn LocalLlama>> {
+    self.local_llama.clone()
   }
 
   fn api_model_service(&self) -> Arc<dyn ApiModelService> {

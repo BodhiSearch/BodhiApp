@@ -1,5 +1,5 @@
 use crate::anthropic_messages_create_handler;
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{mock_ai_factory_returning, RequestAuthContextExt};
 use anyhow_trace::anyhow_trace;
 use axum::{extract::Request, routing::post, Router};
 use pretty_assertions::assert_eq;
@@ -8,16 +8,15 @@ use rstest::rstest;
 use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::{
-  inference::{InferenceError, LlmEndpoint, MockInferenceService},
   test_utils::{
     anthropic_model, openai_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID,
   },
-  ApiAliasBuilder, ApiFormat, AuthContext, ResourceRole,
+  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, AuthContext, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
 
-fn ok_response() -> Result<axum::response::Response, InferenceError> {
+fn ok_response() -> Result<axum::response::Response, AiApiClientFactoryError> {
   Ok(
     axum::response::Response::builder()
       .status(200)
@@ -207,17 +206,8 @@ async fn test_messages_create_forwards_to_anthropic_alias() -> anyhow::Result<()
   let mut builder = AppServiceStubBuilder::default();
   seed_anthropic_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::AnthropicMessages && alias.id == "anthropic-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -256,23 +246,8 @@ async fn test_messages_create_forwards_anthropic_beta_header() -> anyhow::Result
   let mut builder = AppServiceStubBuilder::default();
   seed_anthropic_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, _alias, _key, _params, headers| {
-      if *endpoint != LlmEndpoint::AnthropicMessages {
-        return false;
-      }
-      let Some(hdrs) = headers else { return false };
-      hdrs
-        .iter()
-        .any(|(k, v)| k.eq_ignore_ascii_case("anthropic-beta") && v == "test-beta-flag")
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -312,23 +287,8 @@ async fn test_messages_create_non_anthropic_header_not_forwarded() -> anyhow::Re
   let mut builder = AppServiceStubBuilder::default();
   seed_anthropic_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|_endpoint, _req, _alias, _key, _params, headers| {
-      // Only anthropic-* headers should be forwarded; x-custom-thing is not.
-      match headers {
-        None => true,
-        Some(hdrs) => !hdrs
-          .iter()
-          .any(|(k, _)| k.eq_ignore_ascii_case("x-custom-thing")),
-      }
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -370,20 +330,8 @@ async fn test_messages_create_client_anthropic_version_forwarded() -> anyhow::Re
   let mut builder = AppServiceStubBuilder::default();
   seed_anthropic_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|_endpoint, _req, _alias, _key, _params, headers| {
-      let Some(hdrs) = headers else { return false };
-      hdrs
-        .iter()
-        .any(|(k, v)| k.eq_ignore_ascii_case("anthropic-version") && v == "2023-06-01")
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -423,20 +371,8 @@ async fn test_anthropic_messages_forwards_query_params() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_anthropic_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, _alias, _key, params, _headers| {
-      *endpoint == LlmEndpoint::AnthropicMessages
-        && params
-          .as_ref()
-          .is_some_and(|p| p.iter().any(|(k, v)| k == "foo" && v == "bar"))
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);

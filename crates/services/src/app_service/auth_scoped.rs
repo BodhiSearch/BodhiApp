@@ -1,7 +1,6 @@
 use crate::{
   auth::AuthContextError,
   db::{DbService, TimeService},
-  inference::InferenceService,
   AccessRequestService, AiApiClientFactory, AppService, AuthContext, AuthScopedAiApiClientFactory,
   AuthScopedApiModelService, AuthScopedDataService, AuthScopedDownloadService,
   AuthScopedMcpService, AuthScopedTenantService, AuthScopedTokenService,
@@ -135,11 +134,6 @@ impl AuthScopedAppService {
   /// D9: Time domain
   pub fn time(&self) -> Arc<dyn TimeService> {
     self.app_service.time_service()
-  }
-
-  /// D10: Inference domain (LLM request routing — local and remote)
-  pub fn inference(&self) -> Arc<dyn InferenceService> {
-    self.app_service.inference_service()
   }
 
   // Legacy pass-through accessors (kept for backward compatibility with tests

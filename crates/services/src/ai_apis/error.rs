@@ -1,4 +1,5 @@
 use crate::auth::AuthContextError;
+use crate::inference::LocalLlamaError;
 use crate::{ReqwestError, UrlValidationError};
 use errmeta::{impl_error_from, AppError, ErrorType};
 
@@ -20,6 +21,10 @@ pub enum AiApiClientFactoryError {
   )]
   #[error_meta(error_type = ErrorType::InternalServer, code = "ai_api_client_factory_error-liberty_requires_credentials")]
   LibertyRequiresCredentials,
+
+  #[error("Local inference is not supported in cluster deployment mode.")]
+  #[error_meta(error_type = ErrorType::BadRequest, code = "ai_api_client_factory_error-local_not_supported_in_cluster")]
+  LocalNotSupportedInCluster,
 
   #[error("LLM Liberty provider '{0}' is not supported.")]
   #[error_meta(error_type = ErrorType::BadRequest, code = "ai_api_client_factory_error-liberty_provider_unsupported")]
@@ -61,6 +66,16 @@ impl AiApiClientFactoryError {
       reqwest::StatusCode::NOT_FOUND => Self::NotFound(body),
       reqwest::StatusCode::TOO_MANY_REQUESTS => Self::RateLimit(body),
       _ => Self::ApiError(format!("Status {}: {}", status, body)),
+    }
+  }
+}
+
+impl From<LocalLlamaError> for AiApiClientFactoryError {
+  fn from(e: LocalLlamaError) -> Self {
+    match e {
+      LocalLlamaError::ModelNotFound(m) => AiApiClientFactoryError::NotFound(m),
+      LocalLlamaError::ExecNotFound(p) => AiApiClientFactoryError::ApiError(p),
+      LocalLlamaError::Internal(s) => AiApiClientFactoryError::ApiError(s),
     }
   }
 }

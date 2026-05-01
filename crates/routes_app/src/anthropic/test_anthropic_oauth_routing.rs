@@ -1,5 +1,5 @@
 use crate::anthropic_messages_create_handler;
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{mock_ai_factory_returning, RequestAuthContextExt};
 use anyhow_trace::anyhow_trace;
 use axum::{extract::Request, routing::post, Router};
 use pretty_assertions::assert_eq;
@@ -9,16 +9,16 @@ use serde_json::json;
 use server_core::test_utils::{RequestTestExt, ResponseTestExt};
 use services::models::llm_liberty_envelope::LlmLibertyEnvelope;
 use services::{
-  inference::{InferenceError, LlmEndpoint, MockInferenceService},
   test_utils::{
     anthropic_model, test_llm_liberty_envelope, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID,
   },
-  ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiClientFactory, ResourceRole,
+  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiClientFactory,
+  ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
 
-fn ok_response() -> Result<axum::response::Response, InferenceError> {
+fn ok_response() -> Result<axum::response::Response, AiApiClientFactoryError> {
   Ok(
     axum::response::Response::builder()
       .status(200)
@@ -56,17 +56,8 @@ async fn test_messages_create_forwards_to_anthropic_oauth_alias() -> anyhow::Res
   let mut builder = AppServiceStubBuilder::default();
   seed_anthropic_oauth_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::AnthropicMessages && alias.id == "anthropic-oauth-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -230,15 +221,10 @@ async fn test_messages_create_rejects_llm_liberty_non_anthropic_provider() -> an
     )
     .await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  // Inference must NOT be invoked when the provider guard rejects.
-  mock_inference.expect_forward_remote_with_params().times(0);
-
   // Use the real factory so for_resolved_credentials returns
   // LibertyProviderUnsupported (BadRequest) for the openai-codex provider.
   let real_factory = services::DefaultAiApiClientFactory::new()?;
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
     .ai_api_client_factory(Arc::new(real_factory))
     .build()
     .await?;

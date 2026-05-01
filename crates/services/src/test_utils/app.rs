@@ -2,7 +2,7 @@ use super::{build_temp_dir, copy_test_dir};
 use super::{MockAccessRequestService, StubNetworkService};
 use crate::{
   db::{DbService, TimeService},
-  inference::{InferenceService, MockInferenceService},
+  inference::LocalLlama,
   test_utils::{test_db_service, test_db_service_with_temp_dir, SettingServiceStub, TestDbService},
   AccessRequestService, AiApiClientFactory, ApiModelService, AppService, AuthService, CacheService,
   ConcurrencyService, DataService, DefaultApiModelService, DefaultDownloadService,
@@ -74,8 +74,8 @@ pub struct AppServiceStub {
   pub data_service: Option<Arc<dyn DataService>>,
   #[builder(default = "self.default_ai_api_client_factory()")]
   pub ai_api_client_factory: Option<Arc<dyn AiApiClientFactory>>,
-  #[builder(default = "self.default_inference_service()")]
-  pub inference_service: Option<Arc<dyn InferenceService>>,
+  #[builder(default = "None")]
+  pub local_llama: Option<Arc<dyn LocalLlama>>,
   #[builder(default = "self.default_concurrency_service()")]
   pub concurrency_service: Option<Arc<dyn ConcurrencyService>>,
   #[builder(default = "self.default_queue_producer()")]
@@ -143,10 +143,6 @@ impl AppServiceStubBuilder {
 
   fn default_network_service(&self) -> Option<Arc<dyn NetworkService>> {
     Some(Arc::new(StubNetworkService { ip: None }))
-  }
-
-  fn default_inference_service(&self) -> Option<Arc<dyn InferenceService>> {
-    Some(Arc::new(MockInferenceService::new()))
   }
 
   fn default_access_request_service(&self) -> Option<Arc<dyn AccessRequestService>> {
@@ -523,11 +519,8 @@ impl AppService for AppServiceStub {
     self.token_service.clone().unwrap()
   }
 
-  fn inference_service(&self) -> Arc<dyn InferenceService> {
-    self
-      .inference_service
-      .clone()
-      .expect("inference_service not configured in test stub")
+  fn local_llama(&self) -> Option<Arc<dyn LocalLlama>> {
+    self.local_llama.clone()
   }
 
   fn api_model_service(&self) -> Arc<dyn ApiModelService> {

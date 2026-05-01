@@ -1,4 +1,4 @@
-use services::inference::InferenceService;
+use services::inference::LocalLlama;
 use services::SettingSource;
 use services::{SettingsChangeListener, BODHI_EXEC_VARIANT};
 use std::sync::Arc;
@@ -6,7 +6,7 @@ use tokio::task;
 
 #[derive(Debug, derive_new::new)]
 pub struct VariantChangeListener {
-  inference_service: Arc<dyn InferenceService>,
+  local_llama: Option<Arc<dyn LocalLlama>>,
 }
 
 impl SettingsChangeListener for VariantChangeListener {
@@ -24,7 +24,9 @@ impl SettingsChangeListener for VariantChangeListener {
     if prev_value.is_some() && new_value.is_some() && prev_value.as_ref() == new_value.as_ref() {
       return;
     }
-    let inference = self.inference_service.clone();
+    let Some(local_llama) = self.local_llama.clone() else {
+      return;
+    };
     let new_value = if let Some(serde_yaml::Value::String(new_value)) = new_value {
       new_value.to_string()
     } else {
@@ -34,7 +36,7 @@ impl SettingsChangeListener for VariantChangeListener {
       return;
     };
     task::spawn(async move {
-      if let Err(err) = inference.set_variant(&new_value).await {
+      if let Err(err) = local_llama.set_variant(&new_value).await {
         tracing::error!(?err, "failed to set exec variant");
       }
     });
@@ -46,7 +48,7 @@ mod tests {
   use super::VariantChangeListener;
   use mockall::predicate::eq;
   use rstest::rstest;
-  use services::inference::{InferenceError, MockInferenceService};
+  use services::inference::{LocalLlamaError, MockLocalLlama};
   use services::SettingSource;
   use services::{SettingsChangeListener, BODHI_EXEC_VARIANT};
   use std::sync::Arc;
@@ -54,13 +56,13 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_variant_change_listener_triggers_if_bodhi_exec_variant_changes() {
-    let mut mock_inference = MockInferenceService::default();
-    mock_inference
+    let mut mock_local_llama = MockLocalLlama::default();
+    mock_local_llama
       .expect_set_variant()
       .with(eq("cpu".to_string()))
       .times(1)
       .returning(|_| Ok(()));
-    let listener = VariantChangeListener::new(Arc::new(mock_inference));
+    let listener = VariantChangeListener::new(Some(Arc::new(mock_local_llama)));
 
     listener.on_change(
       BODHI_EXEC_VARIANT,
@@ -69,18 +71,33 @@ mod tests {
       &Some(serde_yaml::Value::String("cpu".to_string())),
       &SettingSource::Default,
     );
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
   }
 
   #[rstest]
   #[tokio::test]
   async fn test_variant_change_listener_handles_error() {
-    let mut mock_inference = MockInferenceService::default();
-    mock_inference
+    let mut mock_local_llama = MockLocalLlama::default();
+    mock_local_llama
       .expect_set_variant()
       .with(eq("cpu".to_string()))
       .times(1)
-      .returning(|_| Err(InferenceError::Internal("test error".to_string())));
-    let listener = VariantChangeListener::new(Arc::new(mock_inference));
+      .returning(|_| Err(LocalLlamaError::Internal("test error".to_string())));
+    let listener = VariantChangeListener::new(Some(Arc::new(mock_local_llama)));
+    listener.on_change(
+      BODHI_EXEC_VARIANT,
+      &None,
+      &SettingSource::Default,
+      &Some(serde_yaml::Value::String("cpu".to_string())),
+      &SettingSource::Default,
+    );
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_variant_change_listener_noop_when_no_local_llama() {
+    let listener = VariantChangeListener::new(None);
     listener.on_change(
       BODHI_EXEC_VARIANT,
       &None,
@@ -108,10 +125,10 @@ mod tests {
     #[case] new_value: Option<serde_yaml::Value>,
     #[case] new_source: SettingSource,
   ) {
-    let mut mock_inference = MockInferenceService::default();
-    mock_inference.expect_set_variant().never();
-    let listener = VariantChangeListener::new(Arc::new(mock_inference));
-    listener.on_change(key, &prev_value, &prev_source, &new_value, &new_source); // so that the async task completes
+    let mut mock_local_llama = MockLocalLlama::default();
+    mock_local_llama.expect_set_variant().never();
+    let listener = VariantChangeListener::new(Some(Arc::new(mock_local_llama)));
+    listener.on_change(key, &prev_value, &prev_source, &new_value, &new_source);
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
   }
 }

@@ -230,12 +230,13 @@ pub async fn gemini_action_handler(
   };
 
   let response = auth_scope
-    .inference()
-    .forward_remote_with_params(
-      endpoint,
-      request,
-      &api_alias,
-      api_key,
+    .ai_api()
+    .for_alias(&Alias::Api(api_alias), api_key)
+    .map_err(BodhiErrorResponse::from)?
+    .forward_request_with_method(
+      endpoint.http_method(),
+      &endpoint.api_path(),
+      Some(request),
       forwarded_params_opt,
       client_headers,
     )

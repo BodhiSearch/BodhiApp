@@ -39,6 +39,7 @@ export class ChatPage extends BasePage {
     settingsSidebar: '[data-testid="settings-sidebar"]',
     settingsToggle: '[data-testid="settings-toggle-button"]',
     chatHistoryToggle: '[data-testid="chat-history-toggle"]',
+    maxTokensSliderToggle: '[data-testid="setting-max-tokens-toggle"]',
 
     // Tool call elements
     toolCallMessage: '[data-testid="tool-call-message"]',
@@ -86,16 +87,19 @@ export class ChatPage extends BasePage {
   /**
    * Send a message in the chat
    */
-  async sendMessage(message) {
+  async sendMessage(message, options = {}) {
     await this.waitForToastToHideOptional();
-    await this.sendMessageAndReturn(message);
+    await this.sendMessageAndReturn(message, options);
     await this.waitForLatestUserMessage();
   }
 
-  async sendMessageAndReturn(message) {
+  async sendMessageAndReturn(message, options = {}) {
     await this.waitForToastToHideOptional();
     await this.waitForModelSelected();
     await this.page.fill(this.selectors.messageInput, message);
+    if (!!options.maxTokens) {
+      await this.page.locator(this.selectors.maxTokensSliderToggle).click();
+    }
     const sendButton = this.page.locator(this.selectors.sendButton);
     await expect(sendButton).toBeEnabled();
     await sendButton.click();
@@ -185,7 +189,7 @@ export class ChatPage extends BasePage {
   // Model operations
 
   async waitForModelSelected() {
-    await this.page.waitForSelector(this.selectors.chatFormModelSelected, { timeout: 10000 });
+    await this.page.waitForSelector(this.selectors.chatFormModelSelected);
   }
 
   /**

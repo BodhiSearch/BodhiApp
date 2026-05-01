@@ -33,20 +33,22 @@ pub enum ServeCommand {
   ByParams { host: String, port: u16 },
 }
 
-pub struct ShutdownInferenceCallback {
+pub struct ShutdownLocalLlamaCallback {
   app_service: Arc<dyn AppService>,
 }
 
 #[async_trait::async_trait]
-impl ShutdownCallback for ShutdownInferenceCallback {
+impl ShutdownCallback for ShutdownLocalLlamaCallback {
   async fn shutdown(&self) {
-    if let Err(err) = self.app_service.inference_service().stop().await {
-      tracing::warn!(err = ?err, "error stopping inference service");
+    if let Some(rt) = self.app_service.local_llama() {
+      if let Err(err) = rt.stop().await {
+        tracing::warn!(err = ?err, "error stopping local llama runtime");
+      }
     }
   }
 }
 
-/// Listener that forwards keep-alive setting changes to InferenceService.
+/// Listener that forwards keep-alive setting changes to the local llama runtime.
 #[derive(Debug)]
 struct KeepAliveSettingListener {
   app_service: Arc<dyn AppService>,
@@ -68,10 +70,11 @@ impl SettingsChangeListener for KeepAliveSettingListener {
       .as_ref()
       .and_then(|v| v.as_i64())
       .unwrap_or(DEFAULT_KEEP_ALIVE_SECS);
-    let inference = self.app_service.inference_service();
-    tokio::task::spawn(async move {
-      inference.set_keep_alive(new_keep_alive).await;
-    });
+    if let Some(rt) = self.app_service.local_llama() {
+      tokio::task::spawn(async move {
+        rt.set_keep_alive(new_keep_alive).await;
+      });
+    }
   }
 }
 
@@ -123,11 +126,9 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    // Register variant change and keep-alive listeners via InferenceService
+    // Register variant change and keep-alive listeners; both no-op when local_llama is absent.
     setting_service
-      .add_listener(Arc::new(VariantChangeListener::new(
-        service.inference_service(),
-      )))
+      .add_listener(Arc::new(VariantChangeListener::new(service.local_llama())))
       .await;
     setting_service
       .add_listener(Arc::new(KeepAliveSettingListener {
@@ -141,7 +142,7 @@ impl ServeCommand {
     let public_url = setting_service.public_server_url().await;
 
     let join_handle: JoinHandle<std::result::Result<(), ServeError>> = tokio::spawn(async move {
-      let callback = Box::new(ShutdownInferenceCallback {
+      let callback = Box::new(ShutdownLocalLlamaCallback {
         app_service: service,
       });
       match server.start_new(app, Some(callback)).await {
@@ -189,8 +190,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_server_fails_when_port_already_in_use(temp_dir: TempDir) -> anyhow::Result<()> {
-    // Bind to a random port first to ensure it's in use (use high ports to avoid permission issues)
-    let port = 8000 + (rand::random::<u16>() % 1000); // Use ports 8000-8999
+    let port = 8000 + (rand::random::<u16>() % 1000);
     let host = "127.0.0.1";
     let addr = format!("{}:{}", host, port);
     let _listener = TcpListener::bind(&addr).await?;
@@ -208,9 +208,7 @@ mod tests {
     let result = serve_command.get_server_handle(app_service, None).await;
     assert!(result.is_err());
     match result.unwrap_err() {
-      ServeError::Server(ServerError::Io(_)) => {
-        // This is expected - binding to port should fail
-      }
+      ServeError::Server(ServerError::Io(_)) => {}
       other => panic!("Expected IO error for port conflict, got: {:?}", other),
     }
     Ok(())

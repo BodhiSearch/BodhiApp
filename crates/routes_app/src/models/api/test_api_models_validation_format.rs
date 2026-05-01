@@ -153,7 +153,7 @@ async fn test_api_models_test_id_uses_stored_api_format(
   let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai
     .expect_for_alias()
-    .withf(|alias, _| alias.api_format == ApiFormat::AnthropicOAuth)
+    .withf(|alias, _| matches!(alias, services::Alias::Api(a) if a.api_format == ApiFormat::AnthropicOAuth))
     .times(1)
     .returning(|_, _| {
       let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
@@ -222,7 +222,7 @@ async fn test_api_models_fetch_models_id_uses_stored_api_format(
   let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai
     .expect_for_alias()
-    .withf(|alias, _| alias.api_format == ApiFormat::AnthropicOAuth)
+    .withf(|alias, _| matches!(alias, services::Alias::Api(a) if a.api_format == ApiFormat::AnthropicOAuth))
     .times(1)
     .returning(|_, _| {
       let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();

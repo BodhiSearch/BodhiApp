@@ -1,4 +1,4 @@
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{mock_ai_factory_returning, RequestAuthContextExt};
 use crate::{
   responses_cancel_handler, responses_create_handler, responses_delete_handler,
   responses_get_handler, responses_input_items_handler,
@@ -14,13 +14,13 @@ use reqwest::StatusCode;
 use rstest::rstest;
 use server_core::test_utils::RequestTestExt;
 use services::{
-  inference::{InferenceError, LlmEndpoint, MockInferenceService},
   models::llm_liberty_envelope::LlmLibertyEnvelope,
   test_utils::{
     openai_model, test_llm_liberty_envelope_codex, AppServiceStubBuilder, TEST_TENANT_ID,
     TEST_USER_ID,
   },
-  ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiClientFactory, ResourceRole,
+  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiClientFactory,
+  ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -33,7 +33,7 @@ fn codex_liberty_envelope(access_token: &str) -> LlmLibertyEnvelope {
   env
 }
 
-fn ok_response() -> Result<axum::response::Response, InferenceError> {
+fn ok_response() -> Result<axum::response::Response, AiApiClientFactoryError> {
   Ok(
     axum::response::Response::builder()
       .status(200)
@@ -74,17 +74,8 @@ async fn test_responses_create_success() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_responses_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::Responses && alias.id == "resp-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -116,17 +107,8 @@ async fn test_responses_get_success() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_responses_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::ResponsesGet("resp-abc-123".to_string()) && alias.id == "resp-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -158,18 +140,8 @@ async fn test_responses_delete_success() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_responses_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::ResponsesDelete("resp-abc-123".to_string())
-        && alias.id == "resp-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -204,18 +176,8 @@ async fn test_responses_input_items_success() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_responses_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::ResponsesInputItems("resp-abc-123".to_string())
-        && alias.id == "resp-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -250,18 +212,8 @@ async fn test_responses_cancel_success() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_responses_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::ResponsesCancel("resp-abc-123".to_string())
-        && alias.id == "resp-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -300,22 +252,8 @@ async fn test_responses_get_forwards_extra_query_params() -> anyhow::Result<()> 
   let mut builder = AppServiceStubBuilder::default();
   seed_responses_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, params, _headers| {
-      *endpoint == LlmEndpoint::ResponsesGet("resp-abc-123".to_string())
-        && alias.id == "resp-alias"
-        && params
-          .as_ref()
-          .map(|p| p.contains(&("limit".to_string(), "10".to_string())) && p.len() == 1)
-          .unwrap_or(false)
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -347,22 +285,8 @@ async fn test_responses_input_items_forwards_extra_query_params() -> anyhow::Res
   let mut builder = AppServiceStubBuilder::default();
   seed_responses_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, params, _headers| {
-      *endpoint == LlmEndpoint::ResponsesInputItems("resp-abc-123".to_string())
-        && alias.id == "resp-alias"
-        && params
-          .as_ref()
-          .map(|p| p.contains(&("after".to_string(), "item_456".to_string())) && p.len() == 1)
-          .unwrap_or(false)
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -397,20 +321,8 @@ async fn test_responses_create_forwards_query_params() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_responses_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, _alias, _key, params, _headers| {
-      *endpoint == LlmEndpoint::Responses
-        && params
-          .as_ref()
-          .is_some_and(|p| p.iter().any(|(k, v)| k == "foo" && v == "bar"))
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);

@@ -1,4 +1,4 @@
-use crate::test_utils::RequestAuthContextExt;
+use crate::test_utils::{mock_ai_factory_returning, RequestAuthContextExt};
 use crate::{gemini_action_handler, gemini_models_get, gemini_models_list, ENDPOINT_GEMINI_MODEL};
 use anyhow_trace::anyhow_trace;
 use axum::{body::Body, extract::Request, routing::get, Router};
@@ -7,14 +7,13 @@ use reqwest::StatusCode;
 use rstest::rstest;
 use server_core::test_utils::ResponseTestExt;
 use services::{
-  inference::{InferenceError, LlmEndpoint, MockInferenceService},
   test_utils::{gemini_model, openai_model, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID},
-  ApiAliasBuilder, ApiFormat, ApiModel, AuthContext, ResourceRole,
+  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, ApiModel, AuthContext, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
 
-fn ok_response() -> Result<axum::response::Response, InferenceError> {
+fn ok_response() -> Result<axum::response::Response, AiApiClientFactoryError> {
   Ok(
     axum::response::Response::builder()
       .status(200)
@@ -457,18 +456,8 @@ async fn test_generate_content_forwards_to_gemini_endpoint() -> anyhow::Result<(
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::GeminiGenerateContent("gemini-2.5-flash".to_string())
-        && alias.id == "gemini-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -691,18 +680,8 @@ async fn test_generate_content_strips_alias_prefix() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias_with_prefix(&mut builder, Some("google/".to_string())).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, _alias, _key, _params, _headers| {
-      // Stripped model id must be "gemini-2.5-flash" (without "google/" prefix)
-      *endpoint == LlmEndpoint::GeminiGenerateContent("gemini-2.5-flash".to_string())
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -744,17 +723,8 @@ async fn test_action_handler_accepts_literal_slash_in_prefixed_alias() -> anyhow
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias_with_prefix(&mut builder, Some("gem/".to_string())).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, _alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::GeminiStreamGenerateContent("gemini-2.5-flash".to_string())
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -797,19 +767,8 @@ async fn test_action_handler_forwards_alt_sse_query_param() -> anyhow::Result<()
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|_endpoint, _req, _alias, _key, params, _headers| {
-      params
-        .as_ref()
-        .is_some_and(|p| p.iter().any(|(k, v)| k == "alt" && v == "sse"))
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -849,29 +808,8 @@ async fn test_action_handler_forwards_x_goog_headers() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|_endpoint, _req, _alias, _key, _params, headers| {
-      let Some(h) = headers.as_ref() else {
-        return false;
-      };
-      let has_api_client = h
-        .iter()
-        .any(|(k, v)| k.eq_ignore_ascii_case("x-goog-api-client") && v == "genai-js/1.0");
-      let has_request_params = h
-        .iter()
-        .any(|(k, v)| k.eq_ignore_ascii_case("x-goog-request-params") && v == "model=gemini");
-      let no_content_type = !h
-        .iter()
-        .any(|(k, _)| k.eq_ignore_ascii_case("content-type"));
-      has_api_client && has_request_params && no_content_type
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -915,18 +853,8 @@ async fn test_stream_generate_content_forwards_correct_endpoint() -> anyhow::Res
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::GeminiStreamGenerateContent("gemini-2.5-flash".to_string())
-        && alias.id == "gemini-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -964,18 +892,8 @@ async fn test_embed_content_forwards_correct_endpoint() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::GeminiEmbedContent("gemini-2.5-flash".to_string())
-        && alias.id == "gemini-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -1013,18 +931,8 @@ async fn test_batch_embed_contents_forwards_correct_endpoint() -> anyhow::Result
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|endpoint, _req, alias, _key, _params, _headers| {
-      *endpoint == LlmEndpoint::GeminiBatchEmbedContents("gemini-2.5-flash".to_string())
-        && alias.id == "gemini-alias"
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -1069,14 +977,8 @@ async fn test_axum_get_and_post_routes_do_not_conflict() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
@@ -1116,19 +1018,8 @@ async fn test_gemini_action_forwards_alt_sse_query() -> anyhow::Result<()> {
   let mut builder = AppServiceStubBuilder::default();
   seed_gemini_alias(&mut builder).await?;
 
-  let mut mock_inference = MockInferenceService::new();
-  mock_inference
-    .expect_forward_remote_with_params()
-    .withf(|_endpoint, _req, _alias, _key, params, _headers| {
-      params
-        .as_ref()
-        .is_some_and(|p| p.iter().any(|(k, v)| k == "alt" && v == "sse"))
-    })
-    .times(1)
-    .return_once(|_, _, _, _, _, _| ok_response());
-
   let app_service = builder
-    .inference_service(Arc::new(mock_inference))
+    .ai_api_client_factory(mock_ai_factory_returning(ok_response))
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);

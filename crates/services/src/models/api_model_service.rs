@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::db::{DbError, DbService, TimeService};
 use crate::models::llm_liberty_envelope::LlmLibertyEnvelopeUpdate;
 use crate::models::{
-  ApiAlias, ApiAliasResponse, ApiFormat, ApiKeyUpdate, ApiModel, ApiModelRequest,
+  Alias, ApiAlias, ApiAliasResponse, ApiFormat, ApiKeyUpdate, ApiModel, ApiModelRequest,
   DefaultApiModelRequest, LlmLibertyApiModelRequest,
 };
 use crate::new_ulid;
@@ -286,7 +286,7 @@ impl ApiModelService for DefaultApiModelService {
           .flatten();
         let client = self
           .ai_api_client_factory
-          .for_alias(&api_alias, key.clone())
+          .for_alias(&Alias::Api(api_alias.clone()), key.clone())
           .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
         (client, key)
       };
@@ -347,7 +347,7 @@ impl DefaultApiModelService {
     let provider_models = self
       .ai_api_client_factory
       .for_alias(
-        &ApiAlias::new(
+        &Alias::Api(ApiAlias::new(
           String::new(),
           api_format.clone(),
           base_url.clone(),
@@ -357,7 +357,7 @@ impl DefaultApiModelService {
           now,
           form.extra_headers.clone(),
           form.extra_body.clone(),
-        ),
+        )),
         api_key_option.clone(),
       )
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?
@@ -480,7 +480,7 @@ impl DefaultApiModelService {
     let provider_models = self
       .ai_api_client_factory
       .for_alias(
-        &ApiAlias::new(
+        &Alias::Api(ApiAlias::new(
           api_alias.id.clone(),
           api_format.clone(),
           base_url.clone(),
@@ -490,7 +490,7 @@ impl DefaultApiModelService {
           api_alias.created_at,
           form.extra_headers.clone(),
           form.extra_body.clone(),
-        ),
+        )),
         fetch_key,
       )
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?

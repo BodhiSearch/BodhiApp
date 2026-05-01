@@ -3,7 +3,7 @@ use crate::ai_apis::ai_api_client_factory::AiApiClientFactory;
 use crate::ai_apis::error::Result;
 use crate::auth::AuthContext;
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
-use crate::models::ApiAlias;
+use crate::models::{Alias, ApiAlias};
 use crate::AppService;
 use crate::SafeReqwest;
 use std::sync::Arc;
@@ -23,11 +23,7 @@ impl AuthScopedAiApiClientFactory {
     }
   }
 
-  pub fn for_alias(
-    &self,
-    alias: &ApiAlias,
-    api_key: Option<String>,
-  ) -> Result<Box<dyn AiApiClient>> {
+  pub fn for_alias(&self, alias: &Alias, api_key: Option<String>) -> Result<Box<dyn AiApiClient>> {
     self.inner.for_alias(alias, api_key)
   }
 

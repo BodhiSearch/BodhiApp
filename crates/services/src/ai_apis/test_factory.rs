@@ -1,6 +1,6 @@
 use super::{AiApiClientFactory, DefaultAiApiClientFactory};
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
-use crate::models::{ApiAlias, ApiFormat};
+use crate::models::{Alias, ApiAlias, ApiFormat};
 use crate::test_utils::{
   fixed_dt, test_llm_liberty_envelope, test_llm_liberty_envelope_codex,
   test_resolved_llm_liberty_credentials, test_resolved_llm_liberty_credentials_codex,
@@ -54,7 +54,7 @@ fn make_codex_creds() -> ResolvedLlmLibertyCredentials {
 fn for_alias_succeeds_for_non_liberty_formats(#[case] format: ApiFormat) -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
   let alias = make_alias(format);
-  let result = service.for_alias(&alias, Some("key".to_string()));
+  let result = service.for_alias(&Alias::Api(alias.clone()), Some("key".to_string()));
   assert!(result.is_ok());
   Ok(())
 }
@@ -64,7 +64,7 @@ fn for_alias_succeeds_for_non_liberty_formats(#[case] format: ApiFormat) -> anyh
 fn for_alias_returns_error_for_llm_liberty_oauth() -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
   let alias = make_alias(ApiFormat::LlmLibertyOauth);
-  let err = match service.for_alias(&alias, None) {
+  let err = match service.for_alias(&Alias::Api(alias.clone()), None) {
     Err(e) => e,
     Ok(_) => panic!("expected error for LlmLibertyOauth"),
   };

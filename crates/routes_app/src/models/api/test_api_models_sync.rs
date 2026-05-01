@@ -316,9 +316,12 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
   mock_ai
     .expect_for_alias()
     .withf(move |alias, _| {
-      alias.api_format == ApiFormat::AnthropicOAuth
-        && alias.extra_headers.as_ref() == Some(&expected_extra_headers)
-        && alias.extra_body.as_ref() == Some(&expected_extra_body)
+      let services::Alias::Api(api_alias) = alias else {
+        return false;
+      };
+      api_alias.api_format == ApiFormat::AnthropicOAuth
+        && api_alias.extra_headers.as_ref() == Some(&expected_extra_headers)
+        && api_alias.extra_body.as_ref() == Some(&expected_extra_body)
     })
     .returning(|_, _| {
       let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
