@@ -8,7 +8,7 @@ use crate::models::{
   DefaultApiModelRequest, LlmLibertyApiModelRequest,
 };
 use crate::new_ulid;
-use crate::{AiApiClient, AiApiClientFactory};
+use crate::{AiApiClient, AiApiClientFactory, LibertySource};
 use errmeta::{AppError, EntityError, ErrorType};
 use std::collections::HashSet;
 
@@ -274,7 +274,13 @@ impl ApiModelService for DefaultApiModelService {
           })?;
         let client = self
           .ai_api_client_factory
-          .for_resolved_credentials(&creds, &api_alias, tenant_id, user_id)
+          .for_liberty(LibertySource::Resolved {
+            creds: &creds,
+            alias_id: &api_alias.id,
+            prefix: api_alias.prefix.clone(),
+            tenant_id,
+            user_id,
+          })
           .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
         (client, None)
       } else {
@@ -414,7 +420,7 @@ impl DefaultApiModelService {
 
     let provider_models = self
       .ai_api_client_factory
-      .for_envelope(&envelope)
+      .for_liberty(LibertySource::Envelope(&envelope))
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?
       .fetch_models()
       .await
@@ -542,7 +548,7 @@ impl DefaultApiModelService {
         let base_url = env.api.base_url.clone();
         let client = self
           .ai_api_client_factory
-          .for_envelope(&env)
+          .for_liberty(LibertySource::Envelope(&env))
           .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
         (client, base_url, Some(env))
       }
@@ -560,7 +566,13 @@ impl DefaultApiModelService {
         let base_url = creds.api_base_url.clone();
         let client = self
           .ai_api_client_factory
-          .for_resolved_credentials(&creds, &api_alias, tenant_id, user_id)
+          .for_liberty(LibertySource::Resolved {
+            creds: &creds,
+            alias_id: &api_alias.id,
+            prefix: api_alias.prefix.clone(),
+            tenant_id,
+            user_id,
+          })
           .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
         (client, base_url, None)
       }

@@ -1,4 +1,4 @@
-use crate::{merge_server_args, ContextError, LlmEndpoint};
+use crate::{merge_server_args, ContextError};
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
 use serde_json::Value;
 use services::{Alias, HubService, JsonVec, SettingService};
@@ -30,7 +30,7 @@ pub trait SharedContext: std::fmt::Debug + Send + Sync {
 
   async fn forward_request(
     &self,
-    endpoint: LlmEndpoint,
+    api_path: &str,
     request: Value,
     alias: Alias,
   ) -> Result<reqwest::Response>;
@@ -180,7 +180,7 @@ impl SharedContext for DefaultSharedContext {
 
   async fn forward_request(
     &self,
-    endpoint: LlmEndpoint,
+    api_path: &str,
     mut request: Value,
     alias: Alias,
   ) -> Result<reqwest::Response> {
@@ -229,7 +229,7 @@ impl SharedContext for DefaultSharedContext {
       ModelLoadStrategy::Continue => {
         let server = server
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
-        Ok(dispatch_local(server.as_ref(), &endpoint, &input_value).await?)
+        Ok(dispatch_local(server.as_ref(), api_path, &input_value).await?)
       }
       ModelLoadStrategy::DropAndLoad => {
         drop(lock);
@@ -247,7 +247,7 @@ impl SharedContext for DefaultSharedContext {
         let server = lock
           .as_ref()
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
-        Ok(dispatch_local(server.as_ref(), &endpoint, &input_value).await?)
+        Ok(dispatch_local(server.as_ref(), api_path, &input_value).await?)
       }
       ModelLoadStrategy::Load => {
         let variant = self.exec_variant.get().await;
@@ -265,7 +265,7 @@ impl SharedContext for DefaultSharedContext {
         let server = lock
           .as_ref()
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
-        Ok(dispatch_local(server.as_ref(), &endpoint, &input_value).await?)
+        Ok(dispatch_local(server.as_ref(), api_path, &input_value).await?)
       }
     };
     self
@@ -300,15 +300,15 @@ impl SharedContext for DefaultSharedContext {
 
 async fn dispatch_local(
   server: &(dyn Server + '_),
-  endpoint: &LlmEndpoint,
+  api_path: &str,
   input: &Value,
 ) -> Result<reqwest::Response> {
-  match endpoint {
-    LlmEndpoint::ChatCompletions => Ok(server.chat_completions(input).await?),
-    LlmEndpoint::Embeddings => Ok(server.embeddings(input).await?),
-    _ => Err(ContextError::Unreachable(format!(
-      "endpoint {:?} is not supported for local models",
-      endpoint
+  match api_path {
+    "/chat/completions" => Ok(server.chat_completions(input).await?),
+    "/embeddings" => Ok(server.embeddings(input).await?),
+    other => Err(ContextError::Unreachable(format!(
+      "path '{}' is not supported for local models",
+      other
     ))),
   }
 }

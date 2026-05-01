@@ -11,7 +11,7 @@ use super::error::{AiApiClientFactoryError, Result};
 use super::llm_liberty::{DefaultLlmLibertyRefresh, LlmLibertyRefresh};
 use crate::inference::LocalLlama;
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
-use crate::models::{Alias, ApiAlias, ApiFormat};
+use crate::models::{Alias, ApiFormat};
 use crate::SafeReqwest;
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -19,21 +19,41 @@ use std::time::Duration;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 
+/// Discriminator for `AiApiClientFactory::for_liberty` — the two variants
+/// reflect Liberty's distinct credential lifecycle stages and produce clients
+/// with different 401-retry behavior.
+pub enum LibertySource<'a> {
+  /// Pre-persistence validation: stateless client, `NoOpRefresh`, 401 surfaces
+  /// directly (no DB call). Used by API-model creation/test flows before the
+  /// envelope is encrypted and persisted.
+  Envelope(&'a LlmLibertyEnvelope),
+  /// Per-request: stateful client, `DefaultLlmLibertyRefresh`. On UNAUTHORIZED
+  /// the client calls `force_refresh(tenant_id, user_id, alias_id)` and retries
+  /// the request once with the rotated token.
+  Resolved {
+    creds: &'a ResolvedLlmLibertyCredentials,
+    alias_id: &'a str,
+    prefix: Option<String>,
+    tenant_id: &'a str,
+    user_id: &'a str,
+  },
+}
+
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AiApiClientFactory: Send + Sync + std::fmt::Debug {
+  /// Per-request client for non-Liberty alias flows.
+  /// - `Alias::User`/`Alias::Model` → `LocalLlamaClient` (or `LocalNotSupportedInCluster` when no local runtime is wired)
+  /// - `Alias::Api` with key-based formats → corresponding remote client with `api_key`
+  /// - `Alias::Api` with `LlmLibertyOauth` format → `LibertyRequiresCredentials` (caller must use `for_liberty`)
   fn for_alias(&self, alias: &Alias, api_key: Option<String>) -> Result<Box<dyn AiApiClient>>;
 
-  fn for_envelope(&self, envelope: &LlmLibertyEnvelope) -> Result<Box<dyn AiApiClient>>;
+  /// Per-request client for an `LlmLibertyOauth` source. See `LibertySource` doc for the two lifecycle stages.
+  fn for_liberty<'a>(&self, source: LibertySource<'a>) -> Result<Box<dyn AiApiClient>>;
 
-  fn for_resolved_credentials(
-    &self,
-    creds: &ResolvedLlmLibertyCredentials,
-    alias: &ApiAlias,
-    tenant_id: &str,
-    user_id: &str,
-  ) -> Result<Box<dyn AiApiClient>>;
-
+  /// Shared `SafeReqwest` for OAuth refresh paths that reuse the same connection
+  /// pool as model traffic. Justified by Arc-shared pooling; not strictly an
+  /// AI-client concern but the cheapest place to expose it.
   fn safe_http_client(&self) -> SafeReqwest;
 }
 
@@ -147,51 +167,50 @@ impl AiApiClientFactory for DefaultAiApiClientFactory {
     }
   }
 
-  fn for_envelope(&self, envelope: &LlmLibertyEnvelope) -> Result<Box<dyn AiApiClient>> {
-    match envelope.provider.as_str() {
-      "anthropic" => Ok(Box::new(LibertyAnthropicClient::from_envelope(
-        envelope,
-        self.client.clone(),
-      ))),
-      "openai-codex" => Ok(Box::new(LibertyCodexClient::from_envelope(
-        envelope,
-        self.client.clone(),
-      ))),
-      other => Err(AiApiClientFactoryError::LibertyProviderUnsupported(
-        other.to_string(),
-      )),
-    }
-  }
-
-  fn for_resolved_credentials(
-    &self,
-    creds: &ResolvedLlmLibertyCredentials,
-    alias: &ApiAlias,
-    tenant_id: &str,
-    user_id: &str,
-  ) -> Result<Box<dyn AiApiClient>> {
-    match creds.provider.as_str() {
-      "anthropic" => Ok(Box::new(LibertyAnthropicClient::from_credentials(
+  fn for_liberty<'a>(&self, source: LibertySource<'a>) -> Result<Box<dyn AiApiClient>> {
+    match source {
+      LibertySource::Envelope(envelope) => match envelope.provider.as_str() {
+        "anthropic" => Ok(Box::new(LibertyAnthropicClient::from_envelope(
+          envelope,
+          self.client.clone(),
+        ))),
+        "openai-codex" => Ok(Box::new(LibertyCodexClient::from_envelope(
+          envelope,
+          self.client.clone(),
+        ))),
+        other => Err(AiApiClientFactoryError::LibertyProviderUnsupported(
+          other.to_string(),
+        )),
+      },
+      LibertySource::Resolved {
         creds,
-        &alias.id,
-        alias.prefix.clone(),
+        alias_id,
+        prefix,
         tenant_id,
         user_id,
-        self.refresh.clone(),
-        self.client.clone(),
-      ))),
-      "openai-codex" => Ok(Box::new(LibertyCodexClient::from_credentials(
-        creds,
-        &alias.id,
-        alias.prefix.clone(),
-        tenant_id,
-        user_id,
-        self.refresh.clone(),
-        self.client.clone(),
-      ))),
-      other => Err(AiApiClientFactoryError::LibertyProviderUnsupported(
-        other.to_string(),
-      )),
+      } => match creds.provider.as_str() {
+        "anthropic" => Ok(Box::new(LibertyAnthropicClient::from_credentials(
+          creds,
+          alias_id,
+          prefix,
+          tenant_id,
+          user_id,
+          self.refresh.clone(),
+          self.client.clone(),
+        ))),
+        "openai-codex" => Ok(Box::new(LibertyCodexClient::from_credentials(
+          creds,
+          alias_id,
+          prefix,
+          tenant_id,
+          user_id,
+          self.refresh.clone(),
+          self.client.clone(),
+        ))),
+        other => Err(AiApiClientFactoryError::LibertyProviderUnsupported(
+          other.to_string(),
+        )),
+      },
     }
   }
 }

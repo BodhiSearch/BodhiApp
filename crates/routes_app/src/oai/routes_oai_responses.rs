@@ -11,7 +11,6 @@ use axum::http::Method;
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use services::inference::LlmEndpoint;
 use services::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
 use services::{Alias, ApiAlias, ApiFormat};
 use std::collections::HashMap;
@@ -100,7 +99,7 @@ async fn resolve_responses_alias(
       .await
       .map_err(OaiApiError::from)?;
     // Provider verification (creds.provider == "openai-codex") lives in the
-    // factory's for_resolved_credentials -> LibertyProviderUnsupported (BadRequest).
+    // factory's for_liberty -> LibertyProviderUnsupported (BadRequest).
     return Ok(ResponsesAliasResolution::Liberty {
       alias: api_alias,
       creds,
@@ -124,37 +123,29 @@ fn extract_model_param(params: &HashMap<String, String>) -> Result<String, OAIRo
     })
 }
 
-// Native and Liberty both forwarded via the unified ai_api() factory.
+// Native and Liberty both forwarded via the unified ai_api() factory using the
+// same (method, upstream_path) pair — no per-arm asymmetry.
 async fn dispatch_responses_op(
   auth_scope: &AuthScope,
   resolution: ResponsesAliasResolution,
-  native_endpoint: LlmEndpoint,
-  liberty_method: Method,
-  liberty_path: String,
+  method: Method,
+  upstream_path: String,
   query_params: Option<Vec<(String, String)>>,
 ) -> Result<Response, OaiApiError> {
-  match resolution {
+  let client = match resolution {
     ResponsesAliasResolution::Native { alias, api_key } => auth_scope
       .ai_api()
       .for_alias(&Alias::Api(alias), api_key)
-      .map_err(OaiApiError::from)?
-      .forward_request_with_method(
-        native_endpoint.http_method(),
-        &native_endpoint.api_path(),
-        None,
-        query_params,
-        None,
-      )
-      .await
-      .map_err(OaiApiError::from),
+      .map_err(OaiApiError::from)?,
     ResponsesAliasResolution::Liberty { alias, creds } => auth_scope
       .ai_api()
-      .for_resolved_credentials(&creds, &alias)
-      .map_err(OaiApiError::from)?
-      .forward_request_with_method(&liberty_method, &liberty_path, None, query_params, None)
-      .await
-      .map_err(OaiApiError::from),
-  }
+      .for_resolved(&creds, &alias)
+      .map_err(OaiApiError::from)?,
+  };
+  client
+    .forward_request_with_method(&method, &upstream_path, None, query_params, None)
+    .await
+    .map_err(OaiApiError::from)
 }
 
 fn upstream_query_params(params: &HashMap<String, String>) -> Option<Vec<(String, String)>> {
@@ -213,38 +204,23 @@ pub async fn responses_create_handler(
     Some(params)
   };
 
-  match resolution {
+  let client = match resolution {
     ResponsesAliasResolution::Native {
       alias: api_alias,
       api_key,
-    } => {
-      let endpoint = LlmEndpoint::Responses;
-      let response = auth_scope
-        .ai_api()
-        .for_alias(&Alias::Api(api_alias), api_key)
-        .map_err(OaiApiError::from)?
-        .forward_request_with_method(
-          endpoint.http_method(),
-          &endpoint.api_path(),
-          Some(request),
-          params_opt,
-          None,
-        )
-        .await
-        .map_err(OaiApiError::from)?;
-      Ok(response)
-    }
-    ResponsesAliasResolution::Liberty { alias, creds } => {
-      let response = auth_scope
-        .ai_api()
-        .for_resolved_credentials(&creds, &alias)
-        .map_err(OaiApiError::from)?
-        .forward_request_with_method(&Method::POST, "/responses", Some(request), params_opt, None)
-        .await
-        .map_err(OaiApiError::from)?;
-      Ok(response)
-    }
-  }
+    } => auth_scope
+      .ai_api()
+      .for_alias(&Alias::Api(api_alias), api_key)
+      .map_err(OaiApiError::from)?,
+    ResponsesAliasResolution::Liberty { alias, creds } => auth_scope
+      .ai_api()
+      .for_resolved(&creds, &alias)
+      .map_err(OaiApiError::from)?,
+  };
+  client
+    .forward_request_with_method(&Method::POST, "/responses", Some(request), params_opt, None)
+    .await
+    .map_err(OaiApiError::from)
 }
 
 #[utoipa::path(
@@ -275,13 +251,12 @@ pub async fn responses_get_handler(
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let resolution = resolve_responses_alias(&auth_scope, &model).await?;
-  let liberty_path = format!("/responses/{}", response_id);
+  let upstream_path = format!("/responses/{}", response_id);
   dispatch_responses_op(
     &auth_scope,
     resolution,
-    LlmEndpoint::ResponsesGet(response_id),
     Method::GET,
-    liberty_path,
+    upstream_path,
     upstream_query_params(&params),
   )
   .await
@@ -315,13 +290,12 @@ pub async fn responses_delete_handler(
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let resolution = resolve_responses_alias(&auth_scope, &model).await?;
-  let liberty_path = format!("/responses/{}", response_id);
+  let upstream_path = format!("/responses/{}", response_id);
   dispatch_responses_op(
     &auth_scope,
     resolution,
-    LlmEndpoint::ResponsesDelete(response_id),
     Method::DELETE,
-    liberty_path,
+    upstream_path,
     upstream_query_params(&params),
   )
   .await
@@ -355,13 +329,12 @@ pub async fn responses_input_items_handler(
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let resolution = resolve_responses_alias(&auth_scope, &model).await?;
-  let liberty_path = format!("/responses/{}/input_items", response_id);
+  let upstream_path = format!("/responses/{}/input_items", response_id);
   dispatch_responses_op(
     &auth_scope,
     resolution,
-    LlmEndpoint::ResponsesInputItems(response_id),
     Method::GET,
-    liberty_path,
+    upstream_path,
     upstream_query_params(&params),
   )
   .await
@@ -395,13 +368,12 @@ pub async fn responses_cancel_handler(
   validate_response_id(&response_id)?;
   let model = extract_model_param(&params)?;
   let resolution = resolve_responses_alias(&auth_scope, &model).await?;
-  let liberty_path = format!("/responses/{}/cancel", response_id);
+  let upstream_path = format!("/responses/{}/cancel", response_id);
   dispatch_responses_op(
     &auth_scope,
     resolution,
-    LlmEndpoint::ResponsesCancel(response_id),
     Method::POST,
-    liberty_path,
+    upstream_path,
     upstream_query_params(&params),
   )
   .await

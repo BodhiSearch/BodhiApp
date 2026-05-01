@@ -1,5 +1,5 @@
 use crate::ai_apis::ai_api_client::AiApiClient;
-use crate::ai_apis::ai_api_client_factory::AiApiClientFactory;
+use crate::ai_apis::ai_api_client_factory::{AiApiClientFactory, LibertySource};
 use crate::ai_apis::error::Result;
 use crate::auth::AuthContext;
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
@@ -27,20 +27,27 @@ impl AuthScopedAiApiClientFactory {
     self.inner.for_alias(alias, api_key)
   }
 
+  /// Validation-only Liberty client from a freshly-pasted envelope.
   pub fn for_envelope(&self, envelope: &LlmLibertyEnvelope) -> Result<Box<dyn AiApiClient>> {
-    self.inner.for_envelope(envelope)
+    self.inner.for_liberty(LibertySource::Envelope(envelope))
   }
 
-  pub fn for_resolved_credentials(
+  /// Request-time Liberty client from resolved (decrypted) credentials.
+  /// Auto-injects `tenant_id`/`user_id` from `AuthContext`.
+  pub fn for_resolved(
     &self,
     creds: &ResolvedLlmLibertyCredentials,
     alias: &ApiAlias,
   ) -> Result<Box<dyn AiApiClient>> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
-    self
-      .inner
-      .for_resolved_credentials(creds, alias, tenant_id, user_id)
+    self.inner.for_liberty(LibertySource::Resolved {
+      creds,
+      alias_id: &alias.id,
+      prefix: alias.prefix.clone(),
+      tenant_id,
+      user_id,
+    })
   }
 
   pub fn safe_http_client(&self) -> SafeReqwest {

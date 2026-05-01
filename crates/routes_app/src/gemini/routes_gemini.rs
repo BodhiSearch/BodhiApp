@@ -2,11 +2,10 @@ use crate::oai::OAIRouteError;
 use crate::shared::AuthScope;
 use crate::{BodhiErrorResponse, GeminiApiError, JsonRejectionError};
 use axum::extract::{Path, Query};
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, Method};
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use services::inference::LlmEndpoint;
 use services::{Alias, ApiAlias, ApiFormat, ApiModel, DataServiceError};
 use std::collections::HashSet;
 
@@ -214,13 +213,9 @@ pub async fn gemini_action_handler(
   let (api_alias, api_key) = resolve_gemini_alias(&auth_scope, model).await?;
   let stripped_model = strip_alias_prefix(model, &api_alias);
 
-  let endpoint = match action {
-    "generateContent" => LlmEndpoint::GeminiGenerateContent(stripped_model),
-    "streamGenerateContent" => LlmEndpoint::GeminiStreamGenerateContent(stripped_model),
-    "embedContent" => LlmEndpoint::GeminiEmbedContent(stripped_model),
-    "batchEmbedContents" => LlmEndpoint::GeminiBatchEmbedContents(stripped_model),
-    _ => unreachable!("action validated above"),
-  };
+  // GEMINI_ACTIONS validated `action` above; build the upstream path inline
+  // (`/models/{model}:{action}`) — no per-action enum needed.
+  let upstream_path = format!("/models/{}:{}", stripped_model, action);
 
   let forwarded_params: Vec<(String, String)> = query_params.into_iter().collect();
   let forwarded_params_opt = if forwarded_params.is_empty() {
@@ -234,8 +229,8 @@ pub async fn gemini_action_handler(
     .for_alias(&Alias::Api(api_alias), api_key)
     .map_err(BodhiErrorResponse::from)?
     .forward_request_with_method(
-      endpoint.http_method(),
-      &endpoint.api_path(),
+      &Method::POST,
+      &upstream_path,
       Some(request),
       forwarded_params_opt,
       client_headers,

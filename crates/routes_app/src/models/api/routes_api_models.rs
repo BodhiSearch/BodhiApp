@@ -184,7 +184,7 @@ pub async fn api_models_test(
                 id
               )))
             })?;
-          ai_api.for_resolved_credentials(&creds, &alias)?
+          ai_api.for_resolved(&creds, &alias)?
         }
         services::LlmLibertyCredsSource::Inline(env) => {
           env.validate_supported().map_err(BodhiErrorResponse::from)?;
@@ -297,10 +297,7 @@ pub async fn api_models_fetch_models(
                 id
               )))
             })?;
-          ai_api
-            .for_resolved_credentials(&creds, &alias)?
-            .fetch_models()
-            .await?
+          ai_api.for_resolved(&creds, &alias)?.fetch_models().await?
         }
         services::LlmLibertyCredsSource::Inline(env) => {
           env.validate_supported().map_err(BodhiErrorResponse::from)?;

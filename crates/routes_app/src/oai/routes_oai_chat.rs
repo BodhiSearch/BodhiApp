@@ -9,9 +9,8 @@ use async_openai::types::{
   },
   embeddings::{CreateEmbeddingRequest, CreateEmbeddingResponse},
 };
-use axum::{extract::Query, response::Response, Json};
+use axum::{extract::Query, http::Method, response::Response, Json};
 use axum_extra::extract::WithRejection;
-use services::inference::LlmEndpoint;
 use std::collections::HashMap;
 
 /// Validates basic structure of chat completion request
@@ -168,14 +167,13 @@ pub async fn chat_completions_handler(
   } else {
     Some(params)
   };
-  let endpoint = LlmEndpoint::ChatCompletions;
   let response = auth_scope
     .ai_api()
     .for_alias(&alias, api_key)
     .map_err(OaiApiError::from)?
     .forward_request_with_method(
-      endpoint.http_method(),
-      &endpoint.api_path(),
+      &Method::POST,
+      "/chat/completions",
       Some(request),
       params_opt,
       None,
@@ -263,14 +261,13 @@ pub async fn embeddings_handler(
   } else {
     Some(params)
   };
-  let endpoint = LlmEndpoint::Embeddings;
   let response = auth_scope
     .ai_api()
     .for_alias(&alias, api_key)
     .map_err(OaiApiError::from)?
     .forward_request_with_method(
-      endpoint.http_method(),
-      &endpoint.api_path(),
+      &Method::POST,
+      "/embeddings",
       Some(request_value),
       params_opt,
       None,

@@ -195,7 +195,7 @@ async fn test_messages_create_rejects_non_anthropic_alias() -> anyhow::Result<()
 }
 
 // ============================================================================
-// Success paths — verify LlmEndpoint dispatch and client header forwarding
+// Success paths — verify (method, upstream_path) dispatch and client header forwarding
 // ============================================================================
 
 #[rstest]

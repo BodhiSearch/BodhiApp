@@ -1,4 +1,3 @@
-use crate::inference::LlmEndpoint;
 use crate::models::Alias;
 use crate::{AppError, ErrorType};
 use errmeta_derive::ErrorMeta;
@@ -25,7 +24,7 @@ pub enum LocalLlamaError {
 pub trait LocalLlama: Send + Sync + std::fmt::Debug {
   async fn forward_request(
     &self,
-    endpoint: LlmEndpoint,
+    api_path: &str,
     request: Value,
     alias: Alias,
   ) -> Result<reqwest::Response, LocalLlamaError>;

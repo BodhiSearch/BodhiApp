@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate::{
   shared_rw::{DefaultSharedContext, ModelLoadStrategy, SharedContext},
   test_utils::{bin_path, mock_server, ServerFactoryStub},
-  LlmEndpoint,
 };
 use anyhow_trace::anyhow_trace;
 use async_openai::types::chat::CreateChatCompletionRequest;
@@ -106,7 +105,7 @@ async fn test_chat_completions_continue_strategy(
   let request_value = serde_json::to_value(&request)?;
   shared_ctx
     .forward_request(
-      LlmEndpoint::ChatCompletions,
+      "/chat/completions",
       request_value,
       Alias::User(UserAlias::testalias()),
     )
@@ -165,7 +164,7 @@ async fn test_chat_completions_load_strategy(
   let request_value = serde_json::to_value(&request)?;
   shared_ctx
     .forward_request(
-      LlmEndpoint::ChatCompletions,
+      "/chat/completions",
       request_value,
       Alias::User(UserAlias::testalias()),
     )
@@ -254,7 +253,7 @@ async fn test_chat_completions_drop_and_load_strategy(
   let request_value = serde_json::to_value(&request)?;
   shared_ctx
     .forward_request(
-      LlmEndpoint::ChatCompletions,
+      "/chat/completions",
       request_value,
       Alias::User(UserAlias::testalias()),
     )
@@ -316,7 +315,7 @@ async fn test_forward_request_api_alias_returns_unreachable(
   );
   let result = shared_ctx
     .forward_request(
-      LlmEndpoint::Responses,
+      "/responses",
       json!({"model": "gpt-4", "input": "hello"}),
       Alias::Api(api_alias),
     )

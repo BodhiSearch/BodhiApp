@@ -9,7 +9,7 @@ use serde_json::Value;
 ///
 /// The implementation owns its bound credentials and URLs; method signatures
 /// carry only per-call data. Constructed cheaply per request via
-/// `AiApiClientFactory::for_alias`, `for_envelope`, or `for_resolved_credentials`.
+/// `AiApiClientFactory::for_alias` or `for_liberty`.
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AiApiClient: Send + Sync {

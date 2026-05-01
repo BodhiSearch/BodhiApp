@@ -15,5 +15,4 @@ pub use error::*;
 pub use fwd_sse::*;
 pub use local_llama_impl::LocalLlamaImpl;
 pub use server_args_merge::*;
-pub use services::inference::LlmEndpoint;
 pub use shared_rw::*;

@@ -1,4 +1,4 @@
-use super::{AiApiClientFactory, DefaultAiApiClientFactory};
+use super::{AiApiClientFactory, DefaultAiApiClientFactory, LibertySource};
 use crate::models::llm_liberty_envelope::{LlmLibertyEnvelope, ResolvedLlmLibertyCredentials};
 use crate::models::{Alias, ApiAlias, ApiFormat};
 use crate::test_utils::{
@@ -44,6 +44,19 @@ fn make_codex_creds() -> ResolvedLlmLibertyCredentials {
   creds
 }
 
+fn resolved_source<'a>(
+  creds: &'a ResolvedLlmLibertyCredentials,
+  alias: &'a ApiAlias,
+) -> LibertySource<'a> {
+  LibertySource::Resolved {
+    creds,
+    alias_id: &alias.id,
+    prefix: alias.prefix.clone(),
+    tenant_id: "tenant-a",
+    user_id: "user-a",
+  }
+}
+
 #[rstest]
 #[case::openai(ApiFormat::OpenAI)]
 #[case::openai_responses(ApiFormat::OpenAIResponses)]
@@ -77,20 +90,20 @@ fn for_alias_returns_error_for_llm_liberty_oauth() -> anyhow::Result<()> {
 
 #[rstest]
 #[anyhow_trace]
-fn for_envelope_succeeds_for_anthropic_provider() -> anyhow::Result<()> {
+fn for_liberty_envelope_succeeds_for_anthropic_provider() -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
   let envelope = make_envelope("anthropic");
-  let result = service.for_envelope(&envelope);
+  let result = service.for_liberty(LibertySource::Envelope(&envelope));
   assert!(result.is_ok());
   Ok(())
 }
 
 #[rstest]
 #[anyhow_trace]
-fn for_envelope_returns_error_for_unsupported_provider() -> anyhow::Result<()> {
+fn for_liberty_envelope_returns_error_for_unsupported_provider() -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
   let envelope = make_envelope("google-gemini");
-  let err = match service.for_envelope(&envelope) {
+  let err = match service.for_liberty(LibertySource::Envelope(&envelope)) {
     Err(e) => e,
     Ok(_) => panic!("expected error for unsupported provider"),
   };
@@ -108,44 +121,44 @@ fn for_envelope_returns_error_for_unsupported_provider() -> anyhow::Result<()> {
 
 #[rstest]
 #[anyhow_trace]
-fn for_envelope_succeeds_for_openai_codex_provider() -> anyhow::Result<()> {
+fn for_liberty_envelope_succeeds_for_openai_codex_provider() -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
   let mut envelope = test_llm_liberty_envelope_codex();
   envelope.api.models_url = None;
-  let result = service.for_envelope(&envelope);
+  let result = service.for_liberty(LibertySource::Envelope(&envelope));
   assert!(result.is_ok());
   Ok(())
 }
 
 #[rstest]
 #[anyhow_trace]
-fn for_resolved_credentials_succeeds_for_openai_codex_provider() -> anyhow::Result<()> {
+fn for_liberty_resolved_succeeds_for_openai_codex_provider() -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
   let creds = make_codex_creds();
   let alias = make_alias(ApiFormat::LlmLibertyOauth);
-  let result = service.for_resolved_credentials(&creds, &alias, "tenant-a", "user-a");
+  let result = service.for_liberty(resolved_source(&creds, &alias));
   assert!(result.is_ok());
   Ok(())
 }
 
 #[rstest]
 #[anyhow_trace]
-fn for_resolved_credentials_succeeds_for_anthropic_provider() -> anyhow::Result<()> {
+fn for_liberty_resolved_succeeds_for_anthropic_provider() -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
   let creds = make_creds("anthropic");
   let alias = make_alias(ApiFormat::LlmLibertyOauth);
-  let result = service.for_resolved_credentials(&creds, &alias, "tenant-a", "user-a");
+  let result = service.for_liberty(resolved_source(&creds, &alias));
   assert!(result.is_ok());
   Ok(())
 }
 
 #[rstest]
 #[anyhow_trace]
-fn for_resolved_credentials_returns_error_for_unsupported_provider() -> anyhow::Result<()> {
+fn for_liberty_resolved_returns_error_for_unsupported_provider() -> anyhow::Result<()> {
   let service = DefaultAiApiClientFactory::new()?;
   let creds = make_creds("google-gemini");
   let alias = make_alias(ApiFormat::LlmLibertyOauth);
-  let err = match service.for_resolved_credentials(&creds, &alias, "tenant-a", "user-a") {
+  let err = match service.for_liberty(resolved_source(&creds, &alias)) {
     Err(e) => e,
     Ok(_) => panic!("expected error for unsupported provider"),
   };

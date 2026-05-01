@@ -1,3 +1,4 @@
+use crate::ai_apis::ai_api_client_factory::LibertySource;
 use crate::ai_apis::auth_scoped::AuthScopedAiApiClientFactory;
 use crate::ai_apis::error::AiApiClientFactoryError;
 use crate::auth::AuthContextError;
@@ -37,16 +38,18 @@ fn liberty_alias() -> ApiAlias {
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
-async fn for_resolved_credentials_injects_tenant_and_user_from_session_context(
-) -> anyhow::Result<()> {
+async fn for_resolved_injects_tenant_and_user_from_session_context() -> anyhow::Result<()> {
   let mut mock = MockAiApiClientFactory::new();
   mock
-    .expect_for_resolved_credentials()
-    .withf(|_creds, _alias, tenant_id, user_id| {
-      tenant_id == TEST_TENANT_ID && user_id == TEST_USER_ID
+    .expect_for_liberty()
+    .withf(|source| match source {
+      LibertySource::Resolved {
+        tenant_id, user_id, ..
+      } => *tenant_id == TEST_TENANT_ID && *user_id == TEST_USER_ID,
+      LibertySource::Envelope(_) => false,
     })
     .times(1)
-    .returning(|_, _, _, _| {
+    .returning(|_| {
       // Returning an arbitrary error short-circuits without needing to construct
       // a full AiApiClient mock; we only assert the injected identifiers above.
       Err(AiApiClientFactoryError::ApiError("ok".to_string()))
@@ -62,7 +65,7 @@ async fn for_resolved_credentials_injects_tenant_and_user_from_session_context(
 
   let factory = AuthScopedAiApiClientFactory::new(app_service, auth_context);
   let creds = test_resolved_llm_liberty_credentials();
-  let result = factory.for_resolved_credentials(&creds, &liberty_alias());
+  let result = factory.for_resolved(&creds, &liberty_alias());
 
   match result {
     Err(AiApiClientFactoryError::ApiError(msg)) => assert_eq!("ok", msg),
@@ -77,14 +80,14 @@ async fn for_resolved_credentials_injects_tenant_and_user_from_session_context(
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
-async fn for_resolved_credentials_propagates_anonymous_auth_as_typed_error() -> anyhow::Result<()> {
+async fn for_resolved_propagates_anonymous_auth_as_typed_error() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default().build().await?;
   let app_service: Arc<dyn AppService> = Arc::new(app_service);
   let auth_context = AuthContext::test_anonymous(DeploymentMode::Standalone);
 
   let factory = AuthScopedAiApiClientFactory::new(app_service, auth_context);
   let creds = test_resolved_llm_liberty_credentials();
-  let result = factory.for_resolved_credentials(&creds, &liberty_alias());
+  let result = factory.for_resolved(&creds, &liberty_alias());
 
   match result {
     Err(AiApiClientFactoryError::Auth(AuthContextError::MissingTenantId)) => {}
@@ -102,7 +105,8 @@ async fn for_resolved_credentials_propagates_anonymous_auth_as_typed_error() -> 
 async fn for_envelope_delegates_unchanged() -> anyhow::Result<()> {
   let mut mock = MockAiApiClientFactory::new();
   mock
-    .expect_for_envelope()
+    .expect_for_liberty()
+    .withf(|source| matches!(source, LibertySource::Envelope(_)))
     .times(1)
     .returning(|_| Err(AiApiClientFactoryError::ApiError("delegated".to_string())));
   mock.expect_safe_http_client().returning(safe_http);

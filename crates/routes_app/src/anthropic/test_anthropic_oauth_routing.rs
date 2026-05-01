@@ -12,8 +12,8 @@ use services::{
   test_utils::{
     anthropic_model, test_llm_liberty_envelope, AppServiceStubBuilder, TEST_TENANT_ID, TEST_USER_ID,
   },
-  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiClientFactory,
-  ResourceRole,
+  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, AuthContext, LibertySource,
+  MockAiApiClientFactory, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -138,12 +138,15 @@ async fn test_messages_create_forwards_to_llm_liberty_oauth_alias() -> anyhow::R
       .unwrap()
   });
   mock_ai
-    .expect_for_resolved_credentials()
-    .withf(|creds, alias, _, _| {
-      creds.access_token == "resolved-bearer-token" && alias.id == "liberty-alias"
+    .expect_for_liberty()
+    .withf(|source| match source {
+      LibertySource::Resolved {
+        creds, alias_id, ..
+      } => creds.access_token == "resolved-bearer-token" && *alias_id == "liberty-alias",
+      LibertySource::Envelope(_) => false,
     })
     .times(1)
-    .returning(|_, _, _, _| {
+    .returning(|_| {
       let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
       client
         .expect_forward_request_with_method()
@@ -221,8 +224,8 @@ async fn test_messages_create_rejects_llm_liberty_non_anthropic_provider() -> an
     )
     .await?;
 
-  // Use the real factory so for_resolved_credentials returns
-  // LibertyProviderUnsupported (BadRequest) for the openai-codex provider.
+  // Use the real factory so for_liberty returns LibertyProviderUnsupported
+  // (BadRequest) for the openai-codex provider.
   let real_factory = services::DefaultAiApiClientFactory::new()?;
   let app_service = builder
     .ai_api_client_factory(Arc::new(real_factory))

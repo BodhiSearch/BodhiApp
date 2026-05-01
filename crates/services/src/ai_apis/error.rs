@@ -16,9 +16,7 @@ pub enum AiApiClientFactoryError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   ApiError(String),
 
-  #[error(
-    "LlmLibertyOauth aliases must be constructed via for_envelope or for_resolved_credentials."
-  )]
+  #[error("LlmLibertyOauth aliases must be constructed via for_liberty.")]
   #[error_meta(error_type = ErrorType::InternalServer, code = "ai_api_client_factory_error-liberty_requires_credentials")]
   LibertyRequiresCredentials,
 

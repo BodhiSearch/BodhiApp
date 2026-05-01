@@ -1,7 +1,7 @@
 use crate::ai_apis::ai_api_client::AiApiClient;
 use crate::ai_apis::error::{AiApiClientFactoryError, Result};
 use crate::ai_apis::provider_shared::convert_reqwest_to_axum;
-use crate::inference::{LlmEndpoint, LocalLlama};
+use crate::inference::LocalLlama;
 use crate::models::{Alias, ApiModel};
 use async_trait::async_trait;
 use axum::http::Method;
@@ -42,20 +42,18 @@ impl AiApiClient for LocalLlamaClient {
     _query_params: Option<Vec<(String, String)>>,
     _client_headers: Option<Vec<(String, String)>>,
   ) -> Result<Response> {
-    let endpoint = match api_path {
-      "/chat/completions" => LlmEndpoint::ChatCompletions,
-      "/embeddings" => LlmEndpoint::Embeddings,
-      other => {
-        return Err(AiApiClientFactoryError::NotFound(format!(
-          "endpoint '{}' is not supported for local model aliases",
-          other
-        )))
-      }
-    };
+    // Reject non-local upstream paths early so misrouted Gemini/Anthropic paths
+    // surface as 404 instead of being collapsed into a 500 by SharedContext.
+    if !matches!(api_path, "/chat/completions" | "/embeddings") {
+      return Err(AiApiClientFactoryError::NotFound(format!(
+        "endpoint '{}' is not supported for local model aliases",
+        api_path
+      )));
+    }
     let body = request.unwrap_or(Value::Null);
     let reqwest_response = self
       .local_llama
-      .forward_request(endpoint, body, self.alias.clone())
+      .forward_request(api_path, body, self.alias.clone())
       .await?;
     convert_reqwest_to_axum(reqwest_response)
   }

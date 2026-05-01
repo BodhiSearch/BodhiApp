@@ -6,7 +6,6 @@ use axum::http::{HeaderMap, Method};
 use axum::response::Response;
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use services::inference::LlmEndpoint;
 use services::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
 use services::{Alias, ApiAlias, ApiFormat, ApiModel, DataServiceError};
 use std::collections::{HashMap, HashSet};
@@ -92,7 +91,7 @@ async fn resolve_anthropic_alias(
       .await
       .map_err(BodhiErrorResponse::from)?;
     // Provider verification (creds.provider == "anthropic") lives in the
-    // factory's for_resolved_credentials -> LibertyProviderUnsupported (BadRequest).
+    // factory's for_liberty -> LibertyProviderUnsupported (BadRequest).
     return Ok(AnthropicAliasResolution::Liberty {
       alias: api_alias,
       creds,
@@ -155,36 +154,25 @@ pub async fn anthropic_messages_create_handler(
     Some(params)
   };
 
-  let response = match resolution {
-    AnthropicAliasResolution::Native { alias, api_key } => {
-      let endpoint = LlmEndpoint::AnthropicMessages;
-      auth_scope
-        .ai_api()
-        .for_alias(&Alias::Api(alias), api_key)
-        .map_err(BodhiErrorResponse::from)?
-        .forward_request_with_method(
-          endpoint.http_method(),
-          &endpoint.api_path(),
-          Some(request),
-          params_opt,
-          client_headers,
-        )
-        .await
-        .map_err(BodhiErrorResponse::from)?
-    }
-    AnthropicAliasResolution::Liberty { alias, creds } => auth_scope
+  let client = match resolution {
+    AnthropicAliasResolution::Native { alias, api_key } => auth_scope
       .ai_api()
-      .for_resolved_credentials(&creds, &alias)?
-      .forward_request_with_method(
-        &Method::POST,
-        "/messages",
-        Some(request),
-        params_opt,
-        client_headers,
-      )
-      .await
+      .for_alias(&Alias::Api(alias), api_key)
       .map_err(BodhiErrorResponse::from)?,
+    AnthropicAliasResolution::Liberty { alias, creds } => {
+      auth_scope.ai_api().for_resolved(&creds, &alias)?
+    }
   };
+  let response = client
+    .forward_request_with_method(
+      &Method::POST,
+      "/messages",
+      Some(request),
+      params_opt,
+      client_headers,
+    )
+    .await
+    .map_err(BodhiErrorResponse::from)?;
 
   Ok(response)
 }

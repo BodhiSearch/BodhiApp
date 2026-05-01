@@ -1,6 +1,6 @@
 use crate::SharedContext;
 use serde_json::Value;
-use services::inference::{LlmEndpoint, LocalLlama, LocalLlamaError};
+use services::inference::{LocalLlama, LocalLlamaError};
 use services::Alias;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -97,15 +97,18 @@ impl LocalLlamaImpl {
 impl LocalLlama for LocalLlamaImpl {
   async fn forward_request(
     &self,
-    endpoint: LlmEndpoint,
+    api_path: &str,
     request: Value,
     alias: Alias,
   ) -> Result<reqwest::Response, LocalLlamaError> {
     let result = self
       .ctx
-      .forward_request(endpoint, request, alias)
+      .forward_request(api_path, request, alias)
       .await
       .map_err(|e| LocalLlamaError::Internal(e.to_string()));
+    // Intentional: reset keep-alive on every completion, including errors. A failed
+    // forward still touched the model (load attempt or in-flight request); the timer
+    // should debounce from the latest user activity, not the latest success.
     self.on_request_completed();
     result
   }

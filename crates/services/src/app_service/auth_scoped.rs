@@ -126,7 +126,7 @@ impl AuthScopedAppService {
   }
 
   /// D8: AI API domain (auth-scoped — auto-injects tenant_id/user_id when
-  /// constructing Liberty clients via `for_resolved_credentials`).
+  /// constructing Liberty clients via `for_resolved`).
   pub fn ai_api(&self) -> AuthScopedAiApiClientFactory {
     AuthScopedAiApiClientFactory::new(self.app_service.clone(), self.auth_context.clone())
   }

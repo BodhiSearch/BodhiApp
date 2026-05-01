@@ -19,8 +19,8 @@ use services::{
     openai_model, test_llm_liberty_envelope_codex, AppServiceStubBuilder, TEST_TENANT_ID,
     TEST_USER_ID,
   },
-  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, AuthContext, MockAiApiClientFactory,
-  ResourceRole,
+  AiApiClientFactoryError, ApiAliasBuilder, ApiFormat, AuthContext, LibertySource,
+  MockAiApiClientFactory, ResourceRole,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -63,7 +63,7 @@ async fn seed_responses_alias(
 }
 
 // ============================================================================
-// Success paths — verify correct LlmEndpoint dispatched to InferenceService
+// Success paths — verify correct (method, upstream_path) dispatched through the AiApiClientFactory
 // ============================================================================
 
 #[rstest]
@@ -386,12 +386,15 @@ async fn test_responses_create_forwards_to_llm_liberty_oauth_codex_alias() -> an
       .unwrap()
   });
   mock_ai
-    .expect_for_resolved_credentials()
-    .withf(|creds, alias, _, _| {
-      creds.access_token == "codex-access-token" && alias.id == "codex-liberty-alias"
+    .expect_for_liberty()
+    .withf(|source| match source {
+      LibertySource::Resolved {
+        creds, alias_id, ..
+      } => creds.access_token == "codex-access-token" && *alias_id == "codex-liberty-alias",
+      LibertySource::Envelope(_) => false,
     })
     .times(1)
-    .returning(|_, _, _, _| {
+    .returning(|_| {
       let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
       client
         .expect_forward_request_with_method()
@@ -494,9 +497,10 @@ async fn test_responses_crud_forwards_for_liberty_codex_alias(
       .unwrap()
   });
   mock_ai
-    .expect_for_resolved_credentials()
+    .expect_for_liberty()
+    .withf(|source| matches!(source, LibertySource::Resolved { .. }))
     .times(1)
-    .returning(move |_, _, _, _| {
+    .returning(move |_| {
       let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
       client
         .expect_forward_request_with_method()

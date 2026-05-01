@@ -6,12 +6,12 @@ use async_openai::types::chat::{
   CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
 };
 use axum::{
-  http::StatusCode,
+  http::{Method, StatusCode},
   response::{IntoResponse, Response},
   Json,
 };
 use futures_util::StreamExt;
-use services::{inference::LlmEndpoint, Alias, ModelAlias, SettingService, UserAlias, GGUF};
+use services::{Alias, ModelAlias, SettingService, UserAlias, GGUF};
 use std::{fs, sync::Arc, time::UNIX_EPOCH};
 
 /// List available models in Ollama format
@@ -347,7 +347,6 @@ pub async fn ollama_model_chat_handler(
     _ => None,
   };
 
-  let endpoint = LlmEndpoint::ChatCompletions;
   let oai_response = auth_scope
     .ai_api()
     .for_alias(&alias, api_key)
@@ -357,8 +356,8 @@ pub async fn ollama_model_chat_handler(
       })
     })?
     .forward_request_with_method(
-      endpoint.http_method(),
-      &endpoint.api_path(),
+      &Method::POST,
+      "/chat/completions",
       Some(request_value),
       None,
       None,
@@ -370,7 +369,6 @@ pub async fn ollama_model_chat_handler(
       })
     })?;
 
-  // InferenceService returns axum::response::Response directly
   // For non-streaming responses, we need to convert the entire response body
   if !stream {
     use axum::body::to_bytes;
