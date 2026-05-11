@@ -1193,23 +1193,46 @@ impl McpService for DefaultMcpService {
     mcp_server_url: &str,
   ) -> Result<serde_json::Value, McpError> {
     debug!(mcp_server_url, "Starting MCP OAuth metadata discovery");
-    let origin = url::Url::parse(mcp_server_url)
-      .map_err(|e| McpError::OAuthDiscoveryFailed(format!("Invalid MCP server URL: {}", e)))
-      .map(|u| {
-        format!(
-          "{}://{}{}",
-          u.scheme(),
-          u.host_str().unwrap_or(""),
-          u.port().map(|p| format!(":{}", p)).unwrap_or_default()
-        )
-      })?;
+    let parsed = url::Url::parse(mcp_server_url)
+      .map_err(|e| McpError::OAuthDiscoveryFailed(format!("Invalid MCP server URL: {}", e)))?;
 
-    let prs_url = format!("{}/.well-known/oauth-protected-resource", origin);
+    let origin = format!(
+      "{}://{}{}",
+      parsed.scheme(),
+      parsed.host_str().unwrap_or(""),
+      parsed.port().map(|p| format!(":{}", p)).unwrap_or_default()
+    );
+
+    // RFC 9728: append path from MCP server URL after the well-known prefix
+    // e.g. https://server.example/mcp → /.well-known/oauth-protected-resource/mcp
+    let path = parsed.path().trim_end_matches('/');
+    let has_path = !path.is_empty() && path != "/";
+    let prs_url = if has_path {
+      format!("{}/.well-known/oauth-protected-resource{}", origin, path)
+    } else {
+      format!("{}/.well-known/oauth-protected-resource", origin)
+    };
     debug!(prs_url, "Fetching Protected Resource Metadata");
-    let prs_resp = self.http_client.get(&prs_url)?.send().await.map_err(|e| {
+    let prs_fetch_err = |e: reqwest::Error| {
       warn!(mcp_server_url, error = %e, "Protected Resource Metadata fetch failed");
       McpError::OAuthDiscoveryFailed(format!("Protected Resource Metadata fetch failed: {}", e))
-    })?;
+    };
+    let mut prs_resp = self.http_client.get(&prs_url)?.send().await.map_err(prs_fetch_err)?;
+
+    // Fall back to origin-only well-known URL when path-specific URL returns 4xx
+    if has_path && prs_resp.status().is_client_error() {
+      let root_prs_url = format!("{}/.well-known/oauth-protected-resource", origin);
+      debug!(root_prs_url, "Falling back to root Protected Resource Metadata URL");
+      prs_resp = self
+        .http_client
+        .get(&root_prs_url)?
+        .send()
+        .await
+        .map_err(|e| {
+          warn!(mcp_server_url, error = %e, "Protected Resource Metadata fallback fetch failed");
+          McpError::OAuthDiscoveryFailed(format!("Protected Resource Metadata fetch failed: {}", e))
+        })?;
+    }
 
     if !prs_resp.status().is_success() {
       warn!(

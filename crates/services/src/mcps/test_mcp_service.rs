@@ -5,11 +5,13 @@ use crate::mcps::{
   McpService, RegistrationType,
 };
 use crate::test_utils::{
-  test_db_service, FrozenTimeService, TestDbService, TEST_TENANT_ID, TEST_USER_ID,
+  test_db_service, FrozenTimeService, MockDbService, TestDbService, TEST_TENANT_ID, TEST_USER_ID,
 };
 use anyhow_trace::anyhow_trace;
+use mockito::Server;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
+use serde_json::json;
 use std::sync::Arc;
 
 fn default_time_service() -> Arc<dyn TimeService> {
@@ -667,5 +669,151 @@ async fn test_resolve_auth_params_oauth(
 
   assert_eq!(McpAuthType::Oauth, created.auth_type);
   assert_eq!(Some(oauth_config.id), created.auth_config_id);
+  Ok(())
+}
+
+// Helper to build a DefaultMcpService without a real DB (for HTTP-only tests)
+fn make_service_no_db() -> anyhow::Result<DefaultMcpService> {
+  let db: Arc<dyn DbService> = Arc::new(MockDbService::new());
+  let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
+  Ok(DefaultMcpService::new(db, mcp_client, default_time_service())?)
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_discover_mcp_oauth_metadata_path_specific_url() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let base = server.url();
+
+  let prs_body = json!({
+    "resource": &base,
+    "authorization_servers": [&base]
+  });
+  let as_body = json!({
+    "issuer": &base,
+    "authorization_endpoint": format!("{}/authorize", base),
+    "token_endpoint": format!("{}/token", base)
+  });
+
+  // Path-specific PRS endpoint (e.g., /.well-known/oauth-protected-resource/mcp)
+  let prs_mock = server
+    .mock("GET", "/.well-known/oauth-protected-resource/mcp")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(prs_body.to_string())
+    .create();
+  let as_mock = server
+    .mock("GET", "/.well-known/oauth-authorization-server")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(as_body.to_string())
+    .create();
+
+  let service = make_service_no_db()?;
+  let result = service
+    .discover_mcp_oauth_metadata(&format!("{}/mcp", base))
+    .await?;
+
+  assert_eq!(
+    Some(format!("{}/authorize", base)),
+    result["authorization_endpoint"].as_str().map(|s| s.to_string())
+  );
+  prs_mock.assert();
+  as_mock.assert();
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_discover_mcp_oauth_metadata_fallback_to_root() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let base = server.url();
+
+  let prs_body = json!({
+    "resource": &base,
+    "authorization_servers": [&base]
+  });
+  let as_body = json!({
+    "issuer": &base,
+    "authorization_endpoint": format!("{}/authorize", base),
+    "token_endpoint": format!("{}/token", base)
+  });
+
+  // Path-specific URL returns 404, root URL returns 200
+  let path_mock = server
+    .mock("GET", "/.well-known/oauth-protected-resource/mcp")
+    .with_status(404)
+    .with_body("")
+    .create();
+  let root_mock = server
+    .mock("GET", "/.well-known/oauth-protected-resource")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(prs_body.to_string())
+    .create();
+  let as_mock = server
+    .mock("GET", "/.well-known/oauth-authorization-server")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(as_body.to_string())
+    .create();
+
+  let service = make_service_no_db()?;
+  let result = service
+    .discover_mcp_oauth_metadata(&format!("{}/mcp", base))
+    .await?;
+
+  assert_eq!(
+    Some(format!("{}/authorize", base)),
+    result["authorization_endpoint"].as_str().map(|s| s.to_string())
+  );
+  path_mock.assert();
+  root_mock.assert();
+  as_mock.assert();
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_discover_mcp_oauth_metadata_root_url() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let base = server.url();
+
+  let prs_body = json!({
+    "resource": &base,
+    "authorization_servers": [&base]
+  });
+  let as_body = json!({
+    "issuer": &base,
+    "authorization_endpoint": format!("{}/authorize", base),
+    "token_endpoint": format!("{}/token", base)
+  });
+
+  // No path in MCP URL — should hit root PRS URL directly
+  let prs_mock = server
+    .mock("GET", "/.well-known/oauth-protected-resource")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(prs_body.to_string())
+    .create();
+  let as_mock = server
+    .mock("GET", "/.well-known/oauth-authorization-server")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(as_body.to_string())
+    .create();
+
+  let service = make_service_no_db()?;
+  let result = service.discover_mcp_oauth_metadata(&base).await?;
+
+  assert_eq!(
+    Some(format!("{}/authorize", base)),
+    result["authorization_endpoint"].as_str().map(|s| s.to_string())
+  );
+  prs_mock.assert();
+  as_mock.assert();
   Ok(())
 }
