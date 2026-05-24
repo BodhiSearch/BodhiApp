@@ -115,10 +115,10 @@ function McpItem({
         }}
       />
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1">
         <Label
           htmlFor={`mcp-${mcp.id}`}
-          className={cn('text-sm font-medium cursor-pointer', !isAvailable && 'cursor-not-allowed')}
+          className={cn('text-sm font-medium cursor-pointer whitespace-nowrap', !isAvailable && 'cursor-not-allowed')}
         >
           {mcp.slug}
         </Label>
@@ -168,7 +168,10 @@ function McpItem({
                   checked={isToolEnabled}
                   onCheckedChange={() => onToggleTool(mcp.id, tool.name)}
                 />
-                <Label htmlFor={`mcp-tool-${mcp.id}-${tool.name}`} className="text-sm cursor-pointer flex-1">
+                <Label
+                  htmlFor={`mcp-tool-${mcp.id}-${tool.name}`}
+                  className="text-sm cursor-pointer flex-1 whitespace-nowrap"
+                >
                   {tool.name}
                 </Label>
               </div>
@@ -232,8 +235,13 @@ export function McpsPopover({
           <span className="sr-only">Configure MCPs</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-2" align="start" side="top" data-testid="mcps-popover-content">
-        <div className="space-y-1">
+      <PopoverContent
+        className="w-80 p-2 max-h-[60vh] overflow-auto"
+        align="start"
+        side="top"
+        data-testid="mcps-popover-content"
+      >
+        <div className="space-y-1 min-w-max">
           <h4 className="font-medium text-sm px-2 py-1">MCPs</h4>
           {isLoading ? (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">Loading...</div>
