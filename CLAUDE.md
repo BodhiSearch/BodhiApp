@@ -118,3 +118,17 @@ Three dev loops depending on what you're validating:
 
 ## Backwards Compatibility
 - Do not plan for backwards compatibility unless specifically mentioned — BodhiApp prioritizes architectural improvement
+
+## Git Workflow (Trunk-Based Development)
+
+BodhiApp uses **trunk-based development**: `main` is the trunk and the single source of truth.
+
+- Keep changes small and integrate frequently; avoid long-lived feature branches that drift from `main`.
+- Maintain a **linear history** — always rebase onto `main`, never merge `main` into a branch.
+- **Before pushing**, rebase onto the latest trunk so the branch fast-forwards and pushes directly:
+  ```bash
+  git fetch origin
+  git rebase origin/main
+  ```
+- Run all gate checks (`make format`, backend + UI tests, and E2E when touched) **before** pushing — pushed commits land on the trunk that everyone builds from.
+- Keep commits focused: don't fold unrelated lockfile churn or formatting drift into a feature commit.
