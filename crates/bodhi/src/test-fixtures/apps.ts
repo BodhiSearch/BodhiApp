@@ -303,6 +303,61 @@ export const mockDraftMcpResponse: AccessRequestReviewResponse = {
   ],
 };
 
+// Draft where the user's instances span multiple server URLs: an exact-URL match (sorted first)
+// plus a non-matching instance reached via a gateway. Mirrors the backend's all-instances payload.
+export const mockDraftMcpCrossUrlResponse: AccessRequestReviewResponse = {
+  id: REQUEST_ID,
+  app_client_id: APP_CLIENT_ID,
+  app_name: 'MCP App',
+  app_description: 'An app requesting MCP access',
+  flow_type: 'popup',
+  status: 'draft',
+  requested_role: 'scope_user_user',
+  requested: {
+    version: '1' as const,
+    mcp_servers: [{ url: 'https://mcp.deepwiki.com/mcp' }],
+  },
+  mcps_info: [
+    {
+      url: 'https://mcp.deepwiki.com/mcp',
+      instances: [
+        {
+          id: 'mcp-instance-1',
+          name: 'DeepWiki',
+          slug: 'deepwiki-prod',
+          path: '/mcp/deepwiki-prod',
+          enabled: true,
+          mcp_server: {
+            id: 'mcp-server-1',
+            url: 'https://mcp.deepwiki.com/mcp',
+            name: 'DeepWiki MCP',
+            enabled: true,
+          },
+          auth_type: 'public',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        {
+          id: 'mcp-instance-gw',
+          name: 'DeepWiki via Gateway',
+          slug: 'deepwiki-gateway',
+          path: '/mcp/deepwiki-gateway',
+          enabled: true,
+          mcp_server: {
+            id: 'mcp-server-gw',
+            url: 'https://gateway.composio.dev/deepwiki/mcp',
+            name: 'Composio Gateway',
+            enabled: true,
+          },
+          auth_type: 'public',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ],
+    },
+  ],
+};
+
 // Draft with both toolsets and MCP servers (now MCP-only)
 export const mockDraftMixedResourcesResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,

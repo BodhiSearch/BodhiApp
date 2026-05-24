@@ -96,6 +96,51 @@ async fn seed_draft_request(
 }
 
 // ============================================================================
+// Helper: seed an MCP server + user instance, returns the instance id
+// ============================================================================
+
+async fn seed_mcp_instance(
+  app_service: &dyn services::AppService,
+  user_id: &str,
+  server_url: &str,
+  slug: &str,
+  enabled: bool,
+) -> anyhow::Result<String> {
+  let mcp_service = app_service.mcp_service();
+  let server = mcp_service
+    .create_mcp_server(
+      TEST_TENANT_ID,
+      user_id,
+      services::McpServerRequest {
+        url: server_url.to_string(),
+        name: format!("Server {slug}"),
+        description: None,
+        enabled: true,
+        auth_config: None,
+      },
+    )
+    .await?;
+  let instance = mcp_service
+    .create(
+      TEST_TENANT_ID,
+      user_id,
+      services::McpRequest {
+        name: format!("Instance {slug}"),
+        slug: slug.to_string(),
+        mcp_server_id: Some(server.id.clone()),
+        description: None,
+        enabled,
+        auth_type: services::McpAuthType::Public,
+        auth_config_id: None,
+        credentials: None,
+        oauth_token_id: None,
+      },
+    )
+    .await?;
+  Ok(instance.id)
+}
+
+// ============================================================================
 // apps_approve_access_request - success
 // ============================================================================
 
@@ -243,6 +288,165 @@ async fn test_approve_access_request_mcp_instance_not_owned() -> anyhow::Result<
   assert_eq!(
     "apps_route_error-mcp_instance_not_owned",
     body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+// ============================================================================
+// apps_approve_access_request - cross-URL instance (no URL-match restriction)
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_access_request_cross_url_instance() -> anyhow::Result<()> {
+  let request_id = "ar-cross-url";
+  let user_id = "test-user-cross";
+
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_register_access_request_consent()
+    .times(1)
+    .returning(move |_, _, _, _| {
+      Ok(RegisterAccessRequestConsentResponse {
+        access_request_id: "ar-cross-url".to_string(),
+        access_request_scope: "scope_access_request:ar-cross-url".to_string(),
+      })
+    });
+
+  let harness = build_test_harness(mock_auth).await?;
+  // Requested URL is https://mcp.example.com/mcp (from seed_draft_request); the user's only
+  // instance points at a different gateway URL. Approval must still succeed.
+  let instance_id = seed_mcp_instance(
+    harness.state.as_ref(),
+    user_id,
+    "https://gateway.composio.dev/gmail/mcp",
+    "gmail-via-gateway",
+    true,
+  )
+  .await?;
+
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    FlowType::Popup,
+    None,
+    "scope_user_user",
+  )
+  .await?;
+
+  let router = Router::new()
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(apps_approve_access_request),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "approved_role": "scope_user_user",
+    "approved": {
+      "version": "1",
+      "mcps": [{
+        "url": "https://mcp.example.com/mcp",
+        "status": "approved",
+        "instance": {"id": instance_id}
+      }]
+    }
+  });
+
+  let request = axum::http::Request::builder()
+    .method("PUT")
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let result = response.json::<AccessRequestActionResponse>().await?;
+  assert_eq!(AppAccessRequestStatus::Approved, result.status);
+
+  Ok(())
+}
+
+// ============================================================================
+// apps_get_access_request_review - lists all instances, exact-URL match first
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_review_lists_all_instances_match_first() -> anyhow::Result<()> {
+  let request_id = "ar-review-order";
+  let user_id = "test-user-review";
+
+  let mock_auth = MockAuthService::default();
+  let harness = build_test_harness(mock_auth).await?;
+
+  // One instance on a different URL, one on the exact requested URL.
+  seed_mcp_instance(
+    harness.state.as_ref(),
+    user_id,
+    "https://gateway.composio.dev/gmail/mcp",
+    "gmail-gateway",
+    true,
+  )
+  .await?;
+  let matching_id = seed_mcp_instance(
+    harness.state.as_ref(),
+    user_id,
+    "https://mcp.example.com/mcp",
+    "gmail-direct",
+    true,
+  )
+  .await?;
+
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    FlowType::Popup,
+    None,
+    "scope_user_user",
+  )
+  .await?;
+
+  let router = Router::new()
+    .route(
+      crate::ENDPOINT_ACCESS_REQUESTS_REVIEW,
+      axum::routing::get(crate::apps_get_access_request_review),
+    )
+    .with_state(harness.state);
+
+  let request = axum::http::Request::builder()
+    .method("GET")
+    .uri(format!("/bodhi/v1/access-requests/{}/review", request_id))
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  let instances = body["mcps_info"][0]["instances"]
+    .as_array()
+    .expect("instances array");
+  assert_eq!(2, instances.len(), "both configured instances are listed");
+  // Exact-URL match is sorted first.
+  assert_eq!(matching_id, instances[0]["id"].as_str().unwrap());
+  assert_eq!(
+    "https://mcp.example.com/mcp",
+    instances[0]["mcp_server"]["url"].as_str().unwrap()
   );
 
   Ok(())

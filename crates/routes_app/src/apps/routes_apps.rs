@@ -193,15 +193,17 @@ pub async fn apps_get_access_request_review(
   match &requested {
     RequestedResources::V1(v1) => {
       for mcp_server_req in &v1.mcp_servers {
-        let instances = all_user_mcps
+        // Surface every configured instance so the user can connect the request to any of their
+        // MCPs (e.g. the same tool reached via a gateway), with exact-URL matches sorted first.
+        let (mut matches, others): (Vec<_>, Vec<_>) = all_user_mcps
           .iter()
-          .filter(|m| m.mcp_server.url == mcp_server_req.url)
           .cloned()
-          .collect();
+          .partition(|m| m.mcp_server.url == mcp_server_req.url);
+        matches.extend(others);
 
         mcps_info.push(crate::apps::McpServerReviewInfo {
           url: mcp_server_req.url.clone(),
-          instances,
+          instances: matches,
         });
       }
     }
@@ -316,18 +318,13 @@ pub async fn apps_approve_access_request(
             ))
           })?;
 
+          // Any owned + enabled instance may satisfy a requested URL — the user picks which of
+          // their MCPs to connect, so we don't require the instance's server_url to match.
           let mcp_entity = auth_scope
             .mcps()
             .get(&instance.id)
             .await?
             .ok_or_else(|| AppsRouteError::McpInstanceNotOwned(instance.id.clone()))?;
-
-          if mcp_entity.server_url != approval.url {
-            return Err(AppsRouteError::InvalidMcpType(format!(
-              "MCP instance {} is not connected to server {}",
-              instance.id, approval.url
-            )))?;
-          }
 
           if !mcp_entity.enabled {
             return Err(AppsRouteError::McpInstanceNotConfigured(format!(

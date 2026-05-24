@@ -7,6 +7,7 @@ import {
   MOCK_REQUEST_ID,
   mockApprovedReviewResponse,
   mockDeniedReviewResponse,
+  mockDraftMcpCrossUrlResponse,
   mockDraftMcpNoInstancesResponse,
   mockDraftMcpResponse,
   mockDraftMixedResourcesResponse,
@@ -630,7 +631,7 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
       expect(screen.getByTestId('review-no-mcp-instances-https://mcp.example.com/mcp')).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/No MCP instances connected/)).toBeInTheDocument();
+    expect(screen.getByText(/No MCP instances configured/)).toBeInTheDocument();
   });
 
   it('unchecking MCP checkbox enables Approve without instance selection', async () => {
@@ -707,6 +708,70 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
     expect(body.approved.mcps[0].url).toBe('https://mcp.deepwiki.com/mcp');
     expect(body.approved.mcps[0].status).toBe('approved');
     expect(body.approved.mcps[0].instance?.id).toBe('mcp-instance-1');
+  });
+
+  it('lists both exact-match and non-matching instances, match first', async () => {
+    const user = userEvent.setup();
+    mockSearch = { id: MOCK_REQUEST_ID };
+    setupHandlers(mockDraftMcpCrossUrlResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    const selectTrigger = await screen.findByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
+    await user.click(selectTrigger);
+
+    const matchOption = await screen.findByTestId('review-mcp-instance-option-mcp-instance-1');
+    const otherOption = await screen.findByTestId('review-mcp-instance-option-mcp-instance-gw');
+    expect(matchOption).toBeInTheDocument();
+    expect(otherOption).toBeInTheDocument();
+    // Exact-URL match renders before the gateway instance.
+    expect(matchOption.compareDocumentPosition(otherOption) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('approve with a non-matching instance sends its id', async () => {
+    const user = userEvent.setup();
+    mockSearch = { id: MOCK_REQUEST_ID };
+
+    let capturedBody: unknown = null;
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockAppAccessRequestReview(mockDraftMcpCrossUrlResponse),
+      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, {
+        onBody: (body) => {
+          capturedBody = body;
+        },
+      })
+    );
+    setupWindowClose();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    const selectTrigger = await screen.findByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
+    await user.click(selectTrigger);
+    const otherOption = await screen.findByTestId('review-mcp-instance-option-mcp-instance-gw');
+    await user.click(otherOption);
+
+    const approveButton = screen.getByTestId('review-approve-button');
+    await waitFor(() => {
+      expect(approveButton).not.toBeDisabled();
+    });
+    await user.click(approveButton);
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull();
+    });
+
+    const body = capturedBody as {
+      approved: { mcps: Array<{ url: string; status: string; instance?: { id: string; path: string } }> };
+    };
+    expect(body.approved.mcps[0].url).toBe('https://mcp.deepwiki.com/mcp');
+    expect(body.approved.mcps[0].instance?.id).toBe('mcp-instance-gw');
+    expect(body.approved.mcps[0].instance?.path).toBe('/mcp/deepwiki-gateway');
   });
 });
 

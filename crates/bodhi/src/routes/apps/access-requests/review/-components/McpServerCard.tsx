@@ -69,9 +69,7 @@ const McpServerCard = ({
             {!hasInstances && (
               <Alert variant="destructive" data-testid={`review-no-mcp-instances-${mcpInfo.url}`}>
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  No MCP instances connected to this server. Create an instance first.
-                </AlertDescription>
+                <AlertDescription>No MCP instances configured. Create one first.</AlertDescription>
               </Alert>
             )}
 

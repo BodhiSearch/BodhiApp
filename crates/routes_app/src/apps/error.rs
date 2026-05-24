@@ -32,10 +32,6 @@ pub enum AppsRouteError {
   #[error_meta(error_type = ErrorType::NotFound)]
   AppClientNotFound(String),
 
-  #[error("Invalid MCP type: {0}.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidMcpType(String),
-
   #[error("MCP instance not owned by user: {0}.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
   McpInstanceNotOwned(String),
