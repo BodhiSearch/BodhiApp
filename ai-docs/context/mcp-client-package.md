@@ -1,0 +1,1 @@
+../../crates/mcp_client/PACKAGE.md

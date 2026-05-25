@@ -1,0 +1,1 @@
+../../crates/mcp_client/CLAUDE.md

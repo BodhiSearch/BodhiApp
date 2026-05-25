@@ -1,0 +1,1 @@
+../../crates/errmeta/PACKAGE.md
