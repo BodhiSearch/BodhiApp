@@ -258,6 +258,12 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
       time_service.clone(),
       ai_api_client_factory.clone(),
     ));
+  let model_router_service: Arc<dyn services::ModelRouterService> =
+    Arc::new(services::DefaultModelRouterService::new(
+      db_service.clone(),
+      data_service.clone(),
+      time_service.clone(),
+    ));
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
   );
@@ -280,6 +286,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     token_service,
     Some(local_llama),
     api_model_service,
+    model_router_service,
     download_service,
   );
 
@@ -630,6 +637,12 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
       time_service.clone(),
       ai_api_client_factory.clone(),
     ));
+  let model_router_service: Arc<dyn services::ModelRouterService> =
+    Arc::new(services::DefaultModelRouterService::new(
+      db_service.clone(),
+      data_service.clone(),
+      time_service.clone(),
+    ));
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
   );
@@ -652,6 +665,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     token_service,
     Some(local_llama),
     api_model_service,
+    model_router_service,
     download_service,
   );
 
@@ -1000,6 +1014,12 @@ pub async fn setup_multitenant_app_service(
       time_service.clone(),
       ai_api_client_factory.clone(),
     ));
+  let model_router_service: Arc<dyn services::ModelRouterService> =
+    Arc::new(services::DefaultModelRouterService::new(
+      db_service.clone(),
+      data_service.clone(),
+      time_service.clone(),
+    ));
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
   );
@@ -1022,6 +1042,7 @@ pub async fn setup_multitenant_app_service(
     token_service,
     None,
     api_model_service,
+    model_router_service,
     download_service,
   );
 

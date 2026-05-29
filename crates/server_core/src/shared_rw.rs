@@ -201,9 +201,9 @@ impl SharedContext for DefaultSharedContext {
         &model_alias.snapshot,
         &empty_params,
       ),
-      Alias::Api(_) => {
+      Alias::Api(_) | Alias::ModelRouter(_) => {
         return Err(ContextError::Unreachable(
-          "API aliases cannot be processed by SharedContext".to_string(),
+          "API and model-router aliases cannot be processed by SharedContext".to_string(),
         ));
       }
     };

@@ -829,6 +829,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/models/router": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a new model-router configuration */
+        post: operations["createModelRouter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/router/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Model Router Configuration
+         * @description Retrieves the configuration for a specific model-router (composite) alias by ID.
+         */
+        get: operations["getModelRouter"];
+        /** Update an existing model-router configuration */
+        put: operations["updateModelRouter"];
+        post?: never;
+        /** Delete a model-router configuration */
+        delete: operations["deleteModelRouter"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/models/{id}": {
         parameters: {
             query?: never;
@@ -1254,10 +1293,13 @@ export interface components {
         }) | (components["schemas"]["ApiAlias"] & {
             /** @enum {string} */
             source: "api";
+        }) | (components["schemas"]["ModelRouterAlias"] & {
+            /** @enum {string} */
+            source: "model_router";
         });
         /** @description Response envelope for model aliases - hides internal implementation details
          *     Uses untagged serialization - each variant has its own "source" field */
-        AliasResponse: components["schemas"]["UserAliasResponse"] | components["schemas"]["ModelAliasResponse"] | components["schemas"]["ApiAliasResponse"];
+        AliasResponse: components["schemas"]["ModelRouterResponse"] | components["schemas"]["UserAliasResponse"] | components["schemas"]["ModelAliasResponse"] | components["schemas"]["ApiAliasResponse"];
         /** @description Mirrors Anthropic's `ModelInfo` schema — full model metadata returned by
          *     `GET /anthropic/v1/models` and stored alongside model IDs in `ApiAlias.models`.
          *
@@ -1799,6 +1841,18 @@ export interface components {
             low: components["schemas"]["CapabilitySupport"];
             max: components["schemas"]["CapabilitySupport"];
         };
+        /** @description Per-strategy resilience config for the fallback strategy. Phase 1 persists defaults
+         *     and does not yet act on them (failover/health land in later phases). */
+        FallbackConfig: {
+            /** Format: int32 */
+            cooldown_secs?: number;
+            /**
+             * Format: int32
+             * @description 0 = try the whole chain.
+             */
+            max_attempts?: number;
+            honor_retry_after?: boolean;
+        };
         /**
          * @description Request to fetch available models from provider. Discriminated on `api_format`.
          * @example {
@@ -2233,6 +2287,39 @@ export interface components {
             architecture: components["schemas"]["ModelArchitecture"];
             chat_template?: string | null;
         };
+        /** @description A composite alias that fronts an ordered list of targets and routes a chat
+         *     request through them via a pluggable strategy. v1 ships only the fallback strategy. */
+        ModelRouterAlias: {
+            id: string;
+            /** @description User-facing model name, unique across all alias kinds. */
+            alias: string;
+            /** @description Ordered list of targets; order is the fallback priority. */
+            targets: components["schemas"]["RouterTarget"][];
+            strategy: components["schemas"]["RoutingStrategyConfig"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description Input request for creating or updating a model-router. Used as `ValidatedJson` in handlers
+         *     for both create and update (PUT). A zero-target or all-disabled router is allowed to save. */
+        ModelRouterRequest: {
+            alias: string;
+            targets?: components["schemas"]["RouterTargetRequest"][];
+            strategy?: components["schemas"]["RoutingStrategyConfig"];
+        };
+        /** @description API response for model-router aliases. */
+        ModelRouterResponse: {
+            source: string;
+            id: string;
+            alias: string;
+            targets: components["schemas"]["RouterTarget"][];
+            strategy: components["schemas"]["RoutingStrategyConfig"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
         /**
          * @description Request for creating a new download request
          * @example {
@@ -2478,6 +2565,33 @@ export interface components {
         };
         /** @enum {string} */
         ResourceRole: "resource_anonymous" | "resource_guest" | "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
+        /** @description One target in a model-router: a reference to an existing alias plus a pinned model. */
+        RouterTarget: {
+            /** @description Name of an existing user/model/api alias (NOT a model-router). */
+            alias: string;
+            /** @description Concrete model placed into `request["model"]` when forwarding to this target. */
+            model: string;
+            /** @description Whether this target is part of the active sequence. Disabled targets are never
+             *     attempted but keep their config and position. Defaults to enabled. */
+            enabled?: boolean;
+            /**
+             * Format: int32
+             * @description SEAM (reserved): ignored by Fallback; used by a future weighted strategy.
+             */
+            weight?: number | null;
+        };
+        RouterTargetRequest: {
+            alias: string;
+            model: string;
+            enabled?: boolean;
+            /** Format: int32 */
+            weight?: number | null;
+        };
+        /** @description Routing strategy config — DATA (persisted, wire-exposed). Adding a strategy = adding a variant. */
+        RoutingStrategyConfig: components["schemas"]["FallbackConfig"] & {
+            /** @enum {string} */
+            strategy: "fallback";
+        };
         SettingInfo: {
             key: string;
             current_value: unknown;
@@ -6676,6 +6790,272 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    createModelRouter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelRouterRequest"];
+            };
+        };
+        responses: {
+            /** @description Model-router created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRouterResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    getModelRouter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier for the model-router alias */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Model-router configuration retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRouterResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Model-router with specified ID not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    updateModelRouter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Model-router ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelRouterRequest"];
+            };
+        };
+        responses: {
+            /** @description Model-router updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRouterResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Model-router not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteModelRouter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Model-router ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Model-router deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Model-router not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
             };
             /** @description Internal server error */
             500: {

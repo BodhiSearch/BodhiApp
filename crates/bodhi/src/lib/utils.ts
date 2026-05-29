@@ -1,4 +1,10 @@
-import { AliasResponse, ApiAliasResponse, UserAliasResponse, ModelAliasResponse } from '@bodhiapp/ts-client';
+import {
+  AliasResponse,
+  ApiAliasResponse,
+  UserAliasResponse,
+  ModelAliasResponse,
+  ModelRouterResponse,
+} from '@bodhiapp/ts-client';
 import { type ClassValue, clsx } from 'clsx';
 import { customAlphabet } from 'nanoid';
 import { twMerge } from 'tailwind-merge';
@@ -68,6 +74,9 @@ export const isApiAlias = (model: AliasResponse): model is ApiAliasResponse => m
 export const isUserAlias = (model: AliasResponse): model is UserAliasResponse => model.source === 'user';
 
 export const isModelAlias = (model: AliasResponse): model is ModelAliasResponse => model.source === 'model';
+
+export const isModelRouterAlias = (model: AliasResponse): model is ModelRouterResponse =>
+  model.source === 'model_router';
 
 export const isLocalAlias = (model: AliasResponse): model is UserAliasResponse | ModelAliasResponse =>
   model.source === 'user' || model.source === 'model';

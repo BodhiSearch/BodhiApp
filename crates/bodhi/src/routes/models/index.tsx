@@ -13,8 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { useToast } from '@/hooks/use-toast';
-import { useDeleteApiModel, useListModels } from '@/hooks/models';
-import { hasLocalFileProperties, isApiAlias, isUserAlias } from '@/lib/utils';
+import { useDeleteApiModel, useDeleteModelRouter, useListModels } from '@/hooks/models';
+import { hasLocalFileProperties, isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
 import { SortState } from '@/types/models';
 
@@ -71,7 +71,7 @@ function ModelsPageContent() {
     column: 'alias',
     direction: 'asc',
   });
-  const [deleteModel, setDeleteModel] = useState<{ id: string; name: string } | null>(null);
+  const [deleteModel, setDeleteModel] = useState<{ id: string; name: string; kind: 'api' | 'router' } | null>(null);
   const [moreModelsModal, setMoreModelsModal] = useState<{
     models: string[];
     modelId: string;
@@ -81,6 +81,7 @@ function ModelsPageContent() {
 
   const { toast } = useToast();
   const deleteApiModel = useDeleteApiModel();
+  const deleteModelRouter = useDeleteModelRouter();
 
   // Backend will provide combined data including API models, User aliases, and Model File aliases
   const { data, isLoading, error } = useListModels(page, pageSize, sort.column, sort.direction);
@@ -114,6 +115,8 @@ function ModelsPageContent() {
   const handleEdit = (model: AliasResponse) => {
     if (isApiAlias(model)) {
       navigate({ to: '/models/api/edit/', search: { id: model.id } });
+    } else if (isModelRouterAlias(model)) {
+      navigate({ to: '/models/router/edit/', search: { id: model.id } });
     } else if (isUserAlias(model)) {
       navigate({ to: '/models/alias/edit/', search: { id: model.id } });
     }
@@ -135,24 +138,31 @@ function ModelsPageContent() {
 
   const handleDelete = (model: AliasResponse) => {
     if (isApiAlias(model)) {
-      setDeleteModel({ id: model.id, name: model.id });
+      setDeleteModel({ id: model.id, name: model.id, kind: 'api' });
+    } else if (isModelRouterAlias(model)) {
+      setDeleteModel({ id: model.id, name: model.alias, kind: 'router' });
     }
   };
 
   const confirmDelete = async () => {
     if (!deleteModel) return;
 
+    const label = deleteModel.kind === 'router' ? 'Model router' : 'API model';
     try {
-      await deleteApiModel.mutateAsync(deleteModel.id);
+      if (deleteModel.kind === 'router') {
+        await deleteModelRouter.mutateAsync(deleteModel.id);
+      } else {
+        await deleteApiModel.mutateAsync(deleteModel.id);
+      }
       toast({
         title: 'Success',
-        description: `API model ${deleteModel.name} deleted successfully`,
+        description: `${label} ${deleteModel.name} deleted successfully`,
       });
       setDeleteModel(null);
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to delete API model',
+        description: `Failed to delete ${label.toLowerCase()}`,
         variant: 'destructive',
       });
     }
@@ -169,6 +179,8 @@ function ModelsPageContent() {
   const getExternalUrl = (model: AliasResponse) => {
     if (isApiAlias(model)) {
       return model.base_url;
+    } else if (isModelRouterAlias(model)) {
+      return '';
     } else {
       return getHuggingFaceFileUrl(model.repo, model.filename);
     }
@@ -182,9 +194,15 @@ function ModelsPageContent() {
     navigate({ to: '/models/api/new/' });
   };
 
+  const handleNewModelRouter = () => {
+    navigate({ to: '/models/router/new/' });
+  };
+
   const getModelDisplayRepo = (model: AliasResponse): string => {
     if (isApiAlias(model)) {
       return model.api_format;
+    } else if (isModelRouterAlias(model)) {
+      return 'model_router';
     } else {
       return model.repo;
     }
@@ -193,6 +211,8 @@ function ModelsPageContent() {
   const getModelDisplayFilename = (model: AliasResponse): string => {
     if (isApiAlias(model)) {
       return model.base_url;
+    } else if (isModelRouterAlias(model)) {
+      return `${model.targets.length} target(s)`;
     } else {
       return model.filename;
     }
@@ -235,6 +255,10 @@ function ModelsPageContent() {
         <Button onClick={handleNewApiModel} size="sm" variant="outline">
           <Globe className="h-4 w-4 mr-2" />
           New API Model
+        </Button>
+        <Button onClick={handleNewModelRouter} size="sm" variant="outline" data-testid="new-model-router-button">
+          <Plus className="h-4 w-4 mr-2" />
+          New Model Router
         </Button>
         <Button onClick={handleNewAlias} size="sm" data-testid="new-model-alias-button">
           <Plus className="h-4 w-4 mr-2" />

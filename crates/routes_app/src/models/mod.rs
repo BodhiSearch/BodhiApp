@@ -3,6 +3,7 @@ mod api;
 mod error;
 mod files;
 mod models_api_schemas;
+mod router;
 mod routes_models;
 mod routes_models_metadata;
 
@@ -15,5 +16,6 @@ pub use api::*;
 pub use error::*;
 pub use files::*;
 pub use models_api_schemas::*;
+pub use router::*;
 pub use routes_models::*;
 pub use routes_models_metadata::*;

@@ -596,6 +596,7 @@ pub enum AliasSource {
   User,
   Model,
   Api,
+  ModelRouter,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder)]
@@ -792,6 +793,17 @@ pub enum ApiFormat {
   LlmLibertyOauth,
 }
 
+impl ApiFormat {
+  /// Whether an API alias of this format can serve the `/chat/completions` surface.
+  /// Single source of truth shared by the chat handler guard and model-router validation.
+  pub fn supports_chat_completions(&self) -> bool {
+    matches!(
+      self,
+      ApiFormat::OpenAI | ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
+    )
+  }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder)]
 #[builder(setter(into, strip_option), build_fn(error = BuilderError))]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
@@ -927,7 +939,7 @@ impl std::fmt::Display for ApiAlias {
 /// Flat enum representing all types of model aliases
 /// Each variant is identified by the source field
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-#[serde(tag = "source", rename_all = "kebab-case")]
+#[serde(tag = "source", rename_all = "snake_case")]
 pub enum Alias {
   /// User-defined local model (source: "user")
   #[serde(rename = "user")]
@@ -938,6 +950,9 @@ pub enum Alias {
   /// Remote API model (source: "api")
   #[serde(rename = "api")]
   Api(ApiAlias),
+  /// Composite alias routing across an ordered list of targets (source: "model_router")
+  #[serde(rename = "model_router")]
+  ModelRouter(ModelRouterAlias),
 }
 
 impl Alias {
@@ -947,6 +962,7 @@ impl Alias {
       Alias::User(alias) => alias.alias == model,
       Alias::Model(alias) => alias.alias == model,
       Alias::Api(api_alias) => api_alias.supports_model(model),
+      Alias::ModelRouter(router) => router.alias == model,
     }
   }
 
@@ -956,6 +972,7 @@ impl Alias {
       Alias::User(alias) => &alias.alias,
       Alias::Model(alias) => &alias.alias,
       Alias::Api(api_alias) => &api_alias.id,
+      Alias::ModelRouter(router) => &router.alias,
     }
   }
 
@@ -965,6 +982,163 @@ impl Alias {
       Alias::User(_) => AliasSource::User,
       Alias::Model(_) => AliasSource::Model,
       Alias::Api(_) => AliasSource::Api,
+      Alias::ModelRouter(_) => AliasSource::ModelRouter,
+    }
+  }
+
+  /// Whether this alias is a model-router (composite alias).
+  pub fn is_model_router(&self) -> bool {
+    matches!(self, Alias::ModelRouter(_))
+  }
+}
+
+// =============================================================================
+// ModelRouter domain types (composite alias)
+// =============================================================================
+
+fn default_true() -> bool {
+  true
+}
+
+/// A composite alias that fronts an ordered list of targets and routes a chat
+/// request through them via a pluggable strategy. v1 ships only the fallback strategy.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
+pub struct ModelRouterAlias {
+  pub id: String,
+  /// User-facing model name, unique across all alias kinds.
+  pub alias: String,
+  /// Ordered list of targets; order is the fallback priority.
+  pub targets: Vec<RouterTarget>,
+  pub strategy: RoutingStrategyConfig,
+  #[schema(value_type = String, format = "date-time")]
+  pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time")]
+  pub updated_at: DateTime<Utc>,
+}
+
+/// One target in a model-router: a reference to an existing alias plus a pinned model.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct RouterTarget {
+  /// Name of an existing user/model/api alias (NOT a model-router).
+  pub alias: String,
+  /// Concrete model placed into `request["model"]` when forwarding to this target.
+  pub model: String,
+  /// Whether this target is part of the active sequence. Disabled targets are never
+  /// attempted but keep their config and position. Defaults to enabled.
+  #[serde(default = "default_true")]
+  pub enabled: bool,
+  /// SEAM (reserved): ignored by Fallback; used by a future weighted strategy.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub weight: Option<u32>,
+}
+
+/// DB-storable `Vec<RouterTarget>` — stored as JSON binary in SeaORM columns.
+#[derive(
+  Clone, Debug, PartialEq, Default, Serialize, Deserialize, FromJsonQueryResult, ToSchema,
+)]
+pub struct RouterTargetVec(Vec<RouterTarget>);
+
+impl Deref for RouterTargetVec {
+  type Target = Vec<RouterTarget>;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl DerefMut for RouterTargetVec {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0
+  }
+}
+
+impl From<Vec<RouterTarget>> for RouterTargetVec {
+  fn from(v: Vec<RouterTarget>) -> Self {
+    Self(v)
+  }
+}
+
+impl From<RouterTargetVec> for Vec<RouterTarget> {
+  fn from(v: RouterTargetVec) -> Self {
+    v.0
+  }
+}
+
+/// Routing strategy config — DATA (persisted, wire-exposed). Adding a strategy = adding a variant.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, FromJsonQueryResult)]
+#[serde(tag = "strategy", rename_all = "snake_case")]
+pub enum RoutingStrategyConfig {
+  /// `{"strategy":"fallback", ...}` — try targets in order, first success wins.
+  Fallback(FallbackConfig),
+}
+
+impl Default for RoutingStrategyConfig {
+  fn default() -> Self {
+    RoutingStrategyConfig::Fallback(FallbackConfig::default())
+  }
+}
+
+/// Per-strategy resilience config for the fallback strategy. Phase 1 persists defaults
+/// and does not yet act on them (failover/health land in later phases).
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct FallbackConfig {
+  #[serde(default = "default_cooldown_secs")]
+  pub cooldown_secs: u32,
+  /// 0 = try the whole chain.
+  #[serde(default)]
+  pub max_attempts: u32,
+  #[serde(default = "default_true")]
+  pub honor_retry_after: bool,
+}
+
+fn default_cooldown_secs() -> u32 {
+  30
+}
+
+impl Default for FallbackConfig {
+  fn default() -> Self {
+    Self {
+      cooldown_secs: default_cooldown_secs(),
+      max_attempts: 0,
+      honor_retry_after: true,
+    }
+  }
+}
+
+/// Input request for creating or updating a model-router. Used as `ValidatedJson` in handlers
+/// for both create and update (PUT). A zero-target or all-disabled router is allowed to save.
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
+pub struct ModelRouterRequest {
+  #[validate(length(min = 1, message = "alias must not be empty"))]
+  pub alias: String,
+  #[validate(nested)]
+  #[serde(default)]
+  pub targets: Vec<RouterTargetRequest>,
+  #[serde(default)]
+  pub strategy: RoutingStrategyConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
+pub struct RouterTargetRequest {
+  #[validate(length(min = 1, message = "target alias must not be empty"))]
+  pub alias: String,
+  #[validate(length(min = 1, message = "target model must not be empty"))]
+  pub model: String,
+  #[serde(default = "default_true")]
+  pub enabled: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub weight: Option<u32>,
+}
+
+impl From<RouterTargetRequest> for RouterTarget {
+  fn from(req: RouterTargetRequest) -> Self {
+    Self {
+      alias: req.alias,
+      model: req.model,
+      enabled: req.enabled,
+      weight: req.weight,
     }
   }
 }
@@ -1933,12 +2107,43 @@ impl ApiAliasResponse {
   }
 }
 
+/// API response for model-router aliases.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
+pub struct ModelRouterResponse {
+  pub source: String,
+  pub id: String,
+  pub alias: String,
+  pub targets: Vec<RouterTarget>,
+  pub strategy: RoutingStrategyConfig,
+  #[schema(value_type = String, format = "date-time")]
+  pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time")]
+  pub updated_at: DateTime<Utc>,
+}
+
+impl From<ModelRouterAlias> for ModelRouterResponse {
+  fn from(router: ModelRouterAlias) -> Self {
+    Self {
+      source: AliasSource::ModelRouter.to_string(),
+      id: router.id,
+      alias: router.alias,
+      targets: router.targets,
+      strategy: router.strategy,
+      created_at: router.created_at,
+      updated_at: router.updated_at,
+    }
+  }
+}
+
 /// Response envelope for model aliases - hides internal implementation details
 /// Uses untagged serialization - each variant has its own "source" field
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 #[serde(untagged)]
 #[allow(clippy::large_enum_variant)]
 pub enum AliasResponse {
+  /// Composite model-router (source: "model_router"). Listed first: its required
+  /// `targets`/`strategy` fields disambiguate untagged deserialization.
+  ModelRouter(ModelRouterResponse),
   /// User-defined local model (source: "user")
   User(UserAliasResponse),
   /// Auto-discovered local model (source: "model")
@@ -1953,6 +2158,7 @@ impl From<Alias> for AliasResponse {
       Alias::User(u) => AliasResponse::User(u.into()),
       Alias::Model(m) => AliasResponse::Model(m.into()),
       Alias::Api(a) => AliasResponse::Api(a.into()),
+      Alias::ModelRouter(r) => AliasResponse::ModelRouter(r.into()),
     }
   }
 }
@@ -1964,6 +2170,7 @@ impl AliasResponse {
       AliasResponse::User(r) => AliasResponse::User(r.with_metadata(metadata)),
       AliasResponse::Model(r) => AliasResponse::Model(r.with_metadata(metadata)),
       AliasResponse::Api(r) => AliasResponse::Api(r), // API aliases don't have metadata
+      AliasResponse::ModelRouter(r) => AliasResponse::ModelRouter(r), // routers don't have metadata
     }
   }
 }

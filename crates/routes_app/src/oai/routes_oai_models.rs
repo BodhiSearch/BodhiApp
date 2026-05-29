@@ -81,6 +81,11 @@ pub async fn oai_models_handler(
           }
         }
       }
+      Alias::ModelRouter(router) => {
+        if seen_models.insert(router.alias.clone()) {
+          models.push(router_to_oai_model(&router));
+        }
+      }
     }
   }
 
@@ -144,6 +149,7 @@ pub async fn oai_model_handler(
         // DataService.find_alias() already verified model exists via matchable_models()
         Ok(Json(api_model_to_oai_model(id, &api_alias)))
       }
+      Alias::ModelRouter(router) => Ok(Json(router_to_oai_model(&router))),
     }
   } else {
     Err(OaiApiError::from(DataServiceError::AliasNotFound(id)))
@@ -188,6 +194,15 @@ fn api_model_to_oai_model(model_id: String, api_alias: &ApiAlias) -> Model {
     object: "model".to_string(),
     created,
     owned_by: api_alias.base_url.clone(),
+  }
+}
+
+fn router_to_oai_model(router: &services::ModelRouterAlias) -> Model {
+  Model {
+    id: router.alias.clone(),
+    object: "model".to_string(),
+    created: router.created_at.timestamp() as u32,
+    owned_by: "model-router".to_string(),
   }
 }
 

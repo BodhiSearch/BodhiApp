@@ -203,6 +203,13 @@ impl AppServiceBuilder {
         ai_api_client_factory.clone(),
       ));
 
+    let model_router_service: Arc<dyn services::ModelRouterService> =
+      Arc::new(services::DefaultModelRouterService::new(
+        db_service.clone(),
+        data_service.clone(),
+        time_service.clone(),
+      ));
+
     let download_service: Arc<dyn services::DownloadService> = Arc::new(
       services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
     );
@@ -226,6 +233,7 @@ impl AppServiceBuilder {
       token_service,
       local_llama,
       api_model_service,
+      model_router_service,
       download_service,
     );
     Ok(app_service)

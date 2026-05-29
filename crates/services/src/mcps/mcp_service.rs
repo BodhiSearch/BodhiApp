@@ -1217,12 +1217,20 @@ impl McpService for DefaultMcpService {
       warn!(mcp_server_url, error = %e, "Protected Resource Metadata fetch failed");
       McpError::OAuthDiscoveryFailed(format!("Protected Resource Metadata fetch failed: {}", e))
     };
-    let mut prs_resp = self.http_client.get(&prs_url)?.send().await.map_err(prs_fetch_err)?;
+    let mut prs_resp = self
+      .http_client
+      .get(&prs_url)?
+      .send()
+      .await
+      .map_err(prs_fetch_err)?;
 
     // Fall back to origin-only well-known URL when path-specific URL returns 4xx
     if has_path && prs_resp.status().is_client_error() {
       let root_prs_url = format!("{}/.well-known/oauth-protected-resource", origin);
-      debug!(root_prs_url, "Falling back to root Protected Resource Metadata URL");
+      debug!(
+        root_prs_url,
+        "Falling back to root Protected Resource Metadata URL"
+      );
       prs_resp = self
         .http_client
         .get(&root_prs_url)?

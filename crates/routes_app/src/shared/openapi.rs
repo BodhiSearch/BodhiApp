@@ -11,15 +11,16 @@ use crate::{
   __path_apps_approve_access_request, __path_apps_create_access_request,
   __path_apps_deny_access_request, __path_apps_get_access_request_review,
   __path_apps_get_access_request_status, __path_auth_callback, __path_auth_initiate,
-  __path_auth_logout, __path_health_handler, __path_modelfiles_index, __path_models_copy,
-  __path_models_create, __path_models_destroy, __path_models_index, __path_models_pull_create,
-  __path_models_pull_index, __path_models_pull_show, __path_models_show, __path_models_update,
-  __path_ping_handler, __path_queue_status_handler, __path_refresh_metadata_handler,
-  __path_tokens_create, __path_tokens_index, __path_tokens_update,
-  __path_users_access_request_approve, __path_users_access_request_reject,
-  __path_users_access_requests_index, __path_users_access_requests_pending,
-  __path_users_change_role, __path_users_destroy, __path_users_index, __path_users_info,
-  __path_users_request_access, __path_users_request_status,
+  __path_auth_logout, __path_health_handler, __path_model_router_create,
+  __path_model_router_destroy, __path_model_router_show, __path_model_router_update,
+  __path_modelfiles_index, __path_models_copy, __path_models_create, __path_models_destroy,
+  __path_models_index, __path_models_pull_create, __path_models_pull_index,
+  __path_models_pull_show, __path_models_show, __path_models_update, __path_ping_handler,
+  __path_queue_status_handler, __path_refresh_metadata_handler, __path_tokens_create,
+  __path_tokens_index, __path_tokens_update, __path_users_access_request_approve,
+  __path_users_access_request_reject, __path_users_access_requests_index,
+  __path_users_access_requests_pending, __path_users_change_role, __path_users_destroy,
+  __path_users_index, __path_users_info, __path_users_request_access, __path_users_request_status,
 };
 // MCP DTOs and handlers
 use crate::{
@@ -49,26 +50,28 @@ use crate::{
 };
 use crate::{
   API_TAG_API_KEYS, API_TAG_APPS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_MODELS_ALIAS,
-  API_TAG_MODELS_API, API_TAG_MODELS_FILES, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
-  API_TAG_TENANTS,
+  API_TAG_MODELS_API, API_TAG_MODELS_FILES, API_TAG_MODELS_ROUTER, API_TAG_SETTINGS, API_TAG_SETUP,
+  API_TAG_SYSTEM, API_TAG_TENANTS,
 };
 use services::{
   Alias, AliasResponse, ApiAliasResponse, ApiFormat, ApiFormatsResponse, ApiKey, ApiKeyUpdate,
   ApiModelRequest, AppAccessRequestStatus, AppRole, AppStatus, ApprovalStatus,
   ApproveAccessRequest, ApproveUserAccessRequest, ApprovedResources, ApprovedResourcesV1,
   ChangeRoleRequest, CopyAliasRequest, CreateAccessRequest, CreateMcpAuthConfigRequest,
-  CreateTokenRequest, DownloadRequest, DownloadStatus, FetchModelsRequest, FetchModelsResponse,
-  FlowType, LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate, LlmLibertySummary, Mcp, McpApproval,
-  McpAuthConfigParam, McpAuthConfigParamInput, McpAuthConfigResponse, McpAuthConfigType,
-  McpAuthConfigsListResponse, McpAuthParam, McpAuthParamInput, McpAuthParamType, McpAuthType,
-  McpInstance, McpRequest, McpServer, McpServerInfo, McpServerRequest, ModelAliasResponse,
-  NewDownloadRequest, OAIRequestParams, PaginatedAliasResponse, PaginatedDownloadResponse,
-  PaginatedTokenResponse, PaginatedUserAccessResponse, PaginatedUserAliasResponse, RefreshRequest,
-  RefreshResponse, RefreshSource, RequestedMcpServer, RequestedResources, RequestedResourcesV1,
-  ResourceRole, SettingInfo, SettingMetadata, SettingService, SettingSource, TestCreds,
-  TestPromptRequest, TestPromptResponse, TokenCreated, TokenDetail, TokenScope, TokenStatus,
-  UpdateSettingRequest, UpdateTokenRequest, UserAccessStatusResponse, UserAliasRequest,
-  UserAliasResponse, UserInfo, UserListResponse, UserScope,
+  CreateTokenRequest, DownloadRequest, DownloadStatus, FallbackConfig, FetchModelsRequest,
+  FetchModelsResponse, FlowType, LlmLibertyEnvelope, LlmLibertyEnvelopeUpdate, LlmLibertySummary,
+  Mcp, McpApproval, McpAuthConfigParam, McpAuthConfigParamInput, McpAuthConfigResponse,
+  McpAuthConfigType, McpAuthConfigsListResponse, McpAuthParam, McpAuthParamInput, McpAuthParamType,
+  McpAuthType, McpInstance, McpRequest, McpServer, McpServerInfo, McpServerRequest,
+  ModelAliasResponse, ModelRouterRequest, ModelRouterResponse, NewDownloadRequest,
+  OAIRequestParams, PaginatedAliasResponse, PaginatedDownloadResponse, PaginatedTokenResponse,
+  PaginatedUserAccessResponse, PaginatedUserAliasResponse, RefreshRequest, RefreshResponse,
+  RefreshSource, RequestedMcpServer, RequestedResources, RequestedResourcesV1, ResourceRole,
+  RouterTarget, RouterTargetRequest, RoutingStrategyConfig, SettingInfo, SettingMetadata,
+  SettingService, SettingSource, TestCreds, TestPromptRequest, TestPromptResponse, TokenCreated,
+  TokenDetail, TokenScope, TokenStatus, UpdateSettingRequest, UpdateTokenRequest,
+  UserAccessStatusResponse, UserAliasRequest, UserAliasResponse, UserInfo, UserListResponse,
+  UserScope,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -104,6 +107,7 @@ make_ui_endpoint!(ENDPOINT_DASHBOARD_AUTH_CALLBACK, "auth/dashboard/callback");
 make_ui_endpoint!(ENDPOINT_MODELS, "models");
 make_ui_endpoint!(ENDPOINT_MODELS_ALIAS, "models/alias");
 make_ui_endpoint!(ENDPOINT_MODELS_API, "models/api");
+make_ui_endpoint!(ENDPOINT_MODELS_ROUTER, "models/router");
 make_ui_endpoint!(ENDPOINT_MODELS_API_TEST, "models/api/test");
 make_ui_endpoint!(ENDPOINT_MODELS_API_FETCH_MODELS, "models/api/fetch-models");
 make_ui_endpoint!(ENDPOINT_MODELS_API_FORMATS, "models/api/formats");
@@ -250,6 +254,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         (name = API_TAG_MODELS, description = "Model files and aliases"),
         (name = API_TAG_MODELS_ALIAS, description = "User-created model aliases"),
         (name = API_TAG_MODELS_API, description = "Remote AI API model configuration"),
+        (name = API_TAG_MODELS_ROUTER, description = "Model-router (composite alias) configuration"),
         (name = API_TAG_MODELS_FILES, description = "Local model files and downloads"),
         (name = API_TAG_SETTINGS, description = "Application settings management"),
         (name = API_TAG_MCPS, description = "MCP server management and tool execution"),
@@ -325,6 +330,13 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             FetchModelsResponse,
             ApiFormatsResponse,
             ApiFormat,
+            // model router
+            ModelRouterRequest,
+            ModelRouterResponse,
+            RouterTargetRequest,
+            RouterTarget,
+            RoutingStrategyConfig,
+            FallbackConfig,
             // models
             UserAliasRequest,
             CopyAliasRequest,
@@ -421,6 +433,12 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         api_models_test,
         api_models_fetch_models,
         api_models_formats,
+
+        // Model Router endpoints
+        model_router_show,
+        model_router_create,
+        model_router_update,
+        model_router_destroy,
 
         // Models endpoints
         models_create,

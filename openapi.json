@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.0.52-dev"
+    "version": "0.0.53-dev"
   },
   "servers": [
     {
@@ -5102,6 +5102,351 @@
         ]
       }
     },
+    "/bodhi/v1/models/router": {
+      "post": {
+        "tags": [
+          "models-router"
+        ],
+        "summary": "Create a new model-router configuration",
+        "operationId": "createModelRouter",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelRouterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Model-router created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRouterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/router/{id}": {
+      "get": {
+        "tags": [
+          "models-router"
+        ],
+        "summary": "Get Model Router Configuration",
+        "description": "Retrieves the configuration for a specific model-router (composite) alias by ID.",
+        "operationId": "getModelRouter",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique identifier for the model-router alias",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Model-router configuration retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRouterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model-router with specified ID not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_user"
+            ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "models-router"
+        ],
+        "summary": "Update an existing model-router configuration",
+        "operationId": "updateModelRouter",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Model-router ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelRouterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Model-router updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRouterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model-router not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_user"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "models-router"
+        ],
+        "summary": "Delete a model-router configuration",
+        "operationId": "deleteModelRouter",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Model-router ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Model-router deleted"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model-router not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_user"
+            ]
+          }
+        ]
+      }
+    },
     "/bodhi/v1/models/{id}": {
       "get": {
         "tags": [
@@ -7115,12 +7460,39 @@
               }
             ],
             "description": "Remote API model (source: \"api\")"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModelRouterAlias",
+                "description": "Composite alias routing across an ordered list of targets (source: \"model_router\")"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "model_router"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "Composite alias routing across an ordered list of targets (source: \"model_router\")"
           }
         ],
         "description": "Flat enum representing all types of model aliases\nEach variant is identified by the source field"
       },
       "AliasResponse": {
         "oneOf": [
+          {
+            "$ref": "#/components/schemas/ModelRouterResponse",
+            "description": "Composite model-router (source: \"model_router\"). Listed first: its required\n`targets`/`strategy` fields disambiguate untagged deserialization."
+          },
           {
             "$ref": "#/components/schemas/UserAliasResponse",
             "description": "User-defined local model (source: \"user\")"
@@ -8587,6 +8959,26 @@
           }
         }
       },
+      "FallbackConfig": {
+        "type": "object",
+        "description": "Per-strategy resilience config for the fallback strategy. Phase 1 persists defaults\nand does not yet act on them (failover/health land in later phases).",
+        "properties": {
+          "cooldown_secs": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "max_attempts": {
+            "type": "integer",
+            "format": "int32",
+            "description": "0 = try the whole chain.",
+            "minimum": 0
+          },
+          "honor_retry_after": {
+            "type": "boolean"
+          }
+        }
+      },
       "FetchModelsRequest": {
         "oneOf": [
           {
@@ -10004,6 +10396,107 @@
           }
         }
       },
+      "ModelRouterAlias": {
+        "type": "object",
+        "description": "A composite alias that fronts an ordered list of targets and routes a chat\nrequest through them via a pluggable strategy. v1 ships only the fallback strategy.",
+        "required": [
+          "id",
+          "alias",
+          "targets",
+          "strategy",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string",
+            "description": "User-facing model name, unique across all alias kinds."
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouterTarget"
+            },
+            "description": "Ordered list of targets; order is the fallback priority."
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyConfig"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ModelRouterRequest": {
+        "type": "object",
+        "description": "Input request for creating or updating a model-router. Used as `ValidatedJson` in handlers\nfor both create and update (PUT). A zero-target or all-disabled router is allowed to save.",
+        "required": [
+          "alias"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouterTargetRequest"
+            }
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyConfig"
+          }
+        }
+      },
+      "ModelRouterResponse": {
+        "type": "object",
+        "description": "API response for model-router aliases.",
+        "required": [
+          "source",
+          "id",
+          "alias",
+          "targets",
+          "strategy",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouterTarget"
+            }
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/RoutingStrategyConfig"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "NewDownloadRequest": {
         "type": "object",
         "description": "Request for creating a new download request",
@@ -10701,6 +11194,91 @@
           "resource_manager",
           "resource_admin"
         ]
+      },
+      "RouterTarget": {
+        "type": "object",
+        "description": "One target in a model-router: a reference to an existing alias plus a pinned model.",
+        "required": [
+          "alias",
+          "model"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string",
+            "description": "Name of an existing user/model/api alias (NOT a model-router)."
+          },
+          "model": {
+            "type": "string",
+            "description": "Concrete model placed into `request[\"model\"]` when forwarding to this target."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this target is part of the active sequence. Disabled targets are never\nattempted but keep their config and position. Defaults to enabled."
+          },
+          "weight": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "SEAM (reserved): ignored by Fallback; used by a future weighted strategy.",
+            "minimum": 0
+          }
+        }
+      },
+      "RouterTargetRequest": {
+        "type": "object",
+        "required": [
+          "alias",
+          "model"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "weight": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "RoutingStrategyConfig": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FallbackConfig",
+                "description": "`{\"strategy\":\"fallback\", ...}` — try targets in order, first success wins."
+              },
+              {
+                "type": "object",
+                "required": [
+                  "strategy"
+                ],
+                "properties": {
+                  "strategy": {
+                    "type": "string",
+                    "enum": [
+                      "fallback"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "`{\"strategy\":\"fallback\", ...}` — try targets in order, first success wins."
+          }
+        ],
+        "description": "Routing strategy config — DATA (persisted, wire-exposed). Adding a strategy = adding a variant."
       },
       "SettingInfo": {
         "type": "object",
@@ -11823,6 +12401,10 @@
     {
       "name": "models-api",
       "description": "Remote AI API model configuration"
+    },
+    {
+      "name": "models-router",
+      "description": "Model-router (composite alias) configuration"
     },
     {
       "name": "models-files",

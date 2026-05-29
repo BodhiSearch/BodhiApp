@@ -160,5 +160,4 @@ test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {
       await modelsPage.deleteModel(modelId);
     });
   });
-
 });

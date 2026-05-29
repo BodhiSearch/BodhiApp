@@ -88,7 +88,7 @@ pub async fn models_index(
     .filter_map(|alias| match alias {
       Alias::User(u) => Some((u.repo.to_string(), u.filename.clone(), u.snapshot.clone())),
       Alias::Model(m) => Some((m.repo.to_string(), m.filename.clone(), m.snapshot.clone())),
-      Alias::Api(_) => None,
+      Alias::Api(_) | Alias::ModelRouter(_) => None,
     })
     .collect();
 
@@ -148,7 +148,7 @@ pub async fn models_index(
       let key = match alias {
         Alias::User(u) => Some((u.repo.to_string(), u.filename, u.snapshot)),
         Alias::Model(m) => Some((m.repo.to_string(), m.filename, m.snapshot)),
-        Alias::Api(_) => None,
+        Alias::Api(_) | Alias::ModelRouter(_) => None,
       };
       if let Some(k) = key {
         if let Some(metadata_row) = metadata_map.get(&k) {
@@ -205,6 +205,7 @@ fn get_alias_name(alias: &Alias) -> &str {
     Alias::User(user_alias) => &user_alias.alias,
     Alias::Model(model_alias) => &model_alias.alias,
     Alias::Api(api_alias) => &api_alias.id,
+    Alias::ModelRouter(router) => &router.alias,
   }
 }
 
@@ -212,7 +213,8 @@ fn get_alias_repo(alias: &Alias) -> String {
   match alias {
     Alias::User(user_alias) => user_alias.repo.to_string(),
     Alias::Model(model_alias) => model_alias.repo.to_string(),
-    Alias::Api(_) => "".to_string(), // API aliases don't have repos
+    // API and model-router aliases don't have repos
+    Alias::Api(_) | Alias::ModelRouter(_) => "".to_string(),
   }
 }
 
@@ -220,7 +222,8 @@ fn get_alias_filename(alias: &Alias) -> &str {
   match alias {
     Alias::User(user_alias) => &user_alias.filename,
     Alias::Model(model_alias) => &model_alias.filename,
-    Alias::Api(_) => "", // API aliases don't have filenames
+    // API and model-router aliases don't have filenames
+    Alias::Api(_) | Alias::ModelRouter(_) => "",
   }
 }
 
@@ -229,6 +232,7 @@ fn get_alias_source(alias: &Alias) -> &str {
     Alias::User(_) => "user",
     Alias::Model(_) => "model",
     Alias::Api(_) => "api",
+    Alias::ModelRouter(_) => "model_router",
   }
 }
 

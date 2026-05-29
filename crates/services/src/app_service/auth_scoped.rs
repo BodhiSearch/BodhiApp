@@ -3,10 +3,10 @@ use crate::{
   db::{DbService, TimeService},
   AccessRequestService, AiApiClientFactory, AppService, AuthContext, AuthScopedAiApiClientFactory,
   AuthScopedApiModelService, AuthScopedDataService, AuthScopedDownloadService,
-  AuthScopedMcpService, AuthScopedTenantService, AuthScopedTokenService,
-  AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService, CacheService,
-  ConcurrencyService, DataService, HubService, NetworkService, QueueProducer, SessionService,
-  SettingService, TenantService,
+  AuthScopedMcpService, AuthScopedModelRouterService, AuthScopedTenantService,
+  AuthScopedTokenService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
+  CacheService, ConcurrencyService, DataService, HubService, NetworkService, QueueProducer,
+  SessionService, SettingService, TenantService,
 };
 use std::sync::Arc;
 
@@ -68,6 +68,11 @@ impl AuthScopedAppService {
   /// Returns an auth-scoped API model service. Each call clones the inner Arc and AuthContext.
   pub fn api_models(&self) -> AuthScopedApiModelService {
     AuthScopedApiModelService::new(self.app_service.clone(), self.auth_context.clone())
+  }
+
+  /// Returns an auth-scoped model-router service. Each call clones the inner Arc and AuthContext.
+  pub fn model_routers(&self) -> AuthScopedModelRouterService {
+    AuthScopedModelRouterService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
   /// Returns an auth-scoped download service. Each call clones the inner Arc and AuthContext.

@@ -1,4 +1,7 @@
-use crate::models::{Alias, ApiAlias, ApiFormat, ModelAlias, OAIRequestParams, Repo, UserAlias};
+use crate::models::{
+  Alias, AliasResponse, AliasSource, ApiAlias, ApiFormat, FallbackConfig, ModelAlias,
+  ModelRouterAlias, OAIRequestParams, Repo, RouterTarget, RoutingStrategyConfig, UserAlias,
+};
 use crate::test_utils::{fixed_dt, openai_model};
 use crate::UserAliasBuilder;
 use pretty_assertions::assert_eq;
@@ -193,4 +196,97 @@ fn test_api_format_serde_roundtrip(#[case] format: ApiFormat, #[case] expected_j
   assert_eq!(expected_json, serialized);
   let deserialized: ApiFormat = serde_json::from_str(&serialized).expect("deserialize");
   assert_eq!(format, deserialized);
+}
+
+// =============================================================================
+// ModelRouter domain types
+// =============================================================================
+
+fn test_router() -> ModelRouterAlias {
+  ModelRouterAlias {
+    id: "router-1".to_string(),
+    alias: "my-stack".to_string(),
+    targets: vec![
+      RouterTarget {
+        alias: "openai-gpt".to_string(),
+        model: "gpt-4o".to_string(),
+        enabled: true,
+        weight: None,
+      },
+      RouterTarget {
+        alias: "claude".to_string(),
+        model: "claude-3-5-sonnet".to_string(),
+        enabled: false,
+        weight: None,
+      },
+    ],
+    strategy: RoutingStrategyConfig::default(),
+    created_at: fixed_dt(),
+    updated_at: fixed_dt(),
+  }
+}
+
+#[rstest]
+fn test_alias_source_model_router_snake_case() {
+  // The new source tag must serialize as snake_case, never kebab-case.
+  let serialized = serde_json::to_string(&AliasSource::ModelRouter).expect("serialize");
+  assert_eq!(r#""model_router""#, serialized);
+}
+
+#[rstest]
+fn test_alias_model_router_source_tag() {
+  let alias = Alias::ModelRouter(test_router());
+  let value = serde_json::to_value(&alias).expect("serialize");
+  assert_eq!("model_router", value["source"].as_str().unwrap());
+  let back: Alias = serde_json::from_value(value).expect("deserialize");
+  assert_eq!(alias, back);
+}
+
+#[rstest]
+fn test_routing_strategy_config_fallback_tag() {
+  let strategy = RoutingStrategyConfig::Fallback(FallbackConfig::default());
+  let value = serde_json::to_value(&strategy).expect("serialize");
+  assert_eq!("fallback", value["strategy"].as_str().unwrap());
+  assert_eq!(30, value["cooldown_secs"].as_u64().unwrap());
+  assert_eq!(0, value["max_attempts"].as_u64().unwrap());
+  assert_eq!(true, value["honor_retry_after"].as_bool().unwrap());
+}
+
+#[rstest]
+fn test_router_target_enabled_defaults_true() {
+  let json = json!({ "alias": "openai-gpt", "model": "gpt-4o" });
+  let target: RouterTarget = serde_json::from_value(json).expect("deserialize");
+  assert!(target.enabled);
+  assert_eq!(None, target.weight);
+}
+
+#[rstest]
+fn test_alias_can_serve_model_router_exact_match() {
+  let alias = Alias::ModelRouter(test_router());
+  assert!(alias.can_serve("my-stack"));
+  assert!(!alias.can_serve("my-stack-other"));
+  assert!(alias.is_model_router());
+  assert_eq!("my-stack", alias.alias_name());
+  assert_eq!(AliasSource::ModelRouter, alias.source());
+}
+
+#[rstest]
+fn test_alias_response_model_router_untagged_roundtrip() {
+  let response: AliasResponse = AliasResponse::from(Alias::ModelRouter(test_router()));
+  let json = serde_json::to_string(&response).expect("serialize");
+  let back: AliasResponse = serde_json::from_str(&json).expect("deserialize");
+  assert_eq!(response, back);
+  // A model-router response must not be mis-deserialized as another untagged variant.
+  assert!(matches!(back, AliasResponse::ModelRouter(_)));
+}
+
+#[rstest]
+#[case::openai(ApiFormat::OpenAI, true)]
+#[case::anthropic(ApiFormat::Anthropic, true)]
+#[case::anthropic_oauth(ApiFormat::AnthropicOAuth, true)]
+#[case::openai_responses(ApiFormat::OpenAIResponses, false)]
+#[case::gemini(ApiFormat::Gemini, false)]
+#[case::llm_liberty(ApiFormat::LlmLibertyOauth, false)]
+fn test_api_format_supports_chat_completions(#[case] format: ApiFormat, #[case] expected: bool) {
+  assert_eq!(expected, format.supports_chat_completions());
 }

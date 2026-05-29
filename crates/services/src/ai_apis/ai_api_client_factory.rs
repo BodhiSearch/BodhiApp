@@ -164,6 +164,7 @@ impl AiApiClientFactory for DefaultAiApiClientFactory {
         };
         Ok(client)
       }
+      Alias::ModelRouter(_) => Err(AiApiClientFactoryError::ModelRouterNotForwardable),
     }
   }
 

@@ -7,6 +7,7 @@ export class ModelsListPage extends BasePage {
     table: '[data-testid="table-list-models"]',
     newApiModelButton: 'button:has-text("New API Model")',
     newModelAliasButton: '[data-testid="new-model-alias-button"]',
+    newModelRouterButton: '[data-testid="new-model-router-button"]',
     // Simplified API model selectors using consistent data attributes
     modelRow: (modelId) => `[data-model-id="${modelId}"]`,
     aliasCell: (modelId) => `[data-testid="alias-cell-${modelId}"]`,
@@ -142,6 +143,27 @@ export class ModelsListPage extends BasePage {
     await this.page.click(this.selectors.newModelAliasButton);
     await this.waitForUrl('/ui/models/alias/new/');
     await this.waitForSPAReady();
+  }
+
+  async clickNewModelRouter() {
+    await this.expectVisible(this.selectors.newModelRouterButton);
+    await this.page.click(this.selectors.newModelRouterButton);
+    await this.waitForUrl('/ui/models/router/new/');
+    await this.waitForSPAReady();
+  }
+
+  /**
+   * Verify a model-router appears in the aggregate models list. Routers render in
+   * the same table keyed by their alias name; the repo column shows `model_router`.
+   */
+  async verifyModelRouterInList(alias) {
+    await this.waitForSelector(this.selectors.table);
+    const aliasCell = this.page.locator(`[data-testid="alias-cell-${alias}"]`);
+    await expect(aliasCell).toBeVisible();
+    await expect(aliasCell).toContainText(alias);
+    await expect(this.page.locator(`[data-testid="repo-cell-${alias}"]`)).toContainText(
+      'model_router'
+    );
   }
 
   async verifyLocalModelInList(alias, repo, filename, source = 'user') {

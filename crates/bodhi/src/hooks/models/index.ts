@@ -4,6 +4,7 @@ export {
   downloadKeys,
   apiModelKeys,
   apiFormatKeys,
+  modelRouterKeys,
   // Endpoint constants
   ENDPOINT_MODELS,
   ENDPOINT_MODEL_ID,
@@ -18,6 +19,8 @@ export {
   ENDPOINT_API_MODELS_TEST,
   ENDPOINT_API_MODELS_FETCH,
   ENDPOINT_API_MODELS_FORMATS,
+  ENDPOINT_MODEL_ROUTERS,
+  ENDPOINT_MODEL_ROUTER_ID,
 } from './constants';
 export { useListModels, useGetModel, useCreateModel, useUpdateModel } from './useModels';
 export { useListModelFiles } from './useModelFiles';
@@ -33,5 +36,6 @@ export {
   isApiModel,
   maskApiKey,
 } from './useModelsApi';
+export { useGetModelRouter, useCreateModelRouter, useUpdateModelRouter, useDeleteModelRouter } from './useModelRouters';
 export { useRefreshAllMetadata, useRefreshSingleMetadata } from './useModelMetadata';
 export { useChatModelsCatalog, useEmbeddingModelsCatalog } from './useModelCatalog';

@@ -6,10 +6,11 @@ use crate::{
   test_utils::{test_db_service, test_db_service_with_temp_dir, SettingServiceStub, TestDbService},
   AccessRequestService, AiApiClientFactory, ApiModelService, AppService, AuthService, CacheService,
   ConcurrencyService, DataService, DefaultApiModelService, DefaultDownloadService,
-  DefaultMcpService, DefaultSessionService, DefaultTenantService, DownloadService, HfHubService,
-  HubService, LocalConcurrencyService, LocalDataService, McpService, MockAuthService,
-  MockHubService, MockQueueProducer, MokaCacheService, NetworkService, QueueProducer,
-  SessionService, SettingService, Tenant, TenantService, TokenService, BODHI_EXEC_LOOKUP_PATH,
+  DefaultMcpService, DefaultModelRouterService, DefaultSessionService, DefaultTenantService,
+  DownloadService, HfHubService, HubService, LocalConcurrencyService, LocalDataService, McpService,
+  MockAuthService, MockHubService, MockQueueProducer, ModelRouterService, MokaCacheService,
+  NetworkService, QueueProducer, SessionService, SettingService, Tenant, TenantService,
+  TokenService, BODHI_EXEC_LOOKUP_PATH,
 };
 use derive_builder::Builder;
 use rstest::fixture;
@@ -88,6 +89,8 @@ pub struct AppServiceStub {
   pub token_service: Option<Arc<dyn TokenService>>,
   #[builder(default = "self.default_api_model_service()")]
   pub api_model_service: Option<Arc<dyn ApiModelService>>,
+  #[builder(default = "self.default_model_router_service()")]
+  pub model_router_service: Option<Arc<dyn ModelRouterService>>,
   #[builder(default = "self.default_download_service()")]
   pub download_service: Option<Arc<dyn DownloadService>>,
 }
@@ -215,6 +218,40 @@ impl AppServiceStubBuilder {
       db_service,
       time_service,
       ai_api_client_factory,
+    )))
+  }
+
+  fn default_model_router_service(&self) -> Option<Arc<dyn ModelRouterService>> {
+    let db_service = self
+      .db_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .expect("db_service must be set before building model_router_service");
+    let time_service: Arc<dyn TimeService> = self
+      .time_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
+    let data_service: Arc<dyn DataService> = self
+      .data_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .unwrap_or_else(|| {
+        let hub_service: Arc<dyn HubService> = self
+          .hub_service
+          .as_ref()
+          .and_then(|o| o.as_ref())
+          .cloned()
+          .unwrap_or_else(|| Arc::new(MockHubService::new()));
+        Arc::new(LocalDataService::new(hub_service, db_service.clone()))
+      });
+    Some(Arc::new(DefaultModelRouterService::new(
+      db_service,
+      data_service,
+      time_service,
     )))
   }
 
@@ -528,6 +565,13 @@ impl AppService for AppServiceStub {
       .api_model_service
       .clone()
       .expect("api_model_service not configured in test stub")
+  }
+
+  fn model_router_service(&self) -> Arc<dyn ModelRouterService> {
+    self
+      .model_router_service
+      .clone()
+      .expect("model_router_service not configured in test stub")
   }
 
   fn download_service(&self) -> Arc<dyn DownloadService> {

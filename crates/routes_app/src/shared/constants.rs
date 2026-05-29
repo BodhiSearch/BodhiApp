@@ -7,6 +7,7 @@ pub const API_TAG_API_KEYS: &str = "api-keys";
 pub const API_TAG_MODELS: &str = "models";
 pub const API_TAG_MODELS_ALIAS: &str = "models-alias";
 pub const API_TAG_MODELS_API: &str = "models-api";
+pub const API_TAG_MODELS_ROUTER: &str = "models-router";
 pub const API_TAG_MODELS_FILES: &str = "models-files";
 pub const API_TAG_SETTINGS: &str = "settings";
 pub const API_TAG_OPENAI: &str = "openai";

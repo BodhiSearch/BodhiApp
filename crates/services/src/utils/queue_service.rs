@@ -64,7 +64,9 @@ pub async fn extract_and_store_metadata(
       ma.filename.clone(),
       ma.snapshot.clone(),
     ),
-    Alias::Api(_) => return Err(MetadataExtractionError::ApiAliasNotSupported),
+    Alias::Api(_) | Alias::ModelRouter(_) => {
+      return Err(MetadataExtractionError::ApiAliasNotSupported)
+    }
   };
 
   // Locate GGUF file
@@ -363,13 +365,19 @@ impl RefreshWorker {
         tracing::info!("Metadata refresh complete for: {}", alias_name);
         Ok(())
       }
-      Alias::Api(_) => Err(format!("Cannot refresh metadata for API alias: {}", alias_name).into()),
+      Alias::Api(_) | Alias::ModelRouter(_) => Err(
+        format!(
+          "Cannot refresh metadata for non-local alias: {}",
+          alias_name
+        )
+        .into(),
+      ),
     }
   }
 
   async fn extract_and_store(&self, alias: &Alias) -> Result<bool> {
-    // For API aliases, skip
-    if matches!(alias, Alias::Api(_)) {
+    // For API aliases and model-routers (no physical GGUF file), skip
+    if matches!(alias, Alias::Api(_) | Alias::ModelRouter(_)) {
       return Ok(false);
     }
 
@@ -377,7 +385,7 @@ impl RefreshWorker {
     let (repo_str, filename, snapshot) = match alias {
       Alias::User(ua) => (ua.repo.to_string(), &ua.filename, &ua.snapshot),
       Alias::Model(ma) => (ma.repo.to_string(), &ma.filename, &ma.snapshot),
-      Alias::Api(_) => unreachable!(),
+      Alias::Api(_) | Alias::ModelRouter(_) => unreachable!(),
     };
 
     // Check if metadata exists and snapshot matches (optimization for async queue)

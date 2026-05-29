@@ -118,19 +118,16 @@ impl DataService for LocalDataService {
       }
     }
 
-    result.sort_by(|a, b| {
-      let alias_a = match a {
-        Alias::User(user) => &user.alias,
-        Alias::Model(model) => &model.alias,
-        Alias::Api(api) => &api.id,
-      };
-      let alias_b = match b {
-        Alias::User(user) => &user.alias,
-        Alias::Model(model) => &model.alias,
-        Alias::Api(api) => &api.id,
-      };
-      alias_a.cmp(alias_b)
-    });
+    // Add model-router (composite) aliases from database
+    if let Ok(routers) = self
+      .db_service
+      .list_model_router_aliases(tenant_id, user_id)
+      .await
+    {
+      result.extend(routers.into_iter().map(Alias::ModelRouter));
+    }
+
+    result.sort_by(|a, b| a.alias_name().cmp(b.alias_name()));
     Ok(result)
   }
 
@@ -140,14 +137,26 @@ impl DataService for LocalDataService {
       return Some(Alias::User(user_alias));
     }
 
-    // Priority 2: Check model aliases (auto-discovered GGUF files)
+    // Priority 2: Check model-router (composite) aliases by exact name. Resolved before
+    // prefix-based API matching so an explicit router name always wins.
+    if let Ok(routers) = self
+      .db_service
+      .list_model_router_aliases(tenant_id, user_id)
+      .await
+    {
+      if let Some(router) = routers.into_iter().find(|r| r.alias == alias) {
+        return Some(Alias::ModelRouter(router));
+      }
+    }
+
+    // Priority 3: Check model aliases (auto-discovered GGUF files)
     if let Ok(model_aliases) = self.hub_service.list_model_aliases() {
       if let Some(model) = model_aliases.into_iter().find(|m| m.alias == alias) {
         return Some(Alias::Model(model));
       }
     }
 
-    // Priority 3: Check API aliases (from database) - with prefix-aware routing
+    // Priority 4: Check API aliases (from database) - with prefix-aware routing
     if let Ok(api_aliases) = self
       .db_service
       .list_api_model_aliases(tenant_id, user_id)

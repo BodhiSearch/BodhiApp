@@ -84,13 +84,15 @@ export type Alias = (UserAlias & {
     source: 'model';
 }) | (ApiAlias & {
     source: 'api';
+}) | (ModelRouterAlias & {
+    source: 'model_router';
 });
 
 /**
  * Response envelope for model aliases - hides internal implementation details
  * Uses untagged serialization - each variant has its own "source" field
  */
-export type AliasResponse = UserAliasResponse | ModelAliasResponse | ApiAliasResponse;
+export type AliasResponse = ModelRouterResponse | UserAliasResponse | ModelAliasResponse | ApiAliasResponse;
 
 /**
  * Mirrors Anthropic's `ModelInfo` schema — full model metadata returned by
@@ -639,6 +641,19 @@ export type EffortCapability = {
 };
 
 /**
+ * Per-strategy resilience config for the fallback strategy. Phase 1 persists defaults
+ * and does not yet act on them (failover/health land in later phases).
+ */
+export type FallbackConfig = {
+    cooldown_secs?: number;
+    /**
+     * 0 = try the whole chain.
+     */
+    max_attempts?: number;
+    honor_retry_after?: boolean;
+};
+
+/**
  * Request to fetch available models from provider. Discriminated on `api_format`.
  */
 export type FetchModelsRequest = (DefaultFetchModelsRequest & {
@@ -1179,6 +1194,48 @@ export type ModelMetadata = {
 };
 
 /**
+ * A composite alias that fronts an ordered list of targets and routes a chat
+ * request through them via a pluggable strategy. v1 ships only the fallback strategy.
+ */
+export type ModelRouterAlias = {
+    id: string;
+    /**
+     * User-facing model name, unique across all alias kinds.
+     */
+    alias: string;
+    /**
+     * Ordered list of targets; order is the fallback priority.
+     */
+    targets: Array<RouterTarget>;
+    strategy: RoutingStrategyConfig;
+    created_at: string;
+    updated_at: string;
+};
+
+/**
+ * Input request for creating or updating a model-router. Used as `ValidatedJson` in handlers
+ * for both create and update (PUT). A zero-target or all-disabled router is allowed to save.
+ */
+export type ModelRouterRequest = {
+    alias: string;
+    targets?: Array<RouterTargetRequest>;
+    strategy?: RoutingStrategyConfig;
+};
+
+/**
+ * API response for model-router aliases.
+ */
+export type ModelRouterResponse = {
+    source: string;
+    id: string;
+    alias: string;
+    targets: Array<RouterTarget>;
+    strategy: RoutingStrategyConfig;
+    created_at: string;
+    updated_at: string;
+};
+
+/**
  * Request for creating a new download request
  */
 export type NewDownloadRequest = {
@@ -1433,6 +1490,43 @@ export type RequestedResourcesV1 = {
 };
 
 export type ResourceRole = 'resource_anonymous' | 'resource_guest' | 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
+
+/**
+ * One target in a model-router: a reference to an existing alias plus a pinned model.
+ */
+export type RouterTarget = {
+    /**
+     * Name of an existing user/model/api alias (NOT a model-router).
+     */
+    alias: string;
+    /**
+     * Concrete model placed into `request["model"]` when forwarding to this target.
+     */
+    model: string;
+    /**
+     * Whether this target is part of the active sequence. Disabled targets are never
+     * attempted but keep their config and position. Defaults to enabled.
+     */
+    enabled?: boolean;
+    /**
+     * SEAM (reserved): ignored by Fallback; used by a future weighted strategy.
+     */
+    weight?: number | null;
+};
+
+export type RouterTargetRequest = {
+    alias: string;
+    model: string;
+    enabled?: boolean;
+    weight?: number | null;
+};
+
+/**
+ * `{"strategy":"fallback", ...}` — try targets in order, first success wins.
+ */
+export type RoutingStrategyConfig = FallbackConfig & {
+    strategy: 'fallback';
+};
 
 export type SettingInfo = {
     key: string;
@@ -4204,6 +4298,181 @@ export type RefreshModelMetadataResponses = {
 };
 
 export type RefreshModelMetadataResponse = RefreshModelMetadataResponses[keyof RefreshModelMetadataResponses];
+
+export type CreateModelRouterData = {
+    body: ModelRouterRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/models/router';
+};
+
+export type CreateModelRouterErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type CreateModelRouterError = CreateModelRouterErrors[keyof CreateModelRouterErrors];
+
+export type CreateModelRouterResponses = {
+    /**
+     * Model-router created
+     */
+    201: ModelRouterResponse;
+};
+
+export type CreateModelRouterResponse = CreateModelRouterResponses[keyof CreateModelRouterResponses];
+
+export type DeleteModelRouterData = {
+    body?: never;
+    path: {
+        /**
+         * Model-router ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/router/{id}';
+};
+
+export type DeleteModelRouterErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Model-router not found
+     */
+    404: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type DeleteModelRouterError = DeleteModelRouterErrors[keyof DeleteModelRouterErrors];
+
+export type DeleteModelRouterResponses = {
+    /**
+     * Model-router deleted
+     */
+    204: void;
+};
+
+export type DeleteModelRouterResponse = DeleteModelRouterResponses[keyof DeleteModelRouterResponses];
+
+export type GetModelRouterData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier for the model-router alias
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/router/{id}';
+};
+
+export type GetModelRouterErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Model-router with specified ID not found
+     */
+    404: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type GetModelRouterError = GetModelRouterErrors[keyof GetModelRouterErrors];
+
+export type GetModelRouterResponses = {
+    /**
+     * Model-router configuration retrieved
+     */
+    200: ModelRouterResponse;
+};
+
+export type GetModelRouterResponse = GetModelRouterResponses[keyof GetModelRouterResponses];
+
+export type UpdateModelRouterData = {
+    body: ModelRouterRequest;
+    path: {
+        /**
+         * Model-router ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/router/{id}';
+};
+
+export type UpdateModelRouterErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Model-router not found
+     */
+    404: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type UpdateModelRouterError = UpdateModelRouterErrors[keyof UpdateModelRouterErrors];
+
+export type UpdateModelRouterResponses = {
+    /**
+     * Model-router updated
+     */
+    200: ModelRouterResponse;
+};
+
+export type UpdateModelRouterResponse = UpdateModelRouterResponses[keyof UpdateModelRouterResponses];
 
 export type GetAliasData = {
     body?: never;

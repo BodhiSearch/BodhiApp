@@ -66,7 +66,7 @@ pub async fn ollama_models_handler(
       Alias::Model(model) => {
         models.push(model_alias_to_ollama_model(&setting_service, model).await)
       }
-      Alias::Api(_) => {}
+      Alias::Api(_) | Alias::ModelRouter(_) => {}
     }
   }
 
@@ -220,8 +220,8 @@ pub async fn alias_to_ollama_model_show(
         template: "".to_string(), // ModelAlias doesn't have chat_template
       }
     }
-    Alias::Api(_) => {
-      // API aliases don't have Ollama-style details, this shouldn't happen
+    Alias::Api(_) | Alias::ModelRouter(_) => {
+      // API and model-router aliases don't have Ollama-style details, this shouldn't happen
       // since we filter them out in the find_alias call, but handle it anyway
       ShowResponse {
         details: ModelDetails {

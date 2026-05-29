@@ -141,13 +141,36 @@ pub async fn chat_completions_handler(
     .await
     .ok_or_else(|| OaiApiError::from(services::DataServiceError::AliasNotFound(model)))?;
 
-  use services::{Alias, ApiFormat};
+  use services::Alias;
+
+  // Model-router: route through its targets via the configured strategy.
+  if let Alias::ModelRouter(ref router) = alias {
+    let tenant_id = auth_scope
+      .require_tenant_id()
+      .map_err(OaiApiError::from)?
+      .to_string();
+    let user_id = auth_scope
+      .require_user_id()
+      .map_err(OaiApiError::from)?
+      .to_string();
+    let params: Vec<(String, String)> = query_params.into_iter().collect();
+    let ctx = services::RouterContext {
+      tenant_id,
+      user_id,
+      request,
+      query_params: (!params.is_empty()).then_some(params),
+      data_service: auth_scope.data_service(),
+      db_service: auth_scope.db(),
+      ai_api: auth_scope.ai_api_client_factory(),
+    };
+    return services::route_chat_completion(router, &ctx)
+      .await
+      .map_err(OaiApiError::from);
+  }
+
   // Reject api_formats whose upstream has no /chat/completions surface.
   if let Alias::Api(ref api_alias) = alias {
-    if !matches!(
-      api_alias.api_format,
-      ApiFormat::OpenAI | ApiFormat::Anthropic | ApiFormat::AnthropicOAuth
-    ) {
+    if !api_alias.api_format.supports_chat_completions() {
       return Err(OaiApiError::from(OAIRouteError::InvalidRequest(format!(
         "Model is configured with '{}' format which does not support the chat completions endpoint. Use the responses API endpoint instead.",
         api_alias.api_format

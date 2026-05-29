@@ -18,7 +18,8 @@ use crate::{
   apps_get_access_request_review, apps_get_access_request_status, auth_callback, auth_initiate,
   auth_logout, dashboard_auth_callback, dashboard_auth_initiate, dev_clients_dag_handler,
   dev_db_reset_handler, dev_secrets_handler, dev_tenants_cleanup_handler, envs_handler,
-  health_handler, modelfiles_index, models_copy, models_create, models_destroy, models_index,
+  health_handler, model_router_create, model_router_destroy, model_router_show,
+  model_router_update, modelfiles_index, models_copy, models_create, models_destroy, models_index,
   models_pull_create, models_pull_index, models_pull_show, models_show, models_update,
   ping_handler, queue_status_handler, refresh_metadata_handler, tenants_activate, tenants_create,
   tenants_index, tokens_create, tokens_index, tokens_update, users_access_request_approve,
@@ -33,9 +34,10 @@ use crate::{
   ENDPOINT_DEV_DB_RESET, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_DEV_TENANTS_CLEANUP,
   ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODELS_ALIAS, ENDPOINT_MODELS_API,
   ENDPOINT_MODELS_API_FETCH_MODELS, ENDPOINT_MODELS_API_FORMATS, ENDPOINT_MODELS_API_TEST,
-  ENDPOINT_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL, ENDPOINT_MODELS_REFRESH, ENDPOINT_PING,
-  ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TENANTS, ENDPOINT_TOKENS, ENDPOINT_USERS,
-  ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
+  ENDPOINT_MODELS_FILES, ENDPOINT_MODELS_FILES_PULL, ENDPOINT_MODELS_REFRESH,
+  ENDPOINT_MODELS_ROUTER, ENDPOINT_PING, ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TENANTS,
+  ENDPOINT_TOKENS, ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS,
+  ENDPOINT_USER_REQUEST_STATUS,
 };
 use crate::{
   apps_mcps_index, apps_mcps_show, mcp_auth_configs_create, mcp_auth_configs_destroy,
@@ -376,6 +378,20 @@ pub async fn build_routes(
     .route(
       &format!("{ENDPOINT_MODELS_API}/{{id}}/sync-models"),
       post(api_models_sync),
+    )
+    // Model-router (composite alias) management (session-only, user role)
+    .route(ENDPOINT_MODELS_ROUTER, post(model_router_create))
+    .route(
+      &format!("{ENDPOINT_MODELS_ROUTER}/{{id}}"),
+      get(model_router_show),
+    )
+    .route(
+      &format!("{ENDPOINT_MODELS_ROUTER}/{{id}}"),
+      put(model_router_update),
+    )
+    .route(
+      &format!("{ENDPOINT_MODELS_ROUTER}/{{id}}"),
+      delete(model_router_destroy),
     )
     .route_layer(from_fn_with_state(
       state.clone(),

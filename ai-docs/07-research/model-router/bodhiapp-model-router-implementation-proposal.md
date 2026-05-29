@@ -27,12 +27,12 @@ Confirmed with the user during a `/grill-me` + `/grill-with-docs` interview:
 Add a fourth variant to the existing internally-tagged `Alias` enum (tagged on `source`, kebab-case — `model_objs.rs:929-941`). This follows the established alias convention; the `{"v1":{...}}` versioned-envelope pattern is **not** used here (it's reserved for opaque 3rd-party paste-in contracts like `LlmLibertyEnvelope`). Evolution of the routing config comes from the **`strategy` tagged enum**, which is additive by construction.
 
 ```rust
-#[serde(tag = "source", rename_all = "kebab-case")]
+#[serde(tag = "source", rename_all = "snake_case")]
 pub enum Alias {
     User(UserAlias),
     Model(ModelAlias),
     Api(ApiAlias),
-    ModelRouter(ModelRouterAlias),   // NEW -> {"source":"model-router", ...}
+    ModelRouter(ModelRouterAlias),   // NEW -> {"source":"model_router", ...}
 }
 
 pub struct ModelRouterAlias {
@@ -51,7 +51,7 @@ pub struct RouterTarget {
 }
 
 // The strategy is DATA (persisted, wire-exposed). Adding a strategy = adding a variant.
-#[serde(tag = "strategy", rename_all = "kebab-case")]
+#[serde(tag = "strategy", rename_all = "snake_case")]
 pub enum RoutingStrategyConfig {
     Fallback(FallbackConfig),          // {"strategy":"fallback", ...}
     // future (additive): RoundRobin(RoundRobinConfig), Weighted(WeightedConfig), Latency(LatencyConfig), ...

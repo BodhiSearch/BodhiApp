@@ -676,7 +676,11 @@ async fn test_resolve_auth_params_oauth(
 fn make_service_no_db() -> anyhow::Result<DefaultMcpService> {
   let db: Arc<dyn DbService> = Arc::new(MockDbService::new());
   let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
-  Ok(DefaultMcpService::new(db, mcp_client, default_time_service())?)
+  Ok(DefaultMcpService::new(
+    db,
+    mcp_client,
+    default_time_service(),
+  )?)
 }
 
 #[rstest]
@@ -717,7 +721,9 @@ async fn test_discover_mcp_oauth_metadata_path_specific_url() -> anyhow::Result<
 
   assert_eq!(
     Some(format!("{}/authorize", base)),
-    result["authorization_endpoint"].as_str().map(|s| s.to_string())
+    result["authorization_endpoint"]
+      .as_str()
+      .map(|s| s.to_string())
   );
   prs_mock.assert();
   as_mock.assert();
@@ -767,7 +773,9 @@ async fn test_discover_mcp_oauth_metadata_fallback_to_root() -> anyhow::Result<(
 
   assert_eq!(
     Some(format!("{}/authorize", base)),
-    result["authorization_endpoint"].as_str().map(|s| s.to_string())
+    result["authorization_endpoint"]
+      .as_str()
+      .map(|s| s.to_string())
   );
   path_mock.assert();
   root_mock.assert();
@@ -811,7 +819,9 @@ async fn test_discover_mcp_oauth_metadata_root_url() -> anyhow::Result<()> {
 
   assert_eq!(
     Some(format!("{}/authorize", base)),
-    result["authorization_endpoint"].as_str().map(|s| s.to_string())
+    result["authorization_endpoint"]
+      .as_str()
+      .map(|s| s.to_string())
   );
   prs_mock.assert();
   as_mock.assert();

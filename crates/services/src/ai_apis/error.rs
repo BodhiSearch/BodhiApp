@@ -24,6 +24,10 @@ pub enum AiApiClientFactoryError {
   #[error_meta(error_type = ErrorType::BadRequest, code = "ai_api_client_factory_error-local_not_supported_in_cluster")]
   LocalNotSupportedInCluster,
 
+  #[error("Model-router aliases are routed through their targets, not forwarded directly.")]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "ai_api_client_factory_error-model_router_not_forwardable")]
+  ModelRouterNotForwardable,
+
   #[error("LLM Liberty provider '{0}' is not supported.")]
   #[error_meta(error_type = ErrorType::BadRequest, code = "ai_api_client_factory_error-liberty_provider_unsupported")]
   LibertyProviderUnsupported(String),

@@ -16,7 +16,8 @@ use crate::mcps::{
 use crate::models::{
   ApiAlias, ApiAliasRepository, ApiModel, DownloadRepository, DownloadRequestEntity,
   LlmLibertyCredentialsRepository, LlmLibertyEnvelope, LlmLibertySummary, ModelMetadataEntity,
-  ModelMetadataRepository, ResolvedLlmLibertyCredentials, UserAlias, UserAliasRepository,
+  ModelMetadataRepository, ModelRouterAlias, ModelRouterRepository, ResolvedLlmLibertyCredentials,
+  UserAlias, UserAliasRepository,
 };
 use crate::settings::{DbSetting, SettingsRepository};
 use crate::tokens::{TokenEntity, TokenRepository};
@@ -310,6 +311,88 @@ impl ApiAliasRepository for TestDbService {
       .check_prefix_exists(tenant_id, user_id, prefix, exclude_id)
       .await
       .tap(|_| self.notify("check_prefix_exists"))
+  }
+}
+
+#[async_trait::async_trait]
+impl ModelRouterRepository for TestDbService {
+  async fn create_model_router_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    alias: &ModelRouterAlias,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .create_model_router_alias(tenant_id, user_id, alias)
+      .await
+      .tap(|_| self.notify("create_model_router_alias"))
+  }
+
+  async fn get_model_router_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ModelRouterAlias>, DbError> {
+    self
+      .inner
+      .get_model_router_alias(tenant_id, user_id, id)
+      .await
+      .tap(|_| self.notify("get_model_router_alias"))
+  }
+
+  async fn update_model_router_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+    alias: &ModelRouterAlias,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .update_model_router_alias(tenant_id, user_id, id, alias)
+      .await
+      .tap(|_| self.notify("update_model_router_alias"))
+  }
+
+  async fn delete_model_router_alias(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_model_router_alias(tenant_id, user_id, id)
+      .await
+      .tap(|_| self.notify("delete_model_router_alias"))
+  }
+
+  async fn list_model_router_aliases(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+  ) -> Result<Vec<ModelRouterAlias>, DbError> {
+    self
+      .inner
+      .list_model_router_aliases(tenant_id, user_id)
+      .await
+      .tap(|_| self.notify("list_model_router_aliases"))
+  }
+
+  async fn check_router_alias_exists(
+    &self,
+    tenant_id: &str,
+    user_id: &str,
+    alias: &str,
+    exclude_id: Option<String>,
+  ) -> Result<bool, DbError> {
+    self
+      .inner
+      .check_router_alias_exists(tenant_id, user_id, alias, exclude_id)
+      .await
+      .tap(|_| self.notify("check_router_alias_exists"))
   }
 }
 
@@ -1403,6 +1486,16 @@ mockall::mock! {
     async fn list_api_model_aliases(&self, tenant_id: &str, user_id: &str) -> Result<Vec<ApiAlias>, DbError>;
     async fn get_api_key_for_alias(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<String>, DbError>;
     async fn check_prefix_exists(&self, tenant_id: &str, user_id: &str, prefix: &str, exclude_id: Option<String>) -> Result<bool, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl ModelRouterRepository for DbService {
+    async fn create_model_router_alias(&self, tenant_id: &str, user_id: &str, alias: &ModelRouterAlias) -> Result<(), DbError>;
+    async fn get_model_router_alias(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<Option<ModelRouterAlias>, DbError>;
+    async fn update_model_router_alias(&self, tenant_id: &str, user_id: &str, id: &str, alias: &ModelRouterAlias) -> Result<(), DbError>;
+    async fn delete_model_router_alias(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
+    async fn list_model_router_aliases(&self, tenant_id: &str, user_id: &str) -> Result<Vec<ModelRouterAlias>, DbError>;
+    async fn check_router_alias_exists(&self, tenant_id: &str, user_id: &str, alias: &str, exclude_id: Option<String>) -> Result<bool, DbError>;
   }
 
   #[async_trait::async_trait]

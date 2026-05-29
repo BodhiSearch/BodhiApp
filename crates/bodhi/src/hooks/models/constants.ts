@@ -28,6 +28,12 @@ export const apiModelKeys = {
   detail: (id: string) => [...apiModelKeys.details(), id] as const,
 };
 
+export const modelRouterKeys = {
+  all: ['model-routers'] as const,
+  details: () => [...modelRouterKeys.all, 'detail'] as const,
+  detail: (id: string) => [...modelRouterKeys.details(), id] as const,
+};
+
 export const apiFormatKeys = {
   all: ['api-formats'] as const,
 };
@@ -43,6 +49,8 @@ export const ENDPOINT_MODELS_REFRESH = `${BODHI_API_BASE}/models/refresh`;
 export const ENDPOINT_QUEUE = `${BODHI_API_BASE}/queue`;
 export const ENDPOINT_API_MODELS = `${BODHI_API_BASE}/models/api`;
 export const ENDPOINT_API_MODEL_ID = `${BODHI_API_BASE}/models/api/{id}`;
+export const ENDPOINT_MODEL_ROUTERS = `${BODHI_API_BASE}/models/router`;
+export const ENDPOINT_MODEL_ROUTER_ID = `${BODHI_API_BASE}/models/router/{id}`;
 export const ENDPOINT_API_MODELS_TEST = `${BODHI_API_BASE}/models/api/test`;
 export const ENDPOINT_API_MODELS_FETCH = `${BODHI_API_BASE}/models/api/fetch-models`;
 export const ENDPOINT_API_MODELS_FORMATS = `${BODHI_API_BASE}/models/api/formats`;
