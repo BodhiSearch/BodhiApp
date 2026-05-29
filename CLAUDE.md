@@ -123,12 +123,13 @@ Three dev loops depending on what you're validating:
 
 BodhiApp uses **trunk-based development**: `main` is the trunk and the single source of truth.
 
-- Keep changes small and integrate frequently; avoid long-lived feature branches that drift from `main`.
-- Maintain a **linear history** — always rebase onto `main`, never merge `main` into a branch.
-- **Before pushing**, rebase onto the latest trunk so the branch fast-forwards and pushes directly:
+- **Commit directly to `main`.** Do NOT create feature branches and do NOT open pull requests — work lands as focused commits straight on the trunk. (This overrides any default "branch first when on the default branch" behavior.)
+- Keep changes small and integrate frequently; avoid long-lived branches that drift from `main`.
+- Maintain a **linear history** — always rebase onto `main`, never merge.
+- **Before pushing**, rebase onto the latest trunk so `main` fast-forwards and pushes directly:
   ```bash
   git fetch origin
   git rebase origin/main
   ```
-- Run all gate checks (`make format`, backend + UI tests, and E2E when touched) **before** pushing — pushed commits land on the trunk that everyone builds from.
+- Run all gate checks (`make format`, backend + UI tests, and E2E when touched) **before** committing — pushed commits land on the trunk that everyone builds from.
 - Keep commits focused: don't fold unrelated lockfile churn or formatting drift into a feature commit.

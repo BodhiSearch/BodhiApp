@@ -81,3 +81,89 @@ test.describe('Model Router - pass-through', () => {
     expect(reply.trim().length).toBeGreaterThan(0);
   });
 });
+
+// Phase-2 black-box E2E: a router whose primary target deterministically fails with a
+// retryable error falls through to a working secondary, and the user sees a normal reply.
+//
+// The broken primary is a forward-all OpenAI alias (real provider + valid key, so it
+// passes create-time validation) with a pinned model the upstream does not serve — the
+// chat request gets a retryable 404, which the fallback strategy treats as "try next".
+// The secondary is the working alias. No mock servers; UI interactions only.
+const FALLBACK_ROUTER_NAME = 'e2e-router-fallback';
+const BAD_PREFIX = 'bad/';
+const BAD_MODEL = `${BAD_PREFIX}nonexistent-model-zzz`;
+
+test.describe('Model Router - in-request fallback', () => {
+  let authServerConfig;
+  let testCredentials;
+  let openaiKey;
+
+  test.beforeAll(async () => {
+    authServerConfig = getAuthServerConfig();
+    testCredentials = getTestCredentials();
+    openaiKey = process.env[OPENAI.envKey];
+    if (!openaiKey) {
+      throw new Error(`${OPENAI.envKey} missing in .env.test — required for model-router spec`);
+    }
+  });
+
+  let loginPage;
+  let modelsPage;
+  let apiFormPage;
+  let routerFormPage;
+  let chatPage;
+
+  test.beforeEach(async ({ page, sharedServerUrl }) => {
+    loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    apiFormPage = new ApiModelFormPage(page, sharedServerUrl);
+    routerFormPage = new ModelRouterFormPage(page, sharedServerUrl);
+    chatPage = new ChatPage(page, sharedServerUrl);
+  });
+
+  test('broken primary target falls through to working secondary', async () => {
+    await loginPage.performOAuthLogin();
+
+    // 1. Broken primary: forward-all alias with a prefix (pins are free-text, validated by
+    //    prefix only — so a bogus model passes create-time checks but 404s at request time).
+    await modelsPage.navigateToModels();
+    await modelsPage.clickNewApiModel();
+    await apiFormPage.form.waitForFormReady();
+    await apiFormPage.form.selectApiFormat(OPENAI.format);
+    await apiFormPage.form.fillBasicInfoWithPrefix(openaiKey, BAD_PREFIX, OPENAI.baseUrl);
+    await apiFormPage.form.enableForwardAll();
+    const primaryId = await apiFormPage.createModelAndCaptureId();
+
+    // 2. Working secondary: a normal selected-models alias.
+    await modelsPage.navigateToModels();
+    await modelsPage.clickNewApiModel();
+    await apiFormPage.form.waitForFormReady();
+    await apiFormPage.form.selectApiFormat(OPENAI.format);
+    await apiFormPage.form.fillBasicInfo(openaiKey, OPENAI.baseUrl);
+    await apiFormPage.form.fetchAndSelectModels([OPENAI_MODEL]);
+    const secondaryId = await apiFormPage.createModelAndCaptureId();
+
+    // 3. Router: broken primary first, working secondary second.
+    await modelsPage.navigateToModels();
+    await modelsPage.clickNewModelRouter();
+    await routerFormPage.waitForFormReady();
+    await routerFormPage.fillName(FALLBACK_ROUTER_NAME);
+    await routerFormPage.addTarget();
+    await routerFormPage.selectTargetAlias(0, primaryId);
+    await routerFormPage.fillTargetModel(0, BAD_MODEL);
+    await routerFormPage.addTarget();
+    await routerFormPage.selectTargetAlias(1, secondaryId);
+    await routerFormPage.submit();
+    await routerFormPage.waitForUrl('/ui/models/');
+    await modelsPage.waitForModelsToLoad();
+    await modelsPage.verifyModelRouterInList(FALLBACK_ROUTER_NAME);
+
+    // 4. Chat through the router: primary 404s (retryable), secondary serves the reply.
+    await chatPage.navigateToChat();
+    await chatPage.selectModel(FALLBACK_ROUTER_NAME);
+    await chatPage.sendMessage(OPENAI.chatQuestion);
+    await chatPage.waitForResponseComplete();
+    const reply = await chatPage.getLastAssistantMessage();
+    expect(reply.trim().length).toBeGreaterThan(0);
+  });
+});

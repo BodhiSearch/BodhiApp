@@ -41,6 +41,11 @@ export class ModelRouterFormPage extends BasePage {
     await this.page.getByRole('option', { name: modelName, exact: true }).click();
   }
 
+  /** Type a free-text pinned model for a forward-all API target. */
+  async fillTargetModel(idx, modelName) {
+    await this.fillTestId(`target-model-${idx}`, modelName);
+  }
+
   async setTargetEnabled(idx, enabled) {
     const sw = this.page.locator(`[data-testid="target-enabled-${idx}"]`);
     const checked = (await sw.getAttribute('aria-checked')) === 'true';
@@ -54,8 +59,6 @@ export class ModelRouterFormPage extends BasePage {
   }
 
   async expectModelOnForm(idx, expectedModel) {
-    await expect(this.page.locator(`[data-testid="target-model-${idx}"]`)).toHaveValue(
-      expectedModel
-    );
+    await expect(this.page.locator(`[data-testid="target-model-${idx}"]`)).toHaveValue(expectedModel);
   }
 }

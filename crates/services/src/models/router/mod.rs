@@ -1,3 +1,4 @@
+mod classify;
 mod error;
 mod fallback;
 mod service;

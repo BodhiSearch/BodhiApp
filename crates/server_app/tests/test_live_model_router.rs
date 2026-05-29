@@ -47,12 +47,35 @@ async fn create_router(
   target_alias: &str,
   target_model: &str,
 ) -> anyhow::Result<()> {
+  create_router_with_targets(
+    client,
+    base_url,
+    cookie,
+    alias,
+    &[(target_alias, target_model)],
+  )
+  .await
+}
+
+/// Create a model-router whose enabled targets are `(alias_id, model)` pairs in
+/// declared order.
+async fn create_router_with_targets(
+  client: &Client,
+  base_url: &str,
+  cookie: &str,
+  alias: &str,
+  targets: &[(&str, &str)],
+) -> anyhow::Result<()> {
+  let targets: Vec<Value> = targets
+    .iter()
+    .map(|(a, m)| json!({"alias": a, "model": m, "enabled": true}))
+    .collect();
   let resp = client
     .post(format!("{}/bodhi/v1/models/router", base_url))
     .header("Cookie", cookie)
     .json(&json!({
       "alias": alias,
-      "targets": [{"alias": target_alias, "model": target_model, "enabled": true}],
+      "targets": targets,
       "strategy": {"strategy": "fallback"}
     }))
     .send()
@@ -64,6 +87,26 @@ async fn create_router(
     resp.text().await?
   );
   Ok(())
+}
+
+/// Stub the provider's `GET /models` (create_openai_alias triggers a model fetch)
+/// and a `POST /chat/completions` returning `status` with `body`. Returns the
+/// chat mock so the caller can assert call counts.
+async fn stub_chat_upstream(server: &mut MockServer, status: usize, body: &str) -> mockito::Mock {
+  server
+    .mock("GET", "/models")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"object":"list","data":[{"id":"gpt-4","object":"model","created":1677610602,"owned_by":"openai"}]}"#)
+    .create_async()
+    .await;
+  server
+    .mock("POST", "/chat/completions")
+    .with_status(status)
+    .with_header("content-type", "application/json")
+    .with_body(body)
+    .create_async()
+    .await
 }
 
 /// A chat request to a model-router forwards to its first enabled target and returns
@@ -160,6 +203,216 @@ async fn test_model_router_pass_through_chat_completion() -> anyhow::Result<()> 
   );
 
   chat_mock.assert_async().await;
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+/// A retryable failure (503) on the primary target falls through to a working
+/// secondary; the client gets the secondary's 200 and the headers report it
+/// served after 2 attempts.
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_model_router_falls_through_on_retryable() -> anyhow::Result<()> {
+  let mut primary = MockServer::new_async().await;
+  let primary_chat = stub_chat_upstream(&mut primary, 503, r#"{"error":"unavailable"}"#).await;
+  let mut secondary = MockServer::new_async().await;
+  let secondary_chat = stub_chat_upstream(
+    &mut secondary,
+    200,
+    r#"{"id":"chatcmpl-2","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"served by secondary"},"finish_reason":"stop"}]}"#,
+  )
+  .await;
+
+  let server = start_test_live_server().await?;
+  let client = reqwest::Client::new();
+  let (cookie, _user_id) =
+    create_test_session_for_live_server(&server.app_service, &["resource_user"]).await?;
+
+  let primary_id = create_openai_alias(&client, &server.base_url, &cookie, &primary.url()).await?;
+  let secondary_id =
+    create_openai_alias(&client, &server.base_url, &cookie, &secondary.url()).await?;
+  create_router_with_targets(
+    &client,
+    &server.base_url,
+    &cookie,
+    "my-stack",
+    &[(&primary_id, "gpt-4"), (&secondary_id, "gpt-4")],
+  )
+  .await?;
+
+  let resp = client
+    .post(format!("{}/v1/chat/completions", server.base_url))
+    .header("Cookie", &cookie)
+    .json(&json!({"model": "my-stack", "messages": [{"role": "user", "content": "Hello"}]}))
+    .send()
+    .await?;
+
+  assert_eq!(StatusCode::OK, resp.status());
+  assert_eq!(
+    secondary_id,
+    resp
+      .headers()
+      .get("x-bodhi-routed-alias")
+      .unwrap()
+      .to_str()?
+  );
+  assert_eq!(
+    "2",
+    resp
+      .headers()
+      .get("x-bodhi-router-attempts")
+      .unwrap()
+      .to_str()?
+  );
+  let body: Value = resp.json().await?;
+  assert_eq!(
+    "served by secondary",
+    body["choices"][0]["message"]["content"].as_str().unwrap()
+  );
+
+  primary_chat.assert_async().await;
+  secondary_chat.assert_async().await;
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+/// A terminal failure (400) on the primary is returned verbatim and the
+/// secondary is never tried.
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_model_router_terminal_stops_immediately() -> anyhow::Result<()> {
+  let mut primary = MockServer::new_async().await;
+  let primary_chat = stub_chat_upstream(&mut primary, 400, r#"{"error":"bad request"}"#).await;
+  let mut secondary = MockServer::new_async().await;
+  let secondary_chat = stub_chat_upstream(&mut secondary, 200, r#"{"id":"x"}"#).await;
+
+  let server = start_test_live_server().await?;
+  let client = reqwest::Client::new();
+  let (cookie, _user_id) =
+    create_test_session_for_live_server(&server.app_service, &["resource_user"]).await?;
+
+  let primary_id = create_openai_alias(&client, &server.base_url, &cookie, &primary.url()).await?;
+  let secondary_id =
+    create_openai_alias(&client, &server.base_url, &cookie, &secondary.url()).await?;
+  create_router_with_targets(
+    &client,
+    &server.base_url,
+    &cookie,
+    "my-stack",
+    &[(&primary_id, "gpt-4"), (&secondary_id, "gpt-4")],
+  )
+  .await?;
+
+  let resp = client
+    .post(format!("{}/v1/chat/completions", server.base_url))
+    .header("Cookie", &cookie)
+    .json(&json!({"model": "my-stack", "messages": [{"role": "user", "content": "Hello"}]}))
+    .send()
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, resp.status());
+  assert_eq!(
+    primary_id,
+    resp
+      .headers()
+      .get("x-bodhi-routed-alias")
+      .unwrap()
+      .to_str()?
+  );
+  assert_eq!(
+    "1",
+    resp
+      .headers()
+      .get("x-bodhi-router-attempts")
+      .unwrap()
+      .to_str()?
+  );
+
+  primary_chat.assert_async().await;
+  secondary_chat.expect(0).assert_async().await;
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+/// A streaming-capable success on the secondary streams through after the
+/// primary fails with a retryable status (decision made before first byte).
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_model_router_streams_secondary_after_retryable() -> anyhow::Result<()> {
+  let mut primary = MockServer::new_async().await;
+  let primary_chat = stub_chat_upstream(&mut primary, 503, r#"{"error":"unavailable"}"#).await;
+  let mut secondary = MockServer::new_async().await;
+  // SSE stream body: two content deltas then [DONE].
+  let sse = "data: {\"choices\":[{\"delta\":{\"content\":\"hel\"}}]}\n\n\
+             data: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\n\
+             data: [DONE]\n\n";
+  secondary
+    .mock("GET", "/models")
+    .with_status(200)
+    .with_header("content-type", "application/json")
+    .with_body(r#"{"object":"list","data":[{"id":"gpt-4","object":"model","created":1677610602,"owned_by":"openai"}]}"#)
+    .create_async()
+    .await;
+  let secondary_chat = secondary
+    .mock("POST", "/chat/completions")
+    .with_status(200)
+    .with_header("content-type", "text/event-stream")
+    .with_body(sse)
+    .create_async()
+    .await;
+
+  let server = start_test_live_server().await?;
+  let client = reqwest::Client::new();
+  let (cookie, _user_id) =
+    create_test_session_for_live_server(&server.app_service, &["resource_user"]).await?;
+
+  let primary_id = create_openai_alias(&client, &server.base_url, &cookie, &primary.url()).await?;
+  let secondary_id =
+    create_openai_alias(&client, &server.base_url, &cookie, &secondary.url()).await?;
+  create_router_with_targets(
+    &client,
+    &server.base_url,
+    &cookie,
+    "my-stack",
+    &[(&primary_id, "gpt-4"), (&secondary_id, "gpt-4")],
+  )
+  .await?;
+
+  let resp = client
+    .post(format!("{}/v1/chat/completions", server.base_url))
+    .header("Cookie", &cookie)
+    .json(&json!({"model": "my-stack", "stream": true, "messages": [{"role": "user", "content": "Hi"}]}))
+    .send()
+    .await?;
+
+  assert_eq!(StatusCode::OK, resp.status());
+  assert_eq!(
+    secondary_id,
+    resp
+      .headers()
+      .get("x-bodhi-routed-alias")
+      .unwrap()
+      .to_str()?
+  );
+  let body = resp.text().await?;
+  assert!(
+    body.contains("hel"),
+    "stream body missing first delta: {body}"
+  );
+  assert!(
+    body.contains("lo"),
+    "stream body missing second delta: {body}"
+  );
+  assert!(
+    body.contains("[DONE]"),
+    "stream body missing terminator: {body}"
+  );
+
+  primary_chat.assert_async().await;
+  secondary_chat.assert_async().await;
   server.handle.shutdown().await?;
   Ok(())
 }
