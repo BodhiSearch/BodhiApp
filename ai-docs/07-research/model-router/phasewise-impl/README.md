@@ -11,6 +11,24 @@ Each phase file is a **self-contained brief for one work session**. In a fresh s
 
 A phase is **done only when its test gates pass** (see each phase's "Acceptance gates"). Phases build on each other and must be done in order.
 
+## Status (2026-05-29)
+
+**Phases 1–3 are implemented and merged.** A model-router can be defined, managed, and used
+end-to-end: requests fall through the enabled targets in order, a failed target is skipped for a
+cooldown window and automatically retried (returning to the primary on recovery), and the
+resilience knobs are surfaced in the UI. Per-phase handoff notes: `phase-2-in-request-fallback-notes.md`,
+`phase-3-health-and-recovery-notes.md`.
+
+**Phase 4 (Router Test capability) has been dropped.** It was a diagnostic "Test" button —
+validate the config and live-probe each target — i.e. an operability/observability convenience,
+**not a core part of the model-router**. The routing value proposition (ordered fallback, passive
+health/recovery, quota stacking) is fully delivered by Phases 1–3, and config validity is already
+enforced at create/update time. The live-probe half would also spend real quota/tokens, an awkward
+fit for a feature whose point is stretching free quotas. If on-demand diagnostics are ever wanted,
+revisit it then (a cheap *validate-only* drift check — catching an underlying alias/model that was
+deleted after the router was saved — would be the narrowest worthwhile slice). The Phase-4
+functional spec and its kickoff prompt were removed.
+
 ## Source context (read these for the "how")
 - **Implementation proposal:** [`../bodhiapp-model-router-implementation-proposal.md`](../bodhiapp-model-router-implementation-proposal.md) — domain model (§1), storage (§2), strategy abstraction (§3), forwarding + classification (§4), routing hook (§5), health (§6), errors (§7), API surface (§8), frontend (§9), tests (§10), build order (§11), reserved seams (§12).
 - **Consolidated research:** [`../00-consolidated-research.md`](../00-consolidated-research.md) — gateway analysis, the fallback core (§3), failure classification (§4), cooldown mechanics (§5), streaming rule (§6).
@@ -38,12 +56,12 @@ Primary use case: stack several **free** vendor APIs and fall through them to st
 - **Observability headers** identify which target served the response, the attempt count, and the strategy.
 
 ## Phase index
-| Phase | Functional outcome | File |
-|---|---|---|
-| 1 | Define, manage, and use a model-router; requests forward to the first enabled target end-to-end (no failover yet). Full management UI. | [`phase-1-foundation-and-passthrough.md`](./phase-1-foundation-and-passthrough.md) |
-| 2 | In-request fallback: on a retryable failure, fall through to the next enabled target; terminal errors stop; exhaustion returns the last upstream response verbatim. | [`phase-2-in-request-fallback.md`](./phase-2-in-request-fallback.md) |
-| 3 | Health-aware skipping + automatic recovery: a failed target is skipped for a cooldown window on later requests, then retried; traffic returns to primary on recovery. Config knobs in UI. | [`phase-3-health-and-recovery.md`](./phase-3-health-and-recovery.md) |
-| 4 | Router test capability: validate the config and live-probe each target, reporting per-target reachability in the UI. | [`phase-4-router-test-capability.md`](./phase-4-router-test-capability.md) |
+| Phase | Functional outcome | Status | File |
+|---|---|---|---|
+| 1 | Define, manage, and use a model-router; requests forward to the first enabled target end-to-end (no failover yet). Full management UI. | ✅ Implemented | [`phase-1-foundation-and-passthrough.md`](./phase-1-foundation-and-passthrough.md) |
+| 2 | In-request fallback: on a retryable failure, fall through to the next enabled target; terminal errors stop; exhaustion returns the last upstream response verbatim. | ✅ Implemented | [`phase-2-in-request-fallback.md`](./phase-2-in-request-fallback.md) |
+| 3 | Health-aware skipping + automatic recovery: a failed target is skipped for a cooldown window on later requests, then retried; traffic returns to primary on recovery. Config knobs in UI. | ✅ Implemented | [`phase-3-health-and-recovery.md`](./phase-3-health-and-recovery.md) |
+| 4 | Router test capability: validate the config and live-probe each target, reporting per-target reachability in the UI. | ❌ Dropped (non-core; see Status above) | — |
 
 ## Test-first expectation (all phases)
 Follow BodhiApp's layered methodology and testing conventions (`crates/CLAUDE.md`). Each phase must land tests at **every layer it touches**: service/unit, route/integration, frontend component, and Playwright E2E (black-box, UI-only). Write the gating tests first; the phase is complete when they pass and no existing tests regress.
