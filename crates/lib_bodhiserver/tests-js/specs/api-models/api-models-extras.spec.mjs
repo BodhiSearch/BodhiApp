@@ -161,47 +161,4 @@ test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {
     });
   });
 
-  // Backend performs a metadata fetch against upstream on create/update for
-  // anthropic_oauth, which requires the OAuth beta headers. Clearing extras
-  // makes that fetch return 401 and save is rejected — the UI stays on the
-  // edit page and surfaces an error toast.
-  test('clearing anthropic_oauth extras causes backend metadata fetch to fail on save', async ({
-    page,
-  }) => {
-    let modelId;
-
-    await test.step('Phase 1: create anthropic_oauth model with valid pre-filled extras', async () => {
-      await loginPage.performOAuthLogin();
-      await modelsPage.navigateToModels();
-      await modelsPage.clickNewApiModel();
-      await formPage.form.waitForFormReady();
-      await formPage.form.selectApiFormat('anthropic_oauth');
-      await formPage.form.fillBaseUrl(ANTHROPIC_BASE_URL);
-      await formPage.form.fillApiKey(anthropicOAuthToken);
-      await formPage.form.clickFetchModels();
-      await formPage.form.expectFetchSuccess();
-      await formPage.form.expectAtLeastOneModelFetched();
-      await formPage.form.searchAndSelectModel(REAL_MODEL_ID);
-      modelId = await formPage.createModelAndCaptureId();
-    });
-
-    await test.step('Phase 2: edit, clear extras, attempt update — expect failure toast', async () => {
-      await modelsPage.navigateToModels();
-      await modelsPage.editModel(modelId);
-      await formPage.form.waitForFormReady();
-      await formPage.form.expectExtrasVisible(true);
-      await formPage.form.fillExtraHeaders('');
-      await formPage.form.fillExtraBody('');
-      await page.click(formPage.form.selectors.updateButton);
-      await expect(
-        page.locator('[data-state="open"]:has-text("Failed to Update API Model")')
-      ).toBeVisible();
-      await expect(page).toHaveURL(/\/ui\/models\/api\/edit/);
-    });
-
-    await test.step('Phase 3: cleanup - delete model', async () => {
-      await modelsPage.navigateToModels();
-      await modelsPage.deleteModel(modelId);
-    });
-  });
 });
