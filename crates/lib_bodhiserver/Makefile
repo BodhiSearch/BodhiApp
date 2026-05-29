@@ -10,6 +10,9 @@ help: ## Show this help message
 install-js: ## Install JavaScript dependencies
 	npm install
 
+build.dev-server: ## Build bodhiserver_dev (no UI embed; for E2E + dev iteration)
+	cargo build --no-default-features --features test-utils -p lib_bodhiserver --bin bodhiserver_dev
+
 test: test.e2e ## Default target: run full Playwright matrix
 
 test.e2e: install-js ## Run Playwright tests against both projects

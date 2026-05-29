@@ -78,7 +78,7 @@ test.ui: ## Run frontend and UI integration tests
 	$(MAKE) test.e2e
 
 build.dev-server: ## Build bodhiserver_dev (no UI embed; for E2E + dev iteration)
-	cargo build --no-default-features --features test-utils -p lib_bodhiserver --bin bodhiserver_dev
+	$(MAKE) -C crates/lib_bodhiserver build.dev-server
 
 test.e2e: build.dev-server ## Run Playwright E2E against bodhiserver_dev + live Vite
 	cd crates/lib_bodhiserver && npm install && npm run test:playwright
