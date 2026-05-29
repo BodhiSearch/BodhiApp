@@ -57,3 +57,13 @@ pub enum ModelRouterError {
   #[error_meta(args_delegate = false)]
   Forward(#[from] AiApiClientFactoryError),
 }
+
+impl ModelRouterError {
+  /// A genuine transport failure (connection refused, timeout, upstream client
+  /// error) — transient, so the target should be cooled. Distinguished from a
+  /// *structural* skip (dangling/nested/unsupported reference), which is not
+  /// transient and must NOT be cooled.
+  pub fn is_transport_failure(&self) -> bool {
+    matches!(self, ModelRouterError::Forward(_))
+  }
+}

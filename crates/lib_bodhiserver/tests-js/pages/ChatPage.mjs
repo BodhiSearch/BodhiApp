@@ -131,6 +131,17 @@ export class ChatPage extends BasePage {
   }
 
   /**
+   * Read the served-model `data-served-model` attribute on the last completed
+   * assistant message (the model the reply was produced under). Returns null if
+   * the attribute is absent. Non-visible signal used to observe routing.
+   */
+  async getLastServedModel() {
+    const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
+    await expect(lastAssistantMessage).toBeVisible();
+    return await lastAssistantMessage.getAttribute('data-served-model');
+  }
+
+  /**
    * Wait for streaming to complete (streaming indicator disappears)
    */
   async waitForStreamingComplete() {

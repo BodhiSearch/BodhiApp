@@ -162,6 +162,8 @@ pub async fn chat_completions_handler(
       data_service: auth_scope.data_service(),
       db_service: auth_scope.db(),
       ai_api: auth_scope.ai_api_client_factory(),
+      time_service: auth_scope.time_service(),
+      health: auth_scope.health_registry(),
     };
     return services::route_chat_completion(router, &ctx)
       .await

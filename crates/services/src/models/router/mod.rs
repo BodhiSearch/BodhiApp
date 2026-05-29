@@ -1,13 +1,19 @@
 mod classify;
 mod error;
 mod fallback;
+mod health;
 mod service;
 mod strategy;
 
 pub use error::ModelRouterError;
+pub use health::{
+  cooldown_for, order_by_health, target_key, DefaultHealthRegistry, HealthRegistry,
+};
 pub use service::{DefaultModelRouterService, ModelRouterService};
 pub use strategy::{route_chat_completion, with_obs_headers, RouterContext, RoutingStrategy};
 
+#[cfg(any(test, feature = "test-utils"))]
+pub use health::MockHealthRegistry;
 #[cfg(any(test, feature = "test-utils"))]
 pub use service::MockModelRouterService;
 

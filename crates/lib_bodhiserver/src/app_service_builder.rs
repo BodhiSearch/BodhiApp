@@ -210,6 +210,9 @@ impl AppServiceBuilder {
         time_service.clone(),
       ));
 
+    let health_registry: Arc<dyn services::HealthRegistry> =
+      Arc::new(services::DefaultHealthRegistry::default());
+
     let download_service: Arc<dyn services::DownloadService> = Arc::new(
       services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
     );
@@ -234,6 +237,7 @@ impl AppServiceBuilder {
       local_llama,
       api_model_service,
       model_router_service,
+      health_registry,
       download_service,
     );
     Ok(app_service)

@@ -2,8 +2,9 @@ use crate::{
   db::{DbService, TimeService},
   inference::LocalLlama,
   AccessRequestService, AiApiClientFactory, ApiModelService, AuthService, CacheService,
-  ConcurrencyService, DataService, DownloadService, HubService, McpService, ModelRouterService,
-  NetworkService, QueueProducer, SessionService, SettingService, TenantService, TokenService,
+  ConcurrencyService, DataService, DownloadService, HealthRegistry, HubService, McpService,
+  ModelRouterService, NetworkService, QueueProducer, SessionService, SettingService, TenantService,
+  TokenService,
 };
 use std::sync::Arc;
 
@@ -47,6 +48,8 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn model_router_service(&self) -> Arc<dyn ModelRouterService>;
 
+  fn health_registry(&self) -> Arc<dyn HealthRegistry>;
+
   fn download_service(&self) -> Arc<dyn DownloadService>;
 
   fn queue_status(&self) -> String {
@@ -76,6 +79,7 @@ pub struct DefaultAppService {
   local_llama: Option<Arc<dyn LocalLlama>>,
   api_model_service: Arc<dyn ApiModelService>,
   model_router_service: Arc<dyn ModelRouterService>,
+  health_registry: Arc<dyn HealthRegistry>,
   download_service: Arc<dyn DownloadService>,
 }
 
@@ -154,6 +158,10 @@ impl AppService for DefaultAppService {
 
   fn model_router_service(&self) -> Arc<dyn ModelRouterService> {
     self.model_router_service.clone()
+  }
+
+  fn health_registry(&self) -> Arc<dyn HealthRegistry> {
+    self.health_registry.clone()
   }
 
   fn download_service(&self) -> Arc<dyn DownloadService> {

@@ -7,10 +7,10 @@ use crate::{
   AccessRequestService, AiApiClientFactory, ApiModelService, AppService, AuthService, CacheService,
   ConcurrencyService, DataService, DefaultApiModelService, DefaultDownloadService,
   DefaultMcpService, DefaultModelRouterService, DefaultSessionService, DefaultTenantService,
-  DownloadService, HfHubService, HubService, LocalConcurrencyService, LocalDataService, McpService,
-  MockAuthService, MockHubService, MockQueueProducer, ModelRouterService, MokaCacheService,
-  NetworkService, QueueProducer, SessionService, SettingService, Tenant, TenantService,
-  TokenService, BODHI_EXEC_LOOKUP_PATH,
+  DownloadService, HealthRegistry, HfHubService, HubService, LocalConcurrencyService,
+  LocalDataService, McpService, MockAuthService, MockHubService, MockQueueProducer,
+  ModelRouterService, MokaCacheService, NetworkService, QueueProducer, SessionService,
+  SettingService, Tenant, TenantService, TokenService, BODHI_EXEC_LOOKUP_PATH,
 };
 use derive_builder::Builder;
 use rstest::fixture;
@@ -91,6 +91,8 @@ pub struct AppServiceStub {
   pub api_model_service: Option<Arc<dyn ApiModelService>>,
   #[builder(default = "self.default_model_router_service()")]
   pub model_router_service: Option<Arc<dyn ModelRouterService>>,
+  #[builder(default = "self.default_health_registry()")]
+  pub health_registry: Option<Arc<dyn HealthRegistry>>,
   #[builder(default = "self.default_download_service()")]
   pub download_service: Option<Arc<dyn DownloadService>>,
 }
@@ -253,6 +255,10 @@ impl AppServiceStubBuilder {
       data_service,
       time_service,
     )))
+  }
+
+  fn default_health_registry(&self) -> Option<Arc<dyn HealthRegistry>> {
+    Some(Arc::new(crate::DefaultHealthRegistry::default()))
   }
 
   fn default_download_service(&self) -> Option<Arc<dyn DownloadService>> {
@@ -572,6 +578,13 @@ impl AppService for AppServiceStub {
       .model_router_service
       .clone()
       .expect("model_router_service not configured in test stub")
+  }
+
+  fn health_registry(&self) -> Arc<dyn HealthRegistry> {
+    self
+      .health_registry
+      .clone()
+      .expect("health_registry not configured in test stub")
   }
 
   fn download_service(&self) -> Arc<dyn DownloadService> {

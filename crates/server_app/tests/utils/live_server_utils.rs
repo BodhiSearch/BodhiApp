@@ -35,6 +35,7 @@ use tower_sessions::SessionStore;
 
 /// Inline minimal setup without lib_bodhiserver dependency
 async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn AppService>> {
+  let time_service: Arc<dyn services::TimeService> = Arc::new(DefaultTimeService);
   // Load environment variables from .env.test
   let env_test_path = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("tests")
@@ -133,9 +134,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   fs::File::create_new(&app_db_path)?;
   let session_db_path = bodhi_home.join("session.sqlite");
   fs::File::create_new(&session_db_path)?;
-
-  // Build time service first (no dependencies)
-  let time_service = Arc::new(DefaultTimeService);
 
   // Build DB service with pool (needed by setting_service)
   let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
@@ -267,6 +265,8 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
   );
+  let health_registry: Arc<dyn services::HealthRegistry> =
+    Arc::new(services::DefaultHealthRegistry::default());
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -287,6 +287,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     Some(local_llama),
     api_model_service,
     model_router_service,
+    health_registry,
     download_service,
   );
 
@@ -443,6 +444,16 @@ pub fn create_session_cookie(session_id: &str) -> Cookie<'_> {
 /// with test defaults. Uses `test_auth_service()` with a fake URL since no real
 /// Keycloak calls will be made (ExternalTokenSimulator seeds the cache directly).
 pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn AppService>> {
+  setup_test_app_service_with_time(temp_dir, Arc::new(DefaultTimeService)).await
+}
+
+/// Like `setup_test_app_service` but with an injected clock, so tests that need to
+/// cross a time boundary (e.g. expiring a router cooldown) can advance it without
+/// sleeping. Pass a `services::test_utils::TestTimeService` and keep a clone.
+pub async fn setup_test_app_service_with_time(
+  temp_dir: &TempDir,
+  time_service: Arc<dyn services::TimeService>,
+) -> anyhow::Result<Arc<dyn AppService>> {
   let cache_dir = temp_dir.path().join(".cache");
   let bodhi_home = cache_dir.join("bodhi");
   let logs_dir = bodhi_home.join("logs");
@@ -530,9 +541,6 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   fs::File::create_new(&app_db_path)?;
   let session_db_path = bodhi_home.join("session.sqlite");
   fs::File::create_new(&session_db_path)?;
-
-  // Build time service first (no dependencies)
-  let time_service = Arc::new(DefaultTimeService);
 
   // Build DB service with pool (needed by setting_service)
   let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
@@ -646,6 +654,8 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
   );
+  let health_registry: Arc<dyn services::HealthRegistry> =
+    Arc::new(services::DefaultHealthRegistry::default());
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -666,6 +676,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     Some(local_llama),
     api_model_service,
     model_router_service,
+    health_registry,
     download_service,
   );
 
@@ -705,6 +716,38 @@ pub async fn start_test_live_server() -> anyhow::Result<TestLiveServer> {
     app_service,
     handle,
   })
+}
+
+/// Like `start_test_live_server` but with a settable clock the test can advance to
+/// expire router cooldowns deterministically. Returns the server and the shared
+/// `TestTimeService` (a clone of the one the server uses — `advance`/`set` are visible
+/// to the running server).
+pub async fn start_test_live_server_with_time(
+) -> anyhow::Result<(TestLiveServer, services::test_utils::TestTimeService)> {
+  let temp_dir = tempfile::tempdir()?;
+  let time = services::test_utils::TestTimeService::default();
+  let app_service = setup_test_app_service_with_time(&temp_dir, Arc::new(time.clone())).await?;
+
+  let host = String::from("127.0.0.1");
+  let port: u16 = 51135;
+  let serve_command = ServeCommand::ByParams {
+    host: host.clone(),
+    port,
+  };
+  let handle = serve_command
+    .get_server_handle(app_service.clone(), None)
+    .await?;
+
+  let base_url = format!("http://{}:{}", host, port);
+  Ok((
+    TestLiveServer {
+      _temp_dir: temp_dir,
+      base_url,
+      app_service,
+      handle,
+    },
+    time,
+  ))
 }
 
 /// Creates an authenticated session for live server tests by minting a JWT
@@ -786,6 +829,7 @@ pub async fn create_test_session_for_live_server(
 pub async fn setup_multitenant_app_service(
   temp_dir: &TempDir,
 ) -> anyhow::Result<Arc<dyn AppService>> {
+  let time_service: Arc<dyn services::TimeService> = Arc::new(DefaultTimeService);
   // Load environment variables from .env.test
   let env_test_path = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("tests")
@@ -905,9 +949,6 @@ pub async fn setup_multitenant_app_service(
   let session_db_path = bodhi_home.join("session.sqlite");
   fs::File::create_new(&session_db_path)?;
 
-  // Build time service first (no dependencies)
-  let time_service = Arc::new(DefaultTimeService);
-
   // Build DB service with pool (needed by setting_service)
   let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
   let encryption_key = hash_key(&encryption_key_raw);
@@ -1023,6 +1064,8 @@ pub async fn setup_multitenant_app_service(
   let download_service: Arc<dyn services::DownloadService> = Arc::new(
     services::DefaultDownloadService::new(db_service.clone(), time_service.clone()),
   );
+  let health_registry: Arc<dyn services::HealthRegistry> =
+    Arc::new(services::DefaultHealthRegistry::default());
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -1043,6 +1086,7 @@ pub async fn setup_multitenant_app_service(
     None,
     api_model_service,
     model_router_service,
+    health_registry,
     download_service,
   );
 

@@ -5,8 +5,8 @@ use crate::{
   AuthScopedApiModelService, AuthScopedDataService, AuthScopedDownloadService,
   AuthScopedMcpService, AuthScopedModelRouterService, AuthScopedTenantService,
   AuthScopedTokenService, AuthScopedUserAccessRequestService, AuthScopedUserService, AuthService,
-  CacheService, ConcurrencyService, DataService, HubService, NetworkService, QueueProducer,
-  SessionService, SettingService, TenantService,
+  CacheService, ConcurrencyService, DataService, HealthRegistry, HubService, NetworkService,
+  QueueProducer, SessionService, SettingService, TenantService,
 };
 use std::sync::Arc;
 
@@ -173,6 +173,10 @@ impl AuthScopedAppService {
 
   pub fn ai_api_client_factory(&self) -> Arc<dyn AiApiClientFactory> {
     self.app_service.ai_api_client_factory()
+  }
+
+  pub fn health_registry(&self) -> Arc<dyn HealthRegistry> {
+    self.app_service.health_registry()
   }
 
   pub fn queue_producer(&self) -> Arc<dyn QueueProducer> {

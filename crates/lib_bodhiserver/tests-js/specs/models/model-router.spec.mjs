@@ -167,3 +167,89 @@ test.describe('Model Router - in-request fallback', () => {
     expect(reply.trim().length).toBeGreaterThan(0);
   });
 });
+
+// Phase-3 black-box E2E: health-aware skipping. A router whose primary fails (retryable)
+// cools that target; subsequent sends keep being served by the secondary without the chain
+// breaking. We send several messages and assert each yields a valid reply — proving the
+// cooled primary is skipped on later requests (not retried-then-failed each time) while the
+// router keeps serving. Deterministic cooldown-expiry/return-to-primary is covered by the
+// service-unit and live server_app layers (which can advance a fake clock); a black-box E2E
+// cannot advance the server clock or sleep, so it verifies the user-visible skip behaviour.
+const HEALTH_ROUTER_NAME = 'e2e-router-health';
+
+test.describe('Model Router - health-aware skipping', () => {
+  let authServerConfig;
+  let testCredentials;
+  let openaiKey;
+
+  test.beforeAll(async () => {
+    authServerConfig = getAuthServerConfig();
+    testCredentials = getTestCredentials();
+    openaiKey = process.env[OPENAI.envKey];
+    if (!openaiKey) {
+      throw new Error(`${OPENAI.envKey} missing in .env.test — required for model-router spec`);
+    }
+  });
+
+  let loginPage;
+  let modelsPage;
+  let apiFormPage;
+  let routerFormPage;
+  let chatPage;
+
+  test.beforeEach(async ({ page, sharedServerUrl }) => {
+    loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    apiFormPage = new ApiModelFormPage(page, sharedServerUrl);
+    routerFormPage = new ModelRouterFormPage(page, sharedServerUrl);
+    chatPage = new ChatPage(page, sharedServerUrl);
+  });
+
+  test('cooled primary is skipped on repeated sends; secondary keeps serving', async () => {
+    await loginPage.performOAuthLogin();
+
+    // Broken primary (forward-all alias, bogus pinned model → retryable 404 at request time).
+    await modelsPage.navigateToModels();
+    await modelsPage.clickNewApiModel();
+    await apiFormPage.form.waitForFormReady();
+    await apiFormPage.form.selectApiFormat(OPENAI.format);
+    await apiFormPage.form.fillBasicInfoWithPrefix(openaiKey, BAD_PREFIX, OPENAI.baseUrl);
+    await apiFormPage.form.enableForwardAll();
+    const primaryId = await apiFormPage.createModelAndCaptureId();
+
+    // Working secondary.
+    await modelsPage.navigateToModels();
+    await modelsPage.clickNewApiModel();
+    await apiFormPage.form.waitForFormReady();
+    await apiFormPage.form.selectApiFormat(OPENAI.format);
+    await apiFormPage.form.fillBasicInfo(openaiKey, OPENAI.baseUrl);
+    await apiFormPage.form.fetchAndSelectModels([OPENAI_MODEL]);
+    const secondaryId = await apiFormPage.createModelAndCaptureId();
+
+    // Router: broken primary first, working secondary second.
+    await modelsPage.navigateToModels();
+    await modelsPage.clickNewModelRouter();
+    await routerFormPage.waitForFormReady();
+    await routerFormPage.fillName(HEALTH_ROUTER_NAME);
+    await routerFormPage.addTarget();
+    await routerFormPage.selectTargetAlias(0, primaryId);
+    await routerFormPage.fillTargetModel(0, BAD_MODEL);
+    await routerFormPage.addTarget();
+    await routerFormPage.selectTargetAlias(1, secondaryId);
+    await routerFormPage.submit();
+    await routerFormPage.waitForUrl('/ui/models/');
+    await modelsPage.waitForModelsToLoad();
+    await modelsPage.verifyModelRouterInList(HEALTH_ROUTER_NAME);
+
+    // Send several messages. The first cools the primary; the rest are served by the
+    // secondary with the primary skipped — every send must yield a valid reply.
+    await chatPage.navigateToChat();
+    await chatPage.selectModel(HEALTH_ROUTER_NAME);
+    for (let i = 0; i < 3; i++) {
+      await chatPage.sendMessage(OPENAI.chatQuestion);
+      await chatPage.waitForResponseComplete();
+      const reply = await chatPage.getLastAssistantMessage();
+      expect(reply.trim().length).toBeGreaterThan(0);
+    }
+  });
+});

@@ -70,6 +70,44 @@ impl TimeService for FrozenTimeService {
   }
 }
 
+/// A `TimeService` whose clock can be moved forward at will, for tests that need
+/// to cross a time boundary (e.g. expiring a router cooldown) without sleeping.
+/// Shares its instant behind an `Arc<RwLock>`, so a clone handed to a service and
+/// the one held by the test observe the same `advance`/`set`.
+#[derive(Debug, Clone)]
+pub struct TestTimeService(Arc<std::sync::RwLock<DateTime<Utc>>>);
+
+impl Default for TestTimeService {
+  fn default() -> Self {
+    Self::new(chrono::TimeZone::with_ymd_and_hms(&chrono::Utc, 2025, 1, 1, 0, 0, 0).unwrap())
+  }
+}
+
+impl TestTimeService {
+  pub fn new(instant: DateTime<Utc>) -> Self {
+    TestTimeService(Arc::new(std::sync::RwLock::new(instant)))
+  }
+
+  pub fn set(&self, instant: DateTime<Utc>) {
+    *self.0.write().unwrap() = instant;
+  }
+
+  pub fn advance(&self, by: chrono::Duration) {
+    let mut now = self.0.write().unwrap();
+    *now += by;
+  }
+}
+
+impl TimeService for TestTimeService {
+  fn utc_now(&self) -> DateTime<Utc> {
+    *self.0.read().unwrap()
+  }
+
+  fn created_at(&self, _path: &Path) -> u32 {
+    0
+  }
+}
+
 #[derive(Debug)]
 pub struct TestDbService {
   _temp_dir: Arc<TempDir>,

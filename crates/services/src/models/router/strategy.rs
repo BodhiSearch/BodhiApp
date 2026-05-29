@@ -1,5 +1,6 @@
 use super::error::ModelRouterError;
-use crate::db::DbService;
+use super::health::HealthRegistry;
+use crate::db::{DbService, TimeService};
 use crate::models::{Alias, ModelRouterAlias, RouterTarget, RoutingStrategyConfig};
 use crate::{AiApiClientFactory, DataService};
 use async_trait::async_trait;
@@ -24,6 +25,10 @@ pub struct RouterContext {
   pub data_service: Arc<dyn DataService>,
   pub db_service: Arc<dyn DbService>,
   pub ai_api: Arc<dyn AiApiClientFactory>,
+  /// Injected clock — cooldown timing must never read `Utc::now()` directly.
+  pub time_service: Arc<dyn TimeService>,
+  /// Shared, process-global health memory; cooldowns are keyed by underlying target.
+  pub health: Arc<dyn HealthRegistry>,
 }
 
 impl RouterContext {

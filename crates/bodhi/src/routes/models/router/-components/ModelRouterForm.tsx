@@ -26,6 +26,12 @@ interface ModelRouterFormProps {
 
 const ROUTE_MODELS = '/models/';
 
+// Defaults mirror the persisted server defaults (FallbackConfig::default).
+const DEFAULT_COOLDOWN_SECS = 30;
+const DEFAULT_MAX_ATTEMPTS = 0; // 0 = try all enabled targets
+const DEFAULT_HONOR_RETRY_AFTER = true;
+const MAX_COOLDOWN_SECS = 3600; // soft upper guard (1 hour)
+
 /** Identity used to reference an alias from a target: id for api, name for local. */
 function aliasIdentity(alias: AliasResponse): string {
   return isApiAlias(alias) ? alias.id : alias.alias;
@@ -56,6 +62,22 @@ export default function ModelRouterForm({ mode, initialData }: ModelRouterFormPr
   const [targets, setTargets] = useState<TargetRow[]>(
     (initialData?.targets ?? []).map((t) => ({ alias: t.alias, model: t.model, enabled: t.enabled ?? true }))
   );
+
+  // Resilience knobs (persisted since Phase 1; surfaced here in Phase 3).
+  const initialStrategy = initialData?.strategy;
+  const [cooldownSecs, setCooldownSecs] = useState<number>(initialStrategy?.cooldown_secs ?? DEFAULT_COOLDOWN_SECS);
+  const [maxAttempts, setMaxAttempts] = useState<number>(initialStrategy?.max_attempts ?? DEFAULT_MAX_ATTEMPTS);
+  const [honorRetryAfter, setHonorRetryAfter] = useState<boolean>(
+    initialStrategy?.honor_retry_after ?? DEFAULT_HONOR_RETRY_AFTER
+  );
+
+  const cooldownError =
+    Number.isNaN(cooldownSecs) ||
+    !Number.isInteger(cooldownSecs) ||
+    cooldownSecs < 0 ||
+    cooldownSecs > MAX_COOLDOWN_SECS;
+  const maxAttemptsError = Number.isNaN(maxAttempts) || !Number.isInteger(maxAttempts) || maxAttempts < 0;
+  const resilienceInvalid = cooldownError || maxAttemptsError;
 
   const createMutation = useCreateModelRouter({
     onSuccess: () => {
@@ -103,10 +125,16 @@ export default function ModelRouterForm({ mode, initialData }: ModelRouterFormPr
   };
 
   const handleSubmit = () => {
+    if (resilienceInvalid) return;
     const body: ModelRouterRequest = {
       alias,
       targets: targets.map((t) => ({ alias: t.alias, model: t.model, enabled: t.enabled })),
-      strategy: { strategy: 'fallback', cooldown_secs: 30, max_attempts: 0, honor_retry_after: true },
+      strategy: {
+        strategy: 'fallback',
+        cooldown_secs: cooldownSecs,
+        max_attempts: maxAttempts,
+        honor_retry_after: honorRetryAfter,
+      },
     };
     if (mode === 'edit' && initialData) {
       updateMutation.mutate({ id: initialData.id, data: body });
@@ -145,6 +173,57 @@ export default function ModelRouterForm({ mode, initialData }: ModelRouterFormPr
               <SelectItem value="fallback">Fallback</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-3" data-testid="resilience-settings">
+          <Label>Resilience</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="cooldown-secs">Cooldown (seconds)</Label>
+              <Input
+                id="cooldown-secs"
+                data-testid="cooldown-secs-input"
+                type="number"
+                min={0}
+                max={MAX_COOLDOWN_SECS}
+                value={cooldownSecs}
+                onChange={(e) => setCooldownSecs(e.target.valueAsNumber)}
+              />
+              <p className="text-xs text-muted-foreground">How long a failed target is skipped before it is retried.</p>
+              {cooldownError && (
+                <p className="text-xs text-destructive" data-testid="cooldown-secs-error">
+                  Enter a whole number between 0 and {MAX_COOLDOWN_SECS}.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="max-attempts">Max attempts per request</Label>
+              <Input
+                id="max-attempts"
+                data-testid="max-attempts-input"
+                type="number"
+                min={0}
+                value={maxAttempts}
+                onChange={(e) => setMaxAttempts(e.target.valueAsNumber)}
+              />
+              <p className="text-xs text-muted-foreground">0 = try all enabled targets.</p>
+              {maxAttemptsError && (
+                <p className="text-xs text-destructive" data-testid="max-attempts-error">
+                  Enter a whole number of 0 or more.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Switch
+              data-testid="honor-retry-after-switch"
+              checked={honorRetryAfter}
+              onCheckedChange={setHonorRetryAfter}
+            />
+            <span className="text-sm">Honor upstream Retry-After</span>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -273,7 +352,12 @@ export default function ModelRouterForm({ mode, initialData }: ModelRouterFormPr
           >
             Cancel
           </Button>
-          <Button type="button" data-testid="router-submit" disabled={submitting} onClick={handleSubmit}>
+          <Button
+            type="button"
+            data-testid="router-submit"
+            disabled={submitting || resilienceInvalid}
+            onClick={handleSubmit}
+          >
             {mode === 'edit' ? 'Save' : 'Create'}
           </Button>
         </div>

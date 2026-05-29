@@ -205,15 +205,23 @@ function agentMessageToLegacy(msg: AgentMessage): Message | null {
       role: 'assistant',
       content: text,
       tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-      metadata: assistantMsg.usage
-        ? {
-            usage: {
-              prompt_tokens: assistantMsg.usage.input,
-              completion_tokens: assistantMsg.usage.output,
-              total_tokens: assistantMsg.usage.totalTokens,
-            },
-          }
-        : undefined,
+      metadata:
+        assistantMsg.usage || assistantMsg.model
+          ? {
+              // The model the request was sent under. For a model-router this is
+              // the router alias (the pi SDK reports the request model, not the
+              // upstream-echoed served model), so E2E distinguishes targets via
+              // response content rather than this field.
+              model: assistantMsg.model,
+              usage: assistantMsg.usage
+                ? {
+                    prompt_tokens: assistantMsg.usage.input,
+                    completion_tokens: assistantMsg.usage.output,
+                    total_tokens: assistantMsg.usage.totalTokens,
+                  }
+                : undefined,
+            }
+          : undefined,
     };
   }
 

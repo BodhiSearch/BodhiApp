@@ -57,6 +57,9 @@ export function ChatMessage({
   return (
     <div
       data-testid={isUser ? 'user-message' : isStreaming ? 'streaming-message' : 'assistant-message'}
+      // Served model echoed by the upstream (per-target for model-routers). Non-visible
+      // signal used by E2E to assert which target served a response.
+      data-served-model={!isUser && !isStreaming ? (metadata?.model ?? undefined) : undefined}
       className={cn(
         'group relative flex items-start gap-3 p-3',
         isUser ? 'bg-background' : 'bg-muted/30',
