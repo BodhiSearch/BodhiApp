@@ -65,7 +65,7 @@ use axum::{
   Router,
 };
 use include_dir::Dir;
-use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
+use services::{AppService, SettingService, BODHI_DEV_PROXY_UI, BODHI_DEV_PROXY_UI_PORT};
 use services::{ResourceRole, TokenScope, UserScope};
 use std::sync::Arc;
 use tower_http::{
@@ -665,8 +665,14 @@ async fn apply_ui_router(
   match (is_production, proxy_ui) {
     // Dev with proxy: forward to Vite dev server for HMR
     (false, true) => {
-      info!("proxying the ui to localhost:3000");
-      router.merge(build_ui_proxy_router("http://localhost:3000".to_string()))
+      let port = setting_service
+        .get_dev_env(BODHI_DEV_PROXY_UI_PORT)
+        .await
+        .and_then(|v| v.parse::<u16>().ok())
+        .unwrap_or(3000);
+      let target = format!("http://localhost:{port}");
+      info!("proxying the ui to {target}");
+      router.merge(build_ui_proxy_router(target))
     }
     // Production or dev without proxy: serve from embedded assets
     _ => {

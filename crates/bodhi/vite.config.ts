@@ -4,6 +4,8 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+const devProxyPort = Number(process.env.BODHI_DEV_PROXY_UI_PORT) || 3000;
+
 export default defineConfig({
   plugins: [
     TanStackRouterVite({
@@ -24,13 +26,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 3000,
   },
   server: {
-    port: 3000,
+    port: devProxyPort,
     strictPort: true,
     hmr: {
       // When running behind Rust proxy (make app.run.live), the browser loads from port 1135
       // but HMR WebSocket needs to reach Vite directly since the proxy only handles /ui/* paths.
-      // This tells the HMR client to connect to port 3000 (Vite) instead of 1135 (Rust proxy).
-      clientPort: 3000,
+      // This tells the HMR client to connect to Vite's port (default 3000) instead of the proxy.
+      clientPort: devProxyPort,
     },
     // Pre-bundle the SPA entry on startup so the first browser navigation does
     // not race against Vite's lazy dep optimization (without this, E2E sees a

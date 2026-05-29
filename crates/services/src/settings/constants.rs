@@ -54,6 +54,7 @@ pub const LOGS_DIR: &str = "logs";
 
 pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
 pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
+pub const BODHI_DEV_PROXY_UI_PORT: &str = "BODHI_DEV_PROXY_UI_PORT";
 
 // Deployment settings
 pub const BODHI_SESSION_DB_URL: &str = "BODHI_SESSION_DB_URL";
