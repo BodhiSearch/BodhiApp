@@ -1,6 +1,7 @@
 # Phase 4 — Router Test Capability (Validate + Live Probe)
 
 > Read [`README.md`](./README.md) first. Builds on Phase 3. Technical design context: proposal §8 (API surface — `test` action), §4 (forwarding), and the existing API-model "test" capability as a precedent.
+> Also read [`phase-2-in-request-fallback-notes.md`](./phase-2-in-request-fallback-notes.md): the validate-side checks (dangling reference, invalid pinned model, unsupported format, empty active set) already exist as `ModelRouterError` variants and as create/update validation in the router service — reuse them rather than re-deriving. The probe side will likely need **richer failure categories** (unauthorized / rate-limited / unreachable / timed-out) than Phase 2's binary status-only `Disposition` — plan to map upstream status → a probe-result category here. The code is the source of truth.
 
 ## Goal
 A user can **test a model-router** from the UI and get an at-a-glance report of whether it is correctly configured **and** whether each target is actually reachable right now. This turns "did I set this up right?" into a one-click answer and gives operators a diagnostic before relying on the router in chat.

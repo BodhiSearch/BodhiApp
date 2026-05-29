@@ -1,6 +1,7 @@
 # Phase 3 — Health-Aware Skipping & Automatic Recovery
 
 > Read [`README.md`](./README.md) first. Builds on Phase 2. Technical design context: proposal §6 (health tracking), §3 (per-strategy resilience config), consolidated research §5 (cooldown mechanics).
+> **Read [`phase-2-in-request-fallback-notes.md`](./phase-2-in-request-fallback-notes.md)** — it records what Phase 2 actually built and the exact seams this phase plugs into (the fallback loop iterates raw declared order today; `cooldown_secs`/`honor_retry_after` are persisted-but-unused; `RouterContext` has no clock/health yet; the form hardcodes the strategy config). The code is the source of truth — validate against it.
 
 ## Goal
 A target that fails is **temporarily skipped on subsequent requests** (a cooldown window) instead of being retried from the top every time — so a known-bad/quota-exhausted provider stops receiving traffic. When the cooldown expires the target is **automatically retried** (half-open), and if it succeeds, **traffic returns to it**. This is what makes "return to the primary once it recovers" work, with **no background probes** — recovery is driven entirely by real traffic.
@@ -8,9 +9,10 @@ A target that fails is **temporarily skipped on subsequent requests** (a cooldow
 ## Functional requirements
 
 ### Cross-request health memory
-- When a target fails with a **retryable** error, it is placed in a **cooldown** for a configurable window. While cooled, it is **skipped during target selection** on later requests (as if temporarily not in the sequence).
+- When a target fails with a **retryable upstream error** (a retryable HTTP status) or a **genuine transport failure** (connection refused, timeout), it is placed in a **cooldown** for a configurable window. While cooled, it is **skipped during target selection** on later requests (as if temporarily not in the sequence).
+- A **structural skip** (the referenced alias is dangling/missing, references another router, or has a format that doesn't support chat completions) is **not a transient failure** and must **not** be cooled — cooling it would only delay the inevitable. Such a target is skipped this request (Phase 2 behavior) but its eligibility next request is unchanged; the Test capability (Phase 4) is where structural problems get surfaced to the user.
 - Health is tracked **in memory, per process** (no database, no external store). It **resets on restart**, and in multi-replica deployments each replica learns independently. (Accepted limitation.)
-- Health is keyed by the **underlying target** (the referenced alias + pinned model), so if the **same provider is used by multiple routers**, a cooldown discovered via one router is honored by all of them — valuable for shared free-tier quotas.
+- Health is keyed by the **underlying target** (tenant + the referenced alias + pinned model), so if the **same provider is used by multiple routers**, a cooldown discovered via one router is honored by all of them — valuable for shared free-tier quotas — while the tenant component preserves multi-tenant isolation.
 
 ### Passive half-open recovery (no probes)
 - A cooldown is simply a **time window**. When it expires, the target becomes **eligible again** and the **next real request that would select it is the trial**.
