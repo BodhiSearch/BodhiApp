@@ -41,6 +41,7 @@ impl SafeReqwest {
 #[derive(Debug, Default)]
 pub struct SafeReqwestBuilder {
   timeout: Option<Duration>,
+  connect_timeout: Option<Duration>,
   default_headers: Option<HeaderMap>,
   allow_private_ips: bool,
 }
@@ -48,6 +49,13 @@ pub struct SafeReqwestBuilder {
 impl SafeReqwestBuilder {
   pub fn timeout(mut self, timeout: Duration) -> Self {
     self.timeout = Some(timeout);
+    self
+  }
+
+  /// Guards against slow DNS resolution and TCP connection establishment.
+  /// Does NOT limit how long a response body (including streaming) may take.
+  pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+    self.connect_timeout = Some(timeout);
     self
   }
 
@@ -69,6 +77,9 @@ impl SafeReqwestBuilder {
     let mut builder = reqwest::Client::builder();
     if let Some(timeout) = self.timeout {
       builder = builder.timeout(timeout);
+    }
+    if let Some(connect_timeout) = self.connect_timeout {
+      builder = builder.connect_timeout(connect_timeout);
     }
     if let Some(headers) = self.default_headers {
       builder = builder.default_headers(headers);

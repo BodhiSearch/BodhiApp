@@ -417,3 +417,54 @@ async fn test_forward_request_default_anthropic_version_injected_when_absent() -
   assert_eq!(axum::http::StatusCode::OK, response.status());
   Ok(())
 }
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_forward_response_strips_hop_by_hop_headers() -> anyhow::Result<()> {
+  let mut server = Server::new_async().await;
+  let url = server.url();
+  let api_alias = make_api_alias(&url);
+  let service = DefaultAiApiClientFactory::new()?;
+
+  let _mock = server
+    .mock("POST", "/chat/completions")
+    .with_status(200)
+    .with_header("content-type", "text/event-stream")
+    .with_header("transfer-encoding", "chunked")
+    .with_header("connection", "keep-alive")
+    .with_header("keep-alive", "timeout=60")
+    .with_header("set-cookie", "_cfuvid=abc123; HttpOnly; SameSite=None; Secure")
+    .with_header("x-custom-header", "preserved")
+    .with_body(r#"data: {"choices":[]}"#)
+    .create_async()
+    .await;
+
+  let response = service
+    .for_alias(&Alias::Api(api_alias.clone()), None)?
+    .forward_request_with_method(
+      &Method::POST,
+      "/chat/completions",
+      Some(json!({"model": "gpt-4", "messages": []})),
+      None,
+      None,
+    )
+    .await?;
+
+  assert_eq!(axum::http::StatusCode::OK, response.status());
+  // hop-by-hop and infrastructure headers must be stripped
+  assert!(response.headers().get("transfer-encoding").is_none());
+  assert!(response.headers().get("connection").is_none());
+  assert!(response.headers().get("keep-alive").is_none());
+  assert!(response.headers().get("set-cookie").is_none());
+  // end-to-end headers must be preserved
+  assert_eq!(
+    response.headers().get("content-type").map(|v| v.to_str().unwrap()),
+    Some("text/event-stream")
+  );
+  assert_eq!(
+    response.headers().get("x-custom-header").map(|v| v.to_str().unwrap()),
+    Some("preserved")
+  );
+  Ok(())
+}

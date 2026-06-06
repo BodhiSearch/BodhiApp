@@ -17,7 +17,8 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
 
-const DEFAULT_TIMEOUT_SECS: u64 = 30;
+// Connect-only timeout: guards against slow DNS/TCP without killing long-lived streams.
+const DEFAULT_CONNECT_TIMEOUT_SECS: u64 = 30;
 
 /// Discriminator for `AiApiClientFactory::for_liberty` — the two variants
 /// reflect Liberty's distinct credential lifecycle stages and produce clients
@@ -70,7 +71,7 @@ impl DefaultAiApiClientFactory {
     local_llama: Option<Arc<dyn LocalLlama>>,
   ) -> Result<Self> {
     let client = SafeReqwest::builder()
-      .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
+      .connect_timeout(Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS))
       .allow_private_ips()
       .build()?;
     let refresh = Arc::new(DefaultLlmLibertyRefresh::new(db, client.clone()));
@@ -85,7 +86,7 @@ impl DefaultAiApiClientFactory {
   pub fn new() -> Result<Self> {
     use crate::ai_apis::clients::liberty_anthropic::NoOpRefresh;
     let client = SafeReqwest::builder()
-      .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
+      .connect_timeout(Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS))
       .allow_private_ips()
       .build()?;
     Ok(Self {

@@ -7,12 +7,30 @@ use axum::http::Method;
 use axum::response::Response;
 use serde_json::Value;
 
+fn is_hop_by_hop(name: &str) -> bool {
+  matches!(
+    name.to_ascii_lowercase().as_str(),
+    "connection"
+      | "keep-alive"
+      | "proxy-authenticate"
+      | "proxy-authorization"
+      | "te"
+      | "trailers"
+      | "transfer-encoding"
+      | "upgrade"
+      | "set-cookie" // upstream infrastructure cookies (e.g. Cloudflare) must not leak to clients
+  )
+}
+
 pub(crate) fn convert_reqwest_to_axum(reqwest_response: reqwest::Response) -> Result<Response> {
   let status = reqwest_response.status();
   let headers = reqwest_response.headers().clone();
 
   let mut builder = Response::builder().status(status.as_u16());
   for (key, value) in &headers {
+    if is_hop_by_hop(key.as_str()) {
+      continue;
+    }
     if let Ok(value_str) = value.to_str() {
       builder = builder.header(key.as_str(), value_str);
     }
@@ -156,6 +174,9 @@ pub(crate) async fn forward_to_upstream(
   let mut builder = Response::builder().status(status.as_u16());
 
   for (key, value) in response.headers() {
+    if is_hop_by_hop(key.as_str()) {
+      continue;
+    }
     if let Ok(value_str) = value.to_str() {
       builder = builder.header(key.as_str(), value_str);
     }
