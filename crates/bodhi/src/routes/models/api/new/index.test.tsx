@@ -20,6 +20,7 @@ import {
   selectProvider,
   selectApiFormat,
   fillApiKey,
+  fillName,
   fillBaseUrl,
   testConnection,
   fetchModels,
@@ -225,6 +226,7 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Fill API key
+      await fillName(user, 'Test API Model');
       await fillApiKey(user, 'sk-test-key-123');
 
       // Test connection
@@ -272,6 +274,7 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Fill API key
+      await fillName(user, 'Test API Model');
       await fillApiKey(user, 'sk-test-key-123');
 
       // Test connection

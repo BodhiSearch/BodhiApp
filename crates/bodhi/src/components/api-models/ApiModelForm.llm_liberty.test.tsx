@@ -129,6 +129,7 @@ describe('ApiModelForm — llm_liberty_oauth edit mode (keep vs set)', () => {
   const storedAlias: ApiAliasResponse = {
     source: 'api',
     id: 'liberty-edit-1',
+    name: 'Liberty Edit Model',
     api_format: 'llm_liberty_oauth',
     base_url: 'https://api.anthropic.com/v1',
     has_api_key: false,

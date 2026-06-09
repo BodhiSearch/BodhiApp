@@ -24,6 +24,7 @@ fn safe_http() -> SafeReqwest {
 fn liberty_alias() -> ApiAlias {
   ApiAlias::new(
     "alias-liberty",
+    "Liberty Alias",
     ApiFormat::LlmLibertyOauth,
     "https://api.example.com",
     Vec::<crate::ApiModel>::new(),

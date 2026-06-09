@@ -65,6 +65,7 @@ async fn test_find_alias_api_by_model_name(
   // Insert API alias with multiple models
   let api_alias = ApiAlias::new(
     "openai-api",
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
@@ -112,6 +113,7 @@ async fn test_find_alias_priority_cases(
   // Insert API alias with gpt-4 model
   let api_alias = ApiAlias::new(
     "test-api",
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4")],
@@ -167,6 +169,7 @@ async fn test_find_alias_user_priority_over_api(
   // Insert API alias with model name that matches existing user alias
   let api_alias = ApiAlias::new(
     "conflicting-api",
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("testalias-exists:instruct")], // Same name as user alias
@@ -312,6 +315,7 @@ async fn test_find_alias_with_prefix_matches(
 
   let test_alias = ApiAlias::new(
     expected_id,
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     api_models,
@@ -349,6 +353,7 @@ async fn test_find_alias_with_non_matching_prefix_returns_none(
 
   let test_alias = ApiAlias::new(
     "azure-openai",
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4")],
@@ -382,6 +387,7 @@ async fn test_find_alias_without_prefix_does_not_match_prefixed_api(
   // Create API alias with prefix
   let prefixed_alias = ApiAlias::new(
     "azure-openai",
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.azure.com/v1",
     vec![openai_model("gpt-4")],

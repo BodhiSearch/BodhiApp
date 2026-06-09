@@ -71,6 +71,7 @@ export function mockApiModelsError(
 export function mockCreateApiModel(
   {
     source = 'api',
+    name = 'Test API Model',
     id = 'test-api-model-123',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
@@ -91,6 +92,7 @@ export function mockCreateApiModel(
       hasBeenCalled = true;
       const responseData: components['schemas']['ApiAliasResponse'] = {
         source,
+        name,
         id,
         api_format,
         base_url,
@@ -144,6 +146,7 @@ export function mockGetApiModel(
   expectedId: string,
   {
     source = 'api',
+    name = 'Test API Model',
     id = '',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
@@ -172,6 +175,7 @@ export function mockGetApiModel(
 
       const responseData: components['schemas']['ApiAliasResponse'] = {
         source,
+        name,
         id: id || (paramId as string),
         api_format,
         base_url,
@@ -234,6 +238,7 @@ export function mockUpdateApiModel(
   expectedId: string,
   {
     source = 'api',
+    name = 'Test API Model',
     id = '',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
@@ -262,6 +267,7 @@ export function mockUpdateApiModel(
 
       const responseData: components['schemas']['ApiAliasResponse'] = {
         source,
+        name,
         id: id || (paramId as string),
         api_format,
         base_url,
@@ -532,6 +538,7 @@ export function mockApiModelsDefault() {
       {
         source: 'api',
         id: 'test-api-model',
+        name: 'Test API Model',
         api_format: 'openai',
         base_url: 'https://api.openai.com/v1',
         has_api_key: true, // Has API key

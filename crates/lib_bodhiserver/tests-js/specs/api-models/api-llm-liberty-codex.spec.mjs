@@ -123,6 +123,7 @@ test.describe('LLM Liberty OAuth - openai-codex end-to-end (local only)', () => 
 
     // 2. Switch to LLM Liberty OAuth and paste the codex envelope.
     await apiModelFormPage.form.selectApiFormat('llm_liberty_oauth');
+    await apiModelFormPage.form.fillName('LLM Liberty Codex');
     await apiModelFormPage.form.fillLlmLibertyEnvelope(envelope);
 
     // 3. Fetch models from Codex (custom slug parser: reads models[].slug → ApiModel::OpenAI).
@@ -148,8 +149,6 @@ test.describe('LLM Liberty OAuth - openai-codex end-to-end (local only)', () => 
     await chatPage.waitForResponseComplete();
 
     const reply = await chatPage.getLastAssistantMessage();
-    expect(reply, 'assistant reply must contain "hello bodhi" (case-insensitive)').toMatch(
-      /hello bodhi/i
-    );
+    expect(reply, 'assistant reply must contain "hello bodhi" (case-insensitive)').toMatch(/hello bodhi/i);
   });
 });

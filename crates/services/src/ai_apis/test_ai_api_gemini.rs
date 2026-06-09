@@ -12,6 +12,7 @@ const GEMINI_MODELS_SAMPLE: &str = include_str!("test_data/gemini_models_upstrea
 fn make_gemini_alias(url: &str) -> ApiAlias {
   ApiAlias::new(
     "gemini-api",
+    "Gemini API",
     ApiFormat::Gemini,
     url,
     vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))],
@@ -26,6 +27,7 @@ fn make_gemini_alias(url: &str) -> ApiAlias {
 fn make_gemini_alias_no_key(url: &str) -> ApiAlias {
   ApiAlias::new(
     String::new(),
+    "Gemini No Key",
     ApiFormat::Gemini,
     url,
     vec![],

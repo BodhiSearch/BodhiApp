@@ -9,6 +9,7 @@ use validator::Validate;
 #[test]
 fn test_create_api_model_form_validation() {
   let inner = DefaultApiModelRequestBuilder::default()
+    .name("Test API")
     .base_url("not-a-url")
     .api_key(ApiKeyUpdate::Set(ApiKey::some("key".to_string()).unwrap()))
     .models(vec!["gpt-4".to_string()])
@@ -19,6 +20,7 @@ fn test_create_api_model_form_validation() {
   assert!(form.validate().is_err());
 
   let valid_inner = DefaultApiModelRequestBuilder::default()
+    .name("Test API")
     .base_url("https://api.openai.com/v1")
     .api_key(ApiKeyUpdate::Set(
       ApiKey::some("sk-test".to_string()).unwrap(),
@@ -221,6 +223,7 @@ fn test_fetch_models_request_credentials_validation() {
 #[test]
 fn test_api_model_form_validate_forward_all_with_prefix_success() {
   let inner = DefaultApiModelRequestBuilder::default()
+    .name("Test API")
     .base_url("https://api.openai.com/v1")
     .api_key(ApiKeyUpdate::Set(
       ApiKey::some("sk-test".to_string()).unwrap(),
@@ -238,6 +241,7 @@ fn test_api_model_form_validate_forward_all_with_prefix_success() {
 #[test]
 fn test_api_model_form_validate_forward_all_without_prefix_fails() {
   let inner = DefaultApiModelRequestBuilder::default()
+    .name("Test API")
     .base_url("https://api.openai.com/v1")
     .api_key(ApiKeyUpdate::Set(
       ApiKey::some("sk-test".to_string()).unwrap(),
@@ -255,6 +259,7 @@ fn test_api_model_form_validate_forward_all_without_prefix_fails() {
 #[test]
 fn test_api_model_form_validate_forward_all_disabled_with_models_success() {
   let inner = DefaultApiModelRequestBuilder::default()
+    .name("Test API")
     .base_url("https://api.openai.com/v1")
     .api_key(ApiKeyUpdate::Set(
       ApiKey::some("sk-test".to_string()).unwrap(),

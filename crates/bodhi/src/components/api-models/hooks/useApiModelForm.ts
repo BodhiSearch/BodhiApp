@@ -53,6 +53,7 @@ export function useApiModelForm({
     resolver: zodResolver(schema),
     defaultValues: isEditMode
       ? {
+          name: initialData?.name || '',
           api_format: initialData?.api_format || 'openai',
           base_url: initialData?.base_url || 'https://api.openai.com/v1',
           api_key: '',
@@ -67,6 +68,7 @@ export function useApiModelForm({
         }
       : mode === 'setup'
         ? {
+            name: '',
             api_format: '',
             base_url: '',
             api_key: '',
@@ -80,6 +82,7 @@ export function useApiModelForm({
             llm_liberty_envelope: '',
           }
         : {
+            name: '',
             api_format: 'openai',
             base_url: 'https://api.openai.com/v1',
             api_key: '',

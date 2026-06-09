@@ -41,6 +41,7 @@ fn test_alias_can_serve_model(#[case] model: &str, #[case] expected: bool) {
 fn test_alias_can_serve_api(#[case] model: &str, #[case] expected: bool) {
   let api_alias = ApiAlias::new(
     "openai-api",
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4")],
@@ -74,6 +75,7 @@ fn test_api_alias_supports_model(
 ) {
   let api_alias = ApiAlias::new(
     "test-api",
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.example.com/v1",
     model_ids
@@ -153,6 +155,7 @@ fn test_api_alias_matchable_models(
 ) {
   let api_alias = ApiAlias::new(
     "test-api",
+    "test-name",
     ApiFormat::OpenAI,
     "https://api.example.com/v1",
     model_ids

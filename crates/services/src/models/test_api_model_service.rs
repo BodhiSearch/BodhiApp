@@ -91,6 +91,7 @@ async fn test_create_forward_all_stores_all_models(
   let form = ApiModelRequest::default_for(
     api_format,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.example.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec![],
@@ -160,6 +161,7 @@ async fn test_create_non_forward_all_validates_and_filters(
   let form = ApiModelRequest::default_for(
     api_format,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.example.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["model-x".to_string()],
@@ -214,6 +216,7 @@ async fn test_update_forward_all_stores_all_models(
   let create_form = ApiModelRequest::default_for(
     api_format.clone(),
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.example.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec![],
@@ -230,6 +233,7 @@ async fn test_update_forward_all_stores_all_models(
   let update_form = ApiModelRequest::default_for(
     api_format,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.example.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec![],
@@ -252,6 +256,81 @@ async fn test_update_forward_all_stores_all_models(
   );
   assert_eq!(extra_headers, result.extra_headers);
   assert_eq!(extra_body, result.extra_body);
+
+  Ok(())
+}
+
+/// Guards the repository-update trap: `update_api_model_alias` builds its SeaORM
+/// ActiveModel with `..Default::default()`, so a new column is silently skipped on
+/// edit unless explicitly `Set`. This creates with one name, updates to another, and
+/// reads back from the DB to prove the rename actually persisted.
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_update_persists_changed_name(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let db_service = Arc::new(db_service);
+
+  let mut mock_ai = MockAiApiClientFactory::new();
+  // create() fetches once, update() fetches once.
+  mock_ai.expect_for_alias().times(2).returning(|_, _| {
+    let mut client = MockAiApiClient::new();
+    client
+      .expect_fetch_models()
+      .times(1)
+      .returning(|| Ok(vec![openai_model("gpt-4")]));
+    Ok(Box::new(client) as Box<dyn crate::AiApiClient>)
+  });
+
+  let time_service = Arc::new(FrozenTimeService::default());
+  let service = DefaultApiModelService::new(db_service.clone(), time_service, Arc::new(mock_ai));
+
+  let create_form = ApiModelRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultApiModelRequest {
+      name: "Original Name".to_string(),
+      base_url: "https://api.example.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gpt-4".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
+  let created = service
+    .create(TEST_TENANT_ID, TEST_USER_ID, create_form)
+    .await?;
+  assert_eq!("Original Name", created.name);
+
+  let update_form = ApiModelRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultApiModelRequest {
+      name: "Renamed Model".to_string(),
+      base_url: "https://api.example.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Keep,
+      models: vec!["gpt-4".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
+  let updated = service
+    .update(TEST_TENANT_ID, TEST_USER_ID, &created.id, update_form)
+    .await?;
+  assert_eq!("Renamed Model", updated.name);
+
+  // Read back from the DB to confirm persistence (not just the response echo).
+  let stored = db_service
+    .get_api_model_alias(TEST_TENANT_ID, TEST_USER_ID, &created.id)
+    .await?
+    .expect("alias should exist");
+  assert_eq!("Renamed Model", stored.name);
 
   Ok(())
 }
@@ -291,6 +370,7 @@ async fn test_update_non_forward_all_validates_and_filters(
   let create_form = ApiModelRequest::default_for(
     api_format.clone(),
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.example.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["model-p".to_string()],
@@ -307,6 +387,7 @@ async fn test_update_non_forward_all_validates_and_filters(
   let update_form = ApiModelRequest::default_for(
     api_format,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.example.com/v2".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["model-p".to_string(), "model-q".to_string()],
@@ -351,6 +432,7 @@ async fn test_create_rejects_extra_headers_pass_through_auth(
   let form = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["claude-3".to_string()],
@@ -406,6 +488,7 @@ async fn test_update_rejects_api_format_change(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(crate::ApiKey::some("sk-x".into()).unwrap()),
       models: vec!["gpt-4".to_string()],
@@ -423,6 +506,7 @@ async fn test_update_rejects_api_format_change(
   let update_form = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(crate::ApiKey::some("sk-ant-oat01-y".into()).unwrap()),
       models: vec![],
@@ -475,6 +559,7 @@ async fn test_create_gemini_preserves_bare_name(
   let form = ApiModelRequest::default_for(
     ApiFormat::Gemini,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gemini-2.5-flash".to_string()],
@@ -550,6 +635,7 @@ async fn test_update_gemini_preserves_bare_name(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::Gemini,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gemini-2.5-flash".to_string()],
@@ -566,6 +652,7 @@ async fn test_update_gemini_preserves_bare_name(
   let update_form = ApiModelRequest::default_for(
     ApiFormat::Gemini,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gemini-2.5-flash".to_string()],
@@ -627,6 +714,7 @@ async fn test_create_openai_with_prefix_no_mutation(
   let form = ApiModelRequest::default_for(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gpt-4".to_string()],
@@ -667,6 +755,7 @@ async fn test_create_rejects_extra_headers_x_goog_api_key(
   let form = ApiModelRequest::default_for(
     ApiFormat::Gemini,
     DefaultApiModelRequest {
+      name: "test-name".to_string(),
       base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gemini-2.5-flash".to_string()],

@@ -14,9 +14,7 @@ import { TokenFixtures } from '@/fixtures/tokenFixtures.mjs';
 export async function registerApiModelViaUI(modelsPage, formPage, apiKey, formatConfig = null) {
   const config = formatConfig || ApiModelFixtures.API_FORMATS.openai;
   const modelData = ApiModelFixtures.createModelDataForFormat(
-    Object.keys(ApiModelFixtures.API_FORMATS).find(
-      (k) => ApiModelFixtures.API_FORMATS[k] === config
-    ) || 'openai'
+    Object.keys(ApiModelFixtures.API_FORMATS).find(k => ApiModelFixtures.API_FORMATS[k] === config) || 'openai'
   );
   await modelsPage.navigateToModels();
   await modelsPage.clickNewApiModel();
@@ -26,11 +24,11 @@ export async function registerApiModelViaUI(modelsPage, formPage, apiKey, format
   if (config.extraHeaders || config.extraBody) {
     await formPage.form.expectExtrasPrefilledFor(config);
   }
-  await formPage.form.fillBasicInfo(apiKey, modelData.baseUrl);
+  await formPage.form.fillBasicInfo(apiKey, modelData.baseUrl, modelData.name);
   await formPage.form.fetchAndSelectModels([config.model]);
   await formPage.form.testConnection();
   const modelId = await formPage.createModelAndCaptureId();
-  return { modelId, modelName: config.model };
+  return { modelId, modelName: config.model, name: modelData.name };
 }
 
 /**

@@ -180,6 +180,7 @@ impl ApiAliasBuilder {
     let mut builder = Self::default();
     builder
       .id("test-id")
+      .name("test-name")
       .api_format(ApiFormat::OpenAI)
       .base_url("http://localhost:8080");
     builder

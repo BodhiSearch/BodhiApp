@@ -38,6 +38,7 @@ fn echo_response() -> &'static str {
 fn make_alias(url: &str, format: ApiFormat) -> ApiAlias {
   ApiAlias::new(
     "test-alias",
+    "Test Alias",
     format,
     url,
     vec![],

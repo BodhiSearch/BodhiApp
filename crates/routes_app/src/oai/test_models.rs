@@ -141,6 +141,7 @@ async fn test_oai_models_handler_api_alias_with_prefix() -> anyhow::Result<()> {
 
   let api_alias = ApiAlias::new(
     "openai-gpt4",
+    "OpenAI GPT-4",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")],
@@ -205,6 +206,7 @@ async fn test_oai_models_handler_api_alias_without_prefix() -> anyhow::Result<()
 
   let api_alias = ApiAlias::new(
     "openai-gpt4",
+    "OpenAI GPT-4",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4")],
@@ -268,6 +270,7 @@ async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
 
   let api_alias = ApiAlias::new(
     "openai-gpt4",
+    "OpenAI GPT-4",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4")],
@@ -331,6 +334,7 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
 
   let api_alias = ApiAlias::new(
     "openai-gpt4",
+    "OpenAI GPT-4",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4")],
@@ -394,6 +398,7 @@ async fn test_oai_models_handler_anthropic_oauth_alias_included() -> anyhow::Res
 
   let api_alias = ApiAlias::new(
     "anthropic-oauth-alias",
+    "Anthropic OAuth Alias",
     ApiFormat::AnthropicOAuth,
     "https://api.anthropic.com",
     vec![anthropic_model("claude-sonnet-4-5-20250929")],
@@ -511,6 +516,7 @@ async fn test_oai_models_handler_gemini_alias_included_with_prefix() -> anyhow::
 
   let api_alias = ApiAlias::new(
     "gemini-alias",
+    "Gemini Alias",
     ApiFormat::Gemini,
     "https://generativelanguage.googleapis.com/v1beta",
     vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))],
@@ -571,6 +577,7 @@ async fn test_oai_models_handler_gemini_alias_included_without_prefix() -> anyho
 
   let api_alias = ApiAlias::new(
     "gemini-alias",
+    "Gemini Alias",
     ApiFormat::Gemini,
     "https://generativelanguage.googleapis.com/v1beta",
     vec![ApiModel::Gemini(gemini_model("gemini-2.5-flash"))],

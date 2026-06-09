@@ -18,6 +18,7 @@ import { createWrapper } from '@/tests/wrapper';
 const mockApiModelResponse: ApiAliasResponse = {
   source: 'api',
   id: 'test-api-model-123',
+  name: 'Test API Model',
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
   has_api_key: true,
@@ -29,6 +30,7 @@ const mockApiModelResponse: ApiAliasResponse = {
 };
 
 const mockCreateRequest: ApiModelRequest = {
+  name: 'Test API Model',
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
   api_key: { action: 'set', value: 'sk-test-key-12345' },

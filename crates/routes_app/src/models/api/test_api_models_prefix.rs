@@ -75,6 +75,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 #[rstest]
 #[case::prefix_removal(
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": {"action": "set", "value": "sk-test-key-123"},
@@ -82,12 +83,14 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": "azure/"
   }),
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "models": ["gpt-4"],
     "prefix": null
   }),
   json!({
+    "name": "Test API Model",
     "source": "api",
     "id": "placeholder",
     "api_format": "openai",
@@ -102,6 +105,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::prefix_addition(
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": {"action": "set", "value": "sk-test-key-123"},
@@ -109,12 +113,14 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": null
   }),
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "models": ["gpt-4"],
     "prefix": "azure/"
   }),
   json!({
+    "name": "Test API Model",
     "source": "api",
     "id": "placeholder",
     "api_format": "openai",
@@ -129,6 +135,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::prefix_empty_string_removal(
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": {"action": "set", "value": "sk-test-key-123"},
@@ -136,12 +143,14 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": "azure/"
   }),
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "models": ["gpt-4"],
     "prefix": ""
   }),
   json!({
+    "name": "Test API Model",
     "source": "api",
     "id": "placeholder",
     "api_format": "openai",
@@ -156,6 +165,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::prefix_change(
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": {"action": "set", "value": "sk-test-key-123"},
@@ -163,12 +173,14 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": "azure/"
   }),
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "models": ["gpt-4"],
     "prefix": "openai:"
   }),
   json!({
+    "name": "Test API Model",
     "source": "api",
     "id": "placeholder",
     "api_format": "openai",
@@ -183,6 +195,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::no_prefix_no_change(
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": {"action": "set", "value": "sk-test-key-123"},
@@ -190,12 +203,14 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": null
   }),
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "models": ["gpt-4"],
     "prefix": null
   }),
   json!({
+    "name": "Test API Model",
     "source": "api",
     "id": "placeholder",
     "api_format": "openai",
@@ -210,6 +225,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 )]
 #[case::models_and_url_update(
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": {"action": "set", "value": "sk-old-key-123"},
@@ -217,12 +233,14 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     "prefix": null
   }),
   json!({
+    "name": "Test API Model",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v2",
     "models": ["gpt-4", "gpt-3.5-turbo"],
     "prefix": null
   }),
   json!({
+    "name": "Test API Model",
     "source": "api",
     "id": "placeholder",
     "api_format": "openai",
@@ -328,6 +346,7 @@ async fn test_create_api_model_forward_all_requires_prefix(
   let create_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Test API Model".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gpt-4".to_string()],
@@ -377,6 +396,7 @@ async fn test_create_api_model_duplicate_prefix_error(
   let first_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Test API Model".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gpt-4".to_string()],
@@ -397,6 +417,7 @@ async fn test_create_api_model_duplicate_prefix_error(
   let second_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Test API Model".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["claude-3".to_string()],
@@ -442,6 +463,7 @@ async fn test_update_api_model_duplicate_prefix_error(
   let first_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Test API Model".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["gpt-4".to_string()],
@@ -462,6 +484,7 @@ async fn test_update_api_model_duplicate_prefix_error(
   let second_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Test API Model".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["claude-3".to_string()],
@@ -484,6 +507,7 @@ async fn test_update_api_model_duplicate_prefix_error(
   let update_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Test API Model".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec!["claude-3".to_string()],

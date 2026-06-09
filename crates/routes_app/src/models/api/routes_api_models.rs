@@ -208,6 +208,7 @@ pub async fn api_models_test(
             .for_alias(
               &services::Alias::Api(ApiAlias::new(
                 String::new(),
+                String::new(),
                 api_format,
                 d.base_url.trim_end_matches('/').to_string(),
                 vec![],
@@ -319,6 +320,7 @@ pub async fn api_models_fetch_models(
           ai_api
             .for_alias(
               &services::Alias::Api(ApiAlias::new(
+                String::new(),
                 String::new(),
                 api_format,
                 d.base_url.trim_end_matches('/').to_string(),

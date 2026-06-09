@@ -93,6 +93,7 @@ async fn test_create_api_model_handler_success(
   let create_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "OpenAI GPT Models".to_string(),
       base_url: input_url.to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
       models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
@@ -115,6 +116,7 @@ async fn test_create_api_model_handler_success(
   let api_response = response.json::<ApiAliasResponse>().await?;
 
   // Verify the response structure (note: ID is now auto-generated ULID)
+  assert_eq!(api_response.name, "OpenAI GPT Models");
   assert_eq!(api_response.api_format, services::ApiFormat::OpenAI);
   assert_eq!(api_response.base_url, expected_url);
   assert!(api_response.has_api_key);
@@ -161,6 +163,7 @@ async fn test_create_api_model_handler_generates_uuid(
   let create_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "OpenAI GPT-4".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
       models: vec!["gpt-4".to_string()],
@@ -218,6 +221,7 @@ async fn test_create_api_model_handler_anthropic_oauth_stores_extra_fields(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
+      name: "Anthropic OAuth".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string())?),
       models: vec!["claude-3-5-sonnet".to_string()],
@@ -235,6 +239,7 @@ async fn test_create_api_model_handler_anthropic_oauth_stores_extra_fields(
   assert_eq!(response.status(), StatusCode::CREATED);
 
   let api_response = response.json::<ApiAliasResponse>().await?;
+  assert_eq!(api_response.name, "Anthropic OAuth");
   assert_eq!(api_response.api_format, ApiFormat::AnthropicOAuth);
   assert_eq!(api_response.extra_headers, Some(extra_headers));
   assert_eq!(api_response.extra_body, Some(extra_body));

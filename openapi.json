@@ -7606,6 +7606,7 @@
         "type": "object",
         "required": [
           "id",
+          "name",
           "api_format",
           "base_url",
           "models",
@@ -7615,6 +7616,9 @@
         ],
         "properties": {
           "id": {
+            "type": "string"
+          },
+          "name": {
             "type": "string"
           },
           "api_format": {
@@ -7653,6 +7657,7 @@
         "required": [
           "source",
           "id",
+          "name",
           "api_format",
           "base_url",
           "has_api_key",
@@ -7666,6 +7671,9 @@
             "type": "string"
           },
           "id": {
+            "type": "string"
+          },
+          "name": {
             "type": "string"
           },
           "api_format": {
@@ -8715,10 +8723,15 @@
         "type": "object",
         "description": "Inner request shape for the five non-llm-liberty `api_format` values.\nShared across `openai`, `openai_responses`, `anthropic`, `anthropic_oauth`, `gemini`.",
         "required": [
+          "name",
           "base_url",
           "models"
         ],
         "properties": {
+          "name": {
+            "type": "string",
+            "description": "User-provided descriptive name for this API model"
+          },
           "base_url": {
             "type": "string",
             "description": "API base URL"
@@ -9313,7 +9326,14 @@
       "LlmLibertyApiModelRequest": {
         "type": "object",
         "description": "Request shape for `api_format == \"llm_liberty_oauth\"`. Carries the full envelope\n(or `Keep` to leave existing credentials untouched on update).",
+        "required": [
+          "name"
+        ],
         "properties": {
+          "name": {
+            "type": "string",
+            "description": "User-provided descriptive name for this API model"
+          },
           "envelope": {
             "$ref": "#/components/schemas/LlmLibertyEnvelopeUpdate",
             "description": "Envelope update action — Keep (update only) or Set (create/replace credentials)."

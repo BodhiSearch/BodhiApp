@@ -73,6 +73,7 @@ export function createMockApiAlias(overrides?: Partial<ApiAliasResponse>): ApiAl
   return {
     source: 'api',
     id: 'test-api-model',
+    name: 'Test API Model',
     api_format: 'openai',
     base_url: 'https://api.openai.com/v1',
     has_api_key: true,

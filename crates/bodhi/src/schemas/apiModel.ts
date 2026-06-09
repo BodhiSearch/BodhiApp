@@ -103,6 +103,7 @@ interface SchemaFlags {
 }
 
 const baseShape = {
+  name: z.string().min(1, 'Name is required').max(255, 'Name must be 255 characters or fewer'),
   api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
   base_url: z.string().optional(),
   api_key: z.string().optional(),
@@ -228,6 +229,7 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModel
     const envelope = JSON.parse(formData.llm_liberty_envelope) as LlmLibertyEnvelope;
     return {
       api_format: 'llm_liberty_oauth',
+      name: formData.name,
       envelope: { action: 'set', value: envelope },
       models: formData.models,
       prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
@@ -242,6 +244,7 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): ApiModel
 
   return {
     api_format: formData.api_format as ApiFormat,
+    name: formData.name,
     base_url: formData.base_url || '',
     api_key: apiKey,
     models: formData.models,
@@ -264,6 +267,7 @@ export const convertFormToUpdateRequest = (
 
     return {
       api_format: 'llm_liberty_oauth',
+      name: formData.name,
       envelope,
       models: formData.models,
       prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
@@ -287,6 +291,7 @@ export const convertFormToUpdateRequest = (
 
   return {
     api_format: formData.api_format as ApiFormat,
+    name: formData.name,
     base_url: formData.base_url || '',
     api_key: apiKey,
     models: formData.models,
@@ -303,6 +308,7 @@ export const serializeJsonField = (value: unknown | null | undefined): string =>
 };
 
 export const convertApiToForm = (apiData: ApiAliasResponse): ApiModelFormData => ({
+  name: apiData.name,
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '',

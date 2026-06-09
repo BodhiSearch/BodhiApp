@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect } from 'vitest';
+
 import { API_FORMAT_PRESETS, type ApiFormatPreset } from '@/schemas/apiModel';
 
 // User interaction utilities for API Format (New/Edit pages)
@@ -34,6 +35,12 @@ export async function fillApiKey(user: ReturnType<typeof userEvent.setup>, apiKe
 
   await user.clear(apiKeyInput);
   await user.type(apiKeyInput, apiKey);
+}
+
+export async function fillName(user: ReturnType<typeof userEvent.setup>, name: string) {
+  const nameInput = screen.getByTestId('api-model-name-input');
+  await user.clear(nameInput);
+  await user.type(nameInput, name);
 }
 
 export async function fillBaseUrl(user: ReturnType<typeof userEvent.setup>, baseUrl: string) {

@@ -809,6 +809,8 @@ impl ApiFormat {
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct ApiAlias {
   pub id: String,
+  #[builder(default)]
+  pub name: String,
   pub api_format: ApiFormat,
   pub base_url: String,
   #[builder(default)]
@@ -833,6 +835,7 @@ impl ApiAlias {
   #[allow(clippy::too_many_arguments)]
   pub fn new(
     id: impl Into<String>,
+    name: impl Into<String>,
     api_format: ApiFormat,
     base_url: impl Into<String>,
     models: impl Into<ApiModelVec>,
@@ -844,6 +847,7 @@ impl ApiAlias {
   ) -> Self {
     Self {
       id: id.into(),
+      name: name.into(),
       api_format,
       base_url: base_url.into(),
       models: models.into(),
@@ -903,6 +907,7 @@ impl ApiAliasBuilder {
         .id
         .clone()
         .ok_or(BuilderError::UninitializedField("id"))?,
+      name: self.name.clone().unwrap_or_default(),
       api_format: self
         .api_format
         .clone()
@@ -1325,6 +1330,10 @@ pub enum RawApiKeyUpdate {
 #[builder(setter(into, strip_option), build_fn(error = BuilderError))]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct DefaultApiModelRequest {
+  /// User-provided descriptive name for this API model
+  #[validate(length(min = 1, max = 255))]
+  pub name: String,
+
   /// API base URL
   #[validate(custom(function = "crate::validate_http_url"))]
   pub base_url: String,
@@ -1365,6 +1374,10 @@ pub struct DefaultApiModelRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct LlmLibertyApiModelRequest {
+  /// User-provided descriptive name for this API model
+  #[validate(length(min = 1, max = 255))]
+  pub name: String,
+
   /// Envelope update action — Keep (update only) or Set (create/replace credentials).
   #[serde(default)]
   pub envelope: super::llm_liberty_envelope::LlmLibertyEnvelopeUpdate,
@@ -1442,6 +1455,17 @@ impl ApiModelRequest {
       | Self::AnthropicOauth(d)
       | Self::Gemini(d) => &d.models,
       Self::LlmLibertyOauth(d) => &d.models,
+    }
+  }
+
+  pub fn name(&self) -> &str {
+    match self {
+      Self::Openai(d)
+      | Self::OpenaiResponses(d)
+      | Self::Anthropic(d)
+      | Self::AnthropicOauth(d)
+      | Self::Gemini(d) => &d.name,
+      Self::LlmLibertyOauth(d) => &d.name,
     }
   }
 
@@ -2054,6 +2078,7 @@ impl ModelAliasResponse {
 pub struct ApiAliasResponse {
   pub source: String,
   pub id: String,
+  pub name: String,
   pub api_format: ApiFormat,
   pub base_url: String,
   pub has_api_key: bool,
@@ -2080,6 +2105,7 @@ impl From<ApiAlias> for ApiAliasResponse {
     Self {
       source: "api".to_string(),
       id: alias.id,
+      name: alias.name,
       api_format: alias.api_format,
       base_url: alias.base_url,
       has_api_key: false,

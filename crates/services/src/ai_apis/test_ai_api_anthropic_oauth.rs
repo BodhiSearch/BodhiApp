@@ -43,6 +43,7 @@ async fn test_test_prompt_anthropic_oauth_success() -> anyhow::Result<()> {
 
   let alias = ApiAlias::new(
     String::new(),
+    "Anthropic OAuth",
     ApiFormat::AnthropicOAuth,
     url.clone(),
     vec![],
@@ -95,6 +96,7 @@ async fn test_fetch_models_anthropic_oauth_success() -> anyhow::Result<()> {
 
   let alias = ApiAlias::new(
     String::new(),
+    "Anthropic OAuth",
     ApiFormat::AnthropicOAuth,
     url.clone(),
     vec![],
@@ -133,6 +135,7 @@ async fn test_forward_request_anthropic_oauth_merges_body() -> anyhow::Result<()
 
   let api_alias = ApiAlias::new(
     "anthropic-oauth-api",
+    "Anthropic OAuth API",
     ApiFormat::AnthropicOAuth,
     &url,
     vec![openai_model("claude-sonnet-4-5-20250929")],
@@ -197,6 +200,7 @@ async fn test_forward_request_anthropic_oauth_prepends_system() -> anyhow::Resul
 
   let api_alias = ApiAlias::new(
     "anthropic-oauth-api",
+    "Anthropic OAuth API",
     ApiFormat::AnthropicOAuth,
     &url,
     vec![openai_model("claude-sonnet-4-5-20250929")],
@@ -263,6 +267,7 @@ async fn test_forward_request_anthropic_oauth_version_injected_when_absent() -> 
 
   let api_alias = ApiAlias::new(
     "anthropic-oauth-api",
+    "Anthropic OAuth API",
     ApiFormat::AnthropicOAuth,
     &url,
     vec![openai_model("claude-sonnet-4-5-20250929")],

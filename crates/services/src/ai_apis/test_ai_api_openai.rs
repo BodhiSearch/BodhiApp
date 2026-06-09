@@ -9,6 +9,7 @@ use rstest::rstest;
 fn make_openai_alias(url: &str) -> ApiAlias {
   ApiAlias::new(
     String::new(),
+    "Test OpenAI",
     ApiFormat::OpenAI,
     url,
     vec![],
@@ -23,6 +24,7 @@ fn make_openai_alias(url: &str) -> ApiAlias {
 fn make_alias_for(url: &str, format: ApiFormat) -> ApiAlias {
   ApiAlias::new(
     String::new(),
+    "test-name",
     format,
     url,
     vec![],

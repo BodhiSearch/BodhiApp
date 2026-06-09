@@ -57,9 +57,7 @@ function loadEnvelope() {
     );
   }
   if (parsed.provider !== 'anthropic') {
-    throw new Error(
-      `[llm-liberty/anthropic] anthropic.json provider="${parsed.provider}", expected "anthropic".`
-    );
+    throw new Error(`[llm-liberty/anthropic] anthropic.json provider="${parsed.provider}", expected "anthropic".`);
   }
   if (!parsed.access_token || !parsed.refresh_token) {
     throw new Error(
@@ -69,9 +67,7 @@ function loadEnvelope() {
 
   const expiresAt = Number(parsed.expires_at);
   if (!Number.isFinite(expiresAt)) {
-    throw new Error(
-      `[llm-liberty/anthropic] anthropic.json expires_at="${parsed.expires_at}" is not a number.`
-    );
+    throw new Error(`[llm-liberty/anthropic] anthropic.json expires_at="${parsed.expires_at}" is not a number.`);
   }
   const nowSec = Math.floor(Date.now() / 1000);
   if (expiresAt <= nowSec) {
@@ -129,6 +125,7 @@ test.describe('LLM Liberty OAuth - Anthropic end-to-end (local only)', () => {
 
     // 2. Switch to LLM Liberty OAuth and paste the envelope.
     await apiModelFormPage.form.selectApiFormat('llm_liberty_oauth');
+    await apiModelFormPage.form.fillName('LLM Liberty Anthropic');
     await apiModelFormPage.form.fillLlmLibertyEnvelope(envelope);
 
     // 3. Fetch models from Anthropic via the stored OAuth token, then pick Haiku.

@@ -49,6 +49,7 @@ async fn app_with_api_alias(
   let db = Arc::new(db_service);
   let api = ApiAlias::new(
     "oai",
+    "OpenAI Alias",
     ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     vec![openai_model("gpt-4")],

@@ -99,6 +99,7 @@ async fn create_201_with_valid_envelope(
     .await?;
 
   let req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    name: "Liberty Anthropic".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(valid_envelope()),
     models: vec!["claude-haiku-4-5-20251001".into()],
     prefix: None,
@@ -111,6 +112,7 @@ async fn create_201_with_valid_envelope(
   assert_eq!(StatusCode::CREATED, response.status());
 
   let body = response.json::<ApiAliasResponse>().await?;
+  assert_eq!("Liberty Anthropic", body.name);
   assert_eq!(ApiFormat::LlmLibertyOauth, body.api_format);
   let summary = body.llm_liberty.expect("llm_liberty summary");
   assert_eq!("anthropic", summary.provider);
@@ -138,6 +140,7 @@ async fn create_400_when_envelope_version_unsupported(
   let mut env = valid_envelope();
   env.version = "2.0.0".into();
   let req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    name: "Liberty Bad Version".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(env),
     models: vec!["claude-haiku-4-5-20251001".into()],
     prefix: None,
@@ -188,6 +191,7 @@ async fn create_400_when_required_envelope_field_missing(
   let mut env = valid_envelope();
   mutator(&mut env);
   let req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    name: "Liberty Missing Field".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(env),
     models: vec!["claude-haiku-4-5-20251001".into()],
     prefix: None,
@@ -234,6 +238,7 @@ async fn create_400_when_envelope_provider_unsupported(
   let mut env = valid_envelope();
   env.provider = "google-gemini".into();
   let req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    name: "Liberty Bad Provider".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(env),
     models: vec!["gemini-model".into()],
     prefix: None,
@@ -286,6 +291,7 @@ async fn update_replaces_credentials_when_envelope_set(
 
   // Create
   let create_req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    name: "Liberty Created".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(valid_envelope()),
     models: vec!["claude-haiku-4-5-20251001".into()],
     prefix: None,
@@ -303,6 +309,7 @@ async fn update_replaces_credentials_when_envelope_set(
   new_env.access_token = "access-rotated".into();
   new_env.refresh_token = "refresh-rotated".into();
   let update_req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    name: "Liberty Rotated".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(new_env),
     models: vec!["claude-haiku-4-5-20251001".into()],
     prefix: None,
@@ -369,6 +376,7 @@ async fn update_keeps_credentials_when_envelope_keep(
 
   // Create
   let create_req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    name: "Liberty Created".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(valid_envelope()),
     models: vec!["claude-haiku-4-5-20251001".into()],
     prefix: None,
@@ -383,6 +391,7 @@ async fn update_keeps_credentials_when_envelope_keep(
 
   // Update with envelope=Keep — alias-scope-only change.
   let update_req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
+    name: "Liberty Kept".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Keep,
     models: vec!["claude-haiku-4-5-20251001".into()],
     prefix: Some("liberty-".into()),

@@ -12,6 +12,7 @@ import { ExtrasSection } from '@/components/api-models/form/ExtrasSection';
 import { ForwardModeSelector } from '@/components/api-models/form/ForwardModeSelector';
 import { LlmLibertyEnvelopeInput } from '@/components/api-models/form/LlmLibertyEnvelopeInput';
 import { ModelSelectionSection } from '@/components/api-models/form/ModelSelectionSection';
+import { NameInput } from '@/components/api-models/form/NameInput';
 import { PrefixInput } from '@/components/api-models/form/PrefixInput';
 import { useApiModelForm } from '@/components/api-models/hooks/useApiModelForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,6 +85,9 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Name (user-provided descriptive label) */}
+          <NameInput {...formLogic.register('name')} error={formLogic.errors.name?.message} />
+
           {/* API Format Selection */}
           <ApiFormatSelector
             value={formLogic.watchedValues.api_format}

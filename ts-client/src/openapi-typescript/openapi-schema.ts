@@ -1334,6 +1334,7 @@ export interface components {
         };
         ApiAlias: {
             id: string;
+            name: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
             models: components["schemas"]["ApiModelVec"];
@@ -1350,6 +1351,7 @@ export interface components {
         ApiAliasResponse: {
             source: string;
             id: string;
+            name: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
             has_api_key: boolean;
@@ -1759,6 +1761,8 @@ export interface components {
         /** @description Inner request shape for the five non-llm-liberty `api_format` values.
          *     Shared across `openai`, `openai_responses`, `anthropic`, `anthropic_oauth`, `gemini`. */
         DefaultApiModelRequest: {
+            /** @description User-provided descriptive name for this API model */
+            name: string;
             /** @description API base URL */
             base_url: string;
             /** @description API key update action (Keep/Set with Some or None) */
@@ -1949,6 +1953,8 @@ export interface components {
         /** @description Request shape for `api_format == "llm_liberty_oauth"`. Carries the full envelope
          *     (or `Keep` to leave existing credentials untouched on update). */
         LlmLibertyApiModelRequest: {
+            /** @description User-provided descriptive name for this API model */
+            name: string;
             /** @description Envelope update action — Keep (update only) or Set (create/replace credentials). */
             envelope?: components["schemas"]["LlmLibertyEnvelopeUpdate"];
             /** @description List of available models */

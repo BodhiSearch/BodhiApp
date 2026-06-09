@@ -26,8 +26,10 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 /// Create expected ApiAliasResponse for testing
+#[allow(clippy::too_many_arguments)]
 fn create_expected_response(
   id: &str,
+  name: &str,
   api_format: &str,
   base_url: &str,
   has_api_key: bool,
@@ -40,6 +42,7 @@ fn create_expected_response(
   ApiAliasResponse {
     source: "api".to_string(),
     id: id.to_string(),
+    name: name.to_string(),
     api_format: services::ApiFormat::from_str(api_format).unwrap(),
     base_url: base_url.to_string(),
     has_api_key,
@@ -124,6 +127,7 @@ async fn test_get_api_model_handler_success(
   // Create expected response
   let expected_response = create_expected_response(
     "openai-gpt4",
+    "test-name", // seed fixture (test_default builder) sets name = "test-name"
     "openai",
     "https://api.openai.com/v1",
     true, // has_api_key
@@ -210,6 +214,7 @@ async fn test_update_api_model_handler_success(
   let update_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Updated OpenAI Models".to_string(),
       base_url: input_url.to_string(), // Updated URL with potential trailing slashes
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-updated123456789".to_string())?), // New API key
       models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
@@ -234,6 +239,7 @@ async fn test_update_api_model_handler_success(
   // Create expected response with updated values
   let expected_response = create_expected_response(
     "openai-gpt4",
+    "Updated OpenAI Models", // Updated name
     "openai",
     expected_url, // Expected URL with trailing slashes removed
     true,         // has_api_key (updated key)
@@ -266,6 +272,7 @@ async fn test_update_api_model_handler_not_found(
   let update_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Nonexistent Model".to_string(),
       base_url: "https://api.openai.com/v2".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-updated123456789".to_string())?),
       models: vec!["gpt-4-turbo".to_string()],

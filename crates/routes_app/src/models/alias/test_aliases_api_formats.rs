@@ -41,6 +41,7 @@ async fn test_models_index_includes_anthropic_oauth_alias() -> anyhow::Result<()
 
   let api_alias = ApiAlias::new(
     "anthropic-oauth-alias",
+    "Anthropic OAuth Alias",
     ApiFormat::AnthropicOAuth,
     "https://api.anthropic.com",
     vec![anthropic_model("claude-sonnet-4-5-20250929")],

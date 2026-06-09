@@ -112,6 +112,7 @@ impl ApiAliasRepository for DefaultDbService {
 
           let model = api_model_alias::ActiveModel {
             id: Set(alias.id.clone()),
+            name: Set(alias.name.clone()),
             tenant_id: Set(tenant_id_owned),
             user_id: Set(user_id),
             api_format: Set(alias.api_format.clone()),
@@ -181,6 +182,7 @@ impl ApiAliasRepository for DefaultDbService {
 
     let mut active = api_model_alias::ActiveModel {
       id: Set(id.clone()),
+      name: Set(model.name.clone()),
       api_format: Set(model.api_format.clone()),
       base_url: Set(model.base_url.clone()),
       models: Set(model.models.clone()),

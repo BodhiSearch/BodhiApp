@@ -85,6 +85,7 @@ beforeEach(() => {
 const mockApiAliasResponse: ApiAliasResponse = {
   source: 'api',
   id: 'test-api-model',
+  name: 'Test OpenAI Model',
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
   has_api_key: true, // Has API key
@@ -125,6 +126,11 @@ async function renderEditFormUsingStoredCreds() {
     });
   });
   return user;
+}
+
+// Types the required name field (added as a required field on the form).
+async function fillName(user: ReturnType<typeof userEvent.setup>, name = 'Test API Model') {
+  await user.type(screen.getByTestId('api-model-name-input'), name);
 }
 
 // Helper functions for model selection operations
@@ -263,6 +269,8 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
+      await fillName(user);
+
       await user.click(screen.getByTestId('api-key-input-checkbox'));
       await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
@@ -280,6 +288,68 @@ describe('ApiModelForm', () => {
       });
 
       expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
+    });
+
+    it('renders the required name input', async () => {
+      await act(async () => {
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+      });
+
+      expect(screen.getByTestId('api-model-name-input')).toBeInTheDocument();
+    });
+
+    it('shows validation error when name is empty on submit', async () => {
+      const user = userEvent.setup();
+
+      await act(async () => {
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+      });
+
+      await user.click(screen.getByTestId('api-key-input-checkbox'));
+      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
+
+      await fetchModelsAndWait(user);
+      await selectModel(user, 'gpt-4');
+
+      // Submit without typing a name.
+      await user.click(screen.getByTestId('create-api-model-button'));
+
+      await waitFor(() => {
+        const errorMessage = screen.queryByTestId('api-model-name-input-error');
+        expect(errorMessage).toBeInTheDocument();
+        expect(errorMessage).toHaveTextContent(/name is required/i);
+      });
+    });
+
+    it('includes the typed name in the create request payload', async () => {
+      const user = userEvent.setup();
+
+      let capturedRequestBody: Record<string, unknown> | undefined;
+      server.use(
+        typedHttp.post('/bodhi/v1/models/api', async ({ request, response }) => {
+          capturedRequestBody = await request.json();
+          return response(201 as const).json(mockApiAliasResponse);
+        })
+      );
+
+      await act(async () => {
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+      });
+
+      await fillName(user, 'My Custom API Model');
+
+      await user.click(screen.getByTestId('api-key-input-checkbox'));
+      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
+
+      await fetchModelsAndWait(user);
+      await selectModel(user, 'gpt-4');
+
+      await user.click(screen.getByTestId('create-api-model-button'));
+
+      await waitFor(() => {
+        expect(capturedRequestBody).toBeDefined();
+      });
+      expect(capturedRequestBody!.name).toBe('My Custom API Model');
     });
 
     it('enables fetch models button when base_url is present (regardless of API key)', async () => {
@@ -531,6 +601,8 @@ describe('ApiModelForm', () => {
           render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
         });
 
+        await fillName(user);
+
         await user.click(screen.getByTestId('api-key-input-checkbox'));
         await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
@@ -564,6 +636,8 @@ describe('ApiModelForm', () => {
         await act(async () => {
           render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
         });
+
+        await fillName(user);
 
         await user.click(screen.getByTestId('api-key-input-checkbox'));
         await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
@@ -764,6 +838,7 @@ describe('ApiModelForm', () => {
         });
 
         // Create API model without API key
+        await fillName(user);
         await user.click(screen.getByTestId('create-api-model-button'));
 
         await waitFor(() => {
@@ -1032,6 +1107,7 @@ describe('ApiModelForm', () => {
         );
 
         const user = await renderCreateFormWithApiKey('sk-test123');
+        await fillName(user);
         await fetchModelsAndWait(user);
         await selectModel(user, 'gpt-4');
         await user.click(screen.getByTestId('create-api-model-button'));

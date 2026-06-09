@@ -8,6 +8,7 @@ use sea_orm::FromQueryResult;
 pub struct Model {
   #[sea_orm(primary_key, auto_increment = false)]
   pub id: String,
+  pub name: String,
   pub tenant_id: String,
   pub user_id: String,
   pub api_format: ApiFormat,
@@ -41,6 +42,7 @@ pub type ApiModelEntity = Model;
 #[sea_orm(entity = "Entity")]
 pub struct ApiAliasView {
   pub id: String,
+  pub name: String,
   pub user_id: String,
   pub api_format: ApiFormat,
   pub base_url: String,
@@ -57,6 +59,7 @@ impl From<ApiAliasView> for crate::models::ApiAlias {
   fn from(v: ApiAliasView) -> Self {
     crate::models::ApiAlias {
       id: v.id,
+      name: v.name,
       api_format: v.api_format,
       base_url: v.base_url,
       models: v.models,

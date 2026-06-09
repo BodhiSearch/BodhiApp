@@ -94,6 +94,7 @@ const mockUnifiedModels: AliasResponse[] = [
   {
     source: 'api',
     id: 'openai-api',
+    name: 'OpenAI API',
     api_format: 'openai' as const,
     base_url: 'https://api.openai.com/v1',
     has_api_key: true,
@@ -108,6 +109,7 @@ const mockUnifiedModels: AliasResponse[] = [
   {
     source: 'api',
     id: 'anthropic-api',
+    name: 'Anthropic API',
     api_format: 'anthropic' as const,
     base_url: 'https://api.anthropic.com/v1',
     has_api_key: true,
@@ -324,6 +326,7 @@ describe('AliasSelector', () => {
         {
           source: 'api',
           id: 'empty-api',
+          name: 'Empty API',
           api_format: 'openai' as const,
           base_url: 'https://api.example.com/v1',
           has_api_key: false,
@@ -457,6 +460,7 @@ describe('AliasSelector', () => {
           {
             source: 'api',
             id: 'test-api',
+            name: 'Test API',
             api_format: apiFormat,
             base_url: 'https://api.example.com/v1',
             has_api_key: true,

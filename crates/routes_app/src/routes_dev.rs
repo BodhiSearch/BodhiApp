@@ -313,6 +313,7 @@ mod tests {
     // Create API model alias
     let api_alias = services::ApiAlias {
       id: "test-api-alias".to_string(),
+      name: "Test API Alias".to_string(),
       api_format: ApiFormat::OpenAI,
       base_url: "http://localhost".to_string(),
       models: vec![services::ApiModel::OpenAI(

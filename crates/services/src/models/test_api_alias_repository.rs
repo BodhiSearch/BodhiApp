@@ -21,6 +21,7 @@ async fn test_api_model_alias_crud(
   let ctx = sea_context(db_type).await;
   let alias = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com".to_string(),
     models: vec![openai_model("gpt-4")].into(),
@@ -68,6 +69,7 @@ async fn test_update_api_model_alias(
   let ctx = sea_context(db_type).await;
   let alias = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com".to_string(),
     models: vec![openai_model("gpt-4")].into(),
@@ -157,6 +159,7 @@ async fn test_update_api_model_alias_prefix_conflict(
   let ctx = sea_context(db_type).await;
   let alias1 = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::OpenAI,
     base_url: "https://api1.example.com".to_string(),
     models: vec![].into(),
@@ -169,6 +172,7 @@ async fn test_update_api_model_alias_prefix_conflict(
   };
   let alias2 = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::OpenAI,
     base_url: "https://api2.example.com".to_string(),
     models: vec![].into(),
@@ -216,6 +220,7 @@ async fn test_update_api_model_models(
   let ctx = sea_context(db_type).await;
   let alias = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::OpenAI,
     base_url: "https://api.example.com".to_string(),
     models: vec![openai_model("gpt-4")].into(),
@@ -265,6 +270,7 @@ async fn test_api_model_alias_extra_fields_roundtrip(
   // Round-trip with non-null extra fields
   let alias_with_extras = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::AnthropicOAuth,
     base_url: "https://api.anthropic.com/v1".to_string(),
     models: vec![].into(),
@@ -293,6 +299,7 @@ async fn test_api_model_alias_extra_fields_roundtrip(
   // Round-trip with null extra fields
   let alias_null_extras = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::AnthropicOAuth,
     base_url: "https://api.anthropic.com/v1".to_string(),
     models: vec![].into(),
@@ -334,6 +341,7 @@ async fn test_api_model_alias_gemini_roundtrip(
   let gemini = gemini_model("gemini-2.5-flash");
   let alias = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::Gemini,
     base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
     models: vec![ApiModel::Gemini(gemini.clone())].into(),
@@ -393,6 +401,7 @@ async fn test_api_model_alias_gemini_prefixed_roundtrip(
 
   let alias = ApiAlias {
     id: new_ulid(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::Gemini,
     base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
     models: vec![ApiModel::Gemini(gemini.clone())].into(),

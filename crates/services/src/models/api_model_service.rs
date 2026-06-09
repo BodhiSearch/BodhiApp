@@ -355,6 +355,7 @@ impl DefaultApiModelService {
       .for_alias(
         &Alias::Api(ApiAlias::new(
           String::new(),
+          String::new(),
           api_format.clone(),
           base_url.clone(),
           vec![],
@@ -375,6 +376,7 @@ impl DefaultApiModelService {
 
     let api_alias = ApiAlias::new(
       id,
+      form.name,
       api_format,
       base_url,
       models,
@@ -430,6 +432,7 @@ impl DefaultApiModelService {
 
     let api_alias = ApiAlias::new(
       id,
+      form.name,
       api_format,
       envelope.api.base_url.clone(),
       models,
@@ -488,6 +491,7 @@ impl DefaultApiModelService {
       .for_alias(
         &Alias::Api(ApiAlias::new(
           api_alias.id.clone(),
+          api_alias.name.clone(),
           api_format.clone(),
           base_url.clone(),
           vec![],
@@ -506,6 +510,7 @@ impl DefaultApiModelService {
 
     let models = filter_models(provider_models, form.forward_all_with_prefix, &form.models)?;
 
+    api_alias.name = form.name;
     api_alias.api_format = api_format;
     api_alias.base_url = base_url;
     api_alias.models = models.into();
@@ -585,6 +590,7 @@ impl DefaultApiModelService {
 
     let models = filter_models(provider_models, form.forward_all_with_prefix, &form.models)?;
 
+    api_alias.name = form.name;
     api_alias.api_format = api_format;
     api_alias.base_url = new_base_url;
     api_alias.models = models.into();

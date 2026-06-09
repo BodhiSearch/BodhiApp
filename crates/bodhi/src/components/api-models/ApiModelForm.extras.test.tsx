@@ -68,6 +68,7 @@ beforeEach(() => {
 const mockApiAliasResponse: ApiAliasResponse = {
   source: 'api',
   id: 'test-api-model',
+  name: 'Test OpenAI Model',
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
   has_api_key: true,
@@ -230,6 +231,8 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
     });
 
+    await user.type(screen.getByTestId('api-model-name-input'), 'Anthropic Setup Token Model');
+
     await user.clear(screen.getByTestId('extra-headers-input'));
     await user.clear(screen.getByTestId('extra-body-input'));
 
@@ -274,6 +277,8 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
     });
+
+    await user.type(screen.getByTestId('api-model-name-input'), 'Anthropic Setup Token Model');
 
     const headersInput = screen.getByTestId('extra-headers-input');
     fireEvent.change(headersInput, { target: { value: JSON.stringify(customHeaders) } });
@@ -320,6 +325,8 @@ describe('ApiModelForm - Extras fields (extra_headers and extra_body)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('extra-headers-input')).toBeInTheDocument();
     });
+
+    await user.type(screen.getByTestId('api-model-name-input'), 'Anthropic Setup Token Model');
 
     const headersInput = screen.getByTestId('extra-headers-input');
     fireEvent.change(headersInput, { target: { value: rawValue } });

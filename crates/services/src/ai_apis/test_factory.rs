@@ -12,6 +12,7 @@ use rstest::rstest;
 fn make_alias(format: ApiFormat) -> ApiAlias {
   ApiAlias::new(
     "test-alias".to_string(),
+    "Test Alias",
     format,
     "https://api.example.com/v1",
     vec![],

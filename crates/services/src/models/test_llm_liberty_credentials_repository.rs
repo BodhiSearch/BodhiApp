@@ -52,6 +52,7 @@ async fn create_alias(
 ) -> anyhow::Result<()> {
   let alias = ApiAlias::new(
     id,
+    "test-name",
     ApiFormat::LlmLibertyOauth,
     "https://api.anthropic.com/v1",
     ApiModelVec::default(),

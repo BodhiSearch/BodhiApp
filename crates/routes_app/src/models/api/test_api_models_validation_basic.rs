@@ -114,6 +114,7 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
       models: vec!["gpt-4".to_string()],
@@ -158,6 +159,7 @@ async fn test_create_api_model_handler_validation_error_empty_models(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
       models: vec![], // Invalid: empty models array
@@ -207,6 +209,7 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
       models: vec![], // Empty models is valid for forward_all mode
@@ -251,6 +254,7 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
       models: vec![],
@@ -354,6 +358,7 @@ fn test_anthropic_oauth_format_accepted_by_api_model_request() {
   let request = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string()).unwrap()),
       models: vec!["claude-3-5-sonnet".to_string()],
@@ -383,6 +388,7 @@ fn test_api_model_request_rejects_pass_through_auth_in_extra_headers(
   let request = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-token".to_string()).unwrap()),
       models: vec!["claude-3".to_string()],
@@ -453,6 +459,7 @@ async fn test_create_api_model_http_error_code_for_pass_through_auth(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-token".to_string())?),
       models: vec!["claude-3".to_string()],
@@ -496,6 +503,7 @@ async fn test_create_api_model_http_error_code_for_x_goog_api_key(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::Gemini,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("AIza-token".to_string())?),
       models: vec!["gemini-2.5-flash".to_string()],
@@ -512,5 +520,82 @@ async fn test_create_api_model_http_error_code_for_x_goog_api_key(
   let error = response.json::<serde_json::Value>().await?;
   let code = error["error"]["code"].as_str().unwrap_or("");
   assert_eq!("api_model_service_error-validation", code);
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_api_model_handler_validation_error_missing_name(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .build()
+    .await?;
+
+  // `name` omitted entirely — has no serde default, so deserialization fails.
+  let json_request = json!({
+    "api_format": "openai",
+    "base_url": "https://api.openai.com/v1",
+    "api_key": {"action": "set", "value": "sk-test123456789"},
+    "models": ["gpt-4"]
+  });
+
+  let response = test_router(Arc::new(app_service))
+    .oneshot(Request::post(ENDPOINT_MODELS_API).json(json_request)?)
+    .await?;
+
+  assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+  let error_response = response.json::<serde_json::Value>().await?;
+  let error_code = error_response["error"]["code"].as_str().unwrap();
+  assert_eq!("json_rejection_error", error_code);
+
+  Ok(())
+}
+
+#[rstest]
+#[case::empty("")]
+#[case::too_long(&"a".repeat(256))]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_api_model_handler_validation_error_invalid_name(
+  #[case] name: &str,
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+) -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .db_service(Arc::new(db_service))
+    .build()
+    .await?;
+
+  let create_form = ApiModelRequest::default_for(
+    ApiFormat::OpenAI,
+    DefaultApiModelRequest {
+      name: name.to_string(), // Invalid: empty or > 255 chars
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123456789".to_string())?),
+      models: vec!["gpt-4".to_string()],
+      prefix: None,
+      forward_all_with_prefix: false,
+      extra_headers: None,
+      extra_body: None,
+    },
+  );
+
+  let response = test_router(Arc::new(app_service))
+    .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
+    .await?;
+
+  assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+  let error_response = response.json::<serde_json::Value>().await?;
+  let error_code = error_response["error"]["code"].as_str().unwrap();
+  assert_eq!("validation_error", error_code);
+
   Ok(())
 }

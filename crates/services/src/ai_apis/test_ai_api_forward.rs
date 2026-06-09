@@ -10,6 +10,7 @@ use serde_json::{json, Value};
 fn make_api_alias(url: &str) -> ApiAlias {
   ApiAlias::new(
     "test-api",
+    "Test API",
     ApiFormat::OpenAI,
     url,
     vec![openai_model("gpt-4")],
@@ -61,6 +62,7 @@ async fn test_forward_chat_completion_model_prefix_handling(
 
   let api_alias = ApiAlias::new(
     api_id,
+    "test-name",
     api_format,
     &url,
     models,
@@ -124,6 +126,7 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
 
   let api_alias = ApiAlias::new(
     api_id,
+    "test-name",
     ApiFormat::OpenAI,
     &url,
     vec![openai_model("gpt-4")],
@@ -238,6 +241,7 @@ async fn test_forward_request_with_method_anthropic_headers() -> anyhow::Result<
 
   let api_alias = ApiAlias::new(
     "anthropic-api",
+    "Anthropic API",
     ApiFormat::Anthropic,
     &url,
     vec![openai_model("claude-sonnet-4-5-20250929")],
@@ -283,6 +287,7 @@ async fn test_forward_request_with_method_client_headers_forwarded() -> anyhow::
 
   let api_alias = ApiAlias::new(
     "anthropic-api",
+    "Anthropic API",
     ApiFormat::Anthropic,
     &url,
     vec![openai_model("claude-sonnet-4-5-20250929")],
@@ -333,6 +338,7 @@ async fn test_forward_request_client_anthropic_version_used_not_default() -> any
 
   let api_alias = ApiAlias::new(
     "anthropic-api",
+    "Anthropic API",
     ApiFormat::Anthropic,
     &url,
     vec![openai_model("claude-sonnet-4-5-20250929")],
@@ -383,6 +389,7 @@ async fn test_forward_request_default_anthropic_version_injected_when_absent() -
 
   let api_alias = ApiAlias::new(
     "anthropic-api",
+    "Anthropic API",
     ApiFormat::Anthropic,
     &url,
     vec![openai_model("claude-sonnet-4-5-20250929")],
@@ -434,7 +441,10 @@ async fn test_forward_response_strips_hop_by_hop_headers() -> anyhow::Result<()>
     .with_header("transfer-encoding", "chunked")
     .with_header("connection", "keep-alive")
     .with_header("keep-alive", "timeout=60")
-    .with_header("set-cookie", "_cfuvid=abc123; HttpOnly; SameSite=None; Secure")
+    .with_header(
+      "set-cookie",
+      "_cfuvid=abc123; HttpOnly; SameSite=None; Secure",
+    )
     .with_header("x-custom-header", "preserved")
     .with_body(r#"data: {"choices":[]}"#)
     .create_async()
@@ -459,11 +469,17 @@ async fn test_forward_response_strips_hop_by_hop_headers() -> anyhow::Result<()>
   assert!(response.headers().get("set-cookie").is_none());
   // end-to-end headers must be preserved
   assert_eq!(
-    response.headers().get("content-type").map(|v| v.to_str().unwrap()),
+    response
+      .headers()
+      .get("content-type")
+      .map(|v| v.to_str().unwrap()),
     Some("text/event-stream")
   );
   assert_eq!(
-    response.headers().get("x-custom-header").map(|v| v.to_str().unwrap()),
+    response
+      .headers()
+      .get("x-custom-header")
+      .map(|v| v.to_str().unwrap()),
     Some("preserved")
   );
   Ok(())

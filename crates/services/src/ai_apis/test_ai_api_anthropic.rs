@@ -9,6 +9,7 @@ use rstest::rstest;
 fn make_anthropic_alias(url: &str) -> ApiAlias {
   ApiAlias::new(
     String::new(),
+    "Test Anthropic",
     ApiFormat::Anthropic,
     url,
     vec![],

@@ -11,6 +11,7 @@ use serial_test::serial;
 fn make_alias(id: &str, prefix: &str, now: DateTime<Utc>) -> ApiAlias {
   ApiAlias {
     id: id.to_string(),
+    name: "test-name".to_string(),
     api_format: ApiFormat::OpenAI,
     base_url: format!("https://{}.example.com/v1", id),
     models: Default::default(),

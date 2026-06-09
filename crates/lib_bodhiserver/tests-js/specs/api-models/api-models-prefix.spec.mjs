@@ -45,7 +45,7 @@ test.describe('API Models Prefix Functionality', () => {
     await formPage.form.testConnection();
     const modelId = await formPage.createModelAndCaptureId();
 
-    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL);
+    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'Test API Model');
     await modelsPage.clickChatWithModel(ApiModelFixtures.OPENAI_MODEL);
     await chatPage.expectChatPageWithModel(ApiModelFixtures.OPENAI_MODEL);
 
@@ -65,7 +65,7 @@ test.describe('API Models Prefix Functionality', () => {
     const modelId = await formPage.createModelAndCaptureId();
 
     const prefixedModel = `test/${ApiModelFixtures.OPENAI_MODEL}`;
-    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL);
+    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'Test API Model');
     await modelsPage.clickChatWithModel(prefixedModel);
     await chatPage.expectChatPageWithModel(prefixedModel);
 
@@ -177,6 +177,35 @@ test.describe('API Models Prefix Functionality', () => {
     await modelsPage.deleteModel(modelId);
   });
 
+  test('name persists across edit: rename updates list display', async ({ page }) => {
+    await loginPage.performOAuthLogin();
+    await modelsPage.navigateToModels();
+    await modelsPage.clickNewApiModel();
+
+    // Create with a known name.
+    await formPage.form.waitForFormReady();
+    await formPage.form.fillBasicInfo(apiKey, OPENAI_BASE_URL, 'My Original Name');
+    await formPage.form.fetchAndSelectModels([ApiModelFixtures.OPENAI_MODEL]);
+    await formPage.form.testConnection();
+    const modelId = await formPage.createModelAndCaptureId();
+
+    // List shows the original name.
+    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'My Original Name');
+
+    // Edit: rename and save.
+    await modelsPage.editModel(modelId);
+    await formPage.form.waitForFormReady();
+    expect(await formPage.form.getName()).toBe('My Original Name');
+    await formPage.form.fillName('My Renamed Model');
+    await formPage.updateModel();
+
+    // List now shows the new name.
+    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'My Renamed Model');
+
+    await modelsPage.navigateToModels();
+    await modelsPage.deleteModel(modelId);
+  });
+
   test('empty prefix acts like no prefix', async ({ page }) => {
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
@@ -189,7 +218,7 @@ test.describe('API Models Prefix Functionality', () => {
     await formPage.form.fetchAndSelectModels([ApiModelFixtures.OPENAI_MODEL]);
     const modelId = await formPage.createModelAndCaptureId();
 
-    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL);
+    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'Test API Model');
     // Model appears with bare name (no prefix)
     await modelsPage.clickChatWithModel(ApiModelFixtures.OPENAI_MODEL);
     await chatPage.expectChatPageWithModel(ApiModelFixtures.OPENAI_MODEL);
@@ -210,7 +239,7 @@ test.describe('API Models Prefix Functionality', () => {
     const modelId = await formPage.createModelAndCaptureId();
 
     // Stored URL should have trailing slash stripped
-    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL);
+    await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'Test API Model');
 
     await modelsPage.navigateToModels();
     await modelsPage.deleteModel(modelId);

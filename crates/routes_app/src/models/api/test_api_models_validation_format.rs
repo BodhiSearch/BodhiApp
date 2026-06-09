@@ -97,6 +97,7 @@ async fn test_update_api_model_rejects_keep_when_api_format_changes(
   let update_form = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
+      name: "Test API".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Keep,
       models: vec![],

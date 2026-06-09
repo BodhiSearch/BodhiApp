@@ -46,6 +46,7 @@ async fn seed_api_alias(
 ) -> anyhow::Result<()> {
   let api = ApiAlias::new(
     id,
+    "test-name",
     format,
     "https://upstream.example.com/v1",
     vec![openai_model("gpt-4")],

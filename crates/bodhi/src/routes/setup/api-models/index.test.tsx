@@ -23,6 +23,7 @@ import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 // Import API model test utilities
 import {
   fillApiKey,
+  fillName,
   testConnection,
   fetchModels,
   selectModels,
@@ -279,6 +280,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       await selectApiFormat(user, 'openai');
 
       // Fill API key
+      await fillName(user, 'Test API Model');
       await fillApiKey(user, 'sk-test-key-123');
 
       // Test connection
@@ -332,6 +334,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
 
       // Fill valid form data
       await selectApiFormat(user, 'openai');
+      await fillName(user, 'Test API Model');
       await fillApiKey(user, 'sk-test-key-123');
 
       // Test connection successfully

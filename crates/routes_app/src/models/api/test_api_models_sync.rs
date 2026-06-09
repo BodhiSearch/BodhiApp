@@ -100,6 +100,7 @@ async fn test_sync_models_handler_success(
   let create_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Sync Forward-All Model".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123".to_string())?),
       models: vec![],
@@ -264,6 +265,7 @@ async fn test_sync_models_rejects_non_forward_all(
   let create_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
+      name: "Sync Non-Forward-All Model".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test123".to_string())?),
       models: vec!["gpt-4".to_string()],
@@ -346,6 +348,7 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
   let create_form = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
+      name: "Sync Anthropic OAuth Model".to_string(),
       base_url: "https://api.anthropic.com/v1".to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-ant-oat01-token".to_string())?),
       models: vec![],

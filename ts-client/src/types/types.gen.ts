@@ -136,6 +136,7 @@ export type AnthropicModelCapabilities = {
 
 export type ApiAlias = {
     id: string;
+    name: string;
     api_format: ApiFormat;
     base_url: string;
     models: ApiModelVec;
@@ -153,6 +154,7 @@ export type ApiAlias = {
 export type ApiAliasResponse = {
     source: string;
     id: string;
+    name: string;
     api_format: ApiFormat;
     base_url: string;
     has_api_key: boolean;
@@ -518,6 +520,10 @@ export type DashboardUser = {
  */
 export type DefaultApiModelRequest = {
     /**
+     * User-provided descriptive name for this API model
+     */
+    name: string;
+    /**
      * API base URL
      */
     base_url: string;
@@ -728,6 +734,10 @@ export type LlmLibertyApiEndpoints = {
  * (or `Keep` to leave existing credentials untouched on update).
  */
 export type LlmLibertyApiModelRequest = {
+    /**
+     * User-provided descriptive name for this API model
+     */
+    name: string;
     /**
      * Envelope update action — Keep (update only) or Set (create/replace credentials).
      */

@@ -43,14 +43,12 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
       async handleRequest(req, res, pathname) {
         if (pathname === '/models' && req.method === 'GET') {
           const isAnthropic = !!req.headers['anthropic-version'];
-          const data = MOCK_MODELS.map((id) =>
+          const data = MOCK_MODELS.map(id =>
             isAnthropic
               ? { id, display_name: id, created_at: '2024-01-01T00:00:00Z', type: 'model' }
               : { id, object: 'model', created: 0, owned_by: 'mock' }
           );
-          const body = JSON.stringify(
-            isAnthropic ? { data, has_more: false } : { object: 'list', data }
-          );
+          const body = JSON.stringify(isAnthropic ? { data, has_more: false } : { object: 'list', data });
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(body);
           return true;
@@ -63,7 +61,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
       async handleRequest(req, res, pathname) {
         // GET /models -> Gemini models list
         if (pathname === '/models' && req.method === 'GET') {
-          const models = MOCK_GEMINI_MODELS.map((id) => ({
+          const models = MOCK_GEMINI_MODELS.map(id => ({
             name: `models/${id}`,
             version: '001',
             displayName: id,
@@ -147,6 +145,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         // Create model WITH API key
         await formPage.form.waitForFormReady();
         await formPage.form.selectApiFormat(formatConfig.format);
+        await formPage.form.fillName(`Mock ${formatConfig.format} with key`);
         await formPage.form.fillBaseUrl(mockServerUrl);
         await formPage.form.checkUseApiKey();
         await formPage.form.fillApiKey('test-key-initial');
@@ -232,6 +231,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         // Create model WITHOUT API key
         await formPage.form.waitForFormReady();
         await formPage.form.selectApiFormat(formatConfig.format);
+        await formPage.form.fillName(`Mock ${formatConfig.format} no key`);
         await formPage.form.fillBaseUrl(mockServerUrl);
         await formPage.form.uncheckUseApiKey();
         await formPage.form.clickFetchModels();

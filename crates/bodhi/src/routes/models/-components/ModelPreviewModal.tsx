@@ -9,8 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
 import { useRefreshSingleMetadata } from '@/hooks/models';
+import { useToast } from '@/hooks/use-toast';
 import { hasModelMetadata, hasLocalFileProperties, isApiAlias } from '@/lib/utils';
 import { getApiModelId } from '@/schemas/apiModel';
 
@@ -174,7 +174,7 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
               <div className="flex items-center justify-between py-1">
                 <span className="text-sm text-muted-foreground">Name</span>
                 <span className="text-sm font-medium" data-testid="preview-basic-alias">
-                  {isApiAlias(model) ? model.id : hasModelMetadata(model) ? model.alias : ''}
+                  {isApiAlias(model) ? model.name : hasModelMetadata(model) ? model.alias : ''}
                 </span>
               </div>
               {hasModelMetadata(model) && (
@@ -215,6 +215,7 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
                 <CardTitle className="text-base">API Configuration</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
+                <MetadataField label="Name" value={model.name} testId="preview-api-name" />
                 <MetadataField label="API Format" value={model.api_format} testId="preview-api-format" />
                 <div className="flex items-center justify-between py-1">
                   <span className="text-sm text-muted-foreground">Base URL</span>

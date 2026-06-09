@@ -297,6 +297,7 @@ async fn test_forward_request_api_alias_returns_unreachable(
 
   let api_alias = services::ApiAlias::new(
     "test-api",
+    "Test API",
     services::ApiFormat::OpenAI,
     "https://api.example.com/v1",
     vec![services::ApiModel::OpenAI(

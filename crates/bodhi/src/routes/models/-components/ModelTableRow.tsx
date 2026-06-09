@@ -3,7 +3,7 @@ import { AliasResponse } from '@bodhiapp/ts-client';
 import { CopyableContent } from '@/components/CopyableContent';
 import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
-import { isApiAlias, isUserAlias } from '@/lib/utils';
+import { isApiAlias } from '@/lib/utils';
 import { getApiModelId } from '@/schemas/apiModel';
 
 import { ModelActions, type ModelActionsProps } from './ModelActions';
@@ -26,7 +26,8 @@ const ModelTableRow = ({
 }: ModelTableRowProps) => [
   <TableCell key="combined" className="sm:hidden" data-testid={`combined-cell-${getItemId(model)}`}>
     <div className="flex flex-col gap-2">
-      <CopyableContent text={isApiAlias(model) ? model.id : model.alias} className="font-medium" />
+      <CopyableContent text={isApiAlias(model) ? model.name : model.alias} className="font-medium" />
+      {isApiAlias(model) && <CopyableContent text={model.id} className="text-xs text-muted-foreground" />}
       {isApiAlias(model) && (
         <div className="text-xs text-muted-foreground">
           Models: {model.models.map((m) => getApiModelId(m, model.prefix)).join(', ')}
@@ -52,7 +53,8 @@ const ModelTableRow = ({
     data-testid={`name-source-cell-${getItemId(model)}`}
   >
     <div className="flex flex-col gap-1">
-      <CopyableContent text={isApiAlias(model) ? model.id : model.alias} className="font-medium" />
+      <CopyableContent text={isApiAlias(model) ? model.name : model.alias} className="font-medium" />
+      {isApiAlias(model) && <CopyableContent text={model.id} className="text-xs text-muted-foreground truncate" />}
       {isApiAlias(model) && (
         <div className="text-xs text-muted-foreground truncate">
           {model.models
@@ -85,7 +87,8 @@ const ModelTableRow = ({
     data-model-type={isApiAlias(model) ? 'api' : 'local'}
   >
     <div className="flex flex-col gap-1">
-      <CopyableContent text={isApiAlias(model) ? model.id : model.alias} />
+      <CopyableContent text={isApiAlias(model) ? model.name : model.alias} className="font-medium" />
+      {isApiAlias(model) && <CopyableContent text={model.id} className="text-xs text-muted-foreground" />}
     </div>
   </TableCell>,
   <TableCell

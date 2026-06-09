@@ -74,6 +74,7 @@ fn create_form(base_url: &str) -> ApiModelRequest {
   ApiModelRequest::default_for(
     ApiFormat::OpenAI,
     DefaultApiModelRequest {
+      name: "Isolation Test Model".to_string(),
       base_url: base_url.to_string(),
       api_key: ApiKeyUpdate::Set(ApiKey::some("sk-test-key-12345".to_string()).unwrap()),
       models: vec!["gpt-4".to_string()],

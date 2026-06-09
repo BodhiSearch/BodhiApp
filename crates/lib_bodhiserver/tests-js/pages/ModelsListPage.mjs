@@ -9,27 +9,27 @@ export class ModelsListPage extends BasePage {
     newModelAliasButton: '[data-testid="new-model-alias-button"]',
     newModelRouterButton: '[data-testid="new-model-router-button"]',
     // Simplified API model selectors using consistent data attributes
-    modelRow: (modelId) => `[data-model-id="${modelId}"]`,
-    aliasCell: (modelId) => `[data-testid="alias-cell-${modelId}"]`,
-    repoCell: (modelId) => `[data-testid="repo-cell-${modelId}"]`,
-    filenameCell: (modelId) => `[data-testid="filename-cell-${modelId}"]`,
-    prefixCell: (modelId) => `[data-testid="prefix-cell-${modelId}"]`,
-    forwardAllCell: (modelId) => `[data-testid="forward-all-cell-${modelId}"]`,
-    editButton: (modelId) => `[data-testid="edit-button-${modelId}"]:visible`,
-    deleteButton: (modelId) => `[data-testid="delete-button-${modelId}"]:visible`,
-    modelChatButton: (modelName) => `[data-testid="model-chat-button-${modelName}"]`,
+    modelRow: modelId => `[data-model-id="${modelId}"]`,
+    aliasCell: modelId => `[data-testid="alias-cell-${modelId}"]`,
+    repoCell: modelId => `[data-testid="repo-cell-${modelId}"]`,
+    filenameCell: modelId => `[data-testid="filename-cell-${modelId}"]`,
+    prefixCell: modelId => `[data-testid="prefix-cell-${modelId}"]`,
+    forwardAllCell: modelId => `[data-testid="forward-all-cell-${modelId}"]`,
+    editButton: modelId => `[data-testid="edit-button-${modelId}"]:visible`,
+    deleteButton: modelId => `[data-testid="delete-button-${modelId}"]:visible`,
+    modelChatButton: modelName => `[data-testid="model-chat-button-${modelName}"]`,
     deleteConfirmDialog: 'text=Delete API Model',
     confirmDeleteButton: 'button:has-text("Delete")',
     // Local model alias selectors
-    localAliasCell: (alias) => `[data-testid="alias-cell-${alias}"]`,
-    localRepoCell: (alias) => `[data-testid="repo-cell-${alias}"]`,
-    localFilenameCell: (alias) => `[data-testid="filename-cell-${alias}"]`,
-    sourceBadge: (identifier) => `[data-testid="source-badge-${identifier}"]`,
-    createAliasFromModelButton: (alias) => `[data-testid="create-alias-from-model-${alias}"]`,
-    externalButton: (alias) => `[data-testid="external-button-${alias}"]`,
-    chatButton: (alias) => `[data-testid="chat-button-${alias}"]`,
+    localAliasCell: alias => `[data-testid="alias-cell-${alias}"]`,
+    localRepoCell: alias => `[data-testid="repo-cell-${alias}"]`,
+    localFilenameCell: alias => `[data-testid="filename-cell-${alias}"]`,
+    sourceBadge: identifier => `[data-testid="source-badge-${identifier}"]`,
+    createAliasFromModelButton: alias => `[data-testid="create-alias-from-model-${alias}"]`,
+    externalButton: alias => `[data-testid="external-button-${alias}"]`,
+    chatButton: alias => `[data-testid="chat-button-${alias}"]`,
     // Preview modal selectors
-    previewButton: (identifier) => `[data-testid="preview-button-${identifier}"]`,
+    previewButton: identifier => `[data-testid="preview-button-${identifier}"]`,
     previewModal: '[data-testid="model-preview-modal"]',
     previewBasicAlias: '[data-testid="preview-basic-alias"]',
     previewBasicRepo: '[data-testid="preview-basic-repo"]',
@@ -47,6 +47,7 @@ export class ModelsListPage extends BasePage {
     previewArchitectureFamily: '[data-testid="preview-architecture-family"]',
     previewArchitectureParameterCount: '[data-testid="preview-architecture-parameter-count"]',
     previewArchitectureQuantization: '[data-testid="preview-architecture-quantization"]',
+    previewApiName: '[data-testid="preview-api-name"]',
     previewApiFormat: '[data-testid="preview-api-format"]',
     previewApiBaseUrl: '[data-testid="preview-api-base-url"]',
     previewApiPrefix: '[data-testid="preview-api-prefix"]',
@@ -54,7 +55,7 @@ export class ModelsListPage extends BasePage {
     previewApiModels: '[data-testid="preview-api-models"]',
     // Refresh button selectors
     refreshAllButton: '[data-testid="refresh-all-models-button"]',
-    refreshButton: (alias) => `[data-testid="refresh-button-${alias}"]`,
+    refreshButton: alias => `[data-testid="refresh-button-${alias}"]`,
   };
 
   async navigateToModels() {
@@ -69,11 +70,7 @@ export class ModelsListPage extends BasePage {
     await this.waitForSPAReady();
   }
 
-  async verifyApiModelInList(
-    modelId,
-    api_format = 'openai',
-    baseUrl = 'https://api.openai.com/v1'
-  ) {
+  async verifyApiModelInList(modelId, api_format = 'openai', baseUrl = 'https://api.openai.com/v1', name = null) {
     // Wait for table and data to load
     await this.waitForSelector(this.selectors.table);
     await this.waitForSelector(`${this.selectors.table} tbody tr`);
@@ -82,8 +79,11 @@ export class ModelsListPage extends BasePage {
     const modelRow = this.page.locator(this.selectors.modelRow(modelId)).first();
     await expect(modelRow).toBeVisible();
 
-    // Verify model data in table cells using consistent selectors
+    // The alias cell shows the user-provided name (primary) and the id (secondary).
     await expect(this.page.locator(this.selectors.aliasCell(modelId))).toContainText(modelId);
+    if (name) {
+      await expect(this.page.locator(this.selectors.aliasCell(modelId))).toContainText(name);
+    }
     await expect(this.page.locator(this.selectors.repoCell(modelId))).toContainText(api_format);
     await expect(this.page.locator(this.selectors.filenameCell(modelId))).toContainText(baseUrl);
   }
@@ -131,9 +131,7 @@ export class ModelsListPage extends BasePage {
     await visibleButton.click();
 
     // Wait for navigation to chat with model pre-selected
-    await this.page.waitForURL(
-      (url) => url.pathname === '/ui/chat/' && url.searchParams.get('model') === modelName
-    );
+    await this.page.waitForURL(url => url.pathname === '/ui/chat/' && url.searchParams.get('model') === modelName);
     await this.waitForSPAReady();
   }
 
@@ -161,9 +159,7 @@ export class ModelsListPage extends BasePage {
     const aliasCell = this.page.locator(`[data-testid="alias-cell-${alias}"]`);
     await expect(aliasCell).toBeVisible();
     await expect(aliasCell).toContainText(alias);
-    await expect(this.page.locator(`[data-testid="repo-cell-${alias}"]`)).toContainText(
-      'model_router'
-    );
+    await expect(this.page.locator(`[data-testid="repo-cell-${alias}"]`)).toContainText('model_router');
   }
 
   async verifyLocalModelInList(alias, repo, filename, source = 'user') {
@@ -179,9 +175,7 @@ export class ModelsListPage extends BasePage {
     // Verify model data in table cells
     await expect(this.page.locator(this.selectors.localAliasCell(alias))).toContainText(alias);
     await expect(this.page.locator(this.selectors.localRepoCell(alias))).toContainText(repo);
-    await expect(this.page.locator(this.selectors.localFilenameCell(alias))).toContainText(
-      filename
-    );
+    await expect(this.page.locator(this.selectors.localFilenameCell(alias))).toContainText(filename);
 
     // Verify source badge
     await expect(this.page.locator(this.selectors.sourceBadge(alias))).toContainText(source);
@@ -222,9 +216,7 @@ export class ModelsListPage extends BasePage {
     await chatBtn.click();
 
     // Wait for navigation to chat with model pre-selected
-    await this.page.waitForURL(
-      (url) => url.pathname === '/ui/chat/' && url.searchParams.get('model') === alias
-    );
+    await this.page.waitForURL(url => url.pathname === '/ui/chat/' && url.searchParams.get('model') === alias);
     await this.waitForSPAReady();
   }
 
@@ -365,9 +357,7 @@ export class ModelsListPage extends BasePage {
     const api_format = await this.page.locator(this.selectors.repoCell(modelId)).textContent();
     const base_url = await this.page.locator(this.selectors.filenameCell(modelId)).textContent();
     const prefix = await this.page.locator(this.selectors.prefixCell(modelId)).textContent();
-    const forward_all = await this.page
-      .locator(this.selectors.forwardAllCell(modelId))
-      .textContent();
+    const forward_all = await this.page.locator(this.selectors.forwardAllCell(modelId)).textContent();
 
     return {
       id: id?.trim() || '',
@@ -395,29 +385,19 @@ export class ModelsListPage extends BasePage {
     await expect(this.page.locator(this.selectors.previewModal)).toBeVisible();
 
     if (expectedValues.alias) {
-      await expect(this.page.locator(this.selectors.previewBasicAlias)).toContainText(
-        expectedValues.alias
-      );
+      await expect(this.page.locator(this.selectors.previewBasicAlias)).toContainText(expectedValues.alias);
     }
     if (expectedValues.repo) {
-      await expect(this.page.locator(this.selectors.previewBasicRepo)).toContainText(
-        expectedValues.repo
-      );
+      await expect(this.page.locator(this.selectors.previewBasicRepo)).toContainText(expectedValues.repo);
     }
     if (expectedValues.filename) {
-      await expect(this.page.locator(this.selectors.previewBasicFilename)).toContainText(
-        expectedValues.filename
-      );
+      await expect(this.page.locator(this.selectors.previewBasicFilename)).toContainText(expectedValues.filename);
     }
     if (expectedValues.snapshot) {
-      await expect(this.page.locator(this.selectors.previewBasicSnapshot)).toContainText(
-        expectedValues.snapshot
-      );
+      await expect(this.page.locator(this.selectors.previewBasicSnapshot)).toContainText(expectedValues.snapshot);
     }
     if (expectedValues.source) {
-      await expect(this.page.locator(this.selectors.previewBasicSource)).toContainText(
-        expectedValues.source
-      );
+      await expect(this.page.locator(this.selectors.previewBasicSource)).toContainText(expectedValues.source);
     }
   }
 
@@ -445,32 +425,24 @@ export class ModelsListPage extends BasePage {
 
   async verifyPreviewContext(maxInput, maxOutput) {
     if (maxInput) {
-      await expect(this.page.locator(this.selectors.previewContextMaxInput)).toContainText(
-        maxInput.toLocaleString()
-      );
+      await expect(this.page.locator(this.selectors.previewContextMaxInput)).toContainText(maxInput.toLocaleString());
     }
     if (maxOutput) {
-      await expect(this.page.locator(this.selectors.previewContextMaxOutput)).toContainText(
-        maxOutput.toLocaleString()
-      );
+      await expect(this.page.locator(this.selectors.previewContextMaxOutput)).toContainText(maxOutput.toLocaleString());
     }
   }
 
   async verifyPreviewArchitecture(expectedValues) {
     if (expectedValues.format) {
-      await expect(this.page.locator(this.selectors.previewArchitectureFormat)).toContainText(
-        expectedValues.format
-      );
+      await expect(this.page.locator(this.selectors.previewArchitectureFormat)).toContainText(expectedValues.format);
     }
     if (expectedValues.family) {
-      await expect(this.page.locator(this.selectors.previewArchitectureFamily)).toContainText(
-        expectedValues.family
-      );
+      await expect(this.page.locator(this.selectors.previewArchitectureFamily)).toContainText(expectedValues.family);
     }
     if (expectedValues.parameter_count) {
-      await expect(
-        this.page.locator(this.selectors.previewArchitectureParameterCount)
-      ).toContainText(expectedValues.parameter_count.toLocaleString());
+      await expect(this.page.locator(this.selectors.previewArchitectureParameterCount)).toContainText(
+        expectedValues.parameter_count.toLocaleString()
+      );
     }
     if (expectedValues.quantization) {
       await expect(this.page.locator(this.selectors.previewArchitectureQuantization)).toContainText(
@@ -483,25 +455,17 @@ export class ModelsListPage extends BasePage {
     await expect(this.page.locator(this.selectors.previewModal)).toBeVisible();
 
     if (expectedValues.api_format) {
-      await expect(this.page.locator(this.selectors.previewApiFormat)).toContainText(
-        expectedValues.api_format
-      );
+      await expect(this.page.locator(this.selectors.previewApiFormat)).toContainText(expectedValues.api_format);
     }
     if (expectedValues.base_url) {
-      await expect(this.page.locator(this.selectors.previewApiBaseUrl)).toContainText(
-        expectedValues.base_url
-      );
+      await expect(this.page.locator(this.selectors.previewApiBaseUrl)).toContainText(expectedValues.base_url);
     }
     if (expectedValues.prefix) {
-      await expect(this.page.locator(this.selectors.previewApiPrefix)).toContainText(
-        expectedValues.prefix
-      );
+      await expect(this.page.locator(this.selectors.previewApiPrefix)).toContainText(expectedValues.prefix);
     }
     if (expectedValues.forward_all !== undefined) {
       const expectedText = expectedValues.forward_all ? 'Enabled' : 'Disabled';
-      await expect(this.page.locator(this.selectors.previewApiForwardAll)).toContainText(
-        expectedText
-      );
+      await expect(this.page.locator(this.selectors.previewApiForwardAll)).toContainText(expectedText);
     }
   }
 
