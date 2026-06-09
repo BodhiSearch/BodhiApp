@@ -12,10 +12,6 @@ use crate::{AiApiClient, AiApiClientFactory, LibertySource};
 use errmeta::{AppError, EntityError, ErrorType};
 use std::collections::HashSet;
 
-// =============================================================================
-// ApiModelServiceError
-// =============================================================================
-
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ApiModelServiceError {
@@ -44,14 +40,9 @@ pub enum ApiModelServiceError {
   ModelNotFoundAtProvider(String),
 }
 
-// =============================================================================
-// ApiModelService trait
-// =============================================================================
-
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait ApiModelService: Send + Sync + std::fmt::Debug {
-  /// Create a new API model configuration
   async fn create(
     &self,
     tenant_id: &str,
@@ -59,7 +50,6 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     form: ApiModelRequest,
   ) -> Result<ApiAliasResponse, ApiModelServiceError>;
 
-  /// Update an existing API model configuration
   async fn update(
     &self,
     tenant_id: &str,
@@ -68,7 +58,6 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     form: ApiModelRequest,
   ) -> Result<ApiAliasResponse, ApiModelServiceError>;
 
-  /// Delete an API model configuration
   async fn delete(
     &self,
     tenant_id: &str,
@@ -76,7 +65,6 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     id: &str,
   ) -> Result<(), ApiModelServiceError>;
 
-  /// Get a specific API model configuration
   async fn get(
     &self,
     tenant_id: &str,
@@ -92,10 +80,6 @@ pub trait ApiModelService: Send + Sync + std::fmt::Debug {
     id: &str,
   ) -> Result<ApiAliasResponse, ApiModelServiceError>;
 }
-
-// =============================================================================
-// DefaultApiModelService
-// =============================================================================
 
 #[derive(Debug, derive_new::new)]
 pub struct DefaultApiModelService {
@@ -193,7 +177,6 @@ impl ApiModelService for DefaultApiModelService {
     user_id: &str,
     id: &str,
   ) -> Result<(), ApiModelServiceError> {
-    // Check if API model exists
     if self
       .db_service
       .get_api_model_alias(tenant_id, user_id, id)
@@ -302,13 +285,11 @@ impl ApiModelService for DefaultApiModelService {
       .await
       .map_err(|e| ApiModelServiceError::AiApi(e.to_string()))?;
 
-    // Update models in DB
     self
       .db_service
       .update_api_model_models(tenant_id, id, models.clone())
       .await?;
 
-    // Get refreshed alias
     let updated_alias = self
       .db_service
       .get_api_model_alias(tenant_id, user_id, id)
@@ -326,10 +307,6 @@ impl ApiModelService for DefaultApiModelService {
     Ok(ApiAliasResponse::from(updated_alias).with_has_api_key(api_key.is_some()))
   }
 }
-
-// =============================================================================
-// Per-variant helpers (default / llm_liberty)
-// =============================================================================
 
 impl DefaultApiModelService {
   async fn create_default(
@@ -630,10 +607,6 @@ impl DefaultApiModelService {
     Ok(ApiAliasResponse::from(api_alias).with_llm_liberty(summary))
   }
 }
-
-// =============================================================================
-// Shared helpers
-// =============================================================================
 
 fn filter_models(
   provider_models: Vec<ApiModel>,

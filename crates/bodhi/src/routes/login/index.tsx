@@ -363,10 +363,8 @@ export function LoginContent() {
       handleSmartRedirect(redirectUrl, navigate);
     },
     onError: (message) => {
-      // Reset local storage and cookies on logout failure
       localStorage.clear();
       sessionStorage.clear();
-      // Clear all cookies by setting them to expire
       document.cookie.split(';').forEach((c) => {
         const eqPos = c.indexOf('=');
         const name = eqPos > -1 ? c.substr(0, eqPos) : c;
@@ -379,11 +377,9 @@ export function LoginContent() {
 
   const { mutate: initiateOAuth, isPending: isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
-      // Clear any previous errors and set redirecting state
       setError(null);
       setRedirecting(true);
 
-      // Handle redirect based on backend response
       const location = response.data?.location;
       if (!location) {
         setError('Auth URL not found in response. Please try again.');
@@ -391,7 +387,6 @@ export function LoginContent() {
         return;
       }
 
-      // Handle redirect using smart URL detection
       handleSmartRedirect(location, navigate);
     },
     onError: (message) => {

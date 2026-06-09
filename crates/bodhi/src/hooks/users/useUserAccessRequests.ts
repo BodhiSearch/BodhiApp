@@ -17,7 +17,6 @@ import {
   ENDPOINT_ACCESS_REQUESTS,
 } from './constants';
 
-// User request status
 export function useGetRequestStatus(): UseQueryResult<UserAccessStatusResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<UserAccessStatusResponse>(accessRequestKeys.status, ENDPOINT_USER_REQUEST_STATUS, undefined, {
     retry: (failureCount, error) => {
@@ -30,7 +29,6 @@ export function useGetRequestStatus(): UseQueryResult<UserAccessStatusResponse, 
   });
 }
 
-// Submit access request
 export function useSubmitAccessRequest(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
@@ -48,7 +46,6 @@ export function useSubmitAccessRequest(options?: {
   });
 }
 
-// List pending requests (admin/manager)
 export function useListPendingRequests(
   page: number = 1,
   pageSize: number = 10
@@ -63,7 +60,6 @@ export function useListPendingRequests(
   );
 }
 
-// List all requests (admin/manager)
 export function useListAllRequests(
   page: number = 1,
   pageSize: number = 10
@@ -84,7 +80,6 @@ export function useApproveRequest(options?: {
   onError?: (message: string) => void;
 }): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, { id: string; role: string }> {
   const queryClient = useQueryClient();
-  // Transform from: {id: string; role: string} → endpoint: /access-requests/${id}/approve, body: {role: role as Role}
   return useMutationQuery<void, { id: string; role: string }>(
     ({ id }) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/approve`,
     'post',
@@ -104,13 +99,11 @@ export function useApproveRequest(options?: {
   );
 }
 
-// Reject access request
 export function useRejectRequest(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
 }): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string> {
   const queryClient = useQueryClient();
-  // POST with path variables and no meaningful body
   return useMutationQuery<void, string>(
     (id: string) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/reject`,
     'post',
@@ -125,7 +118,7 @@ export function useRejectRequest(options?: {
       },
     },
     {
-      transformBody: () => undefined, // POST with empty body
+      transformBody: () => undefined,
     }
   );
 }

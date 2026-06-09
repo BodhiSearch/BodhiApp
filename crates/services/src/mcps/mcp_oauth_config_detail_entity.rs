@@ -67,5 +67,4 @@ pub struct McpOAuthConfigDetailView {
   pub updated_at: DateTime<Utc>,
 }
 
-/// Type alias — McpOAuthConfigDetailEntity is the entity Model.
 pub type McpOAuthConfigDetailEntity = Model;

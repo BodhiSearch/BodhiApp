@@ -108,7 +108,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     inputRef.current?.focus();
   };
 
-  const suggestionBoxHeight = Math.min(filteredSuggestions.length * 40, 200); // 40px per item, max 200px
+  const suggestionBoxHeight = Math.min(filteredSuggestions.length * 40, 200);
 
   return (
     <div ref={wrapperRef} className="relative w-full">

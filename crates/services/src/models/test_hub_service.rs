@@ -427,11 +427,9 @@ fn test_list_model_aliases(
 ) -> anyhow::Result<()> {
   let aliases = service.list_model_aliases()?;
 
-  // Since llama.cpp now handles chat templates, we include all GGUF files
-  // The exact count may vary based on test data, but we should have at least the core models
+  // llama.cpp handles chat templates, so all GGUF files qualify; count varies with test data.
   assert!(aliases.len() >= 3);
 
-  // Check that we have the expected core aliases
   let alias_names: Vec<String> = aliases.iter().map(|a| a.alias.clone()).collect();
   assert!(alias_names.contains(&"FakeFactory/fakemodel-gguf:Q4_0".to_string()));
   assert!(alias_names.contains(&"TheBloke/Llama-2-7B-Chat-GGUF:Q8_0".to_string()));

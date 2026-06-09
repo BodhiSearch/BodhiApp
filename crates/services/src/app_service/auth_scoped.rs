@@ -65,17 +65,14 @@ impl AuthScopedAppService {
     AuthScopedUserService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
-  /// Returns an auth-scoped API model service. Each call clones the inner Arc and AuthContext.
   pub fn api_models(&self) -> AuthScopedApiModelService {
     AuthScopedApiModelService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
-  /// Returns an auth-scoped model-router service. Each call clones the inner Arc and AuthContext.
   pub fn model_routers(&self) -> AuthScopedModelRouterService {
     AuthScopedModelRouterService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
-  /// Returns an auth-scoped download service. Each call clones the inner Arc and AuthContext.
   pub fn downloads(&self) -> AuthScopedDownloadService {
     AuthScopedDownloadService::new(self.app_service.clone(), self.auth_context.clone())
   }
@@ -86,63 +83,50 @@ impl AuthScopedAppService {
     AuthScopedDataService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
-  /// Returns an auth-scoped user access request service.
   pub fn user_access_requests(&self) -> AuthScopedUserAccessRequestService {
     AuthScopedUserAccessRequestService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
-  // Domain-level factory methods (D1-D9)
-  // These are consistent short-name accessors for services that don't require
-  // user_id injection. They return Arc<dyn Service> directly.
-
-  /// D1: Settings domain
   pub fn settings(&self) -> Arc<dyn SettingService> {
     self.app_service.setting_service()
   }
 
-  /// D2: Tenant domain (auth-scoped)
   pub fn tenants(&self) -> AuthScopedTenantService {
     AuthScopedTenantService::new(self.app_service.clone(), self.auth_context.clone())
   }
 
-  /// D3: Auth flow domain (OAuth registration, token exchange, etc.)
   pub fn auth_flow(&self) -> Arc<dyn AuthService> {
     self.app_service.auth_service()
   }
 
-  /// D4: Network domain
   pub fn network(&self) -> Arc<dyn NetworkService> {
     self.app_service.network_service()
   }
 
-  /// D5: Session domain
   pub fn sessions(&self) -> Arc<dyn SessionService> {
     self.app_service.session_service()
   }
 
-  /// D6: Database domain
   pub fn db(&self) -> Arc<dyn DbService> {
     self.app_service.db_service()
   }
 
-  /// D7: Hub domain
   pub fn hub(&self) -> Arc<dyn HubService> {
     self.app_service.hub_service()
   }
 
-  /// D8: AI API domain (auth-scoped — auto-injects tenant_id/user_id when
-  /// constructing Liberty clients via `for_resolved`).
+  /// Auth-scoped — auto-injects tenant_id/user_id when constructing Liberty clients
+  /// via `for_resolved`.
   pub fn ai_api(&self) -> AuthScopedAiApiClientFactory {
     AuthScopedAiApiClientFactory::new(self.app_service.clone(), self.auth_context.clone())
   }
 
-  /// D9: Time domain
   pub fn time(&self) -> Arc<dyn TimeService> {
     self.app_service.time_service()
   }
 
-  // Legacy pass-through accessors (kept for backward compatibility with tests
-  // and routes not yet migrated to the short-name factory methods above).
+  // Legacy pass-through accessors for tests and routes not yet migrated to the
+  // short-name factory methods above.
   pub fn data_service(&self) -> Arc<dyn DataService> {
     self.app_service.data_service()
   }

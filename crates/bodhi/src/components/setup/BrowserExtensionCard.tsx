@@ -88,14 +88,12 @@ export function BrowserExtensionCard({
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Browser Selector Section */}
         <BrowserSelector
           detectedBrowser={detectedBrowser}
           selectedBrowser={selectedBrowser}
           onBrowserSelect={onBrowserSelect}
         />
 
-        {/* Extension Status Section - Only show for supported browsers */}
         {showExtensionStatus && <ExtensionStatusDisplay status={extensionStatus} onRefresh={onRefresh} />}
       </CardContent>
     </Card>

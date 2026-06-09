@@ -764,8 +764,6 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("delete_mcp"))
   }
 
-  // ---- Auth methods (formerly McpAuthRepository) ----
-
   async fn create_mcp_auth_config(
     &self,
     row: &McpAuthConfigEntity,
@@ -1010,8 +1008,6 @@ impl McpRepository for TestDbService {
       .await
       .tap(|_| self.notify("link_oauth_token_to_mcp"))
   }
-
-  // ---- Composite methods ----
 
   async fn create_mcp_with_auth(
     &self,

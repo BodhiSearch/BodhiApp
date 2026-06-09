@@ -6,8 +6,8 @@ use axum::{
 use serde::Serialize;
 use services::AppError;
 
-/// Anthropic error envelope. Local mirror of `anthropic_api_types::ErrorResponse` —
-/// defined in-repo because that crate's fields are private and cannot be constructed.
+/// Local mirror of `anthropic_api_types::ErrorResponse` — defined in-repo because
+/// that crate's fields are private and cannot be constructed.
 #[derive(Debug, Serialize)]
 pub struct AnthropicErrorResponse {
   #[serde(rename = "type")]
@@ -25,8 +25,8 @@ pub struct AnthropicErrorBody {
   pub message: String,
 }
 
-/// Wraps BodhiApp local errors into Anthropic's error envelope. Upstream proxy
-/// errors pass through verbatim — only local errors (validation, alias-not-found) are wrapped.
+/// Upstream proxy errors pass through verbatim — only local errors (validation,
+/// alias-not-found) are wrapped into this envelope.
 #[derive(Debug)]
 pub struct AnthropicApiError {
   pub status: u16,

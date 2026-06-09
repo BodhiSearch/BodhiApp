@@ -41,10 +41,8 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { createOpenApiHttp } from 'openapi-msw';
 
-// Export types from ts-client for use in tests
 export type { components, paths } from '@bodhiapp/ts-client';
 
-// Default internal server error values for error handlers
 export const INTERNAL_SERVER_ERROR = {
   code: 'internal_error',
   message: 'Internal server error',
@@ -52,23 +50,18 @@ export const INTERNAL_SERVER_ERROR = {
   status: 500,
 } as const;
 
-// Create typed HTTP handler using OpenAPI schema
 export const typedHttp = createOpenApiHttp<import('@bodhiapp/ts-client').paths>();
 
-// Re-export MSW v2 http and HttpResponse for convenience
 export { http, HttpResponse };
 
-// Create MSW v2 server instance
 export const server = setupServer();
 
-// Standard setup functions for tests
 export function setupMswV2() {
   beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
   afterEach(() => server.resetHandlers());
   afterAll(() => server.close());
 }
 
-// Type-safe response helper inspired by openapi-msw patterns
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createTypedResponse<T extends Record<string, any>>(status: number, data: T) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

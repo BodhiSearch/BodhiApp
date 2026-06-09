@@ -27,10 +27,6 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tower::ServiceExt;
 
-// ============================================================================
-// users_request_access tests
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -119,7 +115,6 @@ async fn test_user_request_access_already_pending(
 ) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
 
-  // Insert a pending request first
   db_service
     .insert_pending_request(
       TEST_TENANT_ID,
@@ -159,10 +154,6 @@ async fn test_user_request_access_already_pending(
   );
   Ok(())
 }
-
-// ============================================================================
-// users_request_status tests
-// ============================================================================
 
 #[rstest]
 #[tokio::test]

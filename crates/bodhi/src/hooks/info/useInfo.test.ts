@@ -11,7 +11,6 @@ import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
-// Mock data
 const mockAppInfoData: AppInfo = {
   commit_sha: 'not-set',
   version: '0.1.0',
@@ -27,7 +26,6 @@ const mockUserInfoData = {
 
 setupMswV2();
 
-// Setup default handlers
 beforeEach(() => {
   server.use(...mockAppInfo(mockAppInfoData), ...mockUserLoggedIn(mockUserInfoData), ...mockSetup({ status: 'ready' }));
 });
@@ -61,7 +59,6 @@ describe('useSetupApp', () => {
   it('invalidates appInfo and user queries on successful setup', async () => {
     const wrapper = createWrapper();
 
-    // Setup initial queries and wait for data
     const { result: appInfoResult } = renderHook(() => useGetAppInfo(), {
       wrapper,
     });
@@ -77,7 +74,6 @@ describe('useSetupApp', () => {
     const initialAppInfoUpdatedAt = appInfoResult.current.dataUpdatedAt;
     const initialUserUpdatedAt = userResult.current.dataUpdatedAt;
 
-    // Perform setup
     const { result: setupResult } = renderHook(() => useSetupApp(), {
       wrapper,
     });
@@ -86,7 +82,6 @@ describe('useSetupApp', () => {
       await setupResult.current.mutateAsync({ name: 'Test App' });
     });
 
-    // Verify both queries were invalidated and refetched
     await waitFor(() => {
       expect(appInfoResult.current.dataUpdatedAt).toBeGreaterThan(initialAppInfoUpdatedAt);
       expect(userResult.current.dataUpdatedAt).toBeGreaterThan(initialUserUpdatedAt);

@@ -112,7 +112,7 @@ pub async fn models_pull_create(
 ) -> Result<(StatusCode, Json<DownloadRequest>), BodhiErrorResponse> {
   let repo = Repo::try_from(payload.repo.clone())?;
 
-  // Check if the file is already downloaded (no auth required)
+  // file-existence check needs no auth scope
   if let Ok(true) = auth_scope
     .hub()
     .local_file_exists(&repo, &payload.filename, None)
@@ -124,7 +124,6 @@ pub async fn models_pull_create(
     })?;
   }
 
-  // Check for existing pending download request
   let existing = auth_scope
     .downloads()
     .find_by_repo_filename(&payload.repo, &payload.filename)

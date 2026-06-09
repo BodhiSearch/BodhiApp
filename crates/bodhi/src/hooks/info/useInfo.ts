@@ -1,8 +1,6 @@
-// External imports
 import { AppInfo, SetupRequest, SetupResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
-// Internal imports
 import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import { userKeys } from '@/hooks/users/constants';
 

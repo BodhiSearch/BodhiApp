@@ -59,11 +59,8 @@ For BodhiApp management endpoints (auth, settings, model aliases, MCPs, tokens, 
     ),
     components(
         schemas(
-            // OpenAI-native error envelope used in 4xx/5xx responses
-            // (emitted as `ErrorResponse` + `Error` in the spec via
             OaiWrappedError,
             OaiErrorBody,
-            // openai
             ListModelResponse,
             Model,
             CreateChatCompletionRequest,
@@ -79,7 +76,6 @@ For BodhiApp management endpoints (auth, settings, model aliases, MCPs, tokens, 
             Embedding,
             EmbeddingInput,
             EmbeddingUsage,
-            // responses api
             CreateResponse,
             OaiResponse,
             OaiDeleteResponse,
@@ -87,20 +83,15 @@ For BodhiApp management endpoints (auth, settings, model aliases, MCPs, tokens, 
         responses( ),
     ),
     paths(
-        // OpenAI endpoints
         oai_models_handler,
         oai_model_handler,
         chat_completions_handler,
         embeddings_handler,
-
-        // Responses API endpoints
         responses_create_handler,
         responses_get_handler,
         responses_delete_handler,
         responses_input_items_handler,
         responses_cancel_handler,
-
-        // Ollama endpoints
         ollama_models_handler,
         ollama_model_show_handler,
         ollama_model_chat_handler,

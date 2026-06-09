@@ -39,9 +39,7 @@ const renderWithSetup = async (ui: React.ReactElement) => {
 };
 
 describe('AppInitializer loading and error handling', () => {
-  // Test loading states
   it('shows loading state when endpoint is loading', async () => {
-    // Use mock handlers with delay
     server.use(...mockAppInfo({ status: 'ready' }, { delayMs: 100 }), ...mockUserLoggedIn(undefined, { delayMs: 100 }));
 
     const wrapper = createWrapper();
@@ -57,7 +55,6 @@ describe('AppInitializer loading and error handling', () => {
     expect(screen.getByText('Child content')).toBeInTheDocument();
   });
 
-  // Test error handling
   it.each([
     {
       scenario: 'app/info error',
@@ -106,7 +103,6 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     expect(navigateMock).toHaveBeenCalledWith({ to: expectedPath });
   });
 
-  // Update the status mismatch test cases
   it.each([
     { currentStatus: 'setup', allowedStatus: 'resource_admin', expectedPath: '/setup/' },
     { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/setup/' },
@@ -151,7 +147,6 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     }
   );
 
-  // Test status match scenarios (no redirect)
   it.each([
     { currentStatus: 'ready', allowedStatus: 'ready' },
     { currentStatus: 'setup', allowedStatus: 'setup' },
@@ -166,7 +161,6 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     }
   );
 
-  // Multi-tenant routing tests
   it('redirects to /login when ready + multi_tenant + no client_id', async () => {
     server.use(...mockAppInfo({ status: 'ready', deployment: 'multi_tenant' }));
 
@@ -338,7 +332,6 @@ describe('AppInitializer role-based access control', () => {
 });
 
 describe('AppInitializer authentication behavior', () => {
-  // Test redirect scenarios
   it.each`
     authenticated | loggedIn
     ${true}       | ${false}
@@ -356,7 +349,6 @@ describe('AppInitializer authentication behavior', () => {
     });
   });
 
-  // Test content display scenarios
   it.each`
     authenticated | loggedIn
     ${true}       | ${true}
@@ -381,7 +373,6 @@ describe('AppInitializer authentication behavior', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  // Add new test for user endpoint call conditions
   it('user endpoint not called when authenticated=false', async () => {
     server.use(...mockAppInfo({ status: 'ready' }));
 

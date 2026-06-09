@@ -26,12 +26,11 @@ export function AppNavigation() {
   const { theme, setTheme } = useTheme();
 
   const isSelected = (item: NavigationItem) => {
-    // Direct match
     if (item.href === currentItem.item.href) {
       return true;
     }
 
-    // Check if any skipped child items match current path
+    // a skipped child route still highlights its parent as selected
     if (item.items) {
       return item.items.some((subItem) => subItem.skip && subItem.href === currentItem.item.href);
     }

@@ -28,7 +28,6 @@ export function ScrollAnchor({ trackVisibility = true, className = '', behavior 
     const container = anchor.parentElement;
     if (!container) return;
 
-    // Check if user has scrolled up
     const isScrolledUp = container.scrollTop < prevScrollRef.current;
 
     // Only auto-scroll if at bottom or new content added
@@ -38,7 +37,6 @@ export function ScrollAnchor({ trackVisibility = true, className = '', behavior 
       anchor.scrollIntoView({ behavior });
     }
 
-    // Store current scroll position
     prevScrollRef.current = container.scrollTop;
   });
 

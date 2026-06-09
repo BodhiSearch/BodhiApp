@@ -7,10 +7,6 @@ use axum::{
 };
 use services::{McpServer, McpServerRequest};
 
-// ============================================================================
-// MCP Server Response types
-// ============================================================================
-
 /// MCP server response with computed mcp counts and optional auth config.
 #[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct McpServerResponse {
@@ -26,10 +22,6 @@ pub struct McpServerResponse {
 pub struct ListMcpServersResponse {
   pub mcp_servers: Vec<McpServerResponse>,
 }
-
-// ============================================================================
-// MCP Server Admin Handlers
-// ============================================================================
 
 /// Create a new MCP server entry (admin/manager only)
 #[utoipa::path(

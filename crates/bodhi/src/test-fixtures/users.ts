@@ -42,7 +42,6 @@ export const mockMultiRoleUser: UserInfo = {
   role: 'resource_manager',
 };
 
-// UserInfo objects for the users list API
 export const mockUserInfo1: UserInfo = {
   user_id: 'user1-id',
   username: 'user1@example.com',
@@ -91,7 +90,6 @@ export const mockSecondManagerInfoResponse: UserInfo = {
   last_name: 'Manager',
 };
 
-// Mock simple paginated response for hook compatibility
 export const mockSimpleUsersResponse = {
   users: [mockUserInfo1, mockUserInfo2, mockManagerInfoResponse, mockAdminInfoResponse],
   total: 4,
@@ -99,7 +97,6 @@ export const mockSimpleUsersResponse = {
   page_size: 10,
 };
 
-// Mock response with multiple admins for testing admin-to-admin modifications
 export const mockMultipleAdminsResponse = {
   users: [mockUserInfo1, mockUserInfo2, mockManagerInfoResponse, mockAdminInfoResponse, mockSecondAdminInfoResponse],
   total: 5,
@@ -107,7 +104,6 @@ export const mockMultipleAdminsResponse = {
   page_size: 10,
 };
 
-// Mock response with multiple managers for testing manager-to-manager modifications
 export const mockMultipleManagersResponse = {
   users: [mockUserInfo1, mockUserInfo2, mockManagerInfoResponse, mockSecondManagerInfoResponse, mockAdminInfoResponse],
   total: 5,
@@ -115,7 +111,6 @@ export const mockMultipleManagersResponse = {
   page_size: 10,
 };
 
-// Mock paginated users response
 export const mockUsersResponse: UserListResponse = {
   client_id: 'test-client-id',
   users: [mockUserInfo1, mockUserInfo2, mockManagerInfoResponse, mockAdminInfoResponse],
@@ -134,7 +129,6 @@ export const mockEmptyUsersResponse = {
   page_size: 10,
 };
 
-// Helper function to create users with specific roles
 export const createMockUsersWithRoles = (roles: string[]): UserInfo[] => {
   return roles.map((role, index) => {
     const mockUser = createMockLoggedInUser({ username: `${role}${index}@example.com`, role });
@@ -153,7 +147,6 @@ export const createMockUsersWithRoles = (roles: string[]): UserInfo[] => {
   });
 };
 
-// Helper function to create UserInfo objects with specific roles
 export const createMockUserInfos = (roles: string[]): UserInfo[] => {
   return roles.map((role, index) => ({
     user_id: `${role}${index}-id`,
@@ -164,7 +157,6 @@ export const createMockUserInfos = (roles: string[]): UserInfo[] => {
   }));
 };
 
-// Mock for current admin user
 export const createMockCurrentAdminUser = (username = 'current-admin@example.com'): UserInfo => {
   const mockUser = createMockLoggedInUser({ username, role: 'resource_admin' });
   if (mockUser.auth_status === 'logged_in') {

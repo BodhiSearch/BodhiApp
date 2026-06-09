@@ -18,7 +18,6 @@ impl AuthScopedDownloadService {
     }
   }
 
-  /// Create a new download request
   pub async fn create(
     &self,
     form: &NewDownloadRequest,
@@ -31,13 +30,11 @@ impl AuthScopedDownloadService {
       .await
   }
 
-  /// Get a specific download request by ID
   pub async fn get(&self, id: &str) -> Result<DownloadRequestEntity, DownloadServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     self.app_service.download_service().get(tenant_id, id).await
   }
 
-  /// List download requests with pagination
   pub async fn list(
     &self,
     page: usize,
@@ -51,7 +48,6 @@ impl AuthScopedDownloadService {
       .await
   }
 
-  /// Find existing download request by repo and filename
   pub async fn find_by_repo_filename(
     &self,
     repo: &str,
@@ -65,7 +61,6 @@ impl AuthScopedDownloadService {
       .await
   }
 
-  /// Update the status of a download request
   pub async fn update_status(
     &self,
     id: &str,

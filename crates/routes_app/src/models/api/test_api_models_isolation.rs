@@ -100,7 +100,6 @@ async fn test_cross_tenant_api_model_show_isolation(
   let auth_b = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin)
     .with_tenant_id(TEST_TENANT_B_ID);
 
-  // Create API model as tenant A user A
   let response = router
     .clone()
     .oneshot(
@@ -115,7 +114,6 @@ async fn test_cross_tenant_api_model_show_isolation(
   let model = response.json::<ApiAliasResponse>().await?;
   let model_id = model.id;
 
-  // Show that model as tenant B user A -> 404
   let response = router
     .clone()
     .oneshot(
@@ -145,7 +143,6 @@ async fn test_cross_tenant_api_model_update_isolation(
   let auth_b = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin)
     .with_tenant_id(TEST_TENANT_B_ID);
 
-  // Create API model as tenant A user A
   let response = router
     .clone()
     .oneshot(
@@ -160,7 +157,6 @@ async fn test_cross_tenant_api_model_update_isolation(
   let model = response.json::<ApiAliasResponse>().await?;
   let model_id = model.id;
 
-  // Update that model as tenant B user A -> 404
   let response = router
     .clone()
     .oneshot(
@@ -190,7 +186,6 @@ async fn test_cross_tenant_api_model_delete_isolation(
   let auth_b = AuthContext::test_session("user-a", "a@test.com", ResourceRole::Admin)
     .with_tenant_id(TEST_TENANT_B_ID);
 
-  // Create API model as tenant A user A
   let response = router
     .clone()
     .oneshot(
@@ -205,7 +200,6 @@ async fn test_cross_tenant_api_model_delete_isolation(
   let model = response.json::<ApiAliasResponse>().await?;
   let model_id = model.id;
 
-  // Delete that model as tenant B user A -> 404
   let response = router
     .clone()
     .oneshot(

@@ -82,18 +82,15 @@ export function AccessCallbackPage() {
       return;
     }
 
-    // Generate PKCE parameters
     const codeVerifier = generateCodeVerifier();
     const state = generateState();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-    // Update config with PKCE params and final scope
     config.codeVerifier = codeVerifier;
     config.state = state;
     config.scope = scope;
     saveConfig(config);
 
-    // Build and redirect to auth URL
     const authUrl = buildAuthUrl(config, codeChallenge, state);
     window.location.href = authUrl;
   };

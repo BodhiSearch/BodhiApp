@@ -175,10 +175,6 @@ async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
   Ok(())
 }
 
-// =============================================================================
-// forward_request_with_method — GET / DELETE / POST method dispatch
-// =============================================================================
-
 #[rstest]
 #[case::get_no_body(Method::GET, None, None, false)]
 #[case::delete_no_body(Method::DELETE, None, None, false)]

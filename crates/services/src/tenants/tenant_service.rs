@@ -6,11 +6,8 @@ use std::sync::Arc;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait TenantService: Send + Sync + std::fmt::Debug {
-  /// Look up a tenant by its ID.
   async fn get_tenant(&self, tenant_id: &str) -> Result<Option<Tenant>>;
-  /// Look up a tenant by its OAuth2 client_id.
   async fn get_tenant_by_client_id(&self, client_id: &str) -> Result<Option<Tenant>>;
-  /// Get the status of a tenant by its ID.
   async fn get_status(&self, tenant_id: &str) -> Result<AppStatus>;
   /// In standalone mode, returns the single registered app (or None if not yet registered).
   async fn get_standalone_app(&self) -> Result<Option<Tenant>>;
@@ -31,12 +28,10 @@ pub trait TenantService: Send + Sync + std::fmt::Debug {
   async fn delete_tenant_user(&self, tenant_id: &str, user_id: &str) -> Result<()>;
   /// List all tenants a user has membership in, regardless of status.
   async fn list_user_tenants(&self, user_id: &str) -> Result<Vec<Tenant>>;
-  /// Check if a user has any tenant memberships.
   async fn has_tenant_memberships(&self, user_id: &str) -> Result<bool>;
   /// Delete a tenant by its client_id, including associated tenant_users records.
   /// Idempotent: returns Ok if tenant does not exist.
   async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<()>;
-  /// List all tenants created by a specific user (by `created_by` field).
   async fn list_tenants_by_creator(&self, created_by: &str) -> Result<Vec<Tenant>>;
 }
 

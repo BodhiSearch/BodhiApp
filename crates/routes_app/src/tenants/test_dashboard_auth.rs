@@ -174,7 +174,6 @@ async fn test_dashboard_auth_initiate_returns_error_when_client_config_missing(
     ),
     (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
     (BODHI_DEPLOYMENT.to_string(), "multi_tenant".to_string()),
-    // No BODHI_MULTITENANT_CLIENT_ID or SECRET
   ]));
   let dbfile = temp_bodhi_home.path().join("test.db");
   let mut builder = AppServiceStubBuilder::default();
@@ -231,7 +230,6 @@ async fn test_dashboard_auth_initiate_returns_redirect_url_in_multi_tenant(
   let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
 
-  // Should start with the auth URL
   let expected_prefix =
     "http://test-id.getbodhi.app/realms/test-realm/protocol/openid-connect/auth";
   assert!(
@@ -241,7 +239,6 @@ async fn test_dashboard_auth_initiate_returns_redirect_url_in_multi_tenant(
     body.location
   );
 
-  // Parse and verify query params
   let url = url::Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
   assert_eq!(
@@ -277,7 +274,6 @@ async fn test_dashboard_auth_callback_validates_state_mismatch(
   let app_service = build_multitenant_app_service(&temp_bodhi_home).await?;
   let session_service = app_service.session_service();
 
-  // First, set up session with a stored state
   let id = tower_sessions::session::Id::default();
   let mut record = tower_sessions::session::Record {
     id,

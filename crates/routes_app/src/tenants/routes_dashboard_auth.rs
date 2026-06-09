@@ -41,17 +41,15 @@ pub async fn dashboard_auth_initiate(
   _headers: HeaderMap,
   session: Session,
 ) -> Result<impl axum::response::IntoResponse, BodhiErrorResponse> {
-  // Must be in multi-tenant mode
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
 
   let settings = auth_scope.settings();
 
-  // Get multi-tenant client ID (secret is only needed at callback time)
+  // secret is only needed at callback time
   let client_id = settings.multitenant_client_id().await?;
 
-  // If user already has a valid dashboard token, return 200
   if let Some(existing_token) = session
     .get::<String>(DASHBOARD_ACCESS_TOKEN_KEY)
     .await
@@ -67,13 +65,11 @@ pub async fn dashboard_auth_initiate(
     }
   }
 
-  // Generate PKCE parameters
   let (code_verifier, code_challenge) = generate_pkce();
 
-  // Generate random state for CSRF protection
+  // random state for CSRF protection
   let state = generate_random_string(32);
 
-  // Store OAuth state in session with dashboard-specific keys
   session
     .insert("dashboard_oauth_state", &state)
     .await
@@ -83,7 +79,6 @@ pub async fn dashboard_auth_initiate(
     .await
     .map_err(DashboardAuthRouteError::from)?;
 
-  // Use configured dashboard callback URL
   let callback_url = settings.dashboard_callback_url().await;
   session
     .insert("dashboard_callback_url", &callback_url)
@@ -131,7 +126,6 @@ pub async fn dashboard_auth_callback(
   session: Session,
   Json(request): Json<AuthCallbackRequest>,
 ) -> Result<Json<RedirectResponse>, BodhiErrorResponse> {
-  // Must be in multi-tenant mode
   if !auth_scope.auth_context().is_multi_tenant() {
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
@@ -139,7 +133,6 @@ pub async fn dashboard_auth_callback(
   let settings = auth_scope.settings();
   let auth_flow = auth_scope.auth_flow();
 
-  // Handle OAuth errors from the auth server
   if let Some(error) = &request.error {
     let error_message = if let Some(error_description) = &request.error_description {
       format!("{}: {}", error, error_description)
@@ -149,7 +142,7 @@ pub async fn dashboard_auth_callback(
     return Err(DashboardAuthRouteError::OAuthError(error_message))?;
   }
 
-  // Validate state parameter for CSRF protection
+  // validate state parameter for CSRF protection
   let stored_state = session
     .get::<String>("dashboard_oauth_state")
     .await
@@ -165,31 +158,26 @@ pub async fn dashboard_auth_callback(
     return Err(DashboardAuthRouteError::StateDigestMismatch)?;
   }
 
-  // Check for required authorization code
   let code = request
     .code
     .as_ref()
     .ok_or(DashboardAuthRouteError::MissingCode)?;
 
-  // Get PKCE verifier from session
   let pkce_verifier = session
     .get::<String>("dashboard_pkce_verifier")
     .await
     .map_err(DashboardAuthRouteError::from)?
     .ok_or(DashboardAuthRouteError::SessionInfoNotFound)?;
 
-  // Get callback URL from session
   let callback_url = session
     .get::<String>("dashboard_callback_url")
     .await
     .map_err(DashboardAuthRouteError::from)?
     .ok_or(DashboardAuthRouteError::SessionInfoNotFound)?;
 
-  // Get multi-tenant client credentials
   let client_id = settings.multitenant_client_id().await?;
   let client_secret = settings.multitenant_client_secret().await?;
 
-  // Exchange code for tokens
   let token_response = auth_flow
     .exchange_auth_code(
       AuthorizationCode::new(code.to_string()),
@@ -200,7 +188,6 @@ pub async fn dashboard_auth_callback(
     )
     .await?;
 
-  // Clean up OAuth state from session
   session
     .remove::<String>("dashboard_oauth_state")
     .await
@@ -222,7 +209,6 @@ pub async fn dashboard_auth_callback(
     );
   }
 
-  // Store tokens in session with dashboard prefix
   let access_token = token_response.0.secret().to_string();
   let refresh_token = token_response.1.secret().to_string();
 

@@ -116,9 +116,7 @@ enum McpAuthParams {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
   async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-    // =========================================================
-    // 1. Drop old tables (FK order: tokens -> configs -> headers)
-    // =========================================================
+    // Drop old tables in FK order: tokens -> configs -> headers.
     if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
       let conn = manager.get_connection();
       for table in &["mcp_oauth_tokens", "mcp_oauth_configs", "mcp_auth_headers"] {
@@ -155,9 +153,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // =========================================================
-    // 2. Create mcp_auth_configs base table
-    // =========================================================
     manager
       .create_table(
         Table::create()
@@ -202,9 +197,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // =========================================================
-    // 3. Create mcp_auth_config_params table
-    // =========================================================
     manager
       .create_table(
         Table::create()
@@ -241,7 +233,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Unique constraint: (tenant_id, auth_config_id, param_type, param_key)
     manager
       .create_index(
         Index::create()
@@ -256,9 +247,7 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // =========================================================
-    // 4. Create mcp_oauth_config_details table (1:1 with mcp_auth_configs)
-    // =========================================================
+    // mcp_oauth_config_details is 1:1 with mcp_auth_configs.
     manager
       .create_table(
         Table::create()
@@ -304,9 +293,7 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // =========================================================
-    // 5. Create mcp_auth_params table (instance-level header/query auth)
-    // =========================================================
+    // mcp_auth_params holds instance-level header/query auth.
     manager
       .create_table(
         Table::create()
@@ -343,7 +330,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Unique constraint: (tenant_id, mcp_id, param_type, param_key)
     manager
       .create_index(
         Index::create()
@@ -358,9 +344,7 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // =========================================================
-    // 6. Recreate mcp_oauth_tokens table (with access_token, nullable mcp_id)
-    // =========================================================
+    // Recreate mcp_oauth_tokens with access_token and nullable mcp_id.
     manager
       .create_table(
         Table::create()
@@ -430,10 +414,7 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // =========================================================
-    // 7. Alter mcps table: drop auth_uuid, add auth_config_id
-    // =========================================================
-    // SQLite doesn't support multiple alter options in one statement
+    // SQLite doesn't support multiple alter options in one statement.
     manager
       .alter_table(
         Table::alter()
@@ -464,9 +445,6 @@ impl MigrationTrait for Migration {
         .await?;
     }
 
-    // =========================================================
-    // 8. Case-insensitive unique indexes
-    // =========================================================
     let db = manager.get_connection();
     let backend = db.get_database_backend();
     match backend {
@@ -487,9 +465,6 @@ impl MigrationTrait for Migration {
       _ => {}
     }
 
-    // =========================================================
-    // 9. RLS policies for PostgreSQL
-    // =========================================================
     if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
       let conn = manager.get_connection();
       for table in &[
@@ -520,9 +495,6 @@ impl MigrationTrait for Migration {
   }
 
   async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-    // =========================================================
-    // Reverse: Drop new tables, recreate old tables
-    // =========================================================
     if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
       let conn = manager.get_connection();
       for table in &[
@@ -540,7 +512,6 @@ impl MigrationTrait for Migration {
       }
     }
 
-    // Drop FK on mcps.auth_config_id first, then drop column
     manager
       .alter_table(
         Table::alter()
@@ -550,7 +521,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Add back auth_uuid column
     manager
       .alter_table(
         Table::alter()
@@ -560,7 +530,7 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Drop new tables in correct FK order
+    // Drop new tables in correct FK order.
     manager
       .drop_table(
         Table::drop()

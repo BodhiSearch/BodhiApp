@@ -274,7 +274,6 @@ impl TenantRepository for DefaultDbService {
 
     let txn = self.begin_tenant_txn(tenant_id).await?;
 
-    // Update tenant status + created_by in a single UPDATE by PK
     let existing = tenant_entity::Entity::find_by_id(tenant_id.to_string())
       .one(&txn)
       .await

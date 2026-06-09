@@ -48,10 +48,6 @@ export const BROWSER_CONFIG: Record<BrowserType, Omit<BrowserInfo, 'name'>> = {
   },
 };
 
-/**
- * Detects the current browser using UAParser.js
- * Maps UAParser results to our supported browsers
- */
 export function detectBrowser(): BrowserInfo {
   const parser = new UAParser();
   const browser = parser.getBrowser();

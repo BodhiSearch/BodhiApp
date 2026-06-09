@@ -51,16 +51,13 @@ async fn test_cross_tenant_app_access_request_isolation(
   ctx.service.create(&row_a).await?;
   ctx.service.create(&row_b).await?;
 
-  // Tenant A can only see its own request
   let found_a = ctx.service.get(TEST_TENANT_ID, &id_a).await?;
   assert!(found_a.is_some());
   assert_eq!(Some(TEST_TENANT_ID.to_string()), found_a.unwrap().tenant_id);
 
-  // Tenant A cannot see Tenant B's request
   let cross = ctx.service.get(TEST_TENANT_ID, &id_b).await?;
   assert!(cross.is_none());
 
-  // Tenant B can only see its own request
   let found_b = ctx.service.get(TEST_TENANT_B_ID, &id_b).await?;
   assert!(found_b.is_some());
   assert_eq!(
@@ -68,7 +65,6 @@ async fn test_cross_tenant_app_access_request_isolation(
     found_b.unwrap().tenant_id
   );
 
-  // Tenant B cannot see Tenant A's request
   let cross_b = ctx.service.get(TEST_TENANT_B_ID, &id_a).await?;
   assert!(cross_b.is_none());
 

@@ -18,7 +18,6 @@ import {
 import { mockModelFiles } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock useMediaQuery hook
 vi.mock('@/hooks/use-media-query', () => ({
   useMediaQuery: (query: string) => {
     return true;

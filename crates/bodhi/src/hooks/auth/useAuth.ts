@@ -1,13 +1,10 @@
-// External imports
 import { useCallback } from 'react';
 
-// Type imports
 import { AuthCallbackRequest, AuthInitiateRequest, RedirectResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseMutationResult } from '@/hooks/useQuery';
 
-// Internal imports
 import { useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 import {
@@ -19,7 +16,6 @@ import {
   ENDPOINT_LOGOUT,
 } from './constants';
 
-// OAuth Initiate Hook
 interface UseOAuthInitiateOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (message: string) => void;
@@ -58,7 +54,6 @@ export function useOAuthInitiate(
   );
 }
 
-// Extract OAuth parameters from URL
 export function extractOAuthParams(url: string): AuthCallbackRequest {
   try {
     const urlObj = new URL(url);
@@ -75,7 +70,6 @@ export function extractOAuthParams(url: string): AuthCallbackRequest {
   }
 }
 
-// OAuth Callback Hook
 interface UseOAuthCallbackOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (message: string) => void;
@@ -114,7 +108,6 @@ export function useOAuthCallback(
   );
 }
 
-// Logout Hook (from useQuery.ts)
 interface UseLogoutOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (error: AxiosError<BodhiErrorResponse>) => void;
@@ -135,7 +128,6 @@ export function useLogout(
   });
 }
 
-// Dashboard OAuth Initiate Hook
 interface UseDashboardOAuthInitiateOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (message: string) => void;
@@ -174,7 +166,6 @@ export function useDashboardOAuthInitiate(
   );
 }
 
-// Dashboard OAuth Callback Hook
 interface UseDashboardOAuthCallbackOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (message: string) => void;
@@ -213,7 +204,6 @@ export function useDashboardOAuthCallback(
   );
 }
 
-// Logout Handler Hook (from useLogoutHandler.ts)
 interface UseLogoutHandlerOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (message: string) => void;

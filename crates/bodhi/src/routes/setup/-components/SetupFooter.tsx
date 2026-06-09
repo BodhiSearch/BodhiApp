@@ -23,7 +23,6 @@ export function SetupFooter({
 }: SetupFooterProps) {
   return (
     <motion.div variants={itemVariants} className="space-y-4">
-      {/* Clarification Card */}
       <Card className="bg-muted/30">
         <CardContent className="py-6">
           <div className="text-center space-y-2">
@@ -33,7 +32,6 @@ export function SetupFooter({
         </CardContent>
       </Card>
 
-      {/* Continue Button */}
       <div className="flex justify-end">
         <Button data-testid={buttonTestId} variant={buttonVariant} onClick={onContinue}>
           {buttonLabel}

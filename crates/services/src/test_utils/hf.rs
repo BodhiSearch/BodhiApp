@@ -117,8 +117,6 @@ impl HubService for TestHfService {
     self.inner.list_local_tokenizer_configs()
   }
 
-  // model_chat_template method removed since llama.cpp now handles chat templates
-
   fn list_model_aliases(&self) -> Result<Vec<ModelAlias>> {
     self.inner.list_model_aliases()
   }
@@ -175,8 +173,6 @@ impl HubService for OfflineHubService {
   fn list_local_tokenizer_configs(&self) -> Vec<Repo> {
     self.inner.list_local_tokenizer_configs()
   }
-
-  // model_chat_template method removed since llama.cpp now handles chat templates
 
   fn list_model_aliases(&self) -> Result<Vec<ModelAlias>> {
     self.inner.list_model_aliases()

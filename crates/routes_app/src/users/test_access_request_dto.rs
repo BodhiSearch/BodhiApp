@@ -8,7 +8,6 @@ use services::{
 
 #[test]
 fn test_user_access_status_response_from_user_access_request() {
-  // Test DTO conversion
   let request = UserAccessRequestEntity {
     id: "01JNFG0000000000000000TEST".to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
@@ -30,7 +29,6 @@ fn test_user_access_status_response_from_user_access_request() {
 
 #[test]
 fn test_approve_user_access_request_serde() -> anyhow::Result<()> {
-  // Test request deserialization
   let json = r#"{"role": "resource_user"}"#;
   let request: ApproveUserAccessRequest = serde_json::from_str(json)?;
   assert_eq!(ResourceRole::User, request.role);
@@ -44,7 +42,6 @@ fn test_approve_user_access_request_serde() -> anyhow::Result<()> {
 
 #[test]
 fn test_paginated_user_access_response_serde() -> anyhow::Result<()> {
-  // Test response serialization
   let response = PaginatedUserAccessResponse {
     requests: vec![],
     total: 0,

@@ -3,7 +3,6 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
-// Mock useMediaQuery hook
 const useMediaQuery = vi.fn();
 
 vi.mock('@/hooks/use-media-query', () => ({
@@ -46,7 +45,6 @@ describe('ComboBoxResponsive', () => {
 
   describe('Desktop View', () => {
     beforeEach(() => {
-      // Mock desktop view
       vi.mocked(useMediaQuery).mockReturnValue(true);
     });
 
@@ -66,17 +64,13 @@ describe('ComboBoxResponsive', () => {
       const user = userEvent.setup();
       render(<ComboBoxResponsive {...defaultProps} />);
 
-      // Click to open popover
       await user.click(screen.getByRole('combobox'));
 
-      // Verify options are displayed
       const options = screen.getAllByRole('option');
       expect(options).toHaveLength(mockStatuses.length);
 
-      // Select an option
       await user.click(options[0]);
 
-      // Verify setSelectedStatus was called with correct value
       expect(defaultProps.setSelectedStatus).toHaveBeenCalledWith(mockStatuses[0]);
     });
 
@@ -84,14 +78,11 @@ describe('ComboBoxResponsive', () => {
       const user = userEvent.setup();
       render(<ComboBoxResponsive {...defaultProps} />);
 
-      // Open popover
       await user.click(screen.getByRole('combobox'));
 
-      // Type in search input
       const searchInput = screen.getByPlaceholderText('Filter ...');
       await user.type(searchInput, 'act');
 
-      // Verify filtered options
       const options = screen.getAllByRole('option');
       expect(options).toHaveLength(2);
       expect(options[0]).toHaveTextContent('Active');
@@ -101,7 +92,6 @@ describe('ComboBoxResponsive', () => {
 
   describe('Mobile View', () => {
     beforeEach(() => {
-      // Mock mobile view
       vi.mocked(useMediaQuery).mockReturnValue(false);
     });
 
@@ -109,10 +99,8 @@ describe('ComboBoxResponsive', () => {
       const user = userEvent.setup();
       render(<ComboBoxResponsive {...defaultProps} />);
 
-      // Click to open drawer
       await user.click(screen.getByRole('combobox'));
 
-      // Verify drawer content is rendered
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
@@ -120,15 +108,12 @@ describe('ComboBoxResponsive', () => {
       const user = userEvent.setup();
       render(<ComboBoxResponsive {...defaultProps} />);
 
-      // Open drawer
       await user.click(screen.getByRole('combobox'));
 
-      // Find and click option within drawer
       const dialog = screen.getByRole('dialog');
       const options = within(dialog).getAllByRole('option');
       await user.click(options[0]);
 
-      // Verify setSelectedStatus was called
       expect(defaultProps.setSelectedStatus).toHaveBeenCalledWith(mockStatuses[0]);
     });
 
@@ -136,15 +121,12 @@ describe('ComboBoxResponsive', () => {
       const user = userEvent.setup();
       render(<ComboBoxResponsive {...defaultProps} />);
 
-      // Open drawer
       await user.click(screen.getByRole('combobox'));
 
-      // Type in search input
       const dialog = screen.getByRole('dialog');
       const searchInput = within(dialog).getByPlaceholderText('Filter status...');
       await user.type(searchInput, 'pend');
 
-      // Verify filtered options
       const options = within(dialog).getAllByRole('option');
       expect(options).toHaveLength(1);
       expect(options[0]).toHaveTextContent('Pending');

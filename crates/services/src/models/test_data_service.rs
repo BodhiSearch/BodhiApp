@@ -62,7 +62,6 @@ async fn test_find_alias_api_by_model_name(
   let db_service = Arc::new(test_db_service);
   let data_service = LocalDataService::new(Arc::new(test_hf_service), db_service.clone());
 
-  // Insert API alias with multiple models
   let api_alias = ApiAlias::new(
     "openai-api",
     "test-name",
@@ -79,7 +78,6 @@ async fn test_find_alias_api_by_model_name(
     .create_api_model_alias("", "", &api_alias, Some("test-key".to_string()))
     .await?;
 
-  // Test finding by model name
   let found = data_service.find_alias("", "", "gpt-4").await;
   assert!(matches!(found, Some(Alias::Api(api)) if api.id == "openai-api"));
 
@@ -104,13 +102,10 @@ async fn test_find_alias_priority_cases(
   #[case] expected_type: &str,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(test_db_service);
-
-  // Seed user aliases into DB
   crate::test_utils::seed_test_user_aliases(db_service.as_ref()).await?;
 
   let data_service = LocalDataService::new(Arc::new(test_hf_service), db_service.clone());
 
-  // Insert API alias with gpt-4 model
   let api_alias = ApiAlias::new(
     "test-api",
     "test-name",
@@ -160,13 +155,10 @@ async fn test_find_alias_user_priority_over_api(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(test_db_service);
-
-  // Seed user aliases into DB
   crate::test_utils::seed_test_user_aliases(db_service.as_ref()).await?;
 
   let data_service = LocalDataService::new(Arc::new(test_hf_service), db_service.clone());
 
-  // Insert API alias with model name that matches existing user alias
   let api_alias = ApiAlias::new(
     "conflicting-api",
     "test-name",
@@ -228,7 +220,6 @@ async fn test_local_data_service_delete_alias(
   #[from(test_data_service)]
   service: TestDataService,
 ) -> anyhow::Result<()> {
-  // First, verify alias exists
   let alias = service
     .find_alias(TEST_TENANT_ID, TEST_USER_ID, "tinyllama:instruct")
     .await;
@@ -273,7 +264,6 @@ async fn test_local_data_service_copy_alias(
   #[from(test_data_service)]
   service: TestDataService,
 ) -> anyhow::Result<()> {
-  // Get the ID of the tinyllama alias
   let alias = service
     .find_alias(TEST_TENANT_ID, TEST_USER_ID, "tinyllama:instruct")
     .await;
@@ -384,7 +374,6 @@ async fn test_find_alias_without_prefix_does_not_match_prefixed_api(
   let db_service = Arc::new(test_db_service);
   let data_service = LocalDataService::new(Arc::new(test_hf_service), db_service.clone());
 
-  // Create API alias with prefix
   let prefixed_alias = ApiAlias::new(
     "azure-openai",
     "test-name",

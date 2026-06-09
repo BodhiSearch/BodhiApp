@@ -34,19 +34,16 @@ pub fn build_ui_spa_router(dir: &'static Dir<'static>) -> Router {
 }
 
 fn serve_spa(dir: &'static Dir<'static>, prefix: &str, req: Request) -> Response<Body> {
-  // Strip the /ui prefix to get the file path
   let raw_path = req.uri().path();
   let path = raw_path
     .strip_prefix(prefix)
     .unwrap_or(raw_path)
     .trim_start_matches('/');
 
-  // Try exact file
   if let Some(response) = try_serve_file(dir, path) {
     return response;
   }
 
-  // Try directory/index.html
   let index_path = if path.is_empty() {
     "index.html".to_string()
   } else {

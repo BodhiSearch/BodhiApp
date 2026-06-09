@@ -12,10 +12,6 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 import { mcpServerKeys, MCP_SERVERS_ENDPOINT } from './constants';
 
-// ============================================================================
-// Query Hooks - MCP Servers
-// ============================================================================
-
 export function useListMcpServers(
   params?: {
     enabled?: boolean;
@@ -32,10 +28,6 @@ export function useGetMcpServer(
 ): UseQueryResult<McpServerResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<McpServerResponse>(mcpServerKeys.detail(id), `${MCP_SERVERS_ENDPOINT}/${id}`, undefined, options);
 }
-
-// ============================================================================
-// Mutation Hooks - MCP Server admin
-// ============================================================================
 
 export function useCreateMcpServer(options?: {
   onSuccess?: (server: McpServerResponse) => void;
@@ -82,5 +74,4 @@ export function useUpdateMcpServer(options?: {
   );
 }
 
-// Re-export types for consumers
 export type { McpServerResponse, McpServerRequest, McpServerInfo, ListMcpServersResponse };

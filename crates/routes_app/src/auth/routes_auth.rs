@@ -75,7 +75,6 @@ pub async fn auth_initiate(
     ));
   }
 
-  // User not authenticated, generate auth URL
   let tenant_svc = auth_scope.tenants();
   let instance = tenant_svc
     .get_tenant_by_client_id(&request.client_id)
@@ -93,7 +92,6 @@ pub async fn auth_initiate(
   } else {
     // Local/network installation mode - use request host or fallback
     if let Some(request_host) = extract_request_host(&headers) {
-      // Use the actual request host for the callback URL
       format!(
         "{}://{}:{}{}",
         settings.public_scheme().await,
@@ -102,7 +100,6 @@ pub async fn auth_initiate(
         services::LOGIN_CALLBACK_PATH
       )
     } else {
-      // Fallback to configured URL if host extraction fails
       settings.login_callback_url().await
     }
   };
@@ -115,14 +112,12 @@ pub async fn auth_initiate(
     .await
     .map_err(AuthRouteError::from)?;
 
-  // Generate PKCE parameters
   let (code_verifier, code_challenge) = generate_pkce();
   session
     .insert("pkce_verifier", &code_verifier)
     .await
     .map_err(AuthRouteError::from)?;
 
-  // Store callback URL in session
   session
     .insert("callback_url", &callback_url)
     .await
@@ -189,7 +184,6 @@ pub async fn auth_callback(
   let tenant_svc = auth_scope.tenants();
   let auth_flow = auth_scope.auth_flow();
 
-  // Handle OAuth errors from the auth server
   if let Some(error) = &request.error {
     let error_message = if let Some(error_description) = &request.error_description {
       format!("{}: {}", error, error_description)
@@ -211,17 +205,14 @@ pub async fn auth_callback(
     return Err(AuthRouteError::StateDigestMismatch)?;
   }
 
-  // Check for required authorization code
   let code = request.code.as_ref().ok_or(AuthRouteError::MissingCode)?;
 
-  // Get PKCE verifier
   let pkce_verifier = session
     .get::<String>("pkce_verifier")
     .await
     .map_err(AuthRouteError::from)?
     .ok_or(AuthRouteError::SessionInfoNotFound)?;
 
-  // Get callback URL from session
   let callback_url = session
     .get::<String>("callback_url")
     .await
@@ -245,7 +236,6 @@ pub async fn auth_callback(
     return Err(AuthRouteError::AppStatusInvalid(app_status))?;
   }
 
-  // Exchange code for tokens
   let token_response = auth_flow
     .exchange_auth_code(
       AuthorizationCode::new(code.to_string()),
@@ -256,7 +246,6 @@ pub async fn auth_callback(
     )
     .await?;
 
-  // Clean up OAuth state and PKCE parameters
   session
     .remove::<String>("oauth_state")
     .await
@@ -270,7 +259,6 @@ pub async fn auth_callback(
   let mut access_token = token_response.0.secret().to_string();
   let mut refresh_token = token_response.1.secret().to_string();
 
-  // Extract claims from JWT token to get user information
   let claims = extract_claims::<Claims>(&access_token)?;
   let user_id = claims.sub.clone();
 
@@ -309,7 +297,6 @@ pub async fn auth_callback(
     .await
     .map_err(AuthRouteError::from)?;
 
-  // Determine redirect URL using callback URL host
   let ui_setup_resume = if let Ok(parsed_url) = Url::parse(&callback_url) {
     let mut new_url = parsed_url.clone();
     new_url.set_path(CHAT_PATH);
@@ -319,7 +306,6 @@ pub async fn auth_callback(
     settings.frontend_default_url().await
   };
 
-  // Clean up callback URL and auth_client_id from session
   session
     .remove::<String>("callback_url")
     .await
@@ -329,7 +315,6 @@ pub async fn auth_callback(
     .await
     .map_err(AuthRouteError::from)?;
 
-  // Return successful redirect
   Ok(Json(RedirectResponse {
     location: ui_setup_resume,
   }))

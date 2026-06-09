@@ -57,14 +57,13 @@ async fn test_model_router_crud_roundtrip(
   assert!(fetched.targets[0].enabled);
   assert!(!fetched.targets[1].enabled);
 
-  // list
   let listed = ctx
     .service
     .list_model_router_aliases(TEST_TENANT_ID, TEST_USER_ID)
     .await?;
   assert_eq!(1, listed.len());
 
-  // update — rename + drop a target
+  // rename + drop a target
   let mut updated = router.clone();
   updated.alias = "my-stack-2".to_string();
   updated.targets.truncate(1);
@@ -80,7 +79,6 @@ async fn test_model_router_crud_roundtrip(
   assert_eq!("my-stack-2", after.alias);
   assert_eq!(1, after.targets.len());
 
-  // delete
   ctx
     .service
     .delete_model_router_alias(TEST_TENANT_ID, TEST_USER_ID, "router-1")

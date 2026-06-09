@@ -29,14 +29,12 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 use tower::ServiceExt;
 
-// Test response structure for our test endpoint
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 struct TestTokenResponse {
   token: Option<String>,
   role: Option<String>,
 }
 
-// Test endpoint that returns info about injected auth context
 async fn test_token_info_handler(
   auth_context: Option<Extension<AuthContext>>,
   State(_app_service): State<Arc<dyn AppService>>,
@@ -156,9 +154,8 @@ async fn test_cross_client_token_exchange_success(
 ) -> anyhow::Result<()> {
   let state = create_test_state(auth_server_config).await?;
 
-  // Create a draft access request in DB (tenant_id is NULL for drafts)
+  // Draft access requests have NULL tenant_id.
   let db_service = state.db_service();
-  // Get actual tenant_id for approval step
   let actual_tenant_id = state
     .tenant_service()
     .get_standalone_app()
@@ -190,8 +187,7 @@ async fn test_cross_client_token_exchange_success(
   };
   db_service.create(&row).await?;
 
-  // Register the consent with Keycloak using a token from the resource client
-  // KC requires the token to be from the resource client (not the app client)
+  // KC requires the consent token to be from the resource client, not the app client.
   let resource_user_token = auth_client
     .get_user_token(
       &auth_server_config.resource_client_id,
@@ -212,7 +208,6 @@ async fn test_cross_client_token_exchange_success(
     )
     .await?;
 
-  // Approve the access request in DB using the KC-returned scope
   let access_request_scope = kc_response.access_request_scope;
   let approved_json = r#"{"version":"1"}"#;
   db_service

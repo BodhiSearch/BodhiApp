@@ -1,4 +1,3 @@
-// production constants
 #[cfg(feature = "production")]
 mod env_config {
   use lib_bodhiserver::EnvType;
@@ -8,7 +7,6 @@ mod env_config {
   pub static AUTH_REALM: &str = "bodhi";
 }
 
-// development constants
 #[cfg(not(feature = "production"))]
 mod env_config {
   use lib_bodhiserver::EnvType;

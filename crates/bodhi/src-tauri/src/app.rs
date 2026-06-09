@@ -1,5 +1,3 @@
-// Function signature for delegation to feature-specific modules
-// Implementation will be provided by conditional compilation
 #[cfg(feature = "native")]
 pub use crate::native_init::initialize_and_execute;
 #[cfg(not(feature = "native"))]
@@ -32,7 +30,6 @@ enum Commands {
   },
 }
 
-// CLI-first entry point
 pub fn main(args: &[String]) {
   let cli = Cli::parse_from(args);
   let command = match cli.command {

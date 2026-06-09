@@ -57,11 +57,9 @@ pub async fn refresh_metadata_handler(
       filename,
       snapshot,
     } => {
-      // Parse and validate repo
       let repo_parsed = services::Repo::from_str(&repo)
         .map_err(|e| ModelRouteError::InvalidRepoFormat(e.to_string()))?;
 
-      // Find the ModelAlias for this GGUF file
       let all_aliases = auth_scope.data().list_aliases().await.map_err(|e| {
         tracing::error!("Failed to list aliases: {}", e);
         ModelRouteError::ListAliasesFailed
@@ -90,7 +88,7 @@ pub async fn refresh_metadata_handler(
           snapshot: snapshot.clone(),
         })?;
 
-      // Extract and store metadata synchronously
+      // sync path: extract inline (the All branch defers to the background queue instead)
       let metadata_row = extract_and_store_metadata(
         &Alias::Model(alias.clone()),
         auth_scope.hub_service().as_ref(),
@@ -108,19 +106,16 @@ pub async fn refresh_metadata_handler(
         ModelRouteError::ExtractionFailed(e.to_string())
       })?;
 
-      // Convert to response with metadata
       let metadata: services::ModelMetadata = metadata_row.into();
       let response = ModelAliasResponse::from(alias).with_metadata(Some(metadata));
 
       Ok(RefreshResponseType::Sync(response))
     }
     RefreshRequest::All {} => {
-      // Bulk async refresh
       let task = RefreshTask::RefreshAll {
         created_at: auth_scope.time_service().utc_now(),
       };
 
-      // Enqueue task via QueueProducer
       if let Err(e) = auth_scope.queue_producer().enqueue(task).await {
         tracing::error!("Failed to enqueue refresh task: {}", e);
         return Err(ModelRouteError::EnqueueFailed)?;

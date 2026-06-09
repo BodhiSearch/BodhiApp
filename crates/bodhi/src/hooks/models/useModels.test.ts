@@ -46,7 +46,6 @@ import {
 import { setupMswV2, server, http, HttpResponse } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
-// Mock data
 const mockModelData: Alias = {
   source: 'user',
   id: 'test-uuid-1',

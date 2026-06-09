@@ -15,7 +15,6 @@ impl AuthScopedApiModelService {
     }
   }
 
-  /// Create a new API model configuration
   pub async fn create(
     &self,
     form: ApiModelRequest,
@@ -29,7 +28,6 @@ impl AuthScopedApiModelService {
       .await
   }
 
-  /// Update an existing API model configuration
   pub async fn update(
     &self,
     id: &str,
@@ -44,7 +42,6 @@ impl AuthScopedApiModelService {
       .await
   }
 
-  /// Delete an API model configuration
   pub async fn delete(&self, id: &str) -> Result<(), ApiModelServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -55,7 +52,6 @@ impl AuthScopedApiModelService {
       .await
   }
 
-  /// Get a specific API model configuration
   pub async fn get(&self, id: &str) -> Result<ApiAliasResponse, ApiModelServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;

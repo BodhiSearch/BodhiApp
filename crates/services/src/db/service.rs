@@ -10,9 +10,6 @@ use crate::tenants::TenantRepository;
 use crate::tokens::TokenRepository;
 use crate::users::AccessRepository;
 
-/// Super-trait that combines all repository sub-traits.
-/// Any type implementing all sub-traits automatically implements DbService
-/// via the blanket impl below.
 pub trait DbService:
   DownloadRepository
   + ApiAliasRepository

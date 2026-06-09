@@ -73,7 +73,6 @@ async fn test_sync_models_handler_success(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Set up mock AI API service with expectations
   let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai.expect_for_alias().returning(|_, _| {
     let mut client = services::ai_apis::ai_api_client::MockAiApiClient::new();
@@ -87,7 +86,6 @@ async fn test_sync_models_handler_success(
     Ok(Box::new(client) as Box<dyn services::AiApiClient>)
   });
 
-  // Create app service with clean database and mock AI service
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
@@ -96,7 +94,6 @@ async fn test_sync_models_handler_success(
       .await?,
   );
 
-  // First create an API model
   let create_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
@@ -117,7 +114,6 @@ async fn test_sync_models_handler_success(
     .json::<ApiAliasResponse>()
     .await?;
 
-  // Sync models
   let sync_response = test_router(app_service)
     .oneshot(
       Request::post(format!(
@@ -128,10 +124,8 @@ async fn test_sync_models_handler_success(
     )
     .await?;
 
-  // Verify response status is 200 OK
   assert_eq!(StatusCode::OK, sync_response.status());
 
-  // Verify response contains the API model with cached models (unprefixed)
   let sync_body = sync_response.json::<ApiAliasResponse>().await?;
   assert_eq!(create_response.id, sync_body.id);
   assert_eq!(OpenAI, sync_body.api_format);
@@ -155,10 +149,8 @@ async fn test_create_api_model_success(
 ) -> anyhow::Result<()> {
   let now = db_service.now();
 
-  // Generate a unique ID for the test
   let test_id = Uuid::new_v4().to_string();
 
-  // Create API model via database
   let api_alias = ApiAliasBuilder::test_default()
     .id(test_id.clone())
     .api_format(OpenAI)
@@ -175,14 +167,13 @@ async fn test_create_api_model_success(
     )
     .await?;
 
-  // Verify it was created
   let retrieved = db_service
     .get_api_model_alias(TEST_TENANT_ID, "", &test_id)
     .await?;
   let retrieved = retrieved.ok_or_else(|| anyhow::anyhow!("expected api model alias to exist"))?;
   assert_eq!(retrieved.id, test_id);
 
-  // Verify API key is encrypted but retrievable
+  // round-trip through encryption: the stored key must decrypt back to the original
   let api_key = db_service
     .get_api_key_for_alias(TEST_TENANT_ID, "", &test_id)
     .await?;
@@ -202,7 +193,6 @@ async fn test_delete_api_model(
 ) -> anyhow::Result<()> {
   let now = db_service.now();
 
-  // Create API model
   let api_alias = ApiAliasBuilder::test_default()
     .id("to-delete")
     .api_format(OpenAI)
@@ -214,18 +204,15 @@ async fn test_delete_api_model(
     .create_api_model_alias(TEST_TENANT_ID, "", &api_alias, Some("sk-test".to_string()))
     .await?;
 
-  // Verify it exists
   assert!(db_service
     .get_api_model_alias(TEST_TENANT_ID, "", "to-delete")
     .await?
     .is_some());
 
-  // Delete it
   db_service
     .delete_api_model_alias(TEST_TENANT_ID, "", "to-delete")
     .await?;
 
-  // Verify it's gone
   assert!(db_service
     .get_api_model_alias(TEST_TENANT_ID, "", "to-delete")
     .await?
@@ -261,7 +248,6 @@ async fn test_sync_models_rejects_non_forward_all(
       .await?,
   );
 
-  // Create a non-forward_all alias with explicit models
   let create_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
@@ -282,7 +268,7 @@ async fn test_sync_models_rejects_non_forward_all(
     .json::<ApiAliasResponse>()
     .await?;
 
-  // Attempt sync on non-forward_all alias -> expect 400
+  // sync is only valid for forward_all aliases; a non-forward_all alias must be rejected
   let sync_response = test_router(app_service)
     .oneshot(
       Request::post(format!(
@@ -313,7 +299,7 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
   let expected_extra_headers = extra_headers.clone();
   let expected_extra_body = extra_body.clone();
 
-  // Set up mock AI API service: expect for_alias to receive the alias's extra fields
+  // for_alias must receive the alias's extra_headers/extra_body intact
   let mut mock_ai = services::MockAiApiClientFactory::new();
   mock_ai
     .expect_for_alias()
@@ -344,7 +330,6 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
       .await?,
   );
 
-  // Create an AnthropicOAuth alias with extra fields via the create endpoint
   let create_form = ApiModelRequest::default_for(
     ApiFormat::AnthropicOAuth,
     DefaultApiModelRequest {
@@ -365,7 +350,7 @@ async fn test_sync_models_anthropic_oauth_passes_extra_headers(
     .json::<ApiAliasResponse>()
     .await?;
 
-  // Sync models — mock verifies extra_headers and extra_body are passed through
+  // the mock's withf is the real assertion: it fails the test if extra fields aren't forwarded
   let sync_response = test_router(app_service)
     .oneshot(
       Request::post(format!(

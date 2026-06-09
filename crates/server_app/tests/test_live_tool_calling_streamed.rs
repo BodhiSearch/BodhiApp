@@ -33,10 +33,8 @@ async fn test_live_tool_calling_multi_turn_streamed(
     app_service,
   } = live_server?;
 
-  // Get OAuth tokens using client credentials flow
   let (access_token, refresh_token) = get_oauth_tokens(app_service.as_ref()).await?;
 
-  // Create authenticated session
   let session_id =
     create_authenticated_session(&app_service, &access_token, &refresh_token).await?;
   let session_cookie = create_session_cookie(&session_id);
@@ -53,7 +51,6 @@ async fn test_live_tool_calling_multi_turn_streamed(
     ChatCompletionRequestUserMessage::from("What's the temperature in London?").into(),
   ];
 
-  // Build Turn 1 request using async_openai types
   let request = CreateChatCompletionRequestArgs::default()
     .model("ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .seed(42_i64)
@@ -63,10 +60,8 @@ async fn test_live_tool_calling_multi_turn_streamed(
     .build()
     .unwrap();
 
-  // Serialize to JSON for sending
   let request_json = serde_json::to_value(&request).unwrap();
 
-  // Send Turn 1 streaming request, expect tool call
   let response = client
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
@@ -79,7 +74,6 @@ async fn test_live_tool_calling_multi_turn_streamed(
   assert_eq!(StatusCode::OK, response.status());
   let response_text = response.text().await?;
 
-  // Parse Turn 1 streaming response
   let (tool_calls, finish_reason) = parse_streaming_tool_calls(&response_text);
 
   assert_eq!(
@@ -116,13 +110,11 @@ async fn test_live_tool_calling_multi_turn_streamed(
     })
     .collect();
 
-  // Build assistant message with tool_calls
   let assistant_msg = ChatCompletionRequestAssistantMessageArgs::default()
     .tool_calls(typed_tool_calls)
     .build()
     .unwrap();
 
-  // Build tool response message
   let tool_msg = ChatCompletionRequestToolMessageArgs::default()
     .content("{\"temperature\": 15, \"unit\": \"celsius\"}")
     .tool_call_id(tool_call_id.to_string())
@@ -132,7 +124,6 @@ async fn test_live_tool_calling_multi_turn_streamed(
   messages.push(assistant_msg.into());
   messages.push(tool_msg.into());
 
-  // Build Turn 2 request using async_openai types
   let request = CreateChatCompletionRequestArgs::default()
     .model("ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .seed(42_i64)
@@ -142,10 +133,8 @@ async fn test_live_tool_calling_multi_turn_streamed(
     .build()
     .unwrap();
 
-  // Serialize to JSON for sending
   let request_json = serde_json::to_value(&request).unwrap();
 
-  // Send Turn 2 streaming request, expect final answer
   let response = client
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
@@ -160,7 +149,6 @@ async fn test_live_tool_calling_multi_turn_streamed(
 
   handle.shutdown().await?;
 
-  // Parse Turn 2 streaming response
   let (content, finish_reason) = parse_streaming_content(&response_text);
 
   assert_eq!(

@@ -91,7 +91,6 @@ impl McpServerRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // Verify tenant ownership before update
           let existing = mcp_server_entity::Entity::find_by_id(row.id.clone())
             .filter(mcp_server_entity::Column::TenantId.eq(&tenant_id_owned))
             .one(txn)

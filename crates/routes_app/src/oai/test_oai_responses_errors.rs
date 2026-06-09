@@ -33,10 +33,6 @@ fn codex_liberty_envelope_errors(access_token: &str) -> LlmLibertyEnvelope {
   env
 }
 
-// ============================================================================
-// validate_responses_request — error paths
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -100,10 +96,6 @@ async fn test_responses_create_missing_input() -> anyhow::Result<()> {
   );
   Ok(())
 }
-
-// ============================================================================
-// Alias resolution — error paths
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -190,10 +182,6 @@ async fn test_responses_create_wrong_format() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// response_id validation
-// ============================================================================
-
 #[rstest]
 #[case::path_traversal("..%2F..%2Fadmin")]
 #[case::slash_in_id("resp%2Fevil")]
@@ -223,7 +211,6 @@ async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow
     )
     .with_state(router_state);
 
-  // GET
   let response = app
     .clone()
     .oneshot(
@@ -234,7 +221,6 @@ async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow
     .await?;
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
-  // DELETE
   let response = app
     .clone()
     .oneshot(
@@ -245,7 +231,6 @@ async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow
     .await?;
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
-  // POST cancel
   let response = app
     .clone()
     .oneshot(
@@ -259,7 +244,6 @@ async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow
     .await?;
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
-  // GET input_items
   let response = app
     .oneshot(
       Request::get(format!(
@@ -274,10 +258,6 @@ async fn test_responses_invalid_response_id(#[case] response_id: &str) -> anyhow
 
   Ok(())
 }
-
-// ============================================================================
-// validate_responses_request — stream field validation
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -310,10 +290,6 @@ async fn test_responses_create_invalid_stream_field() -> anyhow::Result<()> {
   );
   Ok(())
 }
-
-// ============================================================================
-// Missing model query param — ID-based endpoints
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -451,10 +427,6 @@ async fn test_responses_cancel_missing_model_param() -> anyhow::Result<()> {
   );
   Ok(())
 }
-
-// ============================================================================
-// LLM Liberty OAuth — error paths
-// ============================================================================
 
 #[rstest]
 #[awt]

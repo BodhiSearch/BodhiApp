@@ -530,7 +530,6 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     noop_settings_repo(),
   );
   let bodhi_home = bodhi_home.path().to_path_buf();
-  // WHEN
   let settings = setting_service
     .list()
     .await
@@ -538,8 +537,6 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     .map(|setting| (setting.key.clone(), setting))
     .collect::<HashMap<String, SettingInfo>>();
 
-  // THEN
-  // System settings
   let expected_bodhi_home = SettingInfo {
     key: BODHI_HOME.to_string(),
     current_value: serde_yaml::Value::String(bodhi_home.display().to_string()),
@@ -552,7 +549,6 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     settings.get(BODHI_HOME).unwrap().clone()
   );
 
-  // Environment variable settings
   let expected_log_level = SettingInfo {
     key: BODHI_LOG_LEVEL.to_string(),
     current_value: serde_yaml::Value::String("debug".to_string()),
@@ -570,7 +566,6 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     settings.get(BODHI_LOG_LEVEL).unwrap().clone()
   );
 
-  // Settings file settings
   let expected_port = SettingInfo {
     key: BODHI_PORT.to_string(),
     current_value: serde_yaml::Value::Number(8080.into()),
@@ -580,7 +575,6 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
   };
   assert_eq!(expected_port, settings.get(BODHI_PORT).unwrap().clone());
 
-  // Boolean setting
   let expected_stdout = SettingInfo {
     key: BODHI_LOG_STDOUT.to_string(),
     current_value: serde_yaml::Value::Bool(true),
@@ -593,7 +587,6 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     settings.get(BODHI_LOG_STDOUT).unwrap().clone()
   );
 
-  // Default value setting
   let expected_scheme = SettingInfo {
     key: BODHI_SCHEME.to_string(),
     current_value: serde_yaml::Value::String(DEFAULT_SCHEME.to_string()),

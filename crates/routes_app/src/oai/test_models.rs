@@ -103,7 +103,7 @@ async fn test_oai_model_handler_found(#[future] app: Router) -> anyhow::Result<(
   assert_eq!("llama3:instruct", response["id"].as_str().unwrap());
   assert_eq!("model", response["object"].as_str().unwrap());
   assert_eq!("system", response["owned_by"].as_str().unwrap());
-  // User aliases now have non-zero created timestamp from DB
+  // User aliases have non-zero created timestamp from DB
   assert!(response["created"].as_u64().unwrap() > 0);
   Ok(())
 }

@@ -43,7 +43,6 @@ async fn test_cross_tenant_user_alias_isolation(
     .create_user_alias(TEST_TENANT_B_ID, TEST_USER_ID, &alias_b)
     .await?;
 
-  // Listing aliases in tenant A should only return alias_a
   let list_a = ctx
     .service
     .list_user_aliases(TEST_TENANT_ID, TEST_USER_ID)
@@ -51,7 +50,6 @@ async fn test_cross_tenant_user_alias_isolation(
   assert_eq!(1, list_a.len());
   assert_eq!("alias:tenant-a", list_a[0].alias);
 
-  // Listing aliases in tenant B should only return alias_b
   let list_b = ctx
     .service
     .list_user_aliases(TEST_TENANT_B_ID, TEST_USER_ID)
@@ -59,7 +57,6 @@ async fn test_cross_tenant_user_alias_isolation(
   assert_eq!(1, list_b.len());
   assert_eq!("alias:tenant-b", list_b[0].alias);
 
-  // Getting alias_b by ID under tenant A should return None
   let cross = ctx
     .service
     .get_user_alias_by_id(TEST_TENANT_ID, TEST_USER_ID, &alias_b.id)
@@ -90,7 +87,6 @@ async fn test_intra_tenant_user_alias_isolation(
     .create_user_alias(TEST_TENANT_ID, TEST_TENANT_A_USER_B_ID, &alias_user_b)
     .await?;
 
-  // Listing aliases for user A should only return alias_user_a
   let list_a = ctx
     .service
     .list_user_aliases(TEST_TENANT_ID, TEST_USER_ID)
@@ -98,7 +94,6 @@ async fn test_intra_tenant_user_alias_isolation(
   assert_eq!(1, list_a.len());
   assert_eq!("alias:user-a", list_a[0].alias);
 
-  // Listing aliases for user B should only return alias_user_b
   let list_b = ctx
     .service
     .list_user_aliases(TEST_TENANT_ID, TEST_TENANT_A_USER_B_ID)

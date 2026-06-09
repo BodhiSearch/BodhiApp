@@ -383,7 +383,6 @@ impl AppServiceStubBuilder {
       return self;
     }
     let db_service = self.get_db_service().await;
-    // Seed user aliases into DB
     crate::test_utils::seed_test_user_aliases(db_service.as_ref())
       .await
       .unwrap();

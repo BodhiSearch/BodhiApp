@@ -2,8 +2,7 @@ use crate::shared::AuthScope;
 use services::ai_apis::llm_liberty::{ensure_fresh_credentials, LlmLibertyRefreshError};
 use services::models::llm_liberty_envelope::ResolvedLlmLibertyCredentials;
 
-/// Resolve the stored API key for a given alias, returning None if no key is configured
-/// or if the lookup fails. Used by oai and anthropic route handlers.
+/// None if no key is configured or the lookup fails. Used by oai and anthropic route handlers.
 pub(crate) async fn resolve_api_key_for_alias(
   auth_scope: &AuthScope,
   api_alias_id: &str,

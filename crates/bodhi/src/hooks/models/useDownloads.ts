@@ -1,4 +1,3 @@
-// External imports
 import {
   DownloadRequest,
   NewDownloadRequest,
@@ -7,7 +6,6 @@ import {
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
-// Internal imports
 import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 import { downloadKeys, ENDPOINT_MODEL_FILES_PULL } from './constants';
@@ -18,8 +16,8 @@ export function useListDownloads(page: number, pageSize: number, options?: { ena
     ENDPOINT_MODEL_FILES_PULL,
     { page, page_size: pageSize },
     {
-      refetchInterval: options?.enablePolling ? 1000 : false, // Poll every 1 second if enabled
-      refetchIntervalInBackground: true, // Continue polling when tab is not focused
+      refetchInterval: options?.enablePolling ? 1000 : false,
+      refetchIntervalInBackground: true,
     }
   );
 }

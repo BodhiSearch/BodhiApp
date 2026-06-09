@@ -56,7 +56,6 @@ pub async fn apps_create_access_request(
     request.app_client_id
   );
 
-  // Validate redirect_url for redirect flow
   if request.flow_type == FlowType::Redirect && request.redirect_url.is_none() {
     return Err(AppsRouteError::MissingRedirectUrl)?;
   }
@@ -131,7 +130,6 @@ pub async fn apps_get_access_request_status(
     .await?
     .ok_or(AppsRouteError::NotFound)?;
 
-  // Verify app_client_id matches
   if request.app_client_id != query.app_client_id {
     return Err(AppsRouteError::NotFound)?;
   }
@@ -259,7 +257,6 @@ pub async fn apps_approve_access_request(
     .ok_or(AppsRouteError::InsufficientPrivileges)?;
   let tenant_id = auth_scope.require_tenant_id()?;
 
-  // Extract approver's role from session and compute max grantable scope
   let approver_role = match auth_scope.auth_context() {
     services::AuthContext::Session { role, .. }
     | services::AuthContext::MultiTenantSession { role, .. } => {

@@ -88,7 +88,6 @@ async fn test_setting_service(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
-  // GIVEN app with auth disabled
   let setting_service = test_setting_service(
     &temp_dir,
     maplit::hashmap! {
@@ -107,7 +106,6 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN requesting settings without auth
   let response = app
     .oneshot(
       Request::builder()
@@ -116,7 +114,6 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
     )
     .await?;
 
-  // THEN returns settings successfully
   assert_eq!(StatusCode::OK, response.status());
   let settings = response.json::<Vec<SettingInfo>>().await?;
   let log_level = SettingInfo {
@@ -169,7 +166,6 @@ async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN updating the setting
   let response = app
     .oneshot(
       Request::builder()
@@ -179,10 +175,8 @@ async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result
     )
     .await?;
 
-  // THEN it succeeds
   assert_eq!(StatusCode::OK, response.status());
 
-  // AND returns updated setting
   let setting = response.json::<SettingInfo>().await?;
   assert_eq!(BODHI_EXEC_VARIANT, setting.key);
   assert_eq!(
@@ -205,7 +199,6 @@ async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Re
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN updating an invalid setting
   let response = app
     .oneshot(
       Request::builder()
@@ -215,7 +208,6 @@ async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Re
     )
     .await?;
 
-  // THEN it fails with not found
   assert_eq!(StatusCode::NOT_FOUND, response.status());
 
   let error = response.json::<serde_json::Value>().await?;
@@ -239,7 +231,7 @@ async fn test_routes_setting_update_unsupported_key(temp_dir: TempDir) -> anyhow
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN updating a setting that exists but is not editable
+  // BODHI_PORT exists but is not in EDIT_SETTINGS_ALLOWED
   let response = app
     .oneshot(
       Request::builder()
@@ -249,7 +241,6 @@ async fn test_routes_setting_update_unsupported_key(temp_dir: TempDir) -> anyhow
     )
     .await?;
 
-  // THEN it fails with unsupported
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let error = response.json::<serde_json::Value>().await?;
   assert_eq!(
@@ -273,7 +264,6 @@ async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN updating with invalid value type
   let response = app
     .oneshot(
       Request::builder()
@@ -283,7 +273,6 @@ async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::
     )
     .await?;
 
-  // THEN it fails validation
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let error = response.json::<serde_json::Value>().await?;
   assert_eq!(
@@ -308,7 +297,6 @@ async fn test_routes_setting_update_invalid_value_out_of_range(
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN updating with invalid value type
   let response = app
     .oneshot(
       Request::builder()
@@ -318,8 +306,6 @@ async fn test_routes_setting_update_invalid_value_out_of_range(
     )
     .await?;
 
-  // THEN it fails validation
-  // assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let error = response.json::<serde_json::Value>().await?;
   assert_eq!(
     Some("settings_metadata_error-invalid_value"),
@@ -332,7 +318,6 @@ async fn test_routes_setting_update_invalid_value_out_of_range(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
-  // GIVEN an app with a custom setting value
   let setting_service = test_setting_service(
     &temp_dir,
     maplit::hashmap! {},
@@ -347,7 +332,6 @@ async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN deleting the setting
   let response = app
     .oneshot(
       Request::builder()
@@ -357,10 +341,8 @@ async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
     )
     .await?;
 
-  // THEN it succeeds
   assert_eq!(StatusCode::OK, response.status());
 
-  // AND returns setting with default value
   let setting = response.json::<SettingInfo>().await?;
   assert_eq!(BODHI_EXEC_VARIANT, setting.key);
   assert_eq!(
@@ -376,7 +358,6 @@ async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()> {
-  // GIVEN an app
   let setting_service =
     test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
   let app_service = AppServiceStubBuilder::default()
@@ -385,7 +366,6 @@ async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN deleting an invalid setting
   let response = app
     .oneshot(
       Request::builder()
@@ -395,7 +375,6 @@ async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()
     )
     .await?;
 
-  // THEN it fails with not found
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let error = response.json::<serde_json::Value>().await?;
   assert_eq!(
@@ -410,7 +389,6 @@ async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()
 #[tokio::test]
 #[anyhow_trace]
 async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Result<()> {
-  // GIVEN an app with both env and file settings
   let setting_service = test_setting_service(
     &temp_dir,
     maplit::hashmap! {
@@ -426,7 +404,6 @@ async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Res
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN deleting the setting
   let response = app
     .oneshot(
       Request::builder()
@@ -436,10 +413,9 @@ async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Res
     )
     .await?;
 
-  // THEN it succeeds
   assert_eq!(StatusCode::OK, response.status());
 
-  // AND returns setting with env value (not default)
+  // deleting the DB override falls back to the env value, not the default
   let setting = response.json::<SettingInfo>().await?;
   assert_eq!(BODHI_EXEC_VARIANT, setting.key);
   assert_eq!(
@@ -455,7 +431,6 @@ async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Res
 #[tokio::test]
 #[anyhow_trace]
 async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()> {
-  // GIVEN an app with no custom settings
   let setting_service =
     test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
   let app_service = AppServiceStubBuilder::default()
@@ -464,7 +439,6 @@ async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()
     .await?;
   let app = app(Arc::new(app_service)).await;
 
-  // WHEN deleting a setting that's already at default
   let response = app
     .oneshot(
       Request::builder()
@@ -474,10 +448,8 @@ async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()
     )
     .await?;
 
-  // THEN it succeeds
   assert_eq!(StatusCode::OK, response.status());
 
-  // AND returns setting with default value
   let setting = response.json::<SettingInfo>().await?;
   assert_eq!(BODHI_EXEC_VARIANT, setting.key);
   assert_eq!(
@@ -488,8 +460,6 @@ async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()
 
   Ok(())
 }
-
-// Auth tier tests (merged from tests/routes_settings_auth_test.rs)
 
 #[anyhow_trace]
 #[rstest]

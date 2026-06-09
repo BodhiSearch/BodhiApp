@@ -9,12 +9,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 const TEST_FILES_DIR = path.join(__dirname, '__tests__');
 
-// Helper function to read test files
 function readTestFile(filename: string): string {
   return fs.readFileSync(path.join(TEST_FILES_DIR, filename), 'utf-8').trim();
 }
 
-// Helper function to format HTML using prettier
 async function formatHTML(html: string): Promise<string> {
   return prettier.format(html, {
     parser: 'html',
@@ -28,7 +26,6 @@ async function formatHTML(html: string): Promise<string> {
   });
 }
 
-// Add this helper function at the top with other helpers
 async function writeFailedTestOutput(filename: string, content: string) {
   const outputPath = path.join(TEST_FILES_DIR, `${filename}.actual.html`);
   await fs.promises.writeFile(outputPath, content);
@@ -44,9 +41,7 @@ it.skip('MemoizedReactMarkdown', () => {
     { file: 'tic-tac-toe.non-stream.txt' },
   ];
 
-  beforeEach(() => {
-    // Reset any mocks if needed
-  });
+  beforeEach(() => {});
 
   testFiles.forEach(({ file }) => {
     it(`renders ${file} markdown correctly in block mode`, async () => {
@@ -61,7 +56,6 @@ it.skip('MemoizedReactMarkdown', () => {
 
       const markdownContent = (container.firstChild as HTMLElement)?.innerHTML || '';
 
-      // Format both expected and actual HTML through the same prettier config
       const formattedExpected = await formatHTML(expected);
       const formattedActual = await formatHTML(markdownContent);
 
@@ -84,7 +78,6 @@ it.skip('MemoizedReactMarkdown', () => {
 
     const firstRender = container.innerHTML;
 
-    // Rerender with same props
     rerender(<MemoizedReactMarkdown className={className}>{content}</MemoizedReactMarkdown>);
 
     const secondRender = container.innerHTML;
@@ -103,7 +96,6 @@ it.skip('MemoizedReactMarkdown', () => {
 
     const firstRender = container.innerHTML;
 
-    // Rerender with different content
     rerender(<MemoizedReactMarkdown className={className}>{newContent}</MemoizedReactMarkdown>);
 
     const secondRender = container.innerHTML;
@@ -138,7 +130,6 @@ it.skip('MemoizedReactMarkdown Streaming', () => {
 
         const markdownContent = (container.firstChild as HTMLElement)?.innerHTML || '';
 
-        // Parse HTML with strict options
         const root = parseHTML(markdownContent, {
           comment: false,
           blockTextElements: {
@@ -169,7 +160,6 @@ it.skip('MemoizedReactMarkdown Streaming', () => {
           },
         });
 
-        // Log the HTML content and structure for debugging
         if (!root || !root.firstChild) {
           console.log('Current accumulated content:', accumulatedContent);
           console.log('Generated HTML:', markdownContent);

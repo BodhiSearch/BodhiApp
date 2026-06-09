@@ -274,7 +274,6 @@ function EditMcpServerContent() {
         </CardContent>
       </Card>
 
-      {/* Delete Auth Config Confirmation Dialog */}
       <AlertDialog
         open={!!deleteTarget}
         onOpenChange={(open) => {

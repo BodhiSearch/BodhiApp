@@ -5,9 +5,7 @@ import { useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 import { modelKeys, modelFileKeys, ENDPOINT_MODELS_REFRESH } from './constants';
 
-/**
- * Hook to trigger metadata refresh for all local models (async bulk mode)
- */
+// Async bulk mode: refresh metadata for all local models.
 export function useRefreshAllMetadata(options?: {
   onSuccess?: (response: RefreshResponse) => void;
   onError?: (message: string) => void;
@@ -27,9 +25,7 @@ export function useRefreshAllMetadata(options?: {
   });
 }
 
-/**
- * Hook to trigger metadata refresh for a model by GGUF file (sync single mode)
- */
+// Sync single mode: refresh metadata for one model by GGUF file.
 export function useRefreshSingleMetadata(options?: {
   onSuccess?: (response: AliasResponse) => void;
   onError?: (message: string) => void;
@@ -41,9 +37,8 @@ export function useRefreshSingleMetadata(options?: {
     'post',
     {
       onSuccess: (response) => {
-        // Call user callback first
         options?.onSuccess?.(response.data);
-        // Delay query invalidation to ensure mutation state updates complete first
+        // Delay invalidation so mutation state updates settle first.
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: modelKeys.all });
           queryClient.invalidateQueries({ queryKey: modelFileKeys.all });

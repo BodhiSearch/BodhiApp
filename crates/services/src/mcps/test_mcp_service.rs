@@ -55,10 +55,6 @@ fn mcp_request(
   }
 }
 
-// ============================================================================
-// MCP Instance Create with Auth Tests
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -70,7 +66,6 @@ async fn test_create_mcp_with_header_credentials(
 ) -> anyhow::Result<()> {
   let service = make_service(db)?;
 
-  // Create server
   service
     .create_mcp_server(
       TEST_TENANT_ID,
@@ -81,7 +76,6 @@ async fn test_create_mcp_with_header_credentials(
   let servers = service.list_mcp_servers(TEST_TENANT_ID, None).await?;
   let server_id = &servers[0].id;
 
-  // Create MCP with header credentials
   let credentials = vec![
     McpAuthParamInput {
       param_type: McpAuthParamType::Header,
@@ -113,7 +107,6 @@ async fn test_create_mcp_with_header_credentials(
   assert_eq!("cred-mcp", result.slug);
   assert_eq!(McpAuthType::Header, result.auth_type);
 
-  // Verify the MCP was created with auth params
   let list = service.list(TEST_TENANT_ID, TEST_USER_ID).await?;
   assert_eq!(1, list.len());
   assert_eq!(McpAuthType::Header, list[0].auth_type);
@@ -144,7 +137,6 @@ async fn test_create_mcp_with_oauth_token(
   let servers = service.list_mcp_servers(TEST_TENANT_ID, None).await?;
   let server_id = servers[0].id.clone();
 
-  // Create an OAuth config via service
   let oauth_config = service
     .create_oauth_config(
       TEST_TENANT_ID,
@@ -164,7 +156,6 @@ async fn test_create_mcp_with_oauth_token(
     )
     .await?;
 
-  // Store an OAuth token
   let token = service
     .store_oauth_token(
       TEST_TENANT_ID,
@@ -178,7 +169,6 @@ async fn test_create_mcp_with_oauth_token(
     )
     .await?;
 
-  // Create MCP with oauth_token_id
   let result = service
     .create(
       TEST_TENANT_ID,
@@ -197,7 +187,6 @@ async fn test_create_mcp_with_oauth_token(
   assert_eq!("oauth-mcp", result.slug);
   assert_eq!(McpAuthType::Oauth, result.auth_type);
 
-  // Verify token is linked to MCP
   let fetched_token = service
     .get_oauth_token(TEST_TENANT_ID, TEST_USER_ID, &token.id)
     .await?;
@@ -205,10 +194,6 @@ async fn test_create_mcp_with_oauth_token(
   assert_eq!(Some(result.id), fetched_token.unwrap().mcp_id);
   Ok(())
 }
-
-// ============================================================================
-// MCP Instance Update with Auth Tests
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -231,7 +216,6 @@ async fn test_update_mcp_change_credentials(
   let servers = service.list_mcp_servers(TEST_TENANT_ID, None).await?;
   let server_id = servers[0].id.clone();
 
-  // Create with initial credentials
   let old_creds = vec![McpAuthParamInput {
     param_type: McpAuthParamType::Header,
     param_key: "Authorization".to_string(),
@@ -253,7 +237,6 @@ async fn test_update_mcp_change_credentials(
     )
     .await?;
 
-  // Update with new credentials
   let new_creds = vec![McpAuthParamInput {
     param_type: McpAuthParamType::Header,
     param_key: "X-New-Key".to_string(),
@@ -301,7 +284,6 @@ async fn test_update_mcp_clear_auth(
   let servers = service.list_mcp_servers(TEST_TENANT_ID, None).await?;
   let server_id = servers[0].id.clone();
 
-  // Create with header auth
   let creds = vec![McpAuthParamInput {
     param_type: McpAuthParamType::Header,
     param_key: "Authorization".to_string(),
@@ -344,10 +326,6 @@ async fn test_update_mcp_clear_auth(
   assert_eq!(None, updated.auth_config_id);
   Ok(())
 }
-
-// ============================================================================
-// Auth Config Service Tests
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -408,7 +386,6 @@ async fn test_create_auth_config_header(
     _ => panic!("Expected Header response"),
   }
 
-  // Verify via list
   let configs = service
     .list_auth_configs(TEST_TENANT_ID, &server_id)
     .await?;
@@ -479,17 +456,12 @@ async fn test_create_auth_config_oauth(
     _ => panic!("Expected Oauth response"),
   }
 
-  // Verify via list
   let configs = service
     .list_auth_configs(TEST_TENANT_ID, &server_id)
     .await?;
   assert_eq!(1, configs.len());
   Ok(())
 }
-
-// ============================================================================
-// Resolve Auth Params Tests
-// ============================================================================
 
 #[rstest]
 #[awt]
@@ -512,7 +484,6 @@ async fn test_resolve_auth_params_public(
   let servers = service.list_mcp_servers(TEST_TENANT_ID, None).await?;
   let server_id = servers[0].id.clone();
 
-  // Create a public MCP (no auth)
   let result = service
     .create(
       TEST_TENANT_ID,
@@ -530,7 +501,6 @@ async fn test_resolve_auth_params_public(
 
   assert_eq!(McpAuthType::Public, result.auth_type);
 
-  // Verify the MCP exists and is accessible
   let fetched = service
     .get(TEST_TENANT_ID, TEST_USER_ID, &result.id)
     .await?;
@@ -560,7 +530,6 @@ async fn test_resolve_auth_params_header(
   let servers = service.list_mcp_servers(TEST_TENANT_ID, None).await?;
   let server_id = servers[0].id.clone();
 
-  // Create MCP with header credentials
   let credentials = vec![McpAuthParamInput {
     param_type: McpAuthParamType::Header,
     param_key: "Authorization".to_string(),
@@ -584,7 +553,6 @@ async fn test_resolve_auth_params_header(
 
   assert_eq!(McpAuthType::Header, created.auth_type);
 
-  // The auth params should be queryable via DB service layer
   let fetched = service
     .get(TEST_TENANT_ID, TEST_USER_ID, &created.id)
     .await?;
@@ -606,7 +574,6 @@ async fn test_resolve_auth_params_oauth(
   let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
   let service = DefaultMcpService::new(Arc::clone(&db_arc), mcp_client, default_time_service())?;
 
-  // Create server
   service
     .create_mcp_server(
       TEST_TENANT_ID,
@@ -617,7 +584,6 @@ async fn test_resolve_auth_params_oauth(
   let servers = service.list_mcp_servers(TEST_TENANT_ID, None).await?;
   let server_id = servers[0].id.clone();
 
-  // Create OAuth config
   let oauth_config = service
     .create_oauth_config(
       TEST_TENANT_ID,
@@ -637,7 +603,6 @@ async fn test_resolve_auth_params_oauth(
     )
     .await?;
 
-  // Store OAuth token
   let token = service
     .store_oauth_token(
       TEST_TENANT_ID,
@@ -651,7 +616,6 @@ async fn test_resolve_auth_params_oauth(
     )
     .await?;
 
-  // Create MCP with OAuth auth type and linked token
   let created = service
     .create(
       TEST_TENANT_ID,

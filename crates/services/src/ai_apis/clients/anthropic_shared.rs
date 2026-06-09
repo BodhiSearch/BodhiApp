@@ -48,7 +48,6 @@ pub(super) fn apply_bearer_auth_and_version(
   request
 }
 
-/// Deserialize `data[]` from an Anthropic models response page into `ApiModel::Anthropic`.
 pub(super) fn parse_anthropic_models_page(body: &Value) -> Vec<ApiModel> {
   body
     .get("data")
@@ -63,7 +62,6 @@ pub(super) fn parse_anthropic_models_page(body: &Value) -> Vec<ApiModel> {
     .unwrap_or_default()
 }
 
-/// Extract the text response from an Anthropic `/messages` response.
 pub(super) fn extract_anthropic_completion_text(body: &Value) -> String {
   body
     .get("content")

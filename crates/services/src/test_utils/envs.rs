@@ -315,9 +315,7 @@ impl EnvWrapper for EnvWrapperStub {
     }
   }
 
-  fn load(&self, _path: &Path) {
-    //
-  }
+  fn load(&self, _path: &Path) {}
 }
 
 pub fn bodhi_home_setting(path: &Path, source: SettingSource) -> Setting {

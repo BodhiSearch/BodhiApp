@@ -95,7 +95,6 @@ async fn test_create_draft_redirect_valid(
   assert_eq!(AppAccessRequestStatus::Draft, result.status);
   assert_eq!(FlowType::Redirect, result.flow_type);
   assert_eq!("scope_user_power_user", result.requested_role);
-  // redirect_uri should have ?id=<uuid> appended
   let redirect = result.redirect_uri.unwrap();
   assert!(redirect.starts_with("https://example.com/callback?id="));
 
@@ -151,7 +150,6 @@ async fn test_approve_request_already_processed(
   let now = db.now();
   let expires_at = now + chrono::Duration::minutes(10);
 
-  // Insert a row that is already approved
   let row = AppAccessRequest {
     id: "ar-approved-001".to_string(),
     tenant_id: Some(TEST_TENANT_ID.to_string()),
@@ -215,7 +213,6 @@ async fn test_approve_request_threads_approved_role(
   let now = db.now();
   let expires_at = now + chrono::Duration::minutes(10);
 
-  // Insert a draft row
   let row = AppAccessRequest {
     id: "ar-draft-approve".to_string(),
     tenant_id: Some(TEST_TENANT_ID.to_string()),
@@ -294,7 +291,6 @@ async fn test_get_request_expired_draft_returns_expired_record(
   db: TestDbService,
 ) -> anyhow::Result<()> {
   let now = db.now();
-  // Set expires_at to 5 minutes in the past
   let expires_at = now - chrono::Duration::minutes(5);
 
   let row = AppAccessRequest {

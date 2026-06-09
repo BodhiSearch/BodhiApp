@@ -1,7 +1,3 @@
-/**
- * Tests for browser detection hook
- */
-
 import { renderHook } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
@@ -9,14 +5,12 @@ import * as browserUtils from '@/lib/browser-utils';
 
 import { useBrowserDetection } from './use-browser-detection';
 
-// Mock UAParser
 vi.mock('ua-parser-js', () => {
   return {
     UAParser: vi.fn(),
   };
 });
 
-// Mock browser-utils module
 vi.mock('@/lib/browser-utils', () => ({
   detectBrowser: vi.fn(),
   BROWSER_CONFIG: {

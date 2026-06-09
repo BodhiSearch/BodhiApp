@@ -31,7 +31,6 @@ function BrowserExtensionSetupContent() {
   return (
     <SetupContainer>
       <div data-testid="browser-extension-setup-page" data-page-state={extensionStatus}>
-        {/* Main Card */}
         <motion.div variants={itemVariants} className="mb-8">
           <BrowserExtensionCard
             detectedBrowser={detectedBrowser}
@@ -42,7 +41,6 @@ function BrowserExtensionSetupContent() {
           />
         </motion.div>
 
-        {/* Standard Footer */}
         <SetupFooter
           clarificationText="Need help? The extension enables AI features directly in your browser tabs."
           subText="You can always install the extension later from the settings page."

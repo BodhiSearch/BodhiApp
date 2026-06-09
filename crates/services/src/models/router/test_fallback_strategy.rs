@@ -178,8 +178,7 @@ fn test_ctx_sharing(
   }
 }
 
-/// Back-compat shim for the Phase-2 tests: returns just `(ctx, calls)` with a
-/// throwaway registry + clock.
+/// Returns just `(ctx, calls)` with a throwaway registry + clock.
 fn ctx_with_outcomes(
   aliases: Vec<Alias>,
   outcomes: HashMap<String, Upstream>,

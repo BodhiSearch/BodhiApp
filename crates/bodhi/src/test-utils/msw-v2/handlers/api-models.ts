@@ -1,6 +1,3 @@
-/**
- * Type-safe MSW v2 handlers for API models endpoints using openapi-msw
- */
 import {
   ENDPOINT_API_MODELS,
   ENDPOINT_API_MODELS_FETCH,
@@ -11,17 +8,10 @@ import {
 
 import { INTERNAL_SERVER_ERROR, typedHttp, http, HttpResponse, type components } from '../setup';
 
-// =============================================================================
-// CORE TYPED HTTP METHODS (Success cases + Error handlers)
-// =============================================================================
-
 /**
- * Mock handler for API models list endpoint with configurable responses
- */
-/**
- * Note: The GET list endpoint for API models was removed.
- * Use mockModels from handlers/models.ts for the combined models list.
- * These handlers are kept for backward compatibility but use standard http.
+ * The GET list endpoint for API models was removed; use mockModels from
+ * handlers/models.ts for the combined list. Kept for backward compatibility
+ * via standard http.
  */
 export function mockApiModels(
   {
@@ -62,11 +52,7 @@ export function mockApiModelsError(
 }
 
 /**
- * Mock handler for API model creation endpoint with configurable responses
- *
- * Note: has_api_key semantics:
- * - true: API key exists (default)
- * - false: No API key stored
+ * has_api_key: true = API key exists (default), false = no API key stored.
  */
 export function mockCreateApiModel(
   {
@@ -136,11 +122,7 @@ export function mockCreateApiModelError(
 }
 
 /**
- * Mock handler for individual API model retrieval with configurable responses
- *
- * Note: has_api_key semantics:
- * - true: API key exists (default)
- * - false: No API key stored
+ * has_api_key: true = API key exists (default), false = no API key stored.
  */
 export function mockGetApiModel(
   expectedId: string,
@@ -165,9 +147,8 @@ export function mockGetApiModel(
     typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id: paramId } = params;
 
-      // Only respond if id matches
       if (paramId !== expectedId) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -208,9 +189,8 @@ export function mockGetApiModelError(
     typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
 
-      // Only respond if id matches
       if (id !== expectedId) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -228,11 +208,7 @@ export function mockGetApiModelError(
 }
 
 /**
- * Mock handler for API model update endpoint with configurable responses
- *
- * Note: has_api_key semantics:
- * - true: API key exists (default)
- * - false: No API key stored
+ * has_api_key: true = API key exists (default), false = no API key stored.
  */
 export function mockUpdateApiModel(
   expectedId: string,
@@ -257,9 +233,8 @@ export function mockUpdateApiModel(
     typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id: paramId } = params;
 
-      // Only respond if id matches
       if (paramId !== expectedId) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -300,9 +275,8 @@ export function mockUpdateApiModelError(
     typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
 
-      // Only respond if id matches
       if (id !== expectedId) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -319,18 +293,14 @@ export function mockUpdateApiModelError(
   ];
 }
 
-/**
- * Mock handler for API model deletion endpoint with configurable responses
- */
 export function mockDeleteApiModel(expectedId: string, { stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
 
-      // Only respond if id matches
       if (id !== expectedId) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -357,9 +327,8 @@ export function mockDeleteApiModelError(
     typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
 
-      // Only respond if id matches
       if (id !== expectedId) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -376,9 +345,6 @@ export function mockDeleteApiModelError(
   ];
 }
 
-/**
- * Mock handler for API formats endpoint with configurable responses
- */
 export function mockApiFormats(
   { data = ['openai', 'anthropic_oauth'], ...rest }: Partial<components['schemas']['ApiFormatsResponse']> = {},
   { stub }: { stub?: boolean } = {}
@@ -423,9 +389,6 @@ export function mockApiFormatsError(
   ];
 }
 
-/**
- * Mock handler for API model test connection endpoint with configurable responses
- */
 export function mockTestApiModel(
   {
     success = true,
@@ -475,9 +438,6 @@ export function mockTestApiModelError(
   ];
 }
 
-/**
- * Mock handler for API model fetch models endpoint with configurable responses
- */
 export function mockFetchApiModels(
   {
     models = ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
@@ -525,13 +485,6 @@ export function mockFetchApiModelsError(
   ];
 }
 
-// =============================================================================
-// VARIANT METHODS (Using core methods above)
-// =============================================================================
-
-/**
- * Predefined mock configurations for common use cases
- */
 export function mockApiModelsDefault() {
   return mockApiModels({
     data: [
@@ -541,7 +494,7 @@ export function mockApiModelsDefault() {
         name: 'Test API Model',
         api_format: 'openai',
         base_url: 'https://api.openai.com/v1',
-        has_api_key: true, // Has API key
+        has_api_key: true,
         models: [
           { id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
           { id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
@@ -567,9 +520,6 @@ export function mockApiModelsEmpty() {
   });
 }
 
-/**
- * Convenience methods for common test scenarios
- */
 export function mockApiFormatsDefault() {
   return mockApiFormats({
     data: ['openai', 'openai_responses', 'anthropic', 'anthropic_oauth', 'gemini', 'llm_liberty_oauth'],
@@ -603,7 +553,7 @@ export function mockCreateApiModelSuccess() {
     id: 'test-model-123',
     api_format: 'openai',
     base_url: 'https://api.openai.com/v1',
-    has_api_key: true, // Has API key
+    has_api_key: true,
     models: [{ id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' }],
     prefix: null,
     forward_all_with_prefix: false,
@@ -612,10 +562,6 @@ export function mockCreateApiModelSuccess() {
   });
 }
 
-/**
- * Mock API model with API key (has_api_key: true)
- * Use this when testing scenarios where an API key exists
- */
 export function mockApiModelWithKey(overrides?: Partial<components['schemas']['ApiAliasResponse']>) {
   return mockCreateApiModel({
     has_api_key: true,
@@ -623,10 +569,6 @@ export function mockApiModelWithKey(overrides?: Partial<components['schemas']['A
   });
 }
 
-/**
- * Mock API model without API key (null)
- * Use this when testing public API scenarios or models without authentication
- */
 export function mockApiModelWithoutKey(overrides?: Partial<components['schemas']['ApiAliasResponse']>) {
   return mockCreateApiModel({
     has_api_key: false,

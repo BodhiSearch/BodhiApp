@@ -35,9 +35,6 @@ impl HfProgress for Progress {
 }
 
 const SYNC_INTERVAL: u64 = 3000;
-/// Production progress tracker that updates download request in database
-/// Implements hf-hub's Progress trait for seamless integration
-/// Uses lock-free atomics for high performance
 #[derive(Debug)]
 pub struct DatabaseProgress {
   db_service: Arc<dyn DbService>,
@@ -45,7 +42,7 @@ pub struct DatabaseProgress {
   request_id: String,
   downloaded_bytes: Arc<AtomicU64>,
   total_bytes: Arc<AtomicU64>,
-  last_sync_time: Arc<AtomicU64>, // Last database sync time in milliseconds
+  last_sync_time: Arc<AtomicU64>, // milliseconds
 }
 
 fn current_time_millis() -> u64 {
@@ -69,7 +66,6 @@ impl Clone for DatabaseProgress {
 }
 
 impl DatabaseProgress {
-  /// Create a new database progress tracker
   pub fn new(db_service: Arc<dyn DbService>, tenant_id: String, request_id: String) -> Self {
     Self {
       db_service,
@@ -81,13 +77,12 @@ impl DatabaseProgress {
     }
   }
 
-  /// Sync progress to database without spawning
   async fn sync_to_database(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let downloaded = self.downloaded_bytes.load(Ordering::Relaxed);
     let total = self.total_bytes.load(Ordering::Relaxed);
 
     if total == 0 {
-      return Ok(()); // No data to sync yet
+      return Ok(());
     }
 
     update_download_progress(
@@ -110,23 +105,20 @@ impl HfProgress for DatabaseProgress {
       .last_sync_time
       .store(current_time_millis(), Ordering::Relaxed);
 
-    // Sync initial state
     if let Err(e) = self.sync_to_database().await {
       error!("Failed to initialize download progress: {}", e);
     }
   }
 
   async fn update(&mut self, size: usize) {
-    // Simple atomic accumulation
     self
       .downloaded_bytes
       .fetch_add(size as u64, Ordering::Relaxed);
 
-    // Time-based database sync every 3 seconds
     let now = current_time_millis();
     let last_sync = self.last_sync_time.load(Ordering::Relaxed);
     if now - last_sync >= SYNC_INTERVAL {
-      // Try to update the sync time atomically to prevent multiple concurrent syncs
+      // Claim the sync slot atomically so concurrent updates don't double-sync.
       if self
         .last_sync_time
         .compare_exchange(last_sync, now, Ordering::Relaxed, Ordering::Relaxed)
@@ -147,7 +139,6 @@ impl HfProgress for DatabaseProgress {
       downloaded, total
     );
 
-    // Final sync to database
     if let Err(e) = self.sync_to_database().await {
       error!("Failed to finish download progress: {}", e);
     } else {
@@ -156,7 +147,6 @@ impl HfProgress for DatabaseProgress {
   }
 }
 
-/// Updates download request progress in database
 async fn update_download_progress(
   db_service: Arc<dyn DbService>,
   tenant_id: String,

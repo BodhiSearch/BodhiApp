@@ -89,7 +89,6 @@ pub use progress_tracking::*;
 pub use router::*;
 pub use user_alias_repository::UserAliasRepository;
 
-// Entity re-exports for entities that were previously in db/entities
 pub use api_model_alias_entity::ApiModelEntity;
 pub use download_request_entity::DownloadRequestEntity;
 pub use llm_liberty_credentials_entity::LlmLibertyCredentialsEntity;

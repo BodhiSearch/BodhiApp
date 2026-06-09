@@ -158,7 +158,6 @@ impl UserAliasRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // Verify ownership before updating
           let exists = user_alias::Entity::find()
             .filter(user_alias::Column::Id.eq(&id))
             .filter(user_alias::Column::TenantId.eq(&tenant_id_owned))

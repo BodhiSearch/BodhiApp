@@ -18,10 +18,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// API endpoint constants for MSW handlers
 const ENDPOINT_API_MODEL_ID = '/bodhi/v1/models/api/{id}';
 
-// Mock navigation
 const navigateMock = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
@@ -36,13 +34,11 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Mock toast
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast, dismiss: () => {} }),
 }));
 
-// Mock component dependencies
 vi.mock('@/components/ui/toaster', () => ({
   Toaster: () => null,
 }));
@@ -88,7 +84,7 @@ const mockApiAliasResponse: ApiAliasResponse = {
   name: 'Test OpenAI Model',
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
-  has_api_key: true, // Has API key
+  has_api_key: true,
   models: [
     { id: 'gpt-4', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
     { id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' },
@@ -99,7 +95,6 @@ const mockApiAliasResponse: ApiAliasResponse = {
   updated_at: '2024-01-01T00:00:00Z',
 };
 
-// Helper functions for test setup
 async function renderCreateFormWithApiKey(apiKey = 'sk-test-123') {
   const user = userEvent.setup();
   await act(async () => {
@@ -128,12 +123,10 @@ async function renderEditFormUsingStoredCreds() {
   return user;
 }
 
-// Types the required name field (added as a required field on the form).
 async function fillName(user: ReturnType<typeof userEvent.setup>, name = 'Test API Model') {
   await user.type(screen.getByTestId('api-model-name-input'), name);
 }
 
-// Helper functions for model selection operations
 async function fetchModelsAndWait(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByTestId('fetch-models-button'));
   await waitFor(() => {
@@ -311,7 +304,6 @@ describe('ApiModelForm', () => {
       await fetchModelsAndWait(user);
       await selectModel(user, 'gpt-4');
 
-      // Submit without typing a name.
       await user.click(screen.getByTestId('create-api-model-button'));
 
       await waitFor(() => {
@@ -501,15 +493,12 @@ describe('ApiModelForm', () => {
         });
       });
 
-      // Verify API key checkbox is checked (has stored credentials)
       const apiKeyCheckbox = screen.getByTestId('api-key-input-checkbox');
       expect(apiKeyCheckbox).toBeChecked();
 
-      // Verify fetch button is enabled with stored credentials
       const fetchButton = screen.getByTestId('fetch-models-button');
       expect(fetchButton).not.toBeDisabled();
 
-      // Fetch models using stored credentials
       await user.click(fetchButton);
 
       await waitFor(() => {
@@ -523,10 +512,8 @@ describe('ApiModelForm', () => {
       expect(screen.getByTestId('available-model-gpt-4-turbo')).toBeInTheDocument();
       expect(screen.getByTestId('available-model-claude-3-sonnet')).toBeInTheDocument();
 
-      // Select an additional model
       await selectModel(user, 'gpt-4-turbo');
 
-      // Test connection using stored credentials
       const testButton = screen.getByTestId('test-connection-button');
       expect(testButton).not.toBeDisabled();
 
@@ -539,7 +526,6 @@ describe('ApiModelForm', () => {
         });
       });
 
-      // Update the API model
       await user.click(screen.getByTestId('update-api-model-button'));
 
       await waitFor(() => {
@@ -566,21 +552,17 @@ describe('ApiModelForm', () => {
         const prefixCheckbox = screen.getByTestId('prefix-input-checkbox');
         const prefixInput = screen.getByTestId('prefix-input');
 
-        // Verify initial state
         expect(prefixCheckbox).not.toBeChecked();
         expect(prefixInput).toBeDisabled();
 
-        // Enable prefix
         await user.click(prefixCheckbox);
 
         expect(prefixCheckbox).toBeChecked();
         expect(prefixInput).not.toBeDisabled();
 
-        // Enter prefix value
         await user.type(prefixInput, 'azure/');
         expect(prefixInput).toHaveValue('azure/');
 
-        // Select model and verify prefix preview
         await fetchModelsAndWait(user);
         await selectModel(user, 'gpt-4');
 
@@ -815,16 +797,13 @@ describe('ApiModelForm', () => {
         const apiKeyError = screen.queryByTestId('api-key-input-error');
         expect(apiKeyError).not.toBeInTheDocument();
 
-        // Fetch models without API key
         await fetchModelsAndWait(user);
 
         expect(screen.getByTestId('available-model-gpt-4')).toBeInTheDocument();
         expect(screen.getByTestId('available-model-gpt-3.5-turbo')).toBeInTheDocument();
 
-        // Select a model
         await selectModel(user, 'gpt-4');
 
-        // Test connection without API key
         const testButton = screen.getByTestId('test-connection-button');
         expect(testButton).not.toBeDisabled();
 
@@ -837,7 +816,6 @@ describe('ApiModelForm', () => {
           });
         });
 
-        // Create API model without API key
         await fillName(user);
         await user.click(screen.getByTestId('create-api-model-button'));
 
@@ -907,7 +885,6 @@ describe('ApiModelForm', () => {
           has_api_key: initialHasApiKey,
         };
 
-        // Capture the request body using MSW handler
         let capturedRequestBody: any;
 
         server.use(
@@ -930,7 +907,6 @@ describe('ApiModelForm', () => {
           });
         });
 
-        // Perform user actions based on parameters
         if (userActions.toggleCheckbox) {
           await user.click(screen.getByTestId('api-key-input-checkbox'));
         }
@@ -939,10 +915,8 @@ describe('ApiModelForm', () => {
           await user.type(screen.getByTestId('api-key-input'), userActions.typeNewKey);
         }
 
-        // Submit form
         await user.click(screen.getByTestId('update-api-model-button'));
 
-        // Wait for success
         await waitFor(() => {
           expect(mockToast).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -951,7 +925,6 @@ describe('ApiModelForm', () => {
           );
         });
 
-        // Verify request body contains correct api_key field
         expect(capturedRequestBody).toBeDefined();
         expect(capturedRequestBody.api_key).toEqual(expectedApiKeyRequest);
 
@@ -1279,52 +1252,42 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      // ===== Test 1: Disabled state when no prefix =====
-      // Verify "Forward all" radio is disabled when no prefix
+      // Test 1: Disabled state when no prefix
       const forwardAllRadio = screen.getByTestId('forward-mode-selector-forward-all');
       expect(forwardAllRadio).toBeDisabled();
 
-      // Verify "Selected models" radio is enabled
       const forwardSelectedRadio = screen.getByTestId('forward-mode-selector-forward-selected');
       expect(forwardSelectedRadio).toBeEnabled();
       expect(forwardSelectedRadio).toBeChecked();
 
-      // Verify help text is shown when forward_all is disabled
       expect(screen.getByTestId('forward-mode-selector-help')).toBeInTheDocument();
       expect(screen.getByTestId('forward-mode-selector-help')).toHaveTextContent(/Enable prefix and provide a value/i);
 
-      // ===== Test 2: Enabled state when prefix is set =====
-      // Enable prefix
+      // Test 2: Enabled state when prefix is set
       await user.click(screen.getByTestId('prefix-input-checkbox'));
       await user.type(screen.getByTestId('prefix-input'), 'test/');
 
-      // Verify "Forward all" radio is now enabled
       const forwardAllRadioEnabled = screen.getByTestId('forward-mode-selector-forward-all');
       expect(forwardAllRadioEnabled).toBeEnabled();
 
-      // Verify help text is not shown when forward_all is enabled
       expect(screen.queryByTestId('forward-mode-selector-help')).not.toBeInTheDocument();
 
-      // ===== Test 3: Selection behavior - Click "Forward all" =====
+      // Test 3: Click "Forward all" disables model selection
       await user.click(forwardAllRadioEnabled);
 
-      // Verify forward all is now checked
       expect(forwardAllRadioEnabled).toBeChecked();
       expect(forwardSelectedRadio).not.toBeChecked();
 
-      // Verify model selection section is disabled (opacity-50)
       await waitFor(() => {
         expect(screen.getByTestId('model-selection-section')).toHaveClass(/opacity-50/);
       });
 
-      // ===== Test 4: Selection behavior - Click "Selected models" =====
+      // Test 4: Click "Selected models" re-enables model selection
       await user.click(forwardSelectedRadio);
 
-      // Verify selected models is now checked
       expect(forwardSelectedRadio).toBeChecked();
       expect(forwardAllRadioEnabled).not.toBeChecked();
 
-      // Verify model selection section is enabled (no opacity-50)
       await waitFor(() => {
         expect(screen.getByTestId('model-selection-section')).not.toHaveClass(/opacity-50/);
       });

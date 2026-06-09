@@ -85,5 +85,4 @@ impl From<McpOAuthTokenView> for crate::mcps::McpOAuthToken {
   }
 }
 
-/// Type alias — McpOAuthTokenEntity is the entity Model.
 pub type McpOAuthTokenEntity = Model;

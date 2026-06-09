@@ -3,10 +3,6 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 
-// =============================================================================
-// merge_extra_body unit tests
-// =============================================================================
-
 #[rstest]
 #[case::empty_config(
   json!({"model": "claude-3", "messages": []}),

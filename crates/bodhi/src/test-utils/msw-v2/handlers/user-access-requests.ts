@@ -14,13 +14,6 @@ import {
 
 import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 
-// =============================================================================
-// CORE TYPED HTTP METHODS (Success cases + Error handlers)
-// =============================================================================
-
-/**
- * Mock handler for all access requests endpoint with configurable responses
- */
 export function mockAccessRequests(
   {
     requests = [],
@@ -78,9 +71,6 @@ export function mockAccessRequestsError(
   ];
 }
 
-/**
- * Mock handler for pending access requests endpoint with configurable responses
- */
 export function mockAccessRequestsPending(
   {
     requests = [],
@@ -138,10 +128,6 @@ export function mockAccessRequestsPendingError(
   ];
 }
 
-/**
- * Mock handler for access request approval - success case
- * Only responds to the specified ID, returns 404 for others
- */
 export function mockAccessRequestApprove(id: string, { stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
@@ -171,7 +157,6 @@ export function mockAccessRequestApproveError(
 
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_APPROVE, async ({ params, response }) => {
-      // Only return error for matching ID
       if (params.id !== id) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
@@ -187,16 +172,11 @@ export function mockAccessRequestApproveError(
   ];
 }
 
-/**
- * Mock handler for access request rejection - success case
- * Only responds to the specified ID, returns 404 for others
- */
 export function mockAccessRequestReject(id: string, { stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_REJECT, async ({ params, response }) => {
-      // Only respond with success if ID matches
       if (params.id !== id) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
@@ -221,7 +201,6 @@ export function mockAccessRequestRejectError(
 
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_REJECT, async ({ params, response }) => {
-      // Only return error for matching ID
       if (params.id !== id) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
@@ -237,9 +216,6 @@ export function mockAccessRequestRejectError(
   ];
 }
 
-/**
- * Mock handler for user access request status endpoint
- */
 export function mockUserRequestStatus(
   {
     status = 'pending',
@@ -297,9 +273,6 @@ export function mockUserRequestStatusError(
   ];
 }
 
-/**
- * Mock handler for creating user access request - success case
- */
 export function mockUserRequestAccess({ delayMs, stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
@@ -311,7 +284,6 @@ export function mockUserRequestAccess({ delayMs, stub }: { delayMs?: number; stu
       if (delayMs) {
         await delay(delayMs);
       }
-      // Success response - typically returns 201 with empty body for access requests
       return response(201 as const).empty();
     }),
   ];
@@ -345,13 +317,6 @@ export function mockUserRequestAccessError(
   ];
 }
 
-// =============================================================================
-// VARIANT METHODS (Using core methods above)
-// =============================================================================
-
-/**
- * Mock handler for all access requests with default data
- */
 export function mockAccessRequestsDefault() {
   return mockAccessRequests({
     requests: [
@@ -389,9 +354,6 @@ export function mockAccessRequestsDefault() {
   });
 }
 
-/**
- * Mock handler for empty access requests
- */
 export function mockAccessRequestsEmpty() {
   return mockAccessRequests({
     requests: [],
@@ -401,9 +363,6 @@ export function mockAccessRequestsEmpty() {
   });
 }
 
-/**
- * Mock handler for pending access requests with default data (only pending status)
- */
 export function mockAccessRequestsPendingDefault() {
   return mockAccessRequestsPending({
     requests: [
@@ -423,9 +382,6 @@ export function mockAccessRequestsPendingDefault() {
   });
 }
 
-/**
- * Mock handler for empty pending access requests
- */
 export function mockAccessRequestsPendingEmpty() {
   return mockAccessRequestsPending({
     requests: [],
@@ -435,9 +391,6 @@ export function mockAccessRequestsPendingEmpty() {
   });
 }
 
-/**
- * Mock handler for user request status - pending status
- */
 export function mockUserRequestStatusPending(config: { username?: string } = {}) {
   return mockUserRequestStatus({
     status: 'pending',
@@ -447,9 +400,6 @@ export function mockUserRequestStatusPending(config: { username?: string } = {})
   });
 }
 
-/**
- * Mock handler for user request status - approved status
- */
 export function mockUserRequestStatusApproved(config: { username?: string } = {}) {
   return mockUserRequestStatus({
     status: 'approved',
@@ -459,9 +409,6 @@ export function mockUserRequestStatusApproved(config: { username?: string } = {}
   });
 }
 
-/**
- * Mock handler for user request status - rejected status
- */
 export function mockUserRequestStatusRejected(config: { username?: string } = {}) {
   return mockUserRequestStatus({
     status: 'rejected',

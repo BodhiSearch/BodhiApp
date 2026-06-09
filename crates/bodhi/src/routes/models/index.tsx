@@ -83,7 +83,6 @@ function ModelsPageContent() {
   const deleteApiModel = useDeleteApiModel();
   const deleteModelRouter = useDeleteModelRouter();
 
-  // Backend will provide combined data including API models, User aliases, and Model File aliases
   const { data, isLoading, error } = useListModels(page, pageSize, sort.column, sort.direction);
 
   // Update preview model when query data changes (after metadata refresh)
@@ -105,7 +104,7 @@ function ModelsPageContent() {
       column,
       direction: prevSort.column === column && prevSort.direction === 'asc' ? 'desc' : 'asc',
     }));
-    setPage(1); // Reset to first page when sorting
+    setPage(1);
   };
 
   const getItemId = (model: AliasResponse) => {
@@ -287,7 +286,6 @@ function ModelsPageContent() {
           onPageChange={setPage}
         />
       </div>
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         open={!!deleteModel}
         onOpenChange={(open) => !open && setDeleteModel(null)}
@@ -297,7 +295,6 @@ function ModelsPageContent() {
         loading={deleteApiModel.isPending}
       />
 
-      {/* More Models Modal */}
       <Dialog open={!!moreModelsModal} onOpenChange={(open) => !open && setMoreModelsModal(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -326,7 +323,6 @@ function ModelsPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Model Preview Modal */}
       {previewModel && (
         <ModelPreviewModal
           open={!!previewModel}

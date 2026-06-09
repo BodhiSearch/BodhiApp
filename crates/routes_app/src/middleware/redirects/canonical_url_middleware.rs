@@ -9,30 +9,20 @@ use std::sync::Arc;
 use tracing::debug;
 
 const EXEMPT_PATTERNS: &[&str] = &["/health", "/ping"];
-/// Middleware that redirects requests to the canonical public URL if needed.
-///
-/// This middleware checks if the incoming request matches the canonical public URL
-/// configured via BODHI_PUBLIC_* environment variables. If not, it redirects the
-/// request to the canonical URL while preserving the path and query parameters.
-///
-/// Features:
-/// - Only redirects GET/HEAD requests to avoid affecting form submissions
-/// - Preserves full request path, query parameters, and fragments
-/// - Uses 301 (permanent) redirects for SEO and caching benefits
-/// - Skips health check endpoints and other exempt paths
+/// Redirects to the canonical public URL (from BODHI_PUBLIC_* env vars) when the
+/// request host/scheme/port differ. Only GET/HEAD (to avoid breaking form POSTs),
+/// 301 permanent for SEO/caching, skips exempt paths.
 pub async fn canonical_url_middleware(
   headers: HeaderMap,
   State(setting_service): State<Arc<dyn SettingService>>,
   request: Request,
   next: Next,
 ) -> Response {
-  // Skip redirect if canonical redirect is disabled
   if !setting_service.canonical_redirect_enabled().await {
     debug!("Canonical redirect is disabled, skipping redirect");
     return next.run(request).await;
   }
 
-  // Skip redirect if public_host is not explicitly set
   if setting_service.get_public_host_explicit().await.is_none() {
     debug!("Public host is not explicitly set, skipping redirect");
     return next.run(request).await;
@@ -46,13 +36,11 @@ pub async fn canonical_url_middleware(
     return next.run(request).await;
   }
 
-  // Skip redirects for health check and special endpoints
   if is_exempt_path(path) {
     debug!("Exempt path, skipping redirect");
     return next.run(request).await;
   }
 
-  // Extract request URL components
   let request_scheme = extract_scheme(&headers, uri);
   let request_host = match headers.get(header::HOST) {
     Some(host_header) => match host_header.to_str() {
@@ -68,7 +56,6 @@ pub async fn canonical_url_middleware(
     }
   };
 
-  // Check if redirect is needed by comparing with canonical URL
   if should_redirect_to_canonical(setting_service.as_ref(), &request_scheme, request_host).await {
     let canonical_url = setting_service.public_server_url().await;
     let full_canonical_url = build_canonical_url(&canonical_url, uri);
@@ -91,27 +78,23 @@ pub async fn canonical_url_middleware(
   next.run(request).await
 }
 
-/// Extract the scheme from the request, considering proxy headers
+/// Resolves the request scheme, honoring `x-forwarded-proto`/`-scheme` from proxies.
 fn extract_scheme(headers: &HeaderMap, uri: &Uri) -> String {
-  // Check for forwarded protocol headers (common in load balancers/proxies)
   if let Some(forwarded_proto) = headers.get("x-forwarded-proto") {
     if let Ok(proto) = forwarded_proto.to_str() {
       return proto.to_lowercase();
     }
   }
 
-  // Check for other common forwarded headers
   if let Some(forwarded_scheme) = headers.get("x-forwarded-scheme") {
     if let Ok(scheme) = forwarded_scheme.to_str() {
       return scheme.to_lowercase();
     }
   }
 
-  // Fall back to URI scheme or default to http
   uri.scheme_str().unwrap_or("http").to_lowercase()
 }
 
-/// Check if a path should be exempt from canonical URL redirects
 fn is_exempt_path(path: &str) -> bool {
   EXEMPT_PATTERNS.iter().any(|pattern| {
     if pattern.ends_with('/') {
@@ -122,7 +105,6 @@ fn is_exempt_path(path: &str) -> bool {
   })
 }
 
-/// Check if a request should be redirected to the canonical URL
 async fn should_redirect_to_canonical(
   setting_service: &dyn SettingService,
   request_scheme: &str,
@@ -157,7 +139,6 @@ async fn should_redirect_to_canonical(
   !(scheme_matches && host_matches && port_matches)
 }
 
-/// Build the full canonical URL including path and query parameters
 fn build_canonical_url(canonical_base: &str, original_uri: &Uri) -> String {
   let mut canonical_url = canonical_base.trim_end_matches('/').to_string();
 

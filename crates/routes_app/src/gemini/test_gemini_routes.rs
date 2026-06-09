@@ -982,7 +982,6 @@ async fn test_axum_get_and_post_routes_do_not_conflict() -> anyhow::Result<()> {
     .build()
     .await?;
   let router_state: Arc<dyn services::AppService> = Arc::new(app_service);
-  // Single path pattern for both GET (model lookup) and POST (action dispatch)
   let app = Router::new()
     .route(
       ENDPOINT_GEMINI_MODEL,

@@ -5,31 +5,23 @@ use axum::response::Response;
 
 use crate::middleware::SENTINEL_API_KEY;
 
-/// Gemini-path auth normalization. Runs before `auth_middleware` on `/v1beta/*`.
+/// Runs before `auth_middleware` on `/v1beta/*`. `Authorization` wins on collision.
 ///
-/// 1. Calls `strip_sentinel_headers` (strips `x-api-key` / `Authorization: Bearer SENTINEL`).
-/// 2. Additionally strips `x-goog-api-key` if it equals `SENTINEL_API_KEY`.
-/// 3. If `x-goog-api-key` is present (non-sentinel) and no `Authorization` header exists,
-///    rewrites it as `Authorization: Bearer <value>` and removes `x-goog-api-key`.
-/// 4. If `Authorization` already present, `x-goog-api-key` is removed (Authorization wins).
-///
-/// **Rationale**: pi-ai's `@google/genai` SDK sets `x-goog-api-key` to the dummy sentinel;
-/// stripping it allows session-cookie auth to fall through. External clients using
-/// `x-goog-api-key` as their sole credential get it transparently rewritten to
-/// `Authorization: Bearer` so BodhiApp's token auth picks it up.
+/// pi-ai's `@google/genai` SDK sets `x-goog-api-key` to the dummy sentinel; stripping it
+/// allows session-cookie auth to fall through. External clients using `x-goog-api-key` as
+/// their sole credential get it transparently rewritten to `Authorization: Bearer` so
+/// BodhiApp's token auth picks it up.
 pub async fn gemini_auth_middleware(mut req: Request, next: Next) -> Response {
   if req.uri().path().starts_with("/v1beta/") {
     use crate::middleware::anthropic_auth_middleware::strip_sentinel_headers;
     strip_sentinel_headers(&mut req);
 
-    // Strip sentinel from x-goog-api-key specifically
     if let Some(key) = req.headers().get("x-goog-api-key") {
       if key.to_str().ok() == Some(SENTINEL_API_KEY) {
         req.headers_mut().remove("x-goog-api-key");
       }
     }
 
-    // Rewrite non-sentinel x-goog-api-key -> Authorization: Bearer (if no Auth header present)
     if let Some(key) = req.headers().get("x-goog-api-key").cloned() {
       req.headers_mut().remove("x-goog-api-key");
       if req.headers().get("authorization").is_none() {

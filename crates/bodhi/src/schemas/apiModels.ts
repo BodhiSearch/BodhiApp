@@ -1,6 +1,5 @@
 import * as z from 'zod';
 
-// Test prompt schema for API connectivity testing
 export const testPromptSchema = z.object({
   api_key: z.string().min(1, 'API key is required'),
   base_url: z.string().url('Must be a valid URL'),

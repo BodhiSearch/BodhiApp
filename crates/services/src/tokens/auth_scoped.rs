@@ -17,7 +17,6 @@ impl AuthScopedTokenService {
     }
   }
 
-  /// List API tokens for the authenticated user
   pub async fn list_tokens(
     &self,
     page: usize,
@@ -32,7 +31,6 @@ impl AuthScopedTokenService {
       .await
   }
 
-  /// Get a specific API token by id for the authenticated user
   pub async fn get_token(&self, id: &str) -> Result<Option<TokenDetail>, TokenServiceError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -43,7 +41,6 @@ impl AuthScopedTokenService {
       .await
   }
 
-  /// Create an API token for the authenticated user.
   /// Delegates token generation (random bytes, hashing, ULID) to TokenService.
   pub async fn create_token(
     &self,
@@ -58,7 +55,6 @@ impl AuthScopedTokenService {
       .await
   }
 
-  /// Update an existing API token (name and status) for the authenticated user.
   pub async fn update_token(
     &self,
     id: &str,

@@ -34,11 +34,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn internal_main() -> Result<(), Box<dyn std::error::Error>> {
   let cli = Cli::parse();
 
-  // Create the auth service
   let auth_service =
     KeycloakAuthService::new(&cli.version, cli.auth_server_url.clone(), cli.realm.clone());
 
-  // Register a new client with default redirect URIs
   let redirect_uris = vec![
     "http://localhost:1135/ui/auth/callback".to_string(),
     "http://0.0.0.0:1135/ui/auth/callback".to_string(),
@@ -58,7 +56,6 @@ async fn internal_main() -> Result<(), Box<dyn std::error::Error>> {
   println!("Client ID: {}", client_reg.client_id);
   println!("Client Secret: {}", client_reg.client_secret);
 
-  // Make the user a resource admin
   println!("Making user '{}' a resource admin...", cli.username);
   auth_service
     .make_resource_admin(

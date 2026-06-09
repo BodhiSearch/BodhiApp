@@ -5,7 +5,6 @@
 #![allow(unused_imports)]
 #![allow(clippy::single_component_path_imports)]
 
-// Import heavy dependencies to trigger their compilation
 use aes_gcm;
 use anyhow;
 use async_openai;
@@ -41,6 +40,5 @@ use utoipa;
 use uuid;
 
 pub fn dummy_function() {
-  // This function does nothing but ensures all dependencies are linked
   println!("CI optimizations crate loaded");
 }

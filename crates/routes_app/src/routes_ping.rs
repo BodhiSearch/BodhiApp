@@ -14,7 +14,6 @@ pub struct PingResponse {
   pub message: String,
 }
 
-/// Simple connectivity check endpoint
 #[utoipa::path(
     get,
     path = ENDPOINT_PING,
@@ -38,7 +37,6 @@ pub async fn ping_handler() -> Json<PingResponse> {
   })
 }
 
-/// Application health check endpoint
 #[utoipa::path(
   get,
   path = ENDPOINT_HEALTH,

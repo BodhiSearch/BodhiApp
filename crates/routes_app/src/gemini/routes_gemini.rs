@@ -181,7 +181,7 @@ const GEMINI_ACTIONS: &[&str] = &[
   "batchEmbedContents",
 ];
 
-/// Dispatches `POST /v1beta/models/{model}:{action}` — captures whole segment, splits on last `:`.
+/// Captures the whole `{model}:{action}` segment, splits on the last `:`.
 pub async fn gemini_action_handler(
   auth_scope: AuthScope,
   headers: HeaderMap,
@@ -213,8 +213,6 @@ pub async fn gemini_action_handler(
   let (api_alias, api_key) = resolve_gemini_alias(&auth_scope, model).await?;
   let stripped_model = strip_alias_prefix(model, &api_alias);
 
-  // GEMINI_ACTIONS validated `action` above; build the upstream path inline
-  // (`/models/{model}:{action}`) — no per-action enum needed.
   let upstream_path = format!("/models/{}:{}", stripped_model, action);
 
   let forwarded_params: Vec<(String, String)> = query_params.into_iter().collect();

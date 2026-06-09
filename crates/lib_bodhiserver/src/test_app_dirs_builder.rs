@@ -96,7 +96,7 @@ fn test_setup_app_dirs_integration(empty_bodhi_home: TempDir) -> anyhow::Result<
   let (result_home, source, file_defaults) = setup_app_dirs(&options)?;
   assert_eq!(result_home, bodhi_home);
   assert_eq!(source, SettingSource::Environment);
-  assert!(file_defaults.is_empty() || !file_defaults.is_empty()); // file_defaults returned
+  assert!(file_defaults.is_empty() || !file_defaults.is_empty());
   assert!(bodhi_home.exists());
   Ok(())
 }
@@ -194,7 +194,6 @@ fn test_setup_app_dirs_with_app_settings(empty_bodhi_home: TempDir) -> anyhow::R
   let bootstrap =
     setup_bootstrap_service(&options, home, source, file_defaults, AppCommand::Default)?;
 
-  // Verify that bootstrap succeeded and app_settings are stored for SettingService
   assert!(bootstrap.bodhi_home().exists());
   // app_settings (including BODHI_PORT=9090) flow through into_parts to DefaultSettingService
   let parts = bootstrap.into_parts();

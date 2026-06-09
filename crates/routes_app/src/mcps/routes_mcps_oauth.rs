@@ -7,10 +7,6 @@ use crate::mcps::{
 use crate::{AuthScope, BodhiErrorResponse, API_TAG_MCPS};
 use axum::{extract::Path, http::StatusCode, Json};
 
-// ============================================================================
-// OAuth Discovery Handlers
-// ============================================================================
-
 /// Discover OAuth metadata from an authorization server URL (RFC 8414)
 #[utoipa::path(
   post,
@@ -100,10 +96,6 @@ pub async fn mcp_oauth_discover_mcp(
   }))
 }
 
-// ============================================================================
-// Dynamic Client Registration
-// ============================================================================
-
 /// Standalone dynamic client registration (no server_id required)
 #[utoipa::path(
   post,
@@ -150,10 +142,6 @@ pub async fn mcp_oauth_dynamic_register(
       .map(String::from),
   }))
 }
-
-// ============================================================================
-// OAuth Token Handlers
-// ============================================================================
 
 /// Get an OAuth token by ID
 #[utoipa::path(

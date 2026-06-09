@@ -54,7 +54,6 @@ vi.mock('@/components/DataTable', () => ({
   ),
 }));
 
-// Mock toast
 vi.mock('@/hooks/use-toast-messages', () => ({
   useToastMessages: () => ({
     showSuccess: vi.fn(),
@@ -86,7 +85,6 @@ describe('PendingRequestsPage Role-Based Access Control', () => {
       render(<PendingRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Should show the page content, not redirect
     expect(screen.getByTestId('pending-requests-page')).toBeInTheDocument();
     expect(screen.getByText('Pending Requests')).toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
@@ -104,12 +102,8 @@ describe('PendingRequestsPage Role-Based Access Control', () => {
       render(<PendingRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Should redirect - the AppInitializer will handle this
-    // In a real scenario this would redirect, but since we're testing the page component
-    // directly, we test that it handles the role-based restriction properly
+    // Redirect-on-insufficient-role is AppInitializer's job (mocked here); assert the page doesn't crash.
     await waitFor(() => {
-      // The page might show an error or redirect, depending on implementation
-      // This tests that the component doesn't crash with insufficient permissions
       expect(screen.queryByTestId('pending-requests-page')).toBeInTheDocument();
     });
   });
@@ -159,13 +153,9 @@ describe('PendingRequestsPage Data Display', () => {
       render(<PendingRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for data to load
     await screen.findByText('user@example.com');
 
-    // Check that pending request is displayed
     expect(screen.getByText('user@example.com')).toBeInTheDocument();
-
-    // Check status badge
     expect(screen.getByText('Pending')).toBeInTheDocument();
   });
 
@@ -221,7 +211,6 @@ describe('PendingRequestsPage Data Display', () => {
     });
 
     await waitFor(() => {
-      // Should show pagination controls for multiple pages
       expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
     });
   });
@@ -254,14 +243,12 @@ describe('PendingRequestsPage Request Management', () => {
       render(<PendingRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for data to load
     await screen.findByText('user@example.com');
 
-    // Should show inline approve/reject buttons and role selector
     expect(screen.getByText('Approve')).toBeInTheDocument();
     expect(screen.getByText('Reject')).toBeInTheDocument();
 
-    // Should show role selection dropdown (but roles only visible when opened)
+    // Role options only render once the combobox is opened.
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
@@ -289,7 +276,7 @@ describe('PendingRequestsPage Request Management', () => {
 
     await screen.findByText('user@example.com');
 
-    // Click approve button (role defaults to 'resource_user')
+    // Role defaults to 'resource_user'.
     const approveButton = screen.getByText('Approve');
     await user.click(approveButton);
 
@@ -305,7 +292,6 @@ describe('PendingRequestsPage Request Management', () => {
 
     await screen.findByText('user@example.com');
 
-    // Should show reject button
     expect(screen.getByText('Reject')).toBeInTheDocument();
   });
 
@@ -334,12 +320,10 @@ describe('PendingRequestsPage Request Management', () => {
 
     await screen.findByText('user@example.com');
 
-    // Click reject button
     const rejectButton = screen.getByText('Reject');
     await user.click(rejectButton);
 
-    // Since we can't easily track the specific request call in MSW v2,
-    // we verify that the action was successful (no errors thrown)
+    // MSW v2 can't easily assert the specific call, so we just confirm no error was thrown.
     await waitFor(() => {
       expect(rejectButton).toBeInTheDocument();
     });
@@ -348,7 +332,6 @@ describe('PendingRequestsPage Request Management', () => {
 
 describe('PendingRequestsPage Error Handling', () => {
   it('shows empty state when API call fails (no error handling in component)', async () => {
-    // Provide good app/user endpoints but failing access-requests-pending endpoint
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({
@@ -400,15 +383,13 @@ describe('PendingRequestsPage Error Handling', () => {
 
     await screen.findByText('user@example.com');
 
-    // Try to approve
     const approveButton = screen.getByText('Approve');
     await user.click(approveButton);
 
-    // Select role from dropdown
     const roleSelect = screen.getByRole('combobox');
     await user.click(roleSelect);
 
-    // Should be able to click approve button (error handling is via toast, not on screen)
+    // Failure surfaces via toast, not on screen.
     expect(approveButton).toBeInTheDocument();
   });
 
@@ -439,11 +420,10 @@ describe('PendingRequestsPage Error Handling', () => {
 
     await screen.findByText('user@example.com');
 
-    // Try to reject
     const rejectButton = screen.getByText('Reject');
     await user.click(rejectButton);
 
-    // Should be able to click reject button (error handling is via toast, not on screen)
+    // Failure surfaces via toast, not on screen.
     expect(rejectButton).toBeInTheDocument();
   });
 });
@@ -471,10 +451,8 @@ describe('PendingRequestsPage Loading States', () => {
       render(<PendingRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Should show page content
     expect(screen.getByTestId('pending-requests-page')).toBeInTheDocument();
 
-    // Wait for data to load
     await screen.findByText('user@example.com');
     expect(screen.getByText('Pending Access Requests')).toBeInTheDocument();
   });
@@ -503,14 +481,12 @@ describe('PendingRequestsPage Loading States', () => {
 
     await screen.findByText('user@example.com');
 
-    // Should show approve and reject buttons
     const approveButton = screen.getByText('Approve');
     const rejectButton = screen.getByText('Reject');
 
     expect(approveButton).toBeInTheDocument();
     expect(rejectButton).toBeInTheDocument();
 
-    // Should show role selector
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 });
@@ -542,15 +518,12 @@ describe('PendingRequestsPage UI Interactions', () => {
 
     await screen.findByText('user@example.com');
 
-    // Should show role selector with default value
     const roleSelect = screen.getByRole('combobox');
     expect(roleSelect).toBeInTheDocument();
 
-    // Click to open dropdown
     await user.click(roleSelect);
 
-    // Should be able to select different roles (exact options depend on user's role hierarchy)
-    // The component filters available roles based on user's maximum role
+    // Available role options are filtered by the current user's maximum role.
     expect(roleSelect).toBeInTheDocument();
   });
 

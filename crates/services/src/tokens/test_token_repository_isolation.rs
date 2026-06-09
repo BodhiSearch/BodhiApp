@@ -63,7 +63,6 @@ async fn test_cross_tenant_token_isolation(
     .create_api_token(TEST_TENANT_B_ID, &mut token_b)
     .await?;
 
-  // Listing tokens in tenant A should only return token_a
   let (tokens_a, total_a) = ctx
     .service
     .list_api_tokens(TEST_TENANT_ID, TEST_USER_ID, 1, 10)
@@ -72,7 +71,6 @@ async fn test_cross_tenant_token_isolation(
   assert_eq!(1, tokens_a.len());
   assert_eq!(TEST_TENANT_ID, tokens_a[0].tenant_id);
 
-  // Listing tokens in tenant B should only return token_b
   let (tokens_b, total_b) = ctx
     .service
     .list_api_tokens(TEST_TENANT_B_ID, TEST_USER_ID, 1, 10)
@@ -81,7 +79,6 @@ async fn test_cross_tenant_token_isolation(
   assert_eq!(1, tokens_b.len());
   assert_eq!(TEST_TENANT_B_ID, tokens_b[0].tenant_id);
 
-  // Getting token_b by ID under tenant A should return None
   let cross = ctx
     .service
     .get_api_token_by_id(TEST_TENANT_ID, TEST_USER_ID, &token_b.id)
@@ -124,7 +121,6 @@ async fn test_intra_tenant_user_token_isolation(
     .create_api_token(TEST_TENANT_ID, &mut token_user_b)
     .await?;
 
-  // Listing tokens for user A should only return token_user_a
   let (tokens_a, total_a) = ctx
     .service
     .list_api_tokens(TEST_TENANT_ID, TEST_USER_ID, 1, 10)
@@ -133,7 +129,6 @@ async fn test_intra_tenant_user_token_isolation(
   assert_eq!(1, tokens_a.len());
   assert_eq!(TEST_USER_ID, tokens_a[0].user_id);
 
-  // Listing tokens for user B should only return token_user_b
   let (tokens_b, total_b) = ctx
     .service
     .list_api_tokens(TEST_TENANT_ID, TEST_TENANT_A_USER_B_ID, 1, 10)

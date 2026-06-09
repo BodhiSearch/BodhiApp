@@ -1,21 +1,9 @@
-/**
- * Type-safe MSW v2 handlers for authentication endpoints using openapi-msw
- */
 import { delay } from 'msw';
 
 import { ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/auth';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
-// =============================================================================
-// CORE TYPED HTTP METHODS (Success cases + Error handlers)
-// =============================================================================
-
-/**
- * Mock handler for OAuth initiate endpoint with configurable responses
- *
- * @param response - Partial RedirectResponse data to override defaults
- */
 export function mockAuthInitiate(
   {
     location = 'https://oauth.example.com/auth?client_id=test',
@@ -58,10 +46,8 @@ export function mockAuthInitiateError({
 }
 
 /**
- * Mock handler for OAuth callback endpoint with configurable responses
- *
- * @param response - Partial RedirectResponse data to override defaults
- * @param body - Partial AuthCallbackRequest to match against request body
+ * body, when provided, is matched against the request body; a mismatch
+ * passes through to the next handler.
  */
 export function mockAuthCallback(
   { location = 'http://localhost:3000/ui/chat', ...rest }: Partial<components['schemas']['RedirectResponse']> = {},
@@ -70,12 +56,10 @@ export function mockAuthCallback(
 ) {
   return [
     typedHttp.post(ENDPOINT_AUTH_CALLBACK, async ({ request, response: httpResponse }) => {
-      // If body is provided, validate it
       if (body) {
         const requestBody = (await request.json()) as components['schemas']['AuthCallbackRequest'];
         for (const [key, expectedValue] of Object.entries(body)) {
           if (requestBody[key] !== expectedValue) {
-            // Body fields don't match, don't handle this request
             return;
           }
         }
@@ -113,11 +97,6 @@ export function mockAuthCallbackError({
   ];
 }
 
-/**
- * Mock handler for logout endpoint with configurable responses
- *
- * @param response - Partial RedirectResponse data to override defaults
- */
 export function mockLogout(
   { location = 'http://localhost:1135/ui/login', ...rest }: Partial<components['schemas']['RedirectResponse']> = {},
   delayMs?: number
@@ -156,33 +135,18 @@ export function mockLogoutError({
   ];
 }
 
-// =============================================================================
-// VARIANT METHODS (Using core methods above)
-// =============================================================================
-
-/**
- * Mock handler for OAuth initiate when user is already authenticated
- * Returns 200 with home page URL
- */
 export function mockAuthInitiateAlreadyAuthenticated(config: { location?: string } = {}) {
   return mockAuthInitiate({
     location: config.location || 'http://localhost:3000/ui/chat',
   });
 }
 
-/**
- * Mock handler for OAuth initiate when user is not authenticated
- * Returns 201 with OAuth authorization URL
- */
 export function mockAuthInitiateUnauthenticated(config: { location?: string } = {}) {
   return mockAuthInitiate({
     location: config.location || 'https://oauth.example.com/auth?client_id=test',
   });
 }
 
-/**
- * Mock handler for OAuth configuration error during initiate
- */
 export function mockAuthInitiateConfigError() {
   return mockAuthInitiateError({
     code: 'oauth_config_error',
@@ -192,18 +156,12 @@ export function mockAuthInitiateConfigError() {
   });
 }
 
-/**
- * Mock handler for successful OAuth callback completion
- */
 export function mockAuthCallbackSuccess(config: { location?: string } = {}) {
   return mockAuthCallback({
     location: config.location || 'http://localhost:3000/ui/chat',
   });
 }
 
-/**
- * Mock handler for OAuth callback state mismatch error
- */
 export function mockAuthCallbackStateError() {
   return mockAuthCallbackError({
     code: 'oauth_state_mismatch',
@@ -213,9 +171,6 @@ export function mockAuthCallbackStateError() {
   });
 }
 
-/**
- * Mock handler for invalid authorization code during callback
- */
 export function mockAuthCallbackInvalidCode() {
   return mockAuthCallbackError({
     code: 'invalid_auth_code',
@@ -225,18 +180,12 @@ export function mockAuthCallbackInvalidCode() {
   });
 }
 
-/**
- * Mock handler for successful logout
- */
 export function mockLogoutSuccess(config: { location?: string } = {}) {
   return mockLogout({
     location: config.location || 'http://localhost:1135/ui/login',
   });
 }
 
-/**
- * Mock handler for logout session deletion failure
- */
 export function mockLogoutSessionError() {
   return mockLogoutError({
     code: 'session_error',

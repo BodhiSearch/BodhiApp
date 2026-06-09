@@ -37,7 +37,6 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
   let time_service: Arc<dyn services::TimeService> = Arc::new(FrozenTimeService::default());
   let auth_service: Arc<dyn services::AuthService> = Arc::new(mock_auth);
 
-  // Real AccessRequestService backed by same DB + mock auth
   builder.with_tenant(services::Tenant::test_default()).await;
   let access_request_service: Arc<dyn services::AccessRequestService> =
     Arc::new(DefaultAccessRequestService::new(
@@ -442,7 +441,6 @@ async fn test_review_lists_all_instances_match_first() -> anyhow::Result<()> {
     .as_array()
     .expect("instances array");
   assert_eq!(2, instances.len(), "both configured instances are listed");
-  // Exact-URL match is sorted first.
   assert_eq!(matching_id, instances[0]["id"].as_str().unwrap());
   assert_eq!(
     "https://mcp.example.com/mcp",
@@ -532,7 +530,6 @@ async fn test_approve_privilege_escalation_user_grants_power_user() -> anyhow::R
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  // Request asks for power_user scope
   seed_draft_request(
     harness.db_service.as_ref(),
     request_id,
@@ -605,7 +602,6 @@ async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result
     });
 
   let harness = build_test_harness(mock_auth).await?;
-  // Request asks for power_user scope
   seed_draft_request(
     harness.db_service.as_ref(),
     request_id,
@@ -666,7 +662,6 @@ async fn test_approve_privilege_escalation_approved_exceeds_requested() -> anyho
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  // Request only asks for scope_user_user
   seed_draft_request(
     harness.db_service.as_ref(),
     request_id,
@@ -843,7 +838,6 @@ async fn test_review_access_request_invalid_requested_json() -> anyhow::Result<(
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
 
-  // Seed a row with invalid JSON in the requested field
   let now = chrono::Utc::now();
   let row = AppAccessRequest {
     id: "ar-bad-json".to_string(),

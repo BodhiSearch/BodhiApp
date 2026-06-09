@@ -4,10 +4,7 @@ use crate::{ReqwestError, UrlValidationError};
 use errmeta::{AppError, EntityError, ErrorType};
 use mcp_client::McpClientError;
 
-// ============================================================================
 // McpServerError - Admin MCP server management operations
-// ============================================================================
-
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum McpServerError {
@@ -50,10 +47,7 @@ pub enum McpServerError {
   Db(#[from] DbError),
 }
 
-// ============================================================================
 // McpError - User MCP instance operations
-// ============================================================================
-
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum McpError {

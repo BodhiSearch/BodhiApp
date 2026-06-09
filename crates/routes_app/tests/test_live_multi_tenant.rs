@@ -265,7 +265,6 @@ async fn test_info_multi_tenant_with_dashboard_and_active_tenant(
 ) -> anyhow::Result<()> {
   let state = create_multi_tenant_state(auth_server_config).await?;
 
-  // Get a real dashboard token and a resource token for the resource client
   let dashboard_token = get_dashboard_token(auth_server_config).await?;
   let resource_token = get_resource_token(
     auth_server_config,
@@ -289,7 +288,6 @@ async fn test_info_multi_tenant_with_dashboard_and_active_tenant(
     )
     .await?;
 
-  // Inject session with dashboard token + active tenant + resource token
   let session_id = inject_session(
     &state,
     maplit::hashmap! {
@@ -364,7 +362,6 @@ async fn test_tenants_activate_success(
 
   let active_client_id = auth_server_config.resource_client_id.clone();
 
-  // Get a resource token for the tenant
   let resource_token = get_resource_token(
     auth_server_config,
     &auth_server_config.resource_client_id,
@@ -372,7 +369,6 @@ async fn test_tenants_activate_success(
   )
   .await?;
 
-  // Inject session with the resource token for this tenant
   let session_id = inject_session(
     &state,
     maplit::hashmap! {

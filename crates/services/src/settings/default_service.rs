@@ -64,23 +64,21 @@ impl DefaultSettingService {
   }
 
   pub fn from_parts(parts: BootstrapParts, db_service: Arc<dyn SettingsRepository>) -> Self {
-    // 1. Load .env from bodhi_home/.env (mutates process env)
+    // .env load mutates process env
     let env_file = parts.bodhi_home.join(".env");
     if env_file.exists() {
       parts.env_wrapper.load(&env_file);
     }
 
-    // 2. Load settings.yaml once into memory
     let mut settings_file_values = load_settings_yaml(&parts.settings_file);
 
-    // 3. Overlay NAPI app_settings onto settings_file_values (app_settings wins)
+    // NAPI app_settings overlay settings_file_values (app_settings wins)
     for (key, value_str) in &parts.app_settings {
       let metadata = Self::setting_metadata_static(key);
       let parsed = metadata.parse(Value::String(value_str.clone()));
       settings_file_values.insert(key.clone(), parsed);
     }
 
-    // 4. Extract cmd_lines from AppCommand
     let mut cmd_lines = HashMap::new();
     if let AppCommand::Serve { ref host, ref port } = parts.app_command {
       if let Some(h) = host {
@@ -91,7 +89,6 @@ impl DefaultSettingService {
       }
     }
 
-    // 5. Build all defaults from file_defaults + hardcoded
     let defaults = build_all_defaults(
       parts.env_wrapper.as_ref(),
       &parts.file_defaults,
@@ -180,7 +177,6 @@ fn build_all_defaults(
 ) -> HashMap<String, Value> {
   let mut defaults = HashMap::new();
 
-  // Start with file_defaults as the base
   for (key, value) in file_defaults {
     defaults.insert(key.clone(), value.clone());
   }

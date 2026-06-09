@@ -26,29 +26,18 @@ impl TryFrom<u32> for GGUFValueType {
 
 #[derive(Debug, Clone, PartialEq, strum::Display)]
 pub enum GGUFValue {
-  // Unsigned integers
   U8(u8),
   U16(u16),
   U32(u32),
   U64(u64),
-
-  // Signed integers
   I8(i8),
   I16(i16),
   I32(i32),
   I64(i64),
-
-  // Floating point
   F32(f32),
   F64(f64),
-
-  // Bool
   Bool(bool),
-
-  // String (using String to own the data)
   String(String),
-
-  // Array types
   Array(Vec<GGUFValue>),
 }
 

@@ -203,7 +203,6 @@ async fn test_resolve_auth_params_with_oauth_token(
     )
     .await?;
 
-  // Create OAuth config
   let oauth_config = service
     .create_oauth_config(
       TEST_TENANT_ID,
@@ -223,7 +222,6 @@ async fn test_resolve_auth_params_with_oauth_token(
     )
     .await?;
 
-  // Store OAuth token
   let token = service
     .store_oauth_token(
       TEST_TENANT_ID,
@@ -237,7 +235,6 @@ async fn test_resolve_auth_params_with_oauth_token(
     )
     .await?;
 
-  // Create MCP with OAuth auth type and linked token
   let mut request = mcp_request("proxy-oauth", &server.id);
   request.auth_type = McpAuthType::Oauth;
   request.oauth_token_id = Some(token.id.clone());
@@ -247,7 +244,6 @@ async fn test_resolve_auth_params_with_oauth_token(
     .create(TEST_TENANT_ID, TEST_USER_ID, request)
     .await?;
 
-  // Resolve auth params — should return OAuth bearer token
   let auth_params = service
     .resolve_auth_params(TEST_TENANT_ID, TEST_USER_ID, &mcp.id)
     .await?;

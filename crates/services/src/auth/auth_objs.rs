@@ -3,10 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use utoipa::ToSchema;
 
-// ============================================================================
-// ResourceRole - Session-based role hierarchy
-// ============================================================================
-
 #[derive(
   Debug,
   Clone,
@@ -96,10 +92,6 @@ impl FromStr for ResourceRole {
   }
 }
 
-// ============================================================================
-// TokenScope - API token scope hierarchy
-// ============================================================================
-
 #[derive(
   Debug,
   Clone,
@@ -149,10 +141,6 @@ impl FromStr for TokenScope {
     }
   }
 }
-
-// ============================================================================
-// UserScope - External app scope hierarchy
-// ============================================================================
 
 #[derive(
   Debug,
@@ -204,10 +192,6 @@ impl FromStr for UserScope {
   }
 }
 
-// ============================================================================
-// AppRole - Union type across authentication contexts
-// ============================================================================
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 #[serde(untagged)]
 pub enum AppRole {
@@ -215,10 +199,6 @@ pub enum AppRole {
   ApiToken(TokenScope),
   ExchangedToken(UserScope),
 }
-
-// ============================================================================
-// UserInfo - Authenticated user information
-// ============================================================================
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct UserInfo {

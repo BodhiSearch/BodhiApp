@@ -1,7 +1,3 @@
-/**
- * Browser detection hook for identifying user's browser
- */
-
 import { useState, useEffect } from 'react';
 
 import { detectBrowser, type BrowserInfo } from '@/lib/browser-utils';

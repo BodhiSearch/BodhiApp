@@ -55,7 +55,6 @@ async fn test_list_tokens_pagination(
     .build()
     .await?;
 
-  // Create multiple tokens
   for i in 1..=15 {
     let mut token = TokenEntity {
       id: Uuid::new_v4().to_string(),
@@ -76,7 +75,6 @@ async fn test_list_tokens_pagination(
 
   let router = app(app_service).await;
 
-  // Test first page
   let response = router
     .clone()
     .oneshot(
@@ -100,7 +98,6 @@ async fn test_list_tokens_pagination(
   assert_eq!(list_response.page, 1);
   assert_eq!(list_response.page_size, 10);
 
-  // Test second page
   let response = router
     .oneshot(
       Request::builder()
@@ -146,7 +143,6 @@ async fn test_list_tokens_empty(
 
   let router = app(app_service).await;
 
-  // Test empty results
   let response = router
     .oneshot(
       Request::builder()
@@ -214,7 +210,6 @@ async fn test_create_token_handler_role_scope_mapping(
 
   let app = app(app_service).await;
 
-  // Make create request with specific role and scope
   let response = app
     .oneshot(
       Request::builder()
@@ -242,7 +237,6 @@ async fn test_create_token_handler_role_scope_mapping(
     "Token should start with 'bodhiapp_' prefix"
   );
 
-  // Verify token in database has correct scope
   let token_prefix = &token_response.token[.."bodhiapp_".len() + 8];
   let db_token = test_db_service
     .get_api_token_by_prefix(token_prefix)
@@ -276,7 +270,6 @@ async fn test_create_token_handler_success(
 
   let app = app(app_service).await;
 
-  // Make create request
   let token_name = "Test Integration Token";
   let response = app
     .oneshot(
@@ -309,7 +302,6 @@ async fn test_create_token_handler_success(
   let token_response = response.json::<TokenCreated>().await?;
   let token_str = &token_response.token;
 
-  // Verify token format
   assert!(
     token_str.starts_with("bodhiapp_"),
     "Token should start with 'bodhiapp_' prefix"
@@ -319,10 +311,8 @@ async fn test_create_token_handler_success(
     "Token should be sufficiently long (prefix + base64)"
   );
 
-  // Extract prefix for DB lookup
   let token_prefix = &token_str[.."bodhiapp_".len() + 8];
 
-  // Verify token exists in database
   let db_token = test_db_service
     .get_api_token_by_prefix(token_prefix)
     .await?
@@ -333,7 +323,6 @@ async fn test_create_token_handler_success(
   assert_eq!(TokenStatus::Active, db_token.status);
   assert_eq!("scope_token_user", db_token.scopes);
 
-  // Verify hash matches
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
   let calculated_hash = format!("{:x}", hasher.finalize());
@@ -362,7 +351,6 @@ async fn test_create_token_handler_without_name(
 
   let app = app(app_service).await;
 
-  // Make create request without name
   let response = app
     .oneshot(
       Request::builder()
@@ -387,7 +375,6 @@ async fn test_create_token_handler_without_name(
   let token_response = response.json::<TokenCreated>().await?;
   let token_prefix = &token_response.token[.."bodhiapp_".len() + 8];
 
-  // Verify token has empty name
   let db_token = test_db_service
     .get_api_token_by_prefix(token_prefix)
     .await?
@@ -413,7 +400,6 @@ async fn test_create_token_handler_missing_auth(
 
   let app = app(app_service).await;
 
-  // Make create request WITHOUT authentication (anonymous context)
   let response = app
     .oneshot(
       Request::builder()
@@ -451,7 +437,6 @@ async fn test_create_token_handler_invalid_role(
 
   let app = app(app_service).await;
 
-  // Make create request with session that has no role (equivalent to invalid role)
   let response = app
     .oneshot(
       Request::builder()
@@ -492,7 +477,6 @@ async fn test_create_token_handler_missing_role(
 
   let app = app(app_service).await;
 
-  // Make create request with session that has NO role (should fail)
   let response = app
     .oneshot(
       Request::builder()
@@ -529,7 +513,6 @@ async fn test_update_token_handler_success(
     .await?;
   let now = app_service.time_service().utc_now();
 
-  // Create initial token
   let mut token = TokenEntity {
     id: Uuid::new_v4().to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
@@ -546,10 +529,8 @@ async fn test_update_token_handler_success(
     .create_api_token(TEST_TENANT_ID, &mut token)
     .await?;
 
-  // Setup app with router
   let app = app(app_service).await;
 
-  // Make update request
   let response = app
     .oneshot(
       Request::builder()
@@ -575,7 +556,6 @@ async fn test_update_token_handler_success(
   assert_eq!(updated_token.status, TokenStatus::Inactive);
   assert_eq!(updated_token.id, token.id);
 
-  // Verify DB was updated
   let db_token = test_db_service
     .get_api_token_by_id(TEST_TENANT_ID, &user_id, &token.id)
     .await?
@@ -596,14 +576,12 @@ async fn test_update_token_handler_not_found(
   let claims = access_token_claims();
   let user_id = claims["sub"].as_str().unwrap().to_string();
   let (token, _) = build_token(claims)?;
-  // Setup app with router
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(test_db_service))
     .build()
     .await?;
   let app = app(app_service).await;
 
-  // Make update request with non-existent ID
   let response = app
     .oneshot(
       Request::builder()

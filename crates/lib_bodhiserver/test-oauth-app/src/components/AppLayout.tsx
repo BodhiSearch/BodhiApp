@@ -39,10 +39,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen">
       <header className="h-12 border-b bg-card flex items-center px-4 shrink-0">
-        {/* Left: App branding */}
         <div className="font-semibold text-sm">OAuth2 Test App</div>
 
-        {/* Center: Navigation (if authenticated and on nav pages) */}
         {showNav && (
           <nav className="flex-1 flex justify-center gap-4">
             <NavLink
@@ -77,7 +75,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {!showNav && <div className="flex-1" />}
 
-        {/* Right: User email and logout (if authenticated) */}
         {isAuthenticated && (
           <div className="flex items-center gap-3">
             <span data-testid="header-user-email" className="text-sm text-muted-foreground">

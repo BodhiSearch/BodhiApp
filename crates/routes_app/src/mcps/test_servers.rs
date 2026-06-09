@@ -333,7 +333,6 @@ async fn test_create_mcp_server_without_auth_config_backwards_compat() -> anyhow
 
   let app = test_router_for_mcp_servers(mock).await?;
 
-  // Send JSON without auth_config field - should still work
   let body = serde_json::to_string(&json!({
     "url": "https://mcp.deepwiki.com/mcp",
     "name": "DeepWiki",

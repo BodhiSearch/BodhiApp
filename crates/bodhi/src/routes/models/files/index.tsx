@@ -22,7 +22,6 @@ export const Route = createFileRoute('/models/files/')({
   component: FilesPage,
 });
 
-// Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | null | undefined): string => {
   if (bytes === undefined || bytes === null) return '';
   const gb = bytes / (1024 * 1024 * 1024);
@@ -30,9 +29,7 @@ const bytesToGB = (bytes: number | null | undefined): string => {
 };
 
 export const columns = [
-  // Mobile view (combined column)
   { id: 'combined', name: 'Model Files', sorted: true, className: 'sm:hidden' },
-  // Tablet/Desktop columns
   {
     id: 'repo',
     name: 'Repo',
@@ -80,7 +77,6 @@ function ModelFilesContent() {
           m.repo === previewModel.repo && m.filename === previewModel.filename && m.snapshot === previewModel.snapshot
       );
       if (updatedModelFile) {
-        // Convert to AliasResponse format
         const updatedPreview: AliasResponse = {
           source: 'model',
           alias: `${updatedModelFile.repo}/${updatedModelFile.filename}`,
@@ -112,7 +108,6 @@ function ModelFilesContent() {
   };
 
   const renderRow = (modelFile: LocalModelResponse) => [
-    // Mobile view (combined column)
     <TableCell key="combined" className="sm:hidden" data-testid="combined-cell">
       <div className="flex flex-col gap-2">
         <CopyableContent text={modelFile.repo} className="font-medium" />
@@ -121,7 +116,6 @@ function ModelFilesContent() {
         <div className="flex gap-2 justify-end pt-2 border-t">{renderActions(modelFile)}</div>
       </div>
     </TableCell>,
-    // Tablet/Desktop columns
     <TableCell key="repo" className="hidden sm:table-cell max-w-[180px]" data-testid="repo-cell">
       <CopyableContent text={modelFile.repo} />
     </TableCell>,
@@ -136,11 +130,9 @@ function ModelFilesContent() {
     </TableCell>,
   ];
 
-  // Extract actions to a separate function for reuse
   const renderActions = (modelFile: LocalModelResponse) => {
     const refreshKey = `${modelFile.repo}-${modelFile.filename}`;
 
-    // Convert LocalModelResponse to AliasResponse format for preview
     const modelForPreview: AliasResponse = {
       source: 'model',
       alias: `${modelFile.repo}/${modelFile.filename}`,

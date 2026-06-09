@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { TestConnectionButton } from './TestConnectionButton';
 
 interface FormActionsProps {
-  // Primary action (submit)
   primaryAction: {
     label: string;
     onClick?: () => void;
@@ -17,7 +16,6 @@ interface FormActionsProps {
     'data-testid'?: string;
   };
 
-  // Secondary action (cancel/skip)
   secondaryAction?: {
     label: string;
     onClick: () => void;
@@ -25,7 +23,6 @@ interface FormActionsProps {
     'data-testid'?: string;
   };
 
-  // Test connection integration
   testConnection?: {
     onTest: () => void;
     canTest: boolean;
@@ -34,7 +31,6 @@ interface FormActionsProps {
     disabledReason?: string;
   };
 
-  // Layout and styling
   layout?: 'space-between' | 'end' | 'center';
   className?: string;
   children?: ReactNode;
@@ -94,13 +90,11 @@ export function FormActions({
 
   return (
     <div className={`${getLayoutClasses()} ${className}`}>
-      {/* Left side - Test connection or custom children */}
       <div className="flex items-center gap-2">
         {testButton}
         {children}
       </div>
 
-      {/* Right side - Primary/Secondary actions */}
       <div className="flex gap-2">
         {secondaryButton}
         {primaryButton}

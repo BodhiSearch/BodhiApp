@@ -20,7 +20,6 @@ import {
 import { setupMswV2, server, http, HttpResponse } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
-// Mock navigation
 const navigateMock = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
@@ -30,7 +29,6 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Type aliases for compatibility
 type ApiError = BodhiErrorResponse;
 
 const mockUserLoggedInData = createMockLoggedInUser({
@@ -115,7 +113,6 @@ describe('User Hooks', () => {
         wrapper: createWrapper(),
       });
 
-      // Query should not have run
       expect(result.current.fetchStatus).toBe('idle');
       expect(result.current.data).toBeUndefined();
     });
@@ -170,7 +167,6 @@ describe('User Hooks', () => {
         wrapper: createWrapper(),
       });
 
-      // During initial load
       expect(result.current.isLoading).toBe(true);
       expect(navigateMock).not.toHaveBeenCalled();
     });
@@ -229,7 +225,6 @@ describe('User Hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // The query key should reflect the pagination parameters
       expect(result.current.data).toBeDefined();
     });
 
@@ -390,7 +385,6 @@ describe('User Hooks', () => {
 
       const wrapper = createWrapper();
 
-      // Setup users hook and wait for initial data
       const { result: usersResult } = renderHook(() => useListUsers(), {
         wrapper,
       });
@@ -401,7 +395,6 @@ describe('User Hooks', () => {
 
       const initialDataUpdatedAt = usersResult.current.dataUpdatedAt;
 
-      // Change user role
       const { result: changeRoleResult } = renderHook(() => useChangeUserRole(), {
         wrapper,
       });
@@ -413,7 +406,6 @@ describe('User Hooks', () => {
         });
       });
 
-      // Verify users query was invalidated and refetched
       await waitFor(() => {
         expect(usersResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
       });
@@ -510,7 +502,6 @@ describe('User Hooks', () => {
 
       const wrapper = createWrapper();
 
-      // Setup users hook and wait for initial data
       const { result: usersResult } = renderHook(() => useListUsers(), {
         wrapper,
       });
@@ -521,7 +512,6 @@ describe('User Hooks', () => {
 
       const initialDataUpdatedAt = usersResult.current.dataUpdatedAt;
 
-      // Remove user
       const { result: removeUserResult } = renderHook(() => useRemoveUser(), {
         wrapper,
       });
@@ -530,7 +520,6 @@ describe('User Hooks', () => {
         await removeUserResult.current.mutateAsync('test-user-id');
       });
 
-      // Verify users query was invalidated and refetched
       await waitFor(() => {
         expect(usersResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
       });

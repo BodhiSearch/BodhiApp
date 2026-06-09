@@ -3,10 +3,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-// =============================================================================
-// Envelope sub-types (mirror llm-liberty JSON contract v1.0.0)
-// =============================================================================
-
+/// Envelope sub-types mirror the llm-liberty JSON contract v1.0.0.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 pub struct LlmLibertyAuthSpec {
   #[serde(rename = "in")]
@@ -30,10 +27,6 @@ pub struct LlmLibertyApiEndpoints {
   pub chat_url: String,
   pub models_url: Option<String>,
 }
-
-// =============================================================================
-// Top-level envelope
-// =============================================================================
 
 /// The JSON blob emitted by `npx @bodhiapp/llm-liberty@latest login`.
 ///
@@ -110,10 +103,6 @@ impl LlmLibertyEnvelope {
   }
 }
 
-// =============================================================================
-// Update action (parallels ApiKeyUpdate)
-// =============================================================================
-
 /// Tagged envelope update action — either keep the existing credentials or replace them.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
@@ -131,10 +120,6 @@ impl Default for LlmLibertyEnvelopeUpdate {
   }
 }
 
-// =============================================================================
-// Summary returned in ApiAliasResponse (no secrets)
-// =============================================================================
-
 /// Non-secret summary of stored LLM Liberty OAuth credentials for API responses.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct LlmLibertySummary {
@@ -144,10 +129,6 @@ pub struct LlmLibertySummary {
   pub expires_at: i64,
   pub has_refresh_token: bool,
 }
-
-// =============================================================================
-// Resolved credentials (produced by refresh layer, consumed by provider clients)
-// =============================================================================
 
 /// Fully resolved credentials returned after the refresh check.
 /// Contains plaintext tokens valid at the time of resolution.

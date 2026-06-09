@@ -77,15 +77,12 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
 
   const metadata: ModelMetadata | null | undefined = isLocalModel ? model.metadata : undefined;
 
-  // Track metadata appearance for highlight animation
   useEffect(() => {
     const hadNoMetadata = !prevMetadataRef.current;
     const nowHasMetadata = !!metadata;
 
     if (hadNoMetadata && nowHasMetadata) {
-      // Metadata just appeared - trigger highlight
       setShouldHighlight(true);
-      // Remove highlight after animation completes (1.5s)
       const timer = setTimeout(() => {
         setShouldHighlight(false);
       }, 1500);
@@ -165,7 +162,6 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Basic Info Card */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Basic Information</CardTitle>
@@ -208,7 +204,6 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
             </CardContent>
           </Card>
 
-          {/* API Model Configuration */}
           {isApiAlias(model) && (
             <Card>
               <CardHeader className="pb-3">
@@ -257,7 +252,6 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
             </Card>
           )}
 
-          {/* Capabilities Card (Local models only) */}
           {isLocalModel && metadata?.capabilities && (
             <Card className={shouldHighlight ? 'metadata-highlight' : ''}>
               <CardHeader className="pb-3">
@@ -287,7 +281,6 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
             </Card>
           )}
 
-          {/* Context Limits Card (Local models only) */}
           {isLocalModel && metadata?.context && (
             <Card className={shouldHighlight ? 'metadata-highlight' : ''}>
               <CardHeader className="pb-3">
@@ -308,7 +301,6 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
             </Card>
           )}
 
-          {/* Architecture Card (Local models only) */}
           {isLocalModel && metadata?.architecture && (
             <Card className={shouldHighlight ? 'metadata-highlight' : ''}>
               <CardHeader className="pb-3">
@@ -339,7 +331,6 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
             </Card>
           )}
 
-          {/* No Metadata Available */}
           {isLocalModel && !metadata && (
             <Card>
               <CardContent className="py-6">

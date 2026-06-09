@@ -7,25 +7,22 @@ pub fn merge_server_args(
 ) -> Vec<String> {
   let mut arg_map: HashMap<String, Option<String>> = HashMap::new();
 
-  // Parse and add base args first (lowest precedence)
+  // Precedence (lowest to highest): setting < variant < alias; later inserts override.
   let parsed_setting_args = parse_args_from_strings(setting_args);
   for (key, value) in parsed_setting_args {
     arg_map.insert(key, value);
   }
 
-  // Parse and add variant-specific args (medium precedence)
   let parsed_variant_args = parse_args_from_strings(setting_variant_args);
   for (key, value) in parsed_variant_args {
     arg_map.insert(key, value);
   }
 
-  // Parse and add alias args (highest precedence)
   let parsed_alias_args = parse_args_from_strings(alias_args);
   for (key, value) in parsed_alias_args {
     arg_map.insert(key, value);
   }
 
-  // Convert back to Vec<String> maintaining flag format
   arg_map
     .into_iter()
     .map(|(key, value)| match value {
@@ -35,18 +32,15 @@ pub fn merge_server_args(
     .collect()
 }
 
-/// Parse arguments from a collection of strings by joining them and parsing as a single stream
 fn parse_args_from_strings(args: &[String]) -> Vec<(String, Option<String>)> {
   if args.is_empty() {
     return Vec::new();
   }
 
-  // Join all strings with whitespace and parse as a single stream
   let combined = args.join(" ");
   parse_args_from_string(&combined)
 }
 
-/// Parse arguments from a single string that may contain multiple flags and values
 fn parse_args_from_string(arg_string: &str) -> Vec<(String, Option<String>)> {
   let tokens: Vec<&str> = arg_string.split_whitespace().collect();
   let mut result = Vec::new();
@@ -55,7 +49,6 @@ fn parse_args_from_string(arg_string: &str) -> Vec<(String, Option<String>)> {
   while i < tokens.len() {
     let token = tokens[i];
 
-    // Skip non-flag tokens (but not negative numbers)
     if !is_flag(token) {
       i += 1;
       continue;
@@ -64,14 +57,12 @@ fn parse_args_from_string(arg_string: &str) -> Vec<(String, Option<String>)> {
     let flag = token.to_string();
     let mut values = Vec::new();
 
-    // Look ahead to collect values until next flag or end
     i += 1;
     while i < tokens.len() && !is_flag(tokens[i]) {
       values.push(tokens[i]);
       i += 1;
     }
 
-    // Create value: None for standalone flags, Some(value) for flags with values
     let value = if values.is_empty() {
       None
     } else {
@@ -90,24 +81,18 @@ fn is_flag(token: &str) -> bool {
     return false;
   }
 
-  // Handle edge cases
   if token.len() == 1 {
     return false; // Just a single "-" is not a flag
   }
 
-  // If it starts with -- it's definitely a flag
   if token.starts_with("--") {
     return true;
   }
 
-  // If it starts with a single - and the second character is not a digit,
-  // it's a flag (like -t, -v, etc.)
-  // If the second character is a digit, it might be a negative number
+  // Single-dash + digit may be a negative number (-1, -0.5) rather than a flag.
   let second_char = token.chars().nth(1).unwrap();
   if second_char.is_ascii_digit() {
-    // Check if the entire string (after the -) is a valid number
     let number_part = &token[1..];
-    // Try to parse as integer or float
     number_part.parse::<i64>().is_err() && number_part.parse::<f64>().is_err()
   } else {
     true
@@ -343,7 +328,6 @@ mod tests {
       );
     }
 
-    // For same flag test, ensure only one occurrence
     if setting_args.len() == 1 && variant_args.len() == 1 && alias_args.len() == 1 {
       let threads_count = result.iter().filter(|s| s.contains("--threads")).count();
       assert_eq!(threads_count, 1, "Should have exactly one --threads entry");
@@ -352,24 +336,19 @@ mod tests {
 
   #[test]
   fn test_output_format_consistency() {
-    // Ensure the output format is consistent and usable
     let args = vec!["--verbose --threads 8 --temp 0.7".to_string()];
     let result = merge_server_args(&args, &[], &[]);
 
-    // Each element should be a properly formatted flag
     for arg in &result {
       if arg.contains(' ') {
-        // Should be "--flag value" format
         let parts: Vec<&str> = arg.split_whitespace().collect();
         assert!(parts.len() >= 2);
         assert!(parts[0].starts_with('-'));
       } else {
-        // Should be just "--flag" format
         assert!(arg.starts_with('-'));
       }
     }
 
-    // Should be able to join back into a command line
     let command_line = result.join(" ");
     assert!(command_line.contains("--verbose"));
     assert!(command_line.contains("--threads 8"));
@@ -435,7 +414,6 @@ mod tests {
 
   #[test]
   fn test_special_llama_server_flags() {
-    // Test various special flag patterns from llama-server
     let args = vec![
       "--logit-bias 15043+1 --logit-bias 15044-1".to_string(),
       "--override-kv tokenizer.ggml.add_bos_token=bool:false".to_string(),
@@ -444,7 +422,6 @@ mod tests {
 
     let result = parse_args_from_strings(&args);
 
-    // Should handle parsing correctly (last occurrence will win in dedup)
     assert!(result.iter().any(|(k, v)| k == "--logit-bias"
       && v
         .as_ref()

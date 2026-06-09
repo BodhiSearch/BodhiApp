@@ -102,17 +102,14 @@ async fn test_validate_bodhiapp_token_scope_variations(
 async fn test_validate_bodhiapp_token_success(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Setup test database with token
   let token_str = "bodhiapp_test1234.test-client";
   // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
   let token_prefix = &token_str[.."bodhiapp_".len() + 8];
 
-  // Hash the token
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
 
-  // Create TokenEntity in database
   let mut api_token = TokenEntity {
     id: Uuid::new_v4().to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
@@ -129,7 +126,6 @@ async fn test_validate_bodhiapp_token_success(
     .create_api_token(TEST_TENANT_ID, &mut api_token)
     .await?;
 
-  // Create token service
   let tenant_svc = AppServiceStubBuilder::default()
     .with_tenant(Tenant::test_default())
     .await
@@ -173,17 +169,14 @@ async fn test_validate_bodhiapp_token_success(
 async fn test_validate_bodhiapp_token_inactive(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Setup test database with inactive token
   let token_str = "bodhiapp_test1234.test-client";
   // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
   let token_prefix = &token_str[.."bodhiapp_".len() + 8];
 
-  // Hash the token
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
 
-  // Create TokenEntity in database with Inactive status
   let mut api_token = TokenEntity {
     id: Uuid::new_v4().to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
@@ -200,7 +193,6 @@ async fn test_validate_bodhiapp_token_inactive(
     .create_api_token(TEST_TENANT_ID, &mut api_token)
     .await?;
 
-  // Create token service
   let tenant_svc = AppServiceStubBuilder::default()
     .with_tenant(Tenant::test_default())
     .await
@@ -217,7 +209,6 @@ async fn test_validate_bodhiapp_token_inactive(
     Arc::new(services::DefaultTimeService),
   );
 
-  // Validate token - should fail due to inactive status
   let result = token_service
     .validate_bearer_token(&format!("Bearer {}", token_str))
     .await;
@@ -233,18 +224,15 @@ async fn test_validate_bodhiapp_token_inactive(
 async fn test_validate_bodhiapp_token_invalid_hash(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Setup test database with token
   let stored_token_str = "bodhiapp_test1234abc.test-client";
   let different_token_str = "bodhiapp_test1234xyz.test-client";
   // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
   let token_prefix = &stored_token_str[.."bodhiapp_".len() + 8];
 
-  // Hash the stored token
   let mut hasher = Sha256::new();
   hasher.update(stored_token_str.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
 
-  // Create TokenEntity in database
   let mut api_token = TokenEntity {
     id: Uuid::new_v4().to_string(),
     tenant_id: TEST_TENANT_ID.to_string(),
@@ -261,7 +249,6 @@ async fn test_validate_bodhiapp_token_invalid_hash(
     .create_api_token(TEST_TENANT_ID, &mut api_token)
     .await?;
 
-  // Create token service
   let tenant_svc = AppServiceStubBuilder::default()
     .with_tenant(Tenant::test_default())
     .await
@@ -278,7 +265,7 @@ async fn test_validate_bodhiapp_token_invalid_hash(
     Arc::new(services::DefaultTimeService),
   );
 
-  // Try to validate with different token string (wrong hash)
+  // Validate with a different token string than the one whose hash was stored
   let result = token_service
     .validate_bearer_token(&format!("Bearer {}", different_token_str))
     .await;
@@ -327,7 +314,7 @@ async fn test_validate_bearer_token_header_errors(
 async fn test_validate_external_client_token_success(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Given - Create a token from a different client but same issuer
+  // Token from a different client but same issuer
   let external_client_id = "external-client";
   let sub = Uuid::new_v4().to_string();
   let external_token_claims = json!({
@@ -644,7 +631,6 @@ async fn test_validate_bearer_token_scope_not_approved(
   let expires_at = now + chrono::Duration::hours(1);
   let scope = "scope_access_request:draft-test";
 
-  // Create access request with status=draft
   let row = AppAccessRequest {
     id: "ar-draft".to_string(),
     tenant_id: Some(TEST_TENANT_ID.to_string()),
@@ -725,7 +711,6 @@ async fn test_validate_bearer_token_app_client_mismatch(
   let scope = "scope_access_request:app-mismatch-test";
   let sub = Uuid::new_v4().to_string();
 
-  // Create approved access request with app_client_id=app2
   let row = AppAccessRequest {
     id: "ar-mismatch".to_string(),
     tenant_id: Some(TEST_TENANT_ID.to_string()),
@@ -803,7 +788,6 @@ async fn test_validate_bearer_token_user_mismatch(
   let expires_at = now + chrono::Duration::hours(1);
   let scope = "scope_access_request:user-mismatch-test";
 
-  // Create approved access request with user_id=user2
   let row = AppAccessRequest {
     id: "ar-user-mismatch".to_string(),
     tenant_id: Some(TEST_TENANT_ID.to_string()),
@@ -890,7 +874,6 @@ async fn test_validate_bearer_token_invalid_status(
   let scope = format!("scope_access_request:status-{}-test", status_label);
   let sub = Uuid::new_v4().to_string();
 
-  // Create access request with non-approved status
   let row = AppAccessRequest {
     id: format!("ar-{}", status_label),
     tenant_id: Some(TEST_TENANT_ID.to_string()),
@@ -972,7 +955,6 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
   let sub = Uuid::new_v4().to_string();
   let record_id = "ar-correct-id";
 
-  // Create approved access request
   let row = AppAccessRequest {
     id: record_id.to_string(),
     tenant_id: Some(TEST_TENANT_ID.to_string()),
@@ -1068,7 +1050,6 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
   let scope = "scope_access_request:missing-claim-test";
   let sub = Uuid::new_v4().to_string();
 
-  // Create approved access request
   let row = AppAccessRequest {
     id: "ar-missing-claim".to_string(),
     tenant_id: Some(TEST_TENANT_ID.to_string()),
@@ -1158,7 +1139,6 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
 ) -> anyhow::Result<()> {
   use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
 
-  // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
     .create_tenant(
       TEST_CLIENT_ID,
@@ -1280,7 +1260,6 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
 ) -> anyhow::Result<()> {
   use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
 
-  // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
     .create_tenant(
       TEST_CLIENT_ID,
@@ -1492,7 +1471,6 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
 ) -> anyhow::Result<()> {
   use services::{AccessRequestRepository, AppAccessRequest, AppAccessRequestStatus, FlowType};
 
-  // Register tenant in test_db_service and get actual tenant_id
   let tenant_row = test_db_service
     .create_tenant(
       TEST_CLIENT_ID,

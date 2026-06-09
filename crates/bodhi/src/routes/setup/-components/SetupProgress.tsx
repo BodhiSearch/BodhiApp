@@ -36,9 +36,7 @@ export function SetupProgress({ currentStep, totalSteps, stepLabels, compact = f
   return (
     <div className="mb-6" data-testid="setup-progress">
       <div className="mx-auto max-w-2xl">
-        {/* Progress bar */}
         <div className="relative mb-8">
-          {/* Background bar - positioned to connect step centers only */}
           <div
             className="absolute top-4 h-1 bg-muted"
             style={{
@@ -62,14 +60,12 @@ export function SetupProgress({ currentStep, totalSteps, stepLabels, compact = f
             />
           </div>
 
-          {/* Step indicators with labels */}
           <div className="relative flex justify-between">
             {Array.from({ length: totalSteps }).map((_, index) => {
               const { isCompleted, isCurrent } = getStepStatus(index);
 
               return (
                 <div key={index} className="flex flex-col items-center" style={{ flex: '1 1 0%' }}>
-                  {/* Circle indicator */}
                   <motion.div
                     data-testid={`step-indicator-${index + 1}`}
                     data-completed={isCompleted}
@@ -91,7 +87,6 @@ export function SetupProgress({ currentStep, totalSteps, stepLabels, compact = f
                     )}
                   </motion.div>
 
-                  {/* Label below circle */}
                   {stepLabels && !compact && (
                     <div className="mt-3 hidden sm:block max-w-full px-1">
                       <span
@@ -111,7 +106,6 @@ export function SetupProgress({ currentStep, totalSteps, stepLabels, compact = f
           </div>
         </div>
 
-        {/* Step counter */}
         <div className="mt-2 text-center text-sm text-muted-foreground" data-testid="step-counter">
           <p>
             Step {currentStep} of {totalSteps}

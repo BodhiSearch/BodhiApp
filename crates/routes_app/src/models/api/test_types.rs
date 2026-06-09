@@ -138,7 +138,6 @@ fn test_response_builders() {
 
 #[test]
 fn test_test_prompt_request_credentials_validation() {
-  // ApiKey with some value - should pass
   let with_api_key = TestPromptRequest::default_for(
     ApiFormat::OpenAI,
     DefaultTestPromptRequest {
@@ -152,7 +151,6 @@ fn test_test_prompt_request_credentials_validation() {
   );
   assert!(with_api_key.validate().is_ok());
 
-  // ApiKey with None (no authentication) - should pass
   let no_auth = TestPromptRequest::default_for(
     ApiFormat::OpenAI,
     DefaultTestPromptRequest {
@@ -166,7 +164,6 @@ fn test_test_prompt_request_credentials_validation() {
   );
   assert!(no_auth.validate().is_ok());
 
-  // Id-based credentials - should pass
   let with_id = TestPromptRequest::default_for(
     ApiFormat::OpenAI,
     DefaultTestPromptRequest {
@@ -183,7 +180,6 @@ fn test_test_prompt_request_credentials_validation() {
 
 #[test]
 fn test_fetch_models_request_credentials_validation() {
-  // ApiKey with some value - should pass
   let with_api_key = FetchModelsRequest::default_for(
     ApiFormat::OpenAI,
     DefaultFetchModelsRequest {
@@ -195,7 +191,6 @@ fn test_fetch_models_request_credentials_validation() {
   );
   assert!(with_api_key.validate().is_ok());
 
-  // ApiKey with None (no authentication) - should pass
   let no_auth = FetchModelsRequest::default_for(
     ApiFormat::OpenAI,
     DefaultFetchModelsRequest {
@@ -207,7 +202,6 @@ fn test_fetch_models_request_credentials_validation() {
   );
   assert!(no_auth.validate().is_ok());
 
-  // Id-based credentials - should pass
   let with_id = FetchModelsRequest::default_for(
     ApiFormat::OpenAI,
     DefaultFetchModelsRequest {
@@ -252,8 +246,7 @@ fn test_api_model_form_validate_forward_all_without_prefix_fails() {
     .unwrap();
   let form = ApiModelRequest::default_for(ApiFormat::OpenAI, inner);
 
-  // Validation will be done by the service layer now
-  assert!(form.validate().is_ok()); // URL validation passes, forward_all validation is in service
+  assert!(form.validate().is_ok()); // forward_all validation lives in the service layer, not here
 }
 
 #[test]

@@ -182,7 +182,6 @@ async fn test_make_resource_admin_success(
   let mut server = Server::new_async().await;
   let url = server.url();
 
-  // Mock token endpoint
   let token_mock = server
     .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
     .match_body(Matcher::AllOf(vec![
@@ -201,7 +200,6 @@ async fn test_make_resource_admin_success(
     )
     .create();
 
-  // Mock make-resource-admin endpoint
   let admin_mock = server
     .mock(
       "POST",
@@ -240,7 +238,6 @@ async fn test_make_resource_admin_token_failure(
   let mut server = Server::new_async().await;
   let url = server.url();
 
-  // Mock token endpoint with failure
   let token_mock = server
     .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
     .with_status(400)
@@ -272,7 +269,6 @@ async fn test_make_resource_admin_api_failure(
   let mut server = Server::new_async().await;
   let url = server.url();
 
-  // Mock token endpoint
   let token_mock = server
     .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
     .with_status(200)
@@ -286,7 +282,6 @@ async fn test_make_resource_admin_api_failure(
     )
     .create();
 
-  // Mock make-resource-admin endpoint with failure
   let admin_mock = server
     .mock(
       "POST",

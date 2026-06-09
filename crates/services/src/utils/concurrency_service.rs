@@ -7,55 +7,25 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
-/// A boxed future that can be sent across threads.
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-/// Result type for authentication token operations.
-///
-/// This type represents the result of token validation and refresh operations,
-/// returning a tuple of (access_token, optional_role) on success, or a boxed error on failure.
-/// The error is boxed to avoid circular dependencies between crates.
+/// Error is boxed to avoid circular dependencies between crates.
 pub type AuthTokenResult = Result<(String, ResourceRole), Box<dyn StdError + Send + Sync>>;
 
 /// Result type for string-returning lock operations (e.g., dashboard token refresh).
 pub type StringLockResult = Result<String, Box<dyn StdError + Send + Sync>>;
 
-/// Service for managing distributed locks and concurrency control.
-///
-/// This trait provides a foundation for implementing both local and distributed
-/// locking mechanisms. The local implementation uses in-process locks, while
-/// future distributed implementations could use Redis, etcd, or other distributed
-/// coordination systems.
-///
-/// Currently, this trait provides an auth-specific method for token refresh operations.
-/// Additional methods can be added in the future for other use cases.
-///
-/// Note: This trait cannot be auto-mocked by mockall due to the closure parameter.
-/// Use `LocalConcurrencyService` directly in tests as it's lightweight.
+/// Cannot be auto-mocked by mockall due to the closure parameter;
+/// use `LocalConcurrencyService` directly in tests.
 #[async_trait]
 pub trait ConcurrencyService: Send + Sync + std::fmt::Debug {
-  /// Execute an authentication token operation while holding a lock for the given key.
-  ///
-  /// This ensures that only one task can execute the closure for a specific key
-  /// at a time. Different keys can execute concurrently.
-  ///
-  /// This method is specifically designed for authentication token refresh operations,
-  /// where multiple concurrent requests might try to refresh the same token.
-  ///
-  /// # Arguments
-  /// * `key` - The lock key to acquire (e.g., "refresh_token:session_id")
-  /// * `f` - The async closure to execute while holding the lock
-  ///
-  /// # Returns
-  /// The result of the authentication operation: `(access_token, optional_role)`
+  /// Only one task runs the closure per key at a time; different keys run concurrently.
   async fn with_lock_auth(
     &self,
     key: &str,
     f: Box<dyn FnOnce() -> BoxFuture<'static, AuthTokenResult> + Send + 'static>,
   ) -> AuthTokenResult;
 
-  /// Execute a string-returning operation while holding a lock for the given key.
-  /// Used for dashboard token refresh where the return type is a single string.
   async fn with_lock_str(
     &self,
     key: &str,
@@ -63,18 +33,8 @@ pub trait ConcurrencyService: Send + Sync + std::fmt::Debug {
   ) -> StringLockResult;
 }
 
-/// Local implementation of ConcurrencyService using in-process locks.
-///
-/// This implementation uses a `RwLock<HashMap>` to manage per-key locks.
-/// Each key gets its own `Arc<Mutex<()>>` which acts as the lock sentinel.
-/// The RwLock allows concurrent reads to look up locks, while writes are
-/// only needed when creating new lock entries.
-///
-/// # Lock Cleanup
-/// Currently, locks are never removed from the map. For most use cases this
-/// is acceptable since the number of unique keys (e.g., session IDs) is bounded.
-/// If memory usage becomes a concern, a cleanup mechanism could be added using
-/// weak references or TTL-based eviction.
+/// Locks are never removed from the map; acceptable because the unique-key set
+/// (e.g. session IDs) is bounded. Add TTL/weak-ref eviction if memory grows.
 #[derive(Debug, Default)]
 pub struct LocalConcurrencyService {
   locks: RwLock<HashMap<String, Arc<Mutex<()>>>>,
@@ -87,13 +47,8 @@ impl LocalConcurrencyService {
     }
   }
 
-  /// Get or create a lock for the given key.
-  ///
-  /// This uses a double-checked locking pattern:
-  /// 1. Try to get the lock with a read lock (fast path)
-  /// 2. If not found, acquire write lock and insert new lock (slow path)
+  /// Double-checked locking: read-lock fast path, write-lock to insert.
   async fn get_lock(&self, key: &str) -> Arc<Mutex<()>> {
-    // Fast path: try to get existing lock with read lock
     {
       let locks = self.locks.read().await;
       if let Some(lock) = locks.get(key) {
@@ -101,14 +56,12 @@ impl LocalConcurrencyService {
       }
     }
 
-    // Slow path: need to create new lock with write lock
     let mut locks = self.locks.write().await;
-    // Double-check in case another task inserted while we waited for write lock
+    // Re-check in case another task inserted while we waited for the write lock.
     if let Some(lock) = locks.get(key) {
       return Arc::clone(lock);
     }
 
-    // Create new lock and insert
     let lock = Arc::new(Mutex::new(()));
     locks.insert(key.to_string(), Arc::clone(&lock));
     lock
@@ -153,7 +106,6 @@ mod tests {
     let service = LocalConcurrencyService::new();
     let counter = Arc::new(AtomicU32::new(0));
 
-    // Spawn two tasks that increment a counter
     let counter1 = Arc::clone(&counter);
     let service1 = Arc::new(service);
     let service2 = Arc::clone(&service1);
@@ -194,7 +146,6 @@ mod tests {
     handle1.await.unwrap();
     handle2.await.unwrap();
 
-    // Both increments should succeed due to locking
     assert_eq!(2, counter.load(Ordering::SeqCst));
   }
 
@@ -203,7 +154,6 @@ mod tests {
     let service = Arc::new(LocalConcurrencyService::new());
     let start_time = std::time::Instant::now();
 
-    // Spawn two tasks with different keys - they should run concurrently
     let service1 = Arc::clone(&service);
     let service2 = Arc::clone(&service);
 
@@ -253,7 +203,6 @@ mod tests {
   async fn test_lock_reuse() {
     let service = Arc::new(LocalConcurrencyService::new());
 
-    // First use of key
     let _ = service
       .with_lock_auth(
         "reuse_key",
@@ -261,13 +210,11 @@ mod tests {
       )
       .await;
 
-    // Get the lock entry count
     let locks_count_before = {
       let locks = service.locks.read().await;
       locks.len()
     };
 
-    // Second use of same key
     let _ = service
       .with_lock_auth(
         "reuse_key",
@@ -275,7 +222,6 @@ mod tests {
       )
       .await;
 
-    // Lock entry should be reused, not duplicated
     let locks_count_after = {
       let locks = service.locks.read().await;
       locks.len()
@@ -328,7 +274,6 @@ mod tests {
     let counter = Arc::new(AtomicU32::new(0));
     let mut handles = vec![];
 
-    // Spawn 10 tasks all using the same key
     for _ in 0..10 {
       let service_clone = Arc::clone(&service);
       let counter_clone = Arc::clone(&counter);
@@ -353,12 +298,10 @@ mod tests {
       handles.push(handle);
     }
 
-    // Wait for all tasks to complete
     for handle in handles {
       handle.await.unwrap();
     }
 
-    // All 10 increments should succeed without race conditions
     assert_eq!(10, counter.load(Ordering::SeqCst));
   }
 }

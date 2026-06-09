@@ -5,7 +5,6 @@ export {
   apiModelKeys,
   apiFormatKeys,
   modelRouterKeys,
-  // Endpoint constants
   ENDPOINT_MODELS,
   ENDPOINT_MODEL_ID,
   ENDPOINT_ALIAS,

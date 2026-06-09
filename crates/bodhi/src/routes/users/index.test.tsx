@@ -31,12 +31,10 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Mock AppInitializer to just render children
 vi.mock('@/components/AppInitializer', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-// Mock toast
 const mockShowSuccess = vi.fn();
 const mockShowError = vi.fn();
 vi.mock('@/hooks/use-toast-messages', () => ({
@@ -48,7 +46,6 @@ vi.mock('@/hooks/use-toast-messages', () => ({
 
 setupMswV2();
 
-// Helper function to create role-based handlers similar to MSW v1 pattern
 function createRoleBasedHandlersV2(role: string, shouldHaveAccess: boolean = true) {
   const userRole =
     role === 'admin'
@@ -94,7 +91,6 @@ describe('UsersPage Role-Based Access Control', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // Should show the page content, not redirect
     expect(screen.getByTestId('users-page')).toBeInTheDocument();
     expect(screen.getAllByText('All Users')[1]).toBeInTheDocument(); // The second occurrence is in the card
     expect(navigateMock).not.toHaveBeenCalled();
@@ -107,8 +103,7 @@ describe('UsersPage Role-Based Access Control', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // Should show the page but might have restricted content
-    // Since this is placeholder functionality, we test that it doesn't crash
+    // Placeholder functionality: just assert the page does not crash for blocked roles.
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
@@ -125,8 +120,7 @@ describe('UsersPage Role-Based Access Control', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // Since we mocked AppInitializer, the page renders but the redirect logic
-    // is handled by AppInitializer (tested separately)
+    // AppInitializer is mocked, so redirect-on-logout is covered separately; here the page just renders.
     expect(screen.getByTestId('users-page')).toBeInTheDocument();
   });
 });
@@ -145,13 +139,10 @@ describe('UsersPage Data Display', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for page to load
     await screen.findByTestId('users-page');
 
-    // Should display All Users text in card title
     expect(screen.getAllByText('All Users')[1]).toBeInTheDocument(); // The second occurrence is in the card
 
-    // Should show users from mock data
     await waitFor(() => {
       expect(screen.getByText('user1@example.com')).toBeInTheDocument();
       expect(screen.getByText('user2@example.com')).toBeInTheDocument();
@@ -169,9 +160,7 @@ describe('UsersPage Data Display', () => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
 
-    // Should have proper page structure
     expect(screen.getAllByText('All Users')[1]).toBeInTheDocument(); // The second occurrence is in the card
-    // Should show navigation links
     expect(screen.getByText('Pending Requests')).toBeInTheDocument();
     expect(screen.getByText('All Requests')).toBeInTheDocument();
   });
@@ -183,12 +172,10 @@ describe('UsersPage Data Display', () => {
 
     await screen.findByTestId('users-page');
 
-    // Wait for users to load
     await waitFor(() => {
       expect(screen.getByText('user1@example.com')).toBeInTheDocument();
     });
 
-    // Should show role badges for each user
     const userBadges = screen.getAllByText('User');
     expect(userBadges.length).toBeGreaterThan(0); // resource_user -> User
     const powerUserBadges = screen.getAllByText('Power User');
@@ -216,7 +203,6 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for page to load and users to appear
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
       expect(screen.getByText('admin@example.com')).toBeInTheDocument();
@@ -225,27 +211,24 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
       expect(screen.getByText('manager@example.com')).toBeInTheDocument();
     });
 
-    // Check that action cells exist for other users
     await waitFor(() => {
       expect(screen.getByTestId('user-actions-user1@example.com')).toBeInTheDocument();
       expect(screen.getByTestId('user-actions-user2@example.com')).toBeInTheDocument();
       expect(screen.getByTestId('user-actions-manager@example.com')).toBeInTheDocument();
     });
 
-    // Admin should see role select triggers for other users (the Select component renders as a button trigger)
+    // The role Select renders as a button trigger.
     expect(screen.getByTestId('role-select-trigger-user1@example.com')).toBeInTheDocument();
     expect(screen.getByTestId('role-select-trigger-user2@example.com')).toBeInTheDocument();
     expect(screen.getByTestId('role-select-trigger-manager@example.com')).toBeInTheDocument();
 
-    // Admin should see remove buttons for other users
     expect(screen.getByTestId('remove-user-btn-user1@example.com')).toBeInTheDocument();
     expect(screen.getByTestId('remove-user-btn-user2@example.com')).toBeInTheDocument();
     expect(screen.getByTestId('remove-user-btn-manager@example.com')).toBeInTheDocument();
 
-    // Admin should NOT see action buttons for themselves
+    // Admin should NOT see action buttons for themselves.
     expect(screen.queryByTestId('role-select-trigger-admin@example.com')).not.toBeInTheDocument();
 
-    // Should show "You" indicator for current user
     expect(screen.getByTestId('current-user-indicator')).toBeInTheDocument();
     expect(screen.getByText('You')).toBeInTheDocument();
   });
@@ -265,7 +248,6 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for page and users to load
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
       expect(screen.getByText('manager@example.com')).toBeInTheDocument();
@@ -274,17 +256,16 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
       expect(screen.getByText('admin@example.com')).toBeInTheDocument();
     });
 
-    // Manager should see action buttons for lower-level users (using the correct trigger test IDs)
+    // Manager sees action buttons for lower-level users.
     await waitFor(() => {
       expect(screen.getByTestId('role-select-trigger-user1@example.com')).toBeInTheDocument();
       expect(screen.getByTestId('role-select-trigger-user2@example.com')).toBeInTheDocument();
     });
 
-    // Manager should NOT see action buttons for admin (higher level) or themselves
+    // Manager sees no action buttons for admin (higher level) or themselves.
     expect(screen.queryByTestId('role-select-trigger-admin@example.com')).not.toBeInTheDocument();
     expect(screen.queryByTestId('role-select-trigger-manager@example.com')).not.toBeInTheDocument();
 
-    // Should show appropriate indicators
     expect(screen.getByTestId('current-user-indicator')).toBeInTheDocument(); // For self
     expect(screen.getByTestId('restricted-user-indicator')).toBeInTheDocument(); // For admin
   });
@@ -304,24 +285,22 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for page and users to load
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
       expect(screen.getByText('admin@example.com')).toBeInTheDocument();
       expect(screen.getByText('admin2@example.com')).toBeInTheDocument();
     });
 
-    // Current admin should NOT see action buttons for themselves
+    // Current admin sees no action buttons for themselves.
     expect(screen.queryByTestId('role-select-trigger-admin@example.com')).not.toBeInTheDocument();
     expect(screen.getByTestId('current-user-indicator')).toBeInTheDocument();
 
-    // Current admin SHOULD see action buttons for the other admin
+    // Admin sees action buttons for other admins (same level).
     await waitFor(() => {
       expect(screen.getByTestId('role-select-trigger-admin2@example.com')).toBeInTheDocument();
       expect(screen.getByTestId('remove-user-btn-admin2@example.com')).toBeInTheDocument();
     });
 
-    // Should also see action buttons for lower-level users
     expect(screen.getByTestId('role-select-trigger-user1@example.com')).toBeInTheDocument();
     expect(screen.getByTestId('role-select-trigger-manager@example.com')).toBeInTheDocument();
   });
@@ -341,7 +320,6 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for page and users to load
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
       expect(screen.getByText('manager@example.com')).toBeInTheDocument();
@@ -349,21 +327,20 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
       expect(screen.getByText('admin@example.com')).toBeInTheDocument();
     });
 
-    // Current manager should NOT see action buttons for themselves
+    // Current manager sees no action buttons for themselves.
     expect(screen.queryByTestId('role-select-trigger-manager@example.com')).not.toBeInTheDocument();
     expect(screen.getByTestId('current-user-indicator')).toBeInTheDocument();
 
-    // Current manager SHOULD see action buttons for the other manager
+    // Manager sees action buttons for other managers (same level).
     await waitFor(() => {
       expect(screen.getByTestId('role-select-trigger-manager2@example.com')).toBeInTheDocument();
       expect(screen.getByTestId('remove-user-btn-manager2@example.com')).toBeInTheDocument();
     });
 
-    // Should also see action buttons for lower-level users
     expect(screen.getByTestId('role-select-trigger-user1@example.com')).toBeInTheDocument();
     expect(screen.getByTestId('role-select-trigger-user2@example.com')).toBeInTheDocument();
 
-    // Should NOT see action buttons for admin (higher level)
+    // Manager sees no action buttons for admin (higher level).
     expect(screen.queryByTestId('role-select-trigger-admin@example.com')).not.toBeInTheDocument();
     expect(screen.getByTestId('restricted-user-indicator')).toBeInTheDocument(); // For admin
   });
@@ -381,7 +358,6 @@ describe('UsersPage Error Handling', () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
 
-    // The page container should still render
     expect(screen.getByTestId('users-page')).toBeInTheDocument();
   });
 
@@ -398,7 +374,6 @@ describe('UsersPage Error Handling', () => {
 
     await screen.findByTestId('users-page');
 
-    // Should show error alert when users API fails
     await waitFor(
       () => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
@@ -420,10 +395,6 @@ describe('UsersPage Error Handling', () => {
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
-
-    // Should handle error gracefully without crashing
-    // In this case, it would show loading state or the actual users list
-    // depending on how the MSW handlers respond
   });
 });
 
@@ -444,7 +415,6 @@ describe('UsersPage Loading States', () => {
 
     expect(screen.getAllByText('All Users')[1]).toBeInTheDocument(); // The second occurrence is in the card
 
-    // Should eventually show users after loading
     await waitFor(() => {
       expect(screen.getByText('user1@example.com')).toBeInTheDocument();
     });
@@ -465,7 +435,6 @@ describe('UsersPage Loading States', () => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
 
-    // Should have proper page structure
     expect(screen.getAllByText('All Users')[1]).toBeInTheDocument(); // The second occurrence is in the card
     expect(screen.getByText('Manage user access and roles')).toBeInTheDocument();
   });
@@ -485,7 +454,6 @@ describe('UsersPage Empty State', () => {
 
     await screen.findByTestId('users-page');
 
-    // Should show empty state
     await waitFor(() => {
       expect(screen.getByText('No Users')).toBeInTheDocument();
       expect(screen.getByText('No users found')).toBeInTheDocument();

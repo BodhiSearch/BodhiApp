@@ -46,7 +46,6 @@ async fn clear_session_auth_data(session: &Session) {
   }
 }
 
-/// Determines whether session data should be cleared for the given error.
 fn should_clear_session(err: &AuthError) -> bool {
   matches!(
     err,
@@ -57,7 +56,6 @@ fn should_clear_session(err: &AuthError) -> bool {
   )
 }
 
-/// Returns true if the request originates from the same site ("same-origin").
 fn is_same_origin(headers: &HeaderMap) -> bool {
   let host = headers.get(HOST).and_then(|v| v.to_str().ok());
   let sec_fetch_site = headers
@@ -352,7 +350,6 @@ pub async fn optional_auth_middleware(
   } else {
     req.extensions_mut().insert(anon());
   }
-  // Continue with the request
   Ok(next.run(req).await)
 }
 

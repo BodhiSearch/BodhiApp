@@ -105,7 +105,6 @@ async fn test_embeddings_rejects_responses_format_alias() -> anyhow::Result<()> 
   builder.with_data_service().await;
   let db_service = builder.get_db_service().await;
 
-  // Seed an API alias with openai_responses format
   let api_alias = ApiAliasBuilder::test_default()
     .id("responses-alias")
     .api_format(ApiFormat::OpenAIResponses)

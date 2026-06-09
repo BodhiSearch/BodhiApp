@@ -64,13 +64,11 @@ impl MigrationTrait for Migration {
       conn
         .execute_unprepared("ALTER TABLE tenants_users FORCE ROW LEVEL SECURITY;")
         .await?;
-      // Cross-tenant reads allowed (list_user_tenants, has_tenant_memberships)
       conn
         .execute_unprepared(
           "CREATE POLICY tenants_users_read ON tenants_users FOR SELECT USING (true);",
         )
         .await?;
-      // Mutations restricted to current tenant context
       conn
         .execute_unprepared(
           "CREATE POLICY tenants_users_mutation ON tenants_users

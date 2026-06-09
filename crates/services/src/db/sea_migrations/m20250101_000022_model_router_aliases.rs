@@ -98,7 +98,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Alias name must be unique per (tenant, user).
     let db = manager.get_connection();
     db.execute_unprepared(
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_model_router_aliases_alias_unique ON model_router_aliases(tenant_id, user_id, alias)"

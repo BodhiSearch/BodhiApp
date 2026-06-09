@@ -68,14 +68,11 @@ describe('ModelRouterForm', () => {
     const user = userEvent.setup();
     render(<ModelRouterForm mode="create" />, { wrapper: createWrapper() });
 
-    // name
     await user.type(screen.getByTestId('router-alias-input'), 'my-stack');
 
-    // add a target
     await user.click(screen.getByTestId('add-target'));
     expect(screen.getByTestId('target-row-0')).toBeInTheDocument();
 
-    // pick the local alias
     await user.click(screen.getByTestId('target-alias-0'));
     await user.click(await screen.findByText('llama3:instruct'));
 
@@ -84,7 +81,6 @@ describe('ModelRouterForm', () => {
       expect(screen.getByTestId('target-model-0')).toHaveValue('llama3:instruct');
     });
 
-    // submit
     await user.click(screen.getByTestId('router-submit'));
 
     await waitFor(() => {

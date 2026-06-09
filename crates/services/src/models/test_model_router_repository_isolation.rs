@@ -46,7 +46,6 @@ async fn test_cross_tenant_model_router_isolation(
     .create_model_router_alias(TEST_TENANT_B_ID, TEST_USER_ID, &router_b)
     .await?;
 
-  // list scoped to tenant A only sees A
   let aliases_a = ctx
     .service
     .list_model_router_aliases(TEST_TENANT_ID, TEST_USER_ID)
@@ -54,7 +53,6 @@ async fn test_cross_tenant_model_router_isolation(
   assert_eq!(1, aliases_a.len());
   assert_eq!("router-a1", aliases_a[0].id);
 
-  // cross-tenant get returns None
   let cross = ctx
     .service
     .get_model_router_alias(TEST_TENANT_B_ID, TEST_USER_ID, "router-a1")

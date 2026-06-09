@@ -68,7 +68,6 @@ async fn test_update_api_model_rejects_keep_when_api_format_changes(
   use services::test_utils::{openai_model, TEST_TENANT_ID};
   use services::ApiAliasBuilder;
 
-  // Seed an openai alias with a stored API key.
   let db_arc = Arc::new(db_service);
   let alias = ApiAliasBuilder::default()
     .id("stored-alias")
@@ -131,7 +130,6 @@ async fn test_api_models_test_id_uses_stored_api_format(
   use services::test_utils::{anthropic_model, TEST_TENANT_ID};
   use services::ApiAliasBuilder;
 
-  // Seed an anthropic_oauth alias.
   let db_arc = Arc::new(db_service);
   let alias = ApiAliasBuilder::default()
     .id("oauth-alias")

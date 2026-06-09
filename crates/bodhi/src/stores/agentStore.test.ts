@@ -3,8 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentEvent, AgentMessage, AgentTool } from '@mariozechner/pi-agent-core';
 
-// ── Agent mock ────────────────────────────────────────────────────────────────
-
 type AgentEventListener = (event: AgentEvent) => void;
 
 const mockPrompt = vi.fn<(input: string | AgentMessage | AgentMessage[]) => Promise<void>>();
@@ -71,8 +69,6 @@ vi.mock('@mariozechner/pi-ai', () => ({
   streamSimple: vi.fn(),
 }));
 
-// ── Store mocks ───────────────────────────────────────────────────────────────
-
 vi.mock('@/stores/chatStore', () => {
   const { create } = require('zustand');
   return {
@@ -116,19 +112,14 @@ vi.mock('@/lib/utils', () => ({
   nanoid: () => 'new-chat-id',
 }));
 
-// ── Import subject under test AFTER mocks ────────────────────────────────────
-
+// Import subject under test AFTER mocks are registered.
 import { useAgentStore, initAgentSubscription } from './agentStore';
 import { useChatStore } from './chatStore';
 import { useChatSettingsStore } from './chatSettingsStore';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function emitAgentEvent(event: AgentEvent) {
   capturedListeners.forEach((l) => l(event));
 }
-
-// ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('agentStore', () => {
   beforeEach(() => {
@@ -142,7 +133,6 @@ describe('agentStore', () => {
     mockAgentMessages = [];
     mockErrorMessage = undefined;
 
-    // Ensure clean Zustand state after reset
     useAgentStore.setState({
       input: '',
       isStreaming: false,
@@ -153,7 +143,6 @@ describe('agentStore', () => {
       chatIdRef: null,
     });
 
-    // Reset chat store mock state
     useChatStore.setState({
       chats: [],
       currentChatId: null,
@@ -162,7 +151,6 @@ describe('agentStore', () => {
       loadMessagesForChat: vi.fn().mockResolvedValue([]),
     });
 
-    // Reset settings store state
     useChatSettingsStore.setState({
       model: 'test-model',
       apiFormat: 'openai',
@@ -450,7 +438,6 @@ describe('agentStore', () => {
 
   describe('stop', () => {
     it('calls agent.abort()', () => {
-      // Ensure agent is created first
       useAgentStore.getState().syncAgentSettings();
       useAgentStore.getState().stop();
       expect(mockAbort).toHaveBeenCalled();
@@ -460,7 +447,6 @@ describe('agentStore', () => {
   describe('reset', () => {
     it('clears all state including chatIdRef', async () => {
       mockPrompt.mockResolvedValueOnce(undefined);
-      // Set some state
       useAgentStore.setState({ input: 'hi', isStreaming: true, chatIdRef: { id: 'x', createdAt: 1 } });
 
       act(() => {
@@ -475,7 +461,7 @@ describe('agentStore', () => {
     });
 
     it('aborts the current agent', () => {
-      useAgentStore.getState().syncAgentSettings(); // create agent
+      useAgentStore.getState().syncAgentSettings();
       act(() => {
         useAgentStore.getState().reset();
       });
@@ -512,7 +498,6 @@ describe('agentStore', () => {
 
   describe('agent events → store state', () => {
     beforeEach(() => {
-      // Trigger agent creation
       useAgentStore.getState().syncAgentSettings();
     });
 

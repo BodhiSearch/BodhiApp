@@ -50,27 +50,22 @@ pub fn main() -> Result<()> {
   println!("cargo:rerun-if-env-changed=CI_EXEC_NAME");
 
   let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-  // Create bin directory and lock file at the start
   let bin_dir = project_dir.join("bin");
   fs::create_dir_all(&bin_dir).context("Failed to create bin directory")?;
   let lock_path = bin_dir.join(LOCK_FILE);
   let lock_file = File::create(&lock_path).context("Failed to create lock file")?;
 
-  // Take exclusive lock for the entire build process with timeout
   try_acquire_exclusive_lock_with_timeout(&lock_file)
     .context("Failed to acquire exclusive lock for llama server bin")?;
 
-  // Rest of the build process
   try_main(&project_dir)?;
 
-  // Release the lock
   let _ = fs2::FileExt::unlock(&lock_file);
 
   Ok(())
 }
 
 fn try_main(project_dir: &Path) -> Result<()> {
-  // Check for CI environment with explicit configuration
   if let Ok(ci_target) = env::var("CI_BUILD_TARGET") {
     println!(
       "cargo:warning=Using CI build configuration for target: {}",
@@ -87,7 +82,6 @@ fn try_main(project_dir: &Path) -> Result<()> {
     return Ok(());
   }
 
-  // Get target from Docker TARGETARCH or fallback to Cargo TARGET
   let target = get_target_from_platform()?;
   let build = LLAMA_SERVER_BUILDS.iter().find(|i| i.target == target);
 
@@ -196,7 +190,6 @@ fn build_llama_server(build: &LlamaServerBuild, variant: &str) -> Result<()> {
   Ok(())
 }
 
-// New function to clean the output directory
 fn clean_bin_dir(project_dir: &Path) -> Result<()> {
   let bin_dir = project_dir.join("bin");
   if !bin_dir.exists() {

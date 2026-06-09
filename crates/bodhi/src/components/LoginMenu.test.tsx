@@ -33,10 +33,8 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-// MSW v2 setup with default handlers
 setupMswV2();
 
-// Set up default handlers using MSW v2 patterns
 beforeEach(() => {
   server.use(
     ...mockUserLoggedOut(),
@@ -78,7 +76,6 @@ describe('LoginMenu Component', () => {
     const loginButton = await screen.findByRole('button', { name: /login/i });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." after successful response and remain disabled
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
@@ -103,7 +100,6 @@ describe('LoginMenu Component', () => {
   });
 
   it('shows initiating and redirecting states during OAuth initiation', async () => {
-    // Use mock handler with delay for testing loading states
     server.use(...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' }, 100));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
@@ -111,13 +107,11 @@ describe('LoginMenu Component', () => {
     const loginButton = await screen.findByRole('button', { name: /login/i });
     await userEvent.click(loginButton);
 
-    // Check for initiating state during request
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /initiating/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /initiating/i })).toBeDisabled();
     });
 
-    // Check for redirecting state after successful response
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
@@ -136,7 +130,6 @@ describe('LoginMenu Component', () => {
       expect(screen.getByText('OAuth configuration error')).toBeInTheDocument();
     });
 
-    // Verify login button is re-enabled after error
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /login/i })).not.toBeDisabled();
@@ -151,7 +144,6 @@ describe('LoginMenu Component', () => {
     const loginButton = await screen.findByRole('button', { name: /login/i });
     await userEvent.click(loginButton);
 
-    // Should redirect to default OAuth URL
     await waitFor(() => {
       expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
     });
@@ -179,7 +171,6 @@ describe('LoginMenu Component', () => {
   it('handles logout action with external redirect URL', async () => {
     server.use(
       ...mockUserLoggedIn({ role: 'resource_user' }),
-      // Use mock handler with delay for testing loading states
       ...mockLogout({ location: 'http://localhost:1135/ui/login' }, 100)
     );
 
@@ -203,7 +194,6 @@ describe('LoginMenu Component', () => {
     const logoutButton = await screen.findByRole('button', { name: /log out/i });
     await userEvent.click(logoutButton);
 
-    // Wait for logout to complete and navigation to occur
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });
@@ -223,7 +213,6 @@ describe('LoginMenu Component', () => {
 
     expect(logoutButton).not.toBeDisabled();
 
-    // Should redirect to login page on error
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
     });

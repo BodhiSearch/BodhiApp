@@ -887,7 +887,6 @@ impl McpService for DefaultMcpService {
     let now = self.time_service.utc_now();
     let config_id = new_ulid();
 
-    // Create base auth config row
     let base_row = McpAuthConfigEntity {
       id: config_id.clone(),
       tenant_id: tenant_id.to_string(),
@@ -898,7 +897,6 @@ impl McpService for DefaultMcpService {
       created_at: now,
       updated_at: now,
     };
-    // Build OAuth detail row
     let detail_row = McpOAuthConfigDetailEntity {
       auth_config_id: config_id.clone(),
       tenant_id: tenant_id.to_string(),
@@ -1381,7 +1379,6 @@ impl McpService for DefaultMcpService {
         let now = self.time_service.utc_now();
         let config_id = new_ulid();
 
-        // Build base auth config row
         let base_row = McpAuthConfigEntity {
           id: config_id.clone(),
           tenant_id: tenant_id.to_string(),
@@ -1393,7 +1390,6 @@ impl McpService for DefaultMcpService {
           updated_at: now,
         };
 
-        // Build param entries
         let mut param_rows = Vec::new();
         let mut result_entries = Vec::new();
         for entry in entries {

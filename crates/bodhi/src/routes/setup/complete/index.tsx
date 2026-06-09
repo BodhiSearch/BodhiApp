@@ -21,7 +21,6 @@ const itemVariants = {
   visible: { y: 0, opacity: 1 },
 };
 
-// Simple Icon component
 function SimpleIcon({ icon, className }: { icon: { path: string }; className?: string }) {
   return (
     <svg role="img" viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -72,7 +71,6 @@ const resourceLinks = [
   },
 ];
 
-// Magic UI Confetti component
 function Confetti() {
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
@@ -126,7 +124,6 @@ function SetupCompleteContent() {
     <main className="min-h-screen bg-background">
       {showConfetti && <Confetti />}
       <SetupContainer showProgress={false}>
-        {/* Completion Message */}
         <motion.div variants={itemVariants} className="text-center space-y-4">
           <h1 className="text-4xl font-bold">🎉 Setup Complete!</h1>
           <p className="text-muted-foreground">
@@ -134,7 +131,6 @@ function SetupCompleteContent() {
           </p>
         </motion.div>
 
-        {/* Social Links */}
         <SetupCard title="Join Our Community">
           <div className="grid gap-4">
             {socialLinks.map((link) => (
@@ -161,7 +157,6 @@ function SetupCompleteContent() {
           </div>
         </SetupCard>
 
-        {/* Resources */}
         <SetupCard title="Quick Resources">
           <div className="grid gap-4">
             {resourceLinks.map((link) => (
@@ -185,7 +180,6 @@ function SetupCompleteContent() {
           </div>
         </SetupCard>
 
-        {/* Start Using App Button */}
         <motion.div variants={itemVariants} className="flex justify-center pt-4">
           <Button size="lg" onClick={() => navigate({ to: ROUTE_CHAT })} className="px-8">
             Start Using Bodhi App →

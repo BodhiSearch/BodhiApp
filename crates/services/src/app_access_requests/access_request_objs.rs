@@ -3,10 +3,6 @@ use utoipa::ToSchema;
 
 use crate::mcp_proxy_path;
 
-// ============================================================================
-// AppAccessRequest - Database row for app access request consent tracking
-// ============================================================================
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppAccessRequest {
   pub id: String,
@@ -130,11 +126,6 @@ impl<'de> Deserialize<'de> for McpInstance {
   }
 }
 
-// ============================================================================
-// Versioned resource envelopes
-// ============================================================================
-
-/// Versioned envelope for requested resources.
 /// The `version` tag is mandatory — clients must specify which version they are using.
 #[derive(Debug, Clone, Serialize, ToSchema, PartialEq)]
 #[serde(tag = "version")]
@@ -181,7 +172,6 @@ impl Default for RequestedResources {
   }
 }
 
-/// Versioned envelope for approved resources.
 /// The `version` tag is mandatory and must match the corresponding `RequestedResources` version.
 #[derive(Debug, Clone, Serialize, ToSchema, PartialEq)]
 #[serde(tag = "version")]
@@ -228,10 +218,6 @@ impl Default for ApprovedResources {
   }
 }
 
-// ============================================================================
-// V1 resource structs
-// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
 pub struct RequestedResourcesV1 {
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -244,11 +230,6 @@ pub struct ApprovedResourcesV1 {
   pub mcps: Vec<McpApproval>,
 }
 
-// ============================================================================
-// Request types for app access request domain
-// ============================================================================
-
-/// Request for creating an app access request
 #[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]
 #[schema(example = json!({
     "app_client_id": "my-app-client",
@@ -276,7 +257,6 @@ pub struct CreateAccessRequest {
   pub requested: RequestedResources,
 }
 
-/// Request for approving an app access request
 #[derive(Debug, Clone, Serialize, Deserialize, validator::Validate, ToSchema)]
 #[schema(example = json!({
     "approved_role": "scope_user_user",
@@ -297,10 +277,6 @@ pub struct ApproveAccessRequest {
   /// Approved resources with selections
   pub approved: ApprovedResources,
 }
-
-// ============================================================================
-// Validator functions
-// ============================================================================
 
 fn validate_redirect_url_scheme(url: &str) -> Result<(), validator::ValidationError> {
   match url::Url::parse(url) {

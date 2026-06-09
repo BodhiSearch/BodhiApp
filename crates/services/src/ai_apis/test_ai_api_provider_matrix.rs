@@ -50,8 +50,6 @@ fn make_alias(url: &str, format: ApiFormat) -> ApiAlias {
   )
 }
 
-// === test_prompt_success ===
-
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
@@ -172,8 +170,6 @@ async fn test_prompt_success_gemini() -> anyhow::Result<()> {
   Ok(())
 }
 
-// === test_prompt_401 ===
-
 #[rstest]
 #[case::openai(ApiFormat::OpenAI, "/chat/completions", "some-model")]
 #[case::openai_responses(ApiFormat::OpenAIResponses, "/responses", "some-model")]
@@ -215,8 +211,6 @@ async fn test_prompt_401_unauthorized(
   );
   Ok(())
 }
-
-// === fetch_models_success ===
 
 #[rstest]
 #[anyhow_trace]
@@ -290,8 +284,6 @@ async fn test_fetch_models_success_anthropic() -> anyhow::Result<()> {
   Ok(())
 }
 
-// === fetch_models_401 ===
-
 #[rstest]
 #[case::openai(ApiFormat::OpenAI)]
 #[case::openai_responses(ApiFormat::OpenAIResponses)]
@@ -325,8 +317,6 @@ async fn test_fetch_models_401(#[case] api_format: ApiFormat) -> anyhow::Result<
   );
   Ok(())
 }
-
-// === forward_passthrough ===
 
 #[rstest]
 #[case::openai(ApiFormat::OpenAI)]

@@ -7,18 +7,10 @@ use services::{
   ApprovalStatus, ApprovedResources, AuthContext, Mcp, McpRequest, McpWithServerEntity,
 };
 
-// ============================================================================
-// MCP Instance Response types
-// ============================================================================
-
 #[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct ListMcpsResponse {
   pub mcps: Vec<Mcp>,
 }
-
-// ============================================================================
-// MCP Instance CRUD Handlers
-// ============================================================================
 
 /// List all MCP instances for the authenticated user
 #[utoipa::path(
@@ -179,10 +171,6 @@ pub async fn mcps_destroy(
 
   Ok(StatusCode::NO_CONTENT)
 }
-
-// ============================================================================
-// External App (/apps/) Wrappers
-// ============================================================================
 
 /// List MCP instances accessible to the authenticated external app
 #[utoipa::path(

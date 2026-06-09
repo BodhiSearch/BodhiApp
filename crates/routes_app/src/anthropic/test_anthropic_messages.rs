@@ -139,7 +139,6 @@ async fn test_messages_create_model_not_found() -> anyhow::Result<()> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_messages_create_rejects_non_anthropic_alias() -> anyhow::Result<()> {
-  // Seed an openai-format alias and verify the Anthropic endpoint rejects it
   let mut builder = AppServiceStubBuilder::default();
   builder.with_data_service().await;
   let db_service = builder.get_db_service().await;

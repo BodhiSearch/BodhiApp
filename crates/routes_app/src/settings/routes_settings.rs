@@ -6,10 +6,6 @@ use axum::{extract::Path, Json};
 use services::SettingInfo;
 use services::{UpdateSettingRequest, BODHI_HOME, EDIT_SETTINGS_ALLOWED, LLM_SETTINGS};
 
-/// List all application settings
-///
-/// **Security Note:** Admin session authentication required. Settings management
-/// is restricted to interactive sessions to prevent unauthorized configuration changes.
 #[utoipa::path(
     get,
     path = ENDPOINT_SETTINGS,
@@ -55,10 +51,6 @@ pub async fn settings_index(
   Ok(Json(settings))
 }
 
-/// Update a specific setting
-///
-/// **Security Note:** Admin session authentication required. Settings modification
-/// is restricted to interactive sessions to prevent unauthorized system reconfiguration.
 #[utoipa::path(
     put,
     path = ENDPOINT_SETTINGS.to_owned() + "/{key}",
@@ -138,9 +130,6 @@ pub async fn settings_update(
   }))
 }
 
-/// Reset a setting to its default value
-///
-/// **Security Note:** Admin session authentication required for system configuration.
 #[utoipa::path(
     delete,
     path = ENDPOINT_SETTINGS.to_owned() + "/{key}",

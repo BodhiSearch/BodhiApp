@@ -19,7 +19,6 @@ export const SetupModeCard = ({ onSetup, isLoading }: SetupModeCardProps) => {
           <CardTitle className="text-center">Setup Bodhi App</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Setup mode description */}
           <div className="space-y-4 text-center">
             <div className="flex items-center justify-center gap-2">
               <span className="text-4xl">🔐</span>

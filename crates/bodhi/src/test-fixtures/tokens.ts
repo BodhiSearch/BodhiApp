@@ -10,13 +10,6 @@ type TokenDetail = components['schemas']['TokenDetail'];
 type PaginatedTokenResponse = components['schemas']['PaginatedTokenResponse'];
 type TokenCreated = components['schemas']['TokenCreated'];
 
-// ============================================================================
-// Token Factories
-// ============================================================================
-
-/**
- * Create a mock token detail
- */
 export function createMockToken(overrides?: Partial<TokenDetail>): TokenDetail {
   return {
     id: 'token-1',
@@ -31,9 +24,6 @@ export function createMockToken(overrides?: Partial<TokenDetail>): TokenDetail {
   };
 }
 
-/**
- * Create a mock paginated token response
- */
 export function createMockPaginatedTokens(overrides?: Partial<PaginatedTokenResponse>): PaginatedTokenResponse {
   return {
     data: [createMockToken()],
@@ -44,9 +34,6 @@ export function createMockPaginatedTokens(overrides?: Partial<PaginatedTokenResp
   };
 }
 
-/**
- * Create an empty paginated token response
- */
 export function createMockEmptyPaginatedTokens(): PaginatedTokenResponse {
   return createMockPaginatedTokens({
     data: [],
@@ -54,9 +41,6 @@ export function createMockEmptyPaginatedTokens(): PaginatedTokenResponse {
   });
 }
 
-/**
- * Create a mock token creation response
- */
 export function createMockTokenCreated(overrides?: Partial<TokenCreated>): TokenCreated {
   return {
     token: 'test-token-123',

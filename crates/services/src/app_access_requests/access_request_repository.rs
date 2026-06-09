@@ -87,7 +87,6 @@ impl AccessRequestRepository for DefaultDbService {
           match result {
             Some(model) => {
               let row = AppAccessRequest::from(model);
-              // expire_if_draft_and_expired inline
               if row.status == AppAccessRequestStatus::Draft && row.expires_at < now {
                 let active = app_access_request_entity::ActiveModel {
                   id: Set(row.id.clone()),
@@ -204,7 +203,6 @@ impl AccessRequestRepository for DefaultDbService {
     self
       .with_tenant_txn(&tenant_id, |txn| {
         Box::pin(async move {
-          // validate_draft_for_update inline
           let row = app_access_request_entity::Entity::find_by_id(&id_owned)
             .one(txn)
             .await
@@ -269,7 +267,6 @@ impl AccessRequestRepository for DefaultDbService {
     self
       .with_tenant_txn(&tenant_id, |txn| {
         Box::pin(async move {
-          // validate_draft_for_update inline
           let row = app_access_request_entity::Entity::find_by_id(&id_owned)
             .one(txn)
             .await

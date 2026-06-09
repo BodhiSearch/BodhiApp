@@ -276,7 +276,6 @@ async fn test_delete_cascades_on_alias_delete(
     .create_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id, &envelope)
     .await?;
 
-  // Sanity check
   assert!(ctx
     .service
     .get_llm_liberty_credentials(TEST_TENANT_ID, TEST_USER_ID, alias_id)

@@ -21,10 +21,6 @@ use validator::{Validate, ValidationErrors};
 
 use super::llm_liberty_envelope::LlmLibertySummary;
 
-// =============================================================================
-// BuilderError
-// =============================================================================
-
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 #[non_exhaustive]
@@ -49,10 +45,6 @@ impl From<String> for BuilderError {
   }
 }
 
-// =============================================================================
-// ModelValidationError (new — split from ObjValidationError)
-// =============================================================================
-
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ModelValidationError {
@@ -68,10 +60,6 @@ pub enum ModelValidationError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   ForwardAllRequiresPrefix,
 }
-
-// =============================================================================
-// JsonVec
-// =============================================================================
 
 #[derive(
   Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult, ToSchema, Default,
@@ -118,10 +106,6 @@ impl FromIterator<String> for JsonVec {
     Self(iter.into_iter().collect())
   }
 }
-
-// =============================================================================
-// ApiModel + ApiModelVec
-// =============================================================================
 
 /// Discriminated union of provider-specific model metadata.
 /// Stored as JSON in `api_model_aliases.models`.
@@ -188,10 +172,6 @@ impl FromIterator<ApiModel> for ApiModelVec {
     Self(iter.into_iter().collect())
   }
 }
-
-// =============================================================================
-// Repo
-// =============================================================================
 
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
 pub static GGUF: &str = "gguf";
@@ -291,10 +271,6 @@ impl Serialize for Repo {
   }
 }
 
-// =============================================================================
-// HubFile
-// =============================================================================
-
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, derive_new::new)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(derive_builder::Builder))]
 pub struct HubFile {
@@ -324,46 +300,40 @@ impl TryFrom<std::path::PathBuf> for HubFile {
     let size = std::fs::metadata(&value)
       .ok()
       .map(|metadata| metadata.len());
-    // Get filename
     let filename = value
       .file_name()
       .and_then(|f| f.to_str())
       .ok_or_else(|| ModelValidationError::FilePatternMismatch(path_str.clone()))?
       .to_string();
 
-    // Get snapshot hash
-    value.pop(); // move to parent
+    value.pop();
     let snapshot = value
       .file_name()
       .and_then(|f| f.to_str())
       .ok_or_else(|| ModelValidationError::FilePatternMismatch(path_str.clone()))?
       .to_string();
 
-    // Verify "snapshots" directory
     value.pop();
     if value.file_name().and_then(|f| f.to_str()) != Some("snapshots") {
       return Err(ModelValidationError::FilePatternMismatch(path_str));
     }
     value.pop();
 
-    // Extract repo info from models--username--repo_name format
+    // HF cache dir is named "models--{username}--{repo_name}".
     let repo_dir = value
       .file_name()
       .and_then(|f| f.to_str())
       .ok_or_else(|| ModelValidationError::FilePatternMismatch(path_str.clone()))?
       .to_string();
 
-    // Store repo parts before moving value
     let repo_parts: Vec<&str> = repo_dir.split("--").collect();
     if repo_parts.len() != 3 || repo_parts[0] != "models" {
       return Err(ModelValidationError::FilePatternMismatch(path_str));
     }
 
-    // Get hf_cache (parent directory of the repo directory)
     value.pop();
     let hf_cache = value;
 
-    // Construct repo from username/repo_name
     let repo = Repo::try_from(format!("{}/{}", repo_parts[1], repo_parts[2]))?;
 
     Ok(HubFile {

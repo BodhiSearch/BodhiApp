@@ -3,7 +3,6 @@ import React from 'react';
 import { ApiAliasResponse } from '@bodhiapp/ts-client';
 import { useNavigate } from '@tanstack/react-router';
 
-// Import shared components
 import { FormActions } from '@/components/api-models/actions/FormActions';
 import { ApiFormatSelector } from '@/components/api-models/form/ApiFormatSelector';
 import { ApiKeyInput } from '@/components/api-models/form/ApiKeyInput';
@@ -29,7 +28,6 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Determine default routes based on mode
   const defaultSuccessRoute = mode === 'setup' ? '/setup/complete/' : '/models/';
   const defaultCancelRoute = mode === 'setup' ? '/setup/complete/' : '/models/';
 
@@ -38,7 +36,6 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
 
   const isEditMode = mode === 'edit';
 
-  // Use the centralized business logic hook
   const formLogic = useApiModelForm({
     mode,
     initialData,
@@ -85,10 +82,8 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Name (user-provided descriptive label) */}
           <NameInput {...formLogic.register('name')} error={formLogic.errors.name?.message} />
 
-          {/* API Format Selection */}
           <ApiFormatSelector
             value={formLogic.watchedValues.api_format}
             options={formLogic.apiFormatsData}
@@ -107,10 +102,8 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             />
           ) : (
             <>
-              {/* Base URL Input */}
               <BaseUrlInput {...formLogic.register('base_url')} error={formLogic.errors.base_url?.message} />
 
-              {/* API Key Input */}
               <ApiKeyInput
                 {...formLogic.register('api_key')}
                 mode={formLogic.mode}
@@ -133,7 +126,6 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             </>
           )}
 
-          {/* Prefix Input */}
           <PrefixInput
             value={formLogic.watchedValues.prefix}
             onChange={(value) => formLogic.setValue('prefix', value)}
@@ -142,7 +134,6 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             error={formLogic.errors.prefix?.message}
           />
 
-          {/* Forward Mode Selector */}
           <ForwardModeSelector
             forwardAll={formLogic.watchedValues.forward_all_with_prefix || false}
             onForwardAllChange={(value) => formLogic.setValue('forward_all_with_prefix', value)}
@@ -151,7 +142,6 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             error={formLogic.errors.forward_all_with_prefix?.message}
           />
 
-          {/* Model Selection */}
           <ModelSelectionSection
             selectedModels={formLogic.watchedValues.models || []}
             availableModels={formLogic.fetchModels.availableModels}
@@ -168,7 +158,6 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             disabled={formLogic.watchedValues.forward_all_with_prefix || false}
           />
 
-          {/* Form Actions */}
           <FormActions
             primaryAction={{
               label: mode === 'edit' ? 'Update API Model' : 'Create API Model',

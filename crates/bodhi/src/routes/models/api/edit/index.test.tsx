@@ -5,7 +5,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Test utilities and data
 import {
   expectApiFormatSelected,
   expectErrorToast,
@@ -27,7 +26,6 @@ import {
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 
-// Mock router
 const navigateMock = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
@@ -43,13 +41,11 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Mock toast
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast, dismiss: () => {} }),
 }));
 
-// Use MSW v2 setup
 setupMswV2();
 
 afterEach(() => {

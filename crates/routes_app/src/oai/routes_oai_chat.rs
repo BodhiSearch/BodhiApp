@@ -13,16 +13,13 @@ use axum::{extract::Query, http::Method, response::Response, Json};
 use axum_extra::extract::WithRejection;
 use std::collections::HashMap;
 
-/// Validates basic structure of chat completion request
 fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), OAIRouteError> {
-  // Validate model field exists and is a string
   if request.get("model").and_then(|v| v.as_str()).is_none() {
     return Err(OAIRouteError::InvalidRequest(
       "Field 'model' is required and must be a string.".to_string(),
     ));
   }
 
-  // Validate messages field exists and is an array
   if !request
     .get("messages")
     .map(|v| v.is_array())
@@ -33,7 +30,6 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), O
     ));
   }
 
-  // Validate stream field is boolean if present
   if let Some(stream) = request.get("stream") {
     if !stream.is_boolean() {
       return Err(OAIRouteError::InvalidRequest(
@@ -45,7 +41,6 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), O
   Ok(())
 }
 
-/// Create a chat completion
 #[utoipa::path(
     post,
     path = ENDPOINT_OAI_CHAT_COMPLETIONS,
@@ -209,7 +204,6 @@ pub async fn chat_completions_handler(
   Ok(response)
 }
 
-/// Create embeddings
 #[utoipa::path(
     post,
     path = ENDPOINT_OAI_EMBEDDINGS,

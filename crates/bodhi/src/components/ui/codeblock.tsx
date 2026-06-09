@@ -15,7 +15,6 @@ interface CodeBlockProps {
   value: string;
 }
 
-// Map of supported programming languages to their file extensions
 const SUPPORTED_LANGUAGES = {
   javascript: 'js',
   typescript: 'ts',
@@ -84,7 +83,6 @@ export const CodeBlock: FC<CodeBlockProps> = memo(({ language, value }) => {
     }
   };
 
-  // Normalize language identifier
   const normalizedLanguage = (language.toLowerCase() as SupportedLanguage) || 'text';
 
   return (

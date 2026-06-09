@@ -190,10 +190,6 @@ async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// validate_chat_completion_request error path tests
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -303,7 +299,6 @@ async fn test_chat_completions_rejects_responses_format_alias() -> anyhow::Resul
   builder.with_data_service().await;
   let db_service = builder.get_db_service().await;
 
-  // Seed an API alias with openai_responses format
   let api_alias = ApiAliasBuilder::test_default()
     .id("responses-alias")
     .api_format(ApiFormat::OpenAIResponses)
@@ -410,10 +405,6 @@ async fn test_chat_completions_forwards_anthropic_format_alias() -> anyhow::Resu
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }
-
-// ============================================================================
-// Gemini format rejection on /v1/chat/completions
-// ============================================================================
 
 #[rstest]
 #[awt]

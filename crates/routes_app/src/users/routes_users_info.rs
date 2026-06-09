@@ -8,7 +8,6 @@ use services::AuthContext;
 use services::{extract_claims, Claims};
 use tracing::debug;
 
-/// Get information about the currently logged in user
 #[utoipa::path(
     get,
     path = ENDPOINT_USER_INFO,

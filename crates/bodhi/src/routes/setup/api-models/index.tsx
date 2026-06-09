@@ -25,7 +25,6 @@ function ApiModelsSetupContent() {
   return (
     <SetupContainer>
       <div data-testid="api-models-setup-page">
-        {/* Main API Model Form */}
         <motion.div variants={itemVariants}>
           <ApiModelForm
             mode="setup"
@@ -34,7 +33,6 @@ function ApiModelsSetupContent() {
           />
         </motion.div>
 
-        {/* Footer with clarification and Continue button */}
         <SetupFooter
           clarificationText="Don't have an API key? You can skip this step and add API models later."
           subText="API models complement your local models - you can always configure them from the Models page."

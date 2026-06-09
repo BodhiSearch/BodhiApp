@@ -15,7 +15,6 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Breakpoint: You can add a breakpoint here to inspect errors
     console.error('Error:', error.response?.status, error.config?.url);
     return Promise.reject(error);
   }

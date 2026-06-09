@@ -36,7 +36,6 @@ use tower_sessions::SessionStore;
 /// Inline minimal setup without lib_bodhiserver dependency
 async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn AppService>> {
   let time_service: Arc<dyn services::TimeService> = Arc::new(DefaultTimeService);
-  // Load environment variables from .env.test
   let env_test_path = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("tests")
     .join("resources")
@@ -50,20 +49,18 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let logs_dir = bodhi_home.join("logs");
   fs::create_dir_all(&logs_dir)?;
 
-  // Use real HuggingFace cache at ~/.cache/huggingface
+  // Real HuggingFace cache at ~/.cache/huggingface (live tests use downloaded models).
   let hf_home = dirs::home_dir()
     .ok_or_else(|| anyhow::anyhow!("Failed to determine home directory"))?
     .join(".cache")
     .join("huggingface");
   fs::create_dir_all(hf_home.join("hub"))?;
 
-  // Build env wrapper with test environment
   let mut env_vars = HashMap::new();
   env_vars.insert(BODHI_HOME.to_string(), bodhi_home.display().to_string());
   env_vars.insert(BODHI_LOGS.to_string(), logs_dir.display().to_string());
   env_vars.insert(HF_HOME.to_string(), hf_home.display().to_string());
 
-  // Point to llama_server_proc bin directory
   let execs_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
     .parent()
     .unwrap()
@@ -79,7 +76,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     "test-encryption-key".to_string(),
   );
 
-  // Get OAuth config from environment
   let auth_server_url = std::env::var("INTEG_TEST_AUTH_URL")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_AUTH_URL not set - required for live tests"))?;
   let realm = std::env::var("INTEG_TEST_AUTH_REALM")
@@ -95,7 +91,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   }
   let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(env_wrapper_impl);
 
-  // Build system settings
   let app_settings = vec![
     Setting {
       key: BODHI_ENV_TYPE.to_string(),
@@ -169,13 +164,11 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     db_service.clone(),
   );
 
-  // Setup OAuth resource client from pre-configured env vars
   let resource_client_id = std::env::var("INTEG_TEST_RESOURCE_CLIENT_ID")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_ID not set"))?;
   let resource_client_secret = std::env::var("INTEG_TEST_RESOURCE_CLIENT_SECRET")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_SECRET not set"))?;
 
-  // Create tenant service with registration
   let tenant_service = DefaultTenantService::new(db_service.clone());
   tenant_service
     .create_tenant(
@@ -193,31 +186,21 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let session_service = DefaultSessionService::connect(&session_db_url).await?;
   let session_service = Arc::new(session_service);
 
-  // Store setting service in Arc for sharing
   let setting_service = Arc::new(setting_service);
 
-  // Build hub service (offline wrapper around real HfHubService)
   let hf_cache = setting_service.hf_cache().await;
   let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
     hf_cache, false, None,
   )));
 
-  // Build data service
   let data_service = Arc::new(LocalDataService::new(
     hub_service.clone(),
     db_service.clone(),
   ));
 
-  // Build auth service
   let auth_service = Arc::new(test_auth_service(&auth_server_url));
-
-  // Build cache service
   let cache_service = Arc::new(MokaCacheService::default());
-
-  // Build concurrency service
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
-
-  // Build queue producer (StubQueue is a unit struct, no new() method)
   let queue_producer: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
 
   let tenant_service: Arc<dyn TenantService> = Arc::new(tenant_service);
@@ -228,12 +211,10 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     setting_service.public_server_url().await,
   ));
 
-  // Build network service (need to provide ip field for struct)
   let network_service = Arc::new(StubNetworkService {
     ip: Some("127.0.0.1".to_string()),
   });
 
-  // Build MCP service
   let mcp_client = Arc::new(mcp_client::DefaultMcpClient::new());
   let mcp_service = Arc::new(DefaultMcpService::new(
     db_service.clone(),
@@ -241,7 +222,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     time_service.clone(),
   )?);
 
-  // Build DefaultAppService with all services in correct order
   let token_service: Arc<dyn services::TokenService> = Arc::new(
     services::DefaultTokenService::new(db_service.clone(), time_service.clone()),
   );
@@ -392,7 +372,6 @@ pub async fn create_authenticated_session(
 ) -> anyhow::Result<String> {
   let session_service = app_service.session_service();
 
-  // Resolve client_id from the registered tenant
   let instance = app_service
     .tenant_service()
     .get_standalone_app()
@@ -400,7 +379,6 @@ pub async fn create_authenticated_session(
     .expect("Tenant is not set");
   let client_id = instance.client_id;
 
-  // Extract user_id from JWT
   let claims = extract_claims::<UserIdClaims>(access_token)?;
   let user_id = claims.sub;
 
@@ -459,20 +437,17 @@ pub async fn setup_test_app_service_with_time(
   let logs_dir = bodhi_home.join("logs");
   fs::create_dir_all(&logs_dir)?;
 
-  // Use real HuggingFace cache at ~/.cache/huggingface
   let hf_home = dirs::home_dir()
     .ok_or_else(|| anyhow::anyhow!("Failed to determine home directory"))?
     .join(".cache")
     .join("huggingface");
   fs::create_dir_all(hf_home.join("hub"))?;
 
-  // Build env wrapper with test environment (no INTEG_TEST_* vars needed)
   let mut env_vars = HashMap::new();
   env_vars.insert(BODHI_HOME.to_string(), bodhi_home.display().to_string());
   env_vars.insert(BODHI_LOGS.to_string(), logs_dir.display().to_string());
   env_vars.insert(HF_HOME.to_string(), hf_home.display().to_string());
 
-  // Point to llama_server_proc bin directory
   let execs_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
     .parent()
     .unwrap()
@@ -488,7 +463,7 @@ pub async fn setup_test_app_service_with_time(
     "test-encryption-key".to_string(),
   );
 
-  // Use fake auth URL — no real Keycloak calls (ExternalTokenSimulator seeds cache)
+  // Fake auth URL — no real Keycloak calls (ExternalTokenSimulator seeds cache).
   let auth_server_url = "https://test-id.getbodhi.app".to_string();
   let realm = "bodhi".to_string();
   env_vars.insert(BODHI_AUTH_URL.to_string(), auth_server_url.clone());
@@ -576,7 +551,6 @@ pub async fn setup_test_app_service_with_time(
     db_service.clone(),
   );
 
-  // Create tenant service with test app registration (no real Keycloak client)
   let tenant_service = DefaultTenantService::new(db_service.clone());
   tenant_service
     .create_tenant(
@@ -596,7 +570,6 @@ pub async fn setup_test_app_service_with_time(
 
   let setting_service = Arc::new(setting_service);
 
-  // Build hub service (offline wrapper around real HfHubService)
   let hf_cache = setting_service.hf_cache().await;
   let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
     hf_cache, false, None,
@@ -607,7 +580,7 @@ pub async fn setup_test_app_service_with_time(
     db_service.clone(),
   ));
 
-  // Auth service uses fake URL — never called (cache is seeded by ExternalTokenSimulator)
+  // Fake URL — never called; cache is seeded by ExternalTokenSimulator.
   let auth_service = Arc::new(test_auth_service(&auth_server_url));
   let cache_service = Arc::new(MokaCacheService::default());
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
@@ -623,7 +596,6 @@ pub async fn setup_test_app_service_with_time(
     ip: Some("127.0.0.1".to_string()),
   });
 
-  // Build MCP service
   let mcp_client = Arc::new(mcp_client::DefaultMcpClient::new());
   let mcp_service = Arc::new(DefaultMcpService::new(
     db_service.clone(),
@@ -761,7 +733,6 @@ pub async fn create_test_session_for_live_server(
   app_service: &Arc<dyn AppService>,
   roles: &[&str],
 ) -> anyhow::Result<(String, String)> {
-  // Get the actual client_id from the registered tenant
   let actual_client_id = app_service
     .tenant_service()
     .get_standalone_app()
@@ -769,25 +740,20 @@ pub async fn create_test_session_for_live_server(
     .map(|inst| inst.client_id)
     .unwrap_or_else(|| TEST_CLIENT_ID.to_string());
 
-  // Build JWT claims with specified roles, using the actual client_id as azp
   let mut claims = access_token_claims();
-  // Set azp to the actual tenant client_id so middleware can resolve the tenant
+  // azp must be the actual tenant client_id so middleware can resolve the tenant.
   claims["azp"] = serde_json::json!(&actual_client_id);
-  // Set roles under the actual client_id
   claims["resource_access"][&actual_client_id]["roles"] = serde_json::json!(roles);
-  // Also keep roles under TEST_CLIENT_ID for backward compat
+  // Also keep roles under TEST_CLIENT_ID for backward compat.
   claims["resource_access"][TEST_CLIENT_ID]["roles"] = serde_json::json!(roles);
 
-  // Extract the user_id (sub) before building the token -- needed for coordination
   let user_id = claims["sub"]
     .as_str()
     .expect("access_token_claims must have sub")
     .to_string();
 
-  // Build the signed JWT token
   let (token, _) = build_token(claims)?;
 
-  // Create session record with multi-tenant namespaced keys
   let session_id = Id::default();
   let mut data = HashMap::new();
   data.insert(
@@ -806,7 +772,6 @@ pub async fn create_test_session_for_live_server(
     expiry_date: OffsetDateTime::now_utc() + Duration::hours(1),
   };
 
-  // Save to session store
   let session_service = app_service.session_service();
   let store = session_service.get_session_store();
   store.save(&record).await?;
@@ -830,7 +795,6 @@ pub async fn setup_multitenant_app_service(
   temp_dir: &TempDir,
 ) -> anyhow::Result<Arc<dyn AppService>> {
   let time_service: Arc<dyn services::TimeService> = Arc::new(DefaultTimeService);
-  // Load environment variables from .env.test
   let env_test_path = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("tests")
     .join("resources")
@@ -844,20 +808,17 @@ pub async fn setup_multitenant_app_service(
   let logs_dir = bodhi_home.join("logs");
   fs::create_dir_all(&logs_dir)?;
 
-  // Use real HuggingFace cache at ~/.cache/huggingface
   let hf_home = dirs::home_dir()
     .ok_or_else(|| anyhow::anyhow!("Failed to determine home directory"))?
     .join(".cache")
     .join("huggingface");
   fs::create_dir_all(hf_home.join("hub"))?;
 
-  // Build env wrapper with test environment
   let mut env_vars = HashMap::new();
   env_vars.insert(BODHI_HOME.to_string(), bodhi_home.display().to_string());
   env_vars.insert(BODHI_LOGS.to_string(), logs_dir.display().to_string());
   env_vars.insert(HF_HOME.to_string(), hf_home.display().to_string());
 
-  // Point to llama_server_proc bin directory
   let execs_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
     .parent()
     .unwrap()
@@ -873,7 +834,6 @@ pub async fn setup_multitenant_app_service(
     "test-encryption-key".to_string(),
   );
 
-  // Get OAuth config from environment
   let auth_server_url = std::env::var("INTEG_TEST_AUTH_URL")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_AUTH_URL not set - required for live tests"))?;
   let realm = std::env::var("INTEG_TEST_AUTH_REALM")
@@ -883,7 +843,6 @@ pub async fn setup_multitenant_app_service(
   env_vars.insert(BODHI_HOST.to_string(), "127.0.0.1".to_string());
   env_vars.insert(BODHI_PORT.to_string(), "51135".to_string());
 
-  // Multi-tenant env vars
   let mt_client_id = std::env::var("INTEG_TEST_MULTI_TENANT_CLIENT_ID")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_MULTI_TENANT_CLIENT_ID not set"))?;
   let mt_client_secret = std::env::var("INTEG_TEST_MULTI_TENANT_CLIENT_SECRET")
@@ -991,35 +950,26 @@ pub async fn setup_multitenant_app_service(
   let session_service = DefaultSessionService::connect(&session_db_url).await?;
   let session_service = Arc::new(session_service);
 
-  // Store setting service in Arc for sharing
   let setting_service = Arc::new(setting_service);
 
-  // Build hub service (offline wrapper around real HfHubService)
   let hf_cache = setting_service.hf_cache().await;
   let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
     hf_cache, false, None,
   )));
 
-  // Build data service
   let data_service = Arc::new(LocalDataService::new(
     hub_service.clone(),
     db_service.clone(),
   ));
 
-  // Build auth service (real Keycloak)
   let auth_service = Arc::new(KeycloakAuthService::new(
     "test-version",
     auth_server_url.clone(),
     realm.clone(),
   ));
 
-  // Build cache service
   let cache_service = Arc::new(MokaCacheService::default());
-
-  // Build concurrency service
   let concurrency_service = Arc::new(LocalConcurrencyService::default());
-
-  // Build queue producer (StubQueue is a unit struct, no new() method)
   let queue_producer: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
 
   let tenant_service: Arc<dyn TenantService> = Arc::new(tenant_service);
@@ -1030,12 +980,10 @@ pub async fn setup_multitenant_app_service(
     setting_service.public_server_url().await,
   ));
 
-  // Build network service
   let network_service = Arc::new(StubNetworkService {
     ip: Some("127.0.0.1".to_string()),
   });
 
-  // Build MCP service
   let mcp_client = Arc::new(mcp_client::DefaultMcpClient::new());
   let mcp_service = Arc::new(DefaultMcpService::new(
     db_service.clone(),
@@ -1043,7 +991,6 @@ pub async fn setup_multitenant_app_service(
     time_service.clone(),
   )?);
 
-  // Build DefaultAppService with all services in correct order
   let token_service: Arc<dyn services::TokenService> = Arc::new(
     services::DefaultTokenService::new(db_service.clone(), time_service.clone()),
   );

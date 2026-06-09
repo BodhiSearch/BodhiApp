@@ -10,8 +10,6 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-// ===== Model Metadata Tests =====
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]

@@ -23,7 +23,6 @@ export function OAuthCallbackPage() {
       const errorDescription = searchParams.get('error_description');
 
       if (error) {
-        // Redirect to config page with error info
         const params = new URLSearchParams();
         params.set('error', error);
         if (errorDescription) {
@@ -55,11 +54,9 @@ export function OAuthCallbackPage() {
       try {
         const tokenData = await exchangeCodeForToken(code, config);
 
-        // Save token
         saveToken(tokenData.access_token);
         setToken(tokenData.access_token);
 
-        // Clear URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
 
         // Navigate to REST page (default landing after login)

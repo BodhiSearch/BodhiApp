@@ -1,12 +1,7 @@
 #[cfg(test)]
 mod test {
-  // ============================================================================
-  // VIOLATION DOCUMENTATION:
-  // Handler tests in this module use inner `mod test` with `router_state_stub`.
-  // POST /api/chat uses MockSharedContext for SSE streaming and cannot be tested
-  // with build_test_router() without complex mock setup.
-  // Both patterns are acceptable violations - auth coverage is provided separately.
-  // ============================================================================
+  // POST /api/chat uses MockSharedContext for SSE streaming and can't go through
+  // build_test_router(); auth coverage is provided separately.
 
   use crate::test_utils::RequestAuthContextExt;
   use crate::{ollama_model_show_handler, ollama_models_handler};
@@ -108,9 +103,6 @@ stop:
     );
     Ok(())
   }
-
-  // Auth tier: User - These Ollama-compatible endpoints are accessible to all authenticated users
-  // All roles (User, PowerUser, Manager, Admin) can access these endpoints
 
   #[rstest]
   #[case::list_models("GET", "/api/tags")]

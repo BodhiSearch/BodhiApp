@@ -129,7 +129,6 @@ impl ModelRouterRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // Verify ownership before updating.
           let exists = model_router::Entity::find()
             .filter(model_router::Column::Id.eq(&id))
             .filter(model_router::Column::TenantId.eq(&tenant_id_owned))

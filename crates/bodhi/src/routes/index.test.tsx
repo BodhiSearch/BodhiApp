@@ -21,7 +21,6 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Add this configuration before starting the server
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());

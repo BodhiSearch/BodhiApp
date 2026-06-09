@@ -25,7 +25,7 @@ use crate::UserScope;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
-  /// Create a draft access request (tenant_id is NULL — bound at approval time)
+  /// tenant_id is NULL — bound at approval time
   async fn create_draft(
     &self,
     app_client_id: String,
@@ -35,10 +35,8 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     requested_role: UserScope,
   ) -> Result<AppAccessRequest>;
 
-  /// Get access request by ID
   async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequest>>;
 
-  /// Approve access request and register with KC.
   /// `tenant_id` binds the draft to the approver's active tenant.
   #[allow(clippy::too_many_arguments)]
   async fn approve_request(
@@ -51,10 +49,8 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     approved_role: UserScope,
   ) -> Result<AppAccessRequest>;
 
-  /// Deny access request
   async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequest>;
 
-  /// Build review URL for a given access request ID
   fn build_review_url(&self, access_request_id: &str) -> String;
 }
 
@@ -185,7 +181,6 @@ impl AccessRequestService for DefaultAccessRequestService {
       }
     }
 
-    // Validate version match: approved version must equal requested version
     let requested_resources: RequestedResources = serde_json::from_str(&row.requested)
       .map_err(|e| AccessRequestError::InvalidStatus(format!("Invalid requested JSON: {}", e)))?;
     if requested_resources.version() != approved.version() {

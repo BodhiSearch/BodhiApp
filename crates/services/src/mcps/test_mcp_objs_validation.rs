@@ -5,10 +5,6 @@ use crate::mcps::{
 use rstest::rstest;
 use validator::Validate;
 
-// ============================================================================
-// Helper constructors
-// ============================================================================
-
 fn mcp_request_with_name(name: &str) -> McpRequest {
   McpRequest {
     name: name.to_string(),
@@ -81,10 +77,6 @@ fn server_request_with_description(desc: Option<&str>) -> McpServerRequest {
   }
 }
 
-// ============================================================================
-// McpRequest slug validation
-// ============================================================================
-
 #[rstest]
 #[case::simple("my-mcp")]
 #[case::mixed_case("MyMcp123")]
@@ -106,10 +98,6 @@ fn test_mcp_request_invalid_slug(#[case] slug: &str) {
   assert!(mcp_request_with_slug(slug).validate().is_err());
 }
 
-// ============================================================================
-// McpRequest name validation
-// ============================================================================
-
 #[rstest]
 #[case::simple("My MCP")]
 #[case::single_char("a")]
@@ -124,10 +112,6 @@ fn test_mcp_request_valid_name(#[case] name: &str) {
 fn test_mcp_request_invalid_name(#[case] name: &str) {
   assert!(mcp_request_with_name(name).validate().is_err());
 }
-
-// ============================================================================
-// McpRequest description validation
-// ============================================================================
 
 #[rstest]
 #[case::none(None)]
@@ -144,10 +128,6 @@ fn test_mcp_request_rejects_too_long_description() {
     .validate()
     .is_err());
 }
-
-// ============================================================================
-// McpServerRequest URL validation
-// ============================================================================
 
 #[rstest]
 #[case::https("https://mcp.deepwiki.com/mcp")]
@@ -170,10 +150,6 @@ fn test_server_request_rejects_too_long_url() {
   assert!(server_request_with_url(&long_url).validate().is_err());
 }
 
-// ============================================================================
-// McpServerRequest name validation
-// ============================================================================
-
 #[rstest]
 #[case::display_name("DeepWiki MCP")]
 #[case::single_char("a")]
@@ -188,10 +164,6 @@ fn test_server_request_valid_name(#[case] name: &str) {
 fn test_server_request_invalid_name(#[case] name: &str) {
   assert!(server_request_with_name(name).validate().is_err());
 }
-
-// ============================================================================
-// McpServerRequest description validation
-// ============================================================================
 
 #[rstest]
 #[case::none(None)]

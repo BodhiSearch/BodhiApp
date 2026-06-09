@@ -129,7 +129,6 @@ pub const ENDPOINT_DEV_DB_RESET: &str = "/dev/db-reset";
 pub const ENDPOINT_DEV_CLIENTS_DAG: &str = "/dev/clients/{client_id}/dag";
 pub const ENDPOINT_DEV_TENANTS_CLEANUP: &str = "/dev/tenants/cleanup";
 
-/// API documentation configuration
 #[derive(OpenApi)]
 #[openapi(
     info(
@@ -641,7 +640,6 @@ impl Modify for GlobalErrorResponses {
   fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
     use utoipa::openapi::{ContentBuilder, Ref, RefOr, ResponseBuilder};
 
-    // Define public endpoints that don't require authentication
     let public_endpoints = [
       ENDPOINT_PING,
       ENDPOINT_HEALTH,
@@ -652,10 +650,8 @@ impl Modify for GlobalErrorResponses {
     let schema_name = self.error_schema_name;
 
     for (path, path_item) in openapi.paths.paths.iter_mut() {
-      // Check if this is a public endpoint
       let is_public = public_endpoints.iter().any(|&public| path == public);
 
-      // Add errors to all operations (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
       let operations = [
         &mut path_item.get,
         &mut path_item.post,
@@ -667,7 +663,6 @@ impl Modify for GlobalErrorResponses {
       ];
 
       for operation in operations.into_iter().flatten() {
-        // Add 400 Bad Request to all endpoints
         operation.responses.responses.insert(
           "400".to_string(),
           RefOr::T(
@@ -683,7 +678,6 @@ impl Modify for GlobalErrorResponses {
           ),
         );
 
-        // Add 401 and 403 only to non-public endpoints
         if !is_public {
           operation.responses.responses.insert(
             "401".to_string(),
@@ -716,7 +710,6 @@ impl Modify for GlobalErrorResponses {
           );
         }
 
-        // Add 500 Internal Server Error to all endpoints
         operation.responses.responses.insert(
           "500".to_string(),
           RefOr::T(

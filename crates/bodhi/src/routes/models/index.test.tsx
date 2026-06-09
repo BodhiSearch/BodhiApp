@@ -70,7 +70,6 @@ beforeEach(() => {
   navigateMock.mockClear();
 });
 
-// Mock window.matchMedia for responsive testing
 function mockMatchMedia(matches: boolean) {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches,
@@ -95,10 +94,8 @@ describe('ModelsPage', () => {
 
     const { unmount } = render(<ModelsPage />, { wrapper: createWrapper() });
 
-    // Wait for data to load
     await screen.findByTestId('combined-cell-test-model');
 
-    // Mobile view should show combined cell
     expect(screen.getByTestId('combined-cell-test-model')).toBeVisible();
 
     unmount();
@@ -121,7 +118,6 @@ describe('ModelsPage', () => {
     const { unmount: unmountTablet } = render(<ModelsPage />, { wrapper: createWrapper() });
     await screen.findByTestId('name-source-cell-test-model');
 
-    // Tablet view should show combined name+source and repo+filename columns
     expect(screen.getByTestId('name-source-cell-test-model')).toBeVisible();
     expect(screen.getByTestId('repo-filename-cell-test-model')).toBeVisible();
 
@@ -136,7 +132,6 @@ describe('ModelsPage', () => {
     render(<ModelsPage />, { wrapper: createWrapper() });
     await screen.findByTestId('alias-cell-test-model');
 
-    // Desktop view should show separate columns
     expect(screen.getByTestId('alias-cell-test-model')).toBeVisible();
     expect(screen.getByTestId('repo-cell-test-model')).toBeVisible();
     expect(screen.getByTestId('filename-cell-test-model')).toBeVisible();
@@ -248,7 +243,7 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      // Check that API model is displayed with its ID (using getAllByText to handle multiple responsive layouts)
+      // getAllByText because the same value renders in multiple responsive layouts.
       expect(screen.getAllByText('test-api-model')[0]).toBeInTheDocument();
       expect(screen.getAllByText('openai')[0]).toBeInTheDocument();
       expect(screen.getAllByText('https://api.openai.com/v1')[0]).toBeInTheDocument();
@@ -279,7 +274,6 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      // Find the API model row and then look for the chat button within it
       const apiModelRow = screen.getByTestId('actions-cell-test-api-model');
       const chatButton = apiModelRow.querySelector('[data-testid="model-chat-button-gpt-4"]');
       expect(chatButton).toBeInTheDocument();
@@ -299,7 +293,6 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      // Should not have HuggingFace button for API models
       const hfButtons = screen.queryAllByTitle('Open in HuggingFace');
       expect(hfButtons).toHaveLength(0);
     });
@@ -311,18 +304,16 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      // Wait for data to load and verify API model is displayed (use getAllByText for responsive layouts)
       await screen.findAllByText('test-api-model');
       expect(screen.getAllByText('openai')[0]).toBeInTheDocument();
       expect(screen.getAllByText('https://api.openai.com/v1')[0]).toBeInTheDocument();
 
-      // Models might be displayed differently in responsive layouts
+      // Model list can render across responsive layouts, so match on combined content.
       const modelsText = screen.getAllByText((content, element) => {
         return content.includes('gpt-4') && content.includes('gpt-3.5-turbo');
       });
       expect(modelsText.length).toBeGreaterThan(0);
 
-      // Find and click the edit button
       const editButton = screen.getAllByTitle('Edit API model test-api-model')[0];
       expect(editButton).toBeInTheDocument();
 
@@ -330,7 +321,6 @@ describe('ModelsPage', () => {
         editButton.click();
       });
 
-      // Verify navigation to edit page with correct ID
       expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit/', search: { id: 'test-api-model' } });
     });
 
@@ -341,10 +331,8 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      // Wait for data to load (use findAllByText for responsive layouts)
       await screen.findAllByText('test-api-model');
 
-      // Find the API model row and then look for the chat button within it
       const apiModelRow = screen.getByTestId('actions-cell-test-api-model');
       const chatButton = apiModelRow.querySelector('[data-testid="chat-button-test-api-model"]');
       expect(chatButton).not.toBeInTheDocument();
@@ -356,7 +344,6 @@ describe('ModelsPage', () => {
         fireEvent.click(modelChatButton!);
       });
 
-      // Verify navigation to chat page with the API model ID
       expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'gpt-4' } });
     });
   });
@@ -413,7 +400,6 @@ describe('Model Metadata Refresh', () => {
 
     render(<ModelsPage />, { wrapper: createWrapper() });
 
-    // Wait for page to load and open preview modal
     await screen.findByTestId('preview-button-test-model');
     const previewButton = screen.getByTestId('preview-button-test-model');
 
@@ -421,7 +407,7 @@ describe('Model Metadata Refresh', () => {
       fireEvent.click(previewButton);
     });
 
-    // Modal should show body refresh button (since model has no initial metadata)
+    // The model has no initial metadata, so the body refresh button is shown.
     await waitFor(() => {
       expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
     });
@@ -433,7 +419,6 @@ describe('Model Metadata Refresh', () => {
       fireEvent.click(refreshButton);
     });
 
-    // Refresh completes (button should still be visible)
     await waitFor(() => {
       expect(refreshButton).toBeInTheDocument();
     });
@@ -448,7 +433,6 @@ describe('Model Preview Modal', () => {
   it('opens preview modal when preview button clicked', async () => {
     render(<ModelsPage />, { wrapper: createWrapper() });
 
-    // Wait for page to load
     await screen.findByTestId('preview-button-test-model');
 
     const previewButton = screen.getByTestId('preview-button-test-model');
@@ -457,12 +441,10 @@ describe('Model Preview Modal', () => {
       fireEvent.click(previewButton);
     });
 
-    // Modal should be visible
     await waitFor(() => {
       expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
     });
 
-    // Basic info should be displayed
     expect(screen.getByTestId('preview-basic-alias')).toHaveTextContent('test-model');
     expect(screen.getByTestId('preview-basic-repo')).toHaveTextContent('test-repo');
     expect(screen.getByTestId('preview-basic-filename')).toHaveTextContent('test-file.bin');
@@ -471,7 +453,6 @@ describe('Model Preview Modal', () => {
   it('closes preview modal on escape key', async () => {
     render(<ModelsPage />, { wrapper: createWrapper() });
 
-    // Wait for page to load
     await screen.findByTestId('preview-button-test-model');
 
     const previewButton = screen.getByTestId('preview-button-test-model');
@@ -480,17 +461,14 @@ describe('Model Preview Modal', () => {
       fireEvent.click(previewButton);
     });
 
-    // Modal should be visible
     await waitFor(() => {
       expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
     });
 
-    // Press escape to close
     await act(async () => {
       fireEvent.keyDown(document, { key: 'Escape' });
     });
 
-    // Modal should be closed
     await waitFor(() => {
       expect(screen.queryByTestId('model-preview-modal')).not.toBeInTheDocument();
     });

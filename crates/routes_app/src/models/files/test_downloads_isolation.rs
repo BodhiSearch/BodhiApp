@@ -64,7 +64,6 @@ async fn test_cross_tenant_download_list_isolation(
 
   let now = Utc::now();
 
-  // Seed download in tenant A
   let tenant_a_id = auth_a.require_tenant_id()?;
   let download_a =
     DownloadRequestEntity::new_pending(tenant_a_id, "org-a/model-a", "model-a.gguf", now);
@@ -73,7 +72,6 @@ async fn test_cross_tenant_download_list_isolation(
     .create_download_request(&download_a)
     .await?;
 
-  // Seed download in tenant B
   let tenant_b_id = auth_b.require_tenant_id()?;
   let download_b =
     DownloadRequestEntity::new_pending(tenant_b_id, "org-b/model-b", "model-b.gguf", now);
@@ -82,7 +80,6 @@ async fn test_cross_tenant_download_list_isolation(
     .create_download_request(&download_b)
     .await?;
 
-  // List as tenant A -> only 1 download
   let response = router
     .clone()
     .oneshot(
@@ -97,7 +94,6 @@ async fn test_cross_tenant_download_list_isolation(
   assert_eq!(1, list.data.len());
   assert_eq!("org-a/model-a", list.data[0].repo);
 
-  // List as tenant B -> only 1 download
   let response = router
     .clone()
     .oneshot(
@@ -131,7 +127,6 @@ async fn test_cross_tenant_download_show_isolation(
 
   let now = Utc::now();
 
-  // Seed download in tenant A
   let tenant_a_id = auth_a.require_tenant_id()?;
   let download_a =
     DownloadRequestEntity::new_pending(tenant_a_id, "org-a/model-a", "model-a.gguf", now);
@@ -141,7 +136,6 @@ async fn test_cross_tenant_download_show_isolation(
     .create_download_request(&download_a)
     .await?;
 
-  // Show download as tenant A -> 200
   let response = router
     .clone()
     .oneshot(
@@ -153,7 +147,6 @@ async fn test_cross_tenant_download_show_isolation(
     .await?;
   assert_eq!(StatusCode::OK, response.status());
 
-  // Show same download as tenant B -> 404
   let response = router
     .clone()
     .oneshot(

@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button';
 
 setupMswV2();
 
-// OAuth Parameter Extraction Tests
 describe('extractOAuthParams', () => {
   it('extracts all query parameters without filtering', () => {
     const url =
@@ -57,7 +56,6 @@ describe('extractOAuthParams', () => {
   });
 });
 
-// OAuth Initiate Hook Tests
 describe('useOAuthInitiate', () => {
   it('handles successful OAuth initiation for unauthenticated user with 201 created', async () => {
     const mockOnSuccess = vi.fn();
@@ -203,7 +201,6 @@ describe('useOAuthInitiate', () => {
   });
 });
 
-// OAuth Callback Hook Tests
 describe('useOAuthCallback', () => {
   it('handles successful OAuth callback', async () => {
     const mockOnSuccess = vi.fn();
@@ -321,8 +318,6 @@ describe('useOAuthCallback', () => {
   });
 });
 
-// Logout Handler Hook Tests
-// Simple component that uses the useLogoutHandler hook
 const LogoutButton: React.FC<{ onSuccess?: (response: any) => void; onError?: (message: string) => void }> = ({
   onSuccess,
   onError,

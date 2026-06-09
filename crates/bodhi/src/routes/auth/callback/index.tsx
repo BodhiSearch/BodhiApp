@@ -25,7 +25,7 @@ function AuthCallbackContent() {
 
   const { mutate: submitCallback, isPending: isLoading } = useOAuthCallback({
     onSuccess: (response) => {
-      // Check for stored return URL (e.g., from access request review page)
+      // Stored return URL takes priority (e.g., from access request review page)
       const returnUrl = sessionStorage.getItem('bodhi-return-url');
       if (returnUrl) {
         sessionStorage.removeItem('bodhi-return-url');
@@ -33,7 +33,6 @@ function AuthCallbackContent() {
         return;
       }
 
-      // Handle redirect based on backend response
       const location = response.data?.location;
       if (!location) {
         setError('Redirect URL not found in response. Please try again.');
@@ -41,7 +40,6 @@ function AuthCallbackContent() {
         return;
       }
 
-      // Handle redirect using smart URL detection
       handleSmartRedirect(location, navigate);
     },
     onError: (message) => {
@@ -52,20 +50,17 @@ function AuthCallbackContent() {
   });
 
   useEffect(() => {
-    // Prevent duplicate processing
     if (hasProcessedRef.current) {
       return;
     }
 
     hasProcessedRef.current = true;
 
-    // Extract all OAuth query parameters
     const params: AuthCallbackRequest = {};
     Object.entries(search).forEach(([key, value]) => {
       params[key] = value as string;
     });
 
-    // Submit all OAuth callback parameters to backend
     submitCallback(params);
   }, [submitCallback, search, retryCount]);
 

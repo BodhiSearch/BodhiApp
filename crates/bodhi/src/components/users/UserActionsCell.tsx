@@ -30,18 +30,15 @@ export function UserActionsCell({
   onRoleChange,
   onRemoveUser,
 }: UserActionsCellProps) {
-  // Filter role options based on current user's role hierarchy
   const availableRoles = getAvailableRoles(currentUserRole);
 
-  // Check if this is the current user (self-modification prevention)
   const isCurrentUser = currentUserInfo?.auth_status === 'logged_in' && userId === currentUserInfo.user_id;
 
-  // Check if target user has higher role (hierarchy enforcement)
+  // self cannot be modified; target must not outrank current user
   const targetUserLevel = getRoleLevel(currentRole);
   const currentUserLevel = getRoleLevel(currentUserRole);
   const canModifyUser = !isCurrentUser && targetUserLevel <= currentUserLevel;
 
-  // Show actions only if user can be modified
   const hasValidCurrentUserInfo = currentUsername && currentUserRole;
   const showActions = hasValidCurrentUserInfo && canModifyUser;
 

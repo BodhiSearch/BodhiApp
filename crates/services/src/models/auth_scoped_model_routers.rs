@@ -1,7 +1,6 @@
 use crate::{AppService, AuthContext, ModelRouterError, ModelRouterRequest, ModelRouterResponse};
 use std::sync::Arc;
 
-/// Auth-scoped wrapper around ModelRouterService that injects tenant_id and user_id from AuthContext.
 pub struct AuthScopedModelRouterService {
   app_service: Arc<dyn AppService>,
   auth_context: AuthContext,

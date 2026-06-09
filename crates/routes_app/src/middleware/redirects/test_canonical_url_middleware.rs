@@ -13,7 +13,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tower::ServiceExt;
 
-// Test scenarios for canonical URL middleware
 #[derive(Debug)]
 struct TestScenario {
   name: &'static str,
@@ -296,7 +295,6 @@ async fn test_canonical_url_middleware_scenarios(#[case] scenario: TestScenario)
     .await
   };
 
-  // Create router with middleware and appropriate route
   let router = if scenario.method == Method::POST {
     Router::new().route(scenario.path, post(test_handler))
   } else {
@@ -308,7 +306,6 @@ async fn test_canonical_url_middleware_scenarios(#[case] scenario: TestScenario)
     canonical_url_middleware,
   ));
 
-  // Build request
   let mut request_builder = Request::builder()
     .method(scenario.method)
     .uri(scenario.path)
@@ -320,10 +317,8 @@ async fn test_canonical_url_middleware_scenarios(#[case] scenario: TestScenario)
 
   let request = request_builder.body(Body::empty()).unwrap();
 
-  // Execute request
   let response = app.oneshot(request).await.unwrap();
 
-  // Verify status
   assert_eq!(
     response.status(),
     scenario.expected_status,
@@ -331,7 +326,6 @@ async fn test_canonical_url_middleware_scenarios(#[case] scenario: TestScenario)
     scenario.name
   );
 
-  // Verify location header if redirect expected
   if let Some(expected_location) = scenario.expected_location {
     let location = response
       .headers()

@@ -42,10 +42,6 @@ fn make_test_tenant_no_membership(
   }
 }
 
-// =========================================================================
-// create + get roundtrip (verify encryption/decryption)
-// =========================================================================
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -84,10 +80,6 @@ async fn test_create_and_get_roundtrip(
   Ok(())
 }
 
-// =========================================================================
-// create_tenant with Ready status auto-creates membership
-// =========================================================================
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -112,16 +104,11 @@ async fn test_create_tenant_ready_creates_membership(
   assert_eq!(AppStatus::Ready, created.app_status);
   assert_eq!(Some(TEST_USER_ID.to_string()), created.created_by);
 
-  // Membership should have been auto-created
   let has = ctx.service.has_tenant_memberships(TEST_USER_ID).await?;
   assert_eq!(true, has);
 
   Ok(())
 }
-
-// =========================================================================
-// create_tenant with Ready status but no created_by returns validation error
-// =========================================================================
 
 #[rstest]
 #[tokio::test]
@@ -151,10 +138,6 @@ async fn test_create_tenant_ready_without_created_by_fails(
   Ok(())
 }
 
-// =========================================================================
-// get when empty -> None
-// =========================================================================
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -168,10 +151,6 @@ async fn test_get_tenant_empty(
   assert_eq!(None, result.map(|_| ()));
   Ok(())
 }
-
-// =========================================================================
-// get_tenant_by_id
-// =========================================================================
 
 #[rstest]
 #[tokio::test]
@@ -205,16 +184,11 @@ async fn test_get_tenant_by_id(
   assert_eq!("secret-1", row.client_secret);
   assert_eq!(AppStatus::ResourceAdmin, row.app_status);
 
-  // Non-existent id returns None
   let result = ctx.service.get_tenant_by_id("no-such-id").await?;
   assert!(result.is_none());
 
   Ok(())
 }
-
-// =========================================================================
-// set_tenant_ready: atomically sets status, created_by, and membership
-// =========================================================================
 
 #[rstest]
 #[tokio::test]
@@ -258,10 +232,6 @@ async fn test_set_tenant_ready(
   Ok(())
 }
 
-// =========================================================================
-// set_tenant_ready not found -> error
-// =========================================================================
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -282,10 +252,6 @@ async fn test_set_tenant_ready_not_found(
 
   Ok(())
 }
-
-// =========================================================================
-// delete_tenant
-// =========================================================================
 
 #[rstest]
 #[tokio::test]
@@ -316,10 +282,6 @@ async fn test_delete_tenant(
 
   Ok(())
 }
-
-// =========================================================================
-// get_tenant_by_client_id
-// =========================================================================
 
 #[rstest]
 #[tokio::test]
@@ -353,7 +315,6 @@ async fn test_get_tenant_by_client_id(
   assert_eq!("secret-1", row.client_secret);
   assert_eq!(AppStatus::ResourceAdmin, row.app_status);
 
-  // Non-existent client_id returns None
   let result = ctx
     .service
     .get_tenant_by_client_id("no-such-client")
@@ -362,10 +323,6 @@ async fn test_get_tenant_by_client_id(
 
   Ok(())
 }
-
-// =========================================================================
-// upsert_tenant_user + has_tenant_memberships roundtrip
-// =========================================================================
 
 #[rstest]
 #[tokio::test]
@@ -380,11 +337,9 @@ async fn test_upsert_tenant_user(
   let tenant = make_test_tenant_no_membership(TEST_TENANT_ID, "client-a", ctx.now);
   ctx.service.create_tenant_test(&tenant).await?;
 
-  // No memberships initially
   let has = ctx.service.has_tenant_memberships(TEST_USER_ID).await?;
   assert_eq!(false, has);
 
-  // Upsert membership
   ctx
     .service
     .upsert_tenant_user(TEST_TENANT_ID, TEST_USER_ID)
@@ -404,10 +359,6 @@ async fn test_upsert_tenant_user(
 
   Ok(())
 }
-
-// =========================================================================
-// delete_tenant_user
-// =========================================================================
 
 #[rstest]
 #[tokio::test]
@@ -442,10 +393,6 @@ async fn test_delete_tenant_user(
   Ok(())
 }
 
-// =========================================================================
-// list_user_tenants
-// =========================================================================
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -466,7 +413,6 @@ async fn test_list_user_tenants(
   let tenants = ctx.service.list_user_tenants(TEST_USER_ID).await?;
   assert_eq!(2, tenants.len());
 
-  // User with no memberships returns empty
   let empty = ctx.service.list_user_tenants("no-such-user").await?;
   assert_eq!(0, empty.len());
 

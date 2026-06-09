@@ -7,8 +7,6 @@ use mcp_client::McpAuthParams;
 use std::sync::Arc;
 
 /// Auth-scoped wrapper around McpService that injects user_id and tenant_id from AuthContext.
-/// User-scoped methods automatically inject the authenticated user's ID and tenant ID.
-/// Server-level and discovery methods delegate directly (no user_id needed).
 pub struct AuthScopedMcpService {
   app_service: Arc<dyn AppService>,
   auth_context: AuthContext,
@@ -22,9 +20,6 @@ impl AuthScopedMcpService {
     }
   }
 
-  // ========== User-scoped MCP instance methods ==========
-
-  /// List MCP instances for the authenticated user.
   pub async fn list(&self) -> Result<Vec<McpWithServerEntity>, McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -35,7 +30,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Get a specific MCP instance by ID for the authenticated user.
   pub async fn get(&self, id: &str) -> Result<Option<McpWithServerEntity>, McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -46,7 +40,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Create a new MCP instance for the authenticated user.
   pub async fn create(&self, request: McpRequest) -> Result<McpWithServerEntity, McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -57,7 +50,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Update an existing MCP instance for the authenticated user.
   pub async fn update(
     &self,
     id: &str,
@@ -72,7 +64,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Delete an MCP instance for the authenticated user.
   pub async fn delete(&self, id: &str) -> Result<(), McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -84,8 +75,6 @@ impl AuthScopedMcpService {
     Ok(())
   }
 
-  // ========== Auth params resolution ==========
-
   pub async fn resolve_auth_params(&self, id: &str) -> Result<Option<McpAuthParams>, McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -96,9 +85,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  // ========== Auth config methods (user-scoped) ==========
-
-  /// Create an auth config for the authenticated user.
   pub async fn create_auth_config(
     &self,
     mcp_server_id: &str,
@@ -123,9 +109,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  // ========== OAuth token methods (user-scoped) ==========
-
-  /// Get an OAuth token by ID for the authenticated user.
   pub async fn get_oauth_token(&self, token_id: &str) -> Result<Option<McpOAuthToken>, McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -136,7 +119,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Delete an OAuth token for the authenticated user.
   pub async fn delete_oauth_token(&self, token_id: &str) -> Result<(), McpError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     let user_id = self.auth_context.require_user_id()?;
@@ -147,7 +129,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Exchange an authorization code for tokens.
   pub async fn exchange_oauth_token(
     &self,
     mcp_id: Option<String>,
@@ -173,9 +154,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  // ========== Auth config read methods (direct delegation) ==========
-
-  /// List all auth configs for a server.
   pub async fn list_auth_configs(
     &self,
     mcp_server_id: &str,
@@ -188,7 +166,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Get an auth config by ID.
   pub async fn get_auth_config(
     &self,
     config_id: &str,
@@ -201,7 +178,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Get an OAuth config by ID.
   pub async fn get_oauth_config(
     &self,
     config_id: &str,
@@ -214,9 +190,7 @@ impl AuthScopedMcpService {
       .await
   }
 
-  // ========== Server-level methods (Part C) ==========
-
-  /// Create a new MCP server. Injects user_id as created_by.
+  /// Injects user_id as created_by.
   pub async fn create_mcp_server(
     &self,
     request: McpServerRequest,
@@ -230,7 +204,7 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Update an MCP server. Injects user_id as updated_by.
+  /// Injects user_id as updated_by.
   pub async fn update_mcp_server(
     &self,
     id: &str,
@@ -245,7 +219,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Get an MCP server by ID.
   pub async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServerEntity>, McpServerError> {
     let tenant_id = self.auth_context.require_tenant_id()?;
     self
@@ -255,7 +228,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// List MCP servers, optionally filtered by enabled status.
   pub async fn list_mcp_servers(
     &self,
     enabled: Option<bool>,
@@ -278,8 +250,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  // ========== OAuth discovery/DCR (direct delegation) ==========
-
   /// Discover OAuth metadata from an authorization server URL.
   pub async fn discover_oauth_metadata(&self, url: &str) -> Result<serde_json::Value, McpError> {
     self
@@ -301,7 +271,6 @@ impl AuthScopedMcpService {
       .await
   }
 
-  /// Dynamic client registration.
   pub async fn dynamic_register_client(
     &self,
     registration_endpoint: &str,

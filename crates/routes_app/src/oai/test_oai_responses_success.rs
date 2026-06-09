@@ -62,10 +62,6 @@ async fn seed_responses_alias(
   Ok(api_alias)
 }
 
-// ============================================================================
-// Success paths — verify correct (method, upstream_path) dispatched through the AiApiClientFactory
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -240,10 +236,6 @@ async fn test_responses_cancel_success() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Query parameter forwarding
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -345,10 +337,6 @@ async fn test_responses_create_forwards_query_params() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }
-
-// ============================================================================
-// LLM Liberty OAuth (openai-codex) — success path
-// ============================================================================
 
 #[rstest]
 #[awt]

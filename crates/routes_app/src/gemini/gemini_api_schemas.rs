@@ -23,7 +23,6 @@ pub struct GeminiErrorBody {
   pub status: &'static str,
 }
 
-/// Wraps BodhiApp local errors into Gemini's error envelope.
 #[derive(Debug)]
 pub struct GeminiApiError {
   pub status: u16,

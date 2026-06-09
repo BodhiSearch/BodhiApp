@@ -4,7 +4,6 @@ import { expect } from 'vitest';
 
 import { API_FORMAT_PRESETS, type ApiFormatPreset } from '@/schemas/apiModel';
 
-// User interaction utilities for API Format (New/Edit pages)
 export async function selectApiFormat(user: ReturnType<typeof userEvent.setup>, formatId: string) {
   const formatSelector = screen.getByTestId('api-format-selector');
   await user.click(formatSelector);
@@ -12,14 +11,12 @@ export async function selectApiFormat(user: ReturnType<typeof userEvent.setup>, 
   const preset = API_FORMAT_PRESETS[formatId as ApiFormatPreset];
   const optionText = preset?.name || formatId.toUpperCase();
 
-  // Wait for dropdown to open and select the option
   await waitFor(async () => {
     const option = screen.getByRole('option', { name: optionText });
     await user.click(option);
   });
 }
 
-// User interaction utilities for Provider (Setup page)
 export async function selectProvider(user: ReturnType<typeof userEvent.setup>, providerId: string) {
   const providerCard = screen.getByTestId(`provider-card-${providerId}`);
   await user.click(providerCard);
@@ -96,7 +93,6 @@ export async function cancelForm(user: ReturnType<typeof userEvent.setup>) {
   await user.click(cancelButton);
 }
 
-// Assertion utilities for API Format (New/Edit pages)
 export function expectApiFormatSelected(formatId: string) {
   const formatSelector = screen.getByTestId('api-format-selector');
   const preset = API_FORMAT_PRESETS[formatId as ApiFormatPreset];
@@ -104,7 +100,6 @@ export function expectApiFormatSelected(formatId: string) {
   expect(formatSelector).toHaveTextContent(expectedText);
 }
 
-// Assertion utilities for Provider (Setup page)
 export function expectProviderSelected(providerId: string) {
   const selectedIcon = screen.getByTestId(`provider-selected-${providerId}`);
   expect(selectedIcon).toBeInTheDocument();
@@ -177,7 +172,6 @@ export async function waitForNoLoadingState(testId: string) {
   });
 }
 
-// Form validation utilities
 export function expectRequiredFieldError(fieldTestId: string) {
   const field = screen.getByTestId(fieldTestId);
   expect(field).toHaveAttribute('aria-invalid', 'true');
@@ -188,7 +182,6 @@ export function expectFieldValid(fieldTestId: string) {
   expect(field).not.toHaveAttribute('aria-invalid', 'true');
 }
 
-// Toast message utilities - mock verification based
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function expectSuccessToast(mockToast: any, expectedTitle?: string) {
   if (expectedTitle) {
@@ -225,13 +218,11 @@ export function expectErrorToast(mockToast: any, expectedTitle?: string) {
   }
 }
 
-// Navigation utilities
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function expectNavigationCall(mockRouter: any, expectedPath: string) {
   expect(mockRouter.push).toHaveBeenCalledWith(expectedPath);
 }
 
-// Complex workflow utilities
 export async function completeBasicProviderSetup(
   user: ReturnType<typeof userEvent.setup>,
   providerId: string,
@@ -248,15 +239,12 @@ export async function completeBasicProviderSetup(
 }
 
 export async function completeModelSelection(user: ReturnType<typeof userEvent.setup>, modelNames: string[]) {
-  // First fetch models
   await fetchModels(user);
 
-  // Wait for models to load
   await waitFor(() => {
     expectModelsLoaded(modelNames);
   });
 
-  // Select the models
   await selectModels(user, modelNames);
 }
 
@@ -267,16 +255,12 @@ export async function completeFullWorkflow(
   modelNames: string[],
   baseUrl?: string
 ) {
-  // Setup provider and credentials
   await completeBasicProviderSetup(user, providerId, apiKey, baseUrl);
 
-  // Test connection
   await testConnection(user);
   await waitFor(() => expectConnectionSuccess());
 
-  // Complete model selection
   await completeModelSelection(user, modelNames);
 
-  // Submit form
   await submitForm(user);
 }

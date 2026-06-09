@@ -117,10 +117,6 @@ async fn build_oauth_flow_router(
   Ok((router, session_service))
 }
 
-// ============================================================================
-// Test 1: OAuth login success - verify auth URL params including resource
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -197,10 +193,6 @@ async fn test_oauth_login_success() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Test 2: OAuth login - config not found returns 404
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -234,10 +226,6 @@ async fn test_oauth_login_config_not_found() -> anyhow::Result<()> {
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   Ok(())
 }
-
-// ============================================================================
-// Test 3: OAuth token exchange success - pre-populated session
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -332,10 +320,6 @@ async fn test_oauth_token_exchange_success() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Test 4: OAuth token exchange - CSRF state mismatch returns 400
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -344,7 +328,6 @@ async fn test_oauth_token_exchange_state_mismatch() -> anyhow::Result<()> {
 
   let (app, session_service) = build_oauth_flow_router(mock).await?;
 
-  // Pre-populate session with one state
   let session_id = Id::default();
   let created_at = fixed_dt().timestamp();
   let mut record = Record {
@@ -393,10 +376,6 @@ async fn test_oauth_token_exchange_state_mismatch() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Test 5: OAuth token exchange - missing session data returns 400
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -434,10 +413,6 @@ async fn test_oauth_token_exchange_missing_session() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Test 6: OAuth token exchange - service error propagation
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -462,7 +437,6 @@ async fn test_oauth_token_exchange_service_error() -> anyhow::Result<()> {
 
   let (app, session_service) = build_oauth_flow_router(mock).await?;
 
-  // Pre-populate session
   let session_id = Id::default();
   let created_at = fixed_dt().timestamp();
   let mut record = Record {
@@ -506,10 +480,6 @@ async fn test_oauth_token_exchange_service_error() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Test 7: OAuth token exchange - null mcp_id skips ownership check
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -547,7 +517,6 @@ async fn test_oauth_token_exchange_null_mcp_id() -> anyhow::Result<()> {
 
   let (app, session_service) = build_oauth_flow_router(mock).await?;
 
-  // Pre-populate session
   let session_id = Id::default();
   let created_at = fixed_dt().timestamp();
   let mut record = Record {
@@ -594,10 +563,6 @@ async fn test_oauth_token_exchange_null_mcp_id() -> anyhow::Result<()> {
   Ok(())
 }
 
-// ============================================================================
-// Test 8: OAuth token exchange - invalid mcp_id returns 404
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -614,7 +579,6 @@ async fn test_oauth_token_exchange_invalid_mcp_id() -> anyhow::Result<()> {
   // exchange_oauth_token should NOT be called because ownership check fails first
   let (app, session_service) = build_oauth_flow_router(mock).await?;
 
-  // Pre-populate session
   let session_id = Id::default();
   let created_at = fixed_dt().timestamp();
   let mut record = Record {

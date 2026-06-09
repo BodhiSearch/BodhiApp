@@ -117,8 +117,6 @@ impl BootstrapService {
     }
   }
 
-  // --- Bootstrap-critical typed READ accessors ---
-
   pub fn bodhi_home(&self) -> PathBuf {
     self.bodhi_home.clone()
   }

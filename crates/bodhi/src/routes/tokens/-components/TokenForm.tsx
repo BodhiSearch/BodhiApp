@@ -29,7 +29,6 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
   const { showSuccess, showError } = useToastMessages();
   const { data: userInfo } = useGetUser();
 
-  // Determine available scope options based on user role
   const scopeOptions = useMemo(() => {
     const userRole = userInfo?.auth_status === 'logged_in' ? userInfo.role : undefined;
     if (userRole === 'resource_user') {

@@ -114,7 +114,6 @@ pub fn create_test_api_model_alias(
     .expect("Failed to build test ApiAlias")
 }
 
-/// Create a test ApiModelAlias with prefix for prefix-based routing tests
 pub fn create_test_api_model_alias_with_prefix(
   alias: &str,
   models: Vec<ApiModel>,
@@ -134,7 +133,6 @@ pub fn create_test_api_model_alias_with_prefix(
     .expect("Failed to build test ApiAlias with prefix")
 }
 
-/// Seed database with test API model aliases
 pub async fn seed_test_api_models(
   db_service: &dyn crate::db::DbService,
   base_time: DateTime<Utc>,
@@ -198,10 +196,6 @@ pub async fn seed_test_api_models_for_user(
   Ok(aliases)
 }
 
-// =============================================================================
-// ModelMetadataEntity Test Factories
-// =============================================================================
-
 /// Creates a ModelMetadataEntityBuilder pre-configured with required timestamps.
 /// Use this as a starting point and chain additional builder methods.
 pub fn model_metadata_builder(now: DateTime<Utc>) -> ModelMetadataEntityBuilder {
@@ -229,7 +223,6 @@ pub fn create_test_model_metadata(
     .expect("Failed to build test ModelMetadataEntity")
 }
 
-/// Creates a test ModelMetadataEntity for a local GGUF model with capabilities.
 pub fn create_test_model_metadata_with_capabilities(
   repo: &str,
   filename: &str,
@@ -259,7 +252,6 @@ pub fn create_test_model_metadata_with_capabilities(
     .expect("Failed to build test ModelMetadataEntity with capabilities")
 }
 
-/// Creates a test ModelMetadataEntity for an API model (e.g., OpenAI GPT-4).
 pub fn create_test_api_model_metadata(
   api_model_id: &str,
   now: DateTime<Utc>,
@@ -271,7 +263,6 @@ pub fn create_test_api_model_metadata(
     .expect("Failed to build test API ModelMetadataEntity")
 }
 
-/// Creates a test ModelMetadataEntity for an API model with context limits.
 pub fn create_test_api_model_metadata_with_context(
   api_model_id: &str,
   max_input_tokens: u64,
@@ -291,7 +282,6 @@ pub fn create_test_api_model_metadata_with_context(
     .expect("Failed to build test API ModelMetadataEntity with context")
 }
 
-/// Seed database with test user aliases (replaces YAML fixture files)
 pub async fn seed_test_user_aliases(
   db_service: &dyn crate::db::DbService,
 ) -> anyhow::Result<Vec<UserAlias>> {

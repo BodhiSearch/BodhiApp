@@ -1,17 +1,11 @@
 import { UserResponse, AppRole } from '@bodhiapp/ts-client';
 
-/**
- * Create a type-safe mock UserResponse for logged-out state
- */
 export function createMockLoggedOutUser(): UserResponse {
   return {
     auth_status: 'logged_out',
   };
 }
 
-/**
- * Create a type-safe mock UserResponse for logged-in state
- */
 export function createMockLoggedInUser(
   options: {
     username?: string;
@@ -39,9 +33,6 @@ export function createMockLoggedInUser(
   };
 }
 
-/**
- * Create a mock UserResponse for admin user
- */
 export function createMockAdminUser(username = 'admin@example.com'): UserResponse {
   return createMockLoggedInUser({
     username,
@@ -52,9 +43,6 @@ export function createMockAdminUser(username = 'admin@example.com'): UserRespons
   });
 }
 
-/**
- * Create a mock UserResponse for manager user
- */
 export function createMockManagerUser(username = 'manager@example.com'): UserResponse {
   return createMockLoggedInUser({
     username,
@@ -65,9 +53,6 @@ export function createMockManagerUser(username = 'manager@example.com'): UserRes
   });
 }
 
-/**
- * Create a mock UserResponse for regular user
- */
 export function createMockRegularUser(username = 'user@example.com'): UserResponse {
   return createMockLoggedInUser({
     username,
@@ -79,7 +64,6 @@ export function createMockRegularUser(username = 'user@example.com'): UserRespon
 }
 
 /**
- * Backward compatibility: Create a mock user with just logged_in boolean
  * @deprecated Use createMockLoggedInUser or createMockLoggedOutUser instead
  */
 export function createMockUser(
@@ -94,7 +78,6 @@ export function createMockUser(
 }
 
 /**
- * Legacy compatibility for inline object creation
  * @deprecated Use specific mock functions instead
  */
 export const mockUserResponses = {

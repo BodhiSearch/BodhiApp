@@ -298,7 +298,6 @@ function NewMcpPageContent() {
     }
   }, [existingMcp, editId, form]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Set the selected auth config for OAuth MCPs from Mcp.auth_config_id
   useEffect(() => {
     if (editId && existingMcp && existingMcp.auth_type === 'oauth' && existingMcp.auth_config_id) {
       store.setSelectedAuthConfig(existingMcp.auth_config_id, existingMcp.auth_type);

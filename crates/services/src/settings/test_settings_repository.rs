@@ -61,7 +61,6 @@ async fn test_upsert_update_existing(
   assert_eq!("original_value", created.value);
   assert_eq!(ctx.now, created.created_at);
 
-  // Update with new value
   let updated_setting = make_setting("update_key", "new_value", "number");
   let updated = ctx.service.upsert_setting(&updated_setting).await?;
   assert_eq!("new_value", updated.value);
@@ -99,14 +98,11 @@ async fn test_delete_setting(
   let setting = make_setting("delete_key", "to_delete", "string");
   ctx.service.upsert_setting(&setting).await?;
 
-  // Verify it exists
   let fetched = ctx.service.get_setting("delete_key").await?;
   assert!(fetched.is_some());
 
-  // Delete it
   ctx.service.delete_setting("delete_key").await?;
 
-  // Verify it's gone
   let fetched = ctx.service.get_setting("delete_key").await?;
   assert_eq!(None, fetched);
 

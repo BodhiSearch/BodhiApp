@@ -38,15 +38,12 @@ use tower::ServiceExt;
 #[serial_test::serial(live)]
 #[timeout(std::time::Duration::from_secs(300))]
 async fn test_live_chat_completions_non_streamed() -> anyhow::Result<()> {
-  // Build router with live services (real HF cache, real llama.cpp binary)
   let (router, app_service, ctx, _temp_home) = build_live_test_router().await?;
 
-  // Create authenticated session with resource_user role
   let session_cookie =
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
 
-  // Build chat completion request for Qwen3-1.7B (discovered from real HF cache)
   let request = CreateChatCompletionRequestArgs::default()
     .model("ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .messages(vec![ChatCompletionRequestMessage::User(
@@ -57,7 +54,7 @@ async fn test_live_chat_completions_non_streamed() -> anyhow::Result<()> {
     .build()?;
   let request_body = serde_json::to_string(&request)?;
 
-  // Send request through router (triggers real llama.cpp process)
+  // Triggers a real llama.cpp process
   let req = session_request_with_body(
     "POST",
     "/v1/chat/completions",
@@ -66,11 +63,9 @@ async fn test_live_chat_completions_non_streamed() -> anyhow::Result<()> {
   );
   let response = router.oneshot(req).await?;
 
-  // Assert response structure
   assert_eq!(StatusCode::OK, response.status());
   let result: CreateChatCompletionResponse = response.json().await?;
 
-  // Validate response fields
   assert!(
     !result.choices.is_empty(),
     "Expected at least one choice in response"
@@ -94,7 +89,6 @@ async fn test_live_chat_completions_non_streamed() -> anyhow::Result<()> {
     "Expected model to be echoed back"
   );
 
-  // Cleanup: stop llama.cpp process
   ctx.stop().await?;
 
   Ok(())
@@ -122,15 +116,12 @@ async fn test_live_chat_completions_non_streamed() -> anyhow::Result<()> {
 #[serial_test::serial(live)]
 #[timeout(std::time::Duration::from_secs(300))]
 async fn test_live_chat_completions_streamed() -> anyhow::Result<()> {
-  // Build router with live services (real HF cache, real llama.cpp binary)
   let (router, app_service, ctx, _temp_home) = build_live_test_router().await?;
 
-  // Create authenticated session with resource_user role
   let session_cookie =
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
 
-  // Build streaming chat completion request
   let request = serde_json::json!({
     "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
     "stream": true,
@@ -143,7 +134,7 @@ async fn test_live_chat_completions_streamed() -> anyhow::Result<()> {
   });
   let request_body = serde_json::to_string(&request)?;
 
-  // Send request through router (triggers real llama.cpp process)
+  // Triggers a real llama.cpp process
   let req = session_request_with_body(
     "POST",
     "/v1/chat/completions",
@@ -152,11 +143,9 @@ async fn test_live_chat_completions_streamed() -> anyhow::Result<()> {
   );
   let response = router.oneshot(req).await?;
 
-  // Assert response structure
   assert_eq!(StatusCode::OK, response.status());
   let response_text = response.text().await?;
 
-  // Parse streaming response
   let (content, finish_reason) = parse_streaming_content(&response_text);
 
   // Validate response fields
@@ -171,7 +160,6 @@ async fn test_live_chat_completions_streamed() -> anyhow::Result<()> {
     finish_reason
   );
 
-  // Cleanup: stop llama.cpp process
   ctx.stop().await?;
 
   Ok(())
@@ -196,15 +184,12 @@ async fn test_live_chat_completions_streamed() -> anyhow::Result<()> {
 #[serial_test::serial(live)]
 #[timeout(std::time::Duration::from_secs(300))]
 async fn test_live_chat_completions_thinking_disabled() -> anyhow::Result<()> {
-  // Build router with live services (real HF cache, real llama.cpp binary)
   let (router, app_service, ctx, _temp_home) = build_live_test_router().await?;
 
-  // Create authenticated session with resource_user role
   let session_cookie =
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
 
-  // Build chat completion request with thinking disabled
   let request = serde_json::json!({
     "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
     "chat_template_kwargs": {
@@ -219,7 +204,7 @@ async fn test_live_chat_completions_thinking_disabled() -> anyhow::Result<()> {
   });
   let request_body = serde_json::to_string(&request)?;
 
-  // Send request through router (triggers real llama.cpp process)
+  // Triggers a real llama.cpp process
   let req = session_request_with_body(
     "POST",
     "/v1/chat/completions",
@@ -228,11 +213,9 @@ async fn test_live_chat_completions_thinking_disabled() -> anyhow::Result<()> {
   );
   let response = router.oneshot(req).await?;
 
-  // Assert response structure
   assert_eq!(StatusCode::OK, response.status());
   let response_json: Value = response.json().await?;
 
-  // Verify response content
   let message = &response_json["choices"][0]["message"];
   let content = message["content"].as_str().unwrap();
   assert!(
@@ -255,7 +238,6 @@ async fn test_live_chat_completions_thinking_disabled() -> anyhow::Result<()> {
   );
   assert_eq!("stop", response_json["choices"][0]["finish_reason"]);
 
-  // Cleanup: stop llama.cpp process
   ctx.stop().await?;
 
   Ok(())
@@ -280,15 +262,12 @@ async fn test_live_chat_completions_thinking_disabled() -> anyhow::Result<()> {
 #[serial_test::serial(live)]
 #[timeout(std::time::Duration::from_secs(300))]
 async fn test_live_chat_completions_reasoning_format_none() -> anyhow::Result<()> {
-  // Build router with live services (real HF cache, real llama.cpp binary)
   let (router, app_service, ctx, _temp_home) = build_live_test_router().await?;
 
-  // Create authenticated session with resource_user role
   let session_cookie =
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
 
-  // Build chat completion request with reasoning_format: none
   let request = serde_json::json!({
     "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
     "reasoning_format": "none",
@@ -301,7 +280,7 @@ async fn test_live_chat_completions_reasoning_format_none() -> anyhow::Result<()
   });
   let request_body = serde_json::to_string(&request)?;
 
-  // Send request through router (triggers real llama.cpp process)
+  // Triggers a real llama.cpp process
   let req = session_request_with_body(
     "POST",
     "/v1/chat/completions",
@@ -310,11 +289,9 @@ async fn test_live_chat_completions_reasoning_format_none() -> anyhow::Result<()
   );
   let response = router.oneshot(req).await?;
 
-  // Assert response structure
   assert_eq!(StatusCode::OK, response.status());
   let response_json: Value = response.json().await?;
 
-  // Verify response content
   let message = &response_json["choices"][0]["message"];
   let content = message["content"].as_str().unwrap();
   assert!(
@@ -338,7 +315,6 @@ async fn test_live_chat_completions_reasoning_format_none() -> anyhow::Result<()
   );
   assert_eq!("stop", response_json["choices"][0]["finish_reason"]);
 
-  // Cleanup: stop llama.cpp process
   ctx.stop().await?;
 
   Ok(())
@@ -363,10 +339,8 @@ async fn test_live_chat_completions_reasoning_format_none() -> anyhow::Result<()
 #[serial_test::serial(live)]
 #[timeout(std::time::Duration::from_secs(300))]
 async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result<()> {
-  // Build router with live services (real HF cache, real llama.cpp binary)
   let (router, app_service, ctx, _temp_home) = build_live_test_router().await?;
 
-  // Create authenticated session with resource_user role
   let session_cookie =
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
@@ -383,7 +357,7 @@ async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result
   });
   let request_body = serde_json::to_string(&request)?;
 
-  // Send request through router (triggers real llama.cpp process)
+  // Triggers a real llama.cpp process
   let req = session_request_with_body(
     "POST",
     "/v1/chat/completions",
@@ -392,11 +366,9 @@ async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result
   );
   let response = router.oneshot(req).await?;
 
-  // Assert response structure
   assert_eq!(StatusCode::OK, response.status());
   let response_json: Value = response.json().await?;
 
-  // Verify response content
   let message = &response_json["choices"][0]["message"];
   let content = message["content"].as_str().unwrap();
   assert!(
@@ -427,7 +399,6 @@ async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result
   );
   assert_eq!("stop", response_json["choices"][0]["finish_reason"]);
 
-  // Cleanup: stop llama.cpp process
   ctx.stop().await?;
 
   Ok(())
@@ -454,15 +425,12 @@ async fn test_live_chat_completions_thinking_enabled_default() -> anyhow::Result
 #[serial_test::serial(live)]
 #[timeout(std::time::Duration::from_secs(300))]
 async fn test_live_tool_calling_non_streamed() -> anyhow::Result<()> {
-  // Build router with live services (real HF cache, real llama.cpp binary)
   let (router, app_service, ctx, _temp_home) = build_live_test_router().await?;
 
-  // Create authenticated session with resource_user role
   let session_cookie =
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
 
-  // Build tool calling request with developer role
   let messages: Vec<ChatCompletionRequestMessage> = vec![
     ChatCompletionRequestDeveloperMessage::from(
       "You are a model that can do tool calling with the following tools",
@@ -481,7 +449,7 @@ async fn test_live_tool_calling_non_streamed() -> anyhow::Result<()> {
 
   let request_body = serde_json::to_string(&request)?;
 
-  // Send request through router (triggers real llama.cpp process)
+  // Triggers a real llama.cpp process
   let req = session_request_with_body(
     "POST",
     "/v1/chat/completions",
@@ -490,15 +458,12 @@ async fn test_live_tool_calling_non_streamed() -> anyhow::Result<()> {
   );
   let response = router.oneshot(req).await?;
 
-  // Assert response structure
   assert_eq!(StatusCode::OK, response.status());
   let response_json: Value = response.json().await?;
 
-  // Validate tool call response
   let choice = &response_json["choices"][0];
   let finish_reason = choice["finish_reason"].as_str().unwrap();
 
-  // Should return a tool call
   assert_eq!(
     "tool_calls", finish_reason,
     "Expected finish_reason to be 'tool_calls', got: {}",
@@ -528,17 +493,14 @@ async fn test_live_tool_calling_non_streamed() -> anyhow::Result<()> {
     arguments_str
   );
 
-  // Verify tool call has an ID
   let tool_call_id = first_tool_call["id"].as_str();
   assert!(
     tool_call_id.is_some() && !tool_call_id.unwrap().is_empty(),
     "Expected tool call to have a non-empty ID"
   );
 
-  // Verify model name in response
   assert_eq!("ggml-org/Qwen3-1.7B-GGUF:Q8_0", response_json["model"]);
 
-  // Cleanup: stop llama.cpp process
   ctx.stop().await?;
 
   Ok(())
@@ -565,15 +527,12 @@ async fn test_live_tool_calling_non_streamed() -> anyhow::Result<()> {
 #[serial_test::serial(live)]
 #[timeout(std::time::Duration::from_secs(300))]
 async fn test_live_tool_calling_streamed() -> anyhow::Result<()> {
-  // Build router with live services (real HF cache, real llama.cpp binary)
   let (router, app_service, ctx, _temp_home) = build_live_test_router().await?;
 
-  // Create authenticated session with resource_user role
   let session_cookie =
     create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
       .await?;
 
-  // Build streaming tool calling request with developer role
   let messages: Vec<ChatCompletionRequestMessage> = vec![
     ChatCompletionRequestDeveloperMessage::from(
       "You are a model that can do tool calling with the following tools",
@@ -592,7 +551,7 @@ async fn test_live_tool_calling_streamed() -> anyhow::Result<()> {
 
   let request_body = serde_json::to_string(&request)?;
 
-  // Send request through router (triggers real llama.cpp process)
+  // Triggers a real llama.cpp process
   let req = session_request_with_body(
     "POST",
     "/v1/chat/completions",
@@ -601,14 +560,11 @@ async fn test_live_tool_calling_streamed() -> anyhow::Result<()> {
   );
   let response = router.oneshot(req).await?;
 
-  // Assert response structure
   assert_eq!(StatusCode::OK, response.status());
   let response_text = response.text().await?;
 
-  // Parse streaming response
   let (tool_calls, finish_reason) = parse_streaming_tool_calls(&response_text);
 
-  // Validate streaming tool call response
   assert_eq!(
     "tool_calls", finish_reason,
     "Expected finish_reason to be 'tool_calls', got: {}",
@@ -635,14 +591,12 @@ async fn test_live_tool_calling_streamed() -> anyhow::Result<()> {
     arguments_str
   );
 
-  // Verify tool call has an ID
   let tool_call_id = first_tool_call["id"].as_str();
   assert!(
     tool_call_id.is_some() && !tool_call_id.unwrap().is_empty(),
     "Expected tool call to have a non-empty ID"
   );
 
-  // Cleanup: stop llama.cpp process
   ctx.stop().await?;
 
   Ok(())

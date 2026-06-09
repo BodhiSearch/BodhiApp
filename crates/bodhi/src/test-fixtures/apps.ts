@@ -3,7 +3,6 @@ import type { AccessRequestReviewResponse } from '@/hooks/apps';
 const REQUEST_ID = '550e8400-e29b-41d4-a716-446655440000';
 const APP_CLIENT_ID = 'test-app-client';
 
-// Draft review with MCP servers
 export const mockDraftReviewResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -41,7 +40,6 @@ export const mockDraftReviewResponse: AccessRequestReviewResponse = {
   ],
 };
 
-// Draft review with no MCP instances
 export const mockDraftNoInstancesResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -62,7 +60,6 @@ export const mockDraftNoInstancesResponse: AccessRequestReviewResponse = {
   ],
 };
 
-// Already approved
 export const mockApprovedReviewResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -78,7 +75,6 @@ export const mockApprovedReviewResponse: AccessRequestReviewResponse = {
   mcps_info: [],
 };
 
-// Failed status
 export const mockFailedReviewResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -94,7 +90,6 @@ export const mockFailedReviewResponse: AccessRequestReviewResponse = {
   mcps_info: [],
 };
 
-// Expired status
 export const mockExpiredReviewResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -110,7 +105,6 @@ export const mockExpiredReviewResponse: AccessRequestReviewResponse = {
   mcps_info: [],
 };
 
-// Denied status
 export const mockDeniedReviewResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -126,7 +120,6 @@ export const mockDeniedReviewResponse: AccessRequestReviewResponse = {
   mcps_info: [],
 };
 
-// Draft with redirect flow (for testing redirect behavior)
 export const mockDraftRedirectResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -164,7 +157,6 @@ export const mockDraftRedirectResponse: AccessRequestReviewResponse = {
   ],
 };
 
-// Draft with multiple MCP servers
 export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -223,7 +215,6 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
   ],
 };
 
-// Draft with mixed MCP availability (one with instances, one without)
 export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -265,7 +256,6 @@ export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
   ],
 };
 
-// Draft with MCP servers requested
 export const mockDraftMcpResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -358,7 +348,6 @@ export const mockDraftMcpCrossUrlResponse: AccessRequestReviewResponse = {
   ],
 };
 
-// Draft with both toolsets and MCP servers (now MCP-only)
 export const mockDraftMixedResourcesResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -396,7 +385,6 @@ export const mockDraftMixedResourcesResponse: AccessRequestReviewResponse = {
   ],
 };
 
-// Draft with MCP but no instances available
 export const mockDraftMcpNoInstancesResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -417,7 +405,6 @@ export const mockDraftMcpNoInstancesResponse: AccessRequestReviewResponse = {
   ],
 };
 
-// Draft review with power_user requested_role (for testing role downgrade)
 export const mockDraftReviewResponsePowerUser: AccessRequestReviewResponse = {
   id: REQUEST_ID,
   app_client_id: APP_CLIENT_ID,
@@ -455,6 +442,5 @@ export const mockDraftReviewResponsePowerUser: AccessRequestReviewResponse = {
   ],
 };
 
-// Convenience constant for test IDs
 export const MOCK_REQUEST_ID = REQUEST_ID;
 export const MOCK_APP_CLIENT_ID = APP_CLIENT_ID;

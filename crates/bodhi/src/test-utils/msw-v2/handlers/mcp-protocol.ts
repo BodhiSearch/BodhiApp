@@ -7,10 +7,6 @@
  */
 import { http, HttpResponse, type HttpHandler } from 'msw';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface MockMcpTool {
   name: string;
   description?: string;
@@ -35,17 +31,9 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-// ============================================================================
-// Default tool call handler
-// ============================================================================
-
 function defaultToolCallHandler(toolName: string, _args: Record<string, unknown>): { text: string; isError?: boolean } {
   return { text: `Mock result from ${toolName}`, isError: false };
 }
-
-// ============================================================================
-// Handler Factory
-// ============================================================================
 
 /**
  * Create MSW handlers that simulate an MCP Streamable HTTP server.
@@ -67,9 +55,6 @@ export function createMcpProtocolHandlers(config: MockMcpServerConfig): HttpHand
     const { method, id } = body;
 
     switch (method) {
-      // ----------------------------------------------------------------
-      // initialize — return server capabilities with session header
-      // ----------------------------------------------------------------
       case 'initialize': {
         return HttpResponse.json(
           {
@@ -87,9 +72,6 @@ export function createMcpProtocolHandlers(config: MockMcpServerConfig): HttpHand
         );
       }
 
-      // ----------------------------------------------------------------
-      // notifications/initialized — acknowledge with 202
-      // ----------------------------------------------------------------
       case 'notifications/initialized': {
         return new HttpResponse(null, {
           status: 202,
@@ -97,9 +79,6 @@ export function createMcpProtocolHandlers(config: MockMcpServerConfig): HttpHand
         });
       }
 
-      // ----------------------------------------------------------------
-      // tools/list — return configured tool list
-      // ----------------------------------------------------------------
       case 'tools/list': {
         const toolList = tools.map((t) => ({
           name: t.name,
@@ -119,9 +98,6 @@ export function createMcpProtocolHandlers(config: MockMcpServerConfig): HttpHand
         );
       }
 
-      // ----------------------------------------------------------------
-      // tools/call — execute tool via handler
-      // ----------------------------------------------------------------
       case 'tools/call': {
         const params = body.params ?? {};
         const toolName = params.name as string;
@@ -143,9 +119,6 @@ export function createMcpProtocolHandlers(config: MockMcpServerConfig): HttpHand
         );
       }
 
-      // ----------------------------------------------------------------
-      // Unknown method — return JSON-RPC method not found error
-      // ----------------------------------------------------------------
       default: {
         return HttpResponse.json(
           {
@@ -173,7 +146,6 @@ export function createMcpProtocolHandlers(config: MockMcpServerConfig): HttpHand
     });
   });
 
-  // DELETE handler for session close
   const deleteHandler = http.delete(endpoint, () => {
     return new HttpResponse(null, {
       status: 202,

@@ -1,6 +1,5 @@
-// NOTE: Most response types have been moved to services::models::model_objs.
-// This file retains only presentation types specific to routes_app
-// (LocalModelResponse, QueueStatusResponse, RefreshResponseType).
+// Presentation-only response types for routes_app; the rest live in
+// services::models::model_objs.
 
 use axum::{http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
@@ -9,14 +8,12 @@ use services::{HubFile, ModelAliasResponse, ModelMetadata, RefreshResponse};
 use std::collections::HashMap;
 use utoipa::ToSchema;
 
-/// Response for queue status operations
 #[derive(Debug, Serialize, ToSchema)]
 pub struct QueueStatusResponse {
   /// Queue status ("idle" or "processing")
   pub status: String,
 }
 
-/// Enum for different refresh response types
 #[allow(clippy::large_enum_variant)]
 pub enum RefreshResponseType {
   Sync(ModelAliasResponse),
@@ -34,7 +31,6 @@ impl axum::response::IntoResponse for RefreshResponseType {
   }
 }
 
-/// Paginated list of local model files
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct PaginatedLocalModelResponse {
   pub data: Vec<LocalModelResponse>,
@@ -43,7 +39,6 @@ pub struct PaginatedLocalModelResponse {
   pub page_size: usize,
 }
 
-/// Local model file response
 #[derive(Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 pub struct LocalModelResponse {
   pub repo: String,
@@ -70,7 +65,6 @@ impl From<HubFile> for LocalModelResponse {
 }
 
 impl LocalModelResponse {
-  /// Attach model metadata to this response
   pub fn with_metadata(mut self, metadata: Option<ModelMetadata>) -> Self {
     self.metadata = metadata;
     self

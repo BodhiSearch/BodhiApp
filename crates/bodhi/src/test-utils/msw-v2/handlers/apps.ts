@@ -1,7 +1,3 @@
-/**
- * MSW v2 handlers for app access request review/approve/deny endpoints
- */
-
 import {
   ENDPOINT_ACCESS_REQUESTS_APPROVE,
   ENDPOINT_ACCESS_REQUESTS_DENY,
@@ -11,13 +7,6 @@ import type { AccessRequestReviewResponse } from '@/hooks/apps';
 
 import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 
-// =============================================================================
-// Review endpoint handlers
-// =============================================================================
-
-/**
- * Mock handler for GET /access-requests/:id/review - success case
- */
 export function mockAppAccessRequestReview(reviewData: AccessRequestReviewResponse, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
@@ -32,9 +21,6 @@ export function mockAppAccessRequestReview(reviewData: AccessRequestReviewRespon
   ];
 }
 
-/**
- * Mock handler for GET /access-requests/:id/review - error case
- */
 export function mockAppAccessRequestReviewError(
   id: string,
   {
@@ -60,13 +46,8 @@ export function mockAppAccessRequestReviewError(
   ];
 }
 
-// =============================================================================
-// Approve endpoint handlers
-// =============================================================================
-
 /**
- * Mock handler for PUT /access-requests/:id/approve - success case
- * Optionally captures the request body for assertion via onBody callback
+ * onBody, when provided, captures the request body for assertion.
  */
 export function mockAppAccessRequestApprove(
   id: string,
@@ -99,9 +80,6 @@ export function mockAppAccessRequestApprove(
   ];
 }
 
-/**
- * Mock handler for PUT /access-requests/:id/approve - error case
- */
 export function mockAppAccessRequestApproveError(
   id: string,
   {
@@ -127,13 +105,6 @@ export function mockAppAccessRequestApproveError(
   ];
 }
 
-// =============================================================================
-// Deny endpoint handlers
-// =============================================================================
-
-/**
- * Mock handler for POST /access-requests/:id/deny - success case
- */
 export function mockAppAccessRequestDeny(
   id: string,
   {
@@ -159,9 +130,6 @@ export function mockAppAccessRequestDeny(
   ];
 }
 
-/**
- * Mock handler for POST /access-requests/:id/deny - error case
- */
 export function mockAppAccessRequestDenyError(
   id: string,
   {

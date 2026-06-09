@@ -114,7 +114,6 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let mut client = TestServer::new(router)?;
   client.save_cookies();
 
-  // Perform login request
   let login_resp = client
     .post("/auth/initiate")
     .json(&json! {{"client_id": "test_client_id"}})
@@ -124,10 +123,8 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
-  // Extract state and code_challenge from the login response
   let state = query_params.get("state").expect("state param missing");
 
-  // Perform callback request
   let resp = client
     .post("/auth/callback")
     .json(&json! {{
@@ -309,10 +306,8 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     .expect("redirect_uri param missing");
   assert_eq!("http://localhost:1135/ui/auth/callback", callback_url);
 
-  // Extract state for the callback request
   let state = query_params.get("state").expect("state param missing");
 
-  // Perform callback request
   let resp = client
     .post("/auth/callback")
     .json(&json! {{
@@ -326,7 +321,6 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   // Final redirect should use localhost from the callback URL
   assert_eq!("http://localhost:1135/ui/chat", callback_body.location);
 
-  // Verify session contains access token
   let session_id = resp.cookie("bodhiapp_session_id");
   let access_token = session_service
     .get_session_value(session_id.value(), "test_client_id:access_token")
@@ -449,7 +443,6 @@ async fn test_auth_callback_handler_auth_service_error(
   let mut client = TestServer::new(router)?;
   client.save_cookies();
 
-  // Simulate login to set up session
   let login_resp = client
     .post("/auth/initiate")
     .json(&json! {{"client_id": "test_client_id"}})
@@ -493,7 +486,6 @@ async fn test_auth_callback_handler_rejects_setup_status_tenant(
   let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   let mut builder = AppServiceStubBuilder::default();
   builder.with_default_session_service(session_service.clone());
-  // Tenant with Setup status should be rejected
   builder
     .with_tenant(services::Tenant {
       id: String::new(),

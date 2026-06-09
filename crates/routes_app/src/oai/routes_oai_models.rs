@@ -9,7 +9,6 @@ use services::DataServiceError;
 use services::{Alias, ApiAlias, ModelAlias, SettingService, TimeService, UserAlias};
 use std::{collections::HashSet, sync::Arc};
 
-/// List available models
 #[utoipa::path(
     get,
     path = ENDPOINT_OAI_MODELS,
@@ -49,14 +48,12 @@ pub async fn oai_models_handler(
 ) -> Result<Json<ListModelResponse>, OaiApiError> {
   let setting_service = auth_scope.setting_service();
   let time_service = auth_scope.time_service();
-  // Get all aliases from auth-scoped DataService
   let aliases = auth_scope
     .data()
     .list_aliases()
     .await
     .map_err(OaiApiError::from)?;
 
-  // Use HashSet to track model IDs and prevent duplicates
   let mut seen_models = HashSet::new();
   let mut models = Vec::new();
 
@@ -95,7 +92,6 @@ pub async fn oai_models_handler(
   }))
 }
 
-/// Get details for a specific model
 #[utoipa::path(
     get,
     path = "/v1/models/{id}",
@@ -138,7 +134,6 @@ pub async fn oai_model_handler(
 ) -> Result<Json<Model>, OaiApiError> {
   let setting_service = auth_scope.setting_service();
   let time_service = auth_scope.time_service();
-  // Use auth-scoped DataService.find_alias
   if let Some(alias) = auth_scope.data().find_alias(&id).await {
     match alias {
       Alias::User(user_alias) => Ok(Json(user_alias_to_oai_model(user_alias))),

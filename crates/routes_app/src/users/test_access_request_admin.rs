@@ -40,25 +40,20 @@ async fn test_approve_request_clears_user_sessions(
   #[values("session", "multi_tenant")] auth_variant: &str,
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
-  // 1. Setup: Create real databases for both app and session
   let session_db = temp_bodhi_home.path().join("session.sqlite");
-
-  // 2. Create services with real databases
   File::create(&session_db)?;
 
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let session_service =
     Arc::new(DefaultSessionService::build_session_service(session_db.clone()).await);
 
-  // 3. Create a pending access request for a user
   let user_id = "test-user-123";
   let username = "testuser@example.com";
   let access_request = db_service
     .insert_pending_request(TEST_TENANT_ID, username.to_string(), user_id.to_string())
     .await?;
 
-  // 4. Simulate user having multiple active sessions
-  // (as if they logged in from different devices/browsers)
+  // multiple active sessions, as if logged in from different devices
   for i in 0..3 {
     let id = Id::default();
     let mut data = HashMap::new();
@@ -88,12 +83,10 @@ async fn test_approve_request_clears_user_sessions(
     SessionStore::save(session_service.get_session_store(), &record).await?;
   }
 
-  // 5. Verify sessions exist before approval
   let count_before = session_service.count_sessions_for_user(user_id).await?;
 
   assert_eq!(3, count_before, "User should have 3 active sessions");
 
-  // 6. Setup mock auth service for role assignment
   let mut mock_auth = MockAuthService::default();
   mock_auth
     .expect_assign_user_role()
@@ -101,10 +94,8 @@ async fn test_approve_request_clears_user_sessions(
     .withf(|_token, uid, role| uid == "test-user-123" && role == "resource_user")
     .return_once(|_, _, _| Ok(()));
 
-  // 7. Setup app instance service with client registration info
   let db_arc: Arc<dyn services::DbService> = Arc::new(db_service);
 
-  // 8. Build complete app service
   let mut builder = AppServiceStubBuilder::default();
   builder.db_service(db_arc);
   builder.with_tenant(services::Tenant::test_default()).await;
@@ -114,7 +105,6 @@ async fn test_approve_request_clears_user_sessions(
     .build()
     .await?;
 
-  // 9. Create router with approve endpoint
   let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
@@ -124,7 +114,6 @@ async fn test_approve_request_clears_user_sessions(
     )
     .with_state(state.clone());
 
-  // 10. Make HTTP request with required auth context (simulating authenticated admin)
   let request = Request::post(format!(
     "{}/{}/approve",
     ENDPOINT_ACCESS_REQUESTS_ALL, access_request.id
@@ -141,17 +130,14 @@ async fn test_approve_request_clears_user_sessions(
     "dummy-admin-token",
   ));
 
-  // Send request through the router
   let response = router.oneshot(request).await?;
 
-  // Verify the handler succeeded
   assert_eq!(
     axum::http::StatusCode::OK,
     response.status(),
     "Handler should return OK status"
   );
 
-  // 12. Verify all user sessions were cleared
   let count_after = session_service.count_sessions_for_user(user_id).await?;
 
   assert_eq!(
@@ -159,7 +145,6 @@ async fn test_approve_request_clears_user_sessions(
     "All user sessions should be cleared after role assignment"
   );
 
-  // 13. Verify request status was updated
   let updated_request = state
     .db_service()
     .get_request_by_id(TEST_TENANT_ID, &access_request.id)
@@ -173,10 +158,6 @@ async fn test_approve_request_clears_user_sessions(
 
   Ok(())
 }
-
-// ============================================================================
-// users_access_requests_pending tests
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -234,10 +215,6 @@ async fn test_list_pending_requests_success(temp_bodhi_home: TempDir) -> anyhow:
   Ok(())
 }
 
-// ============================================================================
-// users_access_requests_index tests
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -285,10 +262,6 @@ async fn test_list_all_requests_success(temp_bodhi_home: TempDir) -> anyhow::Res
   assert_eq!(1, body["total"].as_i64().unwrap());
   Ok(())
 }
-
-// ============================================================================
-// users_access_request_reject tests
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -338,7 +311,6 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
 
   assert_eq!(axum::http::StatusCode::OK, response.status());
 
-  // Verify the request was rejected
   let updated = state
     .db_service()
     .get_request_by_id(TEST_TENANT_ID, &access_request.id)
@@ -347,10 +319,6 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
   assert_eq!(UserAccessRequestStatus::Rejected, updated.status);
   Ok(())
 }
-
-// ============================================================================
-// users_access_request_approve - insufficient privileges test
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -412,10 +380,6 @@ async fn test_approve_request_insufficient_privileges(
   Ok(())
 }
 
-// ============================================================================
-// users_access_request_approve - request not found test
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
@@ -459,10 +423,6 @@ async fn test_approve_request_not_found(temp_bodhi_home: TempDir) -> anyhow::Res
   );
   Ok(())
 }
-
-// ============================================================================
-// users_access_request_approve - reject Guest/Anonymous as assignment targets
-// ============================================================================
 
 #[rstest]
 #[case::approve_with_guest(ResourceRole::Guest)]

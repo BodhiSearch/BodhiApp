@@ -8,38 +8,25 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Configuration options for setting up application directories and settings.
-/// Uses the builder pattern for flexible configuration with sensible defaults.
 #[derive(Debug, Clone, derive_new::new)]
 pub struct AppOptions {
-  /// Environment wrapper for accessing environment variables and system paths
   pub env_wrapper: Arc<dyn EnvWrapper>,
-  /// Environment type (Development, Production, etc.)
   pub env_type: EnvType,
-  /// Application type (Native, Container, etc.)
   pub app_type: AppType,
-  /// Application version string
   pub app_version: String,
-  /// Application commit SHA
   pub app_commit_sha: String,
-  /// Authentication server URL
   pub auth_url: String,
-  /// Authentication realm
   pub auth_realm: String,
-  /// Deployment mode (Standalone or MultiTenant)
   pub deployment_mode: DeploymentMode,
   /// App settings (configurable via settings.yaml)
   pub app_settings: HashMap<String, String>,
-  /// Tenant with OAuth credentials and status (optional)
   pub tenant: Option<Tenant>,
 }
 
-/// Custom builder for AppOptions that handles internal state management
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct AppOptionsBuilder {
-  // Internal storage for environment variables
   environment_vars: HashMap<String, String>,
 
-  // Core fields that will be set via system settings
   env_type: Option<EnvType>,
   app_type: Option<AppType>,
   app_version: Option<String>,
@@ -48,13 +35,11 @@ pub struct AppOptionsBuilder {
   auth_realm: Option<String>,
   deployment_mode: Option<DeploymentMode>,
 
-  // Configuration fields
   app_settings: HashMap<String, String>,
   tenant: Option<Tenant>,
 }
 
 impl AppOptionsBuilder {
-  /// Sets an environment variable
   pub fn set_env(mut self, key: &str, value: &str) -> Self {
     self
       .environment_vars
@@ -70,7 +55,6 @@ impl AppOptionsBuilder {
 
   /// Sets a system setting (immutable)
   pub fn set_system_setting(self, key: &str, value: &str) -> Result<Self, BootstrapError> {
-    // Validate and set system settings
     match key {
       BODHI_ENV_TYPE => {
         let env_type = value.parse::<EnvType>()?;
@@ -127,15 +111,12 @@ impl AppOptionsBuilder {
     self
   }
 
-  /// Sets tenant with OAuth credentials and status
   pub fn set_tenant(mut self, instance: Tenant) -> Self {
     self.tenant = Some(instance);
     self
   }
 
-  /// Builds the AppOptions with validation and environment wrapper setup
   pub fn build(self) -> Result<AppOptions, BootstrapError> {
-    // Always build environment wrapper, even if no environment variables were set
     let env_wrapper = self.build_env_wrapper_from_vars();
 
     Ok(AppOptions {
@@ -166,7 +147,6 @@ impl AppOptionsBuilder {
     })
   }
 
-  /// Builds an environment wrapper with collected environment variables
   fn build_env_wrapper_from_vars(&self) -> Arc<dyn EnvWrapper> {
     let mut env_wrapper = DefaultEnvWrapper::default();
     for (key, value) in &self.environment_vars {

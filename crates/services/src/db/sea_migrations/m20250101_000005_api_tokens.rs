@@ -59,7 +59,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Composite unique index: token_prefix must be unique within a tenant.
     manager
       .create_index(
         Index::create()

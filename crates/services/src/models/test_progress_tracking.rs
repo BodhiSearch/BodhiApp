@@ -1,9 +1,3 @@
-//! Progress tracking tests using hf-hub Progress trait
-//!
-//! Tests focus on:
-//! - DatabaseProgress integration with real database updates
-//! - Speed/ETA calculation logic
-//! - Hub service integration with DatabaseProgress
 use crate::models::progress_tracking::DatabaseProgress;
 use crate::models::{HubFile, Repo};
 use crate::Progress;
@@ -34,7 +28,6 @@ macro_rules! wait_for_event {
   }};
 }
 
-/// Integration test: DatabaseProgress with real database updates using subscribe/notify
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -48,55 +41,45 @@ async fn test_database_progress_integration(
   let mut rx = db_service.subscribe();
   let db_service = Arc::new(db_service);
 
-  // Create a download request
   let request = DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "test.gguf", now);
   db_service.create_download_request(&request).await?;
 
-  // Create DatabaseProgress
   let mut progress = Progress::Database(DatabaseProgress::new(
     db_service.clone(),
     request.tenant_id.clone(),
     request.id.clone(),
   ));
 
-  // Test init() - simulates hf-hub calling init with file size
   progress.init(4096, "test.gguf").await;
 
-  // Wait for init update
   let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(100));
   assert!(event_received, "Timed out waiting for init update");
 
-  // Test update() calls - simulates hf-hub calling update with incremental bytes
-  // Note: Individual updates are batched every 3 seconds for performance
-  progress.update(1024).await; // First chunk
-  progress.update(1024).await; // Second chunk
-  progress.update(2048).await; // Final chunk
+  // Updates are batched every 3s, so these produce no immediate database events.
+  progress.update(1024).await;
+  progress.update(1024).await;
+  progress.update(2048).await;
 
-  // Updates are batched, so no immediate database events expected
-
-  // Test finish() - simulates hf-hub calling finish when download completes
   progress.finish().await;
 
-  // Wait for finish update (finish() always syncs immediately)
+  // finish() always syncs immediately.
   let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(100));
   assert!(event_received, "Timed out waiting for finish update");
 
-  // Verify final database state
   let retrieved = db_service
     .get_download_request(TEST_TENANT_ID, &request.id)
     .await?;
   assert!(retrieved.is_some());
 
   let retrieved = retrieved.unwrap();
-  assert_eq!(retrieved.downloaded_bytes, 4096); // Total downloaded
+  assert_eq!(retrieved.downloaded_bytes, 4096);
   assert_eq!(retrieved.total_bytes, Some(4096));
   assert!(retrieved.started_at.is_some());
-  assert_eq!(retrieved.updated_at, db_service.now()); // Uses frozen time
+  assert_eq!(retrieved.updated_at, db_service.now()); // frozen time
 
   Ok(())
 }
 
-/// Unit test: HubService download with DatabaseProgress
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -110,18 +93,15 @@ async fn test_hub_service_with_database_progress(
   let now = db_service.now();
   let db_service = Arc::new(db_service);
 
-  // Create a download request
   let request = DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "test.gguf", now);
   db_service.create_download_request(&request).await?;
 
-  // Setup mock HubService to accept progress parameter
   test_hf_service
     .inner_mock
     .expect_download()
     .times(1)
     .returning(move |_, _, _, _| Ok(HubFile::testalias()));
 
-  // Test with DatabaseProgress
   let progress = Progress::Database(DatabaseProgress::new(
     db_service.clone(),
     request.tenant_id.clone(),

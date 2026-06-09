@@ -119,7 +119,6 @@ describe('ResourceAdminPage', () => {
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." after successful response and remain disabled
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
@@ -141,7 +140,6 @@ describe('ResourceAdminPage', () => {
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." after successful response and remain disabled
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
@@ -183,7 +181,6 @@ describe('ResourceAdminPage', () => {
       expect(screen.getByText('OAuth configuration error')).toBeInTheDocument();
     });
 
-    // Verify login button is re-enabled after error
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Continue with Login →' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Continue with Login →' })).not.toBeDisabled();
@@ -227,7 +224,6 @@ describe('ResourceAdminPage', () => {
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." and remain disabled even for external URLs
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();

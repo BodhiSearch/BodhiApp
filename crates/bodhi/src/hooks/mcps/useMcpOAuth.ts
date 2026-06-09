@@ -20,10 +20,6 @@ import {
   MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE_ENDPOINT,
 } from './constants';
 
-// ============================================================================
-// Mutation Hooks - OAuth Discovery & Login & Token
-// ============================================================================
-
 export function useDiscoverMcp(options?: {
   onSuccess?: (response: OAuthDiscoverMcpResponse) => void;
   onError?: (message: string) => void;
@@ -106,7 +102,6 @@ export function useOAuthTokenExchange(options?: {
   );
 }
 
-// Re-export types for consumers
 export type {
   OAuthDiscoverMcpRequest,
   OAuthDiscoverMcpResponse,

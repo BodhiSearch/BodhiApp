@@ -246,11 +246,10 @@ type SettingsPageContentProps = {
   config: SettingsConfig;
 };
 
-// Add this helper function to determine badge variant
 const getSourceBadgeVariant = (source: string) => {
   switch (source) {
     case 'system':
-      return 'destructive'; // red
+      return 'destructive';
     case 'command line':
       return 'blue';
     case 'environment':
@@ -277,7 +276,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
     return <ErrorPage message={errorMessage} />;
   }
 
-  // Helper function to get all predefined setting keys
   const getPredefinedSettingKeys = () => {
     const keys = new Set<string>();
     Object.values(config).forEach((group) => {
@@ -286,7 +284,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
     return keys;
   };
 
-  // Helper function to get variant-specific server argument settings
   const getVariantServerArgs = () => {
     if (!settings) return [];
     return settings.filter(
@@ -294,7 +291,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
     );
   };
 
-  // Helper function to get ungrouped settings
   const getUngroupedSettings = () => {
     if (!settings) return [];
     const predefinedKeys = getPredefinedSettingKeys();
@@ -306,7 +302,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
   const variantServerArgs = getVariantServerArgs();
   const ungroupedSettings = getUngroupedSettings();
 
-  // Helper function to render a setting
   const renderSetting = (setting: SettingInfo, editable: boolean, description?: string) => {
     return (
       <div
@@ -318,9 +313,7 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
           setting.source !== 'default' && 'border-primary/20 bg-primary/5'
         )}
       >
-        {/* Main content section */}
         <div className="flex-1 min-w-0 space-y-1.5">
-          {/* Setting header with name and description */}
           <div className="space-y-1">
             <div className="flex items-center flex-wrap gap-1.5">
               {(() => {
@@ -335,7 +328,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
             {description && <div className="text-xs sm:text-sm text-primary font-medium">{description}</div>}
           </div>
 
-          {/* Values section */}
           <div className="space-y-1">
             {/* Only show current value if source is not system */}
             {setting.source !== 'system' && (
@@ -348,7 +340,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
               </div>
             )}
 
-            {/* Default value */}
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground/60 shrink-0">Default:</span>
               <span className="text-xs text-muted-foreground/60 truncate">{String(setting.default_value)}</span>
@@ -356,7 +347,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
           </div>
         </div>
 
-        {/* Actions section */}
         <div className="flex items-center gap-2 shrink-0">
           <Badge variant="outline" className="text-xs h-5 px-1.5 shrink-0">
             {setting.metadata.type}
@@ -384,7 +374,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
         current value, and the source of that value. Some settings are editable while others are read-only.
       </UserOnboarding>
 
-      {/* Render predefined groups */}
       {Object.entries(config).map(([groupKey, group]) => {
         const Icon = group.icon;
 
@@ -410,7 +399,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
         );
       })}
 
-      {/* Server Arguments by Variant section */}
       {variantServerArgs.length > 0 && (
         <Card className="border-x-0 sm:border-x rounded-none sm:rounded-lg">
           <CardHeader className="px-4 py-4">
@@ -431,7 +419,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
         </Card>
       )}
 
-      {/* Miscellaneous Settings section */}
       {ungroupedSettings.length > 0 && (
         <Card className="border-x-0 sm:border-x rounded-none sm:rounded-lg">
           <CardHeader className="px-4 py-4">

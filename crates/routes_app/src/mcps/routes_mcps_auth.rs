@@ -14,10 +14,6 @@ use services::{new_ulid, McpAuthConfigResponse, McpAuthConfigsListResponse};
 use sha2::{Digest, Sha256};
 use tower_sessions::Session;
 
-// ============================================================================
-// Unified Auth Config Handlers
-// ============================================================================
-
 /// Create a new auth config (header, OAuth pre-registered, or OAuth dynamic)
 #[utoipa::path(
   post,
@@ -116,10 +112,6 @@ pub async fn mcp_auth_configs_destroy(
   auth_scope.mcps().delete_auth_config(&config_id).await?;
   Ok(StatusCode::NO_CONTENT)
 }
-
-// ============================================================================
-// OAuth Flow Handlers
-// ============================================================================
 
 /// Initiate OAuth login for a config
 #[utoipa::path(

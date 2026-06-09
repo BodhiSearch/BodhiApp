@@ -82,7 +82,6 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequest; user
     rejectRequest(request.id);
   };
 
-  // Filter role options based on user's role hierarchy
   const availableRoles = getAvailableRoles(userRole);
 
   return (
@@ -155,13 +154,12 @@ function AllRequestsContent() {
   const [pageSize] = useState(10);
   // Dummy sort values - no actual sorting functionality
   const dummySort: SortState = { column: '', direction: 'asc' };
-  const noOpSortChange = () => {}; // No-op function
+  const noOpSortChange = () => {};
   const getItemId = (request: UserAccessRequest) => request.id;
 
   const { data: userInfo } = useGetAuthenticatedUser();
   const { data: requestsData, isLoading } = useListAllRequests(page, pageSize);
 
-  // Get user's role for filtering
   const userRole = typeof userInfo?.role === 'string' ? userInfo.role : '';
 
   const columns = [

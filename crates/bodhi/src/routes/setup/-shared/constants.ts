@@ -1,7 +1,3 @@
-/**
- * Setup flow constants for the 6-step onboarding process
- */
-
 export const SETUP_STEPS = {
   WELCOME: 1,
   RESOURCE_ADMIN: 2,

@@ -400,7 +400,6 @@ export function ChatUI() {
   const stop = useAgentStore((s) => s.stop);
   const syncAgentSettings = useAgentStore((s) => s.syncAgentSettings);
 
-  // Keep agent in sync with settings and tools
   useEffect(() => {
     syncAgentSettings(agentTools);
   }, [syncAgentSettings, agentTools]);

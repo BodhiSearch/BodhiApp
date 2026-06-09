@@ -158,10 +158,8 @@ describe('useCreateToken', () => {
   it('invalidates tokens query on successful creation', async () => {
     const wrapper = createWrapper();
 
-    // Setup initial list tokens mock
     server.use(...mockTokens(mockListResponse));
 
-    // Setup list tokens hook and wait for initial data
     const { result: listResult } = renderHook(() => useListTokens(), {
       wrapper,
     });
@@ -170,10 +168,9 @@ describe('useCreateToken', () => {
       expect(listResult.current.data).toEqual(mockListResponse);
     });
 
-    // Store the initial fetch time
     const initialDataUpdatedAt = listResult.current.dataUpdatedAt;
 
-    // Update mock to return different data after token creation
+    // After creation the list returns an extra token.
     server.use(
       ...mockTokens({
         ...mockListResponse,
@@ -194,10 +191,8 @@ describe('useCreateToken', () => {
       })
     );
 
-    // Setup create token mock
     server.use(...mockCreateToken(mockTokenResponse));
 
-    // Create new token
     const { result: createResult } = renderHook(() => useCreateToken(), {
       wrapper,
     });
@@ -205,7 +200,6 @@ describe('useCreateToken', () => {
       await createResult.current.mutateAsync({ name: 'New Token', scope: 'scope_token_user' });
     });
 
-    // Verify list query was invalidated and refetched with new data
     await waitFor(() => {
       expect(listResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
       expect(listResult.current.data?.data.length).toBe(2);

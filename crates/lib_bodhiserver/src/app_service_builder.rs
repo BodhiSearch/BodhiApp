@@ -56,7 +56,6 @@ impl AppServiceBuilder {
     }
   }
 
-  /// Sets the time service.
   pub fn time_service(mut self, service: Arc<dyn TimeService>) -> Result<Self, BootstrapError> {
     if self.time_service.is_some() {
       return Err(BootstrapError::ServiceAlreadySet(
@@ -67,7 +66,6 @@ impl AppServiceBuilder {
     Ok(self)
   }
 
-  /// Sets the cache service.
   pub fn cache_service(mut self, service: Arc<dyn CacheService>) -> Result<Self, BootstrapError> {
     if self.cache_service.is_some() {
       return Err(BootstrapError::ServiceAlreadySet(
@@ -173,13 +171,11 @@ impl AppServiceBuilder {
     let network_service = Self::build_network_service();
     let mcp_service = Self::build_mcp_service(db_service.clone(), time_service.clone())?;
 
-    // Create queue and spawn refresh worker
     let queue = Arc::new(InMemoryQueue::new());
     let is_processing = queue.get_is_processing();
     let queue_producer: Arc<dyn QueueProducer> = queue.clone();
     let queue_consumer: Arc<dyn QueueConsumer> = queue;
 
-    // Spawn refresh worker in background
     let worker = RefreshWorker::new(
       queue_consumer,
       hub_service.clone(),
@@ -191,7 +187,6 @@ impl AppServiceBuilder {
       worker.run().await;
     });
 
-    // Build and return the complete app service
     let token_service: Arc<dyn services::TokenService> = Arc::new(
       services::DefaultTokenService::new(db_service.clone(), time_service.clone()),
     );
@@ -243,7 +238,6 @@ impl AppServiceBuilder {
     Ok(app_service)
   }
 
-  /// Builds the hub service.
   async fn build_hub_service(
     setting_service: &Arc<dyn SettingService>,
   ) -> Result<Arc<dyn HubService>, BootstrapError> {
@@ -256,7 +250,6 @@ impl AppServiceBuilder {
     Ok(Arc::new(hub_service))
   }
 
-  /// Gets or builds the time service.
   fn get_or_build_time_service(&mut self) -> Arc<dyn TimeService> {
     if let Some(service) = self.time_service.take() {
       return service;
@@ -265,7 +258,6 @@ impl AppServiceBuilder {
     Arc::new(DefaultTimeService)
   }
 
-  /// Builds the database service from a connection URL.
   /// Supports both `sqlite:` and `postgres://` URLs via SeaORM.
   async fn build_db_service(
     db_url: &str,
@@ -292,7 +284,6 @@ impl AppServiceBuilder {
     Ok(Arc::new(db_service))
   }
 
-  /// Builds the session service from the session DB URL.
   /// Detects backend from URL scheme (sqlite:// or postgres://).
   async fn build_session_service(
     setting_service: &Arc<dyn SettingService>,
@@ -302,7 +293,6 @@ impl AppServiceBuilder {
     Ok(Arc::new(session_service))
   }
 
-  /// Gets or builds the cache service.
   fn get_or_build_cache_service(&mut self) -> Arc<dyn CacheService> {
     if let Some(service) = self.cache_service.take() {
       return service;
@@ -311,7 +301,6 @@ impl AppServiceBuilder {
     Arc::new(MokaCacheService::default())
   }
 
-  /// Builds the auth service.
   async fn build_auth_service(setting_service: &Arc<dyn SettingService>) -> Arc<dyn AuthService> {
     let auth_url = setting_service.auth_url().await;
     let auth_realm = setting_service.auth_realm().await;
@@ -322,7 +311,6 @@ impl AppServiceBuilder {
     ))
   }
 
-  /// Builds the AI API service.
   fn build_ai_api_client_factory(
     db_service: Arc<dyn DbService>,
     local_llama: Option<Arc<dyn LocalLlama>>,
@@ -334,12 +322,10 @@ impl AppServiceBuilder {
     ))
   }
 
-  /// Builds the concurrency service.
   fn build_concurrency_service() -> Arc<dyn services::ConcurrencyService> {
     Arc::new(LocalConcurrencyService::new())
   }
 
-  /// Builds the access request service.
   async fn build_access_request_service(
     setting_service: &Arc<dyn SettingService>,
     db_service: Arc<dyn DbService>,
@@ -355,12 +341,10 @@ impl AppServiceBuilder {
     ))
   }
 
-  /// Builds the network service.
   fn build_network_service() -> Arc<dyn NetworkService> {
     Arc::new(DefaultNetworkService)
   }
 
-  /// Builds the MCP service.
   fn build_mcp_service(
     db_service: Arc<dyn DbService>,
     time_service: Arc<dyn TimeService>,
@@ -374,7 +358,6 @@ impl AppServiceBuilder {
   }
 }
 
-/// Builds the encryption key given production flag and optional env-provided key value.
 async fn build_encryption_key(
   is_production: bool,
   encryption_key_value: Option<String>,

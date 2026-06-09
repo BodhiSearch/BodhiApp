@@ -5,10 +5,6 @@ use crate::models::{
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-// =============================================================================
-// Constants
-// =============================================================================
-
 /// Vision-capable architectures (research-report.md Section 1)
 const VISION_ARCHITECTURES: &[&str] = &[
   "qwen2vl",
@@ -47,10 +43,6 @@ const QUANTIZATION_PATTERNS: &[(&str, &str)] = &[
   ("f16", "F16"),
   ("f32", "F32"),
 ];
-
-// =============================================================================
-// Regex Patterns (Compiled Once)
-// =============================================================================
 
 /// Tool calling patterns from research-report.md Section 3
 static TOOL_PATTERNS: Lazy<Vec<Regex>> = Lazy::new(|| {
@@ -101,10 +93,6 @@ static STRUCTURED_PATTERNS: Lazy<Vec<Regex>> = Lazy::new(|| {
   ]
 });
 
-// =============================================================================
-// Public API
-// =============================================================================
-
 /// Extract complete model metadata from GGUF file
 pub fn extract_metadata(metadata: &GGUFMetadata, filename: &str) -> ModelMetadata {
   ModelMetadata {
@@ -130,10 +118,6 @@ pub fn extract_capabilities(metadata: &GGUFMetadata) -> ModelCapabilities {
     },
   }
 }
-
-// =============================================================================
-// Capability Detection (Research-Driven)
-// =============================================================================
 
 /// Detect vision support from GGUF metadata
 ///
@@ -311,10 +295,6 @@ pub fn detect_structured_output(chat_template: Option<&str>) -> Option<bool> {
   Some(false)
 }
 
-// =============================================================================
-// Context Extraction
-// =============================================================================
-
 /// Extract context limits from GGUF metadata
 ///
 /// Context length is stored in architecture-specific keys:
@@ -330,15 +310,12 @@ pub fn extract_context(metadata: &GGUFMetadata) -> ContextLimits {
 
 /// Get context length from architecture-specific key
 fn get_context_length(metadata: &GGUFMetadata) -> Option<u64> {
-  // Get architecture name
   let arch = metadata
     .get("general.architecture")
     .and_then(|v| v.as_str().ok())?;
 
-  // Build architecture-specific key
   let key = format!("{}.context_length", arch);
 
-  // Try to get value as different integer types
   if let Some(value) = metadata.get(&key) {
     if let Ok(v) = value.as_u64() {
       return Some(v);
@@ -356,10 +333,6 @@ fn get_context_length(metadata: &GGUFMetadata) -> Option<u64> {
 
   None
 }
-
-// =============================================================================
-// Architecture Extraction
-// =============================================================================
 
 /// Extract model architecture information from GGUF metadata
 pub fn extract_architecture(metadata: &GGUFMetadata, filename: &str) -> ModelArchitecture {
@@ -424,10 +397,6 @@ fn parse_quantization_from_filename(filename: &str) -> Option<String> {
 
   None
 }
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
 
 /// Extract chat template from GGUF metadata
 pub fn get_chat_template(metadata: &GGUFMetadata) -> Option<String> {

@@ -1,32 +1,9 @@
-/**
- * ModelCard Component Tests
- *
- * Purpose: Comprehensive testing of model card display, download states,
- * and user interactions in isolation.
- *
- * Focus Areas:
- * - Model information display (name, badge, specs, benchmarks, links)
- * - Download state rendering (idle, pending, completed, error)
- * - Progress tracking and byte formatting
- * - User interactions (download clicks, link navigation)
- * - Tooltip content and accessibility
- *
- * Test Coverage:
- * 1. Display: Model info, badges, specs, benchmarks, links (3 tests)
- * 2. States: Idle, pending, completed button rendering (3 tests)
- * 3. Progress: Progress bar, byte formatting, polling updates (2 tests)
- * 4. Interactions: Download click, HuggingFace link (2 tests)
- *
- * Total: 10 comprehensive component-level tests
- */
-
 import { ModelCard } from '@/routes/setup/download-models/-components/ModelCard';
 import { ModelInfo } from '@/hooks/models/model-catalog-types';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-// Test fixtures
 const chatModelFixture: ModelInfo = {
   id: 'qwen2.5-14b',
   name: 'Qwen2.5 14B',

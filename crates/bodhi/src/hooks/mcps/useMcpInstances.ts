@@ -6,10 +6,6 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 import { mcpKeys, MCPS_ENDPOINT } from './constants';
 
-// ============================================================================
-// Query Hooks - MCP Instance CRUD
-// ============================================================================
-
 export function useListMcps(options?: {
   enabled?: boolean;
 }): UseQueryResult<ListMcpsResponse, AxiosError<BodhiErrorResponse>> {
@@ -22,10 +18,6 @@ export function useGetMcp(
 ): UseQueryResult<Mcp, AxiosError<BodhiErrorResponse>> {
   return useQuery<Mcp>(mcpKeys.detail(id), `${MCPS_ENDPOINT}/${id}`, undefined, options);
 }
-
-// ============================================================================
-// Mutation Hooks - MCP Instance CRUD
-// ============================================================================
 
 export function useCreateMcp(options?: {
   onSuccess?: (mcp: Mcp) => void;
@@ -91,5 +83,4 @@ export function useDeleteMcp(options?: {
   );
 }
 
-// Re-export types for consumers
 export type { Mcp, McpRequest, ListMcpsResponse };

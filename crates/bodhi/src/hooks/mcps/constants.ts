@@ -35,7 +35,6 @@ export const oauthTokenKeys = {
   detail: (tokenId: string) => [...oauthTokenKeys.all, tokenId] as const,
 };
 
-// Endpoint constants (consolidated from hook files)
 export const MCPS_ENDPOINT = `${BODHI_API_BASE}/mcps`;
 export const MCP_SERVERS_ENDPOINT = `${BODHI_API_BASE}/mcps/servers`;
 export const MCPS_AUTH_CONFIGS_ENDPOINT = `${BODHI_API_BASE}/mcps/auth-configs`;

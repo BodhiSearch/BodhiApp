@@ -21,10 +21,6 @@ export const createWrapper = () => {
   return Wrapper;
 };
 
-/**
- * Mock window.location for tests
- * @param href - The URL to mock as window.location.href
- */
 export const mockWindowLocation = (href: string) => {
   const url = new URL(href);
   let currentHref = href;

@@ -66,13 +66,10 @@ pub async fn tokens_create(
     return Err(TokenRouteError::AccessTokenMissing.into());
   }
 
-  // Validate privilege escalation - users cannot create tokens with higher privileges than their role
+  // users cannot create tokens with higher privileges than their own role
   let token_scope = match (user_role, &request.scope) {
-    // User can only create user-level tokens
     (ResourceRole::User, TokenScope::User) => Ok(request.scope),
     (ResourceRole::User, _) => Err(TokenRouteError::PrivilegeEscalation),
-
-    // Other roles (PowerUser, Manager, Admin) can create user or power_user tokens
     (_, TokenScope::User | TokenScope::PowerUser) => Ok(request.scope),
   }?;
 

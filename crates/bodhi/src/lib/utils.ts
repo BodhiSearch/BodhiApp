@@ -19,13 +19,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 7);
 
-/**
- * Smart URL handling utility that determines whether to use TanStack Router navigate or window.location.href
- * based on same-origin vs external URL detection.
- *
- * @param location - The URL to redirect to
- * @param navigate - TanStack Router navigate function from useNavigate()
- */
+// Routes same-origin URLs through TanStack Router navigate; external URLs via window.location.href.
 export function handleSmartRedirect(
   location: string,
   navigate: (opts: { to: string; search?: Record<string, string> }) => void
@@ -66,9 +60,6 @@ export function handleSmartRedirect(
   }
 }
 
-/**
- * Type guard helper functions for AliasResponse discriminated union
- */
 export const isApiAlias = (model: AliasResponse): model is ApiAliasResponse => model.source === 'api';
 
 export const isUserAlias = (model: AliasResponse): model is UserAliasResponse => model.source === 'user';
@@ -81,12 +72,9 @@ export const isModelRouterAlias = (model: AliasResponse): model is ModelRouterRe
 export const isLocalAlias = (model: AliasResponse): model is UserAliasResponse | ModelAliasResponse =>
   model.source === 'user' || model.source === 'model';
 
-// Helper type for local aliases that have repo, filename, snapshot properties
 export type LocalAlias = UserAliasResponse | ModelAliasResponse;
 
-// Type guard that ensures the model has local file properties
 export const hasLocalFileProperties = (model: AliasResponse): model is LocalAlias => isLocalAlias(model);
 
-// Type guard for models that can have metadata (local models only)
 export const hasModelMetadata = (model: AliasResponse): model is UserAliasResponse | ModelAliasResponse =>
   model.source === 'user' || model.source === 'model';

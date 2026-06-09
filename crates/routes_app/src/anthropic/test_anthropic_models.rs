@@ -129,12 +129,11 @@ async fn test_models_list_aggregates_from_all_anthropic_aliases() -> anyhow::Res
   assert_eq!(StatusCode::OK, response.status());
   let body = response.json::<serde_json::Value>().await?;
   let data = body["data"].as_array().unwrap();
-  assert_eq!(3, data.len()); // 3 unique models
+  assert_eq!(3, data.len());
   let ids: Vec<&str> = data.iter().map(|m| m["id"].as_str().unwrap()).collect();
   assert!(ids.contains(&"claude-sonnet-4-5-20250929"));
   assert!(ids.contains(&"claude-opus-4-5-20251101"));
   assert!(ids.contains(&"claude-haiku-4-5-20251001"));
-  // All entries carry type: "model"
   for item in data {
     assert_eq!("model", item["type"].as_str().unwrap());
   }

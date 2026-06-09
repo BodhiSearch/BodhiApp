@@ -84,7 +84,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Unique composite index: (tenant_id, user_id, toolset_type, slug)
     manager
       .create_index(
         Index::create()

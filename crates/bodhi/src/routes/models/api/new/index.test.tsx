@@ -6,7 +6,6 @@ import userEvent from '@testing-library/user-event';
 import { server } from '@/test-utils/msw-v2/setup';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Test utilities and data
 import {
   mockApiFormatsDefault,
   mockTestApiModelSuccess,
@@ -44,7 +43,6 @@ import {
   expectNavigationCall,
 } from '@/test-utils/api-model-test-utils';
 
-// Mock router
 const navigateMock = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
@@ -60,7 +58,6 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Mock toast
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast, dismiss: () => {} }),

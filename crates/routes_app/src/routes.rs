@@ -675,7 +675,6 @@ async fn apply_ui_router(
     .map(|val| val.parse::<bool>().unwrap_or_default())
     .unwrap_or_default();
 
-  // Root redirect: / → /ui/
   let router = router.route("/", get(|| async { Redirect::temporary("/ui/") }));
 
   match (is_production, proxy_ui) {

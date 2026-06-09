@@ -134,7 +134,6 @@ async fn test_tenants_index_returns_user_tenants_for_multi_tenant_session() -> a
       .await?,
   );
 
-  // Create a tenant with status Ready
   let tenant = app_service
     .tenant_service()
     .create_tenant(
@@ -147,7 +146,6 @@ async fn test_tenants_index_returns_user_tenants_for_multi_tenant_session() -> a
     )
     .await?;
 
-  // Create tenant-user membership
   app_service
     .tenant_service()
     .upsert_tenant_user(&tenant.id, "test-user")
@@ -190,7 +188,6 @@ async fn test_tenants_index_with_client_id_some_returns_tenants() -> anyhow::Res
       .await?,
   );
 
-  // Create a tenant with status Ready
   let tenant = app_service
     .tenant_service()
     .create_tenant(
@@ -203,7 +200,6 @@ async fn test_tenants_index_with_client_id_some_returns_tenants() -> anyhow::Res
     )
     .await?;
 
-  // Create tenant-user membership
   app_service
     .tenant_service()
     .upsert_tenant_user(&tenant.id, "test-user")

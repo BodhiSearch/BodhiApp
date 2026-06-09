@@ -27,10 +27,6 @@ export const Route = createFileRoute('/apps/access-requests/review/')({
   component: ReviewAccessRequestPage,
 });
 
-// ============================================================================
-// Non-Draft Status Handler
-// ============================================================================
-
 const NonDraftStatus = ({ status, flowType }: { status: string; flowType: string }) => {
   useEffect(() => {
     if (flowType === 'popup') {
@@ -82,11 +78,6 @@ const NonDraftStatus = ({ status, flowType }: { status: string; flowType: string
   );
 };
 
-// ============================================================================
-// Review Content Component
-// ============================================================================
-
-// Role scope constants and utilities
 const SCOPE_ORDER = ['scope_user_power_user', 'scope_user_user'] as const;
 type UserScopeValue = (typeof SCOPE_ORDER)[number];
 
@@ -109,8 +100,7 @@ function computeRoleOptions(
       : 'scope_user_user';
   const maxGrantableIndex = SCOPE_ORDER.indexOf(maxGrantable as UserScopeValue);
 
-  // Available options: all scopes at or below min(requestedScope, maxGrantable)
-  // Higher index in SCOPE_ORDER = lower/more-restrictive scope
+  // Higher index in SCOPE_ORDER = lower/more-restrictive scope; cap at min(requested, maxGrantable)
   const startIndex = Math.max(requestedIndex, maxGrantableIndex);
   return SCOPE_ORDER.slice(startIndex).map((scope) => ({
     value: scope,
@@ -197,7 +187,6 @@ const ReviewContent = () => {
     return mcpsValid;
   }, [reviewData, selectedMcpInstances, approvedMcps, approvedRole]);
 
-  // Compute approve button label
   const approvedCount = useMemo(() => {
     const mcpsApproved = (reviewData?.mcps_info ?? []).filter((m) => approvedMcps[m.url]).length;
     return mcpsApproved;
@@ -205,17 +194,15 @@ const ReviewContent = () => {
 
   const totalCount = reviewData?.mcps_info?.length ?? 0;
 
-  // No id query param
   if (!id) {
     return <ErrorPage message="Missing access request ID" />;
   }
 
-  // Action completed: show immediate result without waiting for refetch
+  // Show immediate result without waiting for refetch
   if (actionResult) {
     return <NonDraftStatus status={actionResult.status} flowType={actionResult.flow_type} />;
   }
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="container mx-auto max-w-2xl p-4" data-testid="review-access-loading">
@@ -233,7 +220,6 @@ const ReviewContent = () => {
     );
   }
 
-  // Error state
   if (error || !reviewData) {
     return (
       <div data-testid="review-access-error">
@@ -242,12 +228,10 @@ const ReviewContent = () => {
     );
   }
 
-  // Non-draft: already processed
   if (reviewData.status !== 'draft') {
     return <NonDraftStatus status={reviewData.status} flowType={reviewData.flow_type} />;
   }
 
-  // Draft: show review form
   const handleApprove = () => {
     setIsSubmitting(true);
     const body: ApproveAccessRequest = {
@@ -369,10 +353,6 @@ const ReviewContent = () => {
     </div>
   );
 };
-
-// ============================================================================
-// Page Component
-// ============================================================================
 
 export default function ReviewAccessRequestPage() {
   return (

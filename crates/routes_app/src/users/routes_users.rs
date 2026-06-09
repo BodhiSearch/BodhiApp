@@ -9,7 +9,6 @@ use axum::{
 use services::{ChangeRoleRequest, UserListResponse};
 use tracing::{error, info, warn};
 
-/// List users
 #[utoipa::path(
     get,
     path = "/bodhi/v1/users",
@@ -45,7 +44,6 @@ pub async fn users_index(
   Ok(Json(users))
 }
 
-/// Change user role
 #[utoipa::path(
     put,
     path = "/bodhi/v1/users/{user_id}/role",
@@ -97,8 +95,7 @@ pub async fn users_change_role(
       UsersRouteError::RoleChangeFailed(e.to_string())
     })?;
 
-  // Clear existing sessions for the user to ensure new role is applied
-  // Note: We don't fail the operation if session clearing fails, just log it
+  // Clear sessions so the new role takes effect; don't fail the op if clearing fails, just log.
   match auth_scope
     .session_service()
     .clear_sessions_for_user(&user_id)
@@ -121,7 +118,6 @@ pub async fn users_change_role(
   Ok(StatusCode::OK)
 }
 
-/// Remove user
 #[utoipa::path(
     delete,
     path = "/bodhi/v1/users/{user_id}",
@@ -145,7 +141,6 @@ pub async fn users_destroy(
   Path(user_id): Path<String>,
 ) -> Result<StatusCode, BodhiErrorResponse> {
   // Role ceiling check: caller cannot delete users with higher privilege (AUTHZ-VULN-06)
-  // Fetch the target user's role, then compare against caller's role
   let caller_role = auth_scope
     .auth_context()
     .resource_role()

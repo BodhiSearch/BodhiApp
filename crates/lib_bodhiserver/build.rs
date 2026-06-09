@@ -12,7 +12,6 @@ fn main() {
 }
 
 fn _main() -> anyhow::Result<()> {
-  // Capture git commit SHA at build time
   capture_git_sha();
 
   // Skip the frontend pipeline entirely when the embed-ui feature is disabled
@@ -25,24 +24,16 @@ fn _main() -> anyhow::Result<()> {
   let bodhi_dir = manifest_dir.join("../bodhi");
   let project_root = manifest_dir.join("../..");
   let out_dir = bodhi_dir.join("out");
-  // Build frontend
   if is_ci() || !out_dir.exists() {
     ensure_ts_client_built(&project_root)?;
     build_frontend(&bodhi_dir)?;
   }
-  // Validate assets exist
   validate_frontend_assets(&bodhi_dir)?;
-
-  // Set rerun conditions
-  // println!("cargo:rerun-if-changed=../bodhi/src");
-  // println!("cargo:rerun-if-changed=../bodhi/package.json");
-  // println!("cargo:rerun-if-changed=../bodhi/vite.config.ts");
 
   Ok(())
 }
 
 fn capture_git_sha() {
-  // Rerun conditions for git changes
   println!("cargo:rerun-if-changed=../../.git/HEAD");
   if let Ok(head_ref) = fs::read_to_string("../../.git/HEAD") {
     if head_ref.starts_with("ref: ") {
@@ -51,7 +42,6 @@ fn capture_git_sha() {
     }
   }
 
-  // Capture SHA via git command
   let sha = Command::new("git")
     .args(["rev-parse", "HEAD"])
     .output()
@@ -71,7 +61,6 @@ fn is_ci() -> bool {
 fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
   println!("cargo:warning=Building frontend in {:?}", bodhi_dir);
 
-  // Install dependencies
   let status = create_npm_command()
     .args(["install"])
     .current_dir(bodhi_dir)
@@ -84,7 +73,6 @@ fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
     bail!("npm install failed");
   }
 
-  // Build frontend
   let status = create_npm_command()
     .args(["run", "build"])
     .current_dir(bodhi_dir)
@@ -138,7 +126,6 @@ fn ensure_ts_client_built(project_root: &Path) -> anyhow::Result<()> {
 fn build_ts_client(ts_client_dir: &Path) -> anyhow::Result<()> {
   println!("cargo:warning=Building ts-client in {:?}", ts_client_dir);
 
-  // Install dependencies
   let status = create_npm_command()
     .args(["install"])
     .current_dir(ts_client_dir)
@@ -151,7 +138,6 @@ fn build_ts_client(ts_client_dir: &Path) -> anyhow::Result<()> {
     bail!("npm install failed in ts-client");
   }
 
-  // Build ts-client with OpenAPI generation
   let status = create_npm_command()
     .args(["run", "build:openapi"])
     .current_dir(ts_client_dir)

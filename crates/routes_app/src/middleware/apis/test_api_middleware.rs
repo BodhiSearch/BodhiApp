@@ -22,7 +22,6 @@ async fn test_handler() -> Response<Body> {
     .unwrap()
 }
 
-/// Helper middleware that injects AuthContext into request extensions
 async fn inject_auth_context(
   auth_context: AuthContext,
   mut req: axum::extract::Request,
@@ -184,10 +183,6 @@ async fn test_api_auth_middleware_missing_role() -> anyhow::Result<()> {
   );
   Ok(())
 }
-
-// ===============================
-// UserScope Tests
-// ===============================
 
 #[rstest]
 #[case::user_accessing_user(UserScope::User, UserScope::User)]

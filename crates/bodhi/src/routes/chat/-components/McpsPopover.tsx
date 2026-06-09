@@ -24,16 +24,10 @@ interface McpsPopoverProps {
   mcpConnectionStatus: Map<string, McpConnectionStatus>;
 }
 
-/**
- * Check if an MCP instance is available for use in chat.
- */
 function isMcpAvailable(mcp: Mcp): boolean {
   return mcp.mcp_server.enabled && mcp.enabled;
 }
 
-/**
- * Get the reason why an MCP is unavailable.
- */
 function getUnavailableReason(mcp: Mcp): string | null {
   if (!mcp.mcp_server.enabled) return 'Disabled by administrator';
   if (!mcp.enabled) return 'Disabled by user';

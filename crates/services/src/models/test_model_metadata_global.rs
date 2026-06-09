@@ -69,17 +69,14 @@ async fn test_cross_tenant_model_metadata_isolation(
   ctx.service.upsert_model_metadata(&meta_a).await?;
   ctx.service.upsert_model_metadata(&meta_b).await?;
 
-  // Tenant A only sees its own metadata
   let list_a = ctx.service.list_model_metadata(TEST_TENANT_ID).await?;
   assert_eq!(1, list_a.len());
   assert_eq!(TEST_TENANT_ID, list_a[0].tenant_id);
 
-  // Tenant B only sees its own metadata
   let list_b = ctx.service.list_model_metadata(TEST_TENANT_B_ID).await?;
   assert_eq!(1, list_b.len());
   assert_eq!(TEST_TENANT_B_ID, list_b[0].tenant_id);
 
-  // Cross-tenant get returns None
   let cross = ctx
     .service
     .get_model_metadata_by_file(TEST_TENANT_ID, "test/repo-b", "model-b.gguf", "main")

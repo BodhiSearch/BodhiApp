@@ -199,7 +199,7 @@ pub async fn anthropic_models_list_handler(
             ordered.push(entry);
           }
         }
-        ApiModel::OpenAI(_) | ApiModel::Gemini(_) => {} // skip — wrong format for anthropic endpoint
+        ApiModel::OpenAI(_) | ApiModel::Gemini(_) => {}
       }
     }
   }

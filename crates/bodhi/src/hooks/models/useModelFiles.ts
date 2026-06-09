@@ -1,7 +1,5 @@
-// External imports
 import { PaginatedLocalModelResponse } from '@bodhiapp/ts-client';
 
-// Internal imports
 import { useQuery } from '@/hooks/useQuery';
 
 import { modelFileKeys, ENDPOINT_MODEL_FILES } from './constants';

@@ -7,8 +7,6 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-// ===== Download Request Tests =====
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]

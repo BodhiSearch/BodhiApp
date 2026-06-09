@@ -102,7 +102,6 @@ impl TokenService for DefaultTokenService {
       .map(|r| r.client_id)
       .unwrap_or_else(|| tenant_id.to_string());
 
-    // Generate cryptographically secure random token
     let mut random_bytes = [0u8; 32];
     rand::rng().fill_bytes(&mut random_bytes);
     let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);

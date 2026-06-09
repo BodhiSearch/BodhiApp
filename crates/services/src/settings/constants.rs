@@ -1,4 +1,3 @@
-// System settings
 pub const BODHI_HOME: &str = "BODHI_HOME";
 pub const BODHI_ENV_TYPE: &str = "BODHI_ENV_TYPE";
 pub const BODHI_APP_TYPE: &str = "BODHI_APP_TYPE";
@@ -7,7 +6,6 @@ pub const BODHI_COMMIT_SHA: &str = "BODHI_COMMIT_SHA";
 pub const BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
 pub const BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
 
-// App Settings
 pub const HF_HOME: &str = "HF_HOME";
 pub const HF_TOKEN: &str = "HF_TOKEN";
 pub const BODHI_LOGS: &str = "BODHI_LOGS";
@@ -21,15 +19,12 @@ pub const BODHI_PUBLIC_SCHEME: &str = "BODHI_PUBLIC_SCHEME";
 pub const BODHI_PUBLIC_HOST: &str = "BODHI_PUBLIC_HOST";
 pub const BODHI_PUBLIC_PORT: &str = "BODHI_PUBLIC_PORT";
 pub const BODHI_CANONICAL_REDIRECT: &str = "BODHI_CANONICAL_REDIRECT";
-// Exec settings
 pub const BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
 pub const BODHI_EXEC_VARIANT: &str = "BODHI_EXEC_VARIANT";
 pub const BODHI_EXEC_TARGET: &str = "BODHI_EXEC_TARGET";
 pub const BODHI_EXEC_NAME: &str = "BODHI_EXEC_NAME";
 pub const BODHI_EXEC_VARIANTS: &str = "BODHI_EXEC_VARIANTS";
-// Server arguments settings
 pub const BODHI_LLAMACPP_ARGS: &str = "BODHI_LLAMACPP_ARGS";
-// Server operations settings
 pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
 
 pub const DEFAULT_SCHEME: &str = "http";
@@ -56,14 +51,12 @@ pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
 pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
 pub const BODHI_DEV_PROXY_UI_PORT: &str = "BODHI_DEV_PROXY_UI_PORT";
 
-// Deployment settings
 pub const BODHI_SESSION_DB_URL: &str = "BODHI_SESSION_DB_URL";
 pub const BODHI_APP_DB_URL: &str = "BODHI_APP_DB_URL";
 pub const BODHI_DEPLOYMENT: &str = "BODHI_DEPLOYMENT";
 pub const BODHI_MULTITENANT_CLIENT_ID: &str = "BODHI_MULTITENANT_CLIENT_ID";
 pub const BODHI_MULTITENANT_CLIENT_SECRET: &str = "BODHI_MULTITENANT_CLIENT_SECRET";
 
-// RunPod settings
 pub const BODHI_ON_RUNPOD: &str = "BODHI_ON_RUNPOD";
 pub const RUNPOD_POD_ID: &str = "RUNPOD_POD_ID";
 

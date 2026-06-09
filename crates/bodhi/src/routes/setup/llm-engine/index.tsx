@@ -14,7 +14,6 @@ export const Route = createFileRoute('/setup/llm-engine/')({
   component: LLMEnginePage,
 });
 
-// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -33,7 +32,6 @@ const itemVariants = {
   },
 };
 
-// Types
 interface HardwareInfo {
   os: string;
   gpu: string;
@@ -56,7 +54,6 @@ interface EngineOption {
   size: string;
 }
 
-// Stub data
 const stubHardware: HardwareInfo = {
   os: 'Windows 11 Pro',
   gpu: 'NVIDIA RTX 4080 (12GB)',
@@ -70,7 +67,6 @@ const stubHardware: HardwareInfo = {
   },
 };
 
-// Expanded stub data to show different states
 const stubEnginesWithStates: (EngineOption & {
   state: 'idle' | 'downloading' | 'complete' | 'error';
   progress?: number;
@@ -106,7 +102,6 @@ const stubEnginesWithStates: (EngineOption & {
   },
 ];
 
-// Additional engines for expanded list
 const additionalEngines: EngineOption[] = [
   {
     id: 'vulkan-opt',
@@ -240,7 +235,6 @@ function LLMEngineContent() {
 
   const handleDownload = () => {
     setDownloadState({ status: 'downloading', progress: 0 });
-    // Simulate download progress
     let progress = 0;
     const interval = setInterval(() => {
       progress += 10;
@@ -262,14 +256,12 @@ function LLMEngineContent() {
     >
       <SetupProgress currentStep={3} totalSteps={4} />
 
-      {/* Hardware Analysis Card */}
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
             <CardTitle className="text-center">Hardware Analysis</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Add recommendation message */}
             <div className="text-center text-muted-foreground mb-4">
               <p>Based on hardware analysis, we have picked the most suitable LLM engine for optimal performance.</p>
               <p className="text-sm mt-2">
@@ -277,7 +269,6 @@ function LLMEngineContent() {
               </p>
             </div>
 
-            {/* Basic Info */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(stubHardware)
                 .filter(([key]) => key !== 'technicalDetails')
@@ -289,9 +280,7 @@ function LLMEngineContent() {
                 ))}
             </div>
 
-            {/* Technical Details */}
             <div className="space-y-4">
-              {/* Mobile Toggle Button */}
               <Button
                 variant="ghost"
                 className="w-full justify-between md:hidden"
@@ -301,7 +290,6 @@ function LLMEngineContent() {
                 {showTechnicalDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
 
-              {/* Technical Details Content - Always visible on md+ screens */}
               <div className={`space-y-2 text-sm ${showTechnicalDetails ? 'block' : 'hidden'} md:block`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {Object.entries(stubHardware.technicalDetails).map(([key, value]) => (
@@ -319,17 +307,14 @@ function LLMEngineContent() {
         </Card>
       </motion.div>
 
-      {/* Engine Selection Card */}
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
             <CardTitle className="text-center">Select LLM Engine</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Add recommended label */}
             <div className="text-sm font-medium text-muted-foreground mb-2">Recommended for Your Hardware</div>
 
-            {/* Recommended Engines */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {stubEnginesWithStates.map((engine) => (
                 <EngineCard
@@ -346,7 +331,6 @@ function LLMEngineContent() {
               ))}
             </div>
 
-            {/* Update Show All Engines Section */}
             <div className="space-y-4">
               <Button
                 variant="ghost"

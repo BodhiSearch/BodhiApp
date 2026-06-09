@@ -67,13 +67,12 @@ async fn test_create_api_model_handler_validation_error_empty_api_key(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .build()
     .await?;
 
-  // Test with raw JSON to trigger deserialization error for empty API key
+  // raw JSON (not the builder) so the empty api_key fails at deserialization
   let json_request = json!({
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
@@ -85,10 +84,8 @@ async fn test_create_api_model_handler_validation_error_empty_api_key(
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(json_request)?)
     .await?;
 
-  // Verify response status is 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-  // Verify error response contains validation error code for API key
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
   assert_eq!("json_rejection_error", error_code);
@@ -105,7 +102,6 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .build()
@@ -129,11 +125,9 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
 
-  // Verify response status is 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-  // Verify error response contains validation error code for URL
-  // ValidatedJson catches validation errors before reaching the service
+  // ValidatedJson catches the bad URL before it reaches the service
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
   assert_eq!("validation_error", error_code);
@@ -150,7 +144,6 @@ async fn test_create_api_model_handler_validation_error_empty_models(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .build()
@@ -174,10 +167,8 @@ async fn test_create_api_model_handler_validation_error_empty_models(
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
 
-  // Verify response status is 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-  // Verify error response contains validation error code
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
   assert_eq!("api_model_service_error-validation", error_code);
@@ -224,10 +215,8 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
 
-  // Verify response status is 201 Created
   assert_eq!(response.status(), StatusCode::CREATED);
 
-  // Verify the API model was created with forward_all_with_prefix=true
   let response_body = response.json::<ApiAliasResponse>().await?;
   assert_eq!(response_body.forward_all_with_prefix, true);
   assert_eq!(response_body.prefix, Some("fwd/".to_string()));
@@ -245,7 +234,6 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .build()
@@ -269,10 +257,8 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
 
-  // Verify response status is 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-  // Verify error response contains validation error code for prefix
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
   assert_eq!("api_model_service_error-validation", error_code);
@@ -282,7 +268,6 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
 
 #[rstest]
 fn test_creds_enum_validation() {
-  // Test with ApiKey credentials
   let test_request_with_key = TestPromptRequest::default_for(
     ApiFormat::OpenAI,
     DefaultTestPromptRequest {
@@ -296,7 +281,6 @@ fn test_creds_enum_validation() {
   );
   assert!(test_request_with_key.validate().is_ok());
 
-  // Test with Id credentials
   let test_request_with_id = TestPromptRequest::default_for(
     ApiFormat::OpenAI,
     DefaultTestPromptRequest {
@@ -310,7 +294,6 @@ fn test_creds_enum_validation() {
   );
   assert!(test_request_with_id.validate().is_ok());
 
-  // Test with no authentication (ApiKey(None))
   let test_request_no_auth = TestPromptRequest::default_for(
     ApiFormat::OpenAI,
     DefaultTestPromptRequest {
@@ -324,7 +307,6 @@ fn test_creds_enum_validation() {
   );
   assert!(test_request_no_auth.validate().is_ok());
 
-  // Test FetchModelsRequest variants
   let fetch_request_with_key = FetchModelsRequest::default_for(
     ApiFormat::OpenAI,
     DefaultFetchModelsRequest {
@@ -371,7 +353,6 @@ fn test_anthropic_oauth_format_accepted_by_api_model_request() {
 
   assert!(request.validate().is_ok());
 
-  // Verify serde roundtrip preserves anthropic_oauth format name
   let serialized = serde_json::to_value(request.api_format()).unwrap();
   assert_eq!("anthropic_oauth", serialized.as_str().unwrap());
 }

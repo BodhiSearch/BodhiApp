@@ -12,13 +12,11 @@ use tempfile::TempDir;
 #[fixture]
 pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
   let bodhi_home = temp_dir.path().to_string_lossy().to_string();
-  // Generate a random port for testing
   let port = {
     use rand::Rng;
     rand::rng().random_range(20000..30000)
   };
 
-  // Get default exec lookup path for testing
   let exec_lookup_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .join("..")
     .join("llama_server_proc")
@@ -30,14 +28,12 @@ pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
     .to_string();
   let mut config = create_napi_app_options();
 
-  // Set basic configuration
   let app_db_url = format!("sqlite:{}", temp_dir.path().join("app.db").display());
   config = set_env_var(config, BODHI_HOME.to_string(), bodhi_home);
   config = set_env_var(config, BODHI_HOST.to_string(), "127.0.0.1".to_string());
   config = set_env_var(config, BODHI_PORT.to_string(), port.to_string());
   config = set_env_var(config, "BODHI_APP_DB_URL".to_string(), app_db_url);
 
-  // Set system settings for basic app setup
   config = set_system_setting(
     config,
     BODHI_ENV_TYPE.to_string(),
@@ -57,7 +53,6 @@ pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
     "standalone".to_string(),
   );
 
-  // Set optional configurations
   config = set_env_var(config, BODHI_EXEC_LOOKUP_PATH.to_string(), exec_lookup_path);
 
   config = set_env_var(config, BODHI_LOG_LEVEL.to_string(), "info".to_string());
@@ -70,7 +65,6 @@ pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
   (config, temp_dir)
 }
 
-/// Create a test configuration with custom settings
 pub fn test_config_with_settings(
   mut config: NapiAppOptions,
   settings: HashMap<String, String>,

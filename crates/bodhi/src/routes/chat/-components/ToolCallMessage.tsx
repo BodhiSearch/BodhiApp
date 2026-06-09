@@ -12,17 +12,11 @@ export type ToolCallStatus = 'calling' | 'completed' | 'error';
 
 interface ToolCallMessageProps {
   toolCall: ToolCall;
-  /** The tool result message, if available */
   toolResult?: Message;
-  /** Current status of the tool call */
   status: ToolCallStatus;
-  /** Force the collapsible to be open (for "calling" state) */
   forceOpen?: boolean;
 }
 
-/**
- * Format JSON for display with pretty printing.
- */
 function formatJson(value: string): string {
   try {
     const parsed = JSON.parse(value);
@@ -32,9 +26,6 @@ function formatJson(value: string): string {
   }
 }
 
-/**
- * Get status badge configuration based on status.
- */
 function getStatusConfig(status: ToolCallStatus): {
   label: string;
   variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'blue' | 'green' | 'orange' | 'gray';
@@ -63,15 +54,12 @@ function getStatusConfig(status: ToolCallStatus): {
 }
 
 export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = false }: ToolCallMessageProps) {
-  // Auto-expand when calling, always reset to collapsed otherwise
   const [isOpen, setIsOpen] = useState(status === 'calling' || forceOpen);
 
-  // Update open state when status changes
   useEffect(() => {
     if (status === 'calling' || forceOpen) {
       setIsOpen(true);
     } else {
-      // Reset to collapsed when not calling
       setIsOpen(false);
     }
   }, [status, forceOpen]);
@@ -81,7 +69,6 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
   const sourceSlug = mcpDecoded?.mcpSlug ?? 'unknown';
   const statusConfig = getStatusConfig(status);
 
-  // Parse result content for display
   const resultContent = toolResult?.content ? formatJson(toolResult.content) : null;
   const isErrorResult = resultContent && resultContent.includes('"error"');
 
@@ -120,7 +107,6 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
 
         <CollapsibleContent data-testid="tool-call-content">
           <div className="border-t px-3 py-2 space-y-3">
-            {/* Arguments */}
             <div>
               <h5 className="text-xs font-medium text-muted-foreground mb-1">Arguments</h5>
               <pre className="text-xs bg-muted p-2 rounded overflow-x-auto max-h-40 overflow-y-auto">
@@ -128,7 +114,6 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
               </pre>
             </div>
 
-            {/* Result (if available) */}
             {resultContent && (
               <div>
                 <h5
@@ -157,20 +142,12 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
 }
 
 interface ToolCallsDisplayProps {
-  /** Tool calls from the assistant message */
   toolCalls: ToolCall[];
-  /** All messages to find tool results */
   messages?: Message[];
-  /** Whether the tools are currently being executed */
   isExecuting?: boolean;
 }
 
-/**
- * Display multiple tool calls with their results.
- * Matches tool calls to their results by tool_call_id.
- */
 export function ToolCallsDisplay({ toolCalls, messages = [], isExecuting = false }: ToolCallsDisplayProps) {
-  // Create a map of tool_call_id to result message
   const resultMap = new Map<string, Message>();
   for (const msg of messages) {
     if (msg.role === 'tool' && msg.tool_call_id) {
@@ -185,7 +162,6 @@ export function ToolCallsDisplay({ toolCalls, messages = [], isExecuting = false
         let status: ToolCallStatus = 'calling';
 
         if (result) {
-          // Check if result contains an error
           try {
             const parsed = JSON.parse(result.content);
             status = parsed.error ? 'error' : 'completed';
@@ -193,7 +169,6 @@ export function ToolCallsDisplay({ toolCalls, messages = [], isExecuting = false
             status = 'completed';
           }
         } else if (!isExecuting) {
-          // No result and not executing - likely completed without explicit result
           status = 'completed';
         }
 

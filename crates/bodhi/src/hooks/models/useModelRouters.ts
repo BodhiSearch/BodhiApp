@@ -6,9 +6,6 @@ import { UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult 
 
 import { modelRouterKeys, modelKeys, ENDPOINT_MODEL_ROUTERS } from './constants';
 
-/**
- * Hook to fetch a single model-router by id
- */
 export function useGetModelRouter(
   id: string,
   options?: Omit<UseQueryOptions<ModelRouterResponse, AxiosError<BodhiErrorResponse>>, 'queryKey' | 'queryFn'>
@@ -21,9 +18,6 @@ export function useGetModelRouter(
   });
 }
 
-/**
- * Hook to create a new model-router
- */
 export function useCreateModelRouter(
   options?: UseMutationOptions<AxiosResponse<ModelRouterResponse>, AxiosError<BodhiErrorResponse>, ModelRouterRequest>
 ): UseMutationResult<AxiosResponse<ModelRouterResponse>, AxiosError<BodhiErrorResponse>, ModelRouterRequest> {
@@ -40,9 +34,6 @@ export function useCreateModelRouter(
   });
 }
 
-/**
- * Hook to update an existing model-router
- */
 export function useUpdateModelRouter(
   options?: UseMutationOptions<
     AxiosResponse<ModelRouterResponse>,
@@ -74,9 +65,6 @@ export function useUpdateModelRouter(
   );
 }
 
-/**
- * Hook to delete a model-router
- */
 export function useDeleteModelRouter(
   options?: UseMutationOptions<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string>
 ): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string> {

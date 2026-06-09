@@ -19,7 +19,7 @@ impl AuthScopedTenantService {
     &self.auth_context
   }
 
-  /// List all tenants the authenticated user has membership in, regardless of status.
+  /// Lists memberships regardless of tenant status.
   pub async fn list_my_tenants(&self) -> Result<Vec<Tenant>, TenantError> {
     let user_id = self.auth_context.require_user_id()?;
     self
@@ -29,7 +29,6 @@ impl AuthScopedTenantService {
       .await
   }
 
-  /// Check if the authenticated user has any tenant memberships.
   pub async fn has_memberships(&self) -> Result<bool, TenantError> {
     let user_id = self.auth_context.require_user_id()?;
     self
@@ -74,7 +73,6 @@ impl AuthScopedTenantService {
     self.app_service.tenant_service().get_standalone_app().await
   }
 
-  /// Passthrough: takes explicit params, no user_id scoping needed.
   pub async fn create_tenant(
     &self,
     client_id: &str,
@@ -98,7 +96,6 @@ impl AuthScopedTenantService {
       .await
   }
 
-  /// Passthrough: takes explicit tenant_id and user_id params, no scoping needed.
   pub async fn set_tenant_ready(&self, tenant_id: &str, user_id: &str) -> Result<(), TenantError> {
     self
       .app_service
@@ -107,7 +104,6 @@ impl AuthScopedTenantService {
       .await
   }
 
-  /// Passthrough: takes explicit tenant_id and user_id params, no scoping needed.
   pub async fn upsert_tenant_user(
     &self,
     tenant_id: &str,
@@ -120,7 +116,7 @@ impl AuthScopedTenantService {
       .await
   }
 
-  /// Delete a tenant by client_id, including associated tenant_users.
+  /// Cascades to associated tenant_users.
   pub async fn delete_tenant_by_client_id(&self, client_id: &str) -> Result<(), TenantError> {
     self
       .app_service
@@ -129,7 +125,6 @@ impl AuthScopedTenantService {
       .await
   }
 
-  /// List all tenants created by a specific user.
   pub async fn list_tenants_by_creator(
     &self,
     created_by: &str,

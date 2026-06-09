@@ -733,7 +733,7 @@ async fn test_create_openai_with_prefix_no_mutation(
   Ok(())
 }
 
-// Extend the extra-headers forbidden-key test to cover x-goog-api-key.
+// x-goog-api-key is also a forbidden pass-through auth header.
 #[rstest]
 #[case::x_goog_api_key(json!({"x-goog-api-key": "AIza-x"}), "x-goog-api-key")]
 #[case::x_goog_api_key_capitalized(json!({"X-Goog-Api-Key": "AIza-x"}), "X-Goog-Api-Key")]

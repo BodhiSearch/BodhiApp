@@ -27,7 +27,6 @@ const components: Partial<Components> = {
       );
     }
 
-    // Handle code blocks
     return (
       <CodeBlock
         key={Math.random()}
@@ -74,18 +73,13 @@ export const MemoizedReactMarkdown: FC<Options> = memo(
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         className={cn(
-          // Base styles
           'space-y-4',
-          // Text formatting
           'text-base leading-7',
-          // Lists
           '[&>ul]:list-disc [&>ol]:list-decimal',
           '[&>ul]:ml-6 [&>ol]:ml-6',
-          // Code blocks
           '[&>pre]:my-4 [&>pre]:overflow-auto',
           '[&>pre]:rounded-lg [&>pre]:bg-muted',
           '[&>pre]:p-4',
-          // Custom className
           className
         )}
         components={components}

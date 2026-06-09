@@ -62,16 +62,13 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
       expect(screen.getByTestId('new-mcp-server-page')).toBeInTheDocument();
     });
 
-    // Fill in server URL
     const urlInput = screen.getByTestId('mcp-server-url-input');
     await user.clear(urlInput);
     await user.type(urlInput, 'https://mcp.asana.com/mcp');
 
-    // Expand auth config section
     const authToggle = screen.getByTestId('auth-config-section-toggle');
     await user.click(authToggle);
 
-    // Select OAuth from auth type dropdown
     const authTypeSelect = screen.getByTestId('auth-config-type-select');
     await user.click(authTypeSelect);
 
@@ -152,7 +149,6 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
       expect(screen.getByTestId('new-mcp-server-page')).toBeInTheDocument();
     });
 
-    // Fill in server URL
     const urlInput = screen.getByTestId('mcp-server-url-input');
     await user.clear(urlInput);
     await user.type(urlInput, 'https://mcp.asana.com/mcp');
@@ -160,11 +156,9 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
     // Tab out to trigger name auto-population
     await user.tab();
 
-    // Expand auth config section
     const authToggle = screen.getByTestId('auth-config-section-toggle');
     await user.click(authToggle);
 
-    // Select OAuth
     const authTypeSelect = screen.getByTestId('auth-config-type-select');
     await user.click(authTypeSelect);
     await waitFor(() => {
@@ -223,16 +217,13 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
       expect(screen.getByTestId('new-mcp-server-page')).toBeInTheDocument();
     });
 
-    // Fill in server URL
     const urlInput = screen.getByTestId('mcp-server-url-input');
     await user.clear(urlInput);
     await user.type(urlInput, 'https://mcp.asana.com/mcp');
 
-    // Expand auth config section
     const authToggle = screen.getByTestId('auth-config-section-toggle');
     await user.click(authToggle);
 
-    // Select OAuth
     const authTypeSelect = screen.getByTestId('auth-config-type-select');
     await user.click(authTypeSelect);
     await waitFor(() => {

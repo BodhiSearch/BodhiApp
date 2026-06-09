@@ -1,13 +1,9 @@
-// External imports
 import { Alias, BodhiErrorResponse, PaginatedAliasResponse, UserAliasRequest } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
-// Internal imports
 import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 import { modelKeys, ENDPOINT_MODELS, ENDPOINT_ALIAS } from './constants';
-
-// Model-related hooks
 
 export function useListModels(page: number, pageSize: number, sort: string, sortOrder: string) {
   return useQuery<PaginatedAliasResponse>(modelKeys.list(page, pageSize, sort, sortOrder), ENDPOINT_MODELS, {

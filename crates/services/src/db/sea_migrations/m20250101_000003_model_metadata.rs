@@ -57,7 +57,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Unique constraint on (tenant_id, source, repo, filename, snapshot, api_model_id)
     manager
       .create_index(
         Index::create()
@@ -74,7 +73,6 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Indexes for common query patterns
     manager
       .create_index(
         Index::create()

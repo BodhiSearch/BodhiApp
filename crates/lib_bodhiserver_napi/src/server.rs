@@ -113,7 +113,6 @@ impl BodhiServer {
   /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]
   pub async unsafe fn start(&mut self) -> Result<()> {
-    // Check if server is already running
     {
       let handle_guard = self.shutdown_handle.lock().await;
       if handle_guard.is_some() {
@@ -123,7 +122,6 @@ impl BodhiServer {
         ));
       }
     }
-    // Build app options from the config
     let builder = try_build_app_options_internal(self.config.clone()).map_err(|e| {
       Error::new(
         Status::GenericFailure,
@@ -137,7 +135,6 @@ impl BodhiServer {
       )
     })?;
 
-    // Setup app directories and settings
     let (bodhi_home, source, file_defaults) = setup_app_dirs(&app_options).map_err(|e| {
       Error::new(
         Status::GenericFailure,
@@ -158,7 +155,6 @@ impl BodhiServer {
       )
     })?;
 
-    // Setup logging
     let log_guard = setup_logs(&bootstrap).map_err(|e| {
       Error::new(
         Status::GenericFailure,
@@ -168,7 +164,6 @@ impl BodhiServer {
     self.log_guard = Some(log_guard);
     let parts = bootstrap.into_parts();
 
-    // Build the app service
     let app_service_inner = build_app_service(parts).await.map_err(|e| {
       Error::new(
         Status::GenericFailure,
@@ -179,7 +174,6 @@ impl BodhiServer {
     ensure_tenant(&app_service, app_options.tenant.as_ref())
       .await
       .map_err(|err| Error::new(Status::GenericFailure, err.to_string()))?;
-    // Create and start the server
     let serve_command = ServeCommand::ByParams {
       host: self.host(),
       port: self.port(),
@@ -195,7 +189,6 @@ impl BodhiServer {
         )
       })?;
 
-    // Store the shutdown handle
     {
       let mut handle_guard = self.shutdown_handle.lock().await;
       *handle_guard = Some(handle);
@@ -223,7 +216,6 @@ impl BodhiServer {
         )
       })?;
     }
-    // Clean up log guard
     if let Some(guard) = self.log_guard.take() {
       drop(guard);
     }
@@ -255,7 +247,6 @@ impl BodhiServer {
       return Ok(false);
     }
 
-    // Try to make a simple HTTP request to the server
     let url = format!("{}/ping", self.server_url());
     match reqwest::get(&url).await {
       Ok(response) => Ok(response.status().is_success()),
@@ -341,12 +332,8 @@ async fn ensure_tenant(
 
 impl Drop for BodhiServer {
   fn drop(&mut self) {
-    if let Some(_temp_dir) = self.temp_dir.take() {
-      // temp_dir will be automatically cleaned up when dropped
-    }
-    if let Some(_log_guard) = self.log_guard.take() {
-      // log_guard will be automatically cleaned up when dropped
-    }
+    if let Some(_temp_dir) = self.temp_dir.take() {}
+    if let Some(_log_guard) = self.log_guard.take() {}
   }
 }
 
@@ -365,7 +352,6 @@ mod tests {
     let (config, _temp_dir) = test_config;
     let mut server = BodhiServer::new(config).expect("Failed to create server");
 
-    // Test initial state
     let is_running = unsafe {
       server
         .is_running()
@@ -374,7 +360,6 @@ mod tests {
     };
     assert!(!is_running);
 
-    // Start the server
     unsafe {
       server.start().await.expect("Failed to start server");
     }
@@ -386,14 +371,11 @@ mod tests {
     };
     assert!(is_running);
 
-    // Give the server a moment to fully start
     sleep(Duration::from_millis(1000)).await;
 
-    // Test ping
     let ping_response = unsafe { server.ping().await.expect("Failed to ping server") };
     assert!(ping_response);
 
-    // Stop the server
     unsafe {
       server.stop().await.expect("Failed to stop server");
     }
@@ -412,7 +394,6 @@ mod tests {
     let (config, _temp_dir) = test_config;
     let server = BodhiServer::new(config).expect("Failed to create server");
 
-    // Test that we can access config values
     assert!(!server.config().env_vars.get(BODHI_HOME).unwrap().is_empty());
     assert_eq!(server.host(), "127.0.0.1");
     assert!(server.port() > 0);
@@ -424,16 +405,13 @@ mod tests {
     let (config, _temp_dir) = test_config;
     let mut server = BodhiServer::new(config).expect("Failed to create server");
 
-    // Start the server
     unsafe {
       server.start().await.expect("Failed to start server");
     }
 
-    // Try to start again - should fail
     let result = unsafe { server.start().await };
     assert!(result.is_err());
 
-    // Clean up
     unsafe {
       server.stop().await.expect("Failed to stop server");
     }

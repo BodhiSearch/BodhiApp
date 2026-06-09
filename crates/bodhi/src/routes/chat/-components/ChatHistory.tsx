@@ -24,7 +24,6 @@ export function ChatHistory() {
   const currentChatId = useChatStore((s) => s.currentChatId);
   const setCurrentChatId = useChatStore((s) => s.setCurrentChatId);
 
-  // Filter out empty chats
   const nonEmptyChats = chats.filter((chat) => chat.messageCount > 0);
   const todayChats = nonEmptyChats.filter((chat) => chat.createdAt > new Date().setDate(new Date().getDate() - 1));
   const yesterdayChats = nonEmptyChats.filter(

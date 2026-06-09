@@ -4,10 +4,6 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-// ============================================================================
-// UserAccessRequestStatus - Status for user-initiated access requests
-// ============================================================================
-
 #[derive(
   Debug,
   Clone,
@@ -27,10 +23,6 @@ pub enum UserAccessRequestStatus {
   Approved,
   Rejected,
 }
-
-// ============================================================================
-// Request/Response types for user access request domain
-// ============================================================================
 
 /// Change user role request
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]

@@ -8,12 +8,9 @@ use rstest::rstest;
 use serde_json::{json, Value};
 use services::{AppError, ErrorType};
 
-// =============================================================================
-// Synthetic AppError variants — one per ErrorType we care to map. The macro
-// derives `error_type()` from the `error_meta(error_type = ...)` attribute,
-// which feeds the `From<T: AppError> for BodhiErrorResponse` blanket impl, which feeds
-// the `From<BodhiErrorResponse> for AnthropicApiError` impl under test.
-// =============================================================================
+// Synthetic AppError variants — one per ErrorType we care to map. error_type() feeds
+// the `From<T: AppError> for BodhiErrorResponse` blanket impl, which feeds the
+// `From<BodhiErrorResponse> for AnthropicApiError` impl under test.
 
 #[derive(Debug, thiserror::Error, ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]

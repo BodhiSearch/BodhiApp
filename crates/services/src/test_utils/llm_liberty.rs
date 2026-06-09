@@ -37,7 +37,6 @@ pub fn test_llm_liberty_envelope() -> LlmLibertyEnvelope {
   }
 }
 
-/// Builds a well-formed `LlmLibertyEnvelope` for the `openai-codex` provider.
 pub fn test_llm_liberty_envelope_codex() -> LlmLibertyEnvelope {
   LlmLibertyEnvelope {
     version: "1.0.0".into(),
@@ -100,7 +99,6 @@ pub fn test_resolved_llm_liberty_credentials() -> ResolvedLlmLibertyCredentials 
   }
 }
 
-/// Builds a `ResolvedLlmLibertyCredentials` for the `openai-codex` provider.
 pub fn test_resolved_llm_liberty_credentials_codex() -> ResolvedLlmLibertyCredentials {
   ResolvedLlmLibertyCredentials {
     access_token: "test-access-token".to_string(),

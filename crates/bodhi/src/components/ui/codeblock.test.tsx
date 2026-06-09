@@ -20,12 +20,10 @@ vi.mock('@/hooks/use-toast-messages', () => ({
 
 const TEST_FILES_DIR = path.join(__dirname, '__tests__');
 
-// Helper function to read test files
 function readTestFile(filename: string): string {
   return fs.readFileSync(path.join(TEST_FILES_DIR, filename), 'utf-8').trim();
 }
 
-// Helper function to format HTML using prettier
 async function formatHTML(html: string): Promise<string> {
   return prettier.format(html, {
     parser: 'html',
@@ -73,11 +71,9 @@ describe('CodeBlock language rendering', () => {
       const syntaxHighlighter = container.querySelector('.syntax-highlighter');
       const actual = syntaxHighlighter?.innerHTML || '';
 
-      // Format both expected and actual HTML through the same prettier config
       const formattedExpected = await formatHTML(expected);
       const formattedActual = await formatHTML(actual);
 
-      // Log formatted HTML for easier debugging
       if (formattedExpected !== formattedActual) {
         console.log('Expected:\n', formattedExpected);
         console.log('\nActual:\n', formattedActual);
@@ -87,7 +83,7 @@ describe('CodeBlock language rendering', () => {
         expect(formattedActual).toBe(formattedExpected);
       } catch (error) {
         writeFailedTestOutput(file, formattedActual);
-        throw error; // Re-throw the error to fail the test
+        throw error;
       }
     });
   });

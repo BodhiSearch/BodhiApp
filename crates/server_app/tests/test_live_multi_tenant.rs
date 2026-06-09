@@ -20,7 +20,6 @@ use utils::{
   TestServerHandle,
 };
 
-/// Helper: read env vars needed for multi-tenant tests.
 struct MultiTenantEnv {
   auth_url: String,
   realm: String,
@@ -77,20 +76,7 @@ impl MultiTenantEnv {
   }
 }
 
-/// Full end-to-end multi-tenant flow:
-///
-/// 1. GET /bodhi/v1/info (no cookie) -> ready, deployment: multi-tenant
-/// 2. Get dashboard token via password grant
-/// 3. Inject dashboard token into session -> get session cookie
-/// 4. DELETE /dev/tenants/cleanup (with cookie) -> clean slate for KC and local DB
-/// 5. POST /bodhi/v1/tenants {name, description} -> 201 {client_id}
-/// 6. POST /dev/clients/{client_id}/dag (with cookie) -> 200 {client_id, client_secret}
-/// 7. Get resource token via password grant (client_id + client_secret + username + password)
-/// 8. Update session: add resource token + active_client_id
-/// 9. POST /bodhi/v1/tenants/{client_id}/activate (with cookie) -> 200
-/// 10. GET /bodhi/v1/info (with cookie) -> ready, client_id matches
-/// 11. GET /bodhi/v1/user (with cookie) -> has_dashboard_session: true
-/// 12. Cleanup: DELETE /dev/tenants/cleanup (with cookie)
+/// Full end-to-end multi-tenant flow.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -258,12 +244,7 @@ async fn test_multi_tenant_full_flow() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Info status progression in multi-tenant mode:
-///
-/// 1. No session -> ready
-/// 2. Dashboard session only, no tenants created -> setup or ready
-/// 3. Dashboard + created & activated tenant -> ready
-/// 4. Cleanup
+/// Info status progression in multi-tenant mode.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]

@@ -63,7 +63,6 @@ vi.mock('@/components/DataTable', () => ({
   ),
 }));
 
-// Mock toast
 vi.mock('@/hooks/use-toast-messages', () => ({
   useToastMessages: () => ({
     showSuccess: vi.fn(),
@@ -102,7 +101,6 @@ describe('AllRequestsPage Role-Based Access Control', () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Should show the page content, not redirect
     expect(screen.getByTestId('all-requests-page')).toBeInTheDocument();
     expect(screen.getByText('All Access Requests')).toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
@@ -127,12 +125,8 @@ describe('AllRequestsPage Role-Based Access Control', () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Should redirect - the AppInitializer will handle this
-    // In a real scenario this would redirect, but since we're testing the page component
-    // directly, we test that it handles the role-based restriction properly
+    // Redirect-on-insufficient-role is AppInitializer's job (mocked here); assert the page doesn't crash.
     await waitFor(() => {
-      // The page might show an error or redirect, depending on implementation
-      // This tests that the component doesn't crash with insufficient permissions
       expect(screen.queryByTestId('all-requests-page')).toBeInTheDocument();
     });
   });
@@ -166,20 +160,16 @@ describe('AllRequestsPage Data Display', () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for data to load
     await screen.findByText('user@example.com');
 
-    // Check that all requests are displayed
     expect(screen.getByText('user@example.com')).toBeInTheDocument();
     expect(screen.getByText('approved@example.com')).toBeInTheDocument();
     expect(screen.getByText('rejected@example.com')).toBeInTheDocument();
 
-    // Check status badges
     expect(screen.getByText('Pending')).toBeInTheDocument();
     expect(screen.getByText('Approved')).toBeInTheDocument();
     expect(screen.getByText('Rejected')).toBeInTheDocument();
 
-    // Check reviewer information for approved/rejected requests
     const reviewerElements = screen.getAllByText('admin@example.com');
     expect(reviewerElements).toHaveLength(2); // One for approved, one for rejected
   });
@@ -220,7 +210,6 @@ describe('AllRequestsPage Data Display', () => {
     });
 
     await waitFor(() => {
-      // Should show pagination controls for multiple pages
       expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
     });
   });
@@ -248,13 +237,10 @@ describe('AllRequestsPage Data Display', () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for data to load
     await screen.findByText('user@example.com');
 
-    // Pending request should show created_at date (1/1/2024)
+    // Pending request shows created_at; approved request shows updated_at.
     expect(screen.getByText('1/1/2024')).toBeInTheDocument();
-
-    // Approved request should show updated_at date (1/2/2024)
     expect(screen.getByText('1/2/2024')).toBeInTheDocument();
   });
 
@@ -281,14 +267,11 @@ describe('AllRequestsPage Data Display', () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for data to load
     await screen.findByText('user@example.com');
 
-    // Check that reviewer information is shown for approved/rejected
     const reviewerElements = screen.getAllByTestId('request-reviewer');
     expect(reviewerElements).toHaveLength(2); // Only approved and rejected, not pending
 
-    // Verify both show the correct reviewer
     reviewerElements.forEach((element) => {
       expect(element).toHaveTextContent('admin@example.com');
     });
@@ -316,14 +299,12 @@ describe('AllRequestsPage Request Management', () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Wait for data to load
     await screen.findByText('user@example.com');
 
-    // Should show inline approve/reject buttons and role selector
     expect(screen.getByText('Approve')).toBeInTheDocument();
     expect(screen.getByText('Reject')).toBeInTheDocument();
 
-    // Should show role selection dropdown (but roles only visible when opened)
+    // Role options only render once the combobox is opened.
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
@@ -346,11 +327,10 @@ describe('AllRequestsPage Request Management', () => {
 
     await screen.findByText('user@example.com');
 
-    // Click approve button (role defaults to 'resource_user')
+    // Role defaults to 'resource_user'.
     const approveButton = screen.getByText('Approve');
     await user.click(approveButton);
 
-    // The test should pass if the approve button works without throwing errors
     await waitFor(() => {
       expect(approveButton).toBeInTheDocument();
     });
@@ -363,7 +343,6 @@ describe('AllRequestsPage Request Management', () => {
 
     await screen.findByText('user@example.com');
 
-    // Should show reject button
     expect(screen.getByText('Reject')).toBeInTheDocument();
   });
 
@@ -376,11 +355,9 @@ describe('AllRequestsPage Request Management', () => {
 
     await screen.findByText('user@example.com');
 
-    // Click reject button
     const rejectButton = screen.getByText('Reject');
     await user.click(rejectButton);
 
-    // The test should pass if the reject button works without throwing errors
     await waitFor(() => {
       expect(rejectButton).toBeInTheDocument();
     });
@@ -389,7 +366,6 @@ describe('AllRequestsPage Request Management', () => {
 
 describe('AllRequestsPage Error Handling', () => {
   it('shows empty state when API call fails (no error handling in component)', async () => {
-    // Provide good app/user endpoints but failing access-requests endpoint
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
@@ -437,15 +413,13 @@ describe('AllRequestsPage Error Handling', () => {
 
     await screen.findByText('user@example.com');
 
-    // Try to approve
     const approveButton = screen.getByText('Approve');
     await user.click(approveButton);
 
-    // Select role from dropdown
     const roleSelect = screen.getByRole('combobox');
     await user.click(roleSelect);
 
-    // Should be able to click approve button (error handling is via toast, not on screen)
+    // Failure surfaces via toast, not on screen.
     expect(approveButton).toBeInTheDocument();
   });
 
@@ -470,11 +444,10 @@ describe('AllRequestsPage Error Handling', () => {
 
     await screen.findByText('user@example.com');
 
-    // Try to reject
     const rejectButton = screen.getByText('Reject');
     await user.click(rejectButton);
 
-    // Should be able to click reject button (error handling is via toast, not on screen)
+    // Failure surfaces via toast, not on screen.
     expect(rejectButton).toBeInTheDocument();
   });
 });
@@ -496,10 +469,8 @@ describe('AllRequestsPage Loading States', () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
     });
 
-    // Should show page content
     expect(screen.getByTestId('all-requests-page')).toBeInTheDocument();
 
-    // Wait for data to load
     await screen.findByText('user@example.com');
     expect(screen.getByText('All Access Requests')).toBeInTheDocument();
   });
@@ -524,14 +495,12 @@ describe('AllRequestsPage Loading States', () => {
 
     await screen.findByText('user@example.com');
 
-    // Should show approve and reject buttons
     const approveButton = screen.getByText('Approve');
     const rejectButton = screen.getByText('Reject');
 
     expect(approveButton).toBeInTheDocument();
     expect(rejectButton).toBeInTheDocument();
 
-    // Should show role selector
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 });

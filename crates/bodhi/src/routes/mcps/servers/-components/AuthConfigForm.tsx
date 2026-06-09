@@ -64,7 +64,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
       setDiscoverError('');
       setAutoDcrFailed(false);
 
-      // Ensure registration type is set to dynamic-registration after successful discovery
       if (data.registration_endpoint) {
         props.onRegistrationTypeChange('dynamic_registration');
       }
@@ -83,7 +82,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
         setAutoDcrFailed(true);
         setDiscoverError('');
       } else {
-        // Show error
         setDiscoverError(message);
       }
     },
@@ -147,7 +145,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
 
   return (
     <div className="space-y-4">
-      {/* Type selector - only show if not handled by parent */}
       {(props.showTypeSelector ?? true) && (
         <div className="space-y-2">
           <Label>Type</Label>
@@ -163,7 +160,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
         </div>
       )}
 
-      {/* Name input */}
       <div className="space-y-2">
         <Label>Name</Label>
         <Input
@@ -174,7 +170,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
         />
       </div>
 
-      {/* Header/Query param entries */}
       {props.type === 'header' && (
         <div className="space-y-3">
           <Label>Key Definitions</Label>
@@ -223,10 +218,8 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
         </div>
       )}
 
-      {/* OAuth fields */}
       {props.type === 'oauth' && (
         <>
-          {/* Registration Type */}
           <div className="space-y-2">
             <Label>Registration Type</Label>
             <Select
@@ -243,7 +236,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
             </Select>
           </div>
 
-          {/* Discovery status */}
           {isDiscovering && (
             <div
               className="flex items-center gap-2 text-sm text-muted-foreground"
@@ -254,7 +246,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
             </div>
           )}
 
-          {/* Discovery error */}
           {discoverError && (
             <div data-testid="auth-config-discover-error">
               <p className="text-sm text-destructive">{discoverError}</p>
@@ -271,7 +262,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
             </div>
           )}
 
-          {/* Pre-registered fields */}
           {props.registrationType === 'pre_registered' && (
             <>
               <div className="space-y-2">
@@ -296,7 +286,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
             </>
           )}
 
-          {/* Shared OAuth fields */}
           <div className="space-y-2">
             <Label>Authorization Endpoint</Label>
             <Input
@@ -316,7 +305,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
             />
           </div>
 
-          {/* Dynamic registration endpoint */}
           {props.registrationType === 'dynamic_registration' && (
             <div className="space-y-2">
               <Label>Registration Endpoint</Label>
@@ -329,7 +317,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
             </div>
           )}
 
-          {/* Scopes */}
           <div className="space-y-2">
             <Label>Scopes (Optional)</Label>
             <Input
@@ -342,7 +329,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
         </>
       )}
 
-      {/* Actions */}
       {(props.showActions ?? true) && (
         <div className="flex gap-2">
           <Button

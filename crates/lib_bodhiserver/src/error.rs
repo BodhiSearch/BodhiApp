@@ -6,7 +6,6 @@ use std::io;
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum BootstrapError {
-  // --- existing BootstrapError variants ---
   #[error("failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   BodhiHomeNotResolved,
@@ -23,7 +22,6 @@ pub enum BootstrapError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   BodhiHomeNotSet,
 
-  // --- absorbed from AppOptionsError ---
   #[error("validation_error: required property '{0}' is not set")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   ValidationError(String),
@@ -36,7 +34,6 @@ pub enum BootstrapError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   UnknownSystemSetting(String),
 
-  // --- absorbed from AppServiceBuilderError ---
   #[error("{0}")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ServiceAlreadySet(String),
@@ -45,7 +42,6 @@ pub enum BootstrapError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   PlaceholderValue(String),
 
-  // --- replace .expect() panic ---
   #[error("AppServiceBuilder::build() called without BootstrapParts.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   MissingBootstrapParts,
@@ -58,7 +54,6 @@ pub enum BootstrapError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   UnexpectedError(String, String),
 
-  // --- transparent service error variants ---
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   Db(#[from] DbError),

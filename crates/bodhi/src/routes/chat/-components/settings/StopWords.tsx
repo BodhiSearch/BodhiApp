@@ -41,7 +41,6 @@ export function StopWords({ isLoading = false, tooltip }: StopWordsProps) {
     setStop(newStopWords);
   };
 
-  // Determine if interactions should be disabled
   const isDisabled = isLoading || !stop_enabled;
 
   return (

@@ -284,7 +284,6 @@ async fn test_auth_middleware_with_expired_session_token(
     .get_session_store()
     .create(&mut record)
     .await?;
-  // Create mock auth service
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
     .expect_refresh_token()
@@ -296,7 +295,6 @@ async fn test_auth_middleware_with_expired_session_token(
     .times(1)
     .return_once(|_, _, _| Ok((exchanged_token_cl, Some("new_refresh_token".to_string()))));
 
-  // Setup app service with mocks
   let app_service = AppServiceStubBuilder::default()
     .with_tenant(Tenant::test_default())
     .await
@@ -382,7 +380,6 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
     .create(&mut record)
     .await?;
 
-  // Create mock auth service that succeeds refresh
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
     .expect_refresh_token()
@@ -631,7 +628,6 @@ async fn test_auth_middleware_removes_internal_token_headers() -> anyhow::Result
 async fn test_session_ignored_when_cross_site(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let dbfile = temp_bodhi_home.path().join("test.db");
   let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
-  // create dummy session record
   let id = tower_sessions::session::Id::default();
   let mut record = tower_sessions::session::Record {
     id,
@@ -684,19 +680,16 @@ async fn test_auth_middleware_bodhiapp_token_scope_variations(
     .await?;
   let db_service = app_service.db_service.as_ref().unwrap();
 
-  // Generate test token
   let mut random_bytes = [0u8; 32];
   rand::rng().fill_bytes(&mut random_bytes);
   let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
   let token_str = format!("bodhiapp_{}.{}", random_string, TEST_CLIENT_ID);
   let token_prefix = &token_str[.."bodhiapp_".len() + 8];
 
-  // Hash the token
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
 
-  // Create TokenEntity in database with specified scope
   let now = app_service.time_service().utc_now();
   let mut api_token = TokenEntity {
     id: Uuid::new_v4().to_string(),
@@ -714,21 +707,17 @@ async fn test_auth_middleware_bodhiapp_token_scope_variations(
     .create_api_token(TEST_TENANT_ID, &mut api_token)
     .await?;
 
-  // Create test router
   let state: Arc<dyn AppService> = Arc::new(app_service);
   let router = test_router(state);
 
-  // Make request with bearer token
   let req = Request::get("/with_auth")
     .header("Authorization", format!("Bearer {}", token_str))
     .body(Body::empty())?;
 
   let response = router.oneshot(req).await?;
 
-  // Assert response is successful
   assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
 
-  // Assert AuthContext is set correctly
   let actual: TestResponse = response.json().await?;
   assert_eq!("/with_auth", actual.path);
   assert_eq!(Some(token_str.clone()), actual.token);
@@ -753,19 +742,16 @@ async fn test_auth_middleware_bodhiapp_token_success() -> anyhow::Result<()> {
     .await?;
   let db_service = app_service.db_service.as_ref().unwrap();
 
-  // Generate test token
   let mut random_bytes = [0u8; 32];
   rand::rng().fill_bytes(&mut random_bytes);
   let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
   let token_str = format!("bodhiapp_{}.{}", random_string, TEST_CLIENT_ID);
   let token_prefix = &token_str[.."bodhiapp_".len() + 8];
 
-  // Hash the token
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
 
-  // Create TokenEntity in database
   let now = app_service.time_service().utc_now();
   let mut api_token = TokenEntity {
     id: Uuid::new_v4().to_string(),
@@ -783,21 +769,17 @@ async fn test_auth_middleware_bodhiapp_token_success() -> anyhow::Result<()> {
     .create_api_token(TEST_TENANT_ID, &mut api_token)
     .await?;
 
-  // Create test router
   let state: Arc<dyn AppService> = Arc::new(app_service);
   let router = test_router(state);
 
-  // Make request with bearer token
   let req = Request::get("/with_auth")
     .header("Authorization", format!("Bearer {}", token_str))
     .body(Body::empty())?;
 
   let response = router.oneshot(req).await?;
 
-  // Assert response is successful
   assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
 
-  // Assert AuthContext is set correctly
   let actual: TestResponse = response.json().await?;
   assert_eq!("/with_auth", actual.path);
   assert_eq!(Some(token_str), actual.token);
@@ -821,19 +803,16 @@ async fn test_auth_middleware_bodhiapp_token_inactive() -> anyhow::Result<()> {
     .await?;
   let db_service = app_service.db_service.as_ref().unwrap();
 
-  // Generate test token
   let mut random_bytes = [0u8; 32];
   rand::rng().fill_bytes(&mut random_bytes);
   let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
   let token_str = format!("bodhiapp_{}.{}", random_string, TEST_CLIENT_ID);
   let token_prefix = &token_str[.."bodhiapp_".len() + 8];
 
-  // Hash the token
   let mut hasher = Sha256::new();
   hasher.update(token_str.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
 
-  // Create TokenEntity in database with Inactive status
   let now = app_service.time_service().utc_now();
   let mut api_token = TokenEntity {
     id: Uuid::new_v4().to_string(),
@@ -851,18 +830,15 @@ async fn test_auth_middleware_bodhiapp_token_inactive() -> anyhow::Result<()> {
     .create_api_token(TEST_TENANT_ID, &mut api_token)
     .await?;
 
-  // Create test router
   let state: Arc<dyn AppService> = Arc::new(app_service);
   let router = test_router(state);
 
-  // Make request with bearer token
   let req = Request::get("/with_auth")
     .header("Authorization", format!("Bearer {}", token_str))
     .body(Body::empty())?;
 
   let response = router.oneshot(req).await?;
 
-  // Assert request returns 401 Unauthorized
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   let body: Value = response.json().await?;
   assert_eq!(
@@ -892,7 +868,6 @@ async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()
     .await?;
   let db_service = app_service.db_service.as_ref().unwrap();
 
-  // Generate test token
   let mut random_bytes = [0u8; 32];
   rand::rng().fill_bytes(&mut random_bytes);
   let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
@@ -909,7 +884,6 @@ async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()
   hasher.update(different_token.as_bytes());
   let token_hash = format!("{:x}", hasher.finalize());
 
-  // Create TokenEntity in database with different hash
   let now = app_service.time_service().utc_now();
   let mut api_token = TokenEntity {
     id: Uuid::new_v4().to_string(),
@@ -927,18 +901,15 @@ async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()
     .create_api_token(TEST_TENANT_ID, &mut api_token)
     .await?;
 
-  // Create test router
   let state: Arc<dyn AppService> = Arc::new(app_service);
   let router = test_router(state);
 
-  // Make request with bearer token (different from stored hash)
   let req = Request::get("/with_auth")
     .header("Authorization", format!("Bearer {}", token_str))
     .body(Body::empty())?;
 
   let response = router.oneshot(req).await?;
 
-  // Assert request returns 401 Unauthorized
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   let body: Value = response.json().await?;
   assert_eq!(

@@ -83,7 +83,7 @@ impl<T: ByteOrder> GGUFReader<T> {
       metadata: BTreeMap::new(),
       _phantom: PhantomData,
     };
-    let _num_tensors = reader.read_u64()? as usize; // num_tensors
+    let _num_tensors = reader.read_u64()? as usize;
     let num_kv = reader.read_u64()? as usize;
 
     for _ in 0..num_kv {

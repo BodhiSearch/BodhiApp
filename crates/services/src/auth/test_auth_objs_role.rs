@@ -33,16 +33,9 @@ fn test_role_ordering_explicit(
   #[case] right: ResourceRole,
   #[case] is_greater: bool,
 ) {
-  // Test greater than
   assert_eq!(left > right, is_greater);
-
-  // Test greater than or equal
   assert_eq!(left >= right, is_greater || left == right);
-
-  // Test less than (inverse of greater than, unless equal)
   assert_eq!(left < right, !is_greater && left != right);
-
-  // Test less than or equal (inverse of greater than, or equal)
   assert_eq!(left <= right, !is_greater || left == right);
 }
 
@@ -65,14 +58,11 @@ fn test_max_user_scope(#[case] role: ResourceRole, #[case] expected: UserScope) 
 #[case(ResourceRole::Anonymous, "resource_anonymous")]
 #[case(ResourceRole::Guest, "resource_guest")]
 fn test_role_string_formats(#[case] role: ResourceRole, #[case] as_str: &str) {
-  // Test Display format
   assert_eq!(role.to_string(), as_str);
 
-  // Test serialization
   let serialized = serde_json::to_string(&role).unwrap();
   assert_eq!(serialized, format!("\"{}\"", as_str));
 
-  // Test deserialization
   let deserialized: ResourceRole = serde_json::from_str(&serialized).unwrap();
   assert_eq!(deserialized, role);
 }
@@ -120,11 +110,9 @@ fn test_role_has_access_to(
 #[case(ResourceRole::Anonymous, "\"resource_anonymous\"")]
 #[case(ResourceRole::Guest, "\"resource_guest\"")]
 fn test_role_serde_format(#[case] role: ResourceRole, #[case] expected_json: &str) {
-  // Test serialization
   let serialized = serde_json::to_string(&role).unwrap();
   assert_eq!(serialized, expected_json);
 
-  // Test deserialization
   let deserialized: ResourceRole = serde_json::from_str(&serialized).unwrap();
   assert_eq!(deserialized, role);
 }

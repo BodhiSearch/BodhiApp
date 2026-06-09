@@ -85,7 +85,6 @@ async fn test_postgres_rls_policies_and_function_installed(_setup_env: ()) -> an
   let ctx = sea_context("postgres").await;
   let db = &ctx.service.db;
 
-  // Verify the current_tenant_id() function exists
   let fn_exists = db
     .query_one(Statement::from_string(
       DatabaseBackend::Postgres,
@@ -97,7 +96,6 @@ async fn test_postgres_rls_policies_and_function_installed(_setup_env: ()) -> an
 
   assert_eq!(1, fn_exists, "current_tenant_id() function must exist");
 
-  // Verify the function returns NULL when no session var is set
   let fn_result = db
     .query_one(Statement::from_string(
       DatabaseBackend::Postgres,
@@ -112,7 +110,6 @@ async fn test_postgres_rls_policies_and_function_installed(_setup_env: ()) -> an
     "current_tenant_id() must return NULL when session var is unset"
   );
 
-  // Verify the function returns the correct value when session var is set
   let fn_value = db
     .query_one(Statement::from_string(
       DatabaseBackend::Postgres,
@@ -126,7 +123,6 @@ async fn test_postgres_rls_policies_and_function_installed(_setup_env: ()) -> an
 
   assert!(fn_value, "Session var must be empty before setting it");
 
-  // Verify RLS policies exist on all expected tenant tables
   let expected_tables = vec![
     "download_requests",
     "api_model_aliases",
@@ -191,7 +187,6 @@ async fn test_postgres_rls_policies_and_function_installed(_setup_env: ()) -> an
     .chain(std::iter::once("app_access_requests"))
     .collect();
 
-  // Verify RLS is enabled on all expected tables
   for table in &all_rls_tables {
     let rls_enabled = db
       .query_one(Statement::from_string(

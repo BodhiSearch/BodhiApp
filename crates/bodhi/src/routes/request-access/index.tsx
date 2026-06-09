@@ -45,7 +45,6 @@ export function RequestAccessContent() {
     return <AuthCard title="Loading..." isLoading={true} />;
   }
 
-  // Show pending state if request exists and is pending
   if (requestStatus?.status === 'pending') {
     return (
       <AuthCard

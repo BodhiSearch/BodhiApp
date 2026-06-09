@@ -1,21 +1,3 @@
-/**
- * McpPlaygroundPage Component Tests
- *
- * Purpose: Verify MCP playground page with tool sidebar, form/JSON input, execution, and result display
- *
- * Focus Areas:
- * - Loading and error states
- * - Tool list rendering from MCP client (via real useMcpClient hook + MSW MCP protocol handlers)
- * - Tool selection and form generation from input_schema
- * - Form/JSON toggle with bidirectional sync
- * - Execute success and error flows via MCP SDK client
- * - Connection status display
- *
- * Strategy: Uses MSW MCP protocol handlers (createMcpProtocolHandlers) to simulate
- * the MCP Streamable HTTP server at the protocol level, allowing the real useMcpClient
- * hook and MCP SDK to run end-to-end against mocked HTTP responses.
- */
-
 import McpPlaygroundPage from '@/routes/mcps/playground/index';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockGetMcp, mockMcp } from '@/test-utils/msw-v2/handlers/mcps';
@@ -146,7 +128,6 @@ describe('McpPlaygroundPage - Tool List', () => {
   });
 
   it('shows empty state with no tools message', async () => {
-    // Override with no tools
     server.use(
       ...createMcpProtocolHandlers({
         endpoint: MCP_ENDPOINT,
@@ -165,7 +146,6 @@ describe('McpPlaygroundPage - Tool List', () => {
       { timeout: 5000 }
     );
 
-    // Wait for connection to complete (no tools)
     await waitFor(() => {
       expect(screen.getByText('No tools available')).toBeInTheDocument();
     });
@@ -405,11 +385,8 @@ describe('McpPlaygroundPage - Refresh', () => {
       { timeout: 5000 }
     );
 
-    // The refresh button triggers a tools/list call via the MCP SDK.
-    // After click, the tools should still be present (re-fetched from MSW handler).
     await user.click(screen.getByTestId('mcp-playground-refresh-button'));
 
-    // Verify tools are still listed after refresh (the MSW handler returns the same tools)
     await waitFor(() => {
       expect(screen.getByTestId('mcp-playground-tool-read_wiki_structure')).toBeInTheDocument();
       expect(screen.getByTestId('mcp-playground-tool-ask_question')).toBeInTheDocument();

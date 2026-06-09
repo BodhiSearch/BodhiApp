@@ -12,10 +12,6 @@ use serial_test::serial;
 
 use crate::mcps::test_helpers::ENCRYPTION_KEY;
 
-// ============================================================================
-// Helpers for multi-tenant entity creation
-// ============================================================================
-
 fn make_server_for(tenant_id: &str, id: &str, url: &str, now: DateTime<Utc>) -> McpServerEntity {
   McpServerEntity {
     id: id.to_string(),
@@ -152,10 +148,6 @@ fn make_oauth_token_for(
   }
 }
 
-// ============================================================================
-// Cross-Tenant Auth Config Isolation
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -227,10 +219,6 @@ async fn test_cross_tenant_auth_config_isolation(
 
   Ok(())
 }
-
-// ============================================================================
-// Cross-Tenant Auth Param Isolation
-// ============================================================================
 
 #[rstest]
 #[tokio::test]
@@ -343,10 +331,6 @@ async fn test_cross_tenant_auth_param_isolation(
 
   Ok(())
 }
-
-// ============================================================================
-// Cross-Tenant OAuth Token Isolation
-// ============================================================================
 
 #[rstest]
 #[tokio::test]

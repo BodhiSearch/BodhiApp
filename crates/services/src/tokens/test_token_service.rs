@@ -201,16 +201,13 @@ async fn test_create_token_generates_valid_token(
 
   let raw_token = &token_created.token;
 
-  // Raw token starts with bodhiapp_ prefix
   assert!(raw_token.starts_with("bodhiapp_"));
 
-  // Token has .<client_id> suffix (new multi-tenant format)
   assert!(
     raw_token.contains('.'),
     "Token should contain '.' separator"
   );
 
-  // Token prefix is "bodhiapp_" + first 8 chars of random part (not including .<client_id>)
   let random_part = raw_token
     .strip_prefix("bodhiapp_")
     .unwrap()
@@ -219,12 +216,10 @@ async fn test_create_token_generates_valid_token(
     .unwrap();
   let token_prefix = format!("bodhiapp_{}", &random_part[..8]);
 
-  // Can retrieve by prefix
   let retrieved = token_service.get_api_token_by_prefix(&token_prefix).await?;
   assert!(retrieved.is_some());
   let entity = retrieved.unwrap();
 
-  // Token is persisted and retrievable
   assert_eq!("my-token", entity.name);
   assert_eq!("user1", entity.user_id);
   assert_eq!("scope_token_user", entity.scopes);

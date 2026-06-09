@@ -14,13 +14,6 @@ type PaginatedAliasResponse = components['schemas']['PaginatedAliasResponse'];
 type RefreshResponse = components['schemas']['RefreshResponse'];
 type QueueStatusResponse = components['schemas']['QueueStatusResponse'];
 
-// ============================================================================
-// Individual Model Factories
-// ============================================================================
-
-/**
- * Create a user-source alias (local GGUF model)
- */
 export function createMockUserAlias(overrides?: Partial<UserAliasResponse>): UserAliasResponse {
   return {
     source: 'user',
@@ -38,9 +31,6 @@ export function createMockUserAlias(overrides?: Partial<UserAliasResponse>): Use
   };
 }
 
-/**
- * Create an OpenAI ApiModel fixture
- */
 export function createMockOpenAIModel(id: string, overrides?: Record<string, unknown>) {
   return {
     id,
@@ -52,9 +42,6 @@ export function createMockOpenAIModel(id: string, overrides?: Record<string, unk
   };
 }
 
-/**
- * Create an Anthropic ApiModel fixture
- */
 export function createMockAnthropicModel(id: string, overrides?: Record<string, unknown>) {
   return {
     id,
@@ -66,9 +53,6 @@ export function createMockAnthropicModel(id: string, overrides?: Record<string, 
   };
 }
 
-/**
- * Create an API-source alias (remote API model)
- */
 export function createMockApiAlias(overrides?: Partial<ApiAliasResponse>): ApiAliasResponse {
   return {
     source: 'api',
@@ -85,9 +69,6 @@ export function createMockApiAlias(overrides?: Partial<ApiAliasResponse>): ApiAl
   };
 }
 
-/**
- * Create a source model alias (model file reference)
- */
 export function createMockModelAlias(overrides?: Partial<ModelAliasResponse>): ModelAliasResponse {
   return {
     source: 'model',
@@ -99,13 +80,6 @@ export function createMockModelAlias(overrides?: Partial<ModelAliasResponse>): M
   };
 }
 
-// ============================================================================
-// Paginated Response Factories
-// ============================================================================
-
-/**
- * Create a paginated models list response
- */
 export function createMockPaginatedModels(overrides?: Partial<PaginatedAliasResponse>): PaginatedAliasResponse {
   return {
     data: [createMockUserAlias()],
@@ -116,9 +90,6 @@ export function createMockPaginatedModels(overrides?: Partial<PaginatedAliasResp
   };
 }
 
-/**
- * Create an empty paginated models list response
- */
 export function createMockEmptyPaginatedModels(): PaginatedAliasResponse {
   return createMockPaginatedModels({
     data: [],
@@ -126,9 +97,6 @@ export function createMockEmptyPaginatedModels(): PaginatedAliasResponse {
   });
 }
 
-/**
- * Create a paginated models list with an API model
- */
 export function createMockPaginatedApiModels(overrides?: Partial<PaginatedAliasResponse>): PaginatedAliasResponse {
   return createMockPaginatedModels({
     data: [createMockApiAlias()],
@@ -136,9 +104,6 @@ export function createMockPaginatedApiModels(overrides?: Partial<PaginatedAliasR
   });
 }
 
-/**
- * Create a paginated models list with a source model
- */
 export function createMockPaginatedSourceModels(overrides?: Partial<PaginatedAliasResponse>): PaginatedAliasResponse {
   return createMockPaginatedModels({
     data: [createMockModelAlias() as AliasResponse],
@@ -146,13 +111,6 @@ export function createMockPaginatedSourceModels(overrides?: Partial<PaginatedAli
   });
 }
 
-// ============================================================================
-// Refresh & Queue Factories
-// ============================================================================
-
-/**
- * Create a refresh response
- */
 export function createMockRefreshResponse(overrides?: Partial<RefreshResponse>): RefreshResponse {
   return {
     num_queued: 'all',
@@ -161,9 +119,6 @@ export function createMockRefreshResponse(overrides?: Partial<RefreshResponse>):
   };
 }
 
-/**
- * Create a queue status response
- */
 export function createMockQueueStatus(overrides?: Partial<QueueStatusResponse>): QueueStatusResponse {
   return {
     status: 'idle',

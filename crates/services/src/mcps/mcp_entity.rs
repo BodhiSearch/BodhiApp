@@ -50,7 +50,6 @@ impl Related<super::mcp_auth_config_entity::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-/// Type alias — McpEntity is the entity Model.
 pub type McpEntity = Model;
 
 /// Joined MCP instance + server info from SQL JOIN query

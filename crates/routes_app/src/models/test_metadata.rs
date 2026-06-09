@@ -20,10 +20,6 @@ fn test_metadata_router(state: Arc<dyn services::AppService>) -> Router {
     .with_state(state)
 }
 
-// ============================================================================
-// refresh_metadata_handler tests
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -98,10 +94,6 @@ async fn test_refresh_metadata_enqueue_failure_returns_400(
   Ok(())
 }
 
-// ============================================================================
-// refresh_metadata_handler - sync model path tests
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -166,10 +158,6 @@ async fn test_refresh_metadata_model_alias_not_found(
   Ok(())
 }
 
-// ============================================================================
-// queue_status_handler tests
-// ============================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -203,8 +191,6 @@ async fn test_queue_status_handler_returns_idle(
 
   Ok(())
 }
-
-// Auth tier tests (merged from tests/routes_models_metadata_auth_test.rs)
 
 #[anyhow_trace]
 #[rstest]

@@ -1,14 +1,3 @@
-/**
- * Type-safe MSW v2 handlers for user endpoints using openapi-msw
- *
- * This handler provides fully migrated openapi-msw mock implementations for user management endpoints:
- * - GET /bodhi/v1/user - Current user information
- * - GET /bodhi/v1/users - List all users (paginated)
- * - PUT /bodhi/v1/users/{user_id}/role - Change user role
- * - DELETE /bodhi/v1/users/{user_id} - Remove user access
- *
- * All endpoints use typedHttp for full OpenAPI schema compliance and type safety.
- */
 import { delay } from 'msw';
 
 import { ENDPOINT_USER_INFO, ENDPOINT_USERS, ENDPOINT_USER_ROLE, ENDPOINT_USER_ID } from '@/hooks/users';
@@ -21,14 +10,6 @@ import {
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
-// ============================================================================
-// User Info Endpoint (GET /bodhi/v1/user)
-// ============================================================================
-
-/**
- * Mock handler for user info endpoint - logged out state
- * Uses generated OpenAPI types directly
- */
 export function mockUserLoggedOut({
   stub,
   ...rest
@@ -46,10 +27,6 @@ export function mockUserLoggedOut({
   ];
 }
 
-/**
- * Mock handler for user info endpoint - logged in state with configurable fields
- * Uses generated OpenAPI types directly
- */
 export function mockUserLoggedIn(
   {
     user_id = '550e8400-e29b-41d4-a716-446655440000',
@@ -87,10 +64,6 @@ export function mockUserLoggedIn(
   ];
 }
 
-/**
- * Mock handler for user info endpoint error responses
- * Uses generated OpenAPI types directly
- */
 export function mockUserInfoError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -117,14 +90,6 @@ export function mockUserInfoError(
   ];
 }
 
-// ============================================================================
-// Users List Endpoint (GET /bodhi/v1/users)
-// ============================================================================
-
-/**
- * Mock handler for users list endpoint with configurable response data
- * Uses generated OpenAPI types directly
- */
 export function mockUsers(
   {
     client_id = 'resource-test-client',
@@ -160,10 +125,6 @@ export function mockUsers(
   ];
 }
 
-/**
- * Mock handler for users list endpoint error responses
- * Uses generated OpenAPI types directly
- */
 export function mockUsersError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -190,13 +151,6 @@ export function mockUsersError(
   ];
 }
 
-// ============================================================================
-// Convenience Methods for Users List
-// ============================================================================
-
-/**
- * Convenience methods for common user list scenarios
- */
 export function mockUsersDefault() {
   return mockUsers({ users: mockSimpleUsersResponse.users, total_users: mockSimpleUsersResponse.total });
 }
@@ -213,21 +167,12 @@ export function mockUsersEmpty() {
   return mockUsers({ users: mockEmptyUsersResponse.users, total_users: mockEmptyUsersResponse.total });
 }
 
-// ============================================================================
-// User Role Change Endpoint (PUT /bodhi/v1/users/{user_id}/role)
-// ============================================================================
-
-/**
- * Mock handler for user role change endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockUserRoleChange(user_id: string, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_USER_ROLE, async ({ params, response }) => {
-      // Only respond if user_id matches
       if (params.user_id !== user_id) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
@@ -236,10 +181,6 @@ export function mockUserRoleChange(user_id: string, { stub }: { stub?: boolean }
   ];
 }
 
-/**
- * Mock handler for user role change endpoint error responses
- * Uses generated OpenAPI types directly
- */
 export function mockUserRoleChangeError(
   user_id: string,
   {
@@ -254,9 +195,8 @@ export function mockUserRoleChangeError(
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_USER_ROLE, async ({ params, response }) => {
-      // Only respond if user_id matches
       if (params.user_id !== user_id) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
@@ -271,21 +211,12 @@ export function mockUserRoleChangeError(
   ];
 }
 
-// ============================================================================
-// User Removal Endpoint (DELETE /bodhi/v1/users/{user_id})
-// ============================================================================
-
-/**
- * Mock handler for user removal endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockUserRemove(user_id: string, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_USER_ID, async ({ params, response }) => {
-      // Only respond if user_id matches
       if (params.user_id !== user_id) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
@@ -294,10 +225,6 @@ export function mockUserRemove(user_id: string, { stub }: { stub?: boolean } = {
   ];
 }
 
-/**
- * Mock handler for user removal endpoint error responses
- * Uses generated OpenAPI types directly
- */
 export function mockUserRemoveError(
   user_id: string,
   {
@@ -312,9 +239,8 @@ export function mockUserRemoveError(
   let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_USER_ID, async ({ params, response }) => {
-      // Only respond if user_id matches
       if (params.user_id !== user_id) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;

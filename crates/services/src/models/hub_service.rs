@@ -318,8 +318,6 @@ impl HubService for HfHubService {
     unique_repos.into_iter().collect()
   }
 
-  // model_chat_template method removed since llama.cpp now handles chat templates
-
   fn list_model_aliases(&self) -> Result<Vec<ModelAlias>> {
     let cache = self.hf_cache();
     let mut aliases = WalkDir::new(&cache)
@@ -468,7 +466,6 @@ impl HfHubService {
     tracing::info!("Downloading from url {}", model_repo.api_url());
     let repo = model_repo.url();
 
-    // Use download_with_progress to integrate with our progress tracking system
     let path = match match progress {
       Some(progress) => {
         api

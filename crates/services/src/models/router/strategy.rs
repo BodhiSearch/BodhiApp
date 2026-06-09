@@ -14,9 +14,7 @@ const HEADER_ROUTED_MODEL: &str = "x-bodhi-routed-model";
 const HEADER_ROUTER_STRATEGY: &str = "x-bodhi-router-strategy";
 const HEADER_ROUTER_ATTEMPTS: &str = "x-bodhi-router-attempts";
 
-/// Shared primitives every routing strategy calls. Phase 1 holds only what
-/// pass-through forwarding needs; the health registry / selection state seams
-/// (Phase 2/3) attach here without changing strategy signatures.
+/// Shared primitives every routing strategy calls.
 pub struct RouterContext {
   pub tenant_id: String,
   pub user_id: String,
@@ -108,7 +106,6 @@ pub trait RoutingStrategy: Send + Sync {
 }
 
 impl RoutingStrategyConfig {
-  /// Map persisted config → behavior. One arm per strategy.
   pub fn behavior(&self) -> &dyn RoutingStrategy {
     match self {
       RoutingStrategyConfig::Fallback(c) => c,
@@ -129,8 +126,6 @@ pub async fn route_chat_completion(
     .await
 }
 
-/// Attach observability headers identifying the target that served the response,
-/// the strategy, and the attempt count.
 pub fn with_obs_headers(
   mut resp: Response,
   target: &RouterTarget,

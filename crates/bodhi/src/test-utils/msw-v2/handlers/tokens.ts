@@ -1,6 +1,3 @@
-/**
- * Type-safe MSW v2 handlers for API tokens endpoints using openapi-msw
- */
 import { delay } from 'msw';
 
 import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/tokens';
@@ -8,14 +5,6 @@ import { createMockToken, createMockTokenCreated } from '@/test-fixtures/tokens'
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
-// ============================================================================
-// API Tokens - Success Handlers
-// ============================================================================
-
-/**
- * Create type-safe MSW v2 handlers for list tokens endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockTokens(
   {
     data = [createMockToken()],
@@ -45,10 +34,6 @@ export function mockTokens(
   ];
 }
 
-/**
- * Create type-safe MSW v2 handlers for create token endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockCreateToken(
   { token = createMockTokenCreated().token, ...rest }: Partial<components['schemas']['TokenCreated']> = {},
   { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
@@ -72,10 +57,6 @@ export function mockCreateToken(
   ];
 }
 
-/**
- * Create type-safe MSW v2 handlers for update token endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockUpdateToken(
   tokenId: string,
   {
@@ -94,9 +75,8 @@ export function mockUpdateToken(
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_TOKEN_ID, async ({ params, response }) => {
-      // Only respond if id matches
       if (params.id !== tokenId) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -119,20 +99,10 @@ export function mockUpdateToken(
   ];
 }
 
-// ============================================================================
-// API Tokens - Convenience Methods
-// ============================================================================
-
-/**
- * Convenience method for tokens with default test data
- */
 export function mockTokensDefault() {
   return [...mockTokens(), ...mockCreateToken(), ...mockUpdateToken('token-1')];
 }
 
-/**
- * Convenience method for empty tokens list
- */
 export function mockEmptyTokensList() {
   return mockTokens({
     data: [],
@@ -142,16 +112,10 @@ export function mockEmptyTokensList() {
   });
 }
 
-/**
- * Convenience method for create token with custom response
- */
 export function mockCreateTokenWithResponse(token: Partial<components['schemas']['TokenCreated']>) {
   return mockCreateToken(token);
 }
 
-/**
- * Convenience method for successful token status update
- */
 export function mockUpdateTokenStatus(tokenId: string, status: 'active' | 'inactive') {
   return mockUpdateToken(tokenId, {
     status,
@@ -159,13 +123,6 @@ export function mockUpdateTokenStatus(tokenId: string, status: 'active' | 'inact
   });
 }
 
-// ============================================================================
-// API Tokens - Error Handlers
-// ============================================================================
-
-/**
- * Error handler for list tokens endpoint
- */
 export function mockTokensError(
   {
     code = 'access_denied',
@@ -194,9 +151,6 @@ export function mockTokensError(
   ];
 }
 
-/**
- * Error handler for create token endpoint
- */
 export function mockCreateTokenError(
   {
     code = 'validation_error',
@@ -225,9 +179,6 @@ export function mockCreateTokenError(
   ];
 }
 
-/**
- * Error handler for update token endpoint
- */
 export function mockUpdateTokenError(
   tokenId: string,
   {
@@ -242,9 +193,8 @@ export function mockUpdateTokenError(
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_TOKEN_ID, async ({ params, response }) => {
-      // Only respond if id matches
       if (params.id !== tokenId) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -262,9 +212,6 @@ export function mockUpdateTokenError(
   ];
 }
 
-/**
- * Convenience method for token not found error
- */
 export function mockTokenNotFound(tokenId: string) {
   return mockUpdateTokenError(tokenId, {
     code: 'not_found',
@@ -273,9 +220,6 @@ export function mockTokenNotFound(tokenId: string) {
   });
 }
 
-/**
- * Convenience method for insufficient permissions error
- */
 export function mockTokenAccessDenied() {
   return mockTokensError({
     code: 'access_denied',

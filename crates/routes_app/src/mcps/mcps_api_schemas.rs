@@ -7,18 +7,10 @@ use services::{CreateMcpAuthConfigRequest, McpOAuthToken};
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
 
-// ============================================================================
-// MCP Server Query DTOs
-// ============================================================================
-
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct McpServerQuery {
   pub enabled: Option<bool>,
 }
-
-// ============================================================================
-// Unified Auth Config DTOs
-// ============================================================================
 
 /// Wrapper for creating auth configs with server_id in body instead of path
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
@@ -34,10 +26,6 @@ pub struct CreateAuthConfig {
 pub struct AuthConfigsQuery {
   pub mcp_server_id: String,
 }
-
-// ============================================================================
-// OAuth Token DTOs
-// ============================================================================
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct OAuthTokenResponse {
@@ -71,10 +59,6 @@ impl From<McpOAuthToken> for OAuthTokenResponse {
   }
 }
 
-// ============================================================================
-// OAuth Flow DTOs
-// ============================================================================
-
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct OAuthLoginRequest {
   pub redirect_uri: String,
@@ -93,10 +77,6 @@ pub struct OAuthTokenExchangeRequest {
   pub redirect_uri: String,
   pub state: String,
 }
-
-// ============================================================================
-// OAuth Discovery DTOs
-// ============================================================================
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct OAuthDiscoverAsRequest {

@@ -236,10 +236,6 @@ async fn mcp_delete_session(
   Ok(resp.status())
 }
 
-// =============================================================================
-// Test helper: standard echo + weather tools
-// =============================================================================
-
 fn echo_tool() -> TestTool {
   TestTool {
     name: "echo".into(),
@@ -344,10 +340,6 @@ fn default_instance_json() -> Value {
   })
 }
 
-// =============================================================================
-// Test: Full lifecycle
-// =============================================================================
-
 /// Full proxy lifecycle: initialize -> notify -> list tools -> call tool -> delete session.
 #[anyhow_trace]
 #[tokio::test]
@@ -362,7 +354,6 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
   )
   .await?;
 
-  // Initialize MCP session
   let (session_id, init_result) = mcp_initialize(
     &setup.client,
     setup.base_url(),
@@ -383,7 +374,6 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     "InitializeResult should have serverInfo.name"
   );
 
-  // Send notifications/initialized
   let notify_status = mcp_notify(
     &setup.client,
     setup.base_url(),
@@ -402,7 +392,6 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     "Notification should return 202"
   );
 
-  // List tools
   let tools_result = mcp_request(
     &setup.client,
     setup.base_url(),
@@ -428,7 +417,6 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     "Should contain weather tool"
   );
 
-  // Call echo tool
   let call_result = mcp_request(
     &setup.client,
     setup.base_url(),
@@ -462,14 +450,12 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
     "Echo tool should return the echoed message"
   );
 
-  // Verify upstream received the call
   {
     let calls = setup.upstream.calls_received.lock().await;
     assert_eq!(1, calls.len(), "Upstream should have received 1 tool call");
     assert_eq!("echo", calls[0].tool_name);
   }
 
-  // Delete session
   let delete_status = mcp_delete_session(
     &setup.client,
     setup.base_url(),
@@ -516,10 +502,6 @@ async fn test_mcp_proxy_full_lifecycle() -> anyhow::Result<()> {
   setup.server.handle.shutdown().await?;
   Ok(())
 }
-
-// =============================================================================
-// Test: All tools forwarded
-// =============================================================================
 
 /// Transparent proxy forwards all upstream tools.
 #[anyhow_trace]
@@ -623,10 +605,6 @@ async fn test_mcp_proxy_all_tools_forwarded() -> anyhow::Result<()> {
   Ok(())
 }
 
-// =============================================================================
-// Test: Resources
-// =============================================================================
-
 /// Proxy should forward resource list and read requests to the upstream server.
 #[anyhow_trace]
 #[tokio::test]
@@ -724,10 +702,6 @@ async fn test_mcp_proxy_resources() -> anyhow::Result<()> {
   setup.server.handle.shutdown().await?;
   Ok(())
 }
-
-// =============================================================================
-// Test: Prompts
-// =============================================================================
 
 /// Proxy should forward prompt list and get requests to the upstream server.
 #[anyhow_trace]
@@ -836,10 +810,6 @@ async fn test_mcp_proxy_prompts() -> anyhow::Result<()> {
   Ok(())
 }
 
-// =============================================================================
-// Test: Disabled instance
-// =============================================================================
-
 /// Proxy should reject requests when the MCP instance is disabled.
 #[anyhow_trace]
 #[tokio::test]
@@ -912,10 +882,6 @@ async fn test_mcp_proxy_disabled_instance() -> anyhow::Result<()> {
   Ok(())
 }
 
-// =============================================================================
-// Test: Upstream down
-// =============================================================================
-
 /// Proxy should return an error when the upstream MCP server is unreachable.
 #[anyhow_trace]
 #[tokio::test]
@@ -979,10 +945,6 @@ async fn test_mcp_proxy_upstream_down() -> anyhow::Result<()> {
   Ok(())
 }
 
-// =============================================================================
-// Test: Wrong auth headers
-// =============================================================================
-
 /// Proxy should forward upstream 401 when MCP instance has wrong credentials.
 #[anyhow_trace]
 #[tokio::test]
@@ -1038,10 +1000,6 @@ async fn test_mcp_proxy_wrong_auth_headers() -> anyhow::Result<()> {
   Ok(())
 }
 
-// =============================================================================
-// Test: Missing auth headers
-// =============================================================================
-
 /// Proxy should forward upstream 401 when MCP instance has no auth configured
 /// but upstream requires it.
 #[anyhow_trace]
@@ -1086,10 +1044,6 @@ async fn test_mcp_proxy_missing_auth_headers() -> anyhow::Result<()> {
   setup.server.handle.shutdown().await?;
   Ok(())
 }
-
-// =============================================================================
-// Test: GET SSE stream
-// =============================================================================
 
 /// After initializing an MCP session, a GET request with Mcp-Session-Id and
 /// Accept: text/event-stream should open an SSE stream (status 200).
@@ -1161,10 +1115,6 @@ async fn test_mcp_proxy_get_sse_stream() -> anyhow::Result<()> {
   setup.server.handle.shutdown().await?;
   Ok(())
 }
-
-// =============================================================================
-// Test: Concurrent sessions
-// =============================================================================
 
 /// Two clients initializing separate sessions to the same MCP should get
 /// distinct session IDs and both should be able to call tools independently.

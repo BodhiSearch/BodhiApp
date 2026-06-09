@@ -19,13 +19,8 @@ use super::mcp_oauth_token_entity::{self, McpOAuthTokenView};
 use super::mcp_server_entity;
 
 /// Unified repository trait combining all MCP instance and auth operations.
-/// Replaces the former `McpInstanceRepository` and `McpAuthRepository` traits.
 #[async_trait::async_trait]
 pub trait McpRepository: Send + Sync {
-  // ============================================================================
-  // MCP Instance methods (formerly McpInstanceRepository)
-  // ============================================================================
-
   async fn create_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError>;
 
   async fn get_mcp(
@@ -51,10 +46,6 @@ pub trait McpRepository: Send + Sync {
   async fn update_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError>;
 
   async fn delete_mcp(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<(), DbError>;
-
-  // ============================================================================
-  // MCP Auth Config methods (formerly McpAuthRepository)
-  // ============================================================================
 
   async fn create_mcp_auth_config(
     &self,
@@ -253,10 +244,6 @@ pub trait McpRepository: Send + Sync {
 
 #[async_trait::async_trait]
 impl McpRepository for DefaultDbService {
-  // ============================================================================
-  // MCP Instance methods (formerly in mcp_instance_repository.rs)
-  // ============================================================================
-
   async fn create_mcp(&self, tenant_id: &str, row: &McpEntity) -> Result<McpEntity, DbError> {
     let tenant_id_owned = tenant_id.to_string();
     let row = row.clone();
@@ -483,10 +470,6 @@ impl McpRepository for DefaultDbService {
       .await
   }
 
-  // ============================================================================
-  // MCP Auth Config methods (formerly in mcp_auth_repository.rs)
-  // ============================================================================
-
   async fn create_mcp_auth_config(
     &self,
     row: &McpAuthConfigEntity,
@@ -575,7 +558,6 @@ impl McpRepository for DefaultDbService {
             .await
             .map_err(DbError::from)?;
 
-          // Delete the auth config
           mcp_auth_config_entity::Entity::delete_by_id(&id_owned)
             .exec(txn)
             .await
@@ -1217,7 +1199,6 @@ impl McpRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // 1. Insert MCP row
           let active = mcp_entity::ActiveModel {
             id: Set(row.id.clone()),
             tenant_id: Set(tenant_id_owned.clone()),
@@ -1235,7 +1216,6 @@ impl McpRepository for DefaultDbService {
           let model = active.insert(txn).await.map_err(DbError::from)?;
           let mcp_id = model.id.clone();
 
-          // 2. Insert auth params if provided
           if let Some(params) = auth_params_owned {
             for param in params {
               let active = mcp_auth_param_entity::ActiveModel {
@@ -1254,7 +1234,6 @@ impl McpRepository for DefaultDbService {
             }
           }
 
-          // 3. Link OAuth token if provided
           if let Some(token_id) = oauth_token_id_owned {
             let token = mcp_oauth_token_entity::Entity::find_by_id(&token_id)
               .filter(mcp_oauth_token_entity::Column::TenantId.eq(&tenant_id_owned))
@@ -1304,7 +1283,7 @@ impl McpRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // 1. Verify tenant ownership and update MCP row
+          // Verify tenant ownership before update
           let existing = mcp_entity::Entity::find_by_id(row.id.clone())
             .filter(mcp_entity::Column::TenantId.eq(&tenant_id_owned))
             .one(txn)
@@ -1331,16 +1310,14 @@ impl McpRepository for DefaultDbService {
           let model = active.update(txn).await.map_err(DbError::from)?;
           let mcp_id = model.id.clone();
 
-          // 2. Replace auth params if provided (delete old + insert new)
+          // Replace auth params: delete old, insert new
           if let Some(params) = auth_params_owned {
-            // Delete existing params
             mcp_auth_param_entity::Entity::delete_many()
               .filter(mcp_auth_param_entity::Column::McpId.eq(&mcp_id))
               .exec(txn)
               .await
               .map_err(DbError::from)?;
 
-            // Insert new params
             for param in params {
               let active = mcp_auth_param_entity::ActiveModel {
                 id: Set(param.id.clone()),
@@ -1358,16 +1335,13 @@ impl McpRepository for DefaultDbService {
             }
           }
 
-          // 3. Handle OAuth token linking
           if let Some(token_id) = oauth_token_id_owned {
-            // Delete old tokens for this MCP
             mcp_oauth_token_entity::Entity::delete_many()
               .filter(mcp_oauth_token_entity::Column::McpId.eq(&mcp_id))
               .exec(txn)
               .await
               .map_err(DbError::from)?;
 
-            // Link new token
             let token = mcp_oauth_token_entity::Entity::find_by_id(&token_id)
               .filter(mcp_oauth_token_entity::Column::TenantId.eq(&tenant_id_owned))
               .filter(mcp_oauth_token_entity::Column::UserId.eq(&user_id_owned))
@@ -1411,7 +1385,6 @@ impl McpRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // 1. Insert base auth config
           let active = mcp_auth_config_entity::ActiveModel {
             id: Set(config.id.clone()),
             tenant_id: Set(config.tenant_id.clone()),
@@ -1424,7 +1397,6 @@ impl McpRepository for DefaultDbService {
           };
           let config_model = active.insert(txn).await.map_err(DbError::from)?;
 
-          // 2. Insert all param rows
           for param in params_owned {
             let active = mcp_auth_config_param_entity::ActiveModel {
               id: Set(param.id.clone()),
@@ -1456,7 +1428,6 @@ impl McpRepository for DefaultDbService {
     self
       .with_tenant_txn(tenant_id, |txn| {
         Box::pin(async move {
-          // 1. Insert base auth config
           let config_active = mcp_auth_config_entity::ActiveModel {
             id: Set(config.id.clone()),
             tenant_id: Set(config.tenant_id.clone()),
@@ -1469,7 +1440,6 @@ impl McpRepository for DefaultDbService {
           };
           let config_model = config_active.insert(txn).await.map_err(DbError::from)?;
 
-          // 2. Insert OAuth detail row
           let detail_active = mcp_oauth_config_detail_entity::ActiveModel {
             auth_config_id: Set(detail.auth_config_id.clone()),
             tenant_id: Set(detail.tenant_id.clone()),
@@ -1527,7 +1497,6 @@ impl McpRepository for DefaultDbService {
               .map_err(DbError::from)?;
           }
 
-          // Insert new token
           let active = mcp_oauth_token_entity::ActiveModel {
             id: Set(row.id.clone()),
             tenant_id: Set(row.tenant_id.clone()),

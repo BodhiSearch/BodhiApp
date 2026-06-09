@@ -17,7 +17,6 @@ use crate::{db::DbService, models::ModelMetadataEntity, DataService, HubService}
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-/// Error type for metadata extraction operations
 #[derive(Debug, thiserror::Error)]
 pub enum MetadataExtractionError {
   #[error("Cannot extract metadata for API alias")]
@@ -33,14 +32,6 @@ pub enum MetadataExtractionError {
 }
 
 /// Extracts GGUF metadata and stores in database. Returns the metadata row on success.
-///
-/// This function:
-/// 1. Extracts repo/filename/snapshot from Alias (returns error for API aliases)
-/// 2. Locates GGUF file via hub_service.find_local_file()
-/// 3. Parses GGUF metadata via crate::models::gguf::GGUFMetadata::new()
-/// 4. Extracts capabilities via crate::models::gguf::extract_metadata()
-/// 5. Builds and upserts ModelMetadataEntity
-/// 6. Returns the row for caller
 pub async fn extract_and_store_metadata(
   alias: &Alias,
   hub_service: &dyn HubService,
@@ -49,8 +40,7 @@ pub async fn extract_and_store_metadata(
   use crate::models::Repo;
   use std::str::FromStr;
 
-  // Extract alias information
-  // Note: Metadata is always stored with source='model' since both UserAlias and ModelAlias
+  // Metadata is always stored with source='model' since both UserAlias and ModelAlias
   // reference the same physical GGUF file. UserAlias is just a user configuration pointing
   // to a physical model file represented by ModelAlias.
   let (repo_str, filename, snapshot) = match alias {
@@ -69,7 +59,6 @@ pub async fn extract_and_store_metadata(
     }
   };
 
-  // Locate GGUF file
   let repo_obj = Repo::from_str(&repo_str)
     .map_err(|e| MetadataExtractionError::FileNotFound(format!("Invalid repo format: {}", e)))?;
 
@@ -81,18 +70,14 @@ pub async fn extract_and_store_metadata(
 
   let file_path = hub_file.path();
 
-  // Parse GGUF metadata
   let gguf_metadata = crate::models::gguf::GGUFMetadata::new(&file_path)
     .map_err(|e| MetadataExtractionError::ParseError(format!("Failed to parse GGUF: {}", e)))?;
 
-  // Extract capabilities and metadata
   let model_metadata = extract_metadata(&gguf_metadata, &filename);
 
-  // Extract chat template directly from GGUF metadata
   let chat_template = get_chat_template(&gguf_metadata);
 
-  // Convert to database row
-  // Always use AliasSource::Model since this represents the physical GGUF file
+  // Always AliasSource::Model since this represents the physical GGUF file.
   let now = db_service.now();
   let metadata_row = ModelMetadataEntity {
     id: String::new(),
@@ -112,7 +97,6 @@ pub async fn extract_and_store_metadata(
     updated_at: now,
   };
 
-  // Debug logging before upsert
   tracing::debug!(
     "Upserting metadata: source='{}', repo={:?}, filename={:?}, snapshot={:?}",
     metadata_row.source,
@@ -121,7 +105,6 @@ pub async fn extract_and_store_metadata(
     metadata_row.snapshot
   );
 
-  // Upsert to database
   db_service.upsert_model_metadata(&metadata_row).await?;
 
   tracing::info!(
@@ -134,12 +117,11 @@ pub async fn extract_and_store_metadata(
   Ok(metadata_row)
 }
 
-/// Task types for metadata refresh operations
 #[derive(Debug, Clone)]
 pub enum RefreshTask {
-  /// Refresh metadata for all local GGUF models
-  RefreshAll { created_at: DateTime<Utc> },
-  /// Refresh metadata for a single model by alias
+  RefreshAll {
+    created_at: DateTime<Utc>,
+  },
   RefreshSingle {
     alias: String,
     created_at: DateTime<Utc>,
@@ -155,31 +137,25 @@ impl RefreshTask {
   }
 }
 
-/// Producer interface for enqueuing tasks
 #[async_trait]
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait QueueProducer: Send + Sync + std::fmt::Debug {
-  /// Enqueue a refresh task (non-blocking)
   async fn enqueue(&self, task: RefreshTask) -> Result<()>;
 
-  /// Get current queue length (for monitoring)
   async fn queue_length(&self) -> usize;
 
-  /// Get queue status: "idle" or "processing"
+  /// Returns "idle" or "processing".
   fn queue_status(&self) -> String;
 }
 
-/// Consumer interface for dequeuing tasks
 #[async_trait]
 pub trait QueueConsumer: Send + Sync {
-  /// Dequeue next task (blocking until available or shutdown)
+  /// Blocks until a task is available or shutdown is signalled.
   async fn dequeue(&self) -> Option<RefreshTask>;
 
-  /// Signal worker shutdown
   fn shutdown(&self);
 }
 
-/// In-memory queue implementation using VecDeque
 #[derive(Debug)]
 pub struct InMemoryQueue {
   queue: Arc<Mutex<VecDeque<RefreshTask>>>,
@@ -261,7 +237,6 @@ impl QueueConsumer for InMemoryQueue {
   }
 }
 
-/// Worker that processes refresh tasks from the queue
 pub struct RefreshWorker {
   consumer: Arc<dyn QueueConsumer>,
   hub_service: Arc<dyn HubService>,
@@ -376,19 +351,18 @@ impl RefreshWorker {
   }
 
   async fn extract_and_store(&self, alias: &Alias) -> Result<bool> {
-    // For API aliases and model-routers (no physical GGUF file), skip
+    // API aliases and model-routers have no physical GGUF file.
     if matches!(alias, Alias::Api(_) | Alias::ModelRouter(_)) {
       return Ok(false);
     }
 
-    // Extract repo/filename/snapshot for snapshot check
     let (repo_str, filename, snapshot) = match alias {
       Alias::User(ua) => (ua.repo.to_string(), &ua.filename, &ua.snapshot),
       Alias::Model(ma) => (ma.repo.to_string(), &ma.filename, &ma.snapshot),
       Alias::Api(_) | Alias::ModelRouter(_) => unreachable!(),
     };
 
-    // Check if metadata exists and snapshot matches (optimization for async queue)
+    // Skip re-extraction when the stored snapshot already matches (async-queue optimization).
     if let Some(existing) = self
       .db_service
       .get_model_metadata_by_file("", &repo_str, filename, snapshot)
@@ -405,7 +379,6 @@ impl RefreshWorker {
       }
     }
 
-    // Use shared extraction function
     extract_and_store_metadata(alias, self.hub_service.as_ref(), self.db_service.as_ref())
       .await
       .map_err(|e| format!("Failed to extract metadata: {}", e))?;

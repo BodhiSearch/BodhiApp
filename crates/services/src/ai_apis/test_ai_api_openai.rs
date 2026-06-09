@@ -357,10 +357,6 @@ async fn test_fetch_models_failure_parameterized(
   Ok(())
 }
 
-// =============================================================================
-// test_prompt — OpenAIResponses format error paths
-// =============================================================================
-
 #[rstest]
 #[case::unauthorized(401, "Unauthorized", AiApiClientFactoryError::Unauthorized("".to_string()))]
 #[case::not_found(404, "Not Found", AiApiClientFactoryError::NotFound("".to_string()))]

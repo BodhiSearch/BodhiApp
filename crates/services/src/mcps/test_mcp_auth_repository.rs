@@ -14,10 +14,6 @@ use crate::mcps::test_helpers::{
   ENCRYPTION_KEY,
 };
 
-// ============================================================================
-// Helper: make an OAuth token entity with encrypted fields
-// ============================================================================
-
 fn make_oauth_token(
   id: &str,
   mcp_id: Option<&str>,

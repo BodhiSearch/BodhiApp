@@ -189,7 +189,6 @@ describe('ApiModelForm — llm_liberty_oauth edit mode (keep vs set)', () => {
       expect(screen.getByTestId('llm-liberty-envelope-input')).toBeInTheDocument();
     });
 
-    // Leave textarea empty; submit. The form should send action: keep.
     await user.click(screen.getByTestId('update-api-model-button'));
 
     await waitFor(() => {

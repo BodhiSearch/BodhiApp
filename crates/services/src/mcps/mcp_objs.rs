@@ -6,45 +6,28 @@ use strum::{Display, EnumString, IntoStaticStr};
 use utoipa::ToSchema;
 use validator::Validate;
 
-/// Returns the MCP proxy path for a given instance ID (e.g. `/bodhi/v1/apps/mcps/{id}/mcp`).
+/// e.g. `/bodhi/v1/apps/mcps/{id}/mcp`.
 pub fn mcp_proxy_path(id: &str) -> String {
   format!("/bodhi/v1/apps/mcps/{id}/mcp")
 }
 
-// ============================================================================
-// McpServer - Admin-managed MCP server registry (public API model)
-// ============================================================================
-
-/// Admin-managed MCP server registry entry.
-/// Admins/managers register MCP server URLs that users can then create instances of.
+/// Admin-managed MCP server registry entry that users create instances of.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpServer {
-  /// Unique identifier (UUID)
   pub id: String,
   /// MCP server endpoint URL (trimmed, case-insensitive unique)
   pub url: String,
-  /// Human-readable display name
   pub name: String,
-  /// Optional description
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  /// Whether this MCP server is enabled
   pub enabled: bool,
-  /// User who created this entry
   pub created_by: String,
-  /// User who last updated this entry
   pub updated_by: String,
-  /// When this entry was created
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
-  /// When this entry was last updated
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }
-
-// ============================================================================
-// McpServerInfo - Nested server context in MCP instance responses
-// ============================================================================
 
 /// Minimal MCP server info embedded in MCP instance responses.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
@@ -54,10 +37,6 @@ pub struct McpServerInfo {
   pub name: String,
   pub enabled: bool,
 }
-
-// ============================================================================
-// McpAuthType - Authentication type for MCP instances
-// ============================================================================
 
 #[derive(
   Debug,
@@ -88,10 +67,6 @@ impl McpAuthType {
   }
 }
 
-// ============================================================================
-// McpAuthParamType - Type of auth parameter (header or query)
-// ============================================================================
-
 #[derive(
   Debug,
   Clone,
@@ -117,10 +92,6 @@ impl McpAuthParamType {
     self.into()
   }
 }
-
-// ============================================================================
-// McpAuthConfigType - Type of auth config (header or oauth)
-// ============================================================================
 
 #[derive(
   Debug,
@@ -148,10 +119,6 @@ impl McpAuthConfigType {
   }
 }
 
-// ============================================================================
-// McpAuthConfigParam - Key definition response
-// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpAuthConfigParam {
   pub id: String,
@@ -159,20 +126,13 @@ pub struct McpAuthConfigParam {
   pub param_key: String,
 }
 
-// ============================================================================
-// McpAuthConfigParamInput - Key definition input
-// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpAuthConfigParamInput {
   pub param_type: McpAuthParamType,
   pub param_key: String,
 }
 
-// ============================================================================
-// McpAuthParam - Masked auth param response
-// ============================================================================
-
+/// Masked auth param response.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpAuthParam {
   pub id: String,
@@ -181,10 +141,6 @@ pub struct McpAuthParam {
   pub has_value: bool,
 }
 
-// ============================================================================
-// McpAuthParamInput - Auth param input (for creating params)
-// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpAuthParamInput {
   pub param_type: McpAuthParamType,
@@ -192,49 +148,32 @@ pub struct McpAuthParamInput {
   pub value: String,
 }
 
-// ============================================================================
-// Mcp - User-owned MCP instance (public API model)
-// ============================================================================
-
 /// User-owned MCP server instance.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct Mcp {
-  /// Unique instance identifier (UUID)
   pub id: String,
   /// Server info resolved via JOIN
   pub mcp_server: McpServerInfo,
-  /// User-defined slug for this instance
   pub slug: String,
-  /// Human-readable name
   pub name: String,
-  /// Optional description for this instance
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  /// Whether this instance is enabled
   pub enabled: bool,
-  /// MCP proxy path for this instance
   pub path: String,
   pub auth_type: McpAuthType,
   /// Reference to the auth config (mcp_auth_configs.id)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub auth_config_id: Option<String>,
-  /// When this instance was created
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
-  /// When this instance was last updated
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }
-
-// ============================================================================
-// McpOAuthConfig - Public API model for OAuth 2.1 pre-registered client config
-// ============================================================================
 
 /// OAuth 2.1 config for pre-registered or dynamically registered client (secrets masked).
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpOAuthConfig {
   pub id: String,
-  /// Human-readable display name
   pub name: String,
   pub mcp_server_id: String,
   pub registration_type: RegistrationType,
@@ -257,10 +196,6 @@ pub struct McpOAuthConfig {
   pub updated_at: DateTime<Utc>,
 }
 
-// ============================================================================
-// McpOAuthToken - Public API model for OAuth 2.1 stored token
-// ============================================================================
-
 /// OAuth 2.1 token stored for a config (secrets masked).
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpOAuthToken {
@@ -279,10 +214,6 @@ pub struct McpOAuthToken {
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }
-
-// ============================================================================
-// RegistrationType - OAuth registration type enum
-// ============================================================================
 
 /// OAuth 2.1 registration type: pre-registered client or dynamic client registration (DCR).
 #[derive(
@@ -312,10 +243,6 @@ impl RegistrationType {
     self.into()
   }
 }
-
-// ============================================================================
-// Unified auth config discriminated union types
-// ============================================================================
 
 /// Discriminated union for creating any type of MCP auth config.
 /// The JSON `"type"` field determines the variant: `"header"` or `"oauth"`.
@@ -458,10 +385,6 @@ pub struct McpAuthConfigsListResponse {
   pub auth_configs: Vec<McpAuthConfigResponse>,
 }
 
-// ============================================================================
-// Entity -> Response conversions
-// ============================================================================
-
 impl From<super::mcp_server_entity::McpServerEntity> for McpServer {
   fn from(entity: super::mcp_server_entity::McpServerEntity) -> Self {
     Self {
@@ -502,81 +425,61 @@ impl From<super::mcp_entity::McpWithServerEntity> for Mcp {
   }
 }
 
-// ============================================================================
-// McpRequest - Input for creating/updating MCP instances
-// ============================================================================
-
 /// Input for creating or updating an MCP instance.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct McpRequest {
-  /// Human-readable name (required)
   #[validate(
     length(min = 1, max = 100),
     custom(function = "validate_mcp_instance_name_validator")
   )]
   pub name: String,
-  /// User-defined slug for this instance (1-24 chars, alphanumeric + hyphens)
+  /// 1-24 chars, alphanumeric + hyphens.
   #[validate(
     length(min = 1, max = 24),
     custom(function = "validate_mcp_slug_validator")
   )]
   pub slug: String,
-  /// MCP server ID (required for create, ignored for update)
+  /// Required for create, ignored for update.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub mcp_server_id: Option<String>,
-  /// Optional description
   #[serde(default)]
   #[validate(length(max = 255))]
   pub description: Option<String>,
-  /// Whether this instance is enabled
   pub enabled: bool,
-  /// Authentication type
   #[serde(default)]
   pub auth_type: McpAuthType,
-  /// Reference to auth config
   #[serde(default)]
   pub auth_config_id: Option<String>,
-  /// Instance-level auth params (values for the auth config's key definitions)
+  /// Instance-level values for the auth config's key definitions.
   #[serde(default)]
   pub credentials: Option<Vec<McpAuthParamInput>>,
-  /// OAuth token ID to link to this MCP instance (set after OAuth flow)
+  /// OAuth token ID to link to this MCP instance (set after OAuth flow).
   #[serde(default)]
   pub oauth_token_id: Option<String>,
 }
 
-// ============================================================================
-// McpServerRequest - Input for creating/updating MCP servers
-// ============================================================================
-
 /// Input for creating or updating an MCP server.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 pub struct McpServerRequest {
-  /// MCP server endpoint URL (trimmed, case-insensitive unique)
+  /// MCP server endpoint URL (trimmed, case-insensitive unique).
   #[validate(
     length(min = 1, max = 2048),
     custom(function = "validate_mcp_server_url_validator")
   )]
   pub url: String,
-  /// Human-readable display name
   #[validate(length(min = 1, max = 100))]
   pub name: String,
-  /// Optional description
   #[serde(default)]
   #[validate(length(max = 255))]
   pub description: Option<String>,
-  /// Whether this MCP server is enabled
   pub enabled: bool,
-  /// Optional auth config to create alongside the server (create only)
+  /// Optional auth config to create alongside the server (create only).
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub auth_config: Option<CreateMcpAuthConfigRequest>,
 }
 
-// ============================================================================
-// Validator-derive wrapper functions
-// ============================================================================
-
 fn validate_mcp_instance_name_validator(_name: &str) -> Result<(), validator::ValidationError> {
-  // Length checks are handled by #[validate(length(...))]; this is for custom logic only.
+  // Length checks handled by #[validate(length(...))]; reserved for custom logic.
   Ok(())
 }
 
@@ -590,10 +493,6 @@ fn validate_mcp_slug_validator(slug: &str) -> Result<(), validator::ValidationEr
 fn validate_mcp_server_url_validator(url: &str) -> Result<(), validator::ValidationError> {
   crate::validate_http_url(url)
 }
-
-// ============================================================================
-// Validation functions
-// ============================================================================
 
 static MCP_SLUG_REGEX: Lazy<Regex> =
   Lazy::new(|| Regex::new(r"^[a-zA-Z0-9-]+$").expect("Invalid MCP slug regex"));

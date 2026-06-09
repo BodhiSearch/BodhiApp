@@ -109,7 +109,6 @@ pub async fn dev_clients_dag_handler(
     })?;
   }
 
-  // Look up local tenant to get client_secret
   let tenant = auth_scope
     .tenants()
     .get_tenant_by_client_id(&client_id)
@@ -139,7 +138,6 @@ pub async fn dev_tenants_cleanup_handler(
   let dashboard_token = auth_scope.auth_context().require_dashboard_token()?;
   let user_id = auth_scope.auth_context().require_user_id()?;
 
-  // Look up tenants created by this user, excluding [do-not-delete] protected tenants
   let tenants = auth_scope
     .tenants()
     .list_tenants_by_creator(user_id)
@@ -162,7 +160,6 @@ pub async fn dev_tenants_cleanup_handler(
     );
   }
 
-  // Send explicit client_ids to SPI for deletion
   let (status, body) = auth_scope
     .auth_service()
     .forward_request(
@@ -251,8 +248,6 @@ mod tests {
     let app_service: Arc<dyn AppService> = Arc::new(app_service_stub.await);
     let db_service = app_service.db_service();
 
-    // Populate database with test data
-    // 1. Create download request
     let download_req = DownloadRequestEntity {
       id: "test-download".to_string(),
       tenant_id: TEST_TENANT_ID.to_string(),
@@ -268,7 +263,6 @@ mod tests {
     };
     db_service.create_download_request(&download_req).await?;
 
-    // 2. Create access request
     db_service
       .insert_pending_request(
         TEST_TENANT_ID,
@@ -277,7 +271,6 @@ mod tests {
       )
       .await?;
 
-    // 3. Create API token
     let mut api_token = TokenEntity {
       id: "test-token-id".to_string(),
       tenant_id: TEST_TENANT_ID.to_string(),
@@ -294,7 +287,6 @@ mod tests {
       .create_api_token(TEST_TENANT_ID, &mut api_token)
       .await?;
 
-    // 4. Create user alias
     let user_alias = UserAlias {
       id: "test-alias-id".to_string(),
       alias: "test-alias".to_string(),
@@ -310,7 +302,6 @@ mod tests {
       .create_user_alias(TEST_TENANT_ID, "", &user_alias)
       .await?;
 
-    // Create API model alias
     let api_alias = services::ApiAlias {
       id: "test-api-alias".to_string(),
       name: "Test API Alias".to_string(),
@@ -336,7 +327,6 @@ mod tests {
       .create_api_model_alias(TEST_TENANT_ID, "", &api_alias, None)
       .await?;
 
-    // Create metadata
     let metadata = ModelMetadataEntity {
       id: String::new(),
       tenant_id: TEST_TENANT_ID.to_string(),
@@ -356,7 +346,6 @@ mod tests {
     };
     db_service.upsert_model_metadata(&metadata).await?;
 
-    // Create session
     let session_service = app_service.session_service();
     let session_store = session_service.get_session_store();
     let session_id = tower_sessions::session::Id::default();
@@ -372,7 +361,6 @@ mod tests {
     };
     session_store.save(&record).await?;
 
-    // Reset database
     let auth_scope = AuthScope(AuthScopedAppService::new(
       app_service.clone(),
       AuthContext::Anonymous {

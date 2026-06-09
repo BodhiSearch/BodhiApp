@@ -214,10 +214,8 @@ impl KeycloakAuthService {
     ];
 
     let url = self.auth_token_url();
-    // Log request with masked parameters
     log::log_http_request("POST", &url, "auth_service", Some(&params));
 
-    // Use traced client - reqwest-tracing will handle HTTP request/response logging
     let response = self
       .client
       .post(&url)
@@ -455,13 +453,11 @@ impl AuthService for KeycloakAuthService {
     let url = self.auth_token_url();
     log::log_http_request("POST", &url, "auth_service", Some(&params));
 
-    // Log token prefix for debugging (first 10 chars)
     tracing::debug!(
       "Attempting token refresh with token prefix: {}...",
       &refresh_token.chars().take(10).collect::<String>()
     );
 
-    // Retry logic with exponential backoff for network errors only
     // Attempts: 1st try immediate, retry 1 after 100ms, retry 2 after 500ms, retry 3 after 2000ms
     let max_retries = 3;
     let mut last_error = None;
@@ -493,7 +489,6 @@ impl AuthService for KeycloakAuthService {
       {
         Ok(resp) => resp,
         Err(e) => {
-          // Check if this is a network/timeout error that should be retried
           if e.is_timeout() || e.is_connect() || e.is_request() {
             tracing::warn!(
               "Network error during token refresh (attempt {}/{}): {}",
@@ -502,16 +497,14 @@ impl AuthService for KeycloakAuthService {
               e
             );
             last_error = Some(e.into());
-            continue; // Retry
+            continue;
           } else {
-            // Other errors (e.g., invalid request structure) should not be retried
             tracing::error!("Non-retryable error during token refresh: {}", e);
             return Err(e.into());
           }
         }
       };
 
-      // Check response status
       if response.status().is_success() {
         let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
           response.json().await?;
@@ -530,11 +523,9 @@ impl AuthService for KeycloakAuthService {
             .map(|s| s.secret().to_string()),
         ));
       } else {
-        // 4xx or 5xx response - parse error
         let status = response.status();
         let error = response.json::<KeycloakError>().await?;
 
-        // 4xx errors (client errors) should not be retried
         if status.is_client_error() {
           let error_msg = if let Some(ref desc) = error.error_description {
             format!("{}: {}", error.error, desc)
@@ -550,7 +541,6 @@ impl AuthService for KeycloakAuthService {
           return Err(error.into());
         }
 
-        // 5xx errors (server errors) can be retried
         if status.is_server_error() && attempt < max_retries {
           let error_msg = if let Some(ref desc) = error.error_description {
             format!("{}: {}", error.error, desc)
@@ -565,7 +555,7 @@ impl AuthService for KeycloakAuthService {
             error_msg
           );
           last_error = Some(error.into());
-          continue; // Retry
+          continue;
         } else {
           let error_msg = if let Some(ref desc) = error.error_description {
             format!("{}: {}", error.error, desc)
@@ -583,7 +573,6 @@ impl AuthService for KeycloakAuthService {
       }
     }
 
-    // All retries exhausted
     tracing::error!("Token refresh failed after {} attempts", max_retries + 1);
     Err(
       last_error.unwrap_or_else(|| AuthServiceError::AuthServiceApiError {
@@ -599,12 +588,10 @@ impl AuthService for KeycloakAuthService {
     client_secret: &str,
     user_id: &str,
   ) -> Result<()> {
-    // Get client access token
     let access_token = self
       .get_client_access_token(client_id, client_secret)
       .await?;
 
-    // Make API call to make the user a resource admin
     let endpoint = format!("{}/resources/make-resource-admin", self.auth_api_url());
     log::log_http_request("POST", &endpoint, "auth_service", None);
 
@@ -627,7 +614,6 @@ impl AuthService for KeycloakAuthService {
   }
 
   async fn assign_user_role(&self, reviewer_token: &str, user_id: &str, role: &str) -> Result<()> {
-    // Make API call to assign role to user
     let endpoint = format!(
       "{}/realms/{}/bodhi/resources/assign-role",
       self.auth_url, self.realm
@@ -656,7 +642,6 @@ impl AuthService for KeycloakAuthService {
   }
 
   async fn remove_user(&self, reviewer_token: &str, user_id: &str) -> Result<()> {
-    // Make API call to remove user from all roles
     let endpoint = format!(
       "{}/realms/{}/bodhi/resources/remove-user",
       self.auth_url, self.realm
@@ -808,7 +793,6 @@ impl AuthService for KeycloakAuthService {
         error_text
       )))
     } else {
-      // 400, 401, or other errors
       let error_text = response.text().await?;
       log::log_http_error("POST", &endpoint, "auth_service", &error_text);
       Err(AuthServiceError::AuthServiceApiError {

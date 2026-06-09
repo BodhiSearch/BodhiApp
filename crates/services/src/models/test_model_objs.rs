@@ -8,10 +8,6 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::json;
 
-// =============================================================================
-// Alias::can_serve
-// =============================================================================
-
 #[rstest]
 #[case::user_alias_exact_match("testalias:instruct", true)]
 #[case::user_alias_no_match("other:model", false)]
@@ -55,10 +51,6 @@ fn test_alias_can_serve_api(#[case] model: &str, #[case] expected: bool) {
   assert_eq!(expected, alias.can_serve(model));
 }
 
-// =============================================================================
-// ApiAlias::supports_model
-// =============================================================================
-
 #[rstest]
 #[case::exact_match_no_prefix("gpt-4", None, vec!["gpt-4"], false, true)]
 #[case::no_match_no_prefix("gpt-3.5-turbo", None, vec!["gpt-4"], false, false)]
@@ -90,10 +82,6 @@ fn test_api_alias_supports_model(
   );
   assert_eq!(expected, api_alias.supports_model(model));
 }
-
-// =============================================================================
-// OAIRequestParams::apply_to_value
-// =============================================================================
 
 #[rstest]
 fn test_oai_request_params_apply_to_value_sets_missing_fields() {
@@ -127,7 +115,6 @@ fn test_oai_request_params_apply_to_value_does_not_override_existing() {
     "messages": [{"role": "user", "content": "Hello"}]
   });
   params.apply_to_value(&mut value);
-  // temperature already present — should not be overridden
   assert_eq!(json!(0.2), value["temperature"]);
 }
 
@@ -172,10 +159,6 @@ fn test_api_alias_matchable_models(
   assert_eq!(matchable, api_alias.matchable_models());
 }
 
-// =============================================================================
-// UserAlias serialization/deserialization round-trip
-// =============================================================================
-
 #[rstest]
 fn test_user_alias_serde_roundtrip() {
   let alias = UserAliasBuilder::testalias().build_test().unwrap();
@@ -183,10 +166,6 @@ fn test_user_alias_serde_roundtrip() {
   let back: UserAlias = serde_json::from_str(&json).expect("deserialize");
   assert_eq!(alias, back);
 }
-
-// =============================================================================
-// ApiFormat serde
-// =============================================================================
 
 #[rstest]
 #[case::openai(ApiFormat::OpenAI, r#""openai""#)]
@@ -200,10 +179,6 @@ fn test_api_format_serde_roundtrip(#[case] format: ApiFormat, #[case] expected_j
   let deserialized: ApiFormat = serde_json::from_str(&serialized).expect("deserialize");
   assert_eq!(format, deserialized);
 }
-
-// =============================================================================
-// ModelRouter domain types
-// =============================================================================
 
 fn test_router() -> ModelRouterAlias {
   ModelRouterAlias {
@@ -231,7 +206,7 @@ fn test_router() -> ModelRouterAlias {
 
 #[rstest]
 fn test_alias_source_model_router_snake_case() {
-  // The new source tag must serialize as snake_case, never kebab-case.
+  // The source tag must serialize as snake_case, never kebab-case.
   let serialized = serde_json::to_string(&AliasSource::ModelRouter).expect("serialize");
   assert_eq!(r#""model_router""#, serialized);
 }

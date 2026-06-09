@@ -4,7 +4,6 @@ use derive_builder::Builder;
 use reqwest::Client;
 use serde::Deserialize;
 
-/// Configuration for the auth server test client
 #[derive(Debug, Clone, Builder)]
 #[builder(setter(into))]
 pub struct AuthServerConfig {
@@ -15,13 +14,11 @@ pub struct AuthServerConfig {
   pub app_client_id: String,
 }
 
-/// OAuth token response structure
 #[derive(Debug, Deserialize)]
 struct TokenResponse {
   access_token: String,
 }
 
-/// Test user credentials for integration tests
 #[derive(Debug, Clone)]
 pub struct TestUser {
   pub username: String,
@@ -29,14 +26,12 @@ pub struct TestUser {
   pub password: String,
 }
 
-/// Auth server test client for integration testing
 pub struct AuthServerTestClient {
   client: Client,
   config: AuthServerConfig,
 }
 
 impl AuthServerTestClient {
-  /// Create a new auth server test client
   pub fn new(config: AuthServerConfig) -> Self {
     Self {
       client: Client::new(),

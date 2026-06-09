@@ -22,7 +22,6 @@ async fn test_cross_tenant_download_isolation(
   ctx.service.create_download_request(&dl_a).await?;
   ctx.service.create_download_request(&dl_b).await?;
 
-  // Listing downloads in tenant A should only return dl_a
   let (list_a, total_a) = ctx
     .service
     .list_download_requests(TEST_TENANT_ID, 1, 10)
@@ -31,7 +30,6 @@ async fn test_cross_tenant_download_isolation(
   assert_eq!(1, list_a.len());
   assert_eq!(TEST_TENANT_ID, list_a[0].tenant_id);
 
-  // Listing downloads in tenant B should only return dl_b
   let (list_b, total_b) = ctx
     .service
     .list_download_requests(TEST_TENANT_B_ID, 1, 10)
@@ -40,7 +38,6 @@ async fn test_cross_tenant_download_isolation(
   assert_eq!(1, list_b.len());
   assert_eq!(TEST_TENANT_B_ID, list_b[0].tenant_id);
 
-  // Getting dl_b by ID under tenant A should return None
   let cross = ctx
     .service
     .get_download_request(TEST_TENANT_ID, &dl_b.id)

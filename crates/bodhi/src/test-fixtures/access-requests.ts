@@ -51,8 +51,6 @@ export const mockEmptyRequests: PaginatedUserAccessResponse = {
   page_size: 10,
 };
 
-// User access status scenarios
-
 export const mockUserAccessStatusPending: UserAccessStatusResponse = {
   status: 'pending',
   username: 'user@example.com',
@@ -74,21 +72,18 @@ export const mockUserAccessStatusRejected: UserAccessStatusResponse = {
   updated_at: '2024-01-02T00:00:00Z',
 };
 
-// Role definitions for parameterized tests
 export const ADMIN_ROLES = ['manager', 'admin'] as const;
 export const BLOCKED_ROLES = ['user', 'power_user'] as const;
 export const ALL_ROLES = [...ADMIN_ROLES, ...BLOCKED_ROLES] as const;
 
-// Create mock user info for different roles
 export const createMockUserInfo = (role?: string | null, usernameOrLoggedIn: string | boolean = true) => {
-  // Handle the case where second parameter is loggedIn (boolean) and false
   if (!usernameOrLoggedIn) {
     return {
       auth_status: 'logged_out' as const,
     };
   }
 
-  // Helper function to get user_id based on username (matches test-fixtures/users.ts)
+  // user_id values must match test-fixtures/users.ts
   const getUserId = (username: string): string => {
     const userIdMap: Record<string, string> = {
       'admin@example.com': 'admin-id',
@@ -101,7 +96,6 @@ export const createMockUserInfo = (role?: string | null, usernameOrLoggedIn: str
     return userIdMap[username] || '550e8400-e29b-41d4-a716-446655440000';
   };
 
-  // Handle the case where second parameter is a username (string)
   if (typeof usernameOrLoggedIn === 'string') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: any = {
@@ -121,7 +115,6 @@ export const createMockUserInfo = (role?: string | null, usernameOrLoggedIn: str
     return result;
   }
 
-  // Default case with role
   const username = `${role}@example.com`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result: any = {

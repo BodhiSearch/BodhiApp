@@ -1,6 +1,3 @@
-/**
- * MSW v2 handlers for MCP endpoints
- */
 import { http, HttpResponse } from 'msw';
 
 import type {
@@ -24,10 +21,6 @@ import {
   createMockAuthConfigOAuthDynamic,
 } from '@/test-fixtures/mcps';
 
-// ============================================================================
-// Mock Data -- created via fixture factories (single source of truth)
-// ============================================================================
-
 export const mockMcpServerInfo = createMockMcpServerInfo();
 export const mockMcpServerResponse: McpServerResponse = createMockMcpServerResponse();
 export const mockMcp: Mcp = createMockMcp();
@@ -38,10 +31,6 @@ export const mockMcpWithDcr: Mcp = createMockMcpWithDcr();
 export const mockAuthConfigHeader: McpAuthConfigResponse = createMockAuthConfigHeader();
 export const mockAuthConfigOAuthPreReg: McpAuthConfigResponse = createMockAuthConfigOAuthPreReg();
 export const mockAuthConfigOAuthDynamic: McpAuthConfigResponse = createMockAuthConfigOAuthDynamic();
-
-// ============================================================================
-// Handler Factories - MCP Instance CRUD
-// ============================================================================
 
 export function mockListMcps(mcps: Mcp[] = [mockMcp]) {
   return http.get(`${BODHI_API_BASE}/mcps`, () => HttpResponse.json({ mcps }));
@@ -63,10 +52,6 @@ export function mockDeleteMcp() {
   return http.delete(`${BODHI_API_BASE}/mcps/:id`, () => new HttpResponse(null, { status: 204 }));
 }
 
-// ============================================================================
-// Handler Factories - MCP Servers
-// ============================================================================
-
 export function mockListMcpServers(servers: McpServerResponse[] = [mockMcpServerResponse]) {
   return http.get(`${BODHI_API_BASE}/mcps/servers`, () => HttpResponse.json({ mcp_servers: servers }));
 }
@@ -82,10 +67,6 @@ export function mockCreateMcpServer(response: McpServerResponse = mockMcpServerR
 export function mockUpdateMcpServer(response: McpServerResponse = mockMcpServerResponse) {
   return http.put(`${BODHI_API_BASE}/mcps/servers/:id`, () => HttpResponse.json(response));
 }
-
-// ============================================================================
-// Handler Factories - OAuth Discovery
-// ============================================================================
 
 export function mockDiscoverAs() {
   return http.post(`${BODHI_API_BASE}/mcps/oauth/discover-as`, () =>
@@ -153,10 +134,6 @@ export function mockOAuthDiscover() {
   return mockDiscoverAs();
 }
 
-// ============================================================================
-// Handler Factories - OAuth Token CRUD
-// ============================================================================
-
 export function mockGetOAuthToken(response: OAuthTokenResponse = mockOAuthToken) {
   return http.get(`${BODHI_API_BASE}/mcps/oauth-tokens/:tokenId`, () => HttpResponse.json(response));
 }
@@ -164,10 +141,6 @@ export function mockGetOAuthToken(response: OAuthTokenResponse = mockOAuthToken)
 export function mockDeleteOAuthToken() {
   return http.delete(`${BODHI_API_BASE}/mcps/oauth-tokens/:tokenId`, () => new HttpResponse(null, { status: 204 }));
 }
-
-// ============================================================================
-// Handler Factories - Unified Auth Configs
-// ============================================================================
 
 export function mockListAuthConfigs(response: McpAuthConfigsListResponse = { auth_configs: [mockAuthConfigHeader] }) {
   return http.get(`${BODHI_API_BASE}/mcps/auth-configs`, () => HttpResponse.json(response));
@@ -207,10 +180,6 @@ export function mockDeleteAuthConfigError({
   );
 }
 
-// ============================================================================
-// Handler Factories - OAuth Login & Token Exchange (under auth-configs)
-// ============================================================================
-
 export function mockOAuthLogin() {
   return http.post(`${BODHI_API_BASE}/mcps/auth-configs/:id/login`, () =>
     HttpResponse.json({ authorization_url: 'https://auth.example.com/authorize?client_id=test&state=abc123' })
@@ -220,10 +189,6 @@ export function mockOAuthLogin() {
 export function mockOAuthTokenExchange(response: OAuthTokenResponse = mockOAuthToken) {
   return http.post(`${BODHI_API_BASE}/mcps/auth-configs/:id/token`, () => HttpResponse.json(response));
 }
-
-// ============================================================================
-// Error Handlers
-// ============================================================================
 
 export function mockListMcpsError({
   message = 'Failed to fetch MCPs',
@@ -330,10 +295,6 @@ export function mockStandaloneDynamicRegisterError({
     HttpResponse.json({ error: { message, code, type } }, { status })
   );
 }
-
-// ============================================================================
-// Default Handlers
-// ============================================================================
 
 // IMPORTANT: Sub-path handlers (e.g. GET /mcps/servers, GET /mcps/auth-configs)
 // must be registered BEFORE wildcard handlers (e.g. GET /mcps/:id) because MSW

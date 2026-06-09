@@ -319,13 +319,11 @@ impl ServerHandler for TestMcpServerHandler {
       let tool_name = request.name.to_string();
       let arguments = request.arguments.clone();
 
-      // Record the call
       calls.lock().await.push(ReceivedToolCall {
         tool_name: tool_name.clone(),
         arguments,
       });
 
-      // Find matching tool
       let tool = config.tools.iter().find(|t| t.name == tool_name);
       match tool {
         Some(t) => {
@@ -441,7 +439,6 @@ impl ServerHandler for TestMcpServerHandler {
       .cloned();
     std::future::ready(match prompt {
       Some(p) => {
-        // Substitute arguments in template
         let mut text = p.template.clone();
         if let Some(args) = &request.arguments {
           for (key, value) in args {
@@ -545,11 +542,9 @@ mod tests {
 
     let server = TestMcpServer::start(config).await?;
 
-    // Connect with rmcp client
     let transport = StreamableHttpClientTransport::from_uri(server.url.as_str());
     let client = rmcp::model::ClientInfo::default().serve(transport).await?;
 
-    // -- Test list_tools --
     let tools_result = client.list_tools(None).await?;
     assert_eq!(1, tools_result.tools.len());
     assert_eq!("echo", tools_result.tools[0].name.as_ref());
@@ -626,7 +621,6 @@ mod tests {
     assert_eq!(json!("hello"), args["message"]);
     drop(calls);
 
-    // Shutdown
     server.shutdown().await;
     Ok(())
   }

@@ -38,7 +38,6 @@ export const apiFormatKeys = {
   all: ['api-formats'] as const,
 };
 
-// Endpoint constants (consolidated from hook files)
 export const ENDPOINT_MODELS = `${BODHI_API_BASE}/models`;
 export const ENDPOINT_MODEL_ID = `${BODHI_API_BASE}/models/{id}`;
 export const ENDPOINT_ALIAS = `${BODHI_API_BASE}/models/alias`;

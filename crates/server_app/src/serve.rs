@@ -48,7 +48,6 @@ impl ShutdownCallback for ShutdownLocalLlamaCallback {
   }
 }
 
-/// Listener that forwards keep-alive setting changes to the local llama runtime.
 #[derive(Debug)]
 struct KeepAliveSettingListener {
   app_service: Arc<dyn AppService>,

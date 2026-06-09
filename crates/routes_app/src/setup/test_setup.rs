@@ -212,8 +212,7 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
     .expect_register_client()
     .times(1)
     .withf(|_name, _description, redirect_uris| {
-      // Verify that all loopback redirect URIs are registered
-      // Now there might be additional URIs (request host, server IP) so check >= 3
+      // >= 3 since request-host and server-IP URIs may also be present
       redirect_uris.len() >= 3
         && redirect_uris.contains(&"http://localhost:1135/ui/auth/callback".to_string())
         && redirect_uris.contains(&"http://127.0.0.1:1135/ui/auth/callback".to_string())
@@ -226,7 +225,6 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
       })
     });
 
-  // Configure with default settings (no explicit public host)
   let setting_service = SettingServiceStub::default()
     .append_settings(HashMap::from([
       (services::BODHI_SCHEME.to_string(), "http".to_string()),
@@ -285,7 +283,6 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
     .expect_register_client()
     .times(1)
     .withf(|_name, _description, redirect_uris| {
-      // Verify that all loopback hosts AND the network IP are registered
       redirect_uris.len() >= 4  // 3 loopback + 1 network IP (+ optional server IP)
         && redirect_uris.contains(&"http://localhost:1135/ui/auth/callback".to_string())
         && redirect_uris.contains(&"http://127.0.0.1:1135/ui/auth/callback".to_string())
@@ -299,7 +296,6 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
       })
     });
 
-  // Configure with default settings (no explicit public host)
   let setting_service = SettingServiceStub::default()
     .append_settings(HashMap::from([
       (services::BODHI_SCHEME.to_string(), "http".to_string()),
@@ -369,7 +365,6 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
       })
     });
 
-  // Configure with explicit public host
   let setting_service = SettingServiceStub::default()
     .append_settings(HashMap::from([
       (

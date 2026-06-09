@@ -184,7 +184,6 @@ impl SharedContext for DefaultSharedContext {
     mut request: Value,
     alias: Alias,
   ) -> Result<reqwest::Response> {
-    // Pattern match to extract local alias information and reject API aliases
     let empty_params = JsonVec::default();
     let (alias_name, repo, filename, snapshot, context_params) = match &alias {
       Alias::User(user_alias) => (
@@ -217,8 +216,7 @@ impl SharedContext for DefaultSharedContext {
       .find_local_file(repo, filename, Some(snapshot.clone()))?
       .path();
 
-    // Apply request parameters if this is a user alias
-    // Apply directly to Value to preserve any non-standard fields (like 'name' in tool messages)
+    // Apply directly to Value to preserve any non-standard fields (like 'name' in tool messages).
     if let Alias::User(user_alias) = &alias {
       user_alias.request_params.apply_to_value(&mut request);
     }

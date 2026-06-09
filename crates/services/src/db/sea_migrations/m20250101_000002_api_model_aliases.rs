@@ -142,8 +142,7 @@ impl MigrationTrait for Migration {
       )
       .await?;
 
-    // Composite partial unique index: (tenant_id, user_id, prefix) where prefix is non-empty.
-    // This ensures prefix uniqueness is scoped per-tenant-user (not globally).
+    // Prefix uniqueness is scoped per-tenant-user (not globally) via partial index.
     let db = manager.get_connection();
     db.execute_unprepared(
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_api_model_aliases_prefix_unique ON api_model_aliases(tenant_id, user_id, prefix) WHERE prefix IS NOT NULL AND prefix != ''"

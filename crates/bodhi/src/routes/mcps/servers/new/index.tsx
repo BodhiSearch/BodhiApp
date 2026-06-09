@@ -224,7 +224,6 @@ function NewMcpServerContent() {
               <Label htmlFor="enabled">Enabled</Label>
             </div>
 
-            {/* Auth Config Section */}
             <div className="border rounded-lg">
               <button
                 type="button"

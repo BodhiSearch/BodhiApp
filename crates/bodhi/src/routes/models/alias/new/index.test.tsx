@@ -14,7 +14,6 @@ import { mockModels, mockCreateModel } from '@/test-utils/msw-v2/handlers/models
 import { mockModelFiles } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock useMediaQuery hook
 vi.mock('@/hooks/use-media-query', () => ({
   useMediaQuery: (query: string) => {
     return true;
@@ -93,7 +92,6 @@ const selectFromComboBox = async (
   comboboxName: RegExp,
   optionText: string
 ) => {
-  // Click to open the combobox
   await user.click(screen.getByRole('combobox', { name: comboboxName }));
 
   // Find the dialog (mobile view) and select the option
@@ -199,7 +197,6 @@ describe('CreateAliasPage', () => {
 
     await user.type(screen.getByLabelText(/alias/i), 'test-alias');
 
-    // Select from comboboxes using helper function
     await selectFromComboBox(user, /repo/i, 'owner1/repo1');
     await selectFromComboBox(user, /filename/i, 'file1.gguf');
 
@@ -233,7 +230,6 @@ describe('CreateAliasPage', () => {
     // Fill required fields
     await user.type(screen.getByLabelText(/alias/i), 'test-context-alias');
 
-    // Select from comboboxes using helper function (snapshot will be auto-selected)
     await selectFromComboBox(user, /repo/i, 'owner1/repo1');
     await selectFromComboBox(user, /filename/i, 'file1.gguf');
 

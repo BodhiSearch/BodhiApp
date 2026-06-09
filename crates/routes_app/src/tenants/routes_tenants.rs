@@ -38,7 +38,6 @@ pub async fn tenants_index(
 
   let user_id = auth_scope.auth_context().require_user_id()?;
 
-  // Query local DB for user's tenant memberships
   let user_tenants = auth_scope
     .tenant_service()
     .list_user_tenants(user_id)
@@ -185,7 +184,6 @@ pub async fn tenants_activate(
     return Err(DashboardAuthRouteError::NotMultiTenant)?;
   }
 
-  // Verify the user has a token for this tenant
   let has_token = session
     .get::<String>(&access_token_key(&client_id))
     .await

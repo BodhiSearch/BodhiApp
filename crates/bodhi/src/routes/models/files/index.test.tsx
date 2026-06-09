@@ -62,7 +62,6 @@ beforeEach(() => {
   navigateMock.mockClear();
 });
 
-// Mock window.matchMedia for responsive testing
 function mockMatchMedia(matches: boolean) {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches,
@@ -82,31 +81,25 @@ describe('ModelFilesPage', () => {
   });
 
   it('renders responsive layouts correctly', async () => {
-    // Test mobile view (< sm)
     mockMatchMedia(false);
 
     const { unmount } = render(<ModelFilesPage />, {
       wrapper: createWrapper(),
     });
 
-    // Wait for data to load
     await screen.findByTestId('combined-cell');
 
-    // Mobile view should show combined cell
     expect(screen.getAllByTestId('combined-cell')[0]).toBeVisible();
 
     unmount();
 
-    // Test desktop view (>= sm)
     mockMatchMedia(true);
 
-    // Add fresh mocks for second render
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelFilesDefault());
 
     render(<ModelFilesPage />, { wrapper: createWrapper() });
     await screen.findByTestId('repo-cell');
 
-    // Desktop view should show separate columns
     expect(screen.getAllByTestId('repo-cell')[0]).toBeVisible();
     expect(screen.getAllByTestId('filename-cell')[0]).toBeVisible();
     expect(screen.getAllByTestId('size-cell')[0]).toBeVisible();
@@ -173,7 +166,6 @@ describe('ModelFilesPage', () => {
         render(<ModelFilesPage />, { wrapper: createWrapper() });
       });
 
-      // Open preview modal
       const previewButtons = screen.getAllByTestId('modelfiles-preview-button-test-repo-test-file.txt');
       const previewButton = previewButtons[0];
       expect(previewButton).toBeInTheDocument();
@@ -182,7 +174,6 @@ describe('ModelFilesPage', () => {
         previewButton.click();
       });
 
-      // Modal should have body refresh button (since no metadata initially)
       const refreshButton = screen.getByTestId('preview-modal-refresh-button-body');
       expect(refreshButton).toBeInTheDocument();
       expect(refreshButton).toBeEnabled();
@@ -191,7 +182,6 @@ describe('ModelFilesPage', () => {
         refreshButton.click();
       });
 
-      // Refresh completes (button should still be visible)
       expect(refreshButton).toBeInTheDocument();
     });
   });
@@ -210,10 +200,8 @@ describe('ModelFilesPage', () => {
         previewButton.click();
       });
 
-      // Modal should be visible
       expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
 
-      // Basic info should be displayed
       expect(screen.getByTestId('preview-basic-alias')).toHaveTextContent('test-repo/test-file.txt');
       expect(screen.getByTestId('preview-basic-repo')).toHaveTextContent('test-repo');
       expect(screen.getByTestId('preview-basic-filename')).toHaveTextContent('test-file.txt');
@@ -231,7 +219,6 @@ describe('ModelFilesPage', () => {
         previewButton.click();
       });
 
-      // Modal should be visible with body refresh button (since no metadata)
       expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
       expect(screen.getByTestId('preview-modal-refresh-button-body')).toBeInTheDocument();
     });

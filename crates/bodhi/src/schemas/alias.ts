@@ -33,12 +33,11 @@ export const createAliasFormSchema = z.object({
   filename: z.string().min(1, 'Filename is required'),
   snapshot: z.string().optional(),
   request_params: requestParamsSchema,
-  context_params: z.string().optional(), // string for form textarea
+  context_params: z.string().optional(),
 });
 
 export type AliasFormData = z.infer<typeof createAliasFormSchema>;
 
-// Conversion functions between form and API formats
 export const convertFormToApi = (formData: AliasFormData): UserAliasRequest => ({
   alias: formData.alias,
   repo: formData.repo,

@@ -1,7 +1,6 @@
 import * as React from 'react';
 
 export function useLocalStorage<T>(key: string, defaultValue: T): [T, (value: T | ((prevValue: T) => T)) => void] {
-  // Get initial value from localStorage or use default
   const getStoredValue = React.useCallback((): T => {
     if (typeof window === 'undefined') return defaultValue;
     try {
@@ -15,11 +14,9 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, (value: T 
 
   const [storedValue, setStoredValue] = React.useState<T>(getStoredValue);
 
-  // Return a wrapped version of useState's setter function that persists the new value to localStorage
   const setValue = React.useCallback(
     (value: T | ((prevValue: T) => T)) => {
       try {
-        // Allow value to be a function so we have same API as useState
         const valueToStore = value instanceof Function ? value(storedValue) : value;
 
         setStoredValue(valueToStore);

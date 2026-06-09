@@ -220,7 +220,6 @@ async fn test_get_marks_expired_draft(
   let ctx = sea_context(db_type).await;
   let id = new_ulid();
   let mut row = make_request(&id, ctx.now);
-  // Set expires_at in the past
   row.expires_at = ctx.now - Duration::minutes(5);
   ctx.service.create(&row).await?;
 
@@ -253,7 +252,6 @@ async fn test_get_returns_draft_when_not_expired(
   Ok(())
 }
 
-/// Helper enum to parameterize update operations across approval/denial/failure
 enum UpdateOp {
   Approval,
   Denial,
@@ -283,7 +281,6 @@ async fn perform_update(
   }
 }
 
-/// Transition a draft to a non-draft state so we can test rejection of updates on non-draft records
 async fn transition_to_non_draft(
   service: &crate::db::DefaultDbService,
   id: &str,

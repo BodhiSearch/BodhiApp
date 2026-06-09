@@ -5,7 +5,6 @@ import SetupCompletePage from './index';
 import { createWrapper } from '@/tests/wrapper';
 import { SetupProvider } from '@/routes/setup/-components';
 
-// Mock navigation
 const navigateMock = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
@@ -26,7 +25,6 @@ vi.mock('@/components/AppInitializer', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-// Mock Card components
 vi.mock('@/components/ui/card', () => ({
   Card: ({ children, className }: any) => (
     <div data-testid="card" className={className}>
@@ -40,7 +38,6 @@ vi.mock('@/components/ui/card', () => ({
   CardFooter: ({ children }: any) => <div data-testid="card-footer">{children}</div>,
 }));
 
-// Helper to render with SetupProvider
 const renderWithSetupProvider = (component: React.ReactElement) => {
   return render(<SetupProvider>{component}</SetupProvider>, { wrapper: createWrapper() });
 };

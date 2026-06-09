@@ -16,7 +16,6 @@ pub async fn test_data_service(
   #[future] test_db_service: TestDbService,
 ) -> TestDataService {
   let db_service = Arc::new(test_db_service);
-  // Seed user aliases into DB
   seed_test_user_aliases(db_service.as_ref()).await.unwrap();
   let inner = LocalDataService::new(Arc::new(test_hf_service), db_service);
   TestDataService { inner }

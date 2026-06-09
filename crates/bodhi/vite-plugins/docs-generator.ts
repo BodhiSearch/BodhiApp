@@ -140,12 +140,10 @@ function groupDocs(slugs: string[], docsDirectory: string): DocGroup[] {
     groups[groupName].items.push(details);
   });
 
-  // Sort items within each group
   Object.values(groups).forEach((group) => {
     group.items.sort((a, b) => a.order - b.order);
   });
 
-  // Convert groups object to sorted array
   return Object.entries(groups)
     .map(([key, group]) => ({
       ...group,
@@ -161,10 +159,8 @@ function generateDocsData(): DocsData {
   const docGroups: Record<string, DocGroup[]> = {};
   const docContents: Record<string, { content: string; data: any }> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-  // Generate doc groups for different base paths
   docGroups[''] = groupDocs(allSlugs, docsDirectory);
 
-  // Generate content for each doc
   allSlugs.forEach((slug) => {
     const filePath = path.join(docsDirectory, `${slug.replaceAll('/', path.sep)}.md`);
     if (fs.existsSync(filePath)) {
@@ -185,10 +181,8 @@ export function docsGeneratorPlugin(): Plugin {
   return {
     name: 'docs-generator',
     buildStart() {
-      // Generate docs data at build time
       const docsData = generateDocsData();
 
-      // Write the generated data to a virtual module
       const outputPath = path.join(process.cwd(), 'src/generated/docs-data.json');
       const outputDir = path.dirname(outputPath);
 

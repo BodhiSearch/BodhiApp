@@ -17,7 +17,6 @@ use tracing::{debug, error, info};
 
 // User endpoints
 
-/// Request access to the system
 #[utoipa::path(
     post,
     path = ENDPOINT_USER_REQUEST_ACCESS,
@@ -38,7 +37,6 @@ use tracing::{debug, error, info};
     )
 )]
 pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, BodhiErrorResponse> {
-  // Session auth: extract username, user_id, and role
   let (user_id, username, role) = match auth_scope.auth_context() {
     AuthContext::Session {
       user_id,
@@ -59,12 +57,10 @@ pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, B
     }
   };
 
-  // Multi-tenant: require active tenant context
   if auth_scope.auth_context().tenant_id().is_none() {
     return Err(UsersRouteError::TenantRequired)?;
   }
 
-  // Check if user already has a role (User or above)
   if role.has_access_to(&services::ResourceRole::User) {
     debug!("User {} already has role: {}", username, role);
     return Err(UsersRouteError::AlreadyHasAccess)?;
@@ -72,13 +68,11 @@ pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, B
 
   let svc = auth_scope.user_access_requests();
 
-  // Check for existing pending request
   if svc.get_pending_request(user_id.clone()).await?.is_some() {
     debug!("User {} already has pending request", username);
     return Err(UsersRouteError::AlreadyPending)?;
   }
 
-  // Create new access request
   let _ = svc
     .insert_pending_request(username.to_string(), user_id.clone())
     .await?;
@@ -87,7 +81,6 @@ pub async fn users_request_access(auth_scope: AuthScope) -> Result<StatusCode, B
   Ok(StatusCode::CREATED)
 }
 
-/// Check access request status
 #[utoipa::path(
     get,
     path = ENDPOINT_USER_REQUEST_STATUS,
@@ -123,7 +116,6 @@ pub async fn users_request_status(
 
 // Admin/Manager endpoints
 
-/// List pending access requests
 #[utoipa::path(
     get,
     path = ENDPOINT_ACCESS_REQUESTS_PENDING,
@@ -152,7 +144,6 @@ pub async fn users_access_requests_pending(
   let page_size = params.page_size.min(100);
   let page = params.page.min(u32::MAX as usize) as u32;
 
-  // Get pending requests with pagination
   let (requests, total) = svc.list_pending_requests(page, page_size as u32).await?;
 
   Ok(Json(PaginatedUserAccessResponse {
@@ -163,7 +154,6 @@ pub async fn users_access_requests_pending(
   }))
 }
 
-/// List all access requests
 #[utoipa::path(
     get,
     path = ENDPOINT_ACCESS_REQUESTS_ALL,
@@ -199,7 +189,6 @@ pub async fn users_access_requests_index(
   }))
 }
 
-/// Approve access request
 #[utoipa::path(
     post,
     path = ENDPOINT_ACCESS_REQUESTS_ALL.to_owned() + "/{id}/approve",
@@ -256,7 +245,6 @@ pub async fn users_access_request_approve(
 
   let svc = auth_scope.user_access_requests();
 
-  // Get the request details to obtain the user's email
   let access_request = svc
     .get_request_by_id(&id)
     .await?
@@ -267,7 +255,6 @@ pub async fn users_access_request_approve(
     return Err(UsersRouteError::AlreadyProcessed.into());
   }
 
-  // Update request status to approved
   svc
     .update_request_status(
       &id,
@@ -276,14 +263,13 @@ pub async fn users_access_request_approve(
     )
     .await?;
 
-  // Call auth service to assign role to user via scoped service
   let role_name = request.role.to_string();
   auth_scope
     .users()
     .assign_user_role(&access_request.user_id, &role_name)
     .await?;
 
-  // Clear existing sessions for the user to ensure new role is applied
+  // clear sessions so the new role takes effect
   let cleared_sessions = auth_scope
     .sessions()
     .clear_sessions_for_user(&access_request.user_id)
@@ -296,7 +282,6 @@ pub async fn users_access_request_approve(
   Ok(StatusCode::OK)
 }
 
-/// Reject access request
 #[utoipa::path(
     post,
     path = ENDPOINT_ACCESS_REQUESTS_ALL.to_owned() + "/{id}/reject",
@@ -330,7 +315,6 @@ pub async fn users_access_request_reject(
     claims.preferred_username, id
   );
 
-  // Update request status to rejected
   let svc = auth_scope.user_access_requests();
   svc
     .update_request_status(

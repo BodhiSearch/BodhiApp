@@ -30,7 +30,6 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Mock AppInitializer to just render children
 vi.mock('@/components/AppInitializer', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -60,12 +59,10 @@ describe('RequestAccessPage Display States', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Should show pending status
     expect(screen.getByTestId('request-access-page')).toBeInTheDocument();
     expect(screen.getByText('Access Request Pending')).toBeInTheDocument();
     expect(screen.getByText(/Your access request submitted on.*is pending review/)).toBeInTheDocument();
 
-    // Should not show request button
     expect(screen.queryByRole('button', { name: /request access/i })).not.toBeInTheDocument();
   });
 
@@ -80,9 +77,8 @@ describe('RequestAccessPage Display States', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Should show empty page content since user gets redirected
     expect(screen.getByTestId('request-access-page')).toBeInTheDocument();
-    // User with roles gets redirected, so should not see the AuthCard content
+    // User with a role is redirected, so the AuthCard never renders.
     expect(screen.queryByTestId('auth-card')).not.toBeInTheDocument();
     expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
   });
@@ -98,12 +94,11 @@ describe('RequestAccessPage Display States', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Should show request access form (rejected status shows same as none)
+    // Rejected status renders the same request form as no request.
     expect(screen.getByTestId('request-access-page')).toBeInTheDocument();
     expect(screen.getByTestId('auth-card-header')).toHaveTextContent('Request Access');
     expect(screen.getByText('Request access to application')).toBeInTheDocument();
 
-    // Should show request access button
     expect(screen.getByTestId('auth-card-action-0')).toBeInTheDocument();
   });
 });
@@ -137,7 +132,6 @@ describe('RequestAccessPage Error Handling', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // The page should still render
     expect(screen.getByTestId('request-access-page')).toBeInTheDocument();
   });
 
@@ -153,7 +147,7 @@ describe('RequestAccessPage Error Handling', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Should show request access form when no request exists (404)
+    // A 404 status (no request) renders the request form.
     await waitFor(() => {
       expect(screen.getByTestId('auth-card-header')).toHaveTextContent('Request Access');
       expect(screen.getByTestId('auth-card-action-0')).toBeInTheDocument();
@@ -173,10 +167,8 @@ describe('RequestAccessPage Loading States', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Should show pending status
     expect(screen.getByText('Access Request Pending')).toBeInTheDocument();
     expect(screen.getByText(/Your access request submitted on.*is pending review/)).toBeInTheDocument();
-    // Should not show any buttons when pending
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });
@@ -195,11 +187,9 @@ describe('RequestAccessPage UI Interactions', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Should show request access button (rejected status shows same UI as none)
     const requestButton = screen.getByTestId('auth-card-action-0');
     expect(requestButton).toBeInTheDocument();
     expect(requestButton).toHaveTextContent('Request Access');
-    // Should also show the title
     expect(screen.getByTestId('auth-card-header')).toHaveTextContent('Request Access');
 
     await user.click(requestButton);
@@ -221,18 +211,16 @@ describe('RequestAccessPage UI Interactions', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Should show formatted date in the pending message
     expect(screen.getByText(/Your access request submitted on.*is pending review/)).toBeInTheDocument();
-    // Should contain the formatted date (mock data uses 2024-01-01)
+    // Mock data uses 2024-01-01, rendered as 1/1/2024.
     expect(screen.getByText((content) => content.includes('1/1/2024'))).toBeInTheDocument();
   });
 });
 
-// Tests that require "no request exists" scenario (404 response)
 describe('RequestAccessPage - No Request Exists', () => {
   const user = userEvent.setup();
 
-  // Custom handler for 404 response when no request exists using MSW v2
+  // The status endpoint returns 404 (no request) twice, then the request-access POST succeeds.
   const createNoRequestHandlers = (userInfo: any) => [
     ...mockAppInfo({ status: 'ready' }),
     ...mockUserLoggedIn(userInfo),
@@ -262,11 +250,9 @@ describe('RequestAccessPage - No Request Exists', () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
 
-    // Should show the request form
     expect(screen.getByTestId('request-access-page')).toBeInTheDocument();
     expect(screen.getByText('Request access to application')).toBeInTheDocument();
 
-    // Should show request access button
     expect(screen.getByTestId('auth-card-action-0')).toBeInTheDocument();
     expect(screen.getByTestId('auth-card-action-0')).toHaveTextContent('Request Access');
   });
@@ -317,11 +303,8 @@ describe('RequestAccessPage - No Request Exists', () => {
 
     const requestButton = screen.getByTestId('auth-card-action-0');
 
-    // Should show initial button state
     expect(requestButton).toHaveTextContent('Request Access');
     expect(requestButton).not.toBeDisabled();
-
-    // Button should be clickable
     expect(requestButton).toBeInTheDocument();
   });
 
@@ -358,9 +341,8 @@ describe('RequestAccessPage - No Request Exists', () => {
     const requestButton = screen.getByTestId('auth-card-action-0');
     await user.click(requestButton);
 
-    // Should show error message via toast (tested in toast hooks)
-    // The error is handled by the mutation hook and shown via toast
-    expect(requestButton).toBeEnabled(); // Button should be re-enabled after error
+    // The error surfaces via toast (covered in toast hook tests); here we only assert the button re-enables.
+    expect(requestButton).toBeEnabled();
   });
 
   it('shows request access button for users without roles', async () => {
@@ -376,7 +358,6 @@ describe('RequestAccessPage - No Request Exists', () => {
 
     const requestButton = screen.getByTestId('auth-card-action-0');
 
-    // Check button is available and enabled
     expect(requestButton).toBeInTheDocument();
     expect(requestButton).not.toBeDisabled();
     expect(requestButton).toHaveTextContent('Request Access');

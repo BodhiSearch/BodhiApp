@@ -13,7 +13,6 @@ import { UseMutationResult } from '@/hooks/useQuery';
 
 import { tokenKeys, API_TOKENS_ENDPOINT } from './constants';
 
-// Hooks
 export function useListTokens(page: number = 1, pageSize: number = 10, options?: { enabled?: boolean }) {
   return useQuery<PaginatedTokenResponse>(
     tokenKeys.list(page, pageSize),
@@ -41,7 +40,6 @@ export function useCreateToken(options?: {
   });
 }
 
-// Interface for update token request that includes the ID for URL construction
 interface UpdateTokenRequestWithId extends UpdateTokenRequest {
   id: string;
 }

@@ -28,10 +28,7 @@ export function useResponsiveTestId() {
       });
     };
 
-    // Initial viewport detection
     updateViewport();
-
-    // Listen for viewport changes
     window.addEventListener('resize', updateViewport);
 
     return () => {
@@ -64,10 +61,6 @@ export function useResponsiveTestId() {
   return getTestId;
 }
 
-/**
- * Utility function for determining current viewport type
- * Useful for conditional logic in components
- */
 export function useViewportType(): 'mobile' | 'tablet' | 'desktop' | null {
   const [viewportType, setViewportType] = useState<'mobile' | 'tablet' | 'desktop' | null>(null);
 
@@ -97,13 +90,7 @@ export function useViewportType(): 'mobile' | 'tablet' | 'desktop' | null {
   return viewportType;
 }
 
-/**
- * Static utility function for generating responsive test IDs
- * Useful in contexts where hooks cannot be used
- *
- * @param baseId - Base test ID without prefix
- * @param viewportWidth - Current viewport width
- */
+// Non-hook variant for contexts where hooks cannot be used.
 export function getResponsiveTestId(baseId: string, viewportWidth: number): string {
   if (viewportWidth < 768) {
     return `m-${baseId}`;
@@ -116,10 +103,7 @@ export function getResponsiveTestId(baseId: string, viewportWidth: number): stri
   return baseId;
 }
 
-/**
- * Viewport breakpoint constants
- * Aligned with TailwindCSS default breakpoints
- */
+// Aligned with TailwindCSS default breakpoints.
 export const VIEWPORT_BREAKPOINTS = {
   mobile: {
     min: 0,

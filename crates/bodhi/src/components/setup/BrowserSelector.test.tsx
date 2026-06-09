@@ -3,7 +3,6 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { BrowserSelector } from './BrowserSelector';
 import { type BrowserInfo } from '@/lib/browser-utils';
 
-// Mock Shadcn UI components with simpler implementation
 vi.mock('@/components/ui/select', () => ({
   Select: ({ children, value, onValueChange }: any) => (
     <div data-testid="browser-select" data-value={value}>
@@ -20,7 +19,6 @@ vi.mock('@/components/ui/badge', () => ({
   Badge: ({ children }: any) => <span data-testid="badge">{children}</span>,
 }));
 
-// Mock react-icons/fa
 vi.mock('react-icons/fa', () => ({
   FaChrome: ({ className }: any) => <div data-testid="chrome-icon" className={className}></div>,
   FaFirefox: ({ className }: any) => <div data-testid="firefox-icon" className={className}></div>,
@@ -81,7 +79,6 @@ describe('BrowserSelector component', () => {
     expect(selectTrigger).toContainHTML('Mozilla Firefox');
     expect(selectTrigger.querySelector('[data-testid="badge"]')).toBeNull();
 
-    // Check for Firefox icon in trigger
     const firefoxIcon = selectTrigger.querySelector('[data-testid="firefox-icon"]');
     expect(firefoxIcon).toBeInTheDocument();
   });

@@ -12,7 +12,6 @@ export const userKeys = {
   list: (page: number, pageSize: number) => [...userKeys.lists(), page, pageSize] as const,
 };
 
-// User access request endpoints
 export const ENDPOINT_USER_REQUEST_STATUS = `${BODHI_API_BASE}/user/request-status`;
 export const ENDPOINT_USER_REQUEST_ACCESS = `${BODHI_API_BASE}/user/request-access`;
 export const ENDPOINT_ACCESS_REQUESTS_PENDING = `${BODHI_API_BASE}/access-requests/pending`;

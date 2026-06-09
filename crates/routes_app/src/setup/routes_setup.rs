@@ -126,7 +126,6 @@ pub async fn setup_create(
     return Err(SetupRouteError::AlreadySetup)?;
   }
 
-  // Validate server name (minimum 10 characters)
   if request.name.len() < 10 {
     return Err(SetupRouteError::ServerNameTooShort)?;
   }
@@ -161,7 +160,6 @@ pub async fn setup_create(
     // Add server IP for future-proofing (even if current request is from loopback)
     if let Some(server_ip) = auth_scope.network().get_server_ip() {
       let server_uri = format!("{}://{}:{}{}", scheme, server_ip, port, LOGIN_CALLBACK_PATH);
-      // Only add if not already present
       if !redirect_uris.contains(&server_uri) {
         redirect_uris.push(server_uri);
       }

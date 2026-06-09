@@ -27,11 +27,9 @@ function UsersContent() {
   const { data: currentUserInfo, isLoading: isLoadingUser } = useGetAuthenticatedUser();
   const { data: usersData, isLoading: isLoadingUsers, error } = useListUsers(page, pageSize);
 
-  // Get current user's role and username for filtering
   const currentUserRole = typeof currentUserInfo?.role === 'string' ? currentUserInfo.role : '';
   const currentUsername = currentUserInfo?.username || '';
 
-  // Show loading state if either users or current user info is loading
   if (isLoadingUsers || isLoadingUser) {
     return (
       <Card>

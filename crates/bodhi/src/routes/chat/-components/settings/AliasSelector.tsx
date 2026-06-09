@@ -28,9 +28,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
   const setLlmLibertyProvider = useChatSettingsStore((s) => s.setLlmLibertyProvider);
   const queryClient = useQueryClient();
 
-  // Handle refresh button click
   const handleRefresh = async () => {
-    // Invalidate and refetch models cache
     await queryClient.invalidateQueries({ queryKey: modelKeys.all });
   };
 
@@ -49,7 +47,6 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     return map;
   }, [models]);
 
-  // Derive the api_format for the currently selected model; depends only on the selected entry, not the whole map.
   const selectedAlias = useMemo(() => modelToAliasMap.get(model ?? ''), [modelToAliasMap, model]);
   const selectedApiFormat: ApiFormat =
     selectedAlias && isApiAlias(selectedAlias) ? (selectedAlias.api_format as ApiFormat) : 'openai';
@@ -63,10 +60,8 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     setLlmLibertyProvider(selectedLlmLibertyProvider);
   }, [model, models.length, selectedApiFormat, selectedLlmLibertyProvider, setApiFormat, setLlmLibertyProvider]);
 
-  // Transform models array to match ComboBoxResponsive's Status type
   const modelStatuses = models.flatMap((m) => {
     if (isApiAlias(m)) {
-      // For API models, create entries for each individual model with prefix if exists
       return (m.models || []).map((apiModel) => {
         const prefixedModelName = formatPrefixedModel(getApiModelId(apiModel, m.prefix), m.prefix);
         return {
@@ -75,7 +70,6 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
         };
       });
     } else {
-      // For local models, use the alias
       return [
         {
           value: m.alias,
@@ -85,7 +79,6 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
     }
   });
 
-  // Find the currently selected model
   const selectedStatus = model ? modelStatuses.find((s) => s.value === model) || { value: model, label: model } : null;
 
   return (

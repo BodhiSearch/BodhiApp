@@ -8,8 +8,6 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
 
-// ===== API Model Alias Tests =====
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -56,8 +54,6 @@ async fn test_api_model_alias_crud(
   Ok(())
 }
 
-// ===== update_api_model_alias =====
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -86,7 +82,6 @@ async fn test_update_api_model_alias(
     .create_api_model_alias("", "", &alias, Some("sk-old-key".to_string()))
     .await?;
 
-  // Update model fields + replace API key
   let mut updated = alias.clone();
   updated.base_url = "https://api.updated.com".to_string();
   updated.models = vec![openai_model("gpt-4o")].into();
@@ -115,7 +110,6 @@ async fn test_update_api_model_alias(
   let api_key = ctx.service.get_api_key_for_alias("", "", &alias.id).await?;
   assert_eq!(Some("sk-new-key".to_string()), api_key);
 
-  // Update with Keep -> API key unchanged
   let mut updated2 = updated.clone();
   updated2.base_url = "https://api.final.com".to_string();
   ctx
@@ -126,7 +120,6 @@ async fn test_update_api_model_alias(
   let api_key = ctx.service.get_api_key_for_alias("", "", &alias.id).await?;
   assert_eq!(Some("sk-new-key".to_string()), api_key);
 
-  // Update with Set(None) -> API key removed
   ctx
     .service
     .update_api_model_alias(
@@ -143,8 +136,6 @@ async fn test_update_api_model_alias(
 
   Ok(())
 }
-
-// ===== update_api_model_alias prefix conflict =====
 
 #[rstest]
 #[tokio::test]
@@ -193,7 +184,6 @@ async fn test_update_api_model_alias_prefix_conflict(
     .create_api_model_alias("", "", &alias2, None)
     .await?;
 
-  // Try to update alias2's prefix to alias1's prefix -> conflict
   let mut conflict = alias2.clone();
   conflict.prefix = Some("pfx-one".to_string());
   let result = ctx
@@ -206,8 +196,6 @@ async fn test_update_api_model_alias_prefix_conflict(
 
   Ok(())
 }
-
-// ===== update_api_model_models =====
 
 #[rstest]
 #[tokio::test]
@@ -253,8 +241,6 @@ async fn test_update_api_model_models(
   Ok(())
 }
 
-// ===== extra_headers / extra_body round-trip =====
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -267,7 +253,6 @@ async fn test_api_model_alias_extra_fields_roundtrip(
 
   let ctx = sea_context(db_type).await;
 
-  // Round-trip with non-null extra fields
   let alias_with_extras = ApiAlias {
     id: new_ulid(),
     name: "test-name".to_string(),
@@ -296,7 +281,6 @@ async fn test_api_model_alias_extra_fields_roundtrip(
   assert_eq!(alias_with_extras.extra_body, fetched.extra_body);
   assert_eq!(ApiFormat::AnthropicOAuth, fetched.api_format);
 
-  // Round-trip with null extra fields
   let alias_null_extras = ApiAlias {
     id: new_ulid(),
     name: "test-name".to_string(),
@@ -326,8 +310,6 @@ async fn test_api_model_alias_extra_fields_roundtrip(
 
   Ok(())
 }
-
-// ===== ApiModel::Gemini round-trip =====
 
 #[rstest]
 #[tokio::test]
@@ -369,7 +351,6 @@ async fn test_api_model_alias_gemini_roundtrip(
   assert_eq!(None, fetched.extra_headers);
   assert_eq!(None, fetched.extra_body);
 
-  // Verify ApiModel::Gemini deserialized correctly from DB
   assert_eq!(1, fetched.models.len());
   match &fetched.models[0] {
     ApiModel::Gemini(m) => {

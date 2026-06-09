@@ -13,10 +13,6 @@ fn make_service(db: TestDbService) -> DefaultTenantService {
   DefaultTenantService::new(Arc::new(db))
 }
 
-// =========================================================================
-// get_status: default when no tenant exists
-// =========================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -31,10 +27,6 @@ async fn test_get_status_no_tenant_returns_setup(
   assert_eq!(AppStatus::Setup, status);
   Ok(())
 }
-
-// =========================================================================
-// create_tenant -> get_tenant round-trip
-// =========================================================================
 
 #[rstest]
 #[awt]
@@ -59,7 +51,6 @@ async fn test_create_tenant_get_tenant_roundtrip(
   assert_eq!(TEST_CLIENT_ID, tenant.client_id);
   assert_eq!(TEST_CLIENT_SECRET, tenant.client_secret);
   assert_eq!(AppStatus::ResourceAdmin, tenant.status);
-  // id should be a non-empty ULID string
   assert!(!tenant.id.is_empty());
 
   let retrieved = svc
@@ -72,10 +63,6 @@ async fn test_create_tenant_get_tenant_roundtrip(
   assert_eq!(tenant.status, retrieved.status);
   Ok(())
 }
-
-// =========================================================================
-// get_tenant: returns None when no tenant exists
-// =========================================================================
 
 #[rstest]
 #[awt]
@@ -91,10 +78,6 @@ async fn test_get_tenant_no_tenant_returns_none(
   assert!(result.is_none());
   Ok(())
 }
-
-// =========================================================================
-// get_status returns correct status after create
-// =========================================================================
 
 #[rstest]
 #[awt]
@@ -125,10 +108,6 @@ async fn test_get_status_after_create(
   Ok(())
 }
 
-// =========================================================================
-// set_tenant_ready: atomically sets status to Ready, created_by, and membership
-// =========================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -156,16 +135,12 @@ async fn test_set_tenant_ready_changes_status_created_by_and_membership(
     .expect("tenant should exist");
   assert_eq!(AppStatus::Ready, retrieved.status);
   assert_eq!(Some("test-user-id".to_string()), retrieved.created_by);
-  // Membership should also have been created
   let has = svc.has_tenant_memberships("test-user-id").await?;
   assert_eq!(true, has);
   Ok(())
 }
 
-// =========================================================================
-// singleton enforcement: second upsert with different client_id triggers error
-// =========================================================================
-
+// singleton enforcement: a second tenant makes get_standalone_app ambiguous
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -201,10 +176,6 @@ async fn test_create_two_tenants_triggers_multiple_error(
   Ok(())
 }
 
-// =========================================================================
-// repository: encryption round-trip via upsert + get
-// =========================================================================
-
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -231,10 +202,6 @@ async fn test_repository_encryption_roundtrip(
   assert_eq!(AppStatus::ResourceAdmin, row.app_status);
   Ok(())
 }
-
-// =========================================================================
-// repository: delete_tenant removes the row
-// =========================================================================
 
 #[rstest]
 #[awt]

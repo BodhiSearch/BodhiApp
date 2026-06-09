@@ -14,9 +14,7 @@ impl RequestAuthContextExt for Request<Body> {
   }
 }
 
-/// Creates an `AuthContext` for the given auth variant with a role and token.
-///
-/// Use in tests parameterized with `#[values("session", "multi_tenant")]`.
+/// For tests parameterized with `#[values("session", "multi_tenant")]`.
 pub fn make_auth_with_role(
   variant: &str,
   user_id: &str,
@@ -38,8 +36,6 @@ pub fn make_auth_with_role(
   }
 }
 
-/// Creates an `AuthContext` for the given auth variant with a role but no explicit token.
-///
 /// Uses the default "test-token" for both session and multi-tenant variants.
 pub fn make_auth_with_role_default_token(
   variant: &str,
@@ -50,10 +46,8 @@ pub fn make_auth_with_role_default_token(
   make_auth_with_role(variant, user_id, username, role, "test-token")
 }
 
-/// Creates an `AuthContext` for the given auth variant without a role.
-///
-/// For multi-tenant, creates a session with `tenant_id` and `client_id` populated
-/// (needed for tests that proceed past auth extraction into auth-scoped services).
+/// Multi-tenant variant populates `tenant_id`/`client_id` so tests can proceed past
+/// auth extraction into auth-scoped services.
 pub fn make_auth_no_role(variant: &str, user_id: &str, username: &str) -> AuthContext {
   match variant {
     "session" => AuthContext::test_session(user_id, username, ResourceRole::Guest),

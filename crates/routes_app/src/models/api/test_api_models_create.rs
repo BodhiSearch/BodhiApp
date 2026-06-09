@@ -83,7 +83,6 @@ async fn test_create_api_model_handler_success(
       .returning(|| Ok(vec![openai_model("gpt-4"), openai_model("gpt-3.5-turbo")]));
     Ok(Box::new(client) as Box<dyn services::AiApiClient>)
   });
-  // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .ai_api_client_factory(Arc::new(mock_ai))
@@ -104,18 +103,14 @@ async fn test_create_api_model_handler_success(
     },
   );
 
-  // Make POST request to create API model
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
 
-  // Verify response status
   assert_eq!(response.status(), StatusCode::CREATED);
 
-  // Verify response body
   let api_response = response.json::<ApiAliasResponse>().await?;
 
-  // Verify the response structure (note: ID is now auto-generated ULID)
   assert_eq!(api_response.name, "OpenAI GPT Models");
   assert_eq!(api_response.api_format, services::ApiFormat::OpenAI);
   assert_eq!(api_response.base_url, expected_url);
@@ -124,7 +119,6 @@ async fn test_create_api_model_handler_success(
   assert_eq!(model_ids, vec!["gpt-4", "gpt-3.5-turbo"]);
   assert_eq!(api_response.prefix, None);
 
-  // Verify that ID is a valid ULID
   assert!(Ulid::from_string(&api_response.id).is_ok());
 
   Ok(())
@@ -141,7 +135,6 @@ async fn test_create_api_model_handler_generates_uuid(
 ) -> anyhow::Result<()> {
   let base_time = db_service.now();
 
-  // Seed database with existing API model
   seed_test_api_models(&db_service, base_time).await?;
 
   let mut mock_ai = MockAiApiClientFactory::new();
@@ -153,7 +146,6 @@ async fn test_create_api_model_handler_generates_uuid(
     Ok(Box::new(client) as Box<dyn services::AiApiClient>)
   });
 
-  // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .ai_api_client_factory(Arc::new(mock_ai))
@@ -174,15 +166,13 @@ async fn test_create_api_model_handler_generates_uuid(
     },
   );
 
-  // Make POST request to create API model (should succeed since ULIDs are unique)
+  // ULIDs are unique, so seeding an existing model does not collide on create
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
 
-  // Verify response status is 201 Created (no duplicate ID issue with ULIDs)
   assert_eq!(response.status(), StatusCode::CREATED);
 
-  // Verify response structure
   let api_response = response.json::<ApiAliasResponse>().await?;
   assert!(Ulid::from_string(&api_response.id).is_ok());
 

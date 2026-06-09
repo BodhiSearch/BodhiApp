@@ -1,27 +1,23 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-/// Whether a single capability is supported by the model.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct CapabilitySupport {
   pub supported: bool,
 }
 
-/// Supported thinking type configurations.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct ThinkingTypes {
   pub adaptive: CapabilitySupport,
   pub enabled: CapabilitySupport,
 }
 
-/// Thinking capability and supported type configurations.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct ThinkingCapability {
   pub supported: bool,
   pub types: ThinkingTypes,
 }
 
-/// Context management capability details.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct ContextManagementCapability {
   pub clear_thinking_20251015: Option<CapabilitySupport>,
@@ -37,7 +33,7 @@ pub struct EffortCapability {
   pub max: CapabilitySupport,
 }
 
-/// Model capability information (Anthropic ModelCapabilities schema).
+/// Anthropic ModelCapabilities schema.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct AnthropicModelCapabilities {
   pub batch: CapabilitySupport,
@@ -67,7 +63,6 @@ pub struct AnthropicModel {
   pub capabilities: Option<AnthropicModelCapabilities>,
   pub max_input_tokens: Option<i64>,
   pub max_tokens: Option<i64>,
-  /// Always `"model"` — included for Anthropic API compatibility.
   #[serde(rename = "type")]
   pub model_type: String,
 }

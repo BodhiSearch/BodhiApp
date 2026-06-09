@@ -11,7 +11,6 @@ interface RestResponse {
 }
 
 export function RestClientSection() {
-  // Get bodhiServerUrl from context, with localStorage fallback via lazy useState
   const { config: contextConfig } = useAuth();
   const [fallbackConfig] = useState(() => loadConfig());
   const bodhiServerUrl = contextConfig?.bodhiServerUrl || fallbackConfig?.bodhiServerUrl || '';
@@ -51,7 +50,6 @@ export function RestClientSection() {
     try {
       if (!url) throw new Error('URL is required');
 
-      // Validate path-only URL
       if (url.startsWith('http')) {
         throw new Error('URL must be a path starting with / (e.g., /bodhi/v1/user)');
       }
@@ -61,7 +59,6 @@ export function RestClientSection() {
 
       const fetchHeaders: Record<string, string> = parseHeaders(headers);
 
-      // Add Content-Type if useJson is checked
       if (useJson) {
         fetchHeaders['Content-Type'] = 'application/json';
       }
@@ -82,7 +79,6 @@ export function RestClientSection() {
         fetchOptions.body = body;
       }
 
-      // Construct full URL with server prefix
       const fullUrl = `${bodhiServerUrl}${url}`;
       const res = await fetch(fullUrl, fetchOptions);
       const raw = await res.text();

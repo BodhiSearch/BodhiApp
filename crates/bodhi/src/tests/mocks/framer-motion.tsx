@@ -3,7 +3,6 @@ import React from 'react';
 const createMotionComponent = (Component: string) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/display-name
   return React.forwardRef(({ children, ...props }: any, ref: any) => {
-    // List of framer-motion specific props to filter out
     const motionProps = [
       'animate',
       'initial',
@@ -31,7 +30,6 @@ const createMotionComponent = (Component: string) => {
       // Note: 'style' deliberately NOT filtered - it's a valid HTML prop
     ];
 
-    // Filter out motion-specific props, preserve all HTML props
     const htmlProps = Object.keys(props).reduce((acc, key) => {
       if (!motionProps.includes(key)) {
         acc[key] = props[key];
@@ -58,7 +56,6 @@ export const motion = {
   h1: createMotionComponent('h1'),
   h2: createMotionComponent('h2'),
   h3: createMotionComponent('h3'),
-  // Add more as needed
 };
 
 export const AnimatePresence = ({ children }: { children?: React.ReactNode }) => <>{children}</>;

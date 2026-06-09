@@ -7,10 +7,6 @@ use serial_test::serial;
 
 use crate::mcps::test_helpers::{make_auth_config_row, make_mcp, make_server};
 
-// ============================================================================
-// MCP Instance Tests
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]
@@ -192,8 +188,6 @@ async fn test_delete_mcp_wrong_user_noop(
     .service
     .create_mcp("", &make_mcp("m1", "s1", "my-mcp", "user-1", ctx.now))
     .await?;
-
-  // delete by wrong user should be a no-op
 
   ctx.service.delete_mcp("", "user-2", "m1").await?;
 

@@ -72,8 +72,6 @@ pub struct UserInfoEnvelope {
   pub dashboard: Option<DashboardUser>,
 }
 
-// === From routes_users_list.rs ===
-
 /// List users query parameters. Intentionally omits sort fields (unlike PaginationSortParams)
 /// because user listing is fetched from the auth service which handles its own ordering.
 #[derive(Debug, Serialize, Deserialize, ToSchema, Default)]

@@ -8,8 +8,6 @@ vi.mock('@/lib/utils', () => ({
   nanoid: () => 'new-id',
 }));
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function makeChat(overrides: Partial<Chat> = {}): Chat {
   return {
     id: 'chat-1',
@@ -22,15 +20,12 @@ function makeChat(overrides: Partial<Chat> = {}): Chat {
   };
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
 describe('chatStore', () => {
   beforeEach(async () => {
     localStorage.clear();
     vi.clearAllMocks();
     await chatDb.chats.clear();
     await chatDb.messages.clear();
-    // Reset store to clean initial state
     useChatStore.setState({
       chats: [],
       currentChatId: null,

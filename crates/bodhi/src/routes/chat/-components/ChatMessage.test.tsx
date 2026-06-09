@@ -4,12 +4,10 @@ import { Message } from '@/types/chat';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 
-// Mock the markdown component
 vi.mock('@/components/ui/markdown', () => ({
   MemoizedReactMarkdown: ({ children }: { children: string }) => <div data-testid="markdown">{children}</div>,
 }));
 
-// Mock the copy button component
 vi.mock('@/components/CopyButton', () => ({
   CopyButton: ({ text, className }: { text: string; className?: string }) => (
     <button data-testid="copy-button" data-copy-text={text} className={className}>
@@ -56,12 +54,10 @@ describe('ChatMessage', () => {
       expect(screen.getByText('Assistant')).toBeInTheDocument();
       expect(screen.getByTestId('markdown')).toHaveTextContent('Test message content');
 
-      // Find copy button by test id, regardless of visibility
       const copyButton = screen.getByTestId('copy-button');
       expect(copyButton).toBeInTheDocument();
       expect(copyButton.className).toContain('opacity-0');
 
-      // Hover over message to show copy button
       await user.hover(container.firstChild as Element);
       expect(copyButton.className).toContain('group-hover:opacity-100');
     });
@@ -71,11 +67,9 @@ describe('ChatMessage', () => {
     it('displays complete metadata for assistant message', () => {
       render(<ChatMessage message={messageWithMetadata} />);
 
-      // Check token information
       expect(screen.getByText(/Response:.+16 tokens/)).toBeInTheDocument();
       expect(screen.getByText(/Query:.+5 tokens/)).toBeInTheDocument();
 
-      // Check speed information with flexible text matching
       expect(screen.getByText(/Speed:.+31\.04 t\/s/)).toBeInTheDocument();
     });
 
@@ -109,11 +103,9 @@ describe('ChatMessage', () => {
 
       render(<ChatMessage message={partialMetadataMessage} />);
 
-      // Should show token information
       expect(screen.getByText(/Response:.+16 tokens/)).toBeInTheDocument();
       expect(screen.getByText(/Query:.+5 tokens/)).toBeInTheDocument();
 
-      // Should not show speed information
       expect(screen.queryByText(/Speed:/)).not.toBeInTheDocument();
     });
 

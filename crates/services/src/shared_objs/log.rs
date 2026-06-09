@@ -15,7 +15,7 @@ pub fn mask_sensitive_value(value: &str) -> String {
   }
 }
 
-/// Mask all form parameters for logging (assuming all are potentially sensitive)
+/// Masks all params, treating every value as potentially sensitive.
 pub fn mask_form_params(params: &[(&str, &str)]) -> Vec<(String, String)> {
   params
     .iter()
@@ -23,7 +23,6 @@ pub fn mask_form_params(params: &[(&str, &str)]) -> Vec<(String, String)> {
     .collect()
 }
 
-/// Log HTTP request details with masked parameters
 pub fn log_http_request(method: &str, url: &str, service: &str, params: Option<&[(&str, &str)]>) {
   if let Some(params) = params {
     let masked_params = mask_form_params(params);
@@ -44,7 +43,6 @@ pub fn log_http_request(method: &str, url: &str, service: &str, params: Option<&
   }
 }
 
-/// Log HTTP response details
 pub fn log_http_response(method: &str, url: &str, service: &str, status: u16, success: bool) {
   if success {
     info!(
@@ -65,7 +63,6 @@ pub fn log_http_response(method: &str, url: &str, service: &str, status: u16, su
   }
 }
 
-/// Log HTTP error details
 pub fn log_http_error(method: &str, url: &str, service: &str, error: &str) {
   error!(
     method = method,

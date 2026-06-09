@@ -1,6 +1,3 @@
-/**
- * Type-safe MSW v2 handlers for models endpoint using openapi-msw
- */
 import {
   ENDPOINT_MODELS_REFRESH,
   ENDPOINT_QUEUE,
@@ -13,16 +10,6 @@ import { createMockUserAlias, createMockApiAlias, createMockModelAlias } from '@
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
-// ============================================================================
-// Models List Endpoint (/bodhi/v1/models GET)
-// ============================================================================
-
-// Success Handlers
-
-/**
- * Create type-safe MSW v2 handlers for models list endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockModels(
   {
     data = [],
@@ -52,11 +39,6 @@ export function mockModels(
   ];
 }
 
-// Success Handler Variants
-
-/**
- * Predefined mock configurations for common use cases
- */
 export function mockModelsDefault() {
   return mockModels({
     data: [createMockUserAlias()],
@@ -66,10 +48,6 @@ export function mockModelsDefault() {
   });
 }
 
-/**
- * Mock handler for models list with API model data
- * Uses delegation pattern
- */
 export function mockModelsWithApiModel() {
   return mockModels({
     data: [createMockApiAlias()],
@@ -79,10 +57,6 @@ export function mockModelsWithApiModel() {
   });
 }
 
-/**
- * Mock handler for models list with source model data
- * Uses delegation pattern
- */
 export function mockModelsWithSourceModel() {
   return mockModels({
     data: [createMockModelAlias()],
@@ -92,10 +66,6 @@ export function mockModelsWithSourceModel() {
   });
 }
 
-/**
- * Mock handler for empty models list
- * Uses delegation pattern
- */
 export function mockModelsEmpty() {
   return mockModels({
     data: [],
@@ -105,12 +75,6 @@ export function mockModelsEmpty() {
   });
 }
 
-// Error Handlers
-
-/**
- * Mock handler for models list error endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockModelsError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -139,12 +103,6 @@ export function mockModelsError(
   ];
 }
 
-// Error Handler Variants
-
-/**
- * Mock handler for models list internal server error
- * Uses delegation pattern
- */
 export function mockModelsInternalError(config: { message?: string } = {}) {
   const { message = 'Internal server error' } = config;
   return mockModelsError({
@@ -155,15 +113,6 @@ export function mockModelsInternalError(config: { message?: string } = {}) {
   });
 }
 
-// ============================================================================
-// Create Model Endpoint (/bodhi/v1/models POST)
-// ============================================================================
-
-// Success Handlers
-
-/**
- * Create type-safe MSW v2 handler for model creation endpoint
- */
 export function mockCreateModel(
   {
     id = 'test-uuid-create',
@@ -207,12 +156,6 @@ export function mockCreateModel(
   ];
 }
 
-// Error Handlers
-
-/**
- * Mock handler for model creation error endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockCreateModelError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -241,12 +184,6 @@ export function mockCreateModelError(
   ];
 }
 
-// Error Handler Variants
-
-/**
- * Mock handler for model creation internal server error
- * Uses delegation pattern
- */
 export function mockCreateModelInternalError(_config: Record<string, never> = {}) {
   return mockCreateModelError({
     code: 'internal_server_error',
@@ -256,10 +193,6 @@ export function mockCreateModelInternalError(_config: Record<string, never> = {}
   });
 }
 
-/**
- * Mock handler for model creation bad request error
- * Uses delegation pattern
- */
 export function mockCreateModelBadRequestError(config: { message?: string } = {}) {
   const { message = 'Invalid request data' } = config;
   return mockCreateModelError({
@@ -270,15 +203,6 @@ export function mockCreateModelBadRequestError(config: { message?: string } = {}
   });
 }
 
-// ============================================================================
-// Get Model Endpoint (/bodhi/v1/models/{alias} GET)
-// ============================================================================
-
-// Success Handlers
-
-/**
- * Create type-safe MSW v2 handler for individual model retrieval
- */
 export function mockGetModel(
   id: string,
   {
@@ -300,9 +224,8 @@ export function mockGetModel(
     typedHttp.get(ENDPOINT_MODEL_ID, async ({ response, params }) => {
       const { id: paramId } = params;
 
-      // Only respond if id matches
       if (paramId !== id) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -327,12 +250,6 @@ export function mockGetModel(
   ];
 }
 
-// Error Handlers
-
-/**
- * Mock handler for individual model retrieval error
- * Uses generated OpenAPI types directly
- */
 export function mockGetModelError(
   id: string,
   {
@@ -350,9 +267,8 @@ export function mockGetModelError(
     typedHttp.get(ENDPOINT_MODEL_ID, async ({ response, params }) => {
       const { id: paramId } = params;
 
-      // Only respond if id matches
       if (paramId !== id) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -369,12 +285,6 @@ export function mockGetModelError(
   ];
 }
 
-// Error Handler Variants
-
-/**
- * Mock handler for model not found error
- * Uses delegation pattern
- */
 export function mockGetModelNotFoundError(id: string, _config: Record<string, never> = {}) {
   return mockGetModelError(id, {
     code: 'not_found',
@@ -384,10 +294,6 @@ export function mockGetModelNotFoundError(id: string, _config: Record<string, ne
   });
 }
 
-/**
- * Mock handler for individual model retrieval internal server error
- * Uses delegation pattern
- */
 export function mockGetModelInternalError(id: string, _config: Record<string, never> = {}) {
   return mockGetModelError(id, {
     code: 'internal_error',
@@ -397,15 +303,6 @@ export function mockGetModelInternalError(id: string, _config: Record<string, ne
   });
 }
 
-// ============================================================================
-// Update Model Endpoint (/bodhi/v1/models/{id} PUT)
-// ============================================================================
-
-// Success Handlers
-
-/**
- * Create type-safe MSW v2 handler for model update endpoint
- */
 export function mockUpdateModel(
   id: string,
   {
@@ -427,9 +324,8 @@ export function mockUpdateModel(
     typedHttp.put(ENDPOINT_ALIAS_ID, async ({ response, params }) => {
       const { id: paramId } = params;
 
-      // Only respond if id matches
       if (paramId !== id) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -454,12 +350,6 @@ export function mockUpdateModel(
   ];
 }
 
-// Error Handlers
-
-/**
- * Mock handler for model update error endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockUpdateModelError(
   id: string,
   {
@@ -477,9 +367,8 @@ export function mockUpdateModelError(
     typedHttp.put(ENDPOINT_ALIAS_ID, async ({ response, params }) => {
       const { id: paramId } = params;
 
-      // Only respond if id matches
       if (paramId !== id) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -496,12 +385,6 @@ export function mockUpdateModelError(
   ];
 }
 
-// Error Handler Variants
-
-/**
- * Mock handler for model update internal server error
- * Uses delegation pattern
- */
 export function mockUpdateModelInternalError(id: string, _config: Record<string, never> = {}) {
   return mockUpdateModelError(id, {
     code: 'internal_server_error',
@@ -511,10 +394,6 @@ export function mockUpdateModelInternalError(id: string, _config: Record<string,
   });
 }
 
-/**
- * Mock handler for model update bad request error
- * Uses delegation pattern
- */
 export function mockUpdateModelBadRequestError(id: string, config: { message?: string } = {}) {
   const { message = 'Invalid request data' } = config;
   return mockUpdateModelError(id, {
@@ -525,14 +404,6 @@ export function mockUpdateModelBadRequestError(id: string, config: { message?: s
   });
 }
 
-// ============================================================================
-// Metadata Refresh Endpoints
-// ============================================================================
-
-/**
- * Mock handler for refresh all models metadata endpoint (POST /bodhi/v1/models/refresh)
- * Returns 202 Accepted with queue status
- */
 export function mockRefreshAllMetadata(
   { num_queued = 'all', alias = null }: Partial<components['schemas']['RefreshResponse']> = {},
   { stub }: { stub?: boolean } = {}
@@ -541,12 +412,10 @@ export function mockRefreshAllMetadata(
 
   return [
     typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ request, response }) => {
-      // Parse request body
       const body = await request.json();
 
-      // Only respond if source is 'all'
       if (body?.source !== 'all') {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -561,9 +430,6 @@ export function mockRefreshAllMetadata(
   ];
 }
 
-/**
- * Mock handler for queue status endpoint (GET /bodhi/v1/queue)
- */
 export function mockQueueStatus(status: 'idle' | 'processing' = 'idle', { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
@@ -580,9 +446,6 @@ export function mockQueueStatus(status: 'idle' | 'processing' = 'idle', { stub }
   ];
 }
 
-/**
- * Mock handler for refresh single model metadata endpoint (POST /bodhi/v1/models/refresh)
- */
 export function mockRefreshSingleMetadata(
   {
     repo = createMockModelAlias().repo,
@@ -599,17 +462,15 @@ export function mockRefreshSingleMetadata(
 
   return [
     typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ request, response }) => {
-      // Parse request body
       const body = await request.json();
 
-      // Only respond if body matches single refresh pattern
       if (
         body?.source !== 'model' ||
         body?.repo !== repo ||
         body?.filename !== filename ||
         body?.snapshot !== snapshot
       ) {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;
@@ -629,9 +490,6 @@ export function mockRefreshSingleMetadata(
   ];
 }
 
-/**
- * Mock handler for refresh all metadata error
- */
 export function mockRefreshAllMetadataError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -646,12 +504,10 @@ export function mockRefreshAllMetadataError(
 
   return [
     typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ request, response }) => {
-      // Parse request body
       const body = await request.json();
 
-      // Only respond if source is 'all'
       if (body?.source !== 'all') {
-        return; // Pass through to next handler
+        return; // undefined falls through to the next handler
       }
 
       if (hasBeenCalled && !stub) return;

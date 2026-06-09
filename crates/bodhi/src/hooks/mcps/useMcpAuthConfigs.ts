@@ -20,10 +20,6 @@ import {
   MCPS_OAUTH_TOKENS_ENDPOINT,
 } from './constants';
 
-// ============================================================================
-// Query Hooks - Unified Auth Configs
-// ============================================================================
-
 export function useListAuthConfigs(
   serverId: string,
   options?: { enabled?: boolean }
@@ -48,10 +44,6 @@ export function useGetAuthConfig(
   );
 }
 
-// ============================================================================
-// Query Hooks - OAuth Tokens
-// ============================================================================
-
 export function useGetOAuthToken(
   tokenId: string,
   options?: { enabled?: boolean }
@@ -63,10 +55,6 @@ export function useGetOAuthToken(
     { ...options, enabled: !!tokenId && options?.enabled !== false }
   );
 }
-
-// ============================================================================
-// Mutation Hooks - Unified Auth Config CRUD
-// ============================================================================
 
 export function useCreateAuthConfig(options?: {
   onSuccess?: (config: McpAuthConfigResponse) => void;
@@ -110,10 +98,6 @@ export function useDeleteAuthConfig(options?: {
   );
 }
 
-// ============================================================================
-// Mutation Hooks - OAuth Token operations
-// ============================================================================
-
 export function useDeleteOAuthToken(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
@@ -137,7 +121,6 @@ export function useDeleteOAuthToken(options?: {
   );
 }
 
-// Re-export types for consumers
 export type {
   CreateAuthConfig,
   CreateMcpAuthConfigRequest,

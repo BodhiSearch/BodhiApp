@@ -42,7 +42,6 @@ function ProgressDisplay({ download }: { download: DownloadRequest }) {
     return <span className="text-muted-foreground">-</span>;
   }
 
-  // Compute progress percentage from bytes
   const computeProgress = (download: DownloadRequest) => {
     if (!download.total_bytes || download.total_bytes === 0) return 0;
     if (!download.downloaded_bytes) return 0;
@@ -87,7 +86,6 @@ function PullPageContent() {
   const [enablePolling, setEnablePolling] = useState(false);
   const { data, isLoading, error } = useListDownloads(page, pageSize, { enablePolling });
 
-  // Update polling state based on pending downloads
   useEffect(() => {
     const hasPendingDownloads = data?.data.some((download) => download.status === 'pending') ?? false;
     setEnablePolling(hasPendingDownloads);
@@ -98,7 +96,7 @@ function PullPageContent() {
       column,
       direction: prevSort.column === column && prevSort.direction === 'asc' ? 'desc' : 'asc',
     }));
-    setPage(1); // Reset to first page when sorting
+    setPage(1);
   };
 
   const renderRow = (download: DownloadRequest) => (

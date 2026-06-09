@@ -1,24 +1,3 @@
-/**
- * TokenPage Component Tests
- *
- * Purpose: Verify API token management functionality with comprehensive
- * scenario-based testing covering real-world token usage patterns.
- *
- * Focus Areas:
- * - Token lifecycle (creation → display → status management)
- * - Token dialog interactions (visibility toggle, copy functionality)
- * - Optimistic UI updates with error recovery
- * - Authentication and app initialization states
- *
- * Test Structure:
- * 1. Authentication & Initialization (2 tests)
- * 2. Token Creation Flow (1 integrated scenario test)
- * 3. Token List Display (2 tests: empty + multiple tokens)
- * 4. Optimistic Updates (2 tests: success + error rollback)
- *
- * Total: 7 comprehensive scenario-based tests
- */
-
 import { TokenPage } from '@/routes/tokens/index';
 import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
@@ -116,23 +95,19 @@ describe('TokenPage - Token Creation Flow', () => {
       expect(screen.getByTestId('tokens-page')).toBeInTheDocument();
     });
 
-    // Step 1: Open dialog by clicking "New API Token" button
     const newTokenButton = screen.getByTestId('new-token-button');
     await user.click(newTokenButton);
 
-    // Wait for dialog to open
     await waitFor(() => {
       expect(screen.getByLabelText('Token Name (Optional)')).toBeInTheDocument();
     });
 
-    // Step 2: Fill token name and submit form
     const nameInput = screen.getByLabelText('Token Name (Optional)');
     await user.type(nameInput, 'My API Token');
 
     const generateButton = screen.getByRole('button', { name: 'Generate Token' });
     await user.click(generateButton);
 
-    // Step 3: Verify dialog shows created token
     await waitFor(() => {
       expect(screen.getByText('API Token Generated')).toBeInTheDocument();
     });
@@ -140,22 +115,18 @@ describe('TokenPage - Token Creation Flow', () => {
     expect(screen.getByText(/Copy your API token now/)).toBeInTheDocument();
     expect(screen.getByText(/Make sure to copy your token now/)).toBeInTheDocument();
 
-    // Step 4: Test show/hide toggle functionality
     const showButton = screen.getByRole('button', { name: /show content/i });
 
     // Token should be hidden by default (showing dots)
     expect(screen.queryByText(createdToken)).not.toBeInTheDocument();
 
-    // Toggle to show token
     await user.click(showButton);
     expect(screen.getByText(createdToken)).toBeInTheDocument();
 
-    // Toggle back to hide
     const hideButton = screen.getByRole('button', { name: /hide content/i });
     await user.click(hideButton);
     expect(screen.queryByText(createdToken)).not.toBeInTheDocument();
 
-    // Step 5: Test copy button functionality
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       value: {
@@ -169,7 +140,6 @@ describe('TokenPage - Token Creation Flow', () => {
 
     expect(writeTextMock).toHaveBeenCalledWith(createdToken);
 
-    // Step 6: Close dialog with "Done"
     const doneButton = screen.getByRole('button', { name: 'Done' });
     await user.click(doneButton);
 
@@ -177,7 +147,6 @@ describe('TokenPage - Token Creation Flow', () => {
       expect(screen.queryByText('API Token Generated')).not.toBeInTheDocument();
     });
 
-    // Step 7: Verify success toast was called
     expect(toastMock).toHaveBeenCalledWith(showSuccessParams('Success', 'API token successfully generated'));
   });
 });
@@ -198,7 +167,6 @@ describe('TokenPage - Token List Display', () => {
       expect(screen.getByTestId('tokens-page')).toBeInTheDocument();
     });
 
-    // Verify table exists but has no data rows
     const rows = screen.queryAllByRole('row');
     // Only header row should exist
     expect(rows.length).toBe(1);
@@ -238,25 +206,19 @@ describe('TokenPage - Token List Display', () => {
       expect(screen.getByTestId('tokens-page')).toBeInTheDocument();
     });
 
-    // Verify both tokens are displayed
     expect(screen.getByText('Production API')).toBeInTheDocument();
     expect(screen.getByText('Development API')).toBeInTheDocument();
 
-    // Verify status badges
     const statusBadges = screen.getAllByText(/active|inactive/i);
     expect(statusBadges.length).toBeGreaterThanOrEqual(2);
 
-    // Verify timestamps are formatted and displayed
     const rows = screen.getAllByRole('row');
     expect(rows.length).toBe(3); // Header + 2 data rows
 
-    // Verify switch controls exist for both tokens
     const switches = screen.getAllByRole('switch');
     expect(switches).toHaveLength(2);
 
-    // Verify first token is active (switch checked)
     expect(switches[0]).toBeChecked();
-    // Verify second token is inactive (switch unchecked)
     expect(switches[1]).not.toBeChecked();
   });
 });
@@ -302,13 +264,11 @@ describe('TokenPage - Optimistic Updates', () => {
     const switchElement = screen.getByRole('switch');
     expect(switchElement).toBeChecked();
 
-    // Update mock to return updated data on refetch
+    // Refetch returns the post-toggle state.
     server.use(...mockTokens({ data: [updatedToken], total: 1 }, { stub: true }));
 
-    // Click toggle switch
     await user.click(switchElement);
 
-    // Verify success toast
     await waitFor(() => {
       expect(toastMock).toHaveBeenCalledWith(showSuccessParams('Token Updated', 'Token status changed to inactive'));
     });
@@ -347,10 +307,8 @@ describe('TokenPage - Optimistic Updates', () => {
     const switchElement = screen.getByRole('switch');
     expect(switchElement).toBeChecked();
 
-    // Click toggle switch
     await user.click(switchElement);
 
-    // Verify error toast is shown
     await waitFor(() => {
       expect(toastMock).toHaveBeenCalledWith(showErrorParams('Error', 'Database connection failed'));
     });

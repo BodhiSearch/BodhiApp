@@ -30,7 +30,6 @@ async fn test_settings_are_global_not_tenant_scoped(
   };
   ctx.service.upsert_setting(&setting).await?;
 
-  // Settings are accessible without any tenant context — no tenant_id parameter
   let fetched = ctx.service.get_setting("global_test_setting").await?;
   assert!(fetched.is_some());
   assert_eq!("global_value", fetched.unwrap().value);

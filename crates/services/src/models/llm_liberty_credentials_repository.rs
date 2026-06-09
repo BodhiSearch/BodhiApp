@@ -8,10 +8,6 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 
-// =============================================================================
-// Trait
-// =============================================================================
-
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait LlmLibertyCredentialsRepository: Send + Sync {
@@ -68,10 +64,6 @@ pub trait LlmLibertyCredentialsRepository: Send + Sync {
     api_alias_id: &str,
   ) -> Result<(), DbError>;
 }
-
-// =============================================================================
-// Implementation on DefaultDbService
-// =============================================================================
 
 #[async_trait]
 impl LlmLibertyCredentialsRepository for DefaultDbService {

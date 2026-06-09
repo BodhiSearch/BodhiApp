@@ -59,7 +59,6 @@ export function useMcpClients(): UseMcpClientsReturn {
   const connectAll = useCallback(async (mcps: Mcp[]) => {
     const eligibleMcps = mcps.filter((m) => m.mcp_server.enabled && m.enabled && m.path);
 
-    // Build incoming set: id -> endpoint
     const incomingEndpoints = new Map<string, string>();
     for (const mcp of eligibleMcps) {
       incomingEndpoints.set(mcp.id, mcp.path!);
@@ -67,7 +66,6 @@ export function useMcpClients(): UseMcpClientsReturn {
 
     const currentEndpoints = connectedEndpointsRef.current;
 
-    // Determine MCPs to disconnect (in current but not in incoming, or endpoint changed)
     const toDisconnect: string[] = [];
     for (const [id, endpoint] of currentEndpoints) {
       if (!incomingEndpoints.has(id) || incomingEndpoints.get(id) !== endpoint) {
@@ -75,7 +73,6 @@ export function useMcpClients(): UseMcpClientsReturn {
       }
     }
 
-    // Determine MCPs to connect (in incoming but not in current, or endpoint changed)
     const toConnect: Mcp[] = [];
     for (const mcp of eligibleMcps) {
       const currentEndpoint = currentEndpoints.get(mcp.id);
@@ -84,10 +81,8 @@ export function useMcpClients(): UseMcpClientsReturn {
       }
     }
 
-    // Nothing to do if no changes
     if (toDisconnect.length === 0 && toConnect.length === 0) return;
 
-    // Disconnect removed/changed MCPs
     const disconnectPromises: Promise<void>[] = [];
     for (const id of toDisconnect) {
       const entry = connectionsRef.current.get(id);
@@ -108,7 +103,6 @@ export function useMcpClients(): UseMcpClientsReturn {
     }
     await Promise.allSettled(disconnectPromises);
 
-    // Remove disconnected states, keep unchanged states
     if (toDisconnect.length > 0) {
       setClientStates((prev) => {
         const next = new Map(prev);
@@ -123,7 +117,6 @@ export function useMcpClients(): UseMcpClientsReturn {
 
     setIsConnecting(true);
 
-    // Set connecting status for new MCPs
     setClientStates((prev) => {
       const next = new Map(prev);
       for (const mcp of toConnect) {

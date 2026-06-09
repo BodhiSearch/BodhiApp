@@ -50,7 +50,6 @@ pub async fn modelfiles_index(
 
   let page_models: Vec<HubFile> = models.into_iter().skip(start).take(end - start).collect();
 
-  // Batch fetch metadata for all models in this page
   let keys: Vec<(String, String, String)> = page_models
     .iter()
     .map(|m| (m.repo.to_string(), m.filename.clone(), m.snapshot.clone()))
@@ -65,7 +64,6 @@ pub async fn modelfiles_index(
       ModelRouteError::MetadataFetchFailed
     })?;
 
-  // Convert to responses with metadata attached
   let data: Vec<LocalModelResponse> = page_models
     .into_iter()
     .map(|model| {

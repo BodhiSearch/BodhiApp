@@ -6,7 +6,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import { mockModels, mockModelsInternalError, mockModelsEmpty } from '@/test-utils/msw-v2/handlers/models';
 
-// Mock the child components
 vi.mock('@/routes/chat/-components/settings/AliasSelector', () => ({
   AliasSelector: ({ models, isLoading }: { models: any[]; isLoading: boolean }) => (
     <div data-testid="alias-selector" data-loading={isLoading}>
@@ -29,7 +28,6 @@ vi.mock('@/routes/chat/-components/settings/SettingSlider', () => ({
   ),
 }));
 
-// Mock UI components
 vi.mock('@/components/ui/sidebar', () => ({
   Sidebar: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar">{children}</div>,
   SidebarHeader: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-header">{children}</div>,
@@ -49,7 +47,6 @@ vi.mock('@/components/ui/separator', () => ({
   Separator: () => <div data-testid="separator" />,
 }));
 
-// Mock hooks
 vi.mock('@/hooks/chat', () => ({
   useChatSettings: () => ({
     stream: false,
@@ -81,7 +78,6 @@ vi.mock('@/hooks/chat', () => ({
   }),
 }));
 
-// Mock the Tooltip components from shadcn
 vi.mock('@/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip-content">{children}</div>,
@@ -89,7 +85,6 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip-trigger">{children}</div>,
 }));
 
-// Setup MSW v2 server
 setupMswV2();
 
 // Default handler for models endpoint used by all tests

@@ -36,7 +36,6 @@ async fn test_cross_tenant_user_access_request_isolation(
     )
     .await?;
 
-  // Tenant A sees only its request
   let (requests_a, total_a) = ctx
     .service
     .list_pending_requests(TEST_TENANT_ID, 1, 10)
@@ -44,7 +43,6 @@ async fn test_cross_tenant_user_access_request_isolation(
   assert_eq!(1, total_a);
   assert_eq!(TEST_TENANT_ID, requests_a[0].tenant_id);
 
-  // Tenant B sees only its request
   let (requests_b, total_b) = ctx
     .service
     .list_pending_requests(TEST_TENANT_B_ID, 1, 10)
@@ -52,7 +50,6 @@ async fn test_cross_tenant_user_access_request_isolation(
   assert_eq!(1, total_b);
   assert_eq!(TEST_TENANT_B_ID, requests_b[0].tenant_id);
 
-  // get_pending_request scoped by tenant
   let found_a = ctx
     .service
     .get_pending_request(TEST_TENANT_ID, user_id.to_string())

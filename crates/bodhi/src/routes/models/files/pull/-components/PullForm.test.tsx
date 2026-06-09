@@ -68,7 +68,6 @@ describe('PullForm', () => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Model pull request submitted successfully'));
     });
 
-    // Form should be reset after successful submission
     expect(screen.getByLabelText(/repository/i)).toHaveValue('');
     expect(screen.getByLabelText(/filename/i)).toHaveValue('');
   });
@@ -84,16 +83,14 @@ describe('PullForm', () => {
     const submitButton = screen.getByRole('button', { name: /pull model/i });
     await userEvent.click(submitButton);
 
-    // Check for toast error message
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
         showErrorParams('Error', 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"')
       );
     });
 
-    // Check that form fields are in error state
     const formMessages = screen.getAllByRole('alert');
-    expect(formMessages).toHaveLength(1); // One for each field
+    expect(formMessages).toHaveLength(1);
     formMessages.forEach((message) => {
       expect(message).toHaveTextContent('file "model.gguf" already exists in repo "test/repo" with snapshot "main"');
     });
@@ -105,30 +102,23 @@ describe('PullForm', () => {
     await userEvent.type(screen.getByLabelText(/repository/i), 'test/repo1');
     await userEvent.type(screen.getByLabelText(/filename/i), 'model1.gguf');
 
-    // Submit with errors to show error state
     server.use(...mockModelPullFileExistsError({ repo: 'test/repo1', filename: 'model1.gguf' }));
     await userEvent.click(screen.getByRole('button', { name: /pull model/i }));
 
-    // Wait for error message in toast
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
         showErrorParams('Error', 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"')
       );
     });
 
-    // Verify error state before reset
     const errorMessages = screen.getAllByRole('alert');
     expect(errorMessages).toHaveLength(1);
 
-    // Click reset
     const resetButton = screen.getByRole('button', { name: /reset/i });
     await userEvent.click(resetButton);
 
-    // Form should be cleared
     expect(screen.getByLabelText(/repository/i)).toHaveValue('');
     expect(screen.getByLabelText(/filename/i)).toHaveValue('');
-
-    // Error messages should be removed
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
   });
 
@@ -138,13 +128,11 @@ describe('PullForm', () => {
     const repoInput = screen.getByLabelText(/repository/i);
     await userEvent.type(repoInput, 'test');
 
-    // Should show repo suggestions
     await waitFor(() => {
       expect(screen.getByText('test/repo1')).toBeInTheDocument();
       expect(screen.getByText('test/repo2')).toBeInTheDocument();
     });
 
-    // Select a repo and check filename suggestions
     await userEvent.click(screen.getByText('test/repo1'));
     const filenameInput = screen.getByLabelText(/filename/i);
     await userEvent.type(filenameInput, 'model');

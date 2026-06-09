@@ -89,7 +89,6 @@ impl LocalDataService {
 #[async_trait]
 impl DataService for LocalDataService {
   async fn list_aliases(&self, tenant_id: &str, user_id: &str) -> Result<Vec<Alias>> {
-    // Get user aliases from DB
     let user_aliases = self
       .db_service
       .list_user_aliases(tenant_id, user_id)
@@ -102,7 +101,6 @@ impl DataService for LocalDataService {
 
     result.extend(model_alias_variants);
 
-    // Add API aliases from database
     match self
       .db_service
       .list_api_model_aliases(tenant_id, user_id)
@@ -113,12 +111,10 @@ impl DataService for LocalDataService {
         result.extend(api_alias_variants);
       }
       Err(_) => {
-        // Continue without API aliases if database is not available
-        // This provides graceful degradation
+        // Graceful degradation: continue without API aliases if the database is unavailable
       }
     }
 
-    // Add model-router (composite) aliases from database
     if let Ok(routers) = self
       .db_service
       .list_model_router_aliases(tenant_id, user_id)
@@ -213,7 +209,6 @@ impl DataService for LocalDataService {
       .await?
       .ok_or_else(|| DataServiceError::AliasNotFound(id.to_string()))?;
 
-    // Check if new alias name already exists
     if let Ok(Some(_)) = self
       .db_service
       .get_user_alias_by_name(tenant_id, user_id, new_alias)
@@ -243,7 +238,6 @@ impl DataService for LocalDataService {
   }
 
   async fn delete_alias(&self, tenant_id: &str, user_id: &str, id: &str) -> Result<()> {
-    // Check if alias exists first
     let _alias = self
       .db_service
       .get_user_alias_by_id(tenant_id, user_id, id)
@@ -266,7 +260,6 @@ impl DataService for LocalDataService {
     let alias_name = form.alias;
     let repo = Repo::try_from(form.repo)?;
 
-    // Check if alias already exists
     if self
       .find_user_alias(tenant_id, user_id, &alias_name)
       .await
@@ -275,7 +268,6 @@ impl DataService for LocalDataService {
       return Err(DataServiceError::AliasExists(alias_name));
     }
 
-    // Verify file exists locally
     let file_exists =
       self
         .hub_service
@@ -322,13 +314,11 @@ impl DataService for LocalDataService {
     id: &str,
     form: UserAliasRequest,
   ) -> Result<UserAlias> {
-    // Get existing alias to verify it exists
     let existing = self
       .get_user_alias_by_id(tenant_id, user_id, id)
       .await
       .ok_or_else(|| DataServiceError::AliasNotFound(id.to_string()))?;
 
-    // If alias name changed, check uniqueness within (tenant_id, user_id) scope
     if form.alias != existing.alias
       && self
         .find_user_alias(tenant_id, user_id, &form.alias)
@@ -340,7 +330,6 @@ impl DataService for LocalDataService {
 
     let repo = Repo::try_from(form.repo)?;
 
-    // Verify file exists locally
     let file_exists =
       self
         .hub_service

@@ -16,7 +16,7 @@ const browserIcons: Record<BrowserType, React.ComponentType<{ className?: string
   edge: FaEdge,
   firefox: FaFirefox,
   safari: FaSafari,
-  unknown: FaChrome, // Fallback to chrome icon
+  unknown: FaChrome,
 };
 
 const browserDisplayNames: Record<BrowserType, string> = {

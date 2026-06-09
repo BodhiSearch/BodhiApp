@@ -1,9 +1,3 @@
-/**
- * Centralized role management utilities
- * Single source of truth for all role-related functionality
- */
-
-// Import and re-export Role from ts-client (single source of truth)
 import type { ResourceRole } from '@bodhiapp/ts-client';
 export type Role = ResourceRole;
 
@@ -25,42 +19,25 @@ export const ROLE_OPTIONS = [
   { value: 'resource_admin' as Role, label: 'Admin' },
 ];
 
-// Helper functions for role operations
-
-/**
- * Get the display label for a role
- */
 export function getRoleLabel(role: string): string {
   const option = ROLE_OPTIONS.find((r) => r.value === role);
   return option?.label || role;
 }
 
-/**
- * Get the hierarchy level for a role
- */
 export function getRoleLevel(role: string): number {
   return roleHierarchy[role as Role] || 0;
 }
 
-/**
- * Check if a user role can access a required role level
- */
 export function canAccessRole(userRole: string, requiredRole: string): boolean {
   const userLevel = getRoleLevel(userRole);
   const requiredLevel = getRoleLevel(requiredRole);
   return userLevel >= requiredLevel;
 }
 
-/**
- * Check if a user role meets minimum role requirement
- */
 export function meetsMinRole(userRole: string, minRole: string): boolean {
   return canAccessRole(userRole, minRole);
 }
 
-/**
- * Get badge variant based on role for consistent styling
- */
 export function getRoleBadgeVariant(role: string): 'default' | 'secondary' | 'outline' | 'destructive' {
   switch (role) {
     case 'resource_admin':
@@ -75,29 +52,19 @@ export function getRoleBadgeVariant(role: string): 'default' | 'secondary' | 'ou
   }
 }
 
-/**
- * Filter role options based on user's maximum role level
- */
 export function getAvailableRoles(userRole: string): typeof ROLE_OPTIONS {
   const userMaxLevel = getRoleLevel(userRole);
   return ROLE_OPTIONS.filter((role) => getRoleLevel(role.value) <= userMaxLevel);
 }
 
-/**
- * Check if a role is valid
- */
 export function isValidRole(role: string): role is Role {
   return role in roleHierarchy;
 }
 
-/**
- * Get clean role name for display (removes resource_ prefix)
- */
 export function getCleanRoleName(role: string): string {
   return role.replace('resource_', '');
 }
 
-// Type guards for specific role checks
 export function isAdminRole(role: string): boolean {
   return role === 'resource_admin';
 }

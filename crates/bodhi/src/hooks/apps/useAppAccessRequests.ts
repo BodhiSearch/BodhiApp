@@ -14,7 +14,6 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 import { appAccessRequestKeys, ENDPOINT_ACCESS_REQUESTS } from './constants';
 
-// Re-export types for consumers
 export type {
   AccessRequestActionResponse,
   AccessRequestReviewResponse,
@@ -24,13 +23,6 @@ export type {
   RequestedResources,
 };
 
-// ============================================================================
-// Query Hooks
-// ============================================================================
-
-/**
- * Fetch access request review data for the review page
- */
 export function useGetAppAccessRequestReview(
   id: string | null,
   options?: { enabled?: boolean }
@@ -47,13 +39,6 @@ export function useGetAppAccessRequestReview(
   );
 }
 
-// ============================================================================
-// Mutation Hooks
-// ============================================================================
-
-/**
- * Approve an app access request with tool instance selections
- */
 export function useApproveAppAccessRequest(options?: {
   onSuccess?: (data: AccessRequestActionResponse) => void;
   onError?: (message: string) => void;
@@ -82,9 +67,6 @@ export function useApproveAppAccessRequest(options?: {
   );
 }
 
-/**
- * Deny an app access request
- */
 export function useDenyAppAccessRequest(options?: {
   onSuccess?: (data: AccessRequestActionResponse) => void;
   onError?: (message: string) => void;

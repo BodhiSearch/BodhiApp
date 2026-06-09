@@ -4,10 +4,6 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-// ============================================================================
-// TokenStatus - API token active/inactive status
-// ============================================================================
-
 #[derive(
   Debug,
   Clone,
@@ -27,10 +23,6 @@ pub enum TokenStatus {
   Inactive,
 }
 
-// ============================================================================
-// CreateTokenRequest - Input for creating a new API token
-// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
     "name": "My Integration Token",
@@ -46,10 +38,6 @@ pub struct CreateTokenRequest {
   pub scope: TokenScope,
 }
 
-// ============================================================================
-// UpdateTokenRequest - Input for updating an existing API token
-// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
     "name": "Updated Token Name",
@@ -64,10 +52,7 @@ pub struct UpdateTokenRequest {
   pub status: TokenStatus,
 }
 
-// ============================================================================
-// TokenCreated - Returned only on create (contains the raw token string)
-// ============================================================================
-
+// Returned only on create; contains the raw token string shown once.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "token": "bodhiapp_1234567890abcdef"
@@ -78,10 +63,7 @@ pub struct TokenCreated {
   pub token: String,
 }
 
-// ============================================================================
-// TokenDetail - Output type for get/list/update (entity minus tenant_id, token_hash)
-// ============================================================================
-
+// Output type for get/list/update: entity minus tenant_id and token_hash.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct TokenDetail {
   pub id: String,
@@ -110,10 +92,6 @@ impl From<super::TokenEntity> for TokenDetail {
     }
   }
 }
-
-// ============================================================================
-// PaginatedTokenResponse - Paginated list of token details
-// ============================================================================
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct PaginatedTokenResponse {

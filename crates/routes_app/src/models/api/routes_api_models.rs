@@ -397,9 +397,6 @@ pub async fn api_models_formats() -> Result<Json<ApiFormatsResponse>, BodhiError
 }
 
 /// Synchronously populate cache with models for an API model alias
-///
-/// This endpoint fetches models from the external API and populates the cache synchronously.
-/// Useful for testing to ensure cache is populated before proceeding with assertions.
 #[utoipa::path(
     post,
     path = ENDPOINT_MODELS_API.to_owned() + "/{id}/sync-models",

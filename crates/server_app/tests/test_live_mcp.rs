@@ -9,17 +9,6 @@ use utils::{create_test_session_for_live_server, start_test_live_server};
 const MCP_TEST_URL: &str = "https://mcp.deepwiki.com/mcp";
 
 /// Full CRUD flow for MCP servers and instances through the live HTTP server.
-///
-/// Test steps:
-///   1. Admin creates an MCP server via POST /mcps/servers
-///   2. Admin gets MCP server by ID via GET /mcps/servers/{id}
-///   3. Admin updates MCP server via PUT /mcps/servers/{id}
-///   4. User creates an MCP instance via POST /mcps (with mcp_server_id)
-///   5. User lists MCPs via GET /mcps -> asserts instance present with nested mcp_server
-///   6. User gets MCP by ID via GET /mcps/{id} -> asserts nested mcp_server
-///   7. User updates MCP via PUT /mcps/{id} -> asserts updated fields
-///   8. User lists MCP servers via GET /mcps/servers -> asserts server with counts
-///   9. User deletes MCP via DELETE /mcps/{id} -> asserts gone
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -224,16 +213,7 @@ async fn test_non_admin_cannot_create_mcp_server() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Multi-step auth lifecycle using unified auth config flow:
-///   1. Admin creates MCP server
-///   2. Admin creates auth header config via /mcps/auth-configs
-///   3. Admin creates MCP with auth_type=header and auth_config_id referencing the config
-///   4. Verify response: auth_type=header, auth_config_id present
-///   5. Verify MCP references the auth config via GET
-///   6. Admin switches MCP to public auth
-///   7. Verify auth cleared on MCP but auth config preserved
-///   8. Admin reuses original auth config and switches MCP back to header auth
-///   9. Verify auth restored
+/// Multi-step auth lifecycle using unified auth config flow.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]

@@ -165,7 +165,6 @@ async fn test_auth_initiate_handler_loopback_host_detection(
     .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
-  // Request with localhost:1135 Host header
   let resp = router
     .oneshot(
       Request::post("/auth/initiate")
@@ -238,7 +237,6 @@ async fn test_auth_initiate_handler_network_host_usage(
     .layer(app_service.session_service().session_layer(false))
     .with_state(state);
 
-  // Request with network host header
   let resp = router
     .oneshot(
       Request::post("/auth/initiate")

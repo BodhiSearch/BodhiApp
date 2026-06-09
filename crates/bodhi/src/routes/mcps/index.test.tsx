@@ -1,15 +1,3 @@
-/**
- * McpsPage Component Tests
- *
- * Purpose: Verify MCP list page displays instances with status badges
- *
- * Focus Areas:
- * - Instance list display with status badges
- * - Empty state
- * - Error handling
- * - Delete flow
- */
-
 import McpsPage from '@/routes/mcps/index';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockListMcps, mockListMcpsError, mockMcp } from '@/test-utils/msw-v2/handlers/mcps';

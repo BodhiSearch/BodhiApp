@@ -44,7 +44,6 @@ const config = parseArgs();
 
 const app = express();
 
-// CORS middleware
 app.use((_req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header(
@@ -63,12 +62,10 @@ app.use((_req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint (no auth required)
 app.get('/ping', (_req, res) => {
   res.send('pong');
 });
 
-// MCP endpoints with auth validation
 const { handleMcpPost, handleMcpGet, handleMcpDelete } = createMcpHandlers({
   headers: config.headers,
   queries: config.queries,

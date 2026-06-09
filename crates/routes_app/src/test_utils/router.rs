@@ -21,13 +21,8 @@ use tower_sessions::{
 };
 use uuid::Uuid;
 
-/// Builds a fully-composed test router with all services wired using real
-/// in-memory implementations (SQLite, file-based data service, etc.).
-///
-/// Returns:
-/// - `Router` - the fully composed router from `build_routes()` with session layer, auth middleware, etc.
-/// - `Arc<dyn AppService>` - the app service handle for test data setup (e.g., db_service, data_service)
-/// - `Arc<TempDir>` - temp directory ownership to keep it alive for the test duration
+/// Fully-composed test router with services wired to real in-memory implementations
+/// (SQLite, file-based data service, etc.). Returned `TempDir` must outlive the test.
 pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>, Arc<TempDir>)> {
   let mut builder = AppServiceStubBuilder::default();
   let stub_queue: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
@@ -56,32 +51,18 @@ pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>,
   Ok((router, app_service, temp_home))
 }
 
-/// Creates an authenticated session in the session store with the specified roles.
-///
-/// This function:
-/// 1. Builds a JWT with the specified roles in `resource_access` for the test client
-/// 2. Creates a session `Record` with `access_token` set to the JWT
-/// 3. Saves the record to the `SessionStoreBackend`
-/// 4. Returns a cookie string suitable for use in request headers
-///
-/// # Arguments
-/// * `session_service` - The session service providing access to the session store
-/// * `roles` - Slice of role strings (e.g., `&["resource_user"]`, `&["resource_admin", "resource_user"]`)
-///
-/// # Returns
-/// A cookie string like `bodhiapp_session_id=<session_id>` that can be used in request headers.
+/// `roles` go into `resource_access` for the test client; returns a
+/// `bodhiapp_session_id=<id>` cookie string usable in request headers.
 pub async fn create_authenticated_session(
   session_service: &dyn SessionService,
   roles: &[&str],
 ) -> anyhow::Result<String> {
-  // Build JWT claims with specified roles
   let mut claims = access_token_claims();
   claims["resource_access"][TEST_CLIENT_ID]["roles"] = serde_json::json!(roles);
 
-  // Build the signed JWT token
   let (token, _public_key) = build_token(claims)?;
 
-  // Create a session record with namespaced access_token and active_client_id
+  // namespaced access_token + active_client_id
   let session_id = Id::default();
   let mut data = HashMap::new();
   let access_key = format!("{}:access_token", TEST_CLIENT_ID);
@@ -97,20 +78,14 @@ pub async fn create_authenticated_session(
     expiry_date: OffsetDateTime::now_utc() + time::Duration::hours(1),
   };
 
-  // Save to the session store
   let store = session_service.get_session_store();
   store.save(&record).await?;
 
-  // Return the cookie string matching the session cookie name used by DefaultSessionService
+  // cookie name must match DefaultSessionService
   Ok(format!("bodhiapp_session_id={}", session_id))
 }
 
-/// Builds an HTTP request with session authentication and same-origin headers.
-///
-/// Sets:
-/// - `Cookie` header with the session cookie
-/// - `Sec-Fetch-Site: same-origin` header (required for session auth path)
-/// - `Host: localhost:1135` header (required for same-origin check)
+/// `Sec-Fetch-Site: same-origin` is required for the session auth path; `Host` for the same-origin check.
 pub fn session_request(method: &str, path: &str, session_cookie: &str) -> Request<Body> {
   Request::builder()
     .method(method)
@@ -122,10 +97,6 @@ pub fn session_request(method: &str, path: &str, session_cookie: &str) -> Reques
     .unwrap()
 }
 
-/// Builds an HTTP request without any authentication headers.
-///
-/// Sets only the `Host` header for proper routing but includes no session cookie
-/// or bearer token, simulating an unauthenticated request.
 pub fn unauth_request(method: &str, path: &str) -> Request<Body> {
   Request::builder()
     .method(method)
@@ -135,13 +106,7 @@ pub fn unauth_request(method: &str, path: &str) -> Request<Body> {
     .unwrap()
 }
 
-/// Builds an HTTP request with session authentication and a JSON body.
-///
-/// Sets:
-/// - `Cookie` header with the session cookie
-/// - `Sec-Fetch-Site: same-origin` header (required for session auth path)
-/// - `Host: localhost:1135` header (required for same-origin check)
-/// - `Content-Type: application/json` header
+/// `Sec-Fetch-Site: same-origin` is required for the session auth path; `Host` for the same-origin check.
 pub fn session_request_with_body(
   method: &str,
   path: &str,
@@ -159,11 +124,6 @@ pub fn session_request_with_body(
     .unwrap()
 }
 
-/// Builds an HTTP request without authentication but with a JSON body.
-///
-/// Sets:
-/// - `Host` header for proper routing
-/// - `Content-Type: application/json` header
 pub fn unauth_request_with_body(method: &str, path: &str, body: Body) -> Request<Body> {
   Request::builder()
     .method(method)
@@ -174,19 +134,9 @@ pub fn unauth_request_with_body(method: &str, path: &str, body: Body) -> Request
     .unwrap()
 }
 
-/// Builds a fully-composed router with live services for integration testing with real LLM inference.
-///
-/// This function creates a router that exercises the complete request flow through real services:
-/// - Real HF cache discovery (discovers models from ~/.cache/huggingface/hub)
-/// - Real llama.cpp binary execution (from crates/llama_server_proc/bin/)
-/// - Real LocalDataService with live hub service
-/// - DefaultSharedContext with DefaultServerFactory (spawns actual llama.cpp processes)
-///
-/// Returns:
-/// - `Router` - fully composed router with session layer, auth middleware, DefaultSharedContext
-/// - `Arc<dyn AppService>` - app service handle for test setup
-/// - `Arc<dyn SharedContext>` - shared context for cleanup (call ctx.stop().await after test)
-/// - `Arc<TempDir>` - temp directory ownership to keep it alive for test duration
+/// Exercises the full request flow through real services: HF cache discovery,
+/// real llama.cpp binary execution, DefaultSharedContext spawning actual llama.cpp
+/// processes. Returned `SharedContext` needs `ctx.stop().await` after the test.
 ///
 /// # Prerequisites
 /// - Pre-downloaded model at `~/.cache/huggingface/hub/` (e.g., ggml-org/Qwen3-1.7B-GGUF)
@@ -250,19 +200,8 @@ pub async fn build_live_test_router() -> anyhow::Result<(
   Ok((router, app_service, ctx, temp_home))
 }
 
-/// Creates a test API token in the database and returns the raw token string.
-///
-/// The token follows the production format:
-/// - Prefix: `bodhiapp_` + 8 random chars (used for DB lookup)
-/// - Full token: `bodhiapp_` + deterministic test string
-/// - Hash: SHA-256 of the full token stored in the database
-///
-/// # Arguments
-/// * `db_service` - The database service to insert the token into
-///
-/// # Returns
-/// The raw token string (e.g., `bodhiapp_testtoken_for_testing_purposes_only`) that can be
-/// used as a `Bearer` token in request headers.
+/// Token follows the production format: prefix `bodhiapp_` + 8 chars (DB lookup key),
+/// SHA-256 of the full token stored in the DB. Returns the raw token for `Bearer` use.
 pub async fn create_test_api_token(db_service: &dyn DbService) -> anyhow::Result<String> {
   let token_str = format!("bodhiapp_testtoken_{}", Uuid::new_v4());
   let token_prefix = &token_str[.."bodhiapp_".len() + 8];
@@ -291,13 +230,6 @@ pub async fn create_test_api_token(db_service: &dyn DbService) -> anyhow::Result
   Ok(token_str)
 }
 
-/// Builds a CORS preflight (OPTIONS) request for testing CORS behavior.
-///
-/// Sets:
-/// - Method: OPTIONS
-/// - `Origin` header with the provided origin
-/// - `Access-Control-Request-Method` header with the provided method
-/// - `Host: localhost:1135` header
 pub fn cors_preflight_request(path: &str, method: &str, origin: &str) -> Request<Body> {
   Request::builder()
     .method("OPTIONS")
@@ -309,12 +241,6 @@ pub fn cors_preflight_request(path: &str, method: &str, origin: &str) -> Request
     .unwrap()
 }
 
-/// Builds an HTTP request with an `Origin` header for testing CORS on non-preflight requests.
-///
-/// Sets:
-/// - The specified HTTP method
-/// - `Origin` header with the provided origin
-/// - `Host: localhost:1135` header
 pub fn request_with_origin(method: &str, path: &str, origin: &str) -> Request<Body> {
   Request::builder()
     .method(method)
@@ -325,11 +251,6 @@ pub fn request_with_origin(method: &str, path: &str, origin: &str) -> Request<Bo
     .unwrap()
 }
 
-/// Builds an HTTP request with an API token in the `Authorization: Bearer` header.
-///
-/// Sets:
-/// - `Authorization: Bearer {token}` header
-/// - `Host: localhost:1135` header (required for routing)
 pub fn api_token_request(method: &str, path: &str, token: &str) -> Request<Body> {
   Request::builder()
     .method(method)

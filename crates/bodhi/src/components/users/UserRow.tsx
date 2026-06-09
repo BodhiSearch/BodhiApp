@@ -30,7 +30,6 @@ export function UserRow({ user, currentUserRole, currentUsername, currentUserInf
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
 
-  // Sync selectedRole with user.role when props change
   useEffect(() => {
     const currentRole = typeof user.role === 'string' ? user.role : 'resource_user';
     setSelectedRole(currentRole);

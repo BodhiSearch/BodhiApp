@@ -61,7 +61,6 @@ pub enum AiApiClientFactoryError {
 }
 
 impl AiApiClientFactoryError {
-  /// Convert an HTTP status code and body into the appropriate error variant.
   pub fn status_to_error(status: reqwest::StatusCode, body: String) -> Self {
     match status {
       reqwest::StatusCode::UNAUTHORIZED => Self::Unauthorized(body),

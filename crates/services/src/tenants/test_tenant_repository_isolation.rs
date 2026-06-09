@@ -39,13 +39,11 @@ async fn test_cross_tenant_tenant_user_isolation(
   ctx.service.create_tenant_test(&tenant_a).await?;
   ctx.service.create_tenant_test(&tenant_b).await?;
 
-  // Create membership in tenant A
   ctx
     .service
     .upsert_tenant_user(TEST_TENANT_ID, TEST_USER_ID)
     .await?;
 
-  // Create membership in tenant B
   ctx
     .service
     .upsert_tenant_user(TEST_TENANT_B_ID, TEST_USER_ID)
@@ -55,18 +53,15 @@ async fn test_cross_tenant_tenant_user_isolation(
   let tenants = ctx.service.list_user_tenants(TEST_USER_ID).await?;
   assert_eq!(2, tenants.len());
 
-  // Delete membership in tenant A
   ctx
     .service
     .delete_tenant_user(TEST_TENANT_ID, TEST_USER_ID)
     .await?;
 
-  // Only tenant B membership remains
   let tenants = ctx.service.list_user_tenants(TEST_USER_ID).await?;
   assert_eq!(1, tenants.len());
   assert_eq!(TEST_TENANT_B_ID, tenants[0].id);
 
-  // has_tenant_memberships still true (tenant B membership)
   let has = ctx.service.has_tenant_memberships(TEST_USER_ID).await?;
   assert_eq!(true, has);
 

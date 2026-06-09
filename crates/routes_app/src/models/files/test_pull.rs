@@ -86,7 +86,6 @@ async fn test_pull_by_repo_file_success(
   assert_eq!(download_request.filename, Repo::testalias_model_q4());
   assert_eq!(download_request.status, DownloadStatus::Pending);
 
-  // Wait for the update_download_request event
   let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(500));
 
   assert!(
@@ -283,7 +282,6 @@ async fn test_list_downloads(
   db_service: TestDbService,
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
-  // Create test downloads with different statuses
   let download1 = DownloadRequestEntity::new_pending(
     TEST_TENANT_ID,
     "test/repo1",
@@ -308,7 +306,6 @@ async fn test_list_downloads(
   db_service.create_download_request(&download2).await?;
   db_service.create_download_request(&download3).await?;
 
-  // Update status of download2 to completed and download3 to error
   download2.status = DownloadStatus::Completed;
   download3.status = DownloadStatus::Error;
   download3.error = Some("test error".to_string());
@@ -342,7 +339,7 @@ async fn test_list_downloads(
   assert_eq!(body.page, 1);
   assert_eq!(body.page_size, 10);
 
-  // Verify download details - should be sorted by updated_at DESC
+  // results are sorted by updated_at DESC, so index 0 is the oldest-updated row
   let downloads = body.data;
   assert_eq!(downloads[2].repo, "test/repo3");
   assert_eq!(downloads[2].filename, "file3.gguf");
@@ -361,8 +358,6 @@ async fn test_list_downloads(
 
   Ok(())
 }
-
-// Auth tier tests (merged from tests/routes_models_pull_auth_test.rs)
 
 #[anyhow_trace]
 #[rstest]

@@ -67,14 +67,12 @@ pub async fn mcp_proxy_handler(
   Path(id): Path<String>,
   request: axum::extract::Request,
 ) -> Result<Response, BodhiErrorResponse> {
-  // 1. Resolve MCP instance + server
   let mcp = auth_scope
     .mcps()
     .get(&id)
     .await?
     .ok_or_else(|| services::McpError::McpNotFound(id.clone()))?;
 
-  // 2. Check enabled flags
   if !mcp.server_enabled {
     return Err(McpRouteError::McpServerDisabled.into());
   }
@@ -82,10 +80,8 @@ pub async fn mcp_proxy_handler(
     return Err(McpRouteError::McpInstanceDisabled.into());
   }
 
-  // 3. Resolve auth params (headers + query params for upstream)
   let auth_params = auth_scope.mcps().resolve_auth_params(&id).await?;
 
-  // 4. Build upstream URL with auth query params
   let mut upstream_url = url::Url::parse(&mcp.server_url)
     .map_err(|e| McpRouteError::UpstreamConnectionFailed(format!("Invalid URL: {}", e)))?;
 
@@ -95,7 +91,6 @@ pub async fn mcp_proxy_handler(
     }
   }
 
-  // 5. Decompose incoming request
   let (parts, body) = request.into_parts();
   let method = parts.method.clone();
 
@@ -107,7 +102,6 @@ pub async fn mcp_proxy_handler(
     "Proxying MCP request to upstream"
   );
 
-  // 6. Build upstream request
   let upstream_method =
     reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or_else(|_| {
       tracing::warn!(%method, "Unknown HTTP method, falling back to POST");
@@ -151,13 +145,11 @@ pub async fn mcp_proxy_handler(
     upstream_req = upstream_req.body(body_bytes);
   }
 
-  // 7. Send to upstream
   let upstream_resp = upstream_req
     .send()
     .await
     .map_err(|e| McpRouteError::UpstreamConnectionFailed(e.to_string()))?;
 
-  // 8. Build response — stream body from upstream
   let status = upstream_resp.status();
   let mut response_builder = Response::builder().status(status.as_u16());
 

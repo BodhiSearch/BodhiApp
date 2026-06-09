@@ -197,7 +197,6 @@ async fn test_anthropic_messages_proxy_rejects_wrong_format() -> anyhow::Result<
     .await?;
   assert_eq!(StatusCode::CREATED, resp.status());
 
-  // Try to use it via the Anthropic endpoint.
   let resp = client
     .post(format!("{}/anthropic/v1/messages", server.base_url))
     .header("Cookie", &cookie)

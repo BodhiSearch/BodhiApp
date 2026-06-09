@@ -1,20 +1,7 @@
-/**
- * Type-safe MSW v2 handlers for modelfiles endpoint using openapi-msw
- */
 import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/models';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
-// ============================================================================
-// Model Files Endpoint (/bodhi/v1/models/files)
-// ============================================================================
-
-// Success Handlers
-
-/**
- * Create type-safe MSW v2 handlers for modelfiles endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockModelFiles(
   {
     data = [],
@@ -45,10 +32,6 @@ export function mockModelFiles(
   ];
 }
 
-/**
- * Mock handler for model files error endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockModelFilesError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -78,19 +61,13 @@ export function mockModelFilesError(
   ];
 }
 
-// Success Handler Variants
-
-/**
- * Mock handler for model files default data
- * Uses generated OpenAPI types directly
- */
 export function mockModelFilesDefault() {
   return mockModelFiles({
     data: [
       {
         repo: 'test-repo',
         filename: 'test-file.txt',
-        size: 1073741824, // 1 GB
+        size: 1073741824,
         snapshot: 'abc123',
         model_params: {},
       },
@@ -101,10 +78,6 @@ export function mockModelFilesDefault() {
   });
 }
 
-/**
- * Mock handler for model files empty data
- * Uses generated OpenAPI types directly
- */
 export function mockModelFilesEmpty() {
   return mockModelFiles({
     data: [],
@@ -114,16 +87,6 @@ export function mockModelFilesEmpty() {
   });
 }
 
-// ============================================================================
-// Model Pull Downloads Endpoint (/bodhi/v1/models/files/pull GET)
-// ============================================================================
-
-// Success Handlers
-
-/**
- * Create type-safe MSW v2 handlers for model pull downloads endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockModelPullDownloads(
   {
     data = [],
@@ -154,10 +117,6 @@ export function mockModelPullDownloads(
   ];
 }
 
-/**
- * Mock handler for model pull downloads error endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockModelPullDownloadsError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -187,12 +146,6 @@ export function mockModelPullDownloadsError(
   ];
 }
 
-// Success Handler Variants
-
-/**
- * Mock handler for model pull downloads default data
- * Uses generated OpenAPI types directly
- */
 export function mockModelPullDownloadsDefault() {
   return mockModelPullDownloads({
     data: [
@@ -239,10 +192,6 @@ export function mockModelPullDownloadsDefault() {
   });
 }
 
-/**
- * Mock handler for model pull downloads empty data
- * Uses generated OpenAPI types directly
- */
 export function mockModelPullDownloadsEmpty() {
   return mockModelPullDownloads({
     data: [],
@@ -252,11 +201,6 @@ export function mockModelPullDownloadsEmpty() {
   });
 }
 
-// Error Handler Variants
-
-/**
- * Mock handler for model pull downloads internal server error
- */
 export function mockModelPullDownloadsInternalError() {
   return mockModelPullDownloadsError({
     code: 'internal_server_error',
@@ -266,20 +210,6 @@ export function mockModelPullDownloadsInternalError() {
   });
 }
 
-// ============================================================================
-// Model Pull POST Endpoint (/bodhi/v1/models/files/pull POST)
-// ============================================================================
-
-// Success Handlers
-
-/**
- * Create type-safe MSW v2 handlers for model pull POST endpoint
- * Uses generated OpenAPI types directly
- */
-/**
- * Mock handler for model pull POST endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockModelPull(
   {
     id = '123',
@@ -322,12 +252,6 @@ export function mockModelPull(
   ];
 }
 
-// Error Handlers
-
-/**
- * Mock handler for model pull error endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockModelPullError(
   {
     code = 'model_route_error-file_already_exists',
@@ -357,11 +281,6 @@ export function mockModelPullError(
   ];
 }
 
-// Error Handler Variants
-
-/**
- * Mock handler for model pull file already exists error
- */
 export function mockModelPullFileExistsError(config: { repo?: string; filename?: string } = {}) {
   const { repo = 'test/repo', filename = 'model.gguf' } = config;
   return mockModelPullError({
@@ -372,9 +291,6 @@ export function mockModelPullFileExistsError(config: { repo?: string; filename?:
   });
 }
 
-/**
- * Mock handler for model pull internal server error
- */
 export function mockModelPullInternalError() {
   return mockModelPullError({
     code: 'internal_server_error',

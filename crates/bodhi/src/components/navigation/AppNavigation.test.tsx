@@ -112,13 +112,10 @@ describe('AppNavigation', () => {
     const user = userEvent.setup();
     renderNavigation();
 
-    // Open the dropdown menu
     await user.click(screen.getByTestId('navigation-menu-button'));
 
-    // Get the dropdown content
     const menuContent = screen.getByTestId('navigation-menu-content');
 
-    // Verify visible items are shown
     const parentItem = within(menuContent).getByRole('menuitem', {
       name: /Parent Item/i,
     });
@@ -129,7 +126,6 @@ describe('AppNavigation', () => {
     });
     expect(regularItem).toBeInTheDocument();
 
-    // Verify hidden item is not shown
     expect(
       within(menuContent).queryByRole('menuitem', {
         name: /Hidden Child/i,
@@ -142,45 +138,35 @@ describe('AppNavigation', () => {
     const user = userEvent.setup();
     renderNavigation();
 
-    // Open the dropdown menu
     await user.click(screen.getByTestId('navigation-menu-button'));
 
-    // Get the dropdown content
     const menuContent = screen.getByTestId('navigation-menu-content');
 
-    // Verify all parent items are shown
     expect(within(menuContent).getByText('Root')).toBeInTheDocument();
     expect(within(menuContent).getByText('Settings')).toBeInTheDocument();
   });
 
   it('should highlight parent when skipped child is current', async () => {
-    // Mock the current path to be the skipped child's path
     mockPathname.mockReturnValue('/parent/child/');
 
     const user = userEvent.setup();
     renderNavigation();
 
-    // Open the dropdown menu
     await user.click(screen.getByTestId('navigation-menu-button'));
 
-    // Get the dropdown content
     const menuContent = screen.getByTestId('navigation-menu-content');
 
-    // Find the parent menu item
     const parentMenuItem = within(menuContent).getByRole('menuitem', {
       name: /Parent Item.*Parent Item/i,
     });
 
-    // Verify parent is highlighted
     expect(parentMenuItem).toHaveClass('bg-accent');
 
-    // Verify regular item is not highlighted
     const regularMenuItem = within(menuContent).getByRole('menuitem', {
       name: /Regular Item.*Regular visible item/i,
     });
     expect(regularMenuItem).not.toHaveClass('bg-accent');
 
-    // Verify the hidden child is not rendered
     expect(
       within(menuContent).queryByRole('menuitem', {
         name: /Hidden Child/i,
@@ -189,25 +175,20 @@ describe('AppNavigation', () => {
   });
 
   it('should highlight item when its href matches current path', async () => {
-    // Mock the current path to be the regular item's path
     mockPathname.mockReturnValue('/regular/');
 
     const user = userEvent.setup();
     renderNavigation();
 
-    // Open the dropdown menu
     await user.click(screen.getByTestId('navigation-menu-button'));
 
-    // Get the dropdown content
     const menuContent = screen.getByTestId('navigation-menu-content');
 
-    // Verify regular item is highlighted
     const regularMenuItem = within(menuContent).getByRole('menuitem', {
       name: /Regular Item.*Regular visible item/i,
     });
     expect(regularMenuItem).toHaveClass('bg-accent');
 
-    // Verify parent item is not highlighted
     const parentMenuItem = within(menuContent).getByRole('menuitem', {
       name: /Parent Item.*Parent Item/i,
     });

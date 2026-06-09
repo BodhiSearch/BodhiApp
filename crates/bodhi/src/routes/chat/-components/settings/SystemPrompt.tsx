@@ -17,7 +17,6 @@ export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) 
   const setSystemPrompt = useChatSettingsStore((s) => s.setSystemPrompt);
   const setSystemPromptEnabled = useChatSettingsStore((s) => s.setSystemPromptEnabled);
 
-  // Determine if interactions should be disabled
   const isDisabled = isLoading || !systemPrompt_enabled;
 
   return (

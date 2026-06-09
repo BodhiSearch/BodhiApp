@@ -14,7 +14,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import userEvent from '@testing-library/user-event';
 import { FileText, Settings, Terminal } from 'lucide-react';
 
-// Mock EditSettingDialog component
 vi.mock('@/routes/settings/-components/EditSettingDialog', () => ({
   EditSettingDialog: ({ setting, open, onOpenChange }: any) =>
     open ? (
@@ -128,7 +127,6 @@ describe('SettingsPageContent', () => {
 
     render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
-    // Wait for the error message to appear
     const errorMessage = await screen.findByText('Test Error');
     expect(errorMessage).toBeInTheDocument();
   });
@@ -172,12 +170,10 @@ describe('SettingsPage', () => {
       });
     });
 
-    // Check group titles
     expect(screen.getByText('Test App Config')).toBeInTheDocument();
     expect(screen.getByText('Test Logging Config')).toBeInTheDocument();
     expect(screen.getByText('Test Execution Config')).toBeInTheDocument();
 
-    // Check setting values
     expect(screen.getByText('BODHI_HOME')).toBeInTheDocument();
     expect(screen.getAllByText(/\/home\/user\/.bodhi/).length).toBeGreaterThan(0);
   });
@@ -191,11 +187,10 @@ describe('SettingsPage', () => {
       });
     });
 
-    // Use getAllByText for badges since there might be multiple
+    // Badges can appear more than once, so collect all occurrences.
     const defaultBadges = screen.getAllByText('default');
     const settingsFileBadge = screen.getAllByText('settings_file');
 
-    // Verify we have the correct number of default badges
     expect(defaultBadges).toHaveLength(2); // Based on our mockSettingInfos
     expect(settingsFileBadge).toHaveLength(2); // Based on our mockSettingInfos
   });
@@ -222,16 +217,13 @@ describe('SettingsPage', () => {
       wrapper: createWrapper(),
     });
 
-    // Wait for content and click edit
     await screen.findByText('BODHI_EXEC_VARIANT');
     await user.click(screen.getByRole('button', { name: /edit setting/i }));
 
-    // Verify dialog opens with correct setting
     const dialog = screen.getByTestId('mock-edit-dialog');
     expect(dialog).toBeInTheDocument();
     expect(screen.getByText('Editing: BODHI_EXEC_VARIANT')).toBeInTheDocument();
 
-    // Close dialog
     await user.click(screen.getByRole('button', { name: /close/i }));
     expect(dialog).not.toBeInTheDocument();
   });

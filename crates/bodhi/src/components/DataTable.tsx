@@ -26,9 +26,9 @@ interface DataTableProps<T> {
   onSortChange: (column: string) => void;
   renderRow: (item: T) => React.ReactNode;
   renderExpandedRow?: (item: T) => React.ReactNode;
-  getItemId: (item: T) => string; // New prop for getting unique ID
+  getItemId: (item: T) => string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getRowProps?: (item: T) => Record<string, any>; // Optional row attributes
+  getRowProps?: (item: T) => Record<string, any>;
 }
 
 export function DataTable<T>({
@@ -39,8 +39,8 @@ export function DataTable<T>({
   onSortChange,
   renderRow,
   renderExpandedRow,
-  getItemId, // New prop
-  getRowProps, // New prop for custom row attributes
+  getItemId,
+  getRowProps,
 }: DataTableProps<T>) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 

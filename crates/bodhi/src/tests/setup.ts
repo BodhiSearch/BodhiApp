@@ -33,7 +33,6 @@ vi.mock('@/hooks/use-media-query', () => ({
   },
 }));
 
-// Mock ResizeObserver
 class MockResizeObserver {
   observe() {}
   unobserve() {}
@@ -52,12 +51,10 @@ Element.prototype.releasePointerCapture = vi.fn();
 // Required for Radix UI Select and other scroll-based components
 Element.prototype.scrollIntoView = vi.fn();
 
-// Suppress console errors for specific messages
 const originalError = console.error;
 beforeAll(() => {
   apiClient.defaults.baseURL = 'http://localhost:3000';
   console.error = (...args) => {
-    // Check if any of the arguments contain our expected error messages
     const errorString = args
       .map((arg) => (typeof arg === 'string' ? arg : arg instanceof Error ? arg.message : arg?.toString?.()))
       .join(' ');

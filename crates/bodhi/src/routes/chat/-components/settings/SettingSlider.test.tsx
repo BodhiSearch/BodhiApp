@@ -3,7 +3,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SettingSlider } from '@/routes/chat/-components/settings/SettingSlider';
 import { useEffect } from 'react';
 
-// Mock the Slider component
 vi.mock('@/components/ui/slider', () => ({
   Slider: ({ defaultValue, min, max, step, onValueChange, disabled, ...props }: any) => {
     const handleChange = (e: any) => {
@@ -39,7 +38,6 @@ vi.mock('@/components/ui/slider', () => ({
   },
 }));
 
-// Mock the Switch component
 vi.mock('@/components/ui/switch', () => ({
   Switch: ({ checked, onCheckedChange, ...props }: any) => (
     <button role="switch" aria-checked={checked} onClick={() => onCheckedChange(!checked)} {...props} />

@@ -26,11 +26,9 @@ function ResourceAdminContent() {
 
   const { mutate: initiateOAuth, isPending: isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
-      // Clear any previous errors and set redirecting state
       setError(null);
       setRedirecting(true);
 
-      // Handle redirect based on backend response
       const location = response.data?.location;
       if (!location) {
         setError('Auth URL not found in response. Please try again.');
@@ -38,7 +36,6 @@ function ResourceAdminContent() {
         return;
       }
 
-      // Handle redirect using smart URL detection
       handleSmartRedirect(location, navigate);
     },
     onError: (message) => {
@@ -97,7 +94,6 @@ function ResourceAdminContent() {
                 </div>
               )}
 
-              {/* Admin Capabilities */}
               <div className="rounded-lg bg-muted/30 p-6 space-y-4">
                 <h4 className="font-semibold text-base">As an Admin, you can:</h4>
                 <div className="space-y-3">

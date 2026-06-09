@@ -55,7 +55,6 @@ export function useMutationQuery<T, V>(
     mutationFn: async (variables) => {
       const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
 
-      // Handle body transformation or no body
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let requestBody: any;
       if (axiosConfig?.noBody) {
@@ -89,14 +88,7 @@ export function useMutationQuery<T, V>(
   });
 }
 
-// Re-export types for other hooks
 export type { UseMutationResult, UseQueryResult, UseMutationOptions, UseQueryOptions } from '@tanstack/react-query';
-
-// Re-export components for ClientProviders and tests
 export { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-// Re-export hooks for other use cases
 export { useMutation } from '@tanstack/react-query';
-
-// Export useQueryClient for consistency
 export { useQueryClient } from '@tanstack/react-query';

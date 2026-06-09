@@ -1,7 +1,3 @@
-/**
- * Extension detection hook for checking if bodhi-browser extension is installed
- */
-
 import { useState, useEffect } from 'react';
 
 type ExtensionStatus = 'detecting' | 'installed' | 'not-installed';
@@ -35,10 +31,9 @@ export function useExtensionDetection(): ExtensionDetection {
   };
 
   useEffect(() => {
-    // Initial check with delay for extension loading
+    // Delay so the extension has time to inject window.bodhiext.
     const timer = setTimeout(checkExtension, 500);
 
-    // Listen for extension initialization event
     const handleInitialized = (event: CustomEvent) => {
       if (event.detail?.extensionId) {
         setExtensionId(event.detail.extensionId);

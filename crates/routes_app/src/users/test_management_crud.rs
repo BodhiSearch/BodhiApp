@@ -28,7 +28,6 @@ use tower::ServiceExt;
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
-  // Mock successful auth service response
   let mut mock_auth = MockAuthService::default();
   let expected_response = UserListResponse {
     client_id: "test-client-id".to_string(),
@@ -64,20 +63,17 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
     })
     .return_once(|_, _, _| Ok(expected_response));
 
-  // Build app service with mock auth service
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .build()
     .await?;
 
-  // Create router with handler
   let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users", get(users_index))
     .with_state(state);
 
-  // Make request with auth context
   let request = Request::get("/bodhi/v1/users?page=1&page_size=10")
     .body(Body::empty())?
     .with_auth_context(AuthContext::test_session_with_token(
@@ -87,13 +83,10 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
       "test-token",
     ));
 
-  // Send request through router
   let response = router.oneshot(request).await?;
 
-  // Verify successful response
   assert_eq!(StatusCode::OK, response.status());
 
-  // Verify response body
   let response_body = response.json::<UserListResponse>().await?;
 
   assert_eq!("test-client-id", response_body.client_id);
@@ -108,7 +101,6 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
 #[tokio::test]
 #[anyhow_trace]
 async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
-  // Mock auth service returning error
   let mut mock_auth = MockAuthService::default();
   mock_auth
     .expect_list_users()
@@ -120,20 +112,17 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
       })
     });
 
-  // Build app service with mock auth service
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .build()
     .await?;
 
-  // Create router with handler
   let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users", get(users_index))
     .with_state(state);
 
-  // Make request with auth context
   let request = Request::get("/bodhi/v1/users?page=1&page_size=10")
     .body(Body::empty())?
     .with_auth_context(AuthContext::test_session_with_token(
@@ -143,13 +132,10 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
       "invalid-token",
     ));
 
-  // Send request through router
   let response = router.oneshot(request).await?;
 
-  // Verify error response
   assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
 
-  // Verify error code
   let response_json = response.json::<Value>().await?;
   assert_eq!(
     "users_route_error-list_failed",
@@ -165,7 +151,6 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
 async fn test_list_users_handler_pagination_parameters(
   _temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
-  // Mock auth service to verify pagination parameters
   let mut mock_auth = MockAuthService::default();
   mock_auth
     .expect_list_users()
@@ -184,20 +169,17 @@ async fn test_list_users_handler_pagination_parameters(
       })
     });
 
-  // Build app service with mock auth service
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .build()
     .await?;
 
-  // Create router with handler
   let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users", get(users_index))
     .with_state(state);
 
-  // Make request with custom pagination
   let request = Request::get("/bodhi/v1/users?page=2&page_size=5")
     .body(Body::empty())?
     .with_auth_context(AuthContext::test_session_with_token(
@@ -207,13 +189,10 @@ async fn test_list_users_handler_pagination_parameters(
       "test-token",
     ));
 
-  // Send request through router
   let response = router.oneshot(request).await?;
 
-  // Verify successful response
   assert_eq!(StatusCode::OK, response.status());
 
-  // Verify response contains correct pagination
   let response_body = response.json::<UserListResponse>().await?;
 
   assert_eq!(2, response_body.page);
@@ -232,10 +211,8 @@ async fn test_change_user_role_clears_sessions(
   #[values("session", "multi_tenant")] auth_variant: &str,
   _temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
-  // Create a valid JWT token for testing
   let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
 
-  // Mock auth service for role assignment
   let mut mock_auth = MockAuthService::default();
   mock_auth
     .expect_assign_user_role()
@@ -243,15 +220,13 @@ async fn test_change_user_role_clears_sessions(
     .with(always(), eq("user-123"), eq("resource_power_user"))
     .return_once(|_, _, _| Ok(()));
 
-  // Mock session service to verify sessions are cleared
   let mut mock_session = MockSessionService::default();
   mock_session
     .expect_clear_sessions_for_user()
     .times(1)
     .with(eq("user-123"))
-    .return_once(|_| Ok(3)); // Return that 3 sessions were cleared
+    .return_once(|_| Ok(3));
 
-  // Build app service with mocks + real tenant in DB
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .session_service(Arc::new(mock_session))
@@ -260,14 +235,12 @@ async fn test_change_user_role_clears_sessions(
     .build()
     .await?;
 
-  // Create router with handler
   let state: Arc<dyn services::AppService> = Arc::new(app_service);
 
   let router = Router::new()
     .route("/bodhi/v1/users/{user_id}/role", put(users_change_role))
     .with_state(state);
 
-  // Make request
   let request = Request::put("/bodhi/v1/users/user-123/role")
     .header("Content-Type", "application/json")
     .body(Body::from(r#"{"role": "resource_power_user"}"#))?
@@ -279,20 +252,11 @@ async fn test_change_user_role_clears_sessions(
       &test_token,
     ));
 
-  // Send request
   let response = router.oneshot(request).await?;
 
-  // Verify success
   assert_eq!(StatusCode::OK, response.status());
-
-  // The mock expectations will verify that both assign_user_role
-  // AND clear_sessions_for_user were called
   Ok(())
 }
-
-// ============================================================================
-// users_destroy tests
-// ============================================================================
 
 #[rstest]
 #[tokio::test]

@@ -213,7 +213,6 @@ describe('ServerViewPage - Auth Configs', () => {
     // Initially form is hidden
     expect(screen.queryByTestId('auth-config-form')).not.toBeInTheDocument();
 
-    // Click to show the form
     await user.click(screen.getByTestId('add-auth-config-button'));
     expect(screen.getByTestId('auth-config-form')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-name-input')).toBeInTheDocument();
@@ -329,7 +328,6 @@ describe('ServerViewPage - Auth Configs', () => {
     await user.clear(screen.getByTestId('auth-config-name-input'));
     await user.type(screen.getByTestId('auth-config-name-input'), 'Test Name');
 
-    // Click cancel
     await user.click(screen.getByTestId('auth-config-cancel-button'));
 
     expect(screen.queryByTestId('auth-config-form')).not.toBeInTheDocument();
@@ -423,10 +421,8 @@ describe('ServerViewPage - Auth Configs', () => {
       expect(screen.getByTestId('add-auth-config-button')).toBeInTheDocument();
     });
 
-    // Click to show form
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Select OAuth from type dropdown
     const typeSelect = screen.getByTestId('auth-config-type-select');
     await user.click(typeSelect);
 
@@ -468,10 +464,8 @@ describe('ServerViewPage - Auth Configs', () => {
       expect(screen.getByTestId('add-auth-config-button')).toBeInTheDocument();
     });
 
-    // Click to show form
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Select OAuth
     const typeSelect = screen.getByTestId('auth-config-type-select');
     await user.click(typeSelect);
 

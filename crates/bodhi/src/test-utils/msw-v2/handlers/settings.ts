@@ -1,21 +1,9 @@
-/**
- * Type-safe MSW v2 handlers for settings endpoint using openapi-msw with full schema compliance
- */
 import { delay } from 'msw';
 
 import { ENDPOINT_SETTINGS, ENDPOINT_SETTING_KEY } from '@/hooks/settings';
 
 import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 
-// ============================================================================
-// Settings List Endpoint (GET /bodhi/v1/settings)
-// ============================================================================
-
-// Success Handlers
-/**
- * Create type-safe MSW v2 handlers for settings endpoint
- * Uses generated OpenAPI types directly
- */
 export function mockSettings(settings: components['schemas']['SettingInfo'][] = [], { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
@@ -28,7 +16,6 @@ export function mockSettings(settings: components['schemas']['SettingInfo'][] = 
   ];
 }
 
-// Success Handler Variants
 export function mockSettingsDefault() {
   return mockSettings([
     {
@@ -77,10 +64,6 @@ export function mockSettingsEmpty() {
   return mockSettings([]);
 }
 
-// Error Handlers
-/**
- * Create type-safe MSW v2 handler for settings errors
- */
 export function mockSettingsError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -107,7 +90,6 @@ export function mockSettingsError(
   ];
 }
 
-// Error Handler Variants
 export function mockSettingsInternalError() {
   return mockSettingsError({
     code: 'internal_error',
@@ -117,14 +99,8 @@ export function mockSettingsInternalError() {
   });
 }
 
-// ============================================================================
-// Update Setting Endpoint (PUT /bodhi/v1/settings/{key})
-// ============================================================================
-
-// Success Handlers
 /**
- * Create type-safe MSW v2 handler for updating individual settings (Option 2 - Single Key)
- * Only responds to the specified key, returns 404 for others
+ * Responds only to the specified key; unmatched keys 404 via the catch-all.
  */
 export function mockUpdateSetting(
   key: string,
@@ -140,10 +116,9 @@ export function mockUpdateSetting(
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Parameter check FIRST
+      // match key before consuming the one-shot guard, or non-matching requests exhaust it
       if (params.key !== key) return;
 
-      // THEN closure check
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -163,11 +138,6 @@ export function mockUpdateSetting(
   ];
 }
 
-// Error Handlers
-/**
- * Create type-safe MSW v2 handler for setting update errors
- * Only returns error for the specified key
- */
 export function mockUpdateSettingError(
   key: string,
   {
@@ -182,10 +152,9 @@ export function mockUpdateSettingError(
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Parameter check FIRST
+      // match key before consuming the one-shot guard, or non-matching requests exhaust it
       if (params.key !== key) return;
 
-      // THEN closure check
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -200,7 +169,6 @@ export function mockUpdateSettingError(
   ];
 }
 
-// Error Handler Variants
 export function mockUpdateSettingInvalidError(key: string) {
   return mockUpdateSettingError(key, {
     code: 'invalid_request_error',
@@ -219,18 +187,13 @@ export function mockUpdateSettingServerError(key: string) {
   });
 }
 
-/**
- * Create type-safe MSW v2 handler for setting update network errors
- * Only returns network error for the specified key
- */
 export function mockUpdateSettingNetworkError(key: string, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
-      // Parameter check FIRST
+      // match key before consuming the one-shot guard, or non-matching requests exhaust it
       if (params.key !== key) return;
 
-      // THEN closure check
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -239,14 +202,8 @@ export function mockUpdateSettingNetworkError(key: string, { stub }: { stub?: bo
   ];
 }
 
-// ============================================================================
-// Delete Setting Endpoint (DELETE /bodhi/v1/settings/{key})
-// ============================================================================
-
-// Success Handlers
 /**
- * Create type-safe MSW v2 handler for deleting individual settings (Option 2 - Single Key)
- * Only responds to the specified key, returns 404 for others
+ * Responds only to the specified key; unmatched keys 404 via the catch-all.
  */
 export function mockDeleteSetting(
   key: string,
@@ -262,16 +219,15 @@ export function mockDeleteSetting(
   let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Parameter check FIRST
+      // match key before consuming the one-shot guard, or non-matching requests exhaust it
       if (params.key !== key) return;
 
-      // THEN closure check
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['SettingInfo'] = {
         key: params.key as string,
-        current_value, // Reset to default after delete
+        current_value,
         default_value,
         source,
         metadata,
@@ -282,11 +238,6 @@ export function mockDeleteSetting(
   ];
 }
 
-// Error Handlers
-/**
- * Create type-safe MSW v2 handler for setting delete errors
- * Only returns error for the specified key
- */
 export function mockDeleteSettingError(
   key: string,
   {
@@ -301,10 +252,9 @@ export function mockDeleteSettingError(
   let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Parameter check FIRST
+      // match key before consuming the one-shot guard, or non-matching requests exhaust it
       if (params.key !== key) return;
 
-      // THEN closure check
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -319,7 +269,6 @@ export function mockDeleteSettingError(
   ];
 }
 
-// Error Handler Variants
 export function mockDeleteSettingNotFoundError(key: string) {
   return mockDeleteSettingError(key, {
     code: 'invalid_request_error',
@@ -329,13 +278,8 @@ export function mockDeleteSettingNotFoundError(key: string) {
   });
 }
 
-// ============================================================================
-// Catch-All 404 Handlers (Register LAST to catch unmatched requests)
-// ============================================================================
-
 /**
- * Catch-all handler for PUT requests to settings endpoints that weren't matched by any specific handler
- * This should be registered LAST to provide 404 responses for truly unmatched keys
+ * Catch-all for PUT settings; register LAST so it only 404s truly unmatched keys.
  */
 export function mockUpdateSettingNotFound() {
   return [
@@ -352,8 +296,7 @@ export function mockUpdateSettingNotFound() {
 }
 
 /**
- * Catch-all handler for DELETE requests to settings endpoints that weren't matched by any specific handler
- * This should be registered LAST to provide 404 responses for truly unmatched keys
+ * Catch-all for DELETE settings; register LAST so it only 404s truly unmatched keys.
  */
 export function mockDeleteSettingNotFound() {
   return [
@@ -370,8 +313,7 @@ export function mockDeleteSettingNotFound() {
 }
 
 /**
- * Convenience function to get both catch-all handlers
- * Register these LAST to catch any unmatched setting requests
+ * Both catch-all handlers; register LAST.
  */
 export function mockSettingsNotFound() {
   return [...mockUpdateSettingNotFound(), ...mockDeleteSettingNotFound()];

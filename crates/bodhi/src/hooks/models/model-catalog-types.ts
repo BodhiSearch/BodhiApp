@@ -1,4 +1,3 @@
-// Model catalog - static model information (future: fetch from API)
 export interface ModelCatalog {
   id: string;
   name: string;
@@ -32,7 +31,6 @@ export interface ModelCatalog {
   };
 }
 
-// Model info with runtime download state
 export interface ModelInfo extends ModelCatalog {
   downloadState: DownloadState;
 }

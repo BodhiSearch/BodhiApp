@@ -172,10 +172,6 @@ impl UserAlias {
 }
 
 impl ApiAliasBuilder {
-  /// Create a builder pre-configured with test defaults.
-  ///
-  /// This convenience method is useful in tests to create builders with sensible defaults
-  /// that can be customized as needed.
   pub fn test_default() -> Self {
     let mut builder = Self::default();
     builder

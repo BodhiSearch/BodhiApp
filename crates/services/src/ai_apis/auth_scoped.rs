@@ -33,7 +33,6 @@ impl AuthScopedAiApiClientFactory {
   }
 
   /// Request-time Liberty client from resolved (decrypted) credentials.
-  /// Auto-injects `tenant_id`/`user_id` from `AuthContext`.
   pub fn for_resolved(
     &self,
     creds: &ResolvedLlmLibertyCredentials,

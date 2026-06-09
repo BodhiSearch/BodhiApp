@@ -31,8 +31,6 @@ mod routes_ping;
 mod routes_proxy;
 mod spa_router;
 
-// -- Test modules
-
 // -- Re-exports
 pub use anthropic::*;
 pub use apps::*;

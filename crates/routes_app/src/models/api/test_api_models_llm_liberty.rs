@@ -289,7 +289,6 @@ async fn update_replaces_credentials_when_envelope_set(
     .await?;
   let app_service: Arc<dyn services::AppService> = Arc::new(app_service);
 
-  // Create
   let create_req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
     name: "Liberty Created".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(valid_envelope()),
@@ -304,7 +303,6 @@ async fn update_replaces_credentials_when_envelope_set(
   let created = create_response.json::<ApiAliasResponse>().await?;
   let alias_id = created.id;
 
-  // Update with new envelope
   let mut new_env = valid_envelope();
   new_env.access_token = "access-rotated".into();
   new_env.refresh_token = "refresh-rotated".into();
@@ -320,7 +318,7 @@ async fn update_replaces_credentials_when_envelope_set(
     .await?;
   assert_eq!(StatusCode::OK, update_response.status());
 
-  // Verify the credentials were replaced (read directly from DB)
+  // read creds straight from the DB to confirm the rotation persisted
   use services::LlmLibertyCredentialsRepository;
   let creds = LlmLibertyCredentialsRepository::get_llm_liberty_credentials(
     db_arc.as_ref(),
@@ -374,7 +372,6 @@ async fn update_keeps_credentials_when_envelope_keep(
     .await?;
   let app_service: Arc<dyn services::AppService> = Arc::new(app_service);
 
-  // Create
   let create_req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
     name: "Liberty Created".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Set(valid_envelope()),
@@ -389,7 +386,7 @@ async fn update_keeps_credentials_when_envelope_keep(
   let created = create_response.json::<ApiAliasResponse>().await?;
   let alias_id = created.id;
 
-  // Update with envelope=Keep — alias-scope-only change.
+  // envelope=Keep is an alias-scope-only change; credentials must stay untouched.
   let update_req = ApiModelRequest::LlmLibertyOauth(LlmLibertyApiModelRequest {
     name: "Liberty Kept".to_string(),
     envelope: LlmLibertyEnvelopeUpdate::Keep,
@@ -402,7 +399,6 @@ async fn update_keeps_credentials_when_envelope_keep(
     .await?;
   assert_eq!(StatusCode::OK, update_response.status());
 
-  // Original tokens preserved
   use services::LlmLibertyCredentialsRepository;
   let creds = LlmLibertyCredentialsRepository::get_llm_liberty_credentials(
     db_arc.as_ref(),
@@ -415,7 +411,6 @@ async fn update_keeps_credentials_when_envelope_keep(
   assert_eq!("access-test", creds.access_token);
   assert_eq!("refresh-test", creds.refresh_token);
 
-  // Prefix updated
   let updated_response = test_router(app_service.clone())
     .oneshot(Request::get(&format!("{}/{}", ENDPOINT_MODELS_API, alias_id)).body(Body::empty())?)
     .await?;

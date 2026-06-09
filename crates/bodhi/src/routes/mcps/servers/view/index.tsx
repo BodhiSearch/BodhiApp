@@ -116,7 +116,6 @@ function ServerViewContent() {
         entries: formEntries.filter((e) => e.param_key.trim() !== ''),
       });
     } else if (formType === 'oauth' && formRegistrationType === 'dynamic_registration') {
-      // Dynamic registration: call standalone DCR first
       if (!formRegistrationEndpoint) {
         toast({ title: 'Registration endpoint is required for dynamic registration', variant: 'destructive' });
         return;
@@ -148,7 +147,6 @@ function ServerViewContent() {
         // Error already handled by hook's onError
       }
     } else if (formType === 'oauth' && formRegistrationType === 'pre_registered') {
-      // Pre-registered OAuth: user provides client_id directly
       createAuthConfig.mutate({
         mcp_server_id: serverId,
         type: 'oauth',

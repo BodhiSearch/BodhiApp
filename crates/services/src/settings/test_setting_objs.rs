@@ -4,7 +4,6 @@ use rstest::rstest;
 use serde_yaml::Number;
 
 #[rstest]
-// String metadata tests
 #[case::string_to_string(
   SettingMetadata::String,
   serde_yaml::Value::String("test".to_string()),
@@ -20,7 +19,6 @@ use serde_yaml::Number;
   serde_yaml::Value::Bool(true),
   serde_yaml::Value::String("true".to_string())
 )]
-// Number metadata tests
 #[case::number_to_number(
   SettingMetadata::Number { min: 0, max: 100 },
   serde_yaml::Value::Number(Number::from(50)),
@@ -36,7 +34,6 @@ use serde_yaml::Number;
   serde_yaml::Value::String("-42".to_string()),
   serde_yaml::Value::Number(Number::from(-42))
 )]
-// Boolean metadata tests
 #[case(
   SettingMetadata::Boolean,
   serde_yaml::Value::Bool(true),
@@ -57,7 +54,6 @@ use serde_yaml::Number;
   serde_yaml::Value::String("false".to_string()),
   serde_yaml::Value::Bool(false)
 )]
-// Option metadata tests
 #[case(
   SettingMetadata::Option { options: vec!["a".to_string(), "b".to_string()] },
   serde_yaml::Value::String("a".to_string()),
@@ -87,7 +83,6 @@ fn test_setting_metadata_parse(
 }
 
 #[rstest]
-// Invalid number strings
 #[case(
   SettingMetadata::Number { min: 0, max: 100 },
   serde_yaml::Value::String("not_a_number".to_string())
@@ -96,7 +91,6 @@ fn test_setting_metadata_parse(
   SettingMetadata::Number { min: 0, max: 100 },
   serde_yaml::Value::String("".to_string())
 )]
-// Invalid boolean strings
 #[case(
   SettingMetadata::Boolean,
   serde_yaml::Value::String("not_a_bool".to_string())
@@ -113,12 +107,11 @@ fn test_setting_metadata_parse_invalid_values(
   #[case] metadata: SettingMetadata,
   #[case] input: serde_yaml::Value,
 ) {
-  // When parsing fails, the original value should be returned
+  // parse returns the original value unchanged on failure
   assert_eq!(input, metadata.parse(input.clone()));
 }
 
 #[rstest]
-// String metadata tests
 #[case::convert_string_to_string(
   SettingMetadata::String,
   serde_json::json!("test"),
@@ -134,7 +127,6 @@ fn test_setting_metadata_parse_invalid_values(
   serde_json::json!("a"),
   serde_yaml::Value::String("a".to_string())
 )]
-// Number metadata tests
 #[case::convert_number_to_number(
   SettingMetadata::Number { min: 0, max: 100 },
   serde_json::json!(42),
@@ -150,7 +142,6 @@ fn test_setting_metadata_parse_invalid_values(
   serde_json::json!(-42),
   serde_yaml::Value::Number(serde_yaml::Number::from(-42))
 )]
-// Boolean metadata tests
 #[case::convert_boolean_to_boolean(
   SettingMetadata::Boolean,
   serde_json::json!(true),
@@ -172,13 +163,11 @@ fn test_setting_metadata_convert_success(
 }
 
 #[rstest]
-// Invalid string for boolean
 #[case::invalid_string_for_boolean(
   SettingMetadata::Boolean,
   serde_json::json!("not_a_bool"),
   "cannot parse \"not_a_bool\" as Boolean"
 )]
-// Invalid type combinations
 #[case(
   SettingMetadata::Boolean,
   serde_json::json!(42),
@@ -189,7 +178,6 @@ fn test_setting_metadata_convert_success(
   serde_json::json!(true),
   "cannot parse true as Number"
 )]
-// Number range validation
 #[case::number_range_validation_lower(
   SettingMetadata::Number { min: 0, max: 100 },
   serde_json::json!(-1),
@@ -205,13 +193,11 @@ fn test_setting_metadata_convert_success(
   serde_json::json!("101"),
   "passed value is not a valid value: \"101\""
 )]
-// Option validation
 #[case(
   SettingMetadata::Option { options: vec!["a".to_string(), "b".to_string()] },
   serde_json::json!("c"),
   "passed value is not a valid value: \"c\""
 )]
-// Null test
 #[case(
   SettingMetadata::String,
   serde_json::json!(null),

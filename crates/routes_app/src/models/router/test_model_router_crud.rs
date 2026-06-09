@@ -96,7 +96,6 @@ async fn test_model_router_create_show_delete(
 ) -> anyhow::Result<()> {
   let app = app_with_api_alias(db_service).await?;
 
-  // create
   let response = test_router(app.clone())
     .oneshot(Request::post(ENDPOINT_MODELS_ROUTER).json(create_body(
       "my-stack",
@@ -110,7 +109,6 @@ async fn test_model_router_create_show_delete(
   assert_eq!("model_router", created.source);
   let id = created.id.clone();
 
-  // show
   let response = test_router(app.clone())
     .oneshot(
       Request::get(format!("{ENDPOINT_MODELS_ROUTER}/{id}")).body(axum::body::Body::empty())?,
@@ -118,7 +116,6 @@ async fn test_model_router_create_show_delete(
     .await?;
   assert_eq!(StatusCode::OK, response.status());
 
-  // delete
   let response = test_router(app.clone())
     .oneshot(
       Request::delete(format!("{ENDPOINT_MODELS_ROUTER}/{id}")).body(axum::body::Body::empty())?,

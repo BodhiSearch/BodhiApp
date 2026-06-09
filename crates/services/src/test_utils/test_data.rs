@@ -19,7 +19,6 @@ pub fn exec_py_script(cwd: &str, script: &str) {
   }
 }
 
-/// Generates GGUF test files into the shared test data directory.
 #[fixture]
 #[once]
 pub fn generate_test_data_gguf_files() -> () {

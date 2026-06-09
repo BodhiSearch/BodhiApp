@@ -34,9 +34,6 @@ where
   type Rejection = BodhiErrorResponse;
 
   async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-    // Extract AuthContext from extensions (set by auth middleware before handler runs).
-    // Falls back to Anonymous if no middleware has set the extension (e.g., public endpoints
-    // or optional auth endpoints where middleware may not have populated it).
     let auth_context =
       parts
         .extensions

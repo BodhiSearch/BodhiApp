@@ -1,20 +1,9 @@
-/**
- * Type-safe MSW v2 handlers for app info endpoint using openapi-msw
- */
 import { delay } from 'msw';
 
 import { ENDPOINT_APP_INFO } from '@/hooks/info';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
-// ============================================================================
-// Success Handlers
-// ============================================================================
-
-/**
- * Create type-safe MSW v2 handlers for app info endpoint
- * Uses openapi-msw for full type safety with OpenAPI schema enforcement
- */
 export function mockAppInfo(
   {
     status = 'ready',
@@ -49,42 +38,18 @@ export function mockAppInfo(
   ];
 }
 
-// ============================================================================
-// Success Handler Variants
-// ============================================================================
-
-/**
- * Mock handler for app info endpoint with ready status
- * Uses generated OpenAPI types directly
- */
 export function mockAppInfoReady() {
   return mockAppInfo({ status: 'ready' });
 }
 
-/**
- * Mock handler for app info endpoint with setup status
- * Uses generated OpenAPI types directly
- */
 export function mockAppInfoSetup() {
   return mockAppInfo({ status: 'setup' });
 }
 
-/**
- * Mock handler for app info endpoint with resource-admin status
- * Uses generated OpenAPI types directly
- */
 export function mockAppInfoResourceAdmin() {
   return mockAppInfo({ status: 'resource_admin' });
 }
 
-// ============================================================================
-// Error Handlers
-// ============================================================================
-
-/**
- * Create error handler for app info endpoint
- * Supports common HTTP status codes: 400, 401, 403, 500
- */
 export function mockAppInfoError(
   {
     code = INTERNAL_SERVER_ERROR.code,
@@ -114,14 +79,6 @@ export function mockAppInfoError(
   ];
 }
 
-// ============================================================================
-// Error Handler Variants
-// ============================================================================
-
-/**
- * Mock handler for app info endpoint internal server error
- * Uses generated OpenAPI types directly
- */
 export function mockAppInfoInternalError() {
   return mockAppInfoError({
     code: 'internal_server_error',

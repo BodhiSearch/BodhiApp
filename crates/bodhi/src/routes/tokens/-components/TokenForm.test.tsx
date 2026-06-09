@@ -55,10 +55,7 @@ describe('TokenForm', () => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'API token successfully generated'));
     });
 
-    // Check if callback was called with token
     expect(onTokenCreated).toHaveBeenCalledWith(mockToken);
-
-    // Check if form was reset
     expect(screen.getByLabelText('Token Name (Optional)')).toHaveValue('');
   });
 
@@ -96,7 +93,6 @@ describe('TokenDialog', () => {
 
     await user.click(submitButton);
 
-    // Check if form elements are disabled during submission
     expect(submitButton).toBeDisabled();
     expect(input).toBeDisabled();
     expect(screen.getByText('Generating...')).toBeInTheDocument();
@@ -119,7 +115,6 @@ describe('TokenDialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'Generate Token' }));
 
-    // Wait for error toast and console error
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Error',

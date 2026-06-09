@@ -1,6 +1,3 @@
-/**
- * Type-safe MSW v2 handlers for model-router (composite alias) endpoints.
- */
 import { ENDPOINT_MODEL_ROUTERS, ENDPOINT_MODEL_ROUTER_ID } from '@/hooks/models';
 
 import { typedHttp, type components } from '../setup';

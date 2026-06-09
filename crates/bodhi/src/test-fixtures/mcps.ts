@@ -13,17 +13,9 @@ import type {
   OAuthTokenResponse,
 } from '@/hooks/mcps';
 
-// Extract discriminated union variants for type-safe overrides
 type HeaderAuthConfig = Extract<McpAuthConfigResponse, { type: 'header' }>;
 type OAuthAuthConfig = Extract<McpAuthConfigResponse, { type: 'oauth' }>;
 
-// ============================================================================
-// MCP Server Factories
-// ============================================================================
-
-/**
- * Create a mock MCP server info (lightweight reference)
- */
 export function createMockMcpServerInfo(overrides?: Partial<McpServerInfo>): McpServerInfo {
   return {
     id: 'server-uuid-1',
@@ -34,9 +26,6 @@ export function createMockMcpServerInfo(overrides?: Partial<McpServerInfo>): Mcp
   };
 }
 
-/**
- * Create a mock MCP server response (full server details)
- */
 export function createMockMcpServerResponse(overrides?: Partial<McpServerResponse>): McpServerResponse {
   return {
     id: 'server-uuid-1',
@@ -54,13 +43,6 @@ export function createMockMcpServerResponse(overrides?: Partial<McpServerRespons
   };
 }
 
-// ============================================================================
-// MCP Instance Factories
-// ============================================================================
-
-/**
- * Create a mock MCP instance (public auth)
- */
 export function createMockMcp(overrides?: Partial<Mcp>): Mcp {
   return {
     id: 'mcp-uuid-1',
@@ -77,9 +59,6 @@ export function createMockMcp(overrides?: Partial<Mcp>): Mcp {
   };
 }
 
-/**
- * Create a mock MCP instance with header auth
- */
 export function createMockMcpWithHeaderAuth(overrides?: Partial<Mcp>): Mcp {
   return createMockMcp({
     id: 'mcp-uuid-2',
@@ -92,9 +71,6 @@ export function createMockMcpWithHeaderAuth(overrides?: Partial<Mcp>): Mcp {
   });
 }
 
-/**
- * Create a mock MCP instance with OAuth auth (pre-registered)
- */
 export function createMockMcpWithOAuth(overrides?: Partial<Mcp>): Mcp {
   return createMockMcp({
     id: 'mcp-uuid-3',
@@ -107,9 +83,6 @@ export function createMockMcpWithOAuth(overrides?: Partial<Mcp>): Mcp {
   });
 }
 
-/**
- * Create a mock MCP instance with OAuth DCR auth
- */
 export function createMockMcpWithDcr(overrides?: Partial<Mcp>): Mcp {
   return createMockMcp({
     id: 'mcp-uuid-4',
@@ -122,13 +95,6 @@ export function createMockMcpWithDcr(overrides?: Partial<Mcp>): Mcp {
   });
 }
 
-// ============================================================================
-// OAuth Token Factories
-// ============================================================================
-
-/**
- * Create a mock OAuth token response
- */
 export function createMockOAuthToken(overrides?: Partial<OAuthTokenResponse>): OAuthTokenResponse {
   return {
     id: 'oauth-token-uuid-1',
@@ -144,13 +110,6 @@ export function createMockOAuthToken(overrides?: Partial<OAuthTokenResponse>): O
   };
 }
 
-// ============================================================================
-// Auth Config Factories
-// ============================================================================
-
-/**
- * Create a mock header auth config
- */
 export function createMockAuthConfigHeader(overrides?: Partial<HeaderAuthConfig>): HeaderAuthConfig {
   return {
     id: 'auth-header-uuid-1',
@@ -165,9 +124,6 @@ export function createMockAuthConfigHeader(overrides?: Partial<HeaderAuthConfig>
   };
 }
 
-/**
- * Create a mock OAuth pre-registered auth config
- */
 export function createMockAuthConfigOAuthPreReg(overrides?: Partial<OAuthAuthConfig>): OAuthAuthConfig {
   return {
     id: 'oauth-config-uuid-1',
@@ -188,9 +144,6 @@ export function createMockAuthConfigOAuthPreReg(overrides?: Partial<OAuthAuthCon
   };
 }
 
-/**
- * Create a mock OAuth dynamic registration auth config
- */
 export function createMockAuthConfigOAuthDynamic(overrides?: Partial<OAuthAuthConfig>): OAuthAuthConfig {
   return {
     id: 'oauth-config-dcr-uuid-1',
@@ -214,9 +167,6 @@ export function createMockAuthConfigOAuthDynamic(overrides?: Partial<OAuthAuthCo
   };
 }
 
-/**
- * Create a mock auth configs list response
- */
 export function createMockAuthConfigsList(overrides?: Partial<McpAuthConfigsListResponse>): McpAuthConfigsListResponse {
   return {
     auth_configs: [createMockAuthConfigHeader()],

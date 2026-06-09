@@ -1,26 +1,4 @@
-/**
- * ModelDownloadPage Component Tests
- *
- * Purpose: Integration testing of model download page workflow with real components.
- * Component-level details tested in ModelCard.test.tsx.
- *
- * Focus Areas:
- * - Access control and authentication
- * - Model catalog integration (hooks + components)
- * - Download workflow (user click → API → state update)
- * - Error handling with toast notifications
- * - Navigation and background download continuation
- *
- * Test Coverage:
- * 1. Access Control: Setup/login redirects (3 tests)
- * 2. Integration: Catalog rendering and download workflow (2 tests)
- * 3. Error Handling: API errors with retry (1 test)
- * 4. Navigation: Continue button with localStorage (1 test)
- *
- * Total: 7 integration tests
- *
- * Note: ModelCard tested comprehensively in ModelCard.test.tsx
- */
+// Component-level rendering is covered in ModelCard.test.tsx; this suite covers page integration.
 
 import ModelDownloadPage, { ModelDownloadContent } from '@/routes/setup/download-models/index';
 import { SetupProvider } from '@/routes/setup/-components';
@@ -64,7 +42,6 @@ vi.mock('@/hooks/use-toast-messages', () => ({
 
 setupMswV2();
 
-// Helper to render with SetupProvider
 const renderWithSetupProvider = (component: React.ReactElement) => {
   return render(<SetupProvider>{component}</SetupProvider>, { wrapper: createWrapper() });
 };

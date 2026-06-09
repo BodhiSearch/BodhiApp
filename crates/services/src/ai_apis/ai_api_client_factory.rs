@@ -52,9 +52,7 @@ pub trait AiApiClientFactory: Send + Sync + std::fmt::Debug {
   /// Per-request client for an `LlmLibertyOauth` source. See `LibertySource` doc for the two lifecycle stages.
   fn for_liberty<'a>(&self, source: LibertySource<'a>) -> Result<Box<dyn AiApiClient>>;
 
-  /// Shared `SafeReqwest` for OAuth refresh paths that reuse the same connection
-  /// pool as model traffic. Justified by Arc-shared pooling; not strictly an
-  /// AI-client concern but the cheapest place to expose it.
+  /// Shared `SafeReqwest` so OAuth refresh paths reuse the same connection pool as model traffic.
   fn safe_http_client(&self) -> SafeReqwest;
 }
 

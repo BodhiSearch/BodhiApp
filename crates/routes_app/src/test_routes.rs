@@ -146,27 +146,22 @@ async fn test_ui_router_dev_proxy() -> anyhow::Result<()> {
     )
     .merge(crate::build_ui_proxy_router(format!("http://{addr}")));
 
-  // /ui → proxy → backend /ui
   let (status, body) = test_request(router.clone(), "/ui").await;
   assert_eq!(StatusCode::OK, status);
   assert_eq!("Root no slash", body);
 
-  // /ui/ → proxy → backend /ui/
   let (status, body) = test_request(router.clone(), "/ui/").await;
   assert_eq!(StatusCode::OK, status);
   assert_eq!("Root with slash", body);
 
-  // /ui/page → proxy → backend /ui/page
   let (status, body) = test_request(router.clone(), "/ui/page").await;
   assert_eq!(StatusCode::OK, status);
   assert_eq!("Proxied page", body);
 
-  // /api still works
   let (status, body) = test_request(router.clone(), "/api").await;
   assert_eq!(StatusCode::OK, status);
   assert_eq!("api", body);
 
-  // Root redirects
   let (status, _) = test_request(router, "/").await;
   assert_eq!(StatusCode::TEMPORARY_REDIRECT, status);
 

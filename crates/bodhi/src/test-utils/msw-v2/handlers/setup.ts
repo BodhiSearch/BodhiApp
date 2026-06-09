@@ -1,16 +1,9 @@
-/**
- * Type-safe MSW v2 handlers for setup endpoint using openapi-msw
- */
 import { delay } from 'msw';
 
 import { ENDPOINT_APP_SETUP } from '@/hooks/info';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
-/**
- * Create type-safe MSW v2 handlers for setup endpoint
- * Uses openapi-msw for full type safety with OpenAPI schema enforcement
- */
 export function mockSetup(
   { status = 'ready', ...rest }: Partial<components['schemas']['SetupResponse']> = {},
   delayMs?: number
@@ -41,10 +34,6 @@ export function mockSetupResourceAdmin() {
   return mockSetup({ status: 'resource_admin' });
 }
 
-/**
- * Create error handler for setup endpoint
- * Supports status codes defined in OpenAPI schema (400, 500)
- */
 export function mockSetupError({
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,

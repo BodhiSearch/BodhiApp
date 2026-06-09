@@ -1,13 +1,10 @@
-// External imports
 import { SettingInfo, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
-// Internal imports
 import { UseMutationResult, UseQueryResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 import { settingKeys, ENDPOINT_SETTINGS } from './constants';
 
-// Settings hooks
 export function useListSettings(): UseQueryResult<SettingInfo[], AxiosError<BodhiErrorResponse>> {
   return useQuery<SettingInfo[]>(settingKeys.all, ENDPOINT_SETTINGS);
 }

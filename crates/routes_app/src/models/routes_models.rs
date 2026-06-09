@@ -72,17 +72,14 @@ pub async fn models_index(
 ) -> Result<Json<PaginatedAliasResponse>, BodhiErrorResponse> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
 
-  // Fetch all aliases using unified DataService (User + Model + API)
   let mut aliases = auth_scope.data().list_aliases().await?;
 
-  // Sort aliases directly
   sort_aliases(&mut aliases, &sort, &sort_order);
 
   let total = aliases.len();
   let (start, end) = calculate_pagination(page, page_size, total);
   let paginated_aliases: Vec<Alias> = aliases.into_iter().skip(start).take(end - start).collect();
 
-  // Extract file paths from User and Model variants
   let file_keys: Vec<(String, String, String)> = paginated_aliases
     .iter()
     .filter_map(|alias| match alias {
@@ -92,7 +89,6 @@ pub async fn models_index(
     })
     .collect();
 
-  // Batch query metadata for all file paths
   // Model metadata is not tenant-scoped (shared across tenants), use empty string for tenant_id
   let metadata_map = if !file_keys.is_empty() {
     auth_scope
@@ -133,7 +129,6 @@ pub async fn models_index(
     }
   };
 
-  // Convert to AliasResponse and attach metadata / llm_liberty summary.
   let data: Vec<AliasResponse> = paginated_aliases
     .into_iter()
     .map(|alias| {
@@ -144,7 +139,6 @@ pub async fn models_index(
         }
         _ => AliasResponse::from(alias.clone()),
       };
-      // Try to find metadata for this alias
       let key = match alias {
         Alias::User(u) => Some((u.repo.to_string(), u.filename, u.snapshot)),
         Alias::Model(m) => Some((m.repo.to_string(), m.filename, m.snapshot)),
@@ -274,7 +268,6 @@ pub async fn models_show(
     .await
     .ok_or(DataServiceError::AliasNotFound(id))?;
 
-  // Query metadata for this alias
   let metadata = auth_scope
     .db_service()
     .get_model_metadata_by_file(

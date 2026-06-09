@@ -5,7 +5,6 @@ import { useBrowserDetection } from '@/hooks/use-browser-detection';
 import { useExtensionDetection } from '@/hooks/use-extension-detection';
 import { SetupProvider } from '@/routes/setup/-components';
 
-// Mock navigation
 const navigateMock = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
@@ -21,19 +20,16 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Mock framer-motion
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   },
 }));
 
-// Mock AppInitializer
 vi.mock('@/components/AppInitializer', () => ({
   default: ({ children }: any) => <div data-testid="app-initializer">{children}</div>,
 }));
 
-// Mock setup components
 vi.mock('@/routes/setup/-components/SetupProgress', () => ({
   SetupProgress: ({ currentStep, totalSteps, stepLabels }: any) => (
     <div data-testid="setup-progress">
@@ -46,24 +42,20 @@ vi.mock('@/routes/setup/-components/BodhiLogo', () => ({
   BodhiLogo: () => <div data-testid="bodhi-logo">BodhiApp Logo</div>,
 }));
 
-// Mock BrowserSelector
 vi.mock('@/components/setup/BrowserSelector', () => ({
   BrowserSelector: ({ detectedBrowser, selectedBrowser, onBrowserSelect }: any) => (
     <div data-testid="browser-selector">Browser Selector - Detected: {detectedBrowser?.name || 'None'}</div>
   ),
 }));
 
-// Mock browser detection hook
 vi.mock('@/hooks/use-browser-detection', () => ({
   useBrowserDetection: vi.fn(),
 }));
 
-// Mock extension detection hook
 vi.mock('@/hooks/use-extension-detection', () => ({
   useExtensionDetection: vi.fn(),
 }));
 
-// Mock Lucide React icons
 vi.mock('lucide-react', () => ({
   Monitor: ({ className }: any) => <div data-testid="monitor-icon" className={className}></div>,
   Check: ({ className }: any) => <div data-testid="check-icon" className={className}></div>,
@@ -71,7 +63,6 @@ vi.mock('lucide-react', () => ({
   RefreshCw: ({ className }: any) => <div data-testid="refresh-icon" className={className}></div>,
 }));
 
-// Mock Shadcn UI components
 vi.mock('@/components/ui/card', () => ({
   Card: ({ children, className }: any) => (
     <div data-testid="card" className={className}>
@@ -93,7 +84,6 @@ vi.mock('@/components/ui/button', () => ({
   ),
 }));
 
-// Helper to render with SetupProvider
 const renderWithSetupProvider = (component: React.ReactElement) => {
   return render(<SetupProvider>{component}</SetupProvider>);
 };
@@ -102,7 +92,6 @@ describe('BrowserExtensionSetupPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Set default mock return values
     vi.mocked(useBrowserDetection).mockReturnValue({
       detectedBrowser: {
         name: 'Google Chrome',
@@ -148,10 +137,8 @@ describe('BrowserExtensionSetupPage', () => {
       screen.getByText('Choose your browser and install the Bodhi extension to unlock AI features on any website.')
     ).toBeInTheDocument();
 
-    // Check for browser selector
     expect(screen.getByTestId('browser-selector')).toBeInTheDocument();
 
-    // Check for help section in footer
     expect(
       screen.getByText(/Need help\? The extension enables AI features directly in your browser tabs/)
     ).toBeInTheDocument();
@@ -160,7 +147,6 @@ describe('BrowserExtensionSetupPage', () => {
 
   describe('Browser-specific UI behavior', () => {
     it('shows extension detection for supported browsers', () => {
-      // Mock Chrome browser (supported)
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Google Chrome',
@@ -173,7 +159,6 @@ describe('BrowserExtensionSetupPage', () => {
 
       renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-      // Should show extension detection UI
       expect(screen.getByText('Extension Not Found')).toBeInTheDocument();
       expect(screen.getByTestId('refresh-button')).toBeInTheDocument();
       expect(screen.getByTestId('browser-extension-continue')).toBeInTheDocument();
@@ -181,7 +166,6 @@ describe('BrowserExtensionSetupPage', () => {
     });
 
     it('shows coming soon message for unsupported browsers', () => {
-      // Mock Firefox browser (unsupported)
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Mozilla Firefox',
@@ -194,11 +178,9 @@ describe('BrowserExtensionSetupPage', () => {
 
       renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-      // Should not show extension detection UI
       expect(screen.queryByText('Extension Not Found')).not.toBeInTheDocument();
       expect(screen.queryByTestId('refresh-button')).not.toBeInTheDocument();
 
-      // Should show skip button in footer
       expect(screen.getByTestId('browser-extension-continue')).toBeInTheDocument();
       expect(screen.getByText('Skip for Now')).toBeInTheDocument();
     });
@@ -206,7 +188,6 @@ describe('BrowserExtensionSetupPage', () => {
 
   describe('Extension detection integration', () => {
     it('integrates browser and extension detection correctly', () => {
-      // Test supported browser + extension installed
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Google Chrome',
@@ -226,7 +207,6 @@ describe('BrowserExtensionSetupPage', () => {
 
       renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-      // Should show extension found UI
       expect(screen.getByText('Extension Ready')).toBeInTheDocument();
       expect(screen.getByTestId('check-icon')).toBeInTheDocument();
       expect(screen.getByText(/The Bodhi Browser extension is installed and ready to use/)).toBeInTheDocument();
@@ -235,7 +215,6 @@ describe('BrowserExtensionSetupPage', () => {
     });
 
     it('handles supported browser with extension not installed', () => {
-      // Test supported browser + extension not installed
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Microsoft Edge',
@@ -255,7 +234,6 @@ describe('BrowserExtensionSetupPage', () => {
 
       renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-      // Should show extension not found UI
       expect(screen.getByText('Extension Not Found')).toBeInTheDocument();
       expect(screen.getByText(/Install the extension and click below to verify/)).toBeInTheDocument();
       expect(screen.getByTestId('refresh-button')).toBeInTheDocument();
@@ -266,7 +244,6 @@ describe('BrowserExtensionSetupPage', () => {
 
   describe('Navigation button behavior', () => {
     it('continues setup when continue button is clicked (extension installed)', () => {
-      // Mock Chrome browser with extension installed
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Google Chrome',
@@ -293,7 +270,6 @@ describe('BrowserExtensionSetupPage', () => {
     });
 
     it('continues setup when skip button is clicked (extension not installed)', () => {
-      // Mock Chrome browser with extension not installed
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Google Chrome',
@@ -320,7 +296,6 @@ describe('BrowserExtensionSetupPage', () => {
     });
 
     it('continues setup when skip button is clicked for unsupported browsers', () => {
-      // Mock Firefox browser (unsupported)
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Mozilla Firefox',

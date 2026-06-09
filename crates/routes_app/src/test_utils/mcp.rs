@@ -1,7 +1,6 @@
 use services::{test_utils::AppServiceStubBuilder, AppService, MockMcpService};
 use std::sync::Arc;
 
-/// Builds an `Arc<dyn AppService>` from a `MockMcpService`.
 /// Callers build their own `Router` with specific routes and call `.with_state(state)`.
 pub async fn build_mcp_test_state(
   mock_mcp_service: MockMcpService,
@@ -42,7 +41,6 @@ pub async fn build_mcp_test_state_with_app_service(
 #[cfg(test)]
 pub use services::test_utils::fixed_dt;
 
-/// Creates an MCP server in the database via the API and returns its ID.
 #[cfg(test)]
 pub async fn setup_mcp_server_in_db(
   router: &axum::Router,
@@ -74,7 +72,6 @@ pub async fn setup_mcp_server_in_db(
   Ok(server["id"].as_str().unwrap().to_string())
 }
 
-/// Creates a header auth config in the database via the API and returns its ID.
 #[cfg(test)]
 pub async fn create_header_auth_config_in_db(
   router: &axum::Router,
@@ -110,7 +107,6 @@ pub async fn create_header_auth_config_in_db(
   Ok(auth["id"].as_str().unwrap().to_string())
 }
 
-/// Creates an OAuth auth config in the database via the API and returns its ID.
 #[cfg(test)]
 pub async fn create_oauth_auth_config_in_db(
   router: &axum::Router,

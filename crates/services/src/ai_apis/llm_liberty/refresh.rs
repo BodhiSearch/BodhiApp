@@ -94,12 +94,8 @@ fn alias_lock(alias_id: &str) -> Arc<tokio::sync::Mutex<()>> {
     .clone()
 }
 
-/// Ensure the access token for the given alias is fresh, refreshing if needed.
-///
-/// Acquires a per-alias mutex to serialize concurrent refresh attempts on a
-/// single node. Reads the stored credentials, checks expiry against a 60-second
-/// skew window, and on expiry calls the provider's `oauth.token_url` to rotate
-/// tokens before persisting. Returns the (possibly fresh) credentials.
+/// Refreshes only when within the 60-second skew window; serializes concurrent
+/// attempts on a single node via the per-alias mutex.
 pub async fn ensure_fresh_credentials<R: LlmLibertyCredentialsRepository + ?Sized>(
   db: &R,
   http: &SafeReqwest,

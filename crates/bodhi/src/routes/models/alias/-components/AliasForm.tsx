@@ -182,21 +182,18 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'repo') {
         setCurrentRepo(value.repo || '');
-        // Reset filename and snapshot when repo changes
         form.setValue('filename', '');
         form.setValue('snapshot', '');
         setCurrentFilename('');
       }
       if (name === 'filename') {
         setCurrentFilename(value.filename || '');
-        // Reset snapshot when filename changes
         form.setValue('snapshot', '');
       }
     });
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Auto-select first snapshot when options become available
   useEffect(() => {
     if (snapshotOptions.length > 0 && !form.getValues('snapshot')) {
       form.setValue('snapshot', snapshotOptions[0].value);
@@ -223,7 +220,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
       }
     },
     (errors) => {
-      // This function is called when form validation fails
       if (errors.request_params) setIsRequestExpanded(true);
     }
   );
@@ -306,7 +302,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
             <CardTitle>{isEditMode ? 'Edit' : 'New'} Model Alias</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Alias field */}
             <FormField
               control={form.control}
               name="alias"
@@ -322,7 +317,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               )}
             />
 
-            {/* Replace Repo field with ComboBoxResponsive */}
             <FormField
               control={form.control}
               name="repo"
@@ -345,7 +339,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               )}
             />
 
-            {/* Replace Filename field with ComboBoxResponsive */}
             <FormField
               control={form.control}
               name="filename"
@@ -372,7 +365,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               )}
             />
 
-            {/* Snapshot field */}
             <FormField
               control={form.control}
               name="snapshot"
@@ -400,7 +392,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               )}
             />
 
-            {/* Context Parameters - directly below filename */}
             <FormField
               control={form.control}
               name="context_params"
@@ -431,7 +422,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
           </CardContent>
         </Card>
 
-        {/* Request Parameters as collapsible section */}
         <Card className="h-auto">
           <CardHeader
             className="cursor-pointer flex flex-row items-center justify-between"

@@ -96,16 +96,13 @@ fn sign_binaries() -> Result<(), anyhow::Error> {
 
 fn try_copy_bins(project_dir: &Path, llama_server_dir: &Path) -> Result<(), anyhow::Error> {
   let bin_dir = project_dir.join("bin");
-  // Delete the bin directory if it exists
   if bin_dir.exists() {
     fs::remove_dir_all(&bin_dir).context("Failed to delete existing bin directory")?;
   }
   let source_bin_dir = llama_server_dir.join("bin");
 
-  // Create destination directory if it doesn't exist
   fs::create_dir_all(&bin_dir).context("Failed to create bin directory")?;
 
-  // Copy each file/directory except the lock file
   for entry in fs::read_dir(&source_bin_dir).context("Failed to read source bin directory")? {
     let entry = entry?;
     let path = entry.path();

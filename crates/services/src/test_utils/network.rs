@@ -1,6 +1,5 @@
 use crate::NetworkService;
 
-/// Stub implementation for testing that returns a configurable IP.
 #[derive(Debug)]
 pub struct StubNetworkService {
   pub ip: Option<String>,

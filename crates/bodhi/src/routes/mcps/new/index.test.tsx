@@ -278,12 +278,10 @@ describe('NewMcpPage - Auth config dropdown', () => {
 
     await selectServer(user);
 
-    // Auto-select should pick the first config (header)
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-header-credentials')).toBeInTheDocument();
     });
 
-    // Should have input field for Authorization key
     expect(screen.getByTestId('credential-input-Authorization')).toBeInTheDocument();
   });
 
@@ -301,7 +299,6 @@ describe('NewMcpPage - Auth config dropdown', () => {
 
     await selectServer(user);
 
-    // Auto-select should pick the first config (OAuth)
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-oauth-connect')).toBeInTheDocument();
     });
@@ -395,7 +392,6 @@ describe('NewMcpPage - Auth config dropdown', () => {
 
     await selectServer(user);
 
-    // Wait for auto-select of header config
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-select')).toHaveAttribute('data-test-state', 'header');
     });
@@ -790,7 +786,6 @@ describe('NewMcpPage - OAuth Connect flow', () => {
 
     await selectServer(user);
 
-    // Auto-select should pick the OAuth config
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-oauth-connect')).toBeInTheDocument();
     });

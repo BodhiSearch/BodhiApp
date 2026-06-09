@@ -27,7 +27,6 @@ impl DataService for MultiTenantDataService {
   }
 
   async fn find_alias(&self, tenant_id: &str, user_id: &str, alias: &str) -> Option<Alias> {
-    // Only from API aliases using supports_model()
     let api_aliases = self
       .db_service
       .list_api_model_aliases(tenant_id, user_id)

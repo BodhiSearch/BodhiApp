@@ -270,10 +270,8 @@ async fn test_api_model_prefix_lifecycle(
 ) -> anyhow::Result<()> {
   let _base_time = db_service.now();
 
-  // Parse create form
   let create_form: ApiModelRequest = serde_json::from_value(create_json.clone())?;
 
-  // Create app service
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
@@ -282,18 +280,15 @@ async fn test_api_model_prefix_lifecycle(
       .await?,
   );
 
-  // Step 1: Create the API model
   let create_response = test_router(app_service.clone())
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
 
   assert_eq!(create_response.status(), StatusCode::CREATED);
 
-  // Get the generated model ID from the response
   let create_api_response: ApiAliasResponse = create_response.json().await?;
   let model_id = create_api_response.id;
 
-  // Step 2: Update the API model
   let update_form: ApiModelRequest = serde_json::from_value(update_json)?;
   let update_response = test_router(app_service.clone())
     .oneshot(Request::put(format!("{}/{}", ENDPOINT_MODELS_API, model_id)).json(update_form)?)
@@ -301,7 +296,6 @@ async fn test_api_model_prefix_lifecycle(
 
   assert_eq!(update_response.status(), StatusCode::OK);
 
-  // Step 3: Get the API model and verify final state
   let get_response = test_router(app_service)
     .oneshot(
       Request::get(format!("{}/{}", ENDPOINT_MODELS_API, model_id))
@@ -313,13 +307,12 @@ async fn test_api_model_prefix_lifecycle(
 
   let api_response: ApiAliasResponse = get_response.json().await?;
 
-  // Build expected response with actual timestamps and generated ID
+  // copy the generated id and timestamps so only the meaningful fields are compared
   let mut expected_response: ApiAliasResponse = serde_json::from_value(expected_get_json)?;
-  expected_response.id = api_response.id.clone(); // Use the generated UUID
+  expected_response.id = api_response.id.clone();
   expected_response.created_at = api_response.created_at;
   expected_response.updated_at = api_response.updated_at;
 
-  // Use pretty_assertions for comprehensive comparison
   assert_eq!(expected_response, api_response);
 
   Ok(())
@@ -334,7 +327,6 @@ async fn test_create_api_model_forward_all_requires_prefix(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Create app service
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
@@ -342,7 +334,6 @@ async fn test_create_api_model_forward_all_requires_prefix(
       .await?,
   );
 
-  // Try to create API model with forward_all=true but no prefix
   let create_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
@@ -361,10 +352,8 @@ async fn test_create_api_model_forward_all_requires_prefix(
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(create_form)?)
     .await?;
 
-  // Should return 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-  // Verify error message
   let error_body: serde_json::Value = response.json().await?;
   assert_eq!(
     error_body["error"]["code"].as_str().unwrap(),
@@ -383,7 +372,6 @@ async fn test_create_api_model_duplicate_prefix_error(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Create app service
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
@@ -392,7 +380,6 @@ async fn test_create_api_model_duplicate_prefix_error(
       .await?,
   );
 
-  // Create first API model with prefix
   let first_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
@@ -413,7 +400,6 @@ async fn test_create_api_model_duplicate_prefix_error(
 
   assert_eq!(response.status(), StatusCode::CREATED);
 
-  // Try to create second API model with same prefix
   let second_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
@@ -432,7 +418,6 @@ async fn test_create_api_model_duplicate_prefix_error(
     .oneshot(Request::post(ENDPOINT_MODELS_API).json(second_form)?)
     .await?;
 
-  // Should return 400 Bad Request with prefix_exists error
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
   let error_body: serde_json::Value = response.json().await?;
@@ -450,7 +435,6 @@ async fn test_update_api_model_duplicate_prefix_error(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Create app service
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
@@ -459,7 +443,6 @@ async fn test_update_api_model_duplicate_prefix_error(
       .await?,
   );
 
-  // Create first API model with prefix "azure/"
   let first_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
@@ -480,7 +463,6 @@ async fn test_update_api_model_duplicate_prefix_error(
 
   assert_eq!(response.status(), StatusCode::CREATED);
 
-  // Create second API model with different prefix "anthropic/"
   let second_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
@@ -503,7 +485,6 @@ async fn test_update_api_model_duplicate_prefix_error(
   let second_model: ApiAliasResponse = response.json().await?;
   let second_model_id = second_model.id;
 
-  // Try to update second model to use first model's prefix
   let update_form = ApiModelRequest::default_for(
     OpenAI,
     DefaultApiModelRequest {
@@ -524,7 +505,6 @@ async fn test_update_api_model_duplicate_prefix_error(
     )
     .await?;
 
-  // Should return 400 Bad Request with prefix_exists error
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
   let error_body: serde_json::Value = response.json().await?;

@@ -19,12 +19,10 @@ pub const SESSION_KEY_ACTIVE_CLIENT_ID: &str = "active_client_id";
 pub const DASHBOARD_ACCESS_TOKEN_KEY: &str = "dashboard:access_token";
 pub const DASHBOARD_REFRESH_TOKEN_KEY: &str = "dashboard:refresh_token";
 
-/// Returns the namespaced session key for an access token: `{client_id}:access_token`
 pub fn access_token_key(client_id: &str) -> String {
   format!("{client_id}:access_token")
 }
 
-/// Returns the namespaced session key for a refresh token: `{client_id}:refresh_token`
 pub fn refresh_token_key(client_id: &str) -> String {
   format!("{client_id}:refresh_token")
 }

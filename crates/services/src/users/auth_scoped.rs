@@ -38,7 +38,6 @@ impl AuthScopedUserService {
       .ok_or(AuthContextError::MissingToken)
   }
 
-  /// List all users. Injects the reviewer's token.
   pub async fn list_users(
     &self,
     page: Option<u32>,
@@ -54,7 +53,6 @@ impl AuthScopedUserService {
     )
   }
 
-  /// Get a single user by ID. Injects the reviewer's token.
   pub async fn get_user(
     &self,
     target_user_id: &str,
@@ -69,7 +67,6 @@ impl AuthScopedUserService {
     )
   }
 
-  /// Assign a role to a user. Injects the reviewer's token.
   /// Also upserts tenant-user membership in the local DB.
   pub async fn assign_user_role(
     &self,
@@ -91,7 +88,6 @@ impl AuthScopedUserService {
     Ok(())
   }
 
-  /// Remove a user. Injects the reviewer's token.
   /// Also removes tenant-user membership from the local DB.
   pub async fn remove_user(&self, target_user_id: &str) -> Result<(), AuthScopedUserError> {
     let token = self.require_token()?;

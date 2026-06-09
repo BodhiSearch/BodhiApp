@@ -512,13 +512,11 @@ impl DefaultTokenService {
     access_token: String,
     tenant: &Tenant,
   ) -> Result<(String, ResourceRole), AuthError> {
-    // Validate session token
     let claims = extract_claims::<Claims>(&access_token)?;
 
     let instance_client_id = tenant.client_id.clone();
     let instance_client_secret = tenant.client_secret.clone();
 
-    // Check if token is expired
     let now = self.time_service.utc_now().timestamp();
     if now < claims.exp as i64 {
       // Token still valid, return immediately
@@ -531,24 +529,19 @@ impl DefaultTokenService {
     }
 
     // Token is expired, use concurrency control to ensure only one refresh happens
-    // Extract session ID for lock key
     let session_id = session
       .id()
       .ok_or_else(|| AuthError::RefreshTokenNotFound)?;
     let lock_key = format!("{}:{}:refresh_token", instance_client_id, session_id);
 
-    // Extract user_id from expired token for logging
     let user_id = claims.sub.clone();
 
-    // Clone values for use in the closure
     let auth_service = Arc::clone(&self.auth_service);
     let time_service = Arc::clone(&self.time_service);
     let session_clone = session.clone();
-    // client_id and client_secret already fetched — clone into closure
     let closure_client_id = instance_client_id.clone();
     let closure_client_secret = instance_client_secret.clone();
 
-    // Execute refresh logic with distributed lock
     let result = self
       .concurrency_service
       .with_lock_auth(
@@ -557,7 +550,6 @@ impl DefaultTokenService {
           let client_id = closure_client_id.clone();
           let client_secret = closure_client_secret.clone();
           Box::pin(async move {
-            // Wrap the entire logic in a closure that maps AuthError to boxed error
             let inner_result: Result<(String, ResourceRole), AuthError> = async move {
               // Double-checked locking: re-fetch token from session
               // (another request might have already refreshed it)
@@ -591,7 +583,6 @@ impl DefaultTokenService {
                 return Ok((current_access_token, role));
               }
 
-              // Token still expired, we need to refresh it
               let refresh_token = session_clone
                 .get::<String>(&refresh_token_key(&client_id))
                 .await?;
@@ -621,7 +612,6 @@ impl DefaultTokenService {
                 }
               };
 
-              // Extract claims from new token first to validate and get role
               let new_claims = extract_claims::<Claims>(&new_access_token)?;
 
               // Store new tokens in session (namespaced by client_id)
@@ -683,7 +673,6 @@ impl DefaultTokenService {
       )
       .await;
 
-    // Map back from boxed error to AuthError
     result.map_err(|e| {
       e.downcast::<AuthError>()
         .map(|boxed| *boxed)

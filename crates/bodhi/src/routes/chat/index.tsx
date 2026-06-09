@@ -118,7 +118,6 @@ function ChatWithHistory() {
   const chatIdFromUrl = search.id;
   const getTestId = useResponsiveTestId();
 
-  // Apply model from URL to settings store on initial load
   useEffect(() => {
     if (model) {
       useChatSettingsStore.getState().setModel(model);

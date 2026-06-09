@@ -187,7 +187,6 @@ mod tests {
   }
 
   fn invalid_signature(claims: &Value, header: &str) -> String {
-    // Concatenate parts with dots - header.claims.signature
     format!(
       "{}.{}.{}",
       URL_SAFE_NO_PAD.encode(header),
@@ -356,7 +355,6 @@ mod tests {
       }
     }};
     let (token, _) = build_token(claims)?;
-    // Try to decode into a type that doesn't match the payload structure
     let result = extract_claims::<MismatchClaims>(&token);
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), TokenError::SerdeJson(_)));

@@ -33,10 +33,8 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
     app_service,
   } = live_server?;
 
-  // Get OAuth tokens using client credentials flow
   let (access_token, refresh_token) = get_oauth_tokens(app_service.as_ref()).await?;
 
-  // Create authenticated session
   let session_id =
     create_authenticated_session(&app_service, &access_token, &refresh_token).await?;
   let session_cookie = create_session_cookie(&session_id);
@@ -53,7 +51,6 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
     ChatCompletionRequestUserMessage::from("What's the temperature in London?").into(),
   ];
 
-  // Build Turn 1 request using async_openai types
   let request = CreateChatCompletionRequestArgs::default()
     .model("ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .seed(42_i64)
@@ -63,10 +60,8 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
     .build()
     .unwrap();
 
-  // Serialize to JSON for sending
   let request_json = serde_json::to_value(&request).unwrap();
 
-  // Send Turn 1 request, expect tool call
   let response = client
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
@@ -79,7 +74,7 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
   assert_eq!(StatusCode::OK, response.status());
   let response_json = response.json::<Value>().await?;
 
-  // Validate Turn 1: should get a tool call
+  // Turn 1 should produce a tool call.
   let choice = &response_json["choices"][0];
   assert_eq!(
     "tool_calls",
@@ -119,13 +114,11 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
     })
     .collect();
 
-  // Build assistant message with tool_calls
   let assistant_msg = ChatCompletionRequestAssistantMessageArgs::default()
     .tool_calls(typed_tool_calls)
     .build()
     .unwrap();
 
-  // Build tool response message
   let tool_msg = ChatCompletionRequestToolMessageArgs::default()
     .content("{\"temperature\": 15, \"unit\": \"celsius\"}")
     .tool_call_id(tool_call_id.to_string())
@@ -135,7 +128,6 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
   messages.push(assistant_msg.into());
   messages.push(tool_msg.into());
 
-  // Build Turn 2 request using async_openai types
   let request = CreateChatCompletionRequestArgs::default()
     .model("ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .seed(42_i64)
@@ -145,10 +137,8 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
     .build()
     .unwrap();
 
-  // Serialize to JSON for sending
   let request_json = serde_json::to_value(&request).unwrap();
 
-  // Send Turn 2 request, expect final answer
   let response = client
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
@@ -163,7 +153,7 @@ async fn test_live_tool_calling_multi_turn_non_streamed(
 
   handle.shutdown().await?;
 
-  // Validate Turn 2: should get final answer with stop
+  // Turn 2 should produce a final answer with finish_reason=stop.
   let choice = &response_json["choices"][0];
   let finish_reason = choice["finish_reason"].as_str().unwrap();
   assert_eq!(

@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-/// Service for network-related operations.
 pub trait NetworkService: Send + Sync + Debug {
   /// Get the server's local IP address for future-proofing redirect URIs.
   /// Returns None if unable to determine a non-loopback IP.
@@ -21,7 +20,6 @@ impl NetworkService for DefaultNetworkService {
       if socket.connect("8.8.8.8:80").is_ok() {
         if let Ok(local_addr) = socket.local_addr() {
           let ip = local_addr.ip();
-          // Only return if it's not a loopback address
           if !ip.is_loopback() {
             return Some(ip.to_string());
           }

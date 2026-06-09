@@ -21,7 +21,6 @@ import { useLocation } from '@tanstack/react-router';
 
 import { NavigationItem } from '@/types/navigation';
 
-// Rename and export the default navigation items
 export const defaultNavigationItems: NavigationItem[] = [
   {
     title: 'Chat',
@@ -199,7 +198,6 @@ export function NavigationProvider({ children, items = defaultNavigationItems }:
   const { pathname } = useLocation();
 
   const currentItem = useMemo(() => {
-    // First check top-level items
     if (pathname?.startsWith('/users/')) {
       const settingsItem = items.find((item) => item.title === 'Settings');
       const usersSubItem = settingsItem?.items?.find((item) => item.href === '/users/');
@@ -215,14 +213,12 @@ export function NavigationProvider({ children, items = defaultNavigationItems }:
       return { item: topLevelItem, parent: null };
     }
 
-    // Then check sub-items
     for (const item of items) {
       if (item.items) {
         for (const subItem of item.items) {
           if (subItem.href === pathname) {
             return { item: subItem, parent: item };
           }
-          // Check for sub-sub-items
           if (subItem.items) {
             const subSubItem = subItem.items.find((subSubItem) => subSubItem.href === pathname);
             if (subSubItem) {
@@ -233,26 +229,21 @@ export function NavigationProvider({ children, items = defaultNavigationItems }:
       }
     }
 
-    // Default to Chat if no match found
+    // Default to first item (Chat) when nothing matches.
     return { item: items[0], parent: null };
   }, [pathname, items]);
 
-  // Update document title based on currentItem
   useEffect(() => {
     const parts = [];
 
-    // Add current item title
     parts.push(currentItem.item.title);
 
-    // Add parent title if exists
     if (currentItem.parent) {
       parts.push(currentItem.parent.title);
     }
 
-    // Add base title
     parts.push('Bodhi App | Run LLMs Locally');
 
-    // Set document title
     document.title = parts.join(' | ');
   }, [currentItem]);
 

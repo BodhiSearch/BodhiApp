@@ -34,9 +34,7 @@ pub fn build_ui_proxy_router(backend_url: String) -> Router {
     )
 }
 
-/// Proxy handler that forwards the request path as-is to the backend.
-///
-/// The path already contains `/ui/...` since we use explicit routes, not `nest`.
+/// Path already contains `/ui/...` since we use explicit routes, not `nest`.
 async fn proxy_handler(req: Request, backend_url: String) -> Response<Body> {
   let path = req
     .uri()
@@ -96,13 +94,11 @@ async fn ws_proxy(req: Request, backend_url: &str, path: &str) -> Response<Body>
   let port = backend_uri.port_u16().unwrap_or(3000);
   let addr = format!("{host}:{port}");
 
-  // Extract the client upgrade handle + headers from the incoming request
   let (parts, _body) = req.into_parts();
   let req_headers = parts.headers.clone();
   let mut upgrade_req = hyper::Request::from_parts(parts, Body::empty());
   let client_upgrade = hyper::upgrade::on(&mut upgrade_req);
 
-  // Connect raw TCP to backend
   let mut backend_stream = match TcpStream::connect(&addr).await {
     Ok(s) => s,
     Err(e) => {
@@ -111,7 +107,6 @@ async fn ws_proxy(req: Request, backend_url: &str, path: &str) -> Response<Body>
     }
   };
 
-  // Build raw HTTP/1.1 upgrade request
   let mut raw_request = format!("GET {path} HTTP/1.1\r\nHost: {addr}\r\n");
   for (name, value) in req_headers.iter() {
     if name.as_str().eq_ignore_ascii_case("host") {
@@ -128,7 +123,6 @@ async fn ws_proxy(req: Request, backend_url: &str, path: &str) -> Response<Body>
     "sending ws upgrade to backend"
   );
 
-  // Write upgrade request
   if let Err(e) = backend_stream.write_all(raw_request.as_bytes()).await {
     error!(?e, "failed to write ws upgrade request to backend");
     return error_response();
@@ -156,7 +150,6 @@ async fn ws_proxy(req: Request, backend_url: &str, path: &str) -> Response<Body>
     }
   }
 
-  // Parse response
   let resp_str = String::from_utf8_lossy(&resp_buf);
   let mut lines = resp_str.lines();
   let status_line = lines.next().unwrap_or("");
@@ -166,7 +159,6 @@ async fn ws_proxy(req: Request, backend_url: &str, path: &str) -> Response<Body>
     return error_response();
   }
 
-  // Build response headers to forward to client
   let mut response_builder = Response::builder().status(StatusCode::SWITCHING_PROTOCOLS);
   for line in lines {
     if line.is_empty() {

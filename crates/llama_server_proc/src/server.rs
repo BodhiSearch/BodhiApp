@@ -47,7 +47,6 @@ impl LlamaServerArgs {
     }
   }
 
-  // Convert the struct into command line arguments
   pub fn to_args(&self) -> Vec<String> {
     let mut args = vec![
       "--alias".to_string(),
@@ -70,9 +69,8 @@ impl LlamaServerArgs {
     args.push("--port".to_string());
     args.push(self.port.to_string());
 
-    // Add all server parameters directly
     for param in &self.server_args {
-      // Split each parameter string on whitespace and add each part as separate argument
+      // each param string is split on whitespace into separate CLI arguments
       args.extend(param.split_whitespace().map(String::from));
     }
 
@@ -140,7 +138,6 @@ impl LlamaServer {
   }
 
   fn monitor_output(stdout: Option<ChildStdout>, stderr: Option<ChildStderr>) {
-    // Monitor stdout in a separate thread
     if let Some(stdout) = stdout {
       thread::spawn(move || {
         let reader = BufReader::new(stdout);
@@ -152,7 +149,6 @@ impl LlamaServer {
         }
       });
 
-      // Monitor stderr in a separate thread
       if let Some(stderr) = stderr {
         thread::spawn(move || {
           let reader = BufReader::new(stderr);
@@ -302,7 +298,6 @@ mod tests {
 
     let cmd_args = args.to_args();
 
-    // Check core arguments are present
     assert_eq!(
       vec![
         "--alias",

@@ -37,7 +37,6 @@ export function ChatMessage({
 
   const formatNumber = (num: number) => num.toFixed(2);
 
-  // Determine CSS classes based on message state
   const getMessageClasses = () => {
     if (isUser) {
       if (isLatest) return 'chat-user-message';
@@ -51,7 +50,6 @@ export function ChatMessage({
     }
   };
 
-  // Check if this assistant message has tool calls
   const hasToolCalls = isAssistant && message.tool_calls && message.tool_calls.length > 0;
 
   return (
@@ -85,7 +83,6 @@ export function ChatMessage({
           <ToolCallsDisplay toolCalls={message.tool_calls!} messages={allMessages} isExecuting={isExecutingTools} />
         )}
 
-        {/* Message content */}
         {message.content && (
           <div data-testid={`${isUser ? 'user' : isStreaming ? 'streaming' : 'assistant'}-message-content`}>
             <MemoizedReactMarkdown>{message.content}</MemoizedReactMarkdown>

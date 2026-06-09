@@ -7,10 +7,6 @@ use serial_test::serial;
 
 use crate::mcps::test_helpers::{make_mcp, make_server};
 
-// ============================================================================
-// MCP Server Tests
-// ============================================================================
-
 #[rstest]
 #[tokio::test]
 #[serial(pg_app)]

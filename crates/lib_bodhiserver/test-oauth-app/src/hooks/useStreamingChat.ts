@@ -23,13 +23,11 @@ export function useStreamingChat() {
         return;
       }
 
-      // Add user message
       const userMessage: ChatMessage = { role: 'user', content };
       setMessages((prev) => [...prev, userMessage]);
       setStatus('streaming');
       setError(null);
 
-      // Create abort controller
       const abortController = new AbortController();
       abortRef.current = abortController;
 
@@ -64,7 +62,6 @@ export function useStreamingChat() {
         const decoder = new TextDecoder();
         let assistantContent = '';
 
-        // Add empty assistant message that we'll update
         setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
         while (true) {
@@ -84,7 +81,6 @@ export function useStreamingChat() {
                 const delta = parsed.choices?.[0]?.delta?.content;
                 if (delta) {
                   assistantContent += delta;
-                  // Update the last message (assistant)
                   setMessages((prev) => {
                     const updated = [...prev];
                     updated[updated.length - 1] = {

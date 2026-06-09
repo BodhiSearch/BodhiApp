@@ -84,18 +84,16 @@ export default function AppInitializer({
       return;
     }
 
-    // Check for authenticated users
     if (authenticated && userInfo?.auth_status === 'logged_in') {
-      // Check if user has no assignable role - redirect to request access
+      // resource_guest / resource_anonymous have no assignable role -> request access
       if (!userInfo.role || userInfo.role === 'resource_guest' || userInfo.role === 'resource_anonymous') {
         navigate({ to: ROUTE_REQUEST_ACCESS });
         return;
       }
 
-      // Check minimum role requirement
       if (minRole) {
         const userRoleValue = typeof userInfo.role === 'string' ? userInfo.role : null;
-        const requiredRole = `resource_${minRole}` as Role; // Convert to resource_ format
+        const requiredRole = `resource_${minRole}` as Role;
 
         if (!userRoleValue || !meetsMinRole(userRoleValue, requiredRole)) {
           navigate({ to: ROUTE_LOGIN, search: { error: 'insufficient-role' } });

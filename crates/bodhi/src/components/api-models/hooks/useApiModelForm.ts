@@ -41,10 +41,8 @@ export function useApiModelForm({
   onCancel,
   autoSelectCommon = false,
 }: UseApiModelFormProps) {
-  // Provider state
   const [selectedProvider, setSelectedProvider] = useState<ApiProvider | null>(null);
 
-  // Form setup
   const isEditMode = mode === 'edit';
   const schema = isEditMode ? updateApiModelSchema : createApiModelSchema;
   type FormData = typeof isEditMode extends true ? UpdateApiModelFormData : ApiModelFormData;
@@ -107,7 +105,6 @@ export function useApiModelForm({
 
   const watchedValues = watch();
 
-  // API mutations with callbacks
   const createMutation = useCreateApiModel({
     onSuccess: (response) => {
       if (onSuccess) {
@@ -137,7 +134,6 @@ export function useApiModelForm({
   });
   const { data: apiFormatsData } = useListApiFormats();
 
-  // Business logic hooks
   const testConnection = useTestConnection({ mode, initialData });
   const fetchModels = useFetchModels({
     mode,
@@ -147,16 +143,13 @@ export function useApiModelForm({
     onModelsUpdated: (models) => setValue('models', models),
   });
 
-  // Initialize provider selection
   useEffect(() => {
     if (watchedValues.api_format && !selectedProvider) {
-      // Only auto-select provider if no provider is currently selected
       const provider = API_PROVIDERS.find((p) => p.format === watchedValues.api_format);
       if (provider) {
         setSelectedProvider(provider);
       }
     } else if (!watchedValues.api_format && mode === 'setup' && selectedProvider) {
-      // For setup mode, reset provider when api_format becomes empty
       setSelectedProvider(null);
     }
   }, [watchedValues.api_format, mode, selectedProvider]);
@@ -186,7 +179,6 @@ export function useApiModelForm({
     testConnection.resetStatus();
   };
 
-  // Model selection handlers
   const handleModelSelect = (modelName: string) => {
     if (!modelName.trim()) return;
 
@@ -218,7 +210,6 @@ export function useApiModelForm({
     }
   };
 
-  // Test connection wrapper — build TestPromptRequest from form state
   const handleTestConnection = async () => {
     const fmt = watchedValues.api_format as ApiFormat;
 
@@ -273,7 +264,6 @@ export function useApiModelForm({
     });
   };
 
-  // Fetch models wrapper
   const handleFetchModels = async () => {
     const fmt = watchedValues.api_format as ApiFormat;
 
@@ -300,7 +290,6 @@ export function useApiModelForm({
     });
   };
 
-  // Form submission
   const onSubmit = async (data: FormData) => {
     if (isEditMode && initialData) {
       const updateData = convertFormToUpdateRequest(data as UpdateApiModelFormData, initialData);
@@ -314,14 +303,12 @@ export function useApiModelForm({
     }
   };
 
-  // Cancel handler
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
     }
   };
 
-  // Computed values
   const isLlmLibertyCreate = watchedValues.api_format === 'llm_liberty_oauth' && !isEditMode;
   const hasEnvelope = Boolean(watchedValues.llm_liberty_envelope?.trim());
 
@@ -340,7 +327,6 @@ export function useApiModelForm({
   );
 
   return {
-    // Form state
     form,
     register,
     handleSubmit: handleSubmit(onSubmit),
@@ -351,19 +337,15 @@ export function useApiModelForm({
     watchedValues,
     showExtras,
 
-    // Provider state
     selectedProvider,
 
-    // API formats
     apiFormatsData: apiFormatsData?.data || ['openai'],
     handleApiFormatChange,
 
-    // Model management
     handleModelSelect,
     handleModelRemove,
     handleModelsSelectAll,
 
-    // Test connection
     testConnection: {
       onTest: handleTestConnection,
       canTest,
@@ -381,7 +363,6 @@ export function useApiModelForm({
           }),
     },
 
-    // Fetch models
     fetchModels: {
       onFetch: handleFetchModels,
       canFetch,
@@ -399,7 +380,6 @@ export function useApiModelForm({
           }),
     },
 
-    // Actions
     handleCancel,
     isLoading: isSubmitting || createMutation.isPending || updateMutation.isPending,
     mode,

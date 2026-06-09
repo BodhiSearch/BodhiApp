@@ -14,7 +14,6 @@ use futures_util::StreamExt;
 use services::{Alias, ModelAlias, SettingService, UserAlias, GGUF};
 use std::{fs, sync::Arc, time::UNIX_EPOCH};
 
-/// List available models in Ollama format
 #[utoipa::path(
     get,
     path = ENDPOINT_OLLAMA_TAGS,
@@ -94,7 +93,6 @@ pub async fn model_alias_to_ollama_model(
   setting_service: &Arc<dyn SettingService>,
   alias: ModelAlias,
 ) -> Model {
-  // Construct path from HF cache structure
   let hf_cache = setting_service.hf_cache().await;
   let path = hf_cache
     .join(alias.repo.path())
@@ -123,7 +121,6 @@ pub async fn model_alias_to_ollama_model(
   }
 }
 
-/// Get detailed information about a model in Ollama format
 #[utoipa::path(
     post,
     path = ENDPOINT_OLLAMA_SHOW,
@@ -208,7 +205,6 @@ pub async fn alias_to_ollama_model_show(
       }
     }
     Alias::Model(model_alias) => {
-      // Create a minimal ShowResponse for auto-discovered models
       let model = model_alias_to_ollama_model(setting_service, model_alias.clone()).await;
       ShowResponse {
         details: model.details,
@@ -221,8 +217,7 @@ pub async fn alias_to_ollama_model_show(
       }
     }
     Alias::Api(_) | Alias::ModelRouter(_) => {
-      // API and model-router aliases don't have Ollama-style details, this shouldn't happen
-      // since we filter them out in the find_alias call, but handle it anyway
+      // Filtered out in find_alias; fallback kept for exhaustiveness
       ShowResponse {
         details: ModelDetails {
           parent_model: None,
@@ -243,7 +238,6 @@ pub async fn alias_to_ollama_model_show(
   }
 }
 
-/// Chat with a model using Ollama format
 #[utoipa::path(
     post,
     path = ENDPOINT_OLLAMA_CHAT,
@@ -369,7 +363,6 @@ pub async fn ollama_model_chat_handler(
       })
     })?;
 
-  // For non-streaming responses, we need to convert the entire response body
   if !stream {
     use axum::body::to_bytes;
     let (_parts, body) = oai_response.into_parts();
@@ -390,8 +383,7 @@ pub async fn ollama_model_chat_handler(
     return Ok((StatusCode::OK, Json(ollama_response)).into_response());
   }
 
-  // For streaming, transform each SSE chunk into Ollama format
-  // The response body is an axum::body::Body stream
+  // Transform each SSE chunk into Ollama format
   let body_stream = oai_response.into_body().into_data_stream();
   let transformed_stream = body_stream.map(move |chunk| {
     let chunk: axum::body::Bytes = chunk.map_err(|e| format!("error reading chunk: {e}"))?;

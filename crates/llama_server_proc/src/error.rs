@@ -1,6 +1,5 @@
 use errmeta::{impl_error_from, AppError, ErrorType, IoError};
 
-/// Wrapper for reqwest errors
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error("Network error: {error}.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]

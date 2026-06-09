@@ -3,8 +3,6 @@ use axum::http::StatusCode;
 use rstest::rstest;
 use tower::ServiceExt;
 
-// Auth tier tests (merged from tests/routes_models_auth_test.rs)
-
 #[anyhow_trace]
 #[rstest]
 #[case::list_models("GET", "/bodhi/v1/models")]

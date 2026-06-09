@@ -23,9 +23,6 @@ import {
   ENDPOINT_API_MODELS_FORMATS,
 } from './constants';
 
-/**
- * Hook to fetch a single API model by id
- */
 export function useGetApiModel(
   id: string,
   options?: Omit<UseQueryOptions<ApiAliasResponse, AxiosError<BodhiErrorResponse>>, 'queryKey' | 'queryFn'>
@@ -38,9 +35,6 @@ export function useGetApiModel(
   });
 }
 
-/**
- * Hook to create a new API model
- */
 export function useCreateApiModel(
   options?: UseMutationOptions<AxiosResponse<ApiAliasResponse>, AxiosError<BodhiErrorResponse>, ApiModelRequest>
 ): UseMutationResult<AxiosResponse<ApiAliasResponse>, AxiosError<BodhiErrorResponse>, ApiModelRequest> {
@@ -49,18 +43,14 @@ export function useCreateApiModel(
   return useMutationQuery<ApiAliasResponse, ApiModelRequest>(ENDPOINT_API_MODELS, 'post', {
     ...options,
     onSuccess: (data, variables, onMutateResult, context) => {
-      // Invalidate and refetch API models list
       queryClient.invalidateQueries({ queryKey: apiModelKeys.all });
-      // Also invalidate models list since we'll be showing API models there
+      // API models also surface in the aggregate models list.
       queryClient.invalidateQueries({ queryKey: modelKeys.all });
       options?.onSuccess?.(data, variables, onMutateResult, context);
     },
   });
 }
 
-/**
- * Hook to update an existing API model
- */
 export function useUpdateApiModel(
   options?: UseMutationOptions<
     AxiosResponse<ApiAliasResponse>,
@@ -74,7 +64,6 @@ export function useUpdateApiModel(
 > {
   const queryClient = useQueryClient();
 
-  // Transform from: {id: string; data: ApiModelRequest} → endpoint: /models/api/${id}, body: data
   return useMutationQuery<ApiAliasResponse, { id: string; data: ApiModelRequest }>(
     ({ id }) => `${ENDPOINT_API_MODELS}/${id}`,
     'put',
@@ -93,15 +82,11 @@ export function useUpdateApiModel(
   );
 }
 
-/**
- * Hook to delete an API model
- */
 export function useDeleteApiModel(
   options?: UseMutationOptions<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string>
 ): UseMutationResult<AxiosResponse<void>, AxiosError<BodhiErrorResponse>, string> {
   const queryClient = useQueryClient();
 
-  // DELETE with path variables and no body
   return useMutationQuery<void, string>(
     (id) => `${ENDPOINT_API_MODELS}/${id}`,
     'delete',
@@ -120,40 +105,28 @@ export function useDeleteApiModel(
   );
 }
 
-/**
- * Hook to test API model connectivity
- */
 export function useTestApiModel(
   options?: UseMutationOptions<AxiosResponse<TestPromptResponse>, AxiosError<BodhiErrorResponse>, TestPromptRequest>
 ): UseMutationResult<AxiosResponse<TestPromptResponse>, AxiosError<BodhiErrorResponse>, TestPromptRequest> {
   return useMutationQuery<TestPromptResponse, TestPromptRequest>(ENDPOINT_API_MODELS_TEST, 'post', options);
 }
 
-/**
- * Hook to fetch available models from an API provider
- */
 export function useFetchApiModels(
   options?: UseMutationOptions<AxiosResponse<FetchModelsResponse>, AxiosError<BodhiErrorResponse>, FetchModelsRequest>
 ): UseMutationResult<AxiosResponse<FetchModelsResponse>, AxiosError<BodhiErrorResponse>, FetchModelsRequest> {
   return useMutationQuery<FetchModelsResponse, FetchModelsRequest>(ENDPOINT_API_MODELS_FETCH, 'post', options);
 }
 
-/**
- * Hook to fetch available API formats
- */
 export function useListApiFormats(
   options?: Omit<UseQueryOptions<ApiFormatsResponse, AxiosError<BodhiErrorResponse>>, 'queryKey' | 'queryFn'>
 ): UseQueryResult<ApiFormatsResponse, AxiosError<BodhiErrorResponse>> {
   return useQuery<ApiFormatsResponse>(apiFormatKeys.all, ENDPOINT_API_MODELS_FORMATS, undefined, {
     refetchOnWindowFocus: false,
-    staleTime: 10 * 60 * 1000, // 10 minutes (formats don't change often)
+    staleTime: 10 * 60 * 1000, // formats rarely change
     ...options,
   });
 }
 
-/**
- * Helper function to check if a model is an API model
- */
 export function isApiModel(model: unknown): model is ApiAliasResponse {
   return (
     typeof model === 'object' &&
@@ -164,9 +137,6 @@ export function isApiModel(model: unknown): model is ApiAliasResponse {
   );
 }
 
-/**
- * Helper function to get API key mask for display (first 3, last 6 chars)
- */
 export function maskApiKey(apiKey: string): string {
   if (!apiKey || apiKey.length < 10) {
     return '***';

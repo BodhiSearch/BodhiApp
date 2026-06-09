@@ -13,7 +13,6 @@ export function registerTools(server: McpServer, getLastRequest: () => Request |
     const query: Record<string, string> = {};
 
     if (lastReq) {
-      // Capture all non-standard headers (skip typical HTTP headers)
       const skipHeaders = new Set([
         'host',
         'connection',
@@ -33,7 +32,6 @@ export function registerTools(server: McpServer, getLastRequest: () => Request |
         }
       }
 
-      // Capture all query params
       for (const [key, value] of Object.entries(lastReq.query)) {
         if (typeof value === 'string') {
           query[key] = value;

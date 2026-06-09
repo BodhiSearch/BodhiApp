@@ -39,13 +39,6 @@ impl ExternalTokenSimulator {
 
   /// Creates a fake external bearer token and seeds the cache so requests
   /// with this token bypass Keycloak and resolve to the given role.
-  ///
-  /// # Arguments
-  /// * `role` - The approved role (e.g., Some("scope_user_user")) from the access request
-  /// * `azp` - The authorized party / client ID (e.g., "test-external-app")
-  ///
-  /// # Returns
-  /// The bearer token string to use in `Authorization: Bearer {token}` headers
   pub fn create_token_with_role(&self, role: Option<&str>, azp: &str) -> anyhow::Result<String> {
     let future_exp = (Utc::now() + Duration::hours(1)).timestamp() as u64;
     let access_request_id = role.map(|_| Uuid::new_v4().to_string());

@@ -14,7 +14,7 @@ import {
   mockUpdateSettingError,
 } from '@/test-utils/msw-v2/handlers/settings';
 
-// Add PointerEvent mock
+// JSDOM lacks PointerEvent and pointer-capture methods that Radix Select relies on.
 function createMockPointerEvent(type: string, props: PointerEventInit = {}): PointerEvent {
   const event = new Event(type, props) as PointerEvent;
   Object.assign(event, {
@@ -25,10 +25,8 @@ function createMockPointerEvent(type: string, props: PointerEventInit = {}): Poi
   return event;
 }
 
-// Assign the mock function to the global window object
 window.PointerEvent = createMockPointerEvent as any;
 
-// Mock HTMLElement methods
 Object.assign(window.HTMLElement.prototype, {
   scrollIntoView: vi.fn(),
   releasePointerCapture: vi.fn(),
@@ -79,7 +77,6 @@ const mockSettingInfos: Record<string, SettingInfo> = {
   },
 };
 
-// Mock the useToast hook
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
@@ -221,18 +218,15 @@ describe('EditSettingDialog', () => {
       wrapper: createWrapper(),
     });
 
-    // Click the select trigger button to open the dropdown
     const selectTrigger = screen.getByRole('combobox');
     await user.click(selectTrigger);
 
-    // Wait for and click the option
     const listbox = await screen.findByRole('listbox');
     const optionElement = within(listbox).getByRole('option', {
       name: /debug/i,
     });
     await user.click(optionElement);
 
-    // Click save
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     expect(mockToast).toHaveBeenCalledWith(
@@ -297,7 +291,6 @@ describe('EditSettingDialog', () => {
   it('handles network error correctly', async () => {
     const user = userEvent.setup();
 
-    // Simulate a network error
     server.use(...mockUpdateSettingNetworkError('BODHI_HOME'));
 
     render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
@@ -308,18 +301,14 @@ describe('EditSettingDialog', () => {
     await user.type(screen.getByRole('textbox'), '/new/path');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    // Verify error toast is shown with default error message
     expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'Failed to update setting'));
-
-    // Verify dialog stays open
     expect(mockOnOpenChange).not.toHaveBeenCalled();
   });
 
-  // This test verifies that the loading state is handled correctly during the request
   it('shows loading state during update', async () => {
     const user = userEvent.setup();
 
-    // Add artificial delay to the response
+    // Delay the response so the in-flight loading state is observable.
     server.use(
       ...mockUpdateSetting(
         'BODHI_HOME',
@@ -345,11 +334,9 @@ describe('EditSettingDialog', () => {
     const saveButton = screen.getByRole('button', { name: /save/i });
     await user.click(saveButton);
 
-    // Verify loading state
     expect(saveButton).toBeDisabled();
     expect(screen.getByText('Updating...')).toBeInTheDocument();
 
-    // Wait for success
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Setting BODHI_HOME updated successfully'));
     });
@@ -361,7 +348,6 @@ describe('MSW Handler Passthrough Behavior', () => {
     it('routes requests to correct handler based on key matching', async () => {
       const user = userEvent.setup();
 
-      // Register handlers for different keys
       server.use(
         ...mockUpdateSetting('BODHI_HOME', {
           current_value: '/home/updated',
@@ -384,7 +370,6 @@ describe('MSW Handler Passthrough Behavior', () => {
         ...mockSettingsNotFound() // Catch-all for unmapped keys
       );
 
-      // Test BODHI_HOME update
       const { unmount: unmount1 } = render(
         <EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />,
         { wrapper: createWrapper() }
@@ -399,7 +384,6 @@ describe('MSW Handler Passthrough Behavior', () => {
       mockOnOpenChange.mockClear();
       unmount1();
 
-      // Test BODHI_PORT update
       const { unmount: unmount2 } = render(
         <EditSettingDialog setting={mockSettingInfos.number} open={true} onOpenChange={mockOnOpenChange} />,
         { wrapper: createWrapper() }
@@ -413,7 +397,6 @@ describe('MSW Handler Passthrough Behavior', () => {
       mockToast.mockClear();
       unmount2();
 
-      // Test BODHI_LOG_LEVEL update
       const { unmount: unmount3 } = render(
         <EditSettingDialog setting={mockSettingInfos.option} open={true} onOpenChange={mockOnOpenChange} />,
         { wrapper: createWrapper() }
@@ -435,7 +418,6 @@ describe('MSW Handler Passthrough Behavior', () => {
     it('returns 404 for unmapped keys via catch-all handler', async () => {
       const user = userEvent.setup();
 
-      // Register handlers for specific keys only + catch-all
       server.use(
         ...mockUpdateSetting('BODHI_PORT', {
           current_value: 3000,
@@ -446,7 +428,6 @@ describe('MSW Handler Passthrough Behavior', () => {
         ...mockSettingsNotFound() // This will catch BODHI_HOME requests
       );
 
-      // Try to update BODHI_HOME - should be caught by catch-all and return 404
       render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
         wrapper: createWrapper(),
       });
@@ -455,7 +436,6 @@ describe('MSW Handler Passthrough Behavior', () => {
       await user.type(screen.getByRole('textbox'), '/new/path');
       await user.click(screen.getByRole('button', { name: /save/i }));
 
-      // Should show 404 error from catch-all handler
       expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'Setting BODHI_HOME not found'));
       expect(mockOnOpenChange).not.toHaveBeenCalled();
     });
@@ -465,7 +445,7 @@ describe('MSW Handler Passthrough Behavior', () => {
     it('first matching handler wins, others are bypassed', async () => {
       const user = userEvent.setup();
 
-      // Register multiple handlers for the same key - first should win
+      // First registered handler for the key should win.
       server.use(
         ...mockUpdateSetting('BODHI_HOME', {
           current_value: '/first/handler',
@@ -489,8 +469,7 @@ describe('MSW Handler Passthrough Behavior', () => {
       await user.type(screen.getByRole('textbox'), '/any/path');
       await user.click(screen.getByRole('button', { name: /save/i }));
 
-      // Should succeed with first handler (we can't verify exact response content in UI test,
-      // but success indicates first handler was used)
+      // Success here indicates the first handler was used (response body isn't visible in a UI test).
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Setting BODHI_HOME updated successfully'));
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);
     });
@@ -498,7 +477,6 @@ describe('MSW Handler Passthrough Behavior', () => {
     it('error handlers pass through for non-matching keys', async () => {
       const user = userEvent.setup();
 
-      // Register error handler for BODHI_PORT, success handler for BODHI_HOME
       server.use(
         ...mockUpdateSettingError('BODHI_PORT', {
           code: 'invalid_port',
@@ -515,7 +493,7 @@ describe('MSW Handler Passthrough Behavior', () => {
         ...mockSettingsNotFound()
       );
 
-      // Test BODHI_HOME - should pass through error handler and reach success handler
+      // BODHI_HOME passes through the BODHI_PORT error handler to its own success handler.
       render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
         wrapper: createWrapper(),
       });
@@ -531,7 +509,6 @@ describe('MSW Handler Passthrough Behavior', () => {
     it('network error handlers pass through for non-matching keys', async () => {
       const user = userEvent.setup();
 
-      // Register network error for BODHI_LOG_LEVEL, success for BODHI_HOME
       server.use(
         ...mockUpdateSettingNetworkError('BODHI_LOG_LEVEL'),
         ...mockUpdateSetting('BODHI_HOME', {
@@ -543,7 +520,7 @@ describe('MSW Handler Passthrough Behavior', () => {
         ...mockSettingsNotFound()
       );
 
-      // Test BODHI_HOME - should pass through network error handler and succeed
+      // BODHI_HOME passes through the BODHI_LOG_LEVEL network-error handler and succeeds.
       render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
         wrapper: createWrapper(),
       });
@@ -561,7 +538,7 @@ describe('MSW Handler Passthrough Behavior', () => {
     it('handles complex chain with multiple handler types', async () => {
       const user = userEvent.setup();
 
-      // Complex setup: error for KEY1, network error for KEY2, success for BODHI_HOME, catch-all 404
+      // Chain of unrelated error handlers before the BODHI_HOME success handler and a catch-all 404.
       server.use(
         ...mockUpdateSettingError('UNKNOWN_KEY_1', {
           code: 'error1',
@@ -583,7 +560,7 @@ describe('MSW Handler Passthrough Behavior', () => {
         ...mockSettingsNotFound()
       );
 
-      // BODHI_HOME should pass through all error handlers and reach the success handler
+      // BODHI_HOME passes through every unrelated error handler to its own success handler.
       render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
         wrapper: createWrapper(),
       });

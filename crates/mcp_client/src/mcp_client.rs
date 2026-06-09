@@ -8,24 +8,18 @@ use serde_json::Value;
 use std::borrow::Cow;
 use std::fmt::Debug;
 
-/// Running MCP client type alias for rmcp
 type RunningMcpClient = rmcp::service::RunningService<rmcp::RoleClient, ClientInfo>;
 
-/// Trait for MCP client operations (connect, list tools, call tool).
 /// Per-request connection pattern: each call creates a fresh connection.
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait McpClient: Debug + Send + Sync {
-  /// Connect to an MCP server, fetch available tools, disconnect.
-  /// `auth_params`: optional auth parameters (headers + query params) to inject.
   async fn fetch_tools(
     &self,
     url: &str,
     auth_params: Option<McpAuthParams>,
   ) -> Result<Vec<McpTool>, McpClientError>;
 
-  /// Connect to an MCP server, call a tool, disconnect.
-  /// `auth_params`: optional auth parameters (headers + query params) to inject.
   async fn call_tool(
     &self,
     url: &str,
@@ -35,7 +29,6 @@ pub trait McpClient: Debug + Send + Sync {
   ) -> Result<Value, McpClientError>;
 }
 
-/// Default MCP client using rmcp with Streamable HTTP transport.
 /// Creates a fresh connection per request (no connection pooling).
 #[derive(Debug, Clone)]
 pub struct DefaultMcpClient;
@@ -67,8 +60,6 @@ impl DefaultMcpClient {
     }
   }
 
-  /// Prepare auth parameters: build (final_url, headers) from the base URL and auth params.
-  /// Headers are converted to a reqwest HeaderMap. Query params are appended to the URL.
   fn prepare_auth(
     url: &str,
     auth_params: Option<McpAuthParams>,
@@ -213,10 +204,6 @@ impl McpClient for DefaultMcpClient {
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  // ============================================================================
-  // prepare_auth tests
-  // ============================================================================
 
   #[test]
   fn test_mcp_auth_params_default() {

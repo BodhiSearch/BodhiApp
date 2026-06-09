@@ -144,10 +144,6 @@ fn session_token_for_tenant(client_id: &str, roles: &[&str]) -> anyhow::Result<S
   Ok(token)
 }
 
-// =============================================================================
-// Test Group 1: Session token tenant resolution
-// =============================================================================
-
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
@@ -235,10 +231,6 @@ async fn test_session_resolves_tenant_b_from_azp(
   assert_eq!(true, body.is_authenticated);
   Ok(())
 }
-
-// =============================================================================
-// Test Group 3: Cross-tenant rejection / fallback
-// =============================================================================
 
 #[rstest]
 #[anyhow_trace]

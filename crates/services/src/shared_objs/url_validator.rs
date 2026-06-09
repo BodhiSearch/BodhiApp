@@ -38,7 +38,6 @@ pub fn validate_outbound_url(
     reason: e.to_string(),
   })?;
 
-  // 1. Scheme allowlist (always enforced)
   let scheme = parsed.scheme();
   if scheme != "http" && scheme != "https" {
     return Err(UrlValidationError::DisallowedScheme {
@@ -46,16 +45,13 @@ pub fn validate_outbound_url(
     });
   }
 
-  // 2. Host validation
   let host_str = parsed
     .host_str()
     .ok_or_else(|| UrlValidationError::InvalidUrl {
       reason: "URL has no host".to_string(),
     })?;
 
-  // Private IP/hostname checks (skipped when allow_private_ips is true)
   if !allow_private_ips {
-    // 3. Hostname blocklist
     let host_lower = host_str.to_lowercase();
     if host_lower == "localhost" || host_lower == "host.docker.internal" {
       return Err(UrlValidationError::PrivateAddress {
@@ -63,7 +59,6 @@ pub fn validate_outbound_url(
       });
     }
 
-    // 4. IP address blocklist
     if let Ok(ip) = host_str.parse::<IpAddr>() {
       if is_private_ip(&ip) {
         return Err(UrlValidationError::PrivateAddress {

@@ -32,10 +32,6 @@ import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
-// ============================================================================
-// Mocks
-// ============================================================================
-
 const navigateMock = vi.fn();
 let mockSearch: Record<string, string | undefined> = {};
 
@@ -64,10 +60,6 @@ vi.mock('@/hooks/use-toast-messages', () => ({
 const windowCloseMock = vi.fn();
 const MOCK_REDIRECT_URL = 'https://example.com/callback?code=auth_code';
 let originalLocationDescriptor: PropertyDescriptor | undefined;
-
-// ============================================================================
-// Setup
-// ============================================================================
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
@@ -120,10 +112,6 @@ const setupHandlers = (reviewData?: Parameters<typeof mockAppAccessRequestReview
   }
   server.use(...handlers);
 };
-
-// ============================================================================
-// Loading & Error States
-// ============================================================================
 
 describe('ReviewAccessRequestPage - Loading & Error States', () => {
   it('shows error page when no id query param', async () => {
@@ -200,10 +188,6 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
   });
 });
 
-// ============================================================================
-// Draft Review Form
-// ============================================================================
-
 describe('ReviewAccessRequestPage - Draft Review Form', () => {
   it('renders app name and description from review data', async () => {
     mockSearch = { id: MOCK_REQUEST_ID };
@@ -268,10 +252,6 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
   });
 });
 
-// ============================================================================
-// Approve Flow
-// ============================================================================
-
 describe('ReviewAccessRequestPage - Approve Flow', () => {
   it('clicking Approve calls PUT with correct body', async () => {
     const user = userEvent.setup();
@@ -292,13 +272,11 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Select MCP instance
     const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
     const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
-    // Click approve
     const approveButton = screen.getByTestId('review-approve-button');
     await waitFor(() => {
       expect(approveButton).not.toBeDisabled();
@@ -330,13 +308,11 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Select MCP instance
     const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
     const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
-    // Click approve
     const approveButton = screen.getByTestId('review-approve-button');
     await waitFor(() => {
       expect(approveButton).not.toBeDisabled();
@@ -372,13 +348,11 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Select MCP instance
     const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
     const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
-    // Click approve
     const approveButton = screen.getByTestId('review-approve-button');
     await waitFor(() => {
       expect(approveButton).not.toBeDisabled();
@@ -392,10 +366,6 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     });
   });
 });
-
-// ============================================================================
-// Deny Flow
-// ============================================================================
 
 describe('ReviewAccessRequestPage - Deny Flow', () => {
   it('clicking Deny calls POST to deny endpoint', async () => {
@@ -487,10 +457,6 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
   });
 });
 
-// ============================================================================
-// Non-Draft States
-// ============================================================================
-
 describe('ReviewAccessRequestPage - Non-Draft States', () => {
   it('approved status with popup flow calls window.close', async () => {
     mockSearch = { id: MOCK_REQUEST_ID };
@@ -546,10 +512,6 @@ describe('ReviewAccessRequestPage - Non-Draft States', () => {
     expect(screen.getByText('Expired')).toBeInTheDocument();
   });
 });
-
-// ============================================================================
-// MCP Server Review
-// ============================================================================
 
 describe('ReviewAccessRequestPage - MCP Server Review', () => {
   it('renders MCP server card with URL badge', async () => {
@@ -775,10 +737,6 @@ describe('ReviewAccessRequestPage - MCP Server Review', () => {
   });
 });
 
-// ============================================================================
-// MCP Partial Approve
-// ============================================================================
-
 describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
   it('no-instances MCP: blocks Approve, unchecking enables Approve', async () => {
     const user = userEvent.setup();
@@ -819,7 +777,6 @@ describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Select MCP instance
     const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
     const option = await screen.findByText('DeepWiki (deepwiki-prod)');
@@ -855,10 +812,6 @@ describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
   });
 });
 
-// ============================================================================
-// Mixed Resources (Multiple MCPs)
-// ============================================================================
-
 describe('ReviewAccessRequestPage - Mixed Resources', () => {
   it('renders MCP cards', async () => {
     mockSearch = { id: MOCK_REQUEST_ID };
@@ -890,7 +843,6 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
 
     expect(screen.getByTestId('review-approve-button')).toBeDisabled();
 
-    // Select MCP instance
     const mcpSelect = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(mcpSelect);
     const mcpOption = await screen.findByText('DeepWiki (deepwiki-prod)');
@@ -902,10 +854,6 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
     });
   });
 });
-
-// ============================================================================
-// Role Selection Dropdown
-// ============================================================================
 
 describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
   it('shows 2 role options when resource_power_user approves scope_user_power_user request', async () => {
@@ -1007,7 +955,6 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
     const userRoleOption = await screen.findByTestId('review-approved-role-option-scope_user_user');
     await user.click(userRoleOption);
 
-    // Select MCP instance
     const mcpSelect = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(mcpSelect);
     const mcpOption = await screen.findByText('DeepWiki (deepwiki-prod)');

@@ -113,22 +113,18 @@ pub fn try_build_app_options_internal(
 ) -> Result<AppOptionsBuilder, BootstrapError> {
   let mut builder = AppOptionsBuilder::default();
 
-  // Set environment variables
   for (key, value) in config.env_vars {
     builder = builder.set_env(&key, &value);
   }
 
-  // Set app settings
   for (key, value) in config.app_settings {
     builder = builder.set_app_setting(&key, &value);
   }
 
-  // Set system settings
   for (key, value) in config.system_settings {
     builder = builder.set_system_setting(&key, &value)?;
   }
 
-  // Build Tenant when both client credentials are provided
   if let (Some(client_id), Some(client_secret)) = (config.client_id, config.client_secret) {
     let status = if let Some(status_str) = config.app_status {
       status_str.parse::<AppStatus>().map_err(|_| {

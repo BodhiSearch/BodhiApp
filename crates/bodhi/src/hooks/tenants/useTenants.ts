@@ -1,22 +1,18 @@
-// External imports
 import { TenantListResponse, CreateTenantRequest, CreateTenantResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
-// Internal imports
 import { appInfoKeys } from '@/hooks/info/constants';
 import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import { userKeys } from '@/hooks/users/constants';
 
 import { tenantKeys, ENDPOINT_TENANTS } from './constants';
 
-// List tenants
 export function useListTenants(options?: { enabled?: boolean }) {
   return useQuery<TenantListResponse>(tenantKeys.all, ENDPOINT_TENANTS, undefined, {
     enabled: options?.enabled ?? true,
   });
 }
 
-// Create tenant
 export function useCreateTenant(options?: {
   onSuccess?: (response: CreateTenantResponse) => void;
   onError?: (message: string) => void;
@@ -35,7 +31,6 @@ export function useCreateTenant(options?: {
   });
 }
 
-// Activate tenant
 export function useTenantActivate(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;

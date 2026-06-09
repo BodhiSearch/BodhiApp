@@ -10,10 +10,6 @@ use crate::models::{DownloadRequestEntity, DownloadStatus};
 use crate::new_ulid;
 use errmeta::{AppError, EntityError, ErrorType};
 
-// =============================================================================
-// NewDownloadRequest (input type)
-// =============================================================================
-
 /// Request for creating a new download request
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
@@ -35,10 +31,6 @@ pub struct NewDownloadRequest {
   pub filename: String,
 }
 
-// =============================================================================
-// Download (output type — entity minus tenant_id)
-// =============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct DownloadRequest {
   pub id: String,
@@ -56,10 +48,6 @@ pub struct DownloadRequest {
   pub updated_at: DateTime<Utc>,
 }
 
-// =============================================================================
-// PaginatedDownloadResponse (output type for list)
-// =============================================================================
-
 /// Paginated list of download requests
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct PaginatedDownloadResponse {
@@ -68,10 +56,6 @@ pub struct PaginatedDownloadResponse {
   pub page: usize,
   pub page_size: usize,
 }
-
-// =============================================================================
-// DownloadServiceError
-// =============================================================================
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -89,28 +73,21 @@ pub enum DownloadServiceError {
   Auth(#[from] crate::auth::AuthContextError),
 }
 
-// =============================================================================
-// DownloadService trait
-// =============================================================================
-
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait DownloadService: Send + Sync + std::fmt::Debug {
-  /// Create a new download request
   async fn create(
     &self,
     tenant_id: &str,
     form: &NewDownloadRequest,
   ) -> Result<DownloadRequestEntity, DownloadServiceError>;
 
-  /// Get a specific download request by ID
   async fn get(
     &self,
     tenant_id: &str,
     id: &str,
   ) -> Result<DownloadRequestEntity, DownloadServiceError>;
 
-  /// List download requests with pagination
   async fn list(
     &self,
     tenant_id: &str,
@@ -118,7 +95,6 @@ pub trait DownloadService: Send + Sync + std::fmt::Debug {
     page_size: usize,
   ) -> Result<PaginatedDownloadResponse, DownloadServiceError>;
 
-  /// Find existing download requests by repo and filename
   async fn find_by_repo_filename(
     &self,
     tenant_id: &str,
@@ -126,7 +102,7 @@ pub trait DownloadService: Send + Sync + std::fmt::Debug {
     filename: &str,
   ) -> Result<Option<DownloadRequestEntity>, DownloadServiceError>;
 
-  /// Update the status of a download request (used by background download task)
+  /// Used by background download task.
   async fn update_status(
     &self,
     tenant_id: &str,
@@ -135,10 +111,6 @@ pub trait DownloadService: Send + Sync + std::fmt::Debug {
     error: Option<String>,
   ) -> Result<(), DownloadServiceError>;
 }
-
-// =============================================================================
-// DefaultDownloadService
-// =============================================================================
 
 #[derive(Debug, derive_new::new)]
 pub struct DefaultDownloadService {

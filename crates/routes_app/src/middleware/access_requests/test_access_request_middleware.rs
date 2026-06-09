@@ -35,10 +35,6 @@ async fn inject_auth_context(
   next.run(req).await
 }
 
-// ============================================================================
-// MCP validator tests
-// ============================================================================
-
 #[fixture]
 fn mcp_validator() -> Arc<dyn AccessRequestValidator> {
   Arc::new(McpAccessRequestValidator)

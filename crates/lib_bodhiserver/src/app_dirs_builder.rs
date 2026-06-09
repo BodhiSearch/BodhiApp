@@ -13,9 +13,6 @@ use tracing::{info, warn};
 
 const DEFAULTS_YAML: &str = "defaults.yaml";
 
-/// Primary entry point for setting up all application directories and configuration.
-/// Returns the bodhi home path, setting source, and file defaults for use with
-/// `setup_bootstrap_service`.
 pub fn setup_app_dirs(
   options: &AppOptions,
 ) -> Result<(PathBuf, SettingSource, HashMap<String, Value>), BootstrapError> {
@@ -28,8 +25,6 @@ pub fn setup_app_dirs(
   Ok((bodhi_home, source, file_defaults))
 }
 
-/// Creates the main Bodhi home directory if it doesn't exist.
-/// Returns the path and source (environment or default).
 fn create_bodhi_home(
   env_wrapper: Arc<dyn EnvWrapper>,
   env_type: &EnvType,
@@ -45,7 +40,6 @@ fn create_bodhi_home(
   Ok((bodhi_home, source))
 }
 
-/// Sets up the bootstrap service with system defaults and loads environment variables.
 pub fn setup_bootstrap_service(
   options: &AppOptions,
   bodhi_home: PathBuf,
@@ -85,7 +79,6 @@ pub fn setup_bootstrap_service(
   Ok(bootstrap_service)
 }
 
-/// Builds the system settings that are injected into the settings service.
 fn build_system_settings(
   options: &AppOptions,
   app_version: Option<&str>,

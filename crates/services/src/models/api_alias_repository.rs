@@ -229,7 +229,6 @@ impl ApiAliasRepository for DefaultDbService {
             }
           }
 
-          // Verify ownership before updating: only update if tenant_id and user_id match
           let exists = api_model_alias::Entity::find()
             .filter(api_model_alias::Column::Id.eq(&id))
             .filter(api_model_alias::Column::TenantId.eq(&tenant_id_owned))

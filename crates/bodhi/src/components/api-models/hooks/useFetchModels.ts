@@ -100,11 +100,10 @@ export function useFetchModels({
       setAvailableModels(modelIds);
       setStatus('success');
 
-      // Auto-select common models if enabled and provider available
       if (autoSelectCommon && provider?.commonModels.length && onModelsUpdated) {
         const commonModelsAvailable = provider.commonModels.filter((model) => modelIds.includes(model));
         if (commonModelsAvailable.length > 0) {
-          onModelsUpdated(commonModelsAvailable.slice(0, 3)); // Select up to 3 common models
+          onModelsUpdated(commonModelsAvailable.slice(0, 3));
         }
       }
 

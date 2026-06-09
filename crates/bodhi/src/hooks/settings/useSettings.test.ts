@@ -17,7 +17,6 @@ import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
-// Type aliases for compatibility
 type ApiError = BodhiErrorResponse;
 type Setting = SettingInfo;
 
@@ -52,7 +51,6 @@ const mockUserInfoData = {
 
 setupMswV2();
 
-// Setup default handlers
 beforeAll(() => {
   server.use(
     ...mockSettings(mockSettingsData),
@@ -173,7 +171,6 @@ describe('Settings Hooks', () => {
     it('invalidates settings query on successful update', async () => {
       const wrapper = createWrapper();
 
-      // Setup settings hook and wait for initial data
       const { result: settingsResult } = renderHook(() => useListSettings(), {
         wrapper,
       });
@@ -184,7 +181,6 @@ describe('Settings Hooks', () => {
 
       const initialDataUpdatedAt = settingsResult.current.dataUpdatedAt;
 
-      // Update setting
       const { result: updateResult } = renderHook(() => useUpdateSetting(), {
         wrapper,
       });
@@ -193,7 +189,6 @@ describe('Settings Hooks', () => {
         await updateResult.current.mutateAsync(updateData);
       });
 
-      // Verify settings query was invalidated and refetched
       await waitFor(() => {
         expect(settingsResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
       });
@@ -267,7 +262,6 @@ describe('Settings Hooks', () => {
     it('invalidates settings query on successful delete', async () => {
       const wrapper = createWrapper();
 
-      // Setup settings hook and wait for initial data
       const { result: settingsResult } = renderHook(() => useListSettings(), {
         wrapper,
       });
@@ -278,7 +272,6 @@ describe('Settings Hooks', () => {
 
       const initialDataUpdatedAt = settingsResult.current.dataUpdatedAt;
 
-      // Delete setting
       const { result: deleteResult } = renderHook(() => useDeleteSetting(), {
         wrapper,
       });
@@ -287,7 +280,6 @@ describe('Settings Hooks', () => {
         await deleteResult.current.mutateAsync(deleteData);
       });
 
-      // Verify settings query was invalidated and refetched
       await waitFor(() => {
         expect(settingsResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
       });

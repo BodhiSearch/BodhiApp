@@ -63,10 +63,6 @@ const buildDefaultParams = (schema: InputSchema | undefined): Record<string, unk
   return params;
 };
 
-// ============================================================================
-// ToolSidebar
-// ============================================================================
-
 function ToolSidebar({
   tools,
   selectedTool,
@@ -120,10 +116,6 @@ function ToolSidebar({
     </div>
   );
 }
-
-// ============================================================================
-// FormInput - schema-driven form field generator
-// ============================================================================
 
 function FormInput({
   schema,
@@ -222,10 +214,6 @@ function FormInput({
   );
 }
 
-// ============================================================================
-// ResultSection - 3-tab result display
-// ============================================================================
-
 function ResultSection({
   result,
   activeTab,
@@ -316,10 +304,6 @@ function ResultSection({
     </div>
   );
 }
-
-// ============================================================================
-// ExecutionArea
-// ============================================================================
 
 function ExecutionArea({
   tool,
@@ -472,10 +456,6 @@ function ExecutionArea({
   );
 }
 
-// ============================================================================
-// McpPlaygroundContent
-// ============================================================================
-
 function McpPlaygroundContent() {
   const search = useSearch({ from: '/mcps/playground/' });
   const id = search.id || '';
@@ -484,7 +464,6 @@ function McpPlaygroundContent() {
 
   const mcpClient = useMcpClient(mcp?.path ?? null);
 
-  // Connect when mcp data is available
   useEffect(() => {
     if (mcp?.path) {
       mcpClient.connect();

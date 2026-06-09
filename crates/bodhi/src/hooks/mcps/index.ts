@@ -3,7 +3,6 @@ export {
   mcpServerKeys,
   authConfigKeys,
   oauthTokenKeys,
-  // Endpoint constants
   MCPS_ENDPOINT,
   MCP_SERVERS_ENDPOINT,
   MCPS_AUTH_CONFIGS_ENDPOINT,

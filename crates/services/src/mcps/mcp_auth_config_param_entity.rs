@@ -32,5 +32,4 @@ impl Related<super::mcp_auth_config_entity::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-/// Type alias — McpAuthConfigParamEntity is the entity Model.
 pub type McpAuthConfigParamEntity = Model;
