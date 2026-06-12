@@ -94,7 +94,7 @@ The CUDA variant includes comprehensive performance optimizations for NVIDIA GPU
 - **KV Cache Quantization**: 50% memory savings with minimal quality impact
 - **Threading Optimization**: Prevents CPU bottlenecks in hybrid operations
 
-For detailed information on CUDA optimizations, see: [`ai-docs/context/cuda-Dockerfile-optimizations.md`](../ai-docs/context/cuda-Dockerfile-optimizations.md)
+For detailed information on CUDA optimizations, see: [`docs/conventions/cuda-dockerfile-optimizations.md`](../docs/conventions/cuda-dockerfile-optimizations.md)
 
 Expected performance improvements:
 - **8-12x token generation speed** compared to unoptimized configurations

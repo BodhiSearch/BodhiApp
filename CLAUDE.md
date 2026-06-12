@@ -1,11 +1,12 @@
 # BodhiApp — CLAUDE.md
 
 **Companion docs** (load as needed):
+- `docs/CLAUDE.md` — Curated docs hub: architecture, guides, conventions (incl. testing), research, notes
 - `crates/CLAUDE.md` — Crate index, shared Rust conventions, cross-crate patterns
 - `MDFILES.md` — Documentation conventions for all *.md files
 - Individual crate docs: `crates/<crate>/CLAUDE.md` for crate-specific details
 
-**IMPORTANT — Security testing:** Do read `ai-docs/func-specs/security/security.md` before performing any security assessment, it documents known accepted risks, by-design architectural decisions, and previously remediated vulnerabilities, to avoid repeat reporting of known issues.
+**IMPORTANT — Security testing:** Do read `docs/architecture/security.md` before performing any security assessment, it documents known accepted risks, by-design architectural decisions, and previously remediated vulnerabilities, to avoid repeat reporting of known issues.
 
 ## Development Commands
 

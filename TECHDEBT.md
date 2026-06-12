@@ -1,7 +1,7 @@
 # Technical Debt — Multi-Tenant
 
 Deferred items from the multi-tenant review (commit `3ba6997f0` and subsequent fixes).
-Full review status: `ai-docs/claude-plans/20260303-multi-tenant/reviews/summary.md`
+Full review status: `docs/archive/claude-plans/202603/20260303-multi-tenant/SUMMARY.md`
 
 ## P1-2: Missing AuthScopedAccessRequestService wrapper
 `access_request_service()` is a bare passthrough — no AuthScoped wrapper. Not a data isolation bug but an architectural gap.

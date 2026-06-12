@@ -1,6 +1,6 @@
 # /plan-md
 
-Generate a comprehensive plan.md file in ai-docs/specs folder based on the conversation history and research conducted.
+Generate a comprehensive plan.md file in docs/specs folder based on the conversation history and research conducted.
 
 ## Usage
 ```
@@ -151,7 +151,7 @@ From existing specs:
 
 Create the plan.md file at:
 ```
-ai-docs/specs/<folder-name>/plan.md
+docs/specs/<folder-name>/plan.md
 ```
 
 The plan should be comprehensive enough that someone unfamiliar with the conversation can understand:

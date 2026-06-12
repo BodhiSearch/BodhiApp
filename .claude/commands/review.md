@@ -9,7 +9,7 @@ Perform a thorough code review of staged files or recent commits, validating con
 /review HEAD~3..HEAD             # Review last 3 commits
 /review abc1234                  # Review a specific commit
 /review abc1234 def5678          # Review specific commits
-/review --output-dir <path>      # Custom output directory (default: ai-docs/claude-plans/reviews)
+/review --output-dir <path>      # Custom output directory (default: docs/claude-plans/reviews)
 ```
 
 ## Inputs
@@ -18,7 +18,7 @@ Perform a thorough code review of staged files or recent commits, validating con
 required: none (defaults to staged files)
 optional:
   - ref: git ref, commit SHA, or range (default: staged files via `git diff --cached`)
-  - output_dir: output directory for review files (default: ai-docs/claude-plans/reviews)
+  - output_dir: output directory for review files (default: docs/claude-plans/reviews)
 ```
 
 ## Instructions

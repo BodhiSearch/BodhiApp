@@ -11,7 +11,7 @@ If no folder name is provided, uses `unknown-feature` as the default.
 
 ## Instructions
 
-Read the plan.md from `ai-docs/specs/<folder-name>/plan.md` and transform it into an executable tasks.md file that:
+Read the plan.md from `docs/specs/<folder-name>/plan.md` and transform it into an executable tasks.md file that:
 
 1. **Follows the crate dependency chain** for proper build order
   - objs
@@ -279,7 +279,7 @@ After any frontend modifications:
 
 Create the tasks.md file at:
 ```
-ai-docs/specs/<folder-name>/tasks.md
+docs/specs/<folder-name>/tasks.md
 ```
 
 ## Generation Guidelines

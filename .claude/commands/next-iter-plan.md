@@ -22,8 +22,8 @@ optional:
 
 ## Prerequisites
 
-- Existing plan.md file in `ai-docs/specs/{spec-folder}/`
-- Existing tasks.md file in `ai-docs/specs/{spec-folder}/`
+- Existing plan.md file in `docs/specs/{spec-folder}/`
+- Existing tasks.md file in `docs/specs/{spec-folder}/`
 - Previous iteration work completed or partially completed
 - Access to implementation conversation history
 
@@ -303,7 +303,7 @@ cargo fmt -p [crate-name]
 
 ## Output 3: Create Iteration Planning Report
 
-Create a new file: `ai-docs/specs/{spec-folder}/iteration-{N+1}-plan.md`
+Create a new file: `docs/specs/{spec-folder}/iteration-{N+1}-plan.md`
 
 ```markdown
 # Iteration {N+1} Planning Report

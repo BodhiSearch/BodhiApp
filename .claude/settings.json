@@ -3,5 +3,5 @@
     "allow": [],
     "deny": []
   },
-  "plansDirectory": "ai-docs/claude-plans/202604/"
+  "plansDirectory": "docs/claude-plans/202606/"
 }
