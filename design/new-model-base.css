@@ -1,0 +1,22 @@
+/* ══════════════════════════════════════════
+   NEW MODEL ALIAS — Styles
+══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body { min-height: 100%; font-family: var(--font-sans); color: hsl(var(--foreground)); background: hsl(var(--background)); -webkit-font-smoothing: antialiased; }
+button { font-family: inherit; cursor: pointer; }
+a { text-decoration: none; color: inherit; }
+input, select, textarea { font-family: inherit; }
+
+:root {
+  --c-lotus-bg: rgba(255,164,184,.14); --c-lotus-bd: rgba(255,164,184,.35); --c-lotus-text: #B02A52;
+  --c-saffron-bg: rgba(250,138,46,.12); --c-saffron-bd: rgba(250,138,46,.28); --c-saffron-text: #B4500A;
+  --c-leaf-bg: rgba(91,178,59,.12); --c-leaf-bd: rgba(91,178,59,.28); --c-leaf-text: #2F7D1F;
+  --c-indigo-bg: rgba(62,74,168,.10); --c-indigo-bd: rgba(62,74,168,.22); --c-indigo-text: #3E4AA8;
+}
+[data-theme="dark"] {
+  --c-lotus-bg: rgba(255,164,184,.15); --c-lotus-bd: rgba(255,164,184,.28); --c-lotus-text: #FFA4B8;
+  --c-saffron-bg: rgba(250,138,46,.18); --c-saffron-bd: rgba(250,138,46,.30); --c-saffron-text: #FFAB5C;
+  --c-leaf-bg: rgba(139,217,99,.16); --c-leaf-bd: rgba(139,217,99,.28); --c-leaf-text: #8BD963;
+  --c-indigo-bg: rgba(110,123,204,.18); --c-indigo-bd: rgba(110,123,204,.30); --c-indigo-text: #A5AEE6;
+}

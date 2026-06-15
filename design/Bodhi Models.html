@@ -1,0 +1,1927 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bodhi · Models</title>
+<link rel="stylesheet" href="colors_and_type.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="bodhi-sidebar.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════════
+   SEMANTIC COLOR TOKENS  — theme-aware
+   All badge/tag/chip colors defined here so dark mode is
+   handled in ONE place, not scattered across components.
+══════════════════════════════════════════════════════════ */
+:root {
+  /* Indigo / api-alias */
+  --c-indigo-bg:    rgba(62,74,168,.10);
+  --c-indigo-bd:    rgba(62,74,168,.22);
+  --c-indigo-text:  #3E4AA8;
+
+  /* Lotus / alias */
+  --c-lotus-bg:     rgba(255,164,184,.14);
+  --c-lotus-bd:     rgba(255,164,184,.35);
+  --c-lotus-text:   #B02A52;
+
+  /* Saffron / hf-repo */
+  --c-saffron-bg:   rgba(250,138,46,.12);
+  --c-saffron-bd:   rgba(250,138,46,.28);
+  --c-saffron-text: #B4500A;
+
+  /* Leaf / provider */
+  --c-leaf-bg:      rgba(91,178,59,.12);
+  --c-leaf-bd:      rgba(91,178,59,.28);
+  --c-leaf-text:    #2F7D1F;
+
+  /* Teal / fallback */
+  --c-teal-bg:      rgba(13,148,136,.10);
+  --c-teal-bd:      rgba(13,148,136,.24);
+  --c-teal-text:    #0f766e;
+
+  /* Neutral */
+  --c-muted-bg:     hsl(var(--muted));
+  --c-muted-bd:     hsl(var(--border));
+  --c-muted-text:   hsl(var(--muted-foreground));
+
+  /* Active filter chip */
+  --c-chip-bg:      rgba(255,164,184,.14);
+  --c-chip-bd:      rgba(255,164,184,.35);
+  --c-chip-text:    #B02A52;
+
+  /* Score bar */
+  --c-score-bar:    #DB456C;
+}
+
+[data-theme="dark"] {
+  --c-indigo-bg:    rgba(110,123,204,.18);
+  --c-indigo-bd:    rgba(110,123,204,.30);
+  --c-indigo-text:  #A5AEE6;
+
+  --c-lotus-bg:     rgba(255,164,184,.15);
+  --c-lotus-bd:     rgba(255,164,184,.28);
+  --c-lotus-text:   #FFA4B8;
+
+  --c-saffron-bg:   rgba(250,138,46,.18);
+  --c-saffron-bd:   rgba(250,138,46,.30);
+  --c-saffron-text: #FFAB5C;
+
+  --c-leaf-bg:      rgba(139,217,99,.16);
+  --c-leaf-bd:      rgba(139,217,99,.28);
+  --c-leaf-text:    #8BD963;
+
+  --c-teal-bg:      rgba(94,234,212,.13);
+  --c-teal-bd:      rgba(94,234,212,.28);
+  --c-teal-text:    #5eead4;
+
+  --c-muted-bg:     hsl(var(--muted));
+  --c-muted-bd:     hsl(var(--border));
+  --c-muted-text:   hsl(var(--muted-foreground));
+
+  --c-chip-bg:      rgba(255,164,184,.16);
+  --c-chip-bd:      rgba(255,164,184,.28);
+  --c-chip-text:    #FFA4B8;
+
+  --c-score-bar:    #F27090;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: var(--font-sans);
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; }
+a { text-decoration: none; color: inherit; }
+
+/* ══════════════════════════════════════════════════════════
+   APP SHELL  —  3 columns on desktop
+══════════════════════════════════════════════════════════ */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr 340px;
+  grid-template-rows: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  transition: grid-template-columns 220ms cubic-bezier(.22,.61,.36,1);
+}
+.app.side-collapsed           { grid-template-columns: 0px 1fr 340px; }
+.app.panel-collapsed          { grid-template-columns: 220px 1fr 0px; }
+.app.side-collapsed.panel-collapsed { grid-template-columns: 0px 1fr 0px; }
+
+/* ══════════════════════════════════════════════════════════
+   SHARED PRIMITIVES
+══════════════════════════════════════════════════════════ */
+
+/* Icon button */
+.icon-btn {
+  width: 30px; height: 30px; border-radius: 7px;
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  color: hsl(var(--muted-foreground));
+  transition: background 120ms, color 120ms;
+  flex: none;
+}
+.icon-btn svg { width: 14px; height: 14px; }
+.icon-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+
+/* Pill button */
+.pill-btn {
+  height: 30px; padding: 0 12px; border-radius: 7px;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12.5px; font-weight: 600; border: none;
+  transition: background 120ms, color 120ms, transform 60ms;
+}
+.pill-btn:active { transform: scale(.97); }
+.pill-btn svg { width: 13px; height: 13px; }
+.pill-btn-ghost {
+  background: transparent;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+.pill-btn-ghost:hover { background: hsl(var(--muted)); }
+.pill-btn-primary {
+  background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+}
+.pill-btn-primary:hover { background: hsl(var(--primary-hover)); color: #fff; }
+
+/* Type badge */
+.type-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 99px;
+  font-size: 11px; font-weight: 600; border: 1px solid;
+  white-space: nowrap;
+}
+.type-badge svg { width: 9px; height: 9px; flex: none; }
+.tb-api    { background: var(--c-indigo-bg);  border-color: var(--c-indigo-bd);  color: var(--c-indigo-text); }
+.tb-alias  { background: var(--c-lotus-bg);   border-color: var(--c-lotus-bd);   color: var(--c-lotus-text); }
+.tb-hf     { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
+.tb-prov   { background: var(--c-leaf-bg);    border-color: var(--c-leaf-bd);    color: var(--c-leaf-text); }
+.tb-fallback { background: var(--c-teal-bg); border-color: var(--c-teal-bd); color: var(--c-teal-text); }
+
+/* Capability / filter tag */
+.tag {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 500;
+  padding: 2px 7px; border-radius: 5px;
+  border: 1px solid; white-space: nowrap;
+}
+.tag-indigo  { background: var(--c-indigo-bg);  border-color: var(--c-indigo-bd);  color: var(--c-indigo-text); }
+.tag-lotus   { background: var(--c-lotus-bg);   border-color: var(--c-lotus-bd);   color: var(--c-lotus-text); }
+.tag-saffron { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
+.tag-leaf    { background: var(--c-leaf-bg);    border-color: var(--c-leaf-bd);    color: var(--c-leaf-text); }
+.tag-teal    { background: var(--c-teal-bg);    border-color: var(--c-teal-bd);    color: var(--c-teal-text); }
+.tag-muted   { background: var(--c-muted-bg);   border-color: var(--c-muted-bd);   color: var(--c-muted-text); }
+
+/* Speed badge */
+.speed {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 5px; border: 1px solid;
+}
+.speed svg { width: 9px; height: 9px; }
+.speed-up   { background: rgba(46,188,64,.12);  color: #2a9b36; border-color: rgba(46,188,64,.25); }
+.speed-down { background: var(--c-lotus-bg);    color: var(--c-lotus-text); border-color: var(--c-lotus-bd); }
+
+[data-theme="dark"] .speed-up { background: rgba(139,217,99,.14); color: #8BD963; border-color: rgba(139,217,99,.28); }
+
+/* ══════════════════════════════════════════════════════════
+   LEFT SIDEBAR
+══════════════════════════════════════════════════════════ */
+.side {
+  background: hsl(var(--card));
+  border-right: 1px solid hsl(var(--border));
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  z-index: 30;
+  transition: border-color 220ms cubic-bezier(.22,.61,.36,1);
+}
+.app.side-collapsed .side { border-right-color: transparent; }
+
+.side-scroll {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 10px 8px 16px;
+}
+.side-scroll::-webkit-scrollbar { width: 4px; }
+.side-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+/* Logo */
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 12px 12px;
+  border-bottom: 1px solid hsl(var(--border));
+  flex-shrink: 0;
+}
+.logo img { width: 28px; height: 28px; flex: none; }
+.logo-t { font-size: 15px; font-weight: 700; letter-spacing: -.01em; line-height: 1; }
+.logo-s { font-family: var(--font-mono); font-size: 9px; letter-spacing: .14em;
+  color: hsl(var(--muted-foreground)); text-transform: uppercase; margin-top: 2px; }
+
+/* Nav row */
+.nav-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  transition: background 100ms, color 100ms;
+}
+.nav-row svg { width: 14px; height: 14px; flex: none; }
+.nav-row:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); cursor: pointer; }
+.nav-row.active {
+  background: var(--c-lotus-bg); color: var(--c-lotus-text); font-weight: 600;
+}
+.nav-row.active svg { color: #DB456C; }
+.nav-row .nb {
+  margin-left: auto; font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 99px;
+  background: var(--c-lotus-bg); color: var(--c-lotus-text);
+}
+
+/* Section label */
+.sec-label {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em;
+  color: hsl(var(--muted-foreground)); font-weight: 700;
+  padding: 12px 10px 5px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sec-label .clr {
+  font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0;
+  color: var(--c-lotus-text); background: none; border: none; padding: 0;
+}
+.sec-label .clr:hover { text-decoration: underline; }
+
+/* Filter chip (sidebar) */
+.fc-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 6px 4px; }
+.fc {
+  font-size: 11.5px; font-weight: 500; padding: 3px 9px; border-radius: 99px;
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  transition: all 100ms;
+}
+.fc:hover { border-color: hsl(var(--ring)); color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+
+/* Active states per color */
+.fc.fc-indigo.on  { background: var(--c-indigo-bg);  border-color: var(--c-indigo-bd);  color: var(--c-indigo-text); }
+.fc.fc-lotus.on   { background: var(--c-lotus-bg);   border-color: var(--c-lotus-bd);   color: var(--c-lotus-text); }
+.fc.fc-saffron.on { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
+.fc.fc-leaf.on    { background: var(--c-leaf-bg);    border-color: var(--c-leaf-bd);    color: var(--c-leaf-text); }
+.fc.fc-teal.on    { background: var(--c-teal-bg);    border-color: var(--c-teal-bd);    color: var(--c-teal-text); }
+.fc.fc-neutral.on { background: hsl(var(--muted));   border-color: hsl(var(--border));  color: hsl(var(--foreground)); font-weight: 600; }
+
+/* ══════════════════════════════════════════════════════════
+   MAIN AREA
+══════════════════════════════════════════════════════════ */
+.main {
+  display: flex; flex-direction: column;
+  min-width: 0; overflow: hidden;
+  background: hsl(var(--background));
+}
+
+/* ── Header ── */
+.header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  height: 52px; flex-shrink: 0;
+}
+.header-logo { display: none; }
+.header-logo img { width: 24px; height: 24px; }
+
+.breadcrumb {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12.5px; color: hsl(var(--muted-foreground));
+  min-width: 0; overflow: hidden;
+}
+.breadcrumb .sep { width: 10px; height: 10px; flex: none; opacity: .5; }
+.breadcrumb .bc-seg { cursor: pointer; white-space: nowrap; }
+.breadcrumb .bc-seg:hover { color: hsl(var(--foreground)); }
+.breadcrumb .bc-current { font-weight: 700; color: var(--c-lotus-text); white-space: nowrap; }
+
+.header-mid { flex: 1; min-width: 0; overflow: hidden; }
+
+.head-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+
+/* Sidebar toggle in header */
+.side-toggle { transition: color 120ms; }
+.app.side-collapsed .side-toggle svg { transform: scaleX(-1); }
+.panel-toggle { transition: color 120ms; }
+.app.panel-collapsed .panel-toggle svg { transform: scaleX(-1); }
+
+/* ── Scope row ── */
+.scope-row {
+  display: flex; align-items: center; gap: 2px;
+  padding: 10px 16px 0; flex-shrink: 0;
+}
+.scope-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  border: none; background: transparent;
+  color: hsl(var(--muted-foreground));
+  transition: all 120ms;
+}
+.scope-btn .cnt {
+  font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 99px;
+  background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+}
+.scope-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.scope-btn.on {
+  background: hsl(var(--foreground)); color: hsl(var(--background));
+  font-weight: 700; border-radius: 8px;
+}
+.scope-btn.on .cnt {
+  background: rgba(255,255,255,.15); color: rgba(255,255,255,.75);
+}
+
+/* ── Type tabs ── */
+.type-tabs {
+  display: flex; align-items: center;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid hsl(var(--border));
+  flex-shrink: 0; overflow-x: auto; gap: 0;
+}
+.type-tabs::-webkit-scrollbar { display: none; }
+.ttab {
+  padding: 7px 13px; font-size: 13px; font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  border: none; background: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  white-space: nowrap; transition: color 120ms;
+}
+.ttab:hover { color: hsl(var(--foreground)); }
+.ttab.on { color: var(--c-lotus-text); border-bottom-color: var(--c-score-bar); font-weight: 600; }
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px 0; flex-shrink: 0;
+}
+.search-box {
+  flex: 1; min-width: 0; position: relative;
+}
+.search-box svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; color: hsl(var(--muted-foreground)); pointer-events: none; }
+.search-box input {
+  width: 100%; padding: 6px 52px 6px 30px;
+  border: 1px solid hsl(var(--border)); border-radius: 7px;
+  font-size: 13px; font-family: inherit;
+  background: hsl(var(--card)); color: hsl(var(--foreground));
+  outline: none; transition: border-color 120ms, box-shadow 120ms;
+}
+.search-box input::placeholder { color: hsl(var(--muted-foreground)); }
+.search-box input:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px rgba(255,164,184,.15); }
+.search-box .kbd {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  font-family: var(--font-mono); font-size: 10px;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+  border-radius: 4px; padding: 1px 5px;
+}
+.tb-btn {
+  height: 32px; padding: 0 11px; border-radius: 7px;
+  border: 1px solid hsl(var(--border)); background: hsl(var(--card));
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12.5px; font-weight: 500;
+  color: hsl(var(--foreground));
+  white-space: nowrap; flex-shrink: 0;
+  transition: background 120ms;
+}
+.tb-btn svg { width: 13px; height: 13px; color: hsl(var(--muted-foreground)); }
+.tb-btn:hover { background: hsl(var(--muted)); }
+.tb-btn .badge {
+  background: var(--c-lotus-bg); color: var(--c-lotus-text);
+  font-size: 10px; font-weight: 700; padding: 1px 5px;
+  border-radius: 99px; min-width: 17px; text-align: center;
+}
+
+/* ── Active chips ── */
+.chip-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+  padding: 7px 16px 0; flex-shrink: 0; min-height: 0;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 6px 3px 9px; border-radius: 99px;
+  background: var(--c-chip-bg); border: 1px solid var(--c-chip-bd);
+  font-size: 12px; font-weight: 500; color: var(--c-chip-text);
+}
+.chip-x {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: none; background: none; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--c-chip-text); opacity: .7;
+}
+.chip-x svg { width: 9px; height: 9px; }
+.chip-x:hover { opacity: 1; background: var(--c-chip-bd); }
+.clear-btn {
+  font-size: 12px; font-weight: 500; padding: 3px 7px; border-radius: 6px;
+  background: none; border: none; color: hsl(var(--muted-foreground));
+  transition: color 100ms, background 100ms;
+}
+.clear-btn:hover { color: var(--c-lotus-text); background: var(--c-lotus-bg); }
+
+/* ── List header ── */
+.list-head {
+  display: flex; align-items: center;
+  padding: 7px 16px 5px;
+  border-bottom: 1px solid hsl(var(--border));
+  flex-shrink: 0;
+}
+.lh-num  { width: 40px; flex-shrink: 0; }
+.lh-model { flex: 1; min-width: 0; }
+.lh-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: hsl(var(--muted-foreground));
+}
+.lh-score {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: hsl(var(--muted-foreground));
+  flex-shrink: 0; margin-right: 6px;
+}
+.lh-score svg { width: 10px; height: 10px; }
+.lh-action { width: 86px; flex-shrink: 0; }
+
+/* ── Model list ── */
+.model-list { flex: 1; overflow-y: auto; min-height: 0; }
+.model-list::-webkit-scrollbar { width: 5px; }
+.model-list::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+
+/* ── Model row ── */
+.m-row {
+  display: flex; align-items: flex-start;
+  padding: 10px 16px; gap: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  cursor: pointer; transition: background 80ms;
+}
+.m-row:hover  { background: hsl(var(--muted)); }
+.m-row.active { background: var(--c-lotus-bg); }
+
+.m-num {
+  width: 40px; font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+  color: hsl(var(--muted-foreground)); flex-shrink: 0; padding-top: 2px;
+}
+.m-badge { flex-shrink: 0; margin-top: 1px; margin-right: 8px; }
+.m-body { flex: 1; min-width: 0; }
+.m-name {
+  font-size: 14px; font-weight: 600; letter-spacing: -.015em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.m-meta {
+  font-size: 11.5px; color: hsl(var(--muted-foreground));
+  margin-top: 2px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.m-tags { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+
+.m-right {
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0; margin-left: 10px; padding-top: 2px;
+}
+.m-score { text-align: right; min-width: 38px; }
+.m-score-num { font-size: 15px; font-weight: 700; letter-spacing: -.02em; font-family: var(--font-mono); }
+.m-score-bar { height: 2px; border-radius: 1px; margin-top: 3px; background: hsl(var(--border)); overflow: hidden; }
+.m-score-fill { height: 100%; border-radius: 1px; background: var(--c-score-bar); }
+.m-score-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+
+/* Action buttons */
+.act {
+  height: 29px; padding: 0 10px; border-radius: 7px;
+  font-size: 12px; font-weight: 600; border: none;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;
+  transition: background 120ms, color 120ms, transform 60ms; flex-shrink: 0;
+}
+.act:active { transform: scale(.95); }
+.act svg { width: 11px; height: 11px; }
+.act-use     { background: #FFA4B8; color: #12142B; }
+.act-use:hover { background: #DB456C; color: #fff; }
+.act-pull    { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); }
+.act-pull:hover { background: hsl(var(--muted)); }
+.act-alias   { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); }
+.act-alias:hover { background: hsl(var(--muted)); }
+.act-connect { background: #FA8A2E; color: #fff; }
+.act-connect:hover { background: #E36A0F; }
+
+/* Load more */
+.load-more {
+  width: 100%; padding: 14px; background: none; border: none;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 13px; font-weight: 500; color: hsl(var(--muted-foreground));
+  transition: color 120ms;
+}
+.load-more:hover { color: hsl(var(--foreground)); }
+.load-more svg { width: 14px; height: 14px; }
+
+/* ══════════════════════════════════════════════════════════
+   RIGHT PANEL
+══════════════════════════════════════════════════════════ */
+.panel {
+  background: hsl(var(--card));
+  border-left: 1px solid hsl(var(--border));
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: border-color 220ms cubic-bezier(.22,.61,.36,1);
+}
+.app.panel-collapsed .panel { border-left-color: transparent; }
+
+.panel-head {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 13px 14px 10px;
+  border-bottom: 1px solid hsl(var(--border));
+  flex-shrink: 0;
+}
+.panel-head-left { flex: 1; min-width: 0; }
+.panel-badges { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.panel-provider { font-size: 11px; color: hsl(var(--muted-foreground)); display: flex; align-items: center; gap: 4px; }
+.panel-provider svg { width: 10px; height: 10px; }
+.panel-title { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 3px; }
+.panel-sub { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.panel-stat { display: flex; align-items: center; gap: 3px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.panel-stat svg { width: 10px; height: 10px; }
+.panel-close { width: 26px; height: 26px; border-radius: 6px; border: none; background: none; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); flex: none; margin-top: 0; }
+.panel-close:hover { background: hsl(var(--muted)); }
+.panel-close svg { width: 14px; height: 14px; }
+
+/* Panel tabs */
+.panel-tabs { display: flex; border-bottom: 1px solid hsl(var(--border)); flex-shrink: 0; overflow-x: auto; }
+.panel-tabs::-webkit-scrollbar { display: none; }
+.ptab {
+  padding: 8px 12px; font-size: 12.5px; font-weight: 500;
+  color: hsl(var(--muted-foreground)); border: none; background: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  white-space: nowrap; transition: color 120ms;
+}
+.ptab:hover { color: hsl(var(--foreground)); }
+.ptab.on { color: var(--c-lotus-text); border-bottom-color: var(--c-score-bar); font-weight: 600; }
+
+/* Panel body */
+.panel-body { flex: 1; overflow-y: auto; padding: 14px; min-height: 0; }
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+.p-section { margin-bottom: 18px; }
+.p-sec-lbl { font-size: 9.5px; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; color: hsl(var(--muted-foreground)); margin-bottom: 7px; }
+.cap-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.spec-table { display: flex; flex-direction: column; }
+.spec-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 5px 0; border-bottom: 1px solid hsl(var(--border)); gap: 8px;
+}
+.spec-row:last-child { border-bottom: none; }
+.spec-k { font-size: 12px; color: hsl(var(--muted-foreground)); font-weight: 500; flex-shrink: 0; }
+.spec-v { font-size: 12px; font-weight: 600; text-align: right; font-family: var(--font-mono); }
+
+/* Panel footer */
+.panel-foot {
+  padding: 12px 14px; border-top: 1px solid hsl(var(--border));
+  display: flex; flex-direction: column; gap: 7px; flex-shrink: 0;
+}
+.btn-add {
+  width: 100%; height: 36px; border-radius: 9px;
+  background: #FFA4B8; color: #12142B;
+  border: none; font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background 120ms;
+}
+.btn-add:hover { background: #DB456C; color: #fff; }
+.btn-add svg { width: 14px; height: 14px; }
+.panel-foot-row { display: flex; gap: 7px; }
+.btn-pull {
+  flex: 1; height: 32px; border-radius: 8px;
+  background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+  font-weight: 600; font-size: 12px; color: hsl(var(--foreground));
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: background 120ms;
+}
+.btn-pull:hover { background: hsl(var(--muted)); }
+.btn-pull svg { width: 12px; height: 12px; }
+.btn-star {
+  width: 32px; height: 32px; border-radius: 8px;
+  border: 1px solid hsl(var(--border)); background: hsl(var(--card));
+  display: flex; align-items: center; justify-content: center;
+  transition: background 120ms;
+}
+.btn-star:hover { background: hsl(var(--muted)); }
+.btn-star svg { width: 14px; height: 14px; color: hsl(var(--muted-foreground)); }
+.btn-star.starred svg { color: #FA8A2E; fill: #FA8A2E; }
+
+/* Panel empty */
+.panel-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; padding: 24px; text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+.panel-empty svg { width: 28px; height: 28px; opacity: .3; }
+.panel-empty .pe-t { font-size: 13px; font-weight: 600; }
+.panel-empty .pe-s { font-size: 12px; }
+
+/* ══════════════════════════════════════════════════════════
+   SCRIM  (tablet / mobile overlay)
+══════════════════════════════════════════════════════════ */
+.scrim {
+  display: none; position: fixed; inset: 0;
+  background: rgba(12,12,18,.5); z-index: 45;
+  opacity: 0; pointer-events: none;
+  transition: opacity 240ms ease;
+}
+.scrim.visible { opacity: 1; pointer-events: auto; }
+
+/* ══════════════════════════════════════════════════════════
+   TABLET  768 – 1099px
+══════════════════════════════════════════════════════════ */
+@media (max-width: 1099px) {
+  .app { grid-template-columns: 1fr !important; }
+  .side { display: none; }
+  .side-toggle, .panel-toggle { display: none; }
+  .header-logo { display: flex; }
+  .breadcrumb { display: none; }
+  .scrim { display: block; }
+  .panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 360px;
+    transform: translateX(100%);
+    transition: transform 240ms cubic-bezier(.22,.61,.36,1);
+    z-index: 50; border-left: 1px solid hsl(var(--border)) !important;
+    box-shadow: var(--shadow-lg);
+  }
+  .panel.open { transform: translateX(0); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE  < 768px
+══════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .header { padding: 0 12px; }
+  .scope-row { padding: 10px 12px 0; }
+  .type-tabs { padding: 6px 12px 0; }
+  .toolbar { padding: 8px 12px 0; }
+  .chip-row { padding: 6px 12px 0; }
+  .list-head { padding: 5px 12px; }
+  .m-row { padding: 9px 12px; }
+  .m-tags { display: none; }
+  .m-score-lbl { display: none; }
+  .panel { width: 100%; }
+  .tb-btn .tb-lbl { display: none; }
+  .head-actions .pill-btn-ghost { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   TWEAKS PANEL
+══════════════════════════════════════════════════════════ */
+.tweaks-panel {
+  position: fixed; bottom: 20px; right: 20px; width: 260px;
+  background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+  border-radius: 14px; box-shadow: var(--shadow-lg);
+  z-index: 100; display: none; flex-direction: column; overflow: hidden;
+}
+.tweaks-panel.open { display: flex; }
+.tp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px; border-bottom: 1px solid hsl(var(--border));
+  font-size: 13px; font-weight: 700;
+}
+.tp-close { background: none; border: none; border-radius: 5px; padding: 2px; color: hsl(var(--muted-foreground)); }
+.tp-close:hover { background: hsl(var(--muted)); }
+.tp-close svg { width: 14px; height: 14px; }
+.tp-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+.tp-row { display: flex; flex-direction: column; gap: 5px; }
+.tp-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: hsl(var(--muted-foreground)); }
+.tp-seg { display: flex; gap: 4px; }
+.tp-seg button {
+  flex: 1; padding: 5px 0; border-radius: 6px;
+  border: 1px solid hsl(var(--border)); background: transparent;
+  font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground));
+  transition: all 120ms;
+}
+.tp-seg button:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.tp-seg button.on { background: hsl(var(--foreground)); color: hsl(var(--background)); border-color: transparent; font-weight: 600; }
+.sw-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sw-row .sw-lbl { font-size: 12.5px; font-weight: 500; }
+.sw {
+  width: 34px; height: 19px; border-radius: 99px; flex: none;
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+  position: relative; cursor: pointer; transition: background 180ms, border-color 180ms;
+}
+.sw.on { background: #FFA4B8; border-color: #FFA4B8; }
+.sw::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+  transition: transform 180ms cubic-bezier(.22,.61,.36,1);
+}
+.sw.on::after { transform: translateX(15px); }
+
+/* ══════════════════════════════════════════════════════════
+   MODE SWITCH  (Local Models / API Models)
+══════════════════════════════════════════════════════════ */
+.mode-switch {
+  display: flex; align-items: center; gap: 3px;
+  padding: 8px 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  flex-shrink: 0;
+  background: hsl(var(--card));
+}
+.mode-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  border: none; background: transparent;
+  color: hsl(var(--muted-foreground));
+  transition: all 120ms; cursor: pointer;
+}
+.mode-btn svg { width: 14px; height: 14px; flex: none; }
+.mode-cnt {
+  font-size: 11px; font-weight: 600;
+  padding: 1px 6px; border-radius: 99px;
+  background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+  transition: background 120ms, color 120ms;
+}
+.mode-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.mode-btn.on {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  font-weight: 700;
+}
+.mode-btn.on .mode-cnt {
+  background: rgba(255,255,255,.18); color: rgba(255,255,255,.8);
+}
+[data-theme="dark"] .mode-btn.on .mode-cnt {
+  background: rgba(0,0,0,.25); color: rgba(255,255,255,.6);
+}
+
+/* ── Local model repo name ── */
+.m-org  { color: hsl(var(--muted-foreground)); font-weight: 500; }
+.m-sep  { opacity: .35; margin: 0 1px; }
+.m-repo { font-weight: 700; }
+
+/* ── Provider avatar ── */
+.prov-avatar {
+  width: 36px; height: 36px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; letter-spacing: -.02em;
+  flex-shrink: 0; margin-right: 10px;
+  font-family: var(--font-mono);
+}
+
+/* ── Connection status badge ── */
+.status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 99px;
+  font-size: 11px; font-weight: 600; border: 1px solid;
+  white-space: nowrap;
+}
+.status-badge svg { width: 9px; height: 9px; flex: none; }
+.status-connected { background: rgba(46,188,64,.12);   color: #2a9b36; border-color: rgba(46,188,64,.25); }
+.status-apikey    { background: var(--c-saffron-bg);   color: var(--c-saffron-text); border-color: var(--c-saffron-bd); }
+.status-available { background: var(--c-muted-bg);     color: var(--c-muted-text);   border-color: var(--c-muted-bd); }
+[data-theme="dark"] .status-connected { background: rgba(139,217,99,.14); color: #8BD963; border-color: rgba(139,217,99,.28); }
+
+/* ── Quant list in detail panel ── */
+.quant-list { display: flex; flex-direction: column; }
+.quant-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid hsl(var(--border));
+}
+.quant-row:last-child { border-bottom: none; }
+.quant-name { font-family: var(--font-mono); font-size: 12px; font-weight: 600; flex: 1; }
+.quant-size { font-size: 12px; color: hsl(var(--muted-foreground)); min-width: 58px; text-align: right; }
+
+/* ── Model list in API detail panel ── */
+.model-item-list { display: flex; flex-direction: column; }
+.model-item {
+  display: flex; align-items: center;
+  padding: 7px 0; border-bottom: 1px solid hsl(var(--border));
+}
+.model-item:last-child { border-bottom: none; }
+.model-item-name { font-family: var(--font-mono); font-size: 12px; color: hsl(var(--foreground)); }
+
+/* ══════════════════════════════════════════════════════════
+   MODEL TYPE NAV CARDS  (sidebar)
+══════════════════════════════════════════════════════════ */
+.mode-nav { display: flex; flex-direction: column; gap: 5px; padding: 4px 6px 8px; }
+.mode-nav-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 11px; border-radius: 9px;
+  border: 1px solid hsl(var(--border));
+  background: transparent; width: 100%; text-align: left;
+  cursor: pointer; transition: all 100ms; font-family: inherit;
+}
+.mode-nav-card:hover { background: hsl(var(--muted)); }
+.mode-nav-card.on { background: var(--c-lotus-bg); border-color: var(--c-lotus-bd); }
+.mode-nav-radio {
+  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 2px;
+  border: 2px solid hsl(var(--border));
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 100ms, background 100ms;
+}
+.mode-nav-card.on .mode-nav-radio { border-color: var(--c-lotus-text); background: var(--c-lotus-text); }
+.mode-nav-radio::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+.mode-nav-card.on .mode-nav-radio::after { background: #fff; }
+.mode-nav-label { font-size: 13px; font-weight: 600; color: hsl(var(--foreground)); line-height: 1.2; }
+.mode-nav-card.on .mode-nav-label { color: var(--c-lotus-text); }
+.mode-nav-sub { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 1px; }
+
+/* Sec-label supplementary note */
+.sec-note { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 9px; opacity: .8; }
+
+/* ══════════════════════════════════════════════════════════
+   MY MODELS  —  card list
+══════════════════════════════════════════════════════════ */
+.model-list.my-mode { padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; }
+.my-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 13px; border-radius: 10px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  cursor: pointer; transition: background 80ms, border-color 80ms;
+}
+.my-card:hover  { background: hsl(var(--muted)); border-color: hsl(var(--ring)); }
+.my-card.active { background: var(--c-lotus-bg); border-color: var(--c-lotus-bd); }
+
+.my-icon-box {
+  width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; margin-top: 1px;
+}
+.my-icon-box svg { width: 16px; height: 16px; }
+.my-icon-local-file  { background: var(--c-saffron-bg); color: var(--c-saffron-text); }
+.my-icon-model-alias { background: var(--c-lotus-bg);   color: var(--c-lotus-text); }
+.my-icon-api-model   { background: var(--c-indigo-bg);  color: var(--c-indigo-text); }
+.my-icon-fallback    { background: var(--c-teal-bg);    color: var(--c-teal-text); }
+
+/* The fb-step-name span should not strike-through its inline 'disabled' tag */
+.fb-step.disabled .fb-step-name span { text-decoration: none; vertical-align: middle; }
+.fb-chain { display: flex; flex-direction: column; }
+.fb-step {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  transition: opacity 160ms, background 160ms;
+}
+.fb-step.disabled {
+  opacity: .56;
+  background: hsl(var(--muted) / .35);
+  border-style: dashed;
+}
+.fb-step.disabled .fb-step-num {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border-color: hsl(var(--border));
+}
+.fb-step.disabled .fb-step-name {
+  text-decoration: line-through;
+  text-decoration-color: hsl(var(--muted-foreground));
+}
+.fb-step-num {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; margin-top: 1px;
+  background: var(--c-teal-bg); color: var(--c-teal-text);
+  border: 1px solid var(--c-teal-bd);
+}
+.fb-step-body { flex: 1; min-width: 0; }
+.fb-step-name {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fb-step-model {
+  font-family: var(--font-mono); font-size: 11px;
+  color: hsl(var(--muted-foreground)); margin-top: 2px;
+}
+.fb-step-meta {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  margin-top: 4px;
+}
+.fb-arrow {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: hsl(var(--muted-foreground));
+  padding: 4px 0 4px 18px;
+  margin-left: 10px;
+  border-left: 2px dashed hsl(var(--border));
+}
+.fb-arrow.dim { opacity: .5; }
+
+.my-body { flex: 1; min-width: 0; }
+.my-name {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px;
+}
+.my-sub     { font-size: 11.5px; color: hsl(var(--muted-foreground)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.my-exposed { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 3px; }
+
+.my-api-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; padding-top: 2px; }
+.my-provider-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+  background: var(--c-leaf-bg); color: var(--c-leaf-text); border: 1px solid var(--c-leaf-bd);
+}
+.my-key-ok { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 500; color: #2a9b36; white-space: nowrap; }
+.my-key-ok svg { width: 10px; height: 10px; }
+.my-key-no { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 500; color: var(--c-saffron-text); white-space: nowrap; }
+.my-key-no svg { width: 10px; height: 10px; }
+[data-theme="dark"] .my-key-ok { color: #8BD963; }
+</style>
+</head>
+<body>
+
+<div class="scrim" id="scrim" onclick="closePanel()"></div>
+
+<div class="app" id="app">
+
+  <!-- ════════ LEFT SIDEBAR ════════ -->
+  <aside class="side" id="modelsSidebar">
+
+    <div class="side-scroll">
+
+      <!-- ── MODEL TYPE: radio nav cards ── -->
+      <div class="sec-label" style="padding-top:8px;">Model Type</div>
+      <div class="mode-nav">
+        <button class="mode-nav-card on" data-mode="my-models" onclick="setMode('my-models')">
+          <span class="mode-nav-radio"></span>
+          <div>
+            <div class="mode-nav-label">My Models</div>
+            <div class="mode-nav-sub">configured on your BodhiApp</div>
+          </div>
+        </button>
+        <button class="mode-nav-card" data-mode="local" onclick="setMode('local')">
+          <span class="mode-nav-radio"></span>
+          <div>
+            <div class="mode-nav-label">Local Models</div>
+            <div class="mode-nav-sub">huggingface.co · GGUF</div>
+          </div>
+        </button>
+        <button class="mode-nav-card" data-mode="api" onclick="setMode('api')">
+          <span class="mode-nav-radio"></span>
+          <div>
+            <div class="mode-nav-label">API Models</div>
+            <div class="mode-nav-sub">hosted-API providers</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- ── MY MODELS FILTERS ── -->
+      <div id="sidebar-my-models">
+        <div class="sec-label">Type</div>
+        <div class="fc-row">
+          <button class="fc fc-saffron" onclick="toggleFc(this)">Local File</button>
+          <button class="fc fc-lotus" onclick="toggleFc(this)">Model Alias</button>
+          <button class="fc fc-indigo" onclick="toggleFc(this)">API Model</button>
+          <button class="fc fc-teal" onclick="toggleFc(this)">Fallback</button>
+        </div>
+
+        <div class="sec-label">Capability</div>
+        <div class="fc-row">
+          <button class="fc fc-neutral" onclick="toggleFc(this)">chat</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">tool-use</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">vision</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">embeddings</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">reasoning</button>
+        </div>
+
+        <div class="sec-label">Size <span class="sec-note">(local files only)</span></div>
+        <div class="fc-row">
+          <button class="fc fc-neutral" onclick="toggleFc(this)">&lt;4 GB</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">4–8 GB</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">&gt;8 GB</button>
+        </div>
+
+        <div class="sec-label">API Format <span class="sec-note">(API only)</span></div>
+        <div class="fc-row">
+          <button class="fc fc-neutral" onclick="toggleFc(this)">OpenAI-compat</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Native API</button>
+        </div>
+
+        <div class="sec-label">Steps <span class="sec-note">(fallback only)</span></div>
+        <div class="fc-row">
+          <button class="fc fc-neutral" onclick="toggleFc(this)">2 steps</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">3+ steps</button>
+        </div>
+      </div>
+
+      <!-- ── LOCAL MODEL FILTERS ── -->
+      <div id="sidebar-local" style="display:none;">
+        <div class="sec-label">Browse</div>
+        <div class="fc-row">
+          <button class="fc fc-neutral" onclick="toggleFc(this)">↗ Trending</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">✦ New</button>
+        </div>
+
+        <div class="sec-label">Specialisation <button class="clr" onclick="clearSec(this)">Clear</button></div>
+        <div class="fc-row">
+          <button class="fc fc-neutral on" onclick="toggleFc(this)">All</button>
+          <button class="fc fc-saffron on" onclick="toggleFc(this)">Coding</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Agentic</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Reasoning</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Long ctx</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Vision</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Small</button>
+        </div>
+
+        <div class="sec-label">Capability</div>
+        <div class="fc-row">
+          <button class="fc fc-indigo on" onclick="toggleFc(this)">tool-use</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">vision</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">structured</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">embedding</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">reasoning</button>
+        </div>
+
+        <div class="sec-label">Size</div>
+        <div class="fc-row">
+          <button class="fc fc-neutral" onclick="toggleFc(this)">&lt;5 GB</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">5–15 GB</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">&gt;15 GB</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">ctx &lt;32k</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">ctx 32k+</button>
+        </div>
+
+        <div class="sec-label">Quant Format</div>
+        <div class="fc-row">
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Q2_K</button>
+          <button class="fc fc-saffron on" onclick="toggleFc(this)">Q4_K_M</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Q6_K</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Q8_0</button>
+        </div>
+
+        <div class="sec-label">License</div>
+        <div class="fc-row">
+          <button class="fc fc-indigo on" onclick="toggleFc(this)">Apache-2</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">MIT</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Llama</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Gemma</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">DeepSeek</button>
+        </div>
+      </div>
+
+      <!-- ── API PROVIDER FILTERS ── -->
+      <div id="sidebar-api" style="display:none;">
+        <div class="sec-label">Status</div>
+        <div class="fc-row">
+          <button class="fc fc-leaf on" onclick="toggleFc(this)">Connected</button>
+          <button class="fc fc-saffron" onclick="toggleFc(this)">API key</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Available</button>
+        </div>
+
+        <div class="sec-label">Capability</div>
+        <div class="fc-row">
+          <button class="fc fc-indigo" onclick="toggleFc(this)">tool-use</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">vision</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">reasoning</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">structured</button>
+        </div>
+
+        <div class="sec-label">Pricing</div>
+        <div class="fc-row">
+          <button class="fc fc-leaf" onclick="toggleFc(this)">Free</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">&lt;$1/M</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">$1–5</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">$5+</button>
+        </div>
+
+        <div class="sec-label">API Format</div>
+        <div class="fc-row">
+          <button class="fc fc-indigo" onclick="toggleFc(this)">OpenAI-compat</button>
+          <button class="fc fc-neutral" onclick="toggleFc(this)">Native API</button>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ════════ MAIN ════════ -->
+  <main class="main">
+
+    <header class="header">
+      <!-- Left: sidebar toggle + logo (mobile) + breadcrumb -->
+      <button class="icon-btn side-toggle" onclick="toggleSide()" title="Toggle sidebar">
+        <i data-lucide="panel-left"></i>
+      </button>
+      <div class="header-logo">
+        <img src="assets/bodhi-logo-60.svg" alt="">
+      </div>
+      <div class="breadcrumb header-mid">
+        <span class="bc-seg">Bodhi</span>
+        <i data-lucide="chevron-right" class="sep"></i>
+        <span class="bc-seg">Models</span>
+        <i data-lucide="chevrons-up-down" class="sep"></i>
+        <i data-lucide="chevron-right" class="sep"></i>
+        <span class="bc-current">Models</span>
+      </div>
+
+      <!-- Right: actions + panel toggle -->
+      <div class="head-actions">
+        <button class="icon-btn panel-toggle" onclick="togglePanelCollapse()" title="Toggle detail panel">
+          <i data-lucide="panel-right"></i>
+        </button>
+      </div>
+    </header>
+
+
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <i data-lucide="search"></i>
+        <input type="text" placeholder="Filter anything — 78 apache, claude tool-use, my aliases…">
+        <span class="kbd">⌘K</span>
+      </div>
+      <button class="tb-btn">
+        <i data-lucide="sliders-horizontal"></i>
+        <span class="tb-lbl">Filters</span>
+        <span class="badge">5</span>
+      </button>
+      <button class="tb-btn">
+        <i data-lucide="arrow-down-to-line"></i>
+        <span class="tb-lbl">Downloads</span>
+      </button>
+    </div>
+
+    <!-- Active chips -->
+    <div class="chip-row" id="chipRow">
+      <span class="chip">Specialisation: Coding <button class="chip-x" onclick="rmChip(this)"><i data-lucide="x"></i></button></span>
+      <span class="chip">capability: tool-use <button class="chip-x" onclick="rmChip(this)"><i data-lucide="x"></i></button></span>
+      <span class="chip">license: Apache-2 <button class="chip-x" onclick="rmChip(this)"><i data-lucide="x"></i></button></span>
+      <span class="chip">format: GGUF <button class="chip-x" onclick="rmChip(this)"><i data-lucide="x"></i></button></span>
+      <button class="clear-btn" onclick="clearAll()">clear all</button>
+    </div>
+
+    <!-- Column headers -->
+    <div class="list-head" id="listHead">
+      <div class="lh-num lh-label">#</div>
+      <div class="lh-model lh-label" style="padding-left:4px;">Repository</div>
+      <div class="lh-score">Score <i data-lucide="chevrons-up-down"></i></div>
+      <div class="lh-action"></div>
+    </div>
+
+    <!-- Rows -->
+    <div class="model-list" id="modelList"></div>
+
+  </main>
+
+  <!-- ════════ RIGHT PANEL ════════ -->
+  <aside class="panel" id="panel">
+    <div id="panelContent" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="panel-empty">
+        <i data-lucide="layers"></i>
+        <div class="pe-t">Select a model</div>
+        <div class="pe-s">Click any row to view details</div>
+      </div>
+    </div>
+  </aside>
+
+</div><!-- /.app -->
+
+<!-- Tweaks -->
+<div class="tweaks-panel" id="tweaksPanel">
+  <div class="tp-head">
+    Tweaks
+    <button class="tp-close" onclick="closeTweaks()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="tp-body">
+    <div class="tp-row">
+      <div class="tp-lbl">Theme</div>
+      <div class="tp-seg">
+        <button id="tw-light" class="on" onclick="setTheme('light')">Light</button>
+        <button id="tw-dark"  onclick="setTheme('dark')">Dark</button>
+      </div>
+    </div>
+    <div class="tp-row">
+      <div class="tp-lbl">Density</div>
+      <div class="tp-seg">
+        <button id="tw-cozy"    class="on" onclick="setDensity('cozy')">Cozy</button>
+        <button id="tw-compact" onclick="setDensity('compact')">Compact</button>
+      </div>
+    </div>
+    <div class="sw-row">
+      <span class="sw-lbl">Show tags</span>
+      <div class="sw on" id="sw-tags" onclick="this.classList.toggle('on');toggleTags(this)"></div>
+    </div>
+    <div class="sw-row">
+      <span class="sw-lbl">Show score labels</span>
+      <div class="sw on" id="sw-score" onclick="this.classList.toggle('on');toggleScoreLabels(this)"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────
+   STATE
+───────────────────────────────────────── */
+let currentMode = 'my-models'; // 'my-models' | 'local' | 'api'
+
+/* ─────────────────────────────────────────
+   MY MODELS DATA  (local files + aliases + api models)
+───────────────────────────────────────── */
+const MY_MODELS = [
+  { id:'lf1', type:'local-file', org:'afrideva', repo:'Llama-68M-Chat',
+    filename:'llama-68m-chat-v1.q8_0.gguf', size:'0.07 GB',
+    detail:{ repo:'afrideva/Llama-68M-Chat', filename:'llama-68m-chat-v1.q8_0.gguf', snapshot:'a3f8d2c1e9b4f72a',
+      note:'Auto-discovered from local cache. Alias is derived as org/repo:quant and is read-only.' } },
+  { id:'lf2', type:'local-file', org:'Qwen', repo:'Qwen3-Coder-32B',
+    filename:'Qwen3-Coder-32B-Q4_K_M.gguf', size:'18.5 GB',
+    detail:{ repo:'Qwen/Qwen3-Coder-32B', filename:'Qwen3-Coder-32B-Q4_K_M.gguf', snapshot:'b9d4f1a2c3e5d8f0',
+      note:'Downloaded via Bodhi. Pull a different quant to replace.' } },
+  { id:'ma1', type:'model-alias', org:'', repo:'my-qwen-coder',
+    filename:'Qwen/Qwen3-Coder-32B:Q4_K_M', size:'18.5 GB',
+    detail:{ repo:'Qwen/Qwen3-Coder-32B', filename:'Qwen3-Coder-32B-Q4_K_M.gguf', snapshot:'b9d4f1a2c3e5d8f0',
+      note:'User-created alias with custom system prompt and parameters.' } },
+  { id:'lf3', type:'local-file', org:'meta-llama', repo:'Llama-3.3-70B',
+    filename:'Llama-3.3-70B-Instruct.Q4_K_M.gguf', size:'35.0 GB',
+    detail:{ repo:'meta-llama/Llama-3.3-70B', filename:'Llama-3.3-70B-Instruct.Q4_K_M.gguf', snapshot:'f7d5db77208a',
+      note:'Downloaded via Bodhi.' } },
+  { id:'am1', type:'api-model', name:'01kp50czqbcgnhnwtnv7jq2s',
+    baseUrl:'https://api.anthropic.com/v1', provider:'ANTHROPIC', modelsExposed:1, keyStatus:'no-key',
+    detail:{ baseUrl:'https://api.anthropic.com/v1', provider:'ANTHROPIC', models:['claude-sonnet-4-5'] } },
+  { id:'am2', type:'api-model', name:'01kp506g2crx8pgqtp4ts1jfh7',
+    baseUrl:'https://api.anthropic.com/v1', provider:'ANTHROPIC_OAUTH', modelsExposed:1, keyStatus:'no-key',
+    detail:{ baseUrl:'https://api.anthropic.com/v1', provider:'ANTHROPIC_OAUTH', models:['claude-opus-4'] } },
+  { id:'am3', type:'api-model', name:'openai-gpt-main',
+    baseUrl:'https://api.openai.com/v1', provider:'OPENAI', modelsExposed:3, keyStatus:'connected',
+    detail:{ baseUrl:'https://api.openai.com/v1', provider:'OPENAI', models:['gpt-5','gpt-4o','gpt-4o-mini'] } },
+  { id:'fb1', type:'fallback', name:'smart-fallback',
+    steps:[
+      { aliasName:'openai-gpt-main',          aliasType:'api-model',   provider:'OPENAI',    model:'gpt-4o',            enabled:true  },
+      { aliasName:'01kp50czqbcgnhnwtnv7jq2s', aliasType:'api-model',   provider:'ANTHROPIC', model:'claude-sonnet-4-5', enabled:false },
+      { aliasName:'my-qwen-coder',            aliasType:'model-alias', model:null,                                     enabled:true  },
+    ],
+    detail:{ note:'Tries OpenAI GPT-4o first. The Anthropic step is temporarily disabled — on error, falls through directly to local Qwen3-Coder.' } },
+  { id:'fb2', type:'fallback', name:'local-first',
+    steps:[
+      { aliasName:'my-qwen-coder',  aliasType:'model-alias', model:null,                                      enabled:true },
+      { aliasName:'openai-gpt-main', aliasType:'api-model', provider:'OPENAI', model:'gpt-4o-mini',            enabled:true },
+    ],
+    detail:{ note:'Prefers local inference for cost and privacy. On error, falls back to OpenAI GPT-4o mini.' } },
+];
+
+/* ─────────────────────────────────────────
+   LOCAL MODELS  (HuggingFace org/repo rows)
+───────────────────────────────────────── */
+const LOCAL_MODELS = [
+  { rank:1, org:'Qwen', repo:'Qwen3-Coder-32B',
+    meta:'5 quants · up to 32.1 GB · Apache-2.0',
+    tags:['coding','tool-use','reasoning'], score:74.2, quants:5,
+    detail:{ date:'2025-09-08', dl:'4,430/mo', stars:'9.1k',
+      caps:['tool-use','coding','reasoning','structured-output'],
+      specs:[{k:'Context',v:'131,072 tokens'},{k:'Architecture',v:'Qwen3-MoE'},{k:'License',v:'Apache-2.0'}],
+      quants:[{name:'Q8_0',size:'32.1 GB'},{name:'Q6_K',size:'24.6 GB'},{name:'Q4_K_M',size:'18.5 GB'},{name:'Q3_K_M',size:'14.2 GB'},{name:'Q2_K',size:'10.8 GB'}] } },
+  { rank:2, org:'meta-llama', repo:'Llama-3.3-70B',
+    meta:'4 quants · up to 70.3 GB · Llama',
+    tags:['reasoning','coding','chat'], score:61.4, quants:4,
+    detail:{ date:'2025-08-01', dl:'8.2k/mo', stars:'14k',
+      caps:['reasoning','coding','chat'],
+      specs:[{k:'Context',v:'131,072 tokens'},{k:'Architecture',v:'Llama 3.3'},{k:'License',v:'Llama'}],
+      quants:[{name:'Q8_0',size:'70.3 GB'},{name:'Q4_K_M',size:'35.0 GB'},{name:'Q3_K_M',size:'28.0 GB'},{name:'Q2_K',size:'22.5 GB'}] } },
+  { rank:3, org:'deepseek-ai', repo:'DeepSeek-V3',
+    meta:'3 quants · up to 120 GB · DeepSeek',
+    tags:['coding','reasoning'], score:62.7, quants:3,
+    detail:{ date:'2025-07-20', dl:'3.1k/mo', stars:'22k',
+      caps:['coding','reasoning'],
+      specs:[{k:'Context',v:'65,536 tokens'},{k:'Architecture',v:'DeepSeek-V3 MoE'},{k:'License',v:'DeepSeek'}],
+      quants:[{name:'Q8_0',size:'120 GB'},{name:'Q4_K_M',size:'60.0 GB'},{name:'Q2_K',size:'35.0 GB'}] } },
+  { rank:4, org:'google', repo:'gemma-2-9b-it',
+    meta:'4 quants · up to 9.4 GB · Gemma',
+    tags:['general','chat'], score:58.2, quants:4,
+    detail:{ date:'2025-06-15', dl:'12k/mo', stars:'18k',
+      caps:['general','chat'],
+      specs:[{k:'Context',v:'8,192 tokens'},{k:'Architecture',v:'Gemma 2'},{k:'License',v:'Gemma'}],
+      quants:[{name:'Q8_0',size:'9.4 GB'},{name:'Q6_K',size:'7.8 GB'},{name:'Q4_K_M',size:'5.8 GB'},{name:'Q2_K',size:'3.8 GB'}] } },
+  { rank:5, org:'microsoft', repo:'Phi-4',
+    meta:'3 quants · up to 8.9 GB · MIT',
+    tags:['reasoning','coding'], score:55.1, quants:3,
+    detail:{ date:'2025-05-10', dl:'6.4k/mo', stars:'8.2k',
+      caps:['reasoning','coding'],
+      specs:[{k:'Context',v:'16,384 tokens'},{k:'Architecture',v:'Phi-4'},{k:'License',v:'MIT'}],
+      quants:[{name:'Q8_0',size:'8.9 GB'},{name:'Q4_K_M',size:'5.1 GB'},{name:'Q2_K',size:'3.2 GB'}] } },
+  { rank:6, org:'mistralai', repo:'Mistral-7B-Instruct-v0.3',
+    meta:'4 quants · up to 7.7 GB · Apache-2.0',
+    tags:['chat','multilingual'], score:49.3, quants:4,
+    detail:{ date:'2025-03-12', dl:'25k/mo', stars:'31k',
+      caps:['chat','multilingual'],
+      specs:[{k:'Context',v:'32,768 tokens'},{k:'Architecture',v:'Mistral'},{k:'License',v:'Apache-2.0'}],
+      quants:[{name:'Q8_0',size:'7.7 GB'},{name:'Q6_K',size:'6.4 GB'},{name:'Q4_K_M',size:'4.8 GB'},{name:'Q2_K',size:'3.1 GB'}] } },
+];
+
+/* ─────────────────────────────────────────
+   API PROVIDERS  (provider rows)
+───────────────────────────────────────── */
+const API_PROVIDERS = [
+  { rank:1, provider:'Anthropic', slug:'anthropic',
+    meta:'8 models · connected',
+    tags:['tool-use','reasoning','vision'], status:'connected', models:8,
+    detail:{
+      caps:['tool-use','reasoning','vision','structured-output'],
+      specs:[{k:'API format',v:'Anthropic native'},{k:'Models',v:'8 available'},{k:'Pricing from',v:'$0.25/M tokens'},{k:'Context max',v:'200,000 tokens'}],
+      modelList:['claude-sonnet-4-5','claude-opus-4','claude-haiku-3-5','claude-3-5-sonnet','claude-3-5-haiku','claude-3-opus','claude-3-sonnet','claude-3-haiku'] } },
+  { rank:2, provider:'OpenAI', slug:'openai',
+    meta:'12 models · api-key set',
+    tags:['tool-use','vision','reasoning'], status:'api-key', models:12,
+    detail:{
+      caps:['tool-use','vision','reasoning','function-calling'],
+      specs:[{k:'API format',v:'OpenAI native'},{k:'Models',v:'12 available'},{k:'Pricing from',v:'$0.15/M tokens'},{k:'Context max',v:'128,000 tokens'}],
+      modelList:['gpt-5','gpt-4o','gpt-4o-mini','gpt-4-turbo','o3','o3-mini','o4-mini'] } },
+  { rank:3, provider:'OpenRouter', slug:'openrouter',
+    meta:'200+ models · api-key set',
+    tags:['tool-use','reasoning','vision'], status:'api-key', models:200,
+    detail:{
+      caps:['tool-use','reasoning','vision'],
+      specs:[{k:'API format',v:'OpenAI-compatible'},{k:'Models',v:'200+ available'},{k:'Pricing from',v:'Free'},{k:'Context max',v:'Varies by model'}],
+      modelList:['meta-llama/llama-3.3-70b','google/gemini-2.0-flash','anthropic/claude-sonnet-4-5','deepseek/deepseek-v3'] } },
+  { rank:4, provider:'Groq', slug:'groq',
+    meta:'15 models · not connected',
+    tags:['reasoning','multilingual'], status:'available', models:15,
+    detail:{
+      caps:['reasoning','multilingual','chat'],
+      specs:[{k:'API format',v:'OpenAI-compatible'},{k:'Models',v:'15 available'},{k:'Pricing from',v:'Free tier'},{k:'Context max',v:'128,000 tokens'}],
+      modelList:['llama-3.3-70b-versatile','mixtral-8x7b-32768','gemma2-9b-it','llama-3.1-8b-instant'] } },
+  { rank:5, provider:'NVIDIA NIM', slug:'nvidia-nim',
+    meta:'50+ models · not connected',
+    tags:['reasoning','vision','coding'], status:'available', models:50,
+    detail:{
+      caps:['reasoning','vision','coding','tool-use'],
+      specs:[{k:'API format',v:'OpenAI-compatible'},{k:'Models',v:'50+ available'},{k:'Pricing from',v:'Free trial'},{k:'Context max',v:'Varies by model'}],
+      modelList:['meta/llama-3.3-70b-instruct','nvidia/llama-3.1-nemotron-70b','microsoft/phi-4'] } },
+  { rank:6, provider:'Together AI', slug:'together',
+    meta:'100+ models · not connected',
+    tags:['reasoning','coding','vision'], status:'available', models:100,
+    detail:{
+      caps:['reasoning','coding','vision'],
+      specs:[{k:'API format',v:'OpenAI-compatible'},{k:'Models',v:'100+ available'},{k:'Pricing from',v:'$0.10/M tokens'},{k:'Context max',v:'128,000 tokens'}],
+      modelList:['meta-llama/Llama-3.3-70B-Instruct-Turbo','deepseek-ai/DeepSeek-V3','Qwen/Qwen3-235B-A22B'] } },
+];
+
+/* ─────────────────────────────────────────
+   TAG / STATUS CONFIG
+───────────────────────────────────────── */
+const TAG_MAP = {
+  'tool-use':'tag-indigo','reasoning':'tag-indigo','coding':'tag-leaf',
+  'vision':'tag-indigo','structured':'tag-muted','structured-output':'tag-muted',
+  'function-calling':'tag-muted','general':'tag-muted','chat':'tag-muted',
+  'multilingual':'tag-saffron','embedding':'tag-muted',
+};
+const STATUS_CFG = {
+  'connected': { cls:'status-connected', lbl:'Connected',   icon:'check-circle' },
+  'api-key':   { cls:'status-apikey',    lbl:'API key set', icon:'key' },
+  'available': { cls:'status-available', lbl:'Available',   icon:'circle' },
+};
+const PROV_COLORS = {
+  'anthropic':  '#D97757',
+  'openai':     '#10a37f',
+  'openrouter': '#7c5cfc',
+  'groq':       '#f55036',
+  'nvidia-nim': '#76b900',
+  'together':   '#0f62fe',
+};
+
+/* ─────────────────────────────────────────
+   MODE SWITCH
+───────────────────────────────────────── */
+function setMode(mode) {
+  currentMode = mode;
+  // Update radio nav cards
+  document.querySelectorAll('.mode-nav-card').forEach(c => {
+    c.classList.toggle('on', c.dataset.mode === mode);
+  });
+  // Update breadcrumb
+  const bc = document.querySelector('.bc-current');
+  if (bc) bc.textContent = mode === 'my-models' ? 'My Models' : mode === 'local' ? 'Local Models' : 'API Models';
+  // Update sidebar filter panels
+  document.getElementById('sidebar-my-models').style.display = mode === 'my-models' ? '' : 'none';
+  document.getElementById('sidebar-local').style.display     = mode === 'local'     ? '' : 'none';
+  document.getElementById('sidebar-api').style.display       = mode === 'api'       ? '' : 'none';
+  // Update column header
+  const lh = document.getElementById('listHead');
+  if (mode === 'my-models') {
+    lh.style.display = 'none';
+    document.getElementById('modelList').classList.add('my-mode');
+  } else {
+    lh.style.display = '';
+    document.getElementById('modelList').classList.remove('my-mode');
+    if (mode === 'local') {
+      lh.innerHTML = `
+        <div class="lh-num lh-label">#</div>
+        <div class="lh-model lh-label" style="padding-left:4px;">Repository</div>
+        <div class="lh-score">Score <i data-lucide="chevrons-up-down"></i></div>
+        <div class="lh-action"></div>`;
+    } else {
+      lh.innerHTML = `
+        <div class="lh-num lh-label">#</div>
+        <div class="lh-model lh-label" style="padding-left:56px;">Provider</div>
+        <div class="lh-score" style="min-width:68px;">Models</div>
+        <div class="lh-action"></div>`;
+    }
+  }
+  // Update search placeholder
+  const inp = document.querySelector('.search-box input');
+  if (inp) inp.placeholder = mode === 'my-models'
+    ? 'Search by alias, repo, filename, base URL — ⌘K'
+    : mode === 'local' ? 'Search HuggingFace repos — ⌘K'
+    : 'Search API providers — ⌘K';
+  closePanel();
+  renderList();
+  lucide.createIcons();
+}
+
+/* ─────────────────────────────────────────
+   RENDER LIST
+───────────────────────────────────────── */
+function renderList() {
+  const list = document.getElementById('modelList');
+  list.innerHTML = '';
+  if (currentMode === 'my-models') {
+    list.classList.add('my-mode');
+    renderMyModels(list);
+  } else {
+    list.classList.remove('my-mode');
+    if (currentMode === 'local') renderLocalModels(list);
+    else renderApiProviders(list);
+    const lm = document.createElement('button');
+    lm.className = 'load-more';
+    lm.innerHTML = '<i data-lucide="chevrons-down"></i> Load more';
+    list.appendChild(lm);
+  }
+  lucide.createIcons();
+}
+
+/* ── My Models: mixed card rows ── */
+function renderMyModels(list) {
+  MY_MODELS.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'my-card';
+    div.dataset.idx = i;
+
+    if (item.type === 'local-file' || item.type === 'model-alias') {
+      const isAlias  = item.type === 'model-alias';
+      const iconName = isAlias ? 'tag' : 'hard-drive';
+      const badgeLbl = isAlias ? 'Model Alias' : 'Local File';
+      const badgeCls = isAlias ? 'type-badge tb-alias' : 'type-badge tb-hf';
+      const iconCls  = isAlias ? 'my-icon-model-alias' : 'my-icon-local-file';
+      const displayName = isAlias ? item.repo : `${item.org}/${item.repo}`;
+      div.innerHTML = `
+        <div class="my-icon-box ${iconCls}"><i data-lucide="${iconName}"></i></div>
+        <div class="my-body">
+          <div style="margin-bottom:4px;"><span class="${badgeCls}"><i data-lucide="${iconName}"></i>${badgeLbl}</span></div>
+          <div class="my-name">${displayName}</div>
+          <div class="my-sub">${item.filename}</div>
+        </div>`;
+    } else if (item.type === 'fallback') {
+      // Build a tiny chain preview: "openai-gpt-main → … → my-qwen-coder"
+      const previewParts = item.steps.map(s => s.aliasName);
+      let preview;
+      if (previewParts.length <= 2) {
+        preview = previewParts.join('  →  ');
+      } else {
+        preview = `${previewParts[0]}  →  …  →  ${previewParts[previewParts.length - 1]}`;
+      }
+      const enabledCount = item.steps.filter(s => s.enabled !== false).length;
+      const stepSummary = enabledCount === item.steps.length
+        ? `${item.steps.length} steps · tried in order on error`
+        : `${enabledCount} of ${item.steps.length} steps active · ${item.steps.length - enabledCount} disabled`;
+      div.innerHTML = `
+        <div class="my-icon-box my-icon-fallback"><i data-lucide="route"></i></div>
+        <div class="my-body">
+          <div style="margin-bottom:4px;"><span class="type-badge tb-fallback"><i data-lucide="route"></i>Fallback</span></div>
+          <div class="my-name">${item.name}</div>
+          <div class="my-sub" style="font-family:var(--font-mono);">${preview}</div>
+          <div class="my-exposed">${stepSummary}</div>
+        </div>`;
+    } else {
+      const keyBadge = item.keyStatus === 'connected'
+        ? `<span class="my-key-ok"><i data-lucide="check-circle"></i>connected</span>`
+        : `<span class="my-key-no"><i data-lucide="key"></i>no key</span>`;
+      div.innerHTML = `
+        <div class="my-icon-box my-icon-api-model"><i data-lucide="at-sign"></i></div>
+        <div class="my-body">
+          <div style="margin-bottom:4px;"><span class="type-badge tb-api"><i data-lucide="at-sign"></i>API Model</span></div>
+          <div class="my-name">${item.name}</div>
+          <div class="my-sub">${item.baseUrl}</div>
+          <div class="my-exposed">${item.modelsExposed} model${item.modelsExposed > 1 ? 's' : ''} exposed</div>
+        </div>
+        <div class="my-api-right">
+          <span class="my-provider-badge">${item.provider}</span>
+          ${keyBadge}
+        </div>`;
+    }
+    div.onclick = () => openMyModelDetail(item, i);
+    list.appendChild(div);
+  });
+}
+
+/* ── My Models detail panel ── */
+function openMyModelDetail(item, idx) {
+  const desktop = window.innerWidth >= 1100;
+  document.querySelectorAll('.my-card').forEach(r => r.classList.remove('active'));
+  document.querySelector(`.my-card[data-idx="${idx}"]`)?.classList.add('active');
+  if (desktop) document.getElementById('app').classList.remove('panel-collapsed');
+
+  let inner = '';
+  if (item.type === 'local-file' || item.type === 'model-alias') {
+    const typeLbl  = item.type === 'model-alias' ? 'MODEL ALIAS' : 'LOCAL FILE';
+    const dispName = item.type === 'model-alias' ? item.repo : `${item.detail.repo}:${item.filename.split('.').slice(-2,- 1)[0]||'gguf'}`;
+    inner = `
+      <div class="panel-head">
+        <div class="panel-head-left">
+          <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:hsl(var(--muted-foreground));margin-bottom:5px;">${typeLbl}</div>
+          <div class="panel-title" style="font-family:var(--font-mono);font-size:13px;white-space:normal;word-break:break-all;">${dispName}</div>
+        </div>
+        <button class="panel-close" onclick="closePanel()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="panel-body">
+        <div class="p-sec-lbl" style="margin-bottom:8px;">File</div>
+        <div class="spec-table">
+          <div class="spec-row"><span class="spec-k">repo</span><span class="spec-v" style="font-size:11px;word-break:break-all;">${item.detail.repo}</span></div>
+          <div class="spec-row"><span class="spec-k">filename</span><span class="spec-v" style="font-size:11px;word-break:break-all;">${item.detail.filename}</span></div>
+          <div class="spec-row"><span class="spec-k">snapshot</span><span class="spec-v" style="font-size:11px;">${item.detail.snapshot}</span></div>
+        </div>
+        <div style="margin-top:14px;font-size:12px;color:hsl(var(--muted-foreground));line-height:1.65;">${item.detail.note}</div>
+      </div>`;
+  } else if (item.type === 'fallback') {
+    // Build the step list with "on error ↓" arrows between each
+    const stepsHtml = item.steps.map((s, i) => {
+      const stepEnabled = s.enabled !== false;
+      const aliasBadgeCls = s.aliasType === 'api-model' ? 'tb-api'
+                          : s.aliasType === 'model-alias' ? 'tb-alias'
+                          : 'tb-hf';
+      const aliasIcon     = s.aliasType === 'api-model' ? 'at-sign'
+                          : s.aliasType === 'model-alias' ? 'tag'
+                          : 'hard-drive';
+      const aliasLabel    = s.aliasType === 'api-model' ? 'API Model'
+                          : s.aliasType === 'model-alias' ? 'Model Alias'
+                          : 'Local File';
+      const provBadge = s.provider
+        ? `<span class="my-provider-badge">${s.provider}</span>` : '';
+      const modelLine = s.model
+        ? `<div class="fb-step-model">→ ${s.model}</div>` : '';
+      const disabledTag = !stepEnabled
+        ? `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:3px;background:var(--c-saffron-bg);color:var(--c-saffron-text);border:1px solid var(--c-saffron-bd);margin-left:6px;vertical-align:middle;">disabled</span>`
+        : '';
+      const arrow = i < item.steps.length - 1
+        ? `<div class="fb-arrow${stepEnabled ? '' : ' dim'}"><i data-lucide="arrow-down"></i>on error, try next</div>` : '';
+      return `
+        <div class="fb-step${stepEnabled ? '' : ' disabled'}">
+          <div class="fb-step-num">${i + 1}</div>
+          <div class="fb-step-body">
+            <div class="fb-step-name">${s.aliasName}${disabledTag}</div>
+            ${modelLine}
+            <div class="fb-step-meta">
+              <span class="type-badge ${aliasBadgeCls}"><i data-lucide="${aliasIcon}"></i>${aliasLabel}</span>
+              ${provBadge}
+            </div>
+          </div>
+        </div>
+        ${arrow}`;
+    }).join('');
+    const enabledCount = item.steps.filter(s => s.enabled !== false).length;
+    inner = `
+      <div class="panel-head">
+        <div class="panel-head-left">
+          <div class="panel-badges"><span class="type-badge tb-fallback"><i data-lucide="route"></i>Fallback Alias</span></div>
+          <div class="panel-title" style="font-family:var(--font-mono);font-size:13px;white-space:normal;word-break:break-all;">${item.name}</div>
+          <div class="panel-sub" style="margin-top:4px;">
+            <span class="panel-stat"><i data-lucide="layers"></i>${enabledCount} of ${item.steps.length} steps active</span>
+          </div>
+        </div>
+        <button class="panel-close" onclick="closePanel()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="panel-body">
+        <div class="p-sec-lbl" style="margin-bottom:8px;">Routing chain</div>
+        <div class="fb-chain">${stepsHtml}</div>
+        <div style="margin-top:16px;font-size:12px;color:hsl(var(--muted-foreground));line-height:1.65;">${item.detail.note}</div>
+        <div class="p-sec-lbl" style="margin-top:18px;margin-bottom:8px;">Behavior</div>
+        <div class="spec-table">
+          <div class="spec-row"><span class="spec-k">on error</span><span class="spec-v" style="font-size:11px;">try next step</span></div>
+          <div class="spec-row"><span class="spec-k">on success</span><span class="spec-v" style="font-size:11px;">return immediately</span></div>
+          <div class="spec-row"><span class="spec-k">disabled steps</span><span class="spec-v" style="font-size:11px;">skipped at runtime</span></div>
+          <div class="spec-row"><span class="spec-k">all failed</span><span class="spec-v" style="font-size:11px;">surface final error</span></div>
+        </div>
+      </div>
+      <div class="panel-foot">
+        <a href="Create Fallback Model.html" class="btn-add" style="background:var(--c-teal-text);color:#fff;text-decoration:none;">
+          <i data-lucide="pencil"></i> Edit fallback alias
+        </a>
+      </div>`;
+  } else {
+    const keyBadge = item.keyStatus === 'connected'
+      ? `<span class="my-key-ok"><i data-lucide="check-circle"></i>connected</span>`
+      : `<span class="my-key-no"><i data-lucide="key"></i>no key</span>`;
+    const modelItems = item.detail.models.map(m => `<div class="model-item"><span class="model-item-name">${m}</span></div>`).join('');
+    inner = `
+      <div class="panel-head">
+        <div class="panel-head-left">
+          <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:hsl(var(--muted-foreground));margin-bottom:5px;">API MODEL</div>
+          <div class="panel-title" style="font-family:var(--font-mono);font-size:13px;white-space:normal;word-break:break-all;">${item.name}</div>
+          <div class="panel-sub" style="margin-top:4px;">${keyBadge}</div>
+        </div>
+        <button class="panel-close" onclick="closePanel()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="panel-body">
+        <div class="p-sec-lbl" style="margin-bottom:8px;">Connection</div>
+        <div class="spec-table">
+          <div class="spec-row"><span class="spec-k">base URL</span><span class="spec-v" style="font-size:11px;word-break:break-all;">${item.baseUrl}</span></div>
+          <div class="spec-row"><span class="spec-k">provider</span><span class="spec-v"><span class="my-provider-badge">${item.provider}</span></span></div>
+          <div class="spec-row"><span class="spec-k">models</span><span class="spec-v">${item.modelsExposed} exposed</span></div>
+        </div>
+        <div class="p-sec-lbl" style="margin-top:16px;margin-bottom:8px;">Models</div>
+        <div class="model-item-list">${modelItems}</div>
+      </div>`;
+  }
+
+  document.getElementById('panelContent').innerHTML = inner;
+  document.getElementById('panel').classList.add('open');
+  if (!desktop) document.getElementById('scrim').classList.add('visible');
+  lucide.createIcons();
+}
+
+/* ── Local: HF org/repo rows ── */
+function renderLocalModels(list) {
+  LOCAL_MODELS.forEach((m, i) => {
+    const div = document.createElement('div');
+    div.className = 'm-row';
+    div.dataset.idx = i;
+    const tags = m.tags.map(t => `<span class="tag ${TAG_MAP[t]||'tag-muted'}">${t}</span>`).join('');
+    const fill = Math.round(m.score);
+    div.innerHTML = `
+      <div class="m-num">#${m.rank}</div>
+      <div class="m-body">
+        <div class="m-name"><span class="m-org">${m.org}</span><span class="m-sep">/</span><span class="m-repo">${m.repo}</span></div>
+        <div class="m-meta">${m.meta}</div>
+        <div class="m-tags">${tags}</div>
+      </div>
+      <div class="m-right">
+        <div class="m-score">
+          <div class="m-score-num">${m.score}</div>
+          <div class="m-score-bar"><div class="m-score-fill" style="width:${fill}%"></div></div>
+          <div class="m-score-lbl">HUMAN</div>
+        </div>
+        <button class="act act-pull" onclick="event.stopPropagation()"><i data-lucide="download"></i> Pull</button>
+      </div>`;
+    div.onclick = () => openLocalDetail(m, i);
+    list.appendChild(div);
+  });
+}
+
+/* ── API: provider rows ── */
+function renderApiProviders(list) {
+  API_PROVIDERS.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'm-row';
+    div.dataset.idx = i;
+    const tags = p.tags.map(t => `<span class="tag ${TAG_MAP[t]||'tag-muted'}">${t}</span>`).join('');
+    const sc    = STATUS_CFG[p.status] || STATUS_CFG['available'];
+    const color = PROV_COLORS[p.slug] || '#888';
+    const initials = p.provider.slice(0, 2).toUpperCase();
+    const modelSuffix = p.models >= 100 ? '+' : '';
+    const actionBtn = (p.status === 'connected' || p.status === 'api-key')
+      ? `<button class="act act-use" onclick="event.stopPropagation()"><i data-lucide="settings-2"></i> Manage</button>`
+      : `<button class="act act-connect" onclick="event.stopPropagation()"><i data-lucide="plug-zap"></i> Connect</button>`;
+    div.innerHTML = `
+      <div class="m-num">#${p.rank}</div>
+      <div class="prov-avatar" style="background:${color}1a;color:${color};border:1.5px solid ${color}40;">${initials}</div>
+      <div class="m-body">
+        <div class="m-name" style="display:flex;align-items:center;gap:8px;">
+          ${p.provider}
+          <span class="status-badge ${sc.cls}"><i data-lucide="${sc.icon}"></i>${sc.lbl}</span>
+        </div>
+        <div class="m-meta">${p.meta}</div>
+        <div class="m-tags">${tags}</div>
+      </div>
+      <div class="m-right">
+        <div class="m-score" style="min-width:44px;text-align:right;">
+          <div class="m-score-num" style="font-size:16px;">${p.models}${modelSuffix}</div>
+          <div class="m-score-lbl">MODELS</div>
+        </div>
+        ${actionBtn}
+      </div>`;
+    div.onclick = () => openApiDetail(p, i);
+    list.appendChild(div);
+  });
+}
+
+/* ─────────────────────────────────────────
+   DETAIL PANEL
+───────────────────────────────────────── */
+const starred = new Set();
+
+/* Local model detail */
+function openLocalDetail(m, idx) {
+  const desktop = window.innerWidth >= 1100;
+  document.querySelectorAll('.m-row').forEach(r => r.classList.remove('active'));
+  document.querySelector(`.m-row[data-idx="${idx}"]`)?.classList.add('active');
+  if (desktop) document.getElementById('app').classList.remove('panel-collapsed');
+
+  const caps  = m.detail.caps.map(c => `<span class="tag ${TAG_MAP[c]||'tag-muted'}" style="font-size:12px;padding:3px 9px;">${c}</span>`).join('');
+  const specs = m.detail.specs.map(s => `<div class="spec-row"><span class="spec-k">${s.k}</span><span class="spec-v">${s.v}</span></div>`).join('');
+  const quants = m.detail.quants.map(q => `
+    <div class="quant-row">
+      <span class="quant-name">${q.name}</span>
+      <span class="quant-size">${q.size}</span>
+      <button class="act act-pull" style="height:26px;font-size:11px;padding:0 8px;" onclick="event.stopPropagation()"><i data-lucide="download"></i> Pull</button>
+    </div>`).join('');
+  const statParts = [
+    m.detail.date  && `<span class="panel-stat"><i data-lucide="calendar"></i>${m.detail.date}</span>`,
+    m.detail.dl    && `<span class="panel-stat"><i data-lucide="download"></i>${m.detail.dl}</span>`,
+    m.detail.stars && `<span class="panel-stat"><i data-lucide="star"></i>${m.detail.stars}</span>`,
+  ].filter(Boolean).join('');
+  const key = `${m.org}/${m.repo}`;
+
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <div class="panel-badges">
+          <span class="type-badge tb-hf"><i data-lucide="hard-drive"></i>hf-repo</span>
+        </div>
+        <div class="panel-title"><span style="opacity:.5;font-weight:500;">${m.org}/</span>${m.repo}</div>
+        <div class="panel-sub">${statParts}</div>
+      </div>
+      <button class="panel-close" onclick="closePanel()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="panel-tabs" id="localPanelTabs">
+      <button class="ptab on" onclick="switchPanelTab(this,'local-overview')">Overview</button>
+      <button class="ptab" onclick="switchPanelTab(this,'local-quants')">Quants (${m.quants})</button>
+    </div>
+    <div class="panel-body">
+      <div id="local-overview">
+        <div class="p-section">
+          <div class="p-sec-lbl">Capabilities</div>
+          <div class="cap-chips">${caps}</div>
+        </div>
+        <div class="p-section">
+          <div class="p-sec-lbl">Specs</div>
+          <div class="spec-table">${specs}</div>
+        </div>
+      </div>
+      <div id="local-quants" style="display:none;">
+        <div class="p-section">
+          <div class="p-sec-lbl">Available Quantizations</div>
+          <div class="quant-list">${quants}</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-foot">
+      <button class="btn-add"><i data-lucide="circle-plus"></i> Add to Bodhi</button>
+      <div class="panel-foot-row">
+        <button class="btn-pull"><i data-lucide="download"></i> Pull best quant</button>
+        <button class="btn-star${starred.has(key)?' starred':''}" id="starBtn" onclick="toggleStar('${key}')"><i data-lucide="star"></i></button>
+      </div>
+    </div>`;
+
+  document.getElementById('panel').classList.add('open');
+  if (!desktop) document.getElementById('scrim').classList.add('visible');
+  lucide.createIcons();
+}
+
+/* API provider detail */
+function openApiDetail(p, idx) {
+  const desktop = window.innerWidth >= 1100;
+  document.querySelectorAll('.m-row').forEach(r => r.classList.remove('active'));
+  document.querySelector(`.m-row[data-idx="${idx}"]`)?.classList.add('active');
+  if (desktop) document.getElementById('app').classList.remove('panel-collapsed');
+
+  const color  = PROV_COLORS[p.slug] || '#888';
+  const sc     = STATUS_CFG[p.status] || STATUS_CFG['available'];
+  const caps   = p.detail.caps.map(c => `<span class="tag ${TAG_MAP[c]||'tag-muted'}" style="font-size:12px;padding:3px 9px;">${c}</span>`).join('');
+  const specs  = p.detail.specs.map(s => `<div class="spec-row"><span class="spec-k">${s.k}</span><span class="spec-v">${s.v}</span></div>`).join('');
+  const models = p.detail.modelList.map(m => `<div class="model-item"><span class="model-item-name">${m}</span></div>`).join('');
+  const modelSuffix = p.models >= 100 ? '+' : '';
+  const footBtn = (p.status === 'connected' || p.status === 'api-key')
+    ? `<button class="btn-add" style="background:hsl(var(--foreground));color:hsl(var(--background));"><i data-lucide="settings-2"></i> Manage Connection</button>`
+    : `<button class="btn-add"><i data-lucide="plug-zap"></i> Connect Provider</button>`;
+
+  document.getElementById('panelContent').innerHTML = `
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <div class="panel-badges">
+          <span class="status-badge ${sc.cls}" style="font-size:12px;padding:3px 9px;"><i data-lucide="${sc.icon}"></i>${sc.lbl}</span>
+        </div>
+        <div class="panel-title" style="display:flex;align-items:center;gap:9px;">
+          <span class="prov-avatar" style="width:24px;height:24px;border-radius:6px;font-size:10px;flex-shrink:0;background:${color}1a;color:${color};border:1.5px solid ${color}40;">${p.provider.slice(0,2).toUpperCase()}</span>
+          ${p.provider}
+        </div>
+        <div class="panel-sub">
+          <span class="panel-stat"><i data-lucide="layers"></i>${p.models}${modelSuffix} models</span>
+        </div>
+      </div>
+      <button class="panel-close" onclick="closePanel()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="panel-tabs">
+      <button class="ptab on" onclick="switchPanelTab(this,'api-overview')">Overview</button>
+      <button class="ptab" onclick="switchPanelTab(this,'api-models')">Models (${p.models}${modelSuffix})</button>
+    </div>
+    <div class="panel-body">
+      <div id="api-overview">
+        <div class="p-section">
+          <div class="p-sec-lbl">Capabilities</div>
+          <div class="cap-chips">${caps}</div>
+        </div>
+        <div class="p-section">
+          <div class="p-sec-lbl">Provider Info</div>
+          <div class="spec-table">${specs}</div>
+        </div>
+      </div>
+      <div id="api-models" style="display:none;">
+        <div class="p-section">
+          <div class="p-sec-lbl">Available Models</div>
+          <div class="model-item-list">${models}</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-foot">
+      ${footBtn}
+    </div>`;
+
+  document.getElementById('panel').classList.add('open');
+  if (!desktop) document.getElementById('scrim').classList.add('visible');
+  lucide.createIcons();
+}
+
+function switchPanelTab(btn, showId) {
+  btn.closest('.panel-tabs').querySelectorAll('.ptab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+  btn.closest('.panel').querySelectorAll('.panel-body > div[id]').forEach(d => d.style.display = 'none');
+  const target = document.getElementById(showId);
+  if (target) target.style.display = '';
+  lucide.createIcons();
+}
+
+function closePanel() {
+  if (window.innerWidth < 1100) {
+    document.getElementById('panel').classList.remove('open');
+    document.getElementById('scrim').classList.remove('visible');
+  }
+  document.querySelectorAll('.m-row').forEach(r => r.classList.remove('active'));
+}
+
+function toggleStar(key) {
+  starred.has(key) ? starred.delete(key) : starred.add(key);
+  document.getElementById('starBtn')?.classList.toggle('starred', starred.has(key));
+  lucide.createIcons();
+}
+
+/* ─────────────────────────────────────────
+   UI CONTROLS
+───────────────────────────────────────── */
+function rmChip(btn)   { btn.closest('.chip').remove(); }
+function clearAll()    { document.querySelectorAll('#chipRow .chip').forEach(c => c.remove()); }
+function toggleFc(btn) { btn.classList.toggle('on'); }
+function clearSec(btn) {
+  btn.closest('.sec-label').nextElementSibling?.querySelectorAll('.fc').forEach(f => f.classList.remove('on'));
+}
+function toggleSide()          { document.getElementById('app').classList.toggle('side-collapsed'); }
+function togglePanelCollapse() { document.getElementById('app').classList.toggle('panel-collapsed'); }
+
+/* ─────────────────────────────────────────
+   TWEAKS
+───────────────────────────────────────── */
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('tw-light').classList.toggle('on', t==='light');
+  document.getElementById('tw-dark').classList.toggle('on',  t==='dark');
+  window.parent.postMessage({type:'__edit_mode_set_keys', edits:{theme:t}}, '*');
+}
+function setDensity(d) {
+  document.getElementById('tw-cozy').classList.toggle('on',    d==='cozy');
+  document.getElementById('tw-compact').classList.toggle('on', d==='compact');
+  const p = d==='compact' ? '7px 16px' : '';
+  document.querySelectorAll('.m-row').forEach(r => r.style.padding = p);
+}
+function toggleTags(sw) {
+  const show = sw.classList.contains('on');
+  document.querySelectorAll('.m-tags').forEach(t => t.style.display = show ? '' : 'none');
+}
+function toggleScoreLabels(sw) {
+  const show = sw.classList.contains('on');
+  document.querySelectorAll('.m-score-lbl').forEach(t => t.style.display = show ? '' : 'none');
+}
+function closeTweaks() {
+  document.getElementById('tweaksPanel').classList.remove('open');
+  window.parent.postMessage({type:'__edit_mode_dismissed'}, '*');
+}
+
+window.addEventListener('message', e => {
+  if (e.data?.type === '__activate_edit_mode')   document.getElementById('tweaksPanel').classList.add('open');
+  if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaksPanel').classList.remove('open');
+});
+window.parent.postMessage({type:'__edit_mode_available'}, '*');
+
+/* ─────────────────────────────────────────
+   INIT
+───────────────────────────────────────── */
+initBodhiSidebar(document.getElementById('modelsSidebar'), {
+  section: 'models',
+  subPage: null,
+});
+setMode('my-models');
+if (window.innerWidth >= 1100) {
+  openMyModelDetail(MY_MODELS[0], 0);
+}
+</script>
+</body>
+</html>

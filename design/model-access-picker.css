@@ -1,0 +1,380 @@
+/* ═══════════════════════════════════════════════════
+   MODEL ACCESS PICKER — Shared styles
+   Used in: New App Token, Bodhi Access Request
+   Classes: map-* (radio + summary), panel-* (side panel)
+═══════════════════════════════════════════════════ */
+
+/* ── Radio group ── */
+.map-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 6px;
+}
+
+.map-radio-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 13px;
+  border-radius: 8px;
+  border: 1.5px solid hsl(var(--border));
+  cursor: pointer;
+  transition: background 100ms, border-color 100ms;
+  background: hsl(var(--background));
+  user-select: none;
+}
+.map-radio-option:hover { background: hsl(var(--muted)); }
+.map-radio-option.selected {
+  border-color: var(--c-lotus-bd);
+  background: var(--c-lotus-bg);
+}
+
+.map-radio-dot {
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid hsl(var(--border));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: border-color 120ms;
+}
+.map-radio-option.selected .map-radio-dot { border-color: var(--c-lotus-text); }
+
+.map-radio-dot-inner {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--c-lotus-text);
+  transform: scale(0);
+  transition: transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.map-radio-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.map-radio-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.map-radio-desc {
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+}
+
+.map-future-badge {
+  font-size: 9.5px; font-weight: 700;
+  padding: 1px 5px; border-radius: 3px;
+  background: var(--c-leaf-bg);
+  border: 1px solid var(--c-leaf-bd);
+  color: var(--c-leaf-text);
+  white-space: nowrap;
+}
+
+/* ── Specific models area (below radios) ── */
+.map-specific-area {
+  margin-top: 9px;
+  padding: 11px 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+  background: hsl(var(--background));
+}
+
+.map-selected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 9px;
+}
+
+.map-selected-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.map-selected-row[draggable="true"] { cursor: grab; }
+.map-selected-row[draggable="true"]:active { cursor: grabbing; }
+
+.map-drag-handle {
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0.5;
+}
+.map-drag-handle svg { width: 13px; height: 13px; }
+.map-selected-row:hover .map-drag-handle { opacity: 1; }
+
+.map-rank-badge {
+  width: 19px; height: 19px;
+  border-radius: 50%;
+  background: hsl(var(--muted));
+  font-size: 10px; font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.map-rank-badge.r1 {
+  background: #FFA4B8;
+  color: #7a1030;
+}
+
+.map-selected-name {
+  flex: 1; min-width: 0;
+  font-size: 12.5px; font-weight: 600;
+  font-family: var(--font-mono);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.map-remove-btn {
+  width: 24px; height: 24px;
+  border-radius: 5px; border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; cursor: pointer;
+  transition: background 100ms, color 100ms;
+}
+.map-remove-btn:hover {
+  background: rgba(220, 38, 38, .08);
+  color: hsl(var(--destructive));
+}
+.map-remove-btn svg { width: 12px; height: 12px; }
+
+.map-empty-hint {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  padding: 2px 0 8px;
+  line-height: 1.5;
+}
+
+.map-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1.5px dashed hsl(var(--border));
+  background: transparent;
+  font-size: 12.5px; font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: border-color 120ms, color 120ms, background 120ms;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.map-add-btn:hover {
+  border-color: #FFA4B8;
+  color: var(--c-lotus-text);
+  background: var(--c-lotus-bg);
+}
+.map-add-btn svg { width: 13px; height: 13px; }
+
+/* ═══════════════════════════════════════════════════
+   PANEL — slide-in side panel (for pages that don't
+   already define .panel-* in their own CSS, i.e. NAT)
+═══════════════════════════════════════════════════ */
+.panel-overlay {
+  position: fixed; inset: 0;
+  z-index: 100;
+  display: flex;
+}
+.panel-backdrop { flex: 1; background: rgba(0, 0, 0, .2); }
+
+.panel-sheet {
+  width: 400px;
+  background: hsl(var(--card));
+  border-left: 1px solid hsl(var(--border));
+  display: flex; flex-direction: column;
+  height: 100vh;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, .1);
+  animation: mapPanelSlideIn 200ms cubic-bezier(.22, .61, .36, 1);
+}
+@keyframes mapPanelSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid hsl(var(--border));
+  flex-shrink: 0;
+}
+.panel-title  { font-size: 14px; font-weight: 700; }
+.panel-subtitle { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 3px; }
+
+.panel-close {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background 100ms, color 100ms;
+  flex-shrink: 0;
+}
+.panel-close:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.panel-close svg { width: 13px; height: 13px; }
+
+.panel-filters {
+  padding: 12px 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  display: flex; gap: 8px;
+  flex-shrink: 0;
+}
+.panel-search {
+  flex: 1; height: 32px; padding: 0 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 7px;
+  font-size: 12.5px; font-family: inherit;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 150ms;
+}
+.panel-search:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px rgba(255, 164, 184, .12);
+}
+.panel-search::placeholder { color: hsl(var(--muted-foreground)); }
+
+.panel-type-select {
+  height: 32px;
+  padding: 0 26px 0 8px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 7px;
+  font-size: 12px; font-family: inherit;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  outline: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  cursor: pointer; flex-shrink: 0;
+}
+
+.panel-body {
+  flex: 1; overflow-y: auto;
+  padding: 8px 0;
+}
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+.panel-group-label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .1em;
+  color: hsl(var(--muted-foreground));
+  padding: 10px 16px 5px;
+}
+
+.panel-model-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 80ms;
+}
+.panel-model-row:hover { background: hsl(var(--muted)); }
+.panel-model-row.is-added { background: var(--c-lotus-bg); }
+
+.panel-row-check {
+  width: 15px; height: 15px;
+  border-radius: 4px;
+  border: 1.5px solid hsl(var(--border));
+  background: hsl(var(--card));
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 120ms, border-color 120ms;
+}
+.panel-model-row.is-added .panel-row-check {
+  background: #FFA4B8;
+  border-color: #FFA4B8;
+}
+
+.panel-row-name {
+  font-size: 12.5px; font-weight: 600;
+  font-family: var(--font-mono);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.panel-row-tags {
+  display: flex; gap: 4px;
+  flex-shrink: 0; align-items: center;
+}
+
+.panel-foot {
+  padding: 14px 16px;
+  border-top: 1px solid hsl(var(--border));
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: hsl(var(--card));
+}
+.panel-foot-count { font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+
+/* ── Shared tag + badge classes (for panel, needed in pages that lack them) ── */
+.tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 500;
+  padding: 2px 7px; border-radius: 5px;
+  border: 1px solid; white-space: nowrap;
+}
+.tag-indigo  { background: var(--c-indigo-bg);  border-color: var(--c-indigo-bd);  color: var(--c-indigo-text); }
+.tag-lotus   { background: var(--c-lotus-bg);   border-color: var(--c-lotus-bd);   color: var(--c-lotus-text); }
+.tag-saffron { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
+.tag-leaf    { background: var(--c-leaf-bg);    border-color: var(--c-leaf-bd);    color: var(--c-leaf-text); }
+.tag-muted   { background: hsl(var(--muted));   border-color: hsl(var(--border));  color: hsl(var(--muted-foreground)); }
+
+.model-type-local {
+  font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--c-leaf-bg);
+  color: var(--c-leaf-text);
+  border: 1px solid var(--c-leaf-bd);
+  white-space: nowrap;
+}
+.model-type-api {
+  font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--c-indigo-bg);
+  color: var(--c-indigo-text);
+  border: 1px solid var(--c-indigo-bd);
+  white-space: nowrap;
+}
+
+/* btn-sm (needed for panel Done button in New App Token) */
+.btn-sm {
+  height: 30px; padding: 0 12px;
+  border-radius: 7px;
+  font-size: 12px; font-weight: 600;
+  border: 1px solid;
+  display: inline-flex; align-items: center; gap: 5px;
+  transition: all 100ms; cursor: pointer;
+  font-family: inherit;
+}
+.btn-sm svg { width: 12px; height: 12px; }
+.btn-sm-indigo {
+  background: var(--c-indigo-bg);
+  border-color: var(--c-indigo-bd);
+  color: var(--c-indigo-text);
+}
+.btn-sm-indigo:hover { background: var(--c-indigo-text); color: #fff; }
+
+@media (max-width: 768px) {
+  .panel-sheet { width: 100vw; }
+}
