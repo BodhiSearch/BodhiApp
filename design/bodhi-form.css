@@ -1,0 +1,480 @@
+/* ═══════════════════════════════════════════════════
+   Bodhi Form — Shared form-page system
+   bodhi-form.css
+
+   ONE source of truth for every "create / edit" form page.
+   Load AFTER colors_and_type.css.
+
+   Convention (project-wide):
+     • List pages  → main column is FULL-WIDTH.
+     • Form pages  → main column hosts a CENTER-ALIGNED container.
+
+   Layout contract:
+     • 3 columns share one 52px header gridline (sidebar brand · topbar).
+     • Grid columns driven by CSS vars (--side-w) so the sidebar is
+       drag-resizable via bodhi-resize.js. No transition on the grid track.
+     • Submit / primary actions live ONLY in the footer at the end of the
+       form — never in the top breadcrumb bar.
+
+   Prefix: .bf-
+═══════════════════════════════════════════════════ */
+
+/* Legacy .bf-shell / .bf-topbar / .bf-content chrome removed in v2 —
+   form pages now mount inside AppShell (contentClass="flush"), which
+   owns the sidebar, header, breadcrumb and responsive behavior. Only
+   the form PRIMITIVES below are still used. */
+
+/* ── Scroll region + centered container ────────── */
+.bf-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: hsl(var(--muted) / .4);
+}
+.bf-scroll::-webkit-scrollbar { width: 10px; }
+.bf-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--border)); border-radius: 99px;
+  border: 3px solid transparent; background-clip: padding-box;
+}
+
+.bf-container {
+  width: 100%;
+  max-width: 860px;          /* canonical form width — identical on every form page */
+  margin: 0 auto;
+  padding: 30px 28px 56px;
+  box-sizing: border-box;
+}
+
+/* Page heading (sits above the card, on the page bg) */
+.bf-page-head { margin-bottom: 18px; }
+.bf-page-title {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  margin: 0 0 5px;
+}
+.bf-page-sub {
+  font-size: 13px;
+  line-height: 1.55;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+  max-width: 64ch;
+  text-wrap: pretty;
+}
+
+/* The form surface — a calm bordered card */
+.bf-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.bf-card-body { padding: 24px 26px; }
+
+/* ── Sections inside the card ──────────────────── */
+.bf-section { margin-bottom: 22px; }
+.bf-section:last-child { margin-bottom: 0; }
+.bf-section-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: hsl(var(--muted-foreground));
+  margin: 0 0 12px;
+}
+.bf-section-desc {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: hsl(var(--muted-foreground));
+  margin: -4px 0 14px;
+  text-wrap: pretty;
+}
+.bf-divider {
+  height: 1px;
+  background: hsl(var(--border));
+  margin: 22px 0;
+}
+
+/* ── Field ─────────────────────────────────────── */
+.bf-field { margin-bottom: 16px; }
+.bf-field:last-child { margin-bottom: 0; }
+.bf-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.bf-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.bf-label-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* Required marker — a single red asterisk (project-wide convention).
+   Markup: <span class="bf-req">*</span> right after .bf-label-text. */
+.bf-req {
+  color: hsl(var(--destructive));
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: -2px;
+  align-self: center;
+  transform: translateY(2px);
+}
+.bf-optional {
+  font-size: 11px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Inputs — one consistent control across pages ── */
+.bf-input,
+.bf-select,
+.bf-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius-md);
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.bf-input,
+.bf-select {
+  height: 38px;
+  padding: 0 12px;
+}
+.bf-textarea {
+  min-height: 96px;
+  padding: 10px 12px;
+  line-height: 1.55;
+  resize: vertical;
+}
+.bf-input:focus,
+.bf-select:focus,
+.bf-textarea:focus {
+  outline: none;
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / .2);
+}
+.bf-input::placeholder,
+.bf-textarea::placeholder { color: hsl(var(--muted-foreground) / .7); }
+
+/* Disabled controls (e.g. key/prefix shown but locked until enabled) */
+.bf-input:disabled,
+.bf-select:disabled,
+.bf-textarea:disabled {
+  background: hsl(var(--muted) / .5);
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+}
+.bf-pw-toggle:disabled { opacity: .4; cursor: not-allowed; }
+/* The hint text stays readable but visibly dimmed when locked. */
+.bf-indent.is-locked .bf-hint,
+.bf-indent.is-locked .bf-hint-example { opacity: .6; }
+
+/* Error state — set .is-error on any control */
+.bf-input.is-error,
+.bf-select.is-error,
+.bf-textarea.is-error { border-color: hsl(var(--destructive)); }
+.bf-input.is-error:focus,
+.bf-select.is-error:focus,
+.bf-textarea.is-error:focus {
+  border-color: hsl(var(--destructive));
+  box-shadow: 0 0 0 3px hsl(var(--destructive) / .18);
+}
+
+.bf-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px;
+}
+.bf-input-mono { font-family: var(--font-mono); font-size: 12.5px; }
+
+/* Password field */
+.bf-pw-wrap { position: relative; }
+.bf-pw-wrap .bf-input { padding-right: 40px; }
+.bf-pw-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+.bf-pw-toggle:hover { background: hsl(var(--muted)); }
+
+/* Hints */
+.bf-hint {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  margin-top: 6px;
+}
+.bf-hint-example {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  margin-top: 4px;
+}
+.bf-indent { margin-top: 10px; }
+
+/* ── Checkbox row ──────────────────────────────── */
+.bf-check-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.bf-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid hsl(var(--input));
+  border-radius: 5px;
+  background: hsl(var(--card));
+  cursor: pointer;
+  flex: none;
+  position: relative;
+  transition: background 120ms, border-color 120ms;
+}
+.bf-checkbox:checked {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+.bf-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px; top: 2px;
+  width: 4px; height: 8px;
+  border: solid hsl(var(--primary-foreground));
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.bf-check-label {
+  font-size: 12.5px;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ── Radio option cards ────────────────────────── */
+.bf-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bf-radio-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+}
+.bf-radio-option:hover { border-color: hsl(var(--primary) / .5); }
+.bf-radio-option.selected {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / .07);
+}
+.bf-radio-dot {
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  border: 1.5px solid hsl(var(--input));
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 120ms;
+}
+.bf-radio-option.selected .bf-radio-dot { border-color: hsl(var(--primary-hover)); }
+.bf-radio-dot-inner {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: hsl(var(--primary-hover));
+  transition: transform 130ms cubic-bezier(.34,1.56,.64,1);
+}
+.bf-radio-text { font-size: 12.5px; color: hsl(var(--foreground)); }
+
+/* Rich radio option — optional title + description stack.
+   Add .bf-radio-rich to .bf-radio-option and wrap the labels in
+   .bf-radio-body. Keeps single-line radios unchanged. */
+.bf-radio-option.bf-radio-rich { align-items: flex-start; }
+.bf-radio-rich .bf-radio-dot { margin-top: 1px; }
+.bf-radio-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bf-radio-desc {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: hsl(var(--muted-foreground));
+  text-wrap: pretty;
+}
+
+/* ── Toggle row — a labelled switch (one canonical control) ──────
+   Markup:
+     <div class="bf-toggle-row">
+       <div class="bf-toggle-body">
+         <div class="bf-toggle-label">Enable MCP</div>
+         <div class="bf-toggle-desc">Make this instance available for use</div>
+       </div>
+       <div class="bf-switch on" role="switch" />
+     </div> */
+.bf-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+}
+.bf-toggle-body { flex: 1; min-width: 0; }
+.bf-toggle-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.bf-toggle-desc {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+}
+.bf-switch {
+  width: 38px;
+  height: 22px;
+  border-radius: 99px;
+  flex: none;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--input));
+  position: relative;
+  cursor: pointer;
+  transition: background 180ms, border-color 180ms;
+}
+.bf-switch.on {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+.bf-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+  transition: transform 180ms var(--ease-lotus);
+}
+.bf-switch.on::after { transform: translateX(16px); }
+
+/* ── Footer — actions ONLY here, at the end ──────── */
+.bf-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 26px;
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / .35);
+}
+.bf-footer-spacer { flex: 1; }
+
+/* ── Buttons ───────────────────────────────────── */
+/* Shared disabled state for every .bf-btn variant. */
+.bf-btn:disabled,
+.bf-btn.is-disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.bf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 16px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms, border-color 120ms, box-shadow 120ms, color 120ms;
+}
+.bf-btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: var(--shadow-xs);
+}
+.bf-btn-primary:hover {
+  background: hsl(var(--primary-hover));
+  color: #fff;
+}
+.bf-btn-ghost {
+  background: none;
+  color: hsl(var(--muted-foreground));
+  border-color: transparent;
+}
+.bf-btn-ghost:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+.bf-btn-secondary {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+.bf-btn-secondary:hover { border-color: hsl(var(--primary) / .55); }
+
+/* ── Responsive ────────────────────────────────── */
+/* Two-column form pages stay side-by-side well down the range
+   (sidebar ~220 + form). Only fold to a single column on true mobile,
+   where the sidebar is hidden so content gets full width. */
+@media (max-width: 760px) {
+  .bf-field-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .bf-container { padding: 20px 16px 40px; }
+  .bf-card-body { padding: 18px 16px; }
+  .bf-field-row { grid-template-columns: 1fr; }
+  .bf-footer { flex-wrap: wrap; padding: 14px 16px; }
+  .bf-footer-spacer { display: none; }
+  .bf-footer .bf-btn { flex: 1; }
+}
+
+/* ── Dark — card must lift off the backdrop; inputs are sunken wells ── */
+[data-theme="dark"] .bf-scroll { background: hsl(var(--background)); }
+[data-theme="dark"] .bf-footer { background: hsl(var(--surface-1)); }
+[data-theme="dark"] .bf-input,
+[data-theme="dark"] .bf-select,
+[data-theme="dark"] .bf-textarea { background: hsl(var(--surface-1)); border-color: hsl(var(--border-strong)); }
+[data-theme="dark"] .bf-input:disabled,
+[data-theme="dark"] .bf-select:disabled,
+[data-theme="dark"] .bf-textarea:disabled { background: hsl(var(--muted) / .5); color: hsl(var(--muted-foreground)); }

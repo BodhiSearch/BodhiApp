@@ -5,70 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bodhi · App Tokens</title>
 <link rel="stylesheet" href="colors_and_type.css">
+  <script src="bodhi-theme.js"></script>
+<link rel="stylesheet" href="bodhi-app-shell.css">
+<link rel="stylesheet" href="bodhi-list.css">
 <link rel="stylesheet" href="api-keys-shell.css">
+<link rel="stylesheet" href="app-tokens.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+<div id="root"></div>
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<style>
-/* ── Token list ── */
-.token-list { display: flex; flex-direction: column; gap: 8px; }
-.token-card {
-  background: hsl(var(--card)); border: 1px solid hsl(var(--border));
-  border-radius: 11px; padding: 14px 16px;
-  display: flex; align-items: center; gap: 14px;
-  transition: box-shadow 120ms, border-color 120ms;
-}
-.token-card:hover { border-color: hsl(var(--ring)); box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-.token-card.revoked { opacity: .55; }
-.token-key-icon {
-  width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--c-indigo-bg); border: 1px solid var(--c-indigo-bd);
-}
-.token-identity { flex: 1; min-width: 0; }
-.token-name { font-size: 13px; font-weight: 600; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
-.token-name.unnamed { color: hsl(var(--muted-foreground)); font-style: italic; font-family: var(--font-sans); font-weight: 500; }
-.token-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.token-divider { width: 1px; height: 24px; background: hsl(var(--border)); flex-shrink: 0; }
-.token-dates { display: flex; flex-direction: column; gap: 2px; text-align: right; flex-shrink: 0; min-width: 110px; }
-.token-date-row { font-size: 11px; color: hsl(var(--muted-foreground)); display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
-.token-date-label { font-weight: 600; color: hsl(var(--foreground)); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
-.token-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
-.status-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  height: 22px; padding: 0 8px; border-radius: 99px;
-  font-size: 11px; font-weight: 600; border: 1px solid; white-space: nowrap;
-}
-.status-active  { background: var(--c-leaf-bg);  border-color: var(--c-leaf-bd);  color: var(--c-leaf-text); }
-.status-revoked { background: hsl(var(--muted)); border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
-.btn-revoke {
-  height: 30px; padding: 0 11px; border-radius: 7px; font-size: 11.5px; font-weight: 600;
-  border: 1px solid hsl(var(--border)); background: transparent; color: hsl(var(--muted-foreground));
-  display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: all 100ms;
-}
-.btn-revoke:hover { border-color: var(--c-saffron-bd); background: var(--c-saffron-bg); color: var(--c-saffron-text); }
-.btn-delete {
-  width: 30px; height: 30px; border-radius: 7px; border: 1px solid hsl(var(--border));
-  background: transparent; color: hsl(var(--muted-foreground));
-  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 100ms; flex-shrink: 0;
-}
-.btn-delete:hover { border-color: hsl(var(--destructive)); background: rgba(220,38,38,.05); color: hsl(var(--destructive)); }
-/* Scope badges */
-.scope-user  { background: var(--c-indigo-bg); border: 1px solid var(--c-indigo-bd); color: var(--c-indigo-text); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
-.scope-power { background: var(--c-saffron-bg); border: 1px solid var(--c-saffron-bd); color: var(--c-saffron-text); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
-/* Access summary pill */
-.access-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: hsl(var(--muted-foreground)); }
-.access-pill svg { width: 11px; height: 11px; opacity: .7; }
-/* Revoke confirm inline */
-.revoke-confirm { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--c-saffron-bg); border-top: 1px solid var(--c-saffron-bd); border-radius: 0 0 11px 11px; margin: 0 -16px -14px; }
-.revoke-confirm-text { font-size: 12px; font-weight: 500; color: var(--c-saffron-text); flex: 1; }
-</style>
-</head>
-<body>
-<div id="app-root"></div>
-<script type="text/babel" src="bodhi-sidebar-react.jsx"></script>
+<script type="text/babel" src="bodhi-app-shell.jsx"></script>
+<script type="text/babel" src="bodhi-list.jsx"></script>
 <script type="text/babel" src="app-tokens-app.jsx"></script>
 </body>
 </html>

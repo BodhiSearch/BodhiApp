@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bodhi · Email verification</title>
+  <link rel="stylesheet" href="colors_and_type.css">
+  <script src="bodhi-theme.js"></script>
+  <link rel="stylesheet" href="bodhi-auth.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- ════════════ Keycloak template: login-verify-email.ftl ════════════ -->
+  <div class="ba-page">
+    <div class="ba-watermark"></div>
+    <button class="ba-theme-toggle" id="ba-theme" aria-label="Toggle light or dark theme">
+      <i data-lucide="moon"></i><span class="ba-tt-label">Dark</span>
+    </button>
+
+    <div class="ba-card" data-kc-page="login-verify-email.ftl">
+      <div class="ba-brand" style="justify-content:center">
+        <div class="ba-brand-mark"></div>
+        <div class="ba-brand-word">B<span class="om">O</span>DHI</div>
+      </div>
+
+      <div class="ba-center">
+        <div class="ba-status-icon is-mail"><i data-lucide="mail-check" style="width:28px;height:28px"></i></div>
+        <div class="ba-head">
+          <h1 class="ba-title">Verify your email</h1>
+          <p class="ba-sub">An email with verification instructions has been sent to<br><strong style="color:hsl(var(--foreground))" data-kc-field="email">siddhartha@example.com</strong>. Open it to activate your account.</p>
+        </div>
+      </div>
+
+      <div class="ba-alert ba-alert-warning" style="margin-top:20px">
+        <i data-lucide="alert-triangle" style="width:15px;height:15px"></i>
+        <span>You need to verify your email address to activate your account.</span>
+      </div>
+
+      <div class="ba-foot" style="border-top:none;margin-top:6px;padding-top:0">
+        Haven’t received it? <a href="#" data-kc-link="login-actions/required-action?execution=VERIFY_EMAIL">Click here to re-send the email</a>
+        <div style="margin-top:12px"><a href="login.html" data-kc-link="login"><i data-lucide="arrow-left" style="width:13px;height:13px;vertical-align:-2px"></i> Back to sign in</a></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="bodhi-auth.js"></script>
+</body>
+</html>

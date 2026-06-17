@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bodhi · Layout System</title>
+<link rel="stylesheet" href="colors_and_type.css">
+  <script src="bodhi-theme.js"></script>
+<link rel="stylesheet" href="bodhi-app-shell.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+/* ── small shared bits used by the demo shell ── */
+.band-label { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: hsl(var(--muted-foreground)); }
+.m-search { flex: 1; min-width: 120px; max-width: 340px; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border: 1px solid hsl(var(--border)); border-radius: 9px; background: hsl(var(--background)); }
+.m-search input { flex: 1; border: none; outline: none; background: transparent; font-size: 13px; color: hsl(var(--foreground)); min-width: 0; }
+.m-spacer { flex: 1; }
+
+/* ── annotation tags so each shell slot is labelled ── */
+.ls-band-tag { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c-indigo-text); background: var(--c-indigo-bg); border: 1px dashed var(--c-indigo-bd); padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+.shell-toolbar .ls-band-tag, .ls-band-tag { }
+.ls-sb-note { font-size: 12px; color: hsl(var(--muted-foreground)); line-height: 1.5; padding: 4px 4px; }
+.ls-sb-note span { font-size: 11px; opacity: .7; }
+.ls-band-hint { font-size: 11px; color: hsl(var(--muted-foreground)); font-style: italic; }
+
+/* ── gridline overlay (proof) ── */
+.ls-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
+.ls-gridline { position: absolute; left: 0; right: 0; border-top: 1.5px dashed #DB456C; }
+.ls-gridline.two { border-top-color: var(--c-indigo-text); }
+.ls-gridline span { position: absolute; right: 14px; top: -9px; font-size: 10px; font-weight: 700; color: #fff; background: #DB456C; padding: 1px 7px; border-radius: 99px; white-space: nowrap; }
+.ls-gridline.two span { background: var(--c-indigo-text); }
+
+/* ── rail demo ── */
+.ls-rail { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.ls-rail-note { font-size: 12.5px; color: hsl(var(--muted-foreground)); line-height: 1.55; }
+.ls-rail-card { font-size: 12px; font-family: var(--font-mono); padding: 10px 12px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+
+/* ── documentation ── */
+.ls-doc { display: flex; flex-direction: column; gap: 30px; }
+.ls-hero h1 { font-size: 30px; font-weight: 700; letter-spacing: -.025em; margin-bottom: 10px; }
+.ls-hero p { font-size: 15px; line-height: 1.65; color: hsl(var(--muted-foreground)); max-width: 760px; text-wrap: pretty; }
+.ls-hero p b { color: hsl(var(--foreground)); font-weight: 600; }
+
+.ls-panel { border: 1px solid hsl(var(--border)); border-radius: 14px; background: hsl(var(--card)); padding: 18px 20px; }
+.ls-panel-h { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 16px; }
+.ls-panel-h span { color: hsl(var(--muted-foreground)); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.ls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 18px 24px; margin-bottom: 18px; }
+.ls-slider { display: flex; flex-direction: column; gap: 7px; }
+.ls-slider-top { display: flex; justify-content: space-between; font-size: 12.5px; }
+.ls-slider-top b { font-family: var(--font-mono); color: var(--c-lotus-text); }
+.ls-slider input[type=range] { width: 100%; accent-color: hsl(var(--primary-hover)); }
+.ls-toggles { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid hsl(var(--border)); padding-top: 16px; }
+.ls-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px 7px 9px; border-radius: 99px; border: 1px solid hsl(var(--border)); background: transparent; font-size: 12.5px; font-weight: 600; color: hsl(var(--muted-foreground)); transition: all 120ms; }
+.ls-toggle.on { color: var(--c-lotus-text); border-color: var(--c-lotus-bd); background: var(--c-lotus-bg); }
+.ls-sw { width: 30px; height: 17px; border-radius: 99px; background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); position: relative; transition: background 150ms; flex: none; }
+.ls-sw::after { content: ''; position: absolute; top: 1.5px; left: 1.5px; width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform 170ms; }
+.ls-toggle.on .ls-sw { background: hsl(var(--primary-hover)); border-color: hsl(var(--primary-hover)); }
+.ls-toggle.on .ls-sw::after { transform: translateX(13px); }
+
+.ls-section h2 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 14px; }
+.ls-section h2 code { font-family: var(--font-mono); font-size: 14px; color: var(--c-indigo-text); }
+.ls-cap { font-size: 12.5px; color: hsl(var(--muted-foreground)); line-height: 1.55; margin-top: 12px; }
+.ls-cap code, .ls-desc code { font-family: var(--font-mono); font-size: .92em; background: hsl(var(--muted)); padding: 1px 5px; border-radius: 4px; color: var(--c-indigo-text); }
+
+/* diagram */
+.ls-diagram { display: grid; grid-template-columns: 160px 1fr 150px; gap: 0; border: 1px solid hsl(var(--border)); border-radius: 12px; overflow: hidden; }
+.lsd-col { display: flex; flex-direction: column; border-right: 1px solid hsl(var(--border)); }
+.lsd-col:last-child { border-right: none; }
+.lsd-col.main { background: hsl(var(--muted) / .4); }
+.lsd-cell { padding: 0 12px; display: flex; align-items: center; font-size: 11px; font-weight: 600; border-bottom: 1px solid hsl(var(--border)); }
+.lsd-cell.h { height: 52px; color: var(--c-lotus-text); background: var(--c-lotus-bg); }
+.lsd-cell.b { height: 44px; color: var(--c-indigo-text); background: var(--c-indigo-bg); }
+.lsd-cell.b.opt { opacity: .55; font-style: italic; font-weight: 500; }
+.lsd-cell.body { height: 92px; color: hsl(var(--muted-foreground)); align-items: flex-start; padding-top: 12px; border-bottom: none; }
+
+/* props table */
+.ls-table { border: 1px solid hsl(var(--border)); border-radius: 12px; overflow: hidden; }
+.ls-tr { display: grid; grid-template-columns: minmax(200px,260px) 1fr; gap: 16px; padding: 11px 16px; border-bottom: 1px solid hsl(var(--border)); align-items: baseline; }
+.ls-tr:last-child { border-bottom: none; }
+.ls-tr:nth-child(even) { background: hsl(var(--muted) / .35); }
+.ls-prop { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--c-indigo-text); }
+.ls-desc { font-size: 12.5px; color: hsl(var(--muted-foreground)); line-height: 1.5; }
+
+/* breakpoints */
+.ls-bps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 12px; }
+.ls-bp { border: 1px solid hsl(var(--border)); border-radius: 11px; padding: 14px 16px; background: hsl(var(--card)); }
+.ls-bp b { font-family: var(--font-mono); font-size: 13px; color: var(--c-lotus-text); display: block; margin-bottom: 6px; }
+.ls-bp span { font-size: 12.5px; color: hsl(var(--muted-foreground)); line-height: 1.5; }
+
+.ls-foot { font-size: 12.5px; color: hsl(var(--muted-foreground)); border-top: 1px solid hsl(var(--border)); padding-top: 20px; }
+.ls-foot a { color: var(--c-lotus-text); font-weight: 600; }
+.ls-foot a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="bodhi-app-shell.jsx"></script>
+<script type="text/babel" src="layout-system.jsx"></script>
+</body>
+</html>

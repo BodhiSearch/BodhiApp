@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════
+   APP TOKENS — page-unique styles (edge-to-edge rows)
+   Load AFTER bodhi-app-shell.css + bodhi-list.css + api-keys-shell.css
+   Frame (rows, sticky head, toolbar, search) comes from bodhi-list.css;
+   this file holds token-row cell layout + token-specific chips/buttons.
+═══════════════════════════════════════════════════ */
+.tk-row { cursor: default; }
+
+/* cells */
+.tk-icon { width: 52px; flex-shrink: 0; display: flex; align-items: center; }
+.token-key-icon {
+  width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--c-indigo-bg); border: 1px solid var(--c-indigo-bd); color: var(--c-indigo-text);
+}
+.tk-id { flex: 1; min-width: 0; }
+.app-token-avatar {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800; color: #fff;
+}
+.app-token-name-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 4px; }
+.app-token-name { font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.token-name { font-size: 13px; font-weight: 600; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.token-name.unnamed { color: hsl(var(--muted-foreground)); font-style: italic; font-family: var(--font-sans); font-weight: 500; }
+.token-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tk-dot { color: hsl(var(--border)); font-size: 12px; }
+.tk-created, .tk-used { width: 124px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
+.tk-date-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: hsl(var(--muted-foreground)); }
+.tk-date-val { font-size: 12px; color: hsl(var(--foreground)); }
+.tk-status { width: 96px; flex-shrink: 0; }
+.tk-act { width: 132px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+/* header date cells render as a single label, not the 2-line stack */
+.l-listhead .tk-created, .l-listhead .tk-used { flex-direction: row; gap: 0; }
+
+/* status chip */
+.status-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 22px; padding: 0 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 600; border: 1px solid; white-space: nowrap;
+}
+.status-active  { background: var(--c-leaf-bg);  border-color: var(--c-leaf-bd);  color: var(--c-leaf-text); }
+.status-revoked { background: hsl(var(--muted)); border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+
+/* enable/disable toggle switch */
+.tk-switch {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: none; background: transparent; cursor: pointer; padding: 0;
+  font-family: inherit; transition: opacity 100ms;
+}
+.tk-switch-label { font-size: 11.5px; font-weight: 600; color: hsl(var(--muted-foreground)); white-space: nowrap; }
+.tk-switch.is-on .tk-switch-label { color: var(--c-leaf-text); }
+.tk-switch-track {
+  position: relative; flex-shrink: 0; box-sizing: border-box;
+  width: 34px; height: 20px; border-radius: 99px;
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.tk-switch-thumb {
+  position: absolute; top: 50%; left: 2px; transform: translateY(-50%);
+  width: 14px; height: 14px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left 140ms ease;
+}
+.tk-switch.is-on .tk-switch-track { background: var(--c-leaf-text); border-color: var(--c-leaf-text); }
+.tk-switch.is-on .tk-switch-thumb { left: 16px; }
+.tk-switch:hover .tk-switch-track { border-color: hsl(var(--muted-foreground)); }
+.tk-switch.is-on:hover .tk-switch-track { filter: brightness(1.05); }
+/* larger variant for the detail panel */
+.tk-switch-lg .tk-switch-label { font-size: 12.5px; }
+.tk-switch-lg .tk-switch-track { width: 40px; height: 24px; }
+.tk-switch-lg .tk-switch-thumb { width: 18px; height: 18px; }
+.tk-switch-lg.is-on .tk-switch-thumb { left: 18px; }
+
+/* detail-panel toggle row */
+.dp-toggle-row { display: flex; align-items: center; gap: 12px; justify-content: space-between;
+  padding: 12px 14px; border: 1px solid hsl(var(--border)); border-radius: 9px; background: hsl(var(--muted) / .4); }
+.dp-toggle-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dp-toggle-title { font-size: 13px; font-weight: 600; color: hsl(var(--foreground)); }
+.dp-toggle-sub { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+.btn-delete {
+  width: 30px; height: 30px; border-radius: 7px; border: 1px solid hsl(var(--border));
+  background: transparent; color: hsl(var(--muted-foreground));
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 100ms; flex-shrink: 0;
+}
+.btn-delete:hover { border-color: hsl(var(--destructive)); background: rgba(220,38,38,.05); color: hsl(var(--destructive)); }
+
+/* scope badges */
+.scope-user  { background: var(--c-indigo-bg); border: 1px solid var(--c-indigo-bd); color: var(--c-indigo-text); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.scope-power { background: var(--c-saffron-bg); border: 1px solid var(--c-saffron-bd); color: var(--c-saffron-text); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+
+/* detail-panel resource chips (model / mcp names) */
+.dp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dp-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 26px; padding: 0 10px; border-radius: 7px;
+  font-size: 12px; font-weight: 500; color: hsl(var(--foreground));
+  background: hsl(var(--muted) / .5); border: 1px solid hsl(var(--border));
+}
+.dp-chip svg { width: 12px; height: 12px; opacity: .65; flex: none; }
+
+/* access summary pill */
+.access-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: hsl(var(--muted-foreground)); }
+.access-pill svg { width: 11px; height: 11px; opacity: .7; }
+
+/* inline revoke-confirm bar (full width, below the row) */
+.tk-confirm { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--c-saffron-bg); border-bottom: 1px solid var(--c-saffron-bd); }
+.tk-confirm-text { font-size: 12px; font-weight: 500; color: var(--c-saffron-text); flex: 1; }
+.tk-confirm-yes { height: 28px; padding: 0 12px; border-radius: 7px; background: var(--c-saffron-text); color: #fff; border: none; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* responsive: drop date columns as the list column narrows */
+@container lscroll (max-width: 680px) { .tk-used    { display: none; } }
+@container lscroll (max-width: 560px) { .tk-created { display: none; } }
+@container lscroll (max-width: 440px) { .tk-status  { display: none; } }

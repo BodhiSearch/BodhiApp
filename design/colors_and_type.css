@@ -75,6 +75,7 @@
   --surface-1:   240 20% 99%;           /* base */
   --surface-2:   240 14% 96%;           /* subtle raise */
   --surface-3:   240 10% 92%;           /* hover/well */
+  --surface-4:   0 0% 100%;             /* highest: floating UI */
 
   --primary:            347 100% 82%;   /* lotus-300 #FFA4B8 */
   --primary-foreground: 235 40% 12%;    /* deep indigo text on pink */
@@ -89,8 +90,10 @@
 
   --muted:             240 14% 96%;
   --muted-foreground:  240 8% 42%;
+  --faint-foreground:  240 8% 56%;      /* tertiary / placeholder */
 
   --border:  240 10% 90%;
+  --border-strong: 240 12% 82%;
   --input:   240 10% 90%;
   --ring:    347 100% 70%;
 
@@ -148,57 +151,63 @@
 }
 
 .dark, [data-theme="dark"] {
-  /* "meditation space" — not harsh. Warm-tinted ink, NOT pure black. */
-  --background: 235 30% 6%;           /* #0B0D1A */
-  --foreground: 240 15% 94%;
+  /* "meditation space" — warm slate-navy. Elevation communicated by LIGHTNESS
+   * (higher surface = lighter), with subtle borders. Ramp spans 8%→21% so each
+   * step is perceptible; accents lightly desaturated to stop optical vibration. */
+  --background: 234 17% 8%;
+  --foreground: 233 14% 95%;            /* warm near-white, not #FFF (no halation) */
 
-  --card:        235 28% 9%;          /* #11132A */
-  --card-foreground: 240 15% 94%;
-  --popover:     235 28% 10%;
-  --popover-foreground: 240 15% 94%;
+  --card:        232 14% 13%;           /* base raised: cards, sidebar, rail, header */
+  --card-foreground: 233 14% 95%;
+  --popover:     230 12% 21%;           /* highest: menus, popovers, tooltips */
+  --popover-foreground: 233 14% 95%;
 
-  --surface-1:   235 30% 6%;
-  --surface-2:   235 28% 9%;
-  --surface-3:   235 26% 14%;
+  --surface-1:   233 16% 10%;           /* sunken: inputs, code wells */
+  --surface-2:   232 14% 13%;           /* = card */
+  --surface-3:   231 13% 17%;           /* hover / nested / selected */
+  --surface-4:   230 12% 21%;           /* = popover (floating UI) */
 
-  --primary:            347 100% 78%;  /* slightly muted lotus in dark */
-  --primary-foreground: 235 40% 10%;
-  --primary-hover:      341 80% 70%;
-  --primary-ring:       347 100% 74%;
+  --primary:            347 88% 78%;    /* lotus, lightly desaturated for dark */
+  --primary-foreground: 235 40% 12%;
+  --primary-hover:      341 80% 72%;
+  --primary-ring:       347 90% 76%;
 
-  --secondary:            30 95% 62%;
-  --secondary-foreground: 30 40% 10%;
+  --secondary:            33 88% 65%;
+  --secondary-foreground: 30 45% 10%;
 
-  --accent:            234 60% 68%;
-  --accent-foreground: 235 40% 10%;
+  --accent:            232 60% 74%;
+  --accent-foreground: 235 45% 10%;
 
-  --muted:             235 20% 16%;
-  --muted-foreground:  240 10% 68%;
+  --muted:             232 12% 18%;     /* hover fills, chip tracks */
+  --muted-foreground:  231 12% 73%;     /* secondary text — clears AA on base */
+  --faint-foreground:  231 10% 55%;     /* tertiary / placeholder / disabled */
 
-  --border:  235 20% 18%;
-  --input:   235 20% 18%;
-  --ring:    347 100% 74%;
+  --border:        231 11% 25%;         /* default separators — visible without the band */
+  --border-strong: 231 11% 32%;         /* input edges, emphasized dividers */
+  --input:         231 11% 26%;
+  --ring:          347 90% 76%;
 
-  --destructive:            356 78% 62%;
+  --destructive:            356 72% 66%;
   --destructive-foreground: 0 0% 100%;
-  --success:                142 55% 52%;
-  --success-foreground:     140 40% 8%;
-  --warning:                30 95% 62%;
-  --warning-foreground:     30 40% 10%;
-  --info:                   234 80% 74%;
-  --info-foreground:        235 40% 10%;
+  --success:                142 48% 60%;
+  --success-foreground:     140 45% 8%;
+  --warning:                34 90% 64%;
+  --warning-foreground:     30 45% 10%;
+  --info:                   224 70% 74%;
+  --info-foreground:        235 45% 10%;
 
-  --sidebar:                    235 30% 5%;
-  --sidebar-foreground:         240 12% 86%;
-  --sidebar-accent:             235 24% 12%;
-  --sidebar-accent-foreground:  240 15% 94%;
-  --sidebar-border:             235 20% 14%;
+  --sidebar:                    232 14% 13%;
+  --sidebar-foreground:         233 12% 90%;
+  --sidebar-accent:             231 13% 17%;
+  --sidebar-accent-foreground:  233 14% 95%;
+  --sidebar-border:             231 11% 22%;
 
+  /* shadows reserved for floating layers — strengthened so they register on dark */
   --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 6px 12px -3px rgba(0, 0, 0, 0.6), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 14px 28px -6px rgba(0, 0, 0, 0.7), 0 4px 8px -2px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 0 4px rgba(255, 164, 184, 0.18);
+  --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 18px 38px -10px rgba(0, 0, 0, 0.66), 0 6px 14px -6px rgba(0, 0, 0, 0.50);
+  --shadow-glow: 0 0 0 4px hsl(347 85% 72% / .22);
 }
 
 /* ────────────────────────────────────────────────────────────────

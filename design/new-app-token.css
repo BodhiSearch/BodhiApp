@@ -1,259 +1,25 @@
 /* ═══════════════════════════════════════════════════
-   NEW APP TOKEN — CSS
-   Layout: Settings sidebar shell + Create API Model
-   centered form column.
+   NEW APP TOKEN — page-unique styles
+   Generic shell + form primitives come from bodhi-form.css (.bf-*).
+   This file keeps ONLY what bodhi-form.css doesn't provide:
+   semantic color tokens, the model/MCP selection box, role cards,
+   and the generated-token reveal.
+   Load AFTER bodhi-app-shell.css + bodhi-form.css — reset and color
+   helpers come from those shared files.
 ═══════════════════════════════════════════════════ */
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { height: 100%; }
-body {
-  min-height: 100%; overflow: hidden;
-  font-family: var(--font-sans);
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  -webkit-font-smoothing: antialiased;
-}
-button { font-family: inherit; cursor: pointer; }
-a { text-decoration: none; color: inherit; }
-input, select, textarea { font-family: inherit; }
-
-/* ── brand semantic helpers ── */
-:root {
-  --c-lotus-bg:    rgba(255,164,184,.13); --c-lotus-bd:    rgba(255,164,184,.32); --c-lotus-text:    #B02A52;
-  --c-saffron-bg:  rgba(250,138,46,.11);  --c-saffron-bd:  rgba(250,138,46,.26);  --c-saffron-text:  #B4500A;
-  --c-leaf-bg:     rgba(91,178,59,.11);   --c-leaf-bd:     rgba(91,178,59,.26);   --c-leaf-text:     #2F7D1F;
-  --c-indigo-bg:   rgba(62,74,168,.09);   --c-indigo-bd:   rgba(62,74,168,.20);   --c-indigo-text:   #3E4AA8;
-  --c-warning-bg:  rgba(250,138,46,.10);  --c-warning-bd:  rgba(250,138,46,.30);  --c-warning-text:  #8C3A00;
-}
-[data-theme="dark"] {
-  --c-lotus-bg:    rgba(255,164,184,.14); --c-lotus-bd:    rgba(255,164,184,.26); --c-lotus-text:    #FFA4B8;
-  --c-saffron-bg:  rgba(250,138,46,.16);  --c-saffron-bd:  rgba(250,138,46,.28);  --c-saffron-text:  #FFAB5C;
-  --c-leaf-bg:     rgba(139,217,99,.14);  --c-leaf-bd:     rgba(139,217,99,.26);  --c-leaf-text:     #8BD963;
-  --c-indigo-bg:   rgba(110,123,204,.16); --c-indigo-bd:   rgba(110,123,204,.28); --c-indigo-text:   #A5AEE6;
-  --c-warning-bg:  rgba(250,138,46,.14);  --c-warning-bd:  rgba(250,138,46,.28);  --c-warning-text:  #FFAB5C;
-}
-
-/* ═══════════════════════════════════════════════════
-   APP SHELL — 2-col grid identical to Settings page
-═══════════════════════════════════════════════════ */
-.nat-app {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* ─── SIDEBAR ─── */
-.nat-side {
-  background: hsl(var(--card));
-  border-right: 1px solid hsl(var(--border));
-  display: flex; flex-direction: column;
-  overflow: hidden; height: 100vh;
-}
-
-.nat-logo {
-  display: flex; align-items: center; gap: 10px;
-  padding: 13px 12px 12px;
-  border-bottom: 1px solid hsl(var(--border));
-  flex-shrink: 0;
-}
-.nat-logo-t { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
-.nat-logo-s {
-  font-family: var(--font-mono); font-size: 9px;
-  letter-spacing: .14em; color: hsl(var(--muted-foreground));
-  text-transform: uppercase; margin-top: 2px;
-}
-
-/* Nav dropdown — same pattern as Settings */
-.nat-nav-select { position: relative; margin: 10px 10px 0; }
-.nat-nav-trigger {
-  width: 100%; display: flex; align-items: center; gap: 9px;
-  padding: 9px 11px; border-radius: 10px;
-  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
-  cursor: pointer; font-size: 13px; font-weight: 600;
-  color: hsl(var(--foreground)); font-family: inherit;
-  transition: border-color 150ms;
-}
-.nat-nav-trigger:hover { border-color: hsl(var(--ring)); }
-.nat-nav-trigger .nat-lead { width: 15px; height: 15px; color: #DB456C; flex: none; }
-.nat-nav-trigger .nat-chev {
-  width: 14px; height: 14px; color: hsl(var(--muted-foreground));
-  margin-left: auto; flex: none; transition: transform 150ms ease;
-}
-.nat-nav-select.open .nat-nav-trigger .nat-chev { transform: rotate(180deg); }
-
-.nat-nav-menu {
-  display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-  background: hsl(var(--card)); border: 1px solid hsl(var(--border));
-  border-radius: 10px; padding: 4px;
-  box-shadow: var(--shadow-lg); z-index: 60;
-}
-.nat-nav-select.open .nat-nav-menu { display: block; }
-.nat-nav-sec {
-  font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
-  color: hsl(var(--muted-foreground)); padding: 8px 10px 3px; font-weight: 600;
-}
-.nat-nav-item {
-  display: flex; align-items: center; gap: 9px; padding: 8px 10px;
-  border-radius: 7px; font-size: 13px; color: hsl(var(--muted-foreground));
-  cursor: pointer; transition: background 80ms, color 80ms;
-}
-.nat-nav-item svg { width: 14px; height: 14px; flex: none; }
-.nat-nav-item:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
-.nat-nav-item.current { background: var(--c-lotus-bg); color: var(--c-lotus-text); font-weight: 600; }
-.nat-nav-item.current svg { color: #DB456C; }
-
-/* Sidebar bottom padding after nav dropdown */
-.nat-nav-select { margin-bottom: 4px; }
-
-/* ─── MAIN CONTENT ─── */
-.nat-main {
-  display: flex; flex-direction: column; overflow: hidden;
-}
-
-/* Topbar */
-.nat-topbar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 0 24px; height: 52px; flex-shrink: 0;
-  border-bottom: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-}
-.nat-breadcrumb {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 12.5px; color: hsl(var(--muted-foreground));
-}
-.nat-breadcrumb a:hover { color: hsl(var(--foreground)); transition: color 120ms; }
-.nat-bc-sep { width: 10px; height: 10px; opacity: .4; }
-.nat-bc-curr { font-weight: 700; color: var(--c-lotus-text); }
-.nat-topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-
-/* ─── SCROLL AREA ─── */
-.nat-scroll {
-  flex: 1; overflow-y: auto;
-  background: hsl(var(--background));
-  padding: 28px 24px 80px;
-  display: flex; justify-content: center; align-items: flex-start;
-}
-.nat-scroll::-webkit-scrollbar { width: 5px; }
-.nat-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
-
-/* ═══════════════════════════════════════════════════
-   FORM CARD — centered column, no hard dividers
-═══════════════════════════════════════════════════ */
-.nat-form-card {
-  width: 100%; max-width: 680px;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 28px 32px 36px;
-}
-
-.nat-page-title {
-  font-size: 19px; font-weight: 700;
-  letter-spacing: -.02em; margin-bottom: 4px;
-}
-.nat-page-sub {
-  font-size: 12.5px; color: hsl(var(--muted-foreground));
-  margin-bottom: 0; line-height: 1.5;
-}
-
-/* Section dividers */
-.nat-divider {
-  border: none; border-top: 1px solid hsl(var(--border));
-  margin: 24px 0;
-}
-
-/* Section heading inside form */
-.nat-sec-head {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 16px;
-}
-.nat-sec-head svg { width: 14px; height: 14px; color: hsl(var(--muted-foreground)); flex: none; }
-.nat-sec-title {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .1em; color: hsl(var(--muted-foreground));
-}
-
-/* ─── FORM FIELDS (shared with CAM patterns) ─── */
-.nat-field { margin-bottom: 18px; }
-.nat-field:last-child { margin-bottom: 0; }
-
-.nat-label {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  font-size: 12px; font-weight: 600; margin-bottom: 5px;
-  color: hsl(var(--foreground));
-}
-.nat-opt-badge {
-  font-size: 9.5px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
-  background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
-  border: 1px solid hsl(var(--border));
-}
-.nat-hint {
-  font-size: 11px; color: hsl(var(--muted-foreground));
-  margin-top: 4px; line-height: 1.45;
-}
-
-.nat-input {
-  width: 100%; height: 36px; padding: 0 10px;
-  border: 1px solid hsl(var(--border)); border-radius: 7px;
-  background: hsl(var(--background)); color: hsl(var(--foreground));
-  font-size: 13px; font-family: var(--font-mono);
-  outline: none; transition: border-color 140ms, box-shadow 140ms;
-}
-.nat-input:focus {
-  border-color: hsl(var(--ring));
-  box-shadow: 0 0 0 3px rgba(255,164,184,.14);
-}
-.nat-input::placeholder { color: hsl(var(--muted-foreground)); font-family: var(--font-sans); font-size: 12.5px; }
-
-/* ─── RADIO OPTIONS (matching CAM pattern) ─── */
-.nat-radio-group { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
-.nat-radio-option {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 10px 13px; border-radius: 8px;
-  border: 1.5px solid hsl(var(--border));
-  cursor: pointer; transition: background 100ms, border-color 100ms;
-  background: hsl(var(--background));
-}
-.nat-radio-option:hover { background: hsl(var(--muted)); }
-.nat-radio-option.selected {
-  border-color: var(--c-lotus-bd);
-  background: var(--c-lotus-bg);
-}
-.nat-radio-dot {
-  width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;
-  border: 1.5px solid hsl(var(--border));
-  display: flex; align-items: center; justify-content: center;
-  margin-top: 1px;
-  transition: border-color 120ms;
-}
-.nat-radio-option.selected .nat-radio-dot { border-color: var(--c-lotus-text); }
-.nat-radio-dot-inner {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--c-lotus-text);
-  transform: scale(0); transition: transform 140ms var(--ease-lotus);
-}
-.nat-radio-option.selected .nat-radio-dot-inner { transform: scale(1); }
-.nat-radio-body { display: flex; flex-direction: column; gap: 2px; }
-.nat-radio-text { font-size: 13px; font-weight: 500; color: hsl(var(--foreground)); display: flex; align-items: center; }
-.nat-radio-desc { font-size: 11.5px; color: hsl(var(--muted-foreground)); line-height: 1.4; }
-
-/* Role cards also use .nat-radio-dot — scope the selected state */
-.nat-role-card.selected .nat-radio-dot { border-color: var(--c-lotus-text); }
-.nat-role-card.selected .nat-radio-dot-inner { transform: scale(1); }
+/* "+ future" pill inside the MCP radio label */
 .nat-future-badge {
   font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
   background: var(--c-leaf-bg); border: 1px solid var(--c-leaf-bd);
   color: var(--c-leaf-text);
 }
 
-/* ─── MODEL/MCP SELECTION BOX (same pattern as CAM) ─── */
+/* ─── MODEL / MCP SELECTION BOX ─── */
 .nat-sel-box {
   border: 1px solid hsl(var(--border)); border-radius: 8px;
   overflow: hidden;
 }
-
 .nat-sel-chips-area {
   padding: 10px 12px;
   border-bottom: 1px solid hsl(var(--border));
@@ -287,11 +53,8 @@ input, select, textarea { font-family: inherit; }
   opacity: .6; transition: opacity 100ms; display: inline-flex;
 }
 .nat-chip-x:hover { opacity: 1; }
-.nat-chip-empty {
-  font-size: 11px; color: hsl(var(--muted-foreground));
-}
+.nat-chip-empty { font-size: 11px; color: hsl(var(--muted-foreground)); }
 
-/* Available list area */
 .nat-sel-list-area { padding: 10px 12px; }
 .nat-sel-list-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -306,7 +69,6 @@ input, select, textarea { font-family: inherit; }
 }
 .nat-link-btn:hover { opacity: .7; }
 
-/* Search */
 .nat-sel-search-wrap { position: relative; margin-bottom: 7px; }
 .nat-sel-search-icon {
   position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
@@ -316,10 +78,10 @@ input, select, textarea { font-family: inherit; }
 .nat-sel-search {
   width: 100%; height: 30px; padding: 0 28px;
   border: 1px solid hsl(var(--border)); border-radius: 6px;
-  background: hsl(var(--background)); color: hsl(var(--foreground));
+  background: hsl(var(--card)); color: hsl(var(--foreground));
   font-size: 12px; outline: none; transition: border-color 140ms;
 }
-.nat-sel-search:focus { border-color: hsl(var(--ring)); }
+.nat-sel-search:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px hsl(var(--primary) / .2); }
 .nat-sel-search-clear {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
   background: none; border: none; padding: 2px; cursor: pointer;
@@ -328,7 +90,6 @@ input, select, textarea { font-family: inherit; }
 }
 .nat-sel-search-clear:hover { color: hsl(var(--foreground)); }
 
-/* Item list */
 .nat-sel-item-list {
   border: 1px solid hsl(var(--border)); border-radius: 6px;
   overflow: hidden; max-height: 200px; overflow-y: auto;
@@ -350,18 +111,18 @@ input, select, textarea { font-family: inherit; }
 
 .nat-sel-cb {
   width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0;
-  border: 1.5px solid hsl(var(--border)); background: hsl(var(--background));
+  border: 1.5px solid hsl(var(--input)); background: hsl(var(--card));
   appearance: none; cursor: pointer; pointer-events: none;
   position: relative; transition: background 120ms, border-color 120ms;
 }
 .nat-sel-item.checked .nat-sel-cb {
-  background: hsl(var(--accent)); border-color: hsl(var(--accent));
+  background: hsl(var(--primary)); border-color: hsl(var(--primary));
 }
 .nat-sel-item.checked .nat-sel-cb::after {
   content: ''; position: absolute;
-  left: 2px; top: 0; width: 5px; height: 8px;
-  border: 2px solid #fff; border-top: none; border-left: none;
-  transform: rotate(42deg);
+  left: 4px; top: 1px; width: 4px; height: 8px;
+  border: solid hsl(var(--primary-foreground)); border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 .nat-sel-item-name { flex: 1; }
 .nat-sel-item-meta { font-size: 10px; color: hsl(var(--muted-foreground)); font-family: var(--font-sans); }
@@ -374,16 +135,17 @@ input, select, textarea { font-family: inherit; }
 /* ─── ROLE RADIO CARDS ─── */
 .nat-role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .nat-role-card {
-  padding: 12px 14px 14px; border-radius: 9px;
-  border: 1.5px solid hsl(var(--border));
-  cursor: pointer; transition: background 100ms, border-color 100ms;
-  background: hsl(var(--background));
+  padding: 12px 14px 14px; border-radius: var(--radius-md);
+  border: 1px solid hsl(var(--border));
+  cursor: pointer; transition: background 120ms, border-color 120ms;
+  background: hsl(var(--card));
 }
-.nat-role-card:hover { background: hsl(var(--muted)); }
+.nat-role-card:hover { border-color: hsl(var(--primary) / .5); }
 .nat-role-card.selected {
-  border-color: var(--c-lotus-bd);
-  background: var(--c-lotus-bg);
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / .07);
 }
+.nat-role-card.selected .bf-radio-dot { border-color: hsl(var(--primary-hover)); }
 .nat-role-card-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 5px;
@@ -396,58 +158,16 @@ input, select, textarea { font-family: inherit; }
 .nat-role-badge {
   display: inline-flex; margin-top: 8px;
   padding: 2px 7px; border-radius: 4px;
-  font-size: 10px; font-weight: 700;
+  font-size: 10px; font-weight: 700; font-family: var(--font-mono);
   border: 1px solid;
 }
-.nat-role-badge.user {
-  background: var(--c-indigo-bg); border-color: var(--c-indigo-bd); color: var(--c-indigo-text);
-}
-.nat-role-badge.power {
-  background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text);
-}
+.nat-role-badge.user  { background: var(--c-indigo-bg);  border-color: var(--c-indigo-bd);  color: var(--c-indigo-text); }
+.nat-role-badge.power { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
 
-/* ─── NOTICE CARD ─── */
-.nat-notice {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 10px 14px;
-  background: var(--c-warning-bg);
-  border: 1px solid var(--c-warning-bd);
-  border-radius: 8px; margin-bottom: 20px;
-}
-.nat-notice svg { width: 14px; height: 14px; color: var(--c-saffron-text); flex-shrink: 0; margin-top: 1px; }
-.nat-notice-text { font-size: 11.5px; color: var(--c-warning-text); line-height: 1.5; }
-.nat-notice-text strong { font-weight: 700; }
-
-/* ─── ACTION BAR ─── */
-.nat-action-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding-top: 24px; margin-top: 4px;
-}
-.nat-action-spacer { flex: 1; }
-
-/* ─── BUTTONS ─── */
-.nat-btn {
-  height: 34px; padding: 0 16px; border-radius: 8px;
-  font-size: 12.5px; font-weight: 600; border: none;
-  display: inline-flex; align-items: center; gap: 6px;
-  cursor: pointer; transition: opacity 120ms, background 120ms;
-  white-space: nowrap;
-}
-.nat-btn:hover { opacity: .82; }
-.nat-btn-cancel {
-  border: 1px solid hsl(var(--border)) !important;
-  background: transparent; color: hsl(var(--foreground));
-}
-.nat-btn-generate {
-  background: hsl(var(--accent)); color: hsl(var(--accent-foreground));
-  font-weight: 700; font-size: 13px; height: 36px; padding: 0 20px;
-}
-.nat-btn-generate svg { width: 14px; height: 14px; }
-
-/* ─── SUCCESS STATE ─── */
+/* ─── GENERATED TOKEN REVEAL ─── */
 .nat-token-reveal {
   border: 1px solid var(--c-leaf-bd);
-  border-radius: 9px; overflow: hidden;
+  border-radius: var(--radius-md); overflow: hidden;
 }
 .nat-token-reveal-header {
   display: flex; align-items: center; gap: 8px;
@@ -460,8 +180,7 @@ input, select, textarea { font-family: inherit; }
 .nat-token-reveal-body { padding: 12px 14px; display: flex; gap: 8px; align-items: center; }
 .nat-token-value {
   flex: 1; font-family: var(--font-mono); font-size: 12px;
-  color: hsl(var(--foreground)); word-break: break-all;
-  line-height: 1.5;
+  color: hsl(var(--foreground)); word-break: break-all; line-height: 1.5;
 }
 .nat-copy-btn {
   height: 30px; padding: 0 12px; border-radius: 6px;
@@ -477,4 +196,9 @@ input, select, textarea { font-family: inherit; }
 .nat-token-warn {
   font-size: 11px; color: var(--c-leaf-text);
   padding: 0 14px 10px; font-weight: 500;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 640px) {
+  .nat-role-grid { grid-template-columns: 1fr; }
 }

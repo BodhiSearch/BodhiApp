@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bodhi · Error</title>
+  <link rel="stylesheet" href="colors_and_type.css">
+  <script src="bodhi-theme.js"></script>
+  <link rel="stylesheet" href="bodhi-auth.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- ════════════ Keycloak template: error.ftl ════════════ -->
+  <div class="ba-page">
+    <div class="ba-watermark"></div>
+    <button class="ba-theme-toggle" id="ba-theme" aria-label="Toggle light or dark theme">
+      <i data-lucide="moon"></i><span class="ba-tt-label">Dark</span>
+    </button>
+
+    <div class="ba-card" data-kc-page="error.ftl">
+      <div class="ba-brand" style="justify-content:center">
+        <div class="ba-brand-mark"></div>
+        <div class="ba-brand-word">B<span class="om">O</span>DHI</div>
+      </div>
+
+      <div class="ba-center">
+        <div class="ba-status-icon is-error"><i data-lucide="alert-triangle" style="width:28px;height:28px"></i></div>
+        <div class="ba-head">
+          <h1 class="ba-title">Something went wrong</h1>
+          <p class="ba-sub" data-kc-field="message.summary">We couldn’t complete that request. The link may have expired or already been used.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:24px">
+        <a class="ba-btn ba-btn-primary ba-btn-block" href="login.html" data-kc-link="client.baseUrl">Back to sign in</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="bodhi-auth.js"></script>
+</body>
+</html>

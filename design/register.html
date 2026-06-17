@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bodhi · Create account</title>
+  <link rel="stylesheet" href="colors_and_type.css">
+  <script src="bodhi-theme.js"></script>
+  <link rel="stylesheet" href="bodhi-auth.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- ════════════════ Keycloak template: register.ftl ════════════════ -->
+  <div class="ba-page">
+    <div class="ba-watermark"></div>
+    <button class="ba-theme-toggle" id="ba-theme" aria-label="Toggle light or dark theme">
+      <i data-lucide="moon"></i><span class="ba-tt-label">Dark</span>
+    </button>
+
+    <div class="ba-card is-wide" data-kc-page="register.ftl">
+      <div class="ba-brand">
+        <div class="ba-brand-mark"></div>
+        <div class="ba-brand-word">B<span class="om">O</span>DHI</div>
+      </div>
+
+      <div class="ba-head">
+        <h1 class="ba-title">Create your account</h1>
+        <p class="ba-sub">A few details and you’re in. <span style="color:hsl(var(--muted-foreground))">All fields required.</span></p>
+      </div>
+
+      <form class="ba-form" id="kc-register-form" onsubmit="return false">
+        <div class="ba-group">
+          <label class="ba-label" for="reg-email">Email <span class="ba-req">*</span></label>
+          <!-- Email IS the username — no separate username field. -->
+          <input class="ba-input" id="reg-email" name="email" type="email" autocomplete="email" inputmode="email" autofocus data-kc-field="email" placeholder="you@example.com">
+        </div>
+
+        <div class="ba-group">
+          <label class="ba-label" for="reg-password">Password <span class="ba-req">*</span></label>
+          <div class="ba-pw-wrap">
+            <input class="ba-input" id="reg-password" name="password" type="password" autocomplete="new-password" data-kc-field="password" data-meter placeholder="Create a password">
+            <button type="button" class="ba-pw-toggle" data-pw-toggle aria-label="Show password"><i data-lucide="eye"></i></button>
+          </div>
+          <div class="ba-meter" data-meter-bar><span class="ba-meter-seg"></span><span class="ba-meter-seg"></span><span class="ba-meter-seg"></span><span class="ba-meter-seg"></span></div>
+          <div class="ba-meter-label" data-meter-label>Use 8+ characters with a mix of letters, numbers &amp; symbols.</div>
+        </div>
+
+        <div class="ba-group">
+          <label class="ba-label" for="reg-password-confirm">Confirm password <span class="ba-req">*</span></label>
+          <div class="ba-pw-wrap">
+            <input class="ba-input" id="reg-password-confirm" name="password-confirm" type="password" autocomplete="new-password" data-kc-field="password-confirm" placeholder="Re-enter your password">
+            <button type="button" class="ba-pw-toggle" data-pw-toggle aria-label="Show password"><i data-lucide="eye"></i></button>
+          </div>
+        </div>
+
+        <div class="ba-group-row">
+          <div class="ba-group">
+            <label class="ba-label" for="firstName">First name <span class="ba-req">*</span></label>
+            <input class="ba-input" id="firstName" name="firstName" type="text" autocomplete="given-name" data-kc-field="firstName" placeholder="Siddhartha">
+          </div>
+          <div class="ba-group">
+            <label class="ba-label" for="lastName">Last name <span class="ba-req">*</span></label>
+            <input class="ba-input" id="lastName" name="lastName" type="text" autocomplete="family-name" data-kc-field="lastName" placeholder="Gautama">
+          </div>
+        </div>
+
+        <label class="ba-check" style="margin-top:2px">
+          <input class="ba-checkbox" type="checkbox" id="termsAccepted" name="termsAccepted" data-kc-field="termsAccepted">
+          <span class="ba-check-label">I agree to the <a class="ba-link" href="#">Terms</a> &amp; <a class="ba-link" href="#">Privacy Policy</a></span>
+        </label>
+
+        <button class="ba-btn ba-btn-primary ba-btn-block" id="kc-register" type="submit">Create account</button>
+      </form>
+
+      <div class="ba-foot">
+        Already have an account? <a href="login.html" data-kc-link="login">Sign in</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="bodhi-auth.js"></script>
+</body>
+</html>

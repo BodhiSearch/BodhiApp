@@ -1,0 +1,166 @@
+/* ═══════════════════════════════════════════════════
+   BODHI — shared LIST-PAGE primitives
+   bodhi-list.jsx + bodhi-list.css
+   Load AFTER bodhi-app-shell.css, BEFORE the page sheet.
+
+   The unified "list page" outer layer used by every list screen
+   (MCP Discover, App Tokens, Access Requests, Manage Users, Models).
+   It owns the page skeleton, the control band (category pills + a
+   collapsible search that opens in its own row ABOVE the band), the
+   scroll region, the edge-to-edge list frame, and the card-grid +
+   card frame. The INNER content of every row / card stays page-local
+   — pages compose their own cells inside these shared shells.
+
+   Anatomy of a list page:
+     .l-page                       flex column, fills the flush main
+       <ListToolbar/>  → .l-controls
+         .l-searchrow              (only while search is open) full input row, ABOVE
+         .l-toolbar                category pills (left) · actions + search icon (right)
+       .l-scroll                   the single scroll region
+         <ListView/> → .l-listview   sticky .l-listhead + .l-listrow rows  (edge-to-edge)
+         …or .l-cardgrid of .l-card  (card layout — kept as an option)
+═══════════════════════════════════════════════════ */
+
+/* ── PAGE SKELETON (flush main, self-managed scroll) ── */
+.l-page { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.l-controls { flex: none; }
+.l-scroll { flex: 1; min-height: 0; overflow-y: auto; container-type: inline-size; container-name: lscroll; }
+.l-scroll::-webkit-scrollbar { width: 6px; }
+.l-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+.l-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* ── CONTROL BAND ── */
+.l-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; min-height: 52px; }
+
+/* category / sub-category pills (left) */
+.l-cats { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; overflow-x: auto; }
+.l-cats::-webkit-scrollbar { display: none; }
+.l-cats { scrollbar-width: none; }
+.l-cat { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 99px; border: 1px solid hsl(var(--border)); background: transparent; color: hsl(var(--muted-foreground)); font-size: 12.5px; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background 120ms, color 120ms, border-color 120ms; }
+.l-cat:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.l-cat.on { background: hsl(var(--foreground)); color: hsl(var(--background)); border-color: transparent; font-weight: 600; }
+.l-cat.c-indigo.on  { background: var(--c-indigo-bg);  color: var(--c-indigo-text);  border-color: var(--c-indigo-bd); }
+.l-cat.c-leaf.on    { background: var(--c-leaf-bg);    color: var(--c-leaf-text);    border-color: var(--c-leaf-bd); }
+.l-cat.c-saffron.on { background: var(--c-saffron-bg); color: var(--c-saffron-text); border-color: var(--c-saffron-bd); }
+.l-cat.c-lotus.on   { background: var(--c-lotus-bg);   color: var(--c-lotus-text);   border-color: var(--c-lotus-bd); }
+.l-cat.c-teal.on    { background: var(--c-teal-bg);    color: var(--c-teal-text);    border-color: var(--c-teal-bd); }
+.l-cat-badge { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 99px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.l-cat.on .l-cat-badge { background: rgba(255,255,255,.22); color: inherit; }
+.l-cat.c-indigo.on .l-cat-badge,
+.l-cat.c-leaf.on .l-cat-badge,
+.l-cat.c-saffron.on .l-cat-badge,
+.l-cat.c-lotus.on .l-cat-badge,
+.l-cat.c-teal.on .l-cat-badge { background: rgba(0,0,0,.08); color: inherit; }
+
+/* right-side actions */
+.l-tb-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.l-iconbtn { position: relative; width: 32px; height: 32px; border-radius: 8px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); cursor: pointer; transition: background 120ms, color 120ms, border-color 120ms; flex: none; }
+.l-iconbtn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.l-iconbtn.on { background: hsl(var(--foreground)); color: hsl(var(--background)); border-color: transparent; }
+.l-iconbtn .l-dot { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--c-lotus-text); border: 1.5px solid hsl(var(--card)); }
+.l-tb-btn { height: 32px; padding: 0 11px; border-radius: 8px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: hsl(var(--foreground)); white-space: nowrap; cursor: pointer; flex: none; transition: background 120ms; }
+.l-tb-btn:hover { background: hsl(var(--muted)); }
+.l-tb-btn svg { width: 13px; height: 13px; color: hsl(var(--muted-foreground)); }
+
+/* the full search input — its own row, ABOVE the toolbar */
+.l-searchrow { display: flex; align-items: center; gap: 8px; padding: 10px 16px 0; animation: l-searchrow-in 150ms cubic-bezier(.22,.61,.36,1); }
+@keyframes l-searchrow-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.l-searchrow .shell-search { flex: 1; }
+@media (prefers-reduced-motion: reduce) { .l-searchrow { animation: none; } }
+
+/* ── EMPTY STATE ── */
+.l-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px; gap: 8px; padding: 32px; text-align: center; color: hsl(var(--muted-foreground)); }
+.l-empty svg { width: 30px; height: 30px; opacity: .3; }
+.l-empty-t { font-size: 13.5px; font-weight: 600; color: hsl(var(--foreground)); }
+.l-empty-s { font-size: 12.5px; }
+
+/* ── SECTION HEADER (labeled zones within a scroll region) ── */
+.l-sectionhead { display: flex; align-items: center; gap: 8px; padding: 16px 16px 8px; }
+.l-sectionhead:first-child { padding-top: 12px; }
+.l-sectionhead-t { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: hsl(var(--muted-foreground)); }
+.l-sectionhead-n { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 99px; font-size: 10.5px; font-weight: 700; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.l-sectionhead-n.warn { background: var(--c-saffron-bg); color: var(--c-saffron-text); border: 1px solid var(--c-saffron-bd); }
+.l-sectionhead-sub { font-size: 12px; color: hsl(var(--muted-foreground)); font-weight: 400; }
+
+/* ── EDGE-TO-EDGE LIST FRAME ── */
+.l-listview { display: flex; flex-direction: column; }
+.l-listhead { display: flex; align-items: center; gap: 0; padding: 7px 16px; border-bottom: 1px solid hsl(var(--border)); position: sticky; top: 0; z-index: 5; background: hsl(var(--background)); flex-shrink: 0; }
+.l-lh { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: hsl(var(--muted-foreground)); }
+.l-listrow { display: flex; align-items: center; gap: 0; padding: 10px 16px; border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 80ms; }
+.l-listrow:hover { background: hsl(var(--muted)); }
+.l-listrow.active { background: var(--c-lotus-bg); }
+/* status accent stripe — pages set --row-accent on the row */
+.l-listrow.accent { border-left: 3px solid var(--row-accent, transparent); padding-left: 13px; }
+.l-listrow.is-dim { opacity: .6; }
+
+/* ═══════════════════════════════════════════════════
+   DETAIL PANEL (.dp-*) — shared right-rail detail view
+   Used by App Tokens, Access Requests, Manage Users. Sits in the
+   AppShell `rail` (body) + `railHeader` (header band) slots. Click a
+   .l-listrow to select it (.active) and populate this panel; act here.
+═══════════════════════════════════════════════════ */
+/* header band (railHeader slot) — shares the 56px gridline */
+.dp-head { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; }
+.dp-head-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; flex: none; }
+.dp-head-body { flex: 1; min-width: 0; }
+.dp-head-title { font-size: 13.5px; font-weight: 700; letter-spacing: -.015em; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-head-title.mono { font-family: var(--font-mono); font-size: 12.5px; }
+.dp-head-sub { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-close { width: 28px; height: 28px; border-radius: 7px; border: none; background: none; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); flex: none; cursor: pointer; transition: background 100ms; }
+.dp-close:hover { background: hsl(var(--muted)); }
+
+/* body — fills the rail, manages its own scroll */
+.dp-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.dp-status-row { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-bottom: 1px solid hsl(var(--border)); flex: none; flex-wrap: wrap; }
+.dp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
+.dp-body::-webkit-scrollbar { width: 5px; }
+.dp-body::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+.dp-section { margin-bottom: 18px; }
+.dp-section:last-child { margin-bottom: 0; }
+.dp-sec-lbl { font-size: 9.5px; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; color: hsl(var(--muted-foreground)); margin-bottom: 8px; }
+.dp-desc { font-size: 12.5px; color: hsl(var(--muted-foreground)); line-height: 1.55; }
+
+/* key→value rows */
+.dp-rows { display: flex; flex-direction: column; gap: 0; }
+.dp-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid hsl(var(--border)); font-size: 12.5px; }
+.dp-row:last-child { border-bottom: none; }
+.dp-row-k { color: hsl(var(--muted-foreground)); display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.dp-row-k svg { width: 13px; height: 13px; opacity: .7; }
+.dp-row-v { color: hsl(var(--foreground)); font-weight: 500; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-row-v.mono { font-family: var(--font-mono); font-size: 12px; }
+
+/* resource lines (icon + text) */
+.dp-resource { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: hsl(var(--foreground)); padding: 7px 0; }
+.dp-resource svg { width: 14px; height: 14px; opacity: .7; flex: none; }
+
+/* form field (role select etc.) */
+.dp-field { display: flex; flex-direction: column; gap: 7px; }
+.dp-field-lbl { font-size: 11px; font-weight: 600; color: hsl(var(--foreground)); }
+.dp-field-hint { font-size: 11.5px; color: hsl(var(--muted-foreground)); line-height: 1.5; }
+
+/* footer — stacked full-width actions */
+.dp-foot { flex: none; padding: 12px 16px; border-top: 1px solid hsl(var(--border)); display: flex; flex-direction: column; gap: 8px; }
+.dp-btn { width: 100%; height: 38px; border-radius: 9px; border: 1px solid transparent; font-family: inherit; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer; transition: opacity 120ms, background 120ms, border-color 120ms, color 120ms; }
+.dp-btn svg { width: 14px; height: 14px; }
+.dp-btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.dp-btn-primary:hover { opacity: .88; }
+.dp-btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+.dp-btn-accent { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+.dp-btn-accent:hover { opacity: .88; }
+.dp-btn-accent:disabled { opacity: .45; cursor: not-allowed; }
+.dp-btn-outline { background: transparent; border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+.dp-btn-outline:hover { border-color: var(--c-saffron-bd); background: var(--c-saffron-bg); color: var(--c-saffron-text); }
+.dp-btn-danger { background: transparent; border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+.dp-btn-danger:hover { border-color: hsl(var(--destructive)); background: rgba(220,38,38,.05); color: hsl(var(--destructive)); }
+
+/* ── CARD GRID + CARD FRAME (optional layout) ── */
+.l-cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 14px 16px 24px; }
+.l-card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 12px; cursor: pointer; position: relative; transition: border-color 140ms, box-shadow 140ms, background 80ms; }
+.l-card:hover { border-color: hsl(var(--ring)); box-shadow: var(--shadow-md); }
+.l-card.active { border-color: #FFA4B8; background: var(--c-lotus-bg); box-shadow: 0 0 0 3px rgba(255,164,184,.15); }
+.l-card.accent { border-left: 3px solid var(--row-accent, transparent); }
+.l-card.is-dim { opacity: .65; }
+
+/* ── Dark — selected row / card: wash + a clear accent border ── */
+[data-theme="dark"] .l-listrow.active { background: hsl(var(--primary) / .10); box-shadow: inset 3px 0 0 hsl(var(--primary) / .7); }
+[data-theme="dark"] .l-card.active { border-color: hsl(var(--primary) / .6); background: hsl(var(--primary) / .10); }

@@ -1,80 +1,62 @@
 /* ═══════════════════════════════════════════════════
-   CREATE FALLBACK ALIAS — CSS
-   Layered on top of create-api-model.css.
-   Adds: teal type tokens, 2-column layout, step cards,
-         alias combobox, chain preview, sidebar.
+   CREATE FALLBACK ALIAS — page-unique styles
+   Self-contained (no longer rides create-api-model.css).
+   Generic shell + form primitives come from bodhi-form.css (.bf-*).
+   This file owns: semantic color tokens, the 2-column form+rail
+   layout, step cards, alias combobox, chain preview, info rail.
 ═══════════════════════════════════════════════════ */
 
-/* ── Teal type tokens (fallback) ── */
+/* ── Semantic color tokens (mirrors the shared badge palette) ── */
 :root {
-  --c-teal-bg:   rgba(13,148,136,.10);
-  --c-teal-bd:   rgba(13,148,136,.24);
-  --c-teal-text: #0f766e;
+  --c-lotus-bg:   rgba(255,164,184,.13); --c-lotus-bd:   rgba(255,164,184,.32); --c-lotus-text:   #B02A52;
+  --c-saffron-bg: rgba(250,138,46,.11);  --c-saffron-bd: rgba(250,138,46,.26);  --c-saffron-text: #B4500A;
+  --c-leaf-bg:    rgba(91,178,59,.11);   --c-leaf-bd:    rgba(91,178,59,.26);   --c-leaf-text:    #2F7D1F;
+  --c-indigo-bg:  rgba(62,74,168,.09);   --c-indigo-bd:  rgba(62,74,168,.20);   --c-indigo-text:  #3E4AA8;
+  --c-teal-bg:    rgba(13,148,136,.10);  --c-teal-bd:    rgba(13,148,136,.24);  --c-teal-text:    #0f766e;
 }
 [data-theme="dark"] {
-  --c-teal-bg:   rgba(94,234,212,.12);
-  --c-teal-bd:   rgba(94,234,212,.28);
-  --c-teal-text: #5eead4;
+  --c-lotus-bg:   rgba(255,164,184,.14); --c-lotus-bd:   rgba(255,164,184,.26); --c-lotus-text:   #FFA4B8;
+  --c-saffron-bg: rgba(250,138,46,.16);  --c-saffron-bd: rgba(250,138,46,.28);  --c-saffron-text: #FFAB5C;
+  --c-leaf-bg:    rgba(139,217,99,.14);  --c-leaf-bd:    rgba(139,217,99,.26);  --c-leaf-text:    #8BD963;
+  --c-indigo-bg:  rgba(110,123,204,.16); --c-indigo-bd:  rgba(110,123,204,.28); --c-indigo-text:  #A5AEE6;
+  --c-teal-bg:    rgba(94,234,212,.12);  --c-teal-bd:    rgba(94,234,212,.28);  --c-teal-text:    #5eead4;
 }
 
-/* ── Override breadcrumb current to teal ── */
-.cfm-bc-curr { font-weight: 700; color: var(--c-teal-text); }
-
-/* ── Create button (teal) ── */
-.cfm-btn-create {
-  background: var(--c-teal-text);
-  color: #fff;
-  font-weight: 700; font-size: 13px;
-  height: 32px; padding: 0 16px;
-  border: 1px solid var(--c-teal-text);
-  border-radius: 6px;
-  display: inline-flex; align-items: center; gap: 6px;
-  cursor: pointer; transition: opacity 120ms;
+/* ── 2-column layout: form card + info rail ── */
+.cfm-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 30px 28px 56px;
+  align-items: start;
 }
-.cfm-btn-create:hover { opacity: .9; }
-.cfm-btn-create:disabled {
-  background: hsl(var(--muted));
-  color: hsl(var(--muted-foreground));
-  border-color: hsl(var(--border));
-  cursor: not-allowed; opacity: 1;
-}
-
-/* ── Page layout (2-column) ── */
-.cfm-page-wrap {
-  display: flex; flex: 1;
-  overflow: hidden;
-  background: hsl(var(--background));
-}
-.cfm-main-col {
-  flex: 1; min-width: 0;
-  max-width: 700px;
-  padding: 28px 32px 80px;
-  overflow-y: auto;
-}
+.cfm-form-col { min-width: 0; }
 .cfm-side-col {
-  width: 296px; flex-shrink: 0;
-  border-left: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  padding: 18px 16px;
-  overflow-y: auto;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ── Section ── */
-.cfm-section { margin-bottom: 28px; }
-.cfm-sec-header {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding-bottom: 10px; margin-bottom: 16px;
-  border-bottom: 1px solid hsl(var(--border));
+/* inline code chip used in hints / page sub */
+.cfm-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: hsl(var(--muted));
+  padding: 1px 5px;
+  border-radius: 3px;
 }
-.cfm-sec-num {
-  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; margin-top: 1px;
-  background: var(--c-teal-bg); color: var(--c-teal-text);
-  border: 1px solid var(--c-teal-bd);
+
+/* footer validation message */
+.cfm-foot-msg {
+  font-size: 11.5px;
+  display: flex; align-items: center; gap: 5px;
 }
-.cfm-sec-title { font-size: 14px; font-weight: 600; }
-.cfm-sec-desc  { font-size: 11.5px; color: hsl(var(--muted-foreground)); margin-top: 2px; line-height: 1.4; }
+.cfm-foot-msg.warn { color: var(--c-saffron-text); }
+.cfm-foot-msg.ok   { color: var(--c-teal-text); }
 
 /* ── Step sequence ── */
 .cfm-steps { display: flex; flex-direction: column; }
@@ -90,7 +72,7 @@
   font-size: 9.5px; font-weight: 600;
   text-transform: uppercase; letter-spacing: .06em;
   color: hsl(var(--muted-foreground));
-  background: hsl(var(--background));
+  background: hsl(var(--card));
   padding: 2px 8px; border-radius: 99px;
   border: 1px solid hsl(var(--border));
   white-space: nowrap;
@@ -223,8 +205,8 @@
 .cfm-combobox { position: relative; }
 .cfm-combobox-trigger {
   display: flex; align-items: center; height: 34px;
-  border: 1px solid hsl(var(--border)); border-radius: 6px;
-  background: hsl(var(--background));
+  border: 1px solid hsl(var(--input)); border-radius: 6px;
+  background: hsl(var(--card));
   cursor: pointer; overflow: hidden;
   transition: border-color 120ms, box-shadow 120ms;
 }
@@ -296,8 +278,8 @@
 }
 .cfm-model-select {
   width: 100%; height: 34px; padding: 0 28px 0 10px;
-  border: 1px solid hsl(var(--border)); border-radius: 6px;
-  background: hsl(var(--background)); color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--input)); border-radius: 6px;
+  background: hsl(var(--card)); color: hsl(var(--foreground));
   font-family: var(--font-mono); font-size: 12.5px;
   outline: none; cursor: pointer; appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2371717F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -309,8 +291,8 @@
 .cfm-model-input-wrap { position: relative; }
 .cfm-model-input {
   width: 100%; height: 34px; padding: 0 10px;
-  border: 1px solid hsl(var(--border)); border-radius: 6px;
-  background: hsl(var(--background)); color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--input)); border-radius: 6px;
+  background: hsl(var(--card)); color: hsl(var(--foreground));
   font-family: var(--font-mono); font-size: 12.5px;
   outline: none; transition: border-color 120ms, box-shadow 120ms;
 }
@@ -359,19 +341,7 @@
   background: var(--c-teal-bg);
 }
 
-/* ── Bottom action bar (matches cam-action-bar) ── */
-.cfm-action-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding-top: 24px; margin-top: 16px;
-  border-top: 1px solid hsl(var(--border));
-}
-.cfm-action-spacer { flex: 1; }
-.cfm-action-msg {
-  font-size: 11.5px; color: hsl(var(--muted-foreground));
-  display: flex; align-items: center; gap: 5px;
-}
-
-/* ── Sidebar ── */
+/* ── Info rail ── */
 .cfm-validation-badge {
   display: flex; align-items: flex-start; gap: 7px;
   padding: 8px 11px; border-radius: 7px;
@@ -489,15 +459,10 @@
 .cfm-tip-bullet { color: var(--c-teal-text); flex-shrink: 0; }
 
 /* ── Responsive ── */
-@media (max-width: 1023px) {
-  .cfm-main-col { padding: 22px 22px 80px; }
-}
-@media (max-width: 900px) {
+@media (max-width: 980px) {
+  .cfm-layout { grid-template-columns: 1fr; }
   .cfm-side-col { display: none; }
-  .cfm-main-col { max-width: none; }
 }
-@media (max-width: 639px) {
-  .cfm-main-col { padding: 14px 14px 90px; }
-  .cfm-action-bar { display: none; }
-  .cfm-step-card { padding: 11px 12px; }
+@media (max-width: 640px) {
+  .cfm-layout { padding: 20px 16px 40px; }
 }

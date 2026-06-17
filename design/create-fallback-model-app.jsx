@@ -6,10 +6,6 @@
    Right sidebar: live chain preview + how-it-works + tips.
 ═══════════════════════════════════════════════════ */
 
-const CFM_TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "theme": "light"
-}/*EDITMODE-END*/;
-
 /* ── Available aliases ────────────────────────────
    In the real app this comes from the API; mocked here.
    For api-models the `fwdMode` field mirrors how the
@@ -433,8 +429,6 @@ function ChainPreview({ steps }) {
    MAIN APP
 ═══════════════════════════════════════════════════ */
 function CreateFallbackModelApp() {
-  const [tweaks, setTweak] = useTweaks(CFM_TWEAK_DEFAULTS);
-
   const [aliasName, setAliasName] = React.useState('smart-fallback');
   const [nextStepId, setNextStepId] = React.useState(10);
   const [steps, setSteps] = React.useState([
@@ -442,10 +436,6 @@ function CreateFallbackModelApp() {
     { id:2, aliasId:'01kp50czqbcgnhnwtnv7jq2s', model:'claude-sonnet-4-5', enabled:true },
     { id:3, aliasId:'my-qwen-coder',            model:null,                enabled:true },
   ]);
-
-  React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', tweaks.theme);
-  }, [tweaks.theme]);
 
   const addStep = () => {
     setSteps(prev => [...prev, { id:nextStepId, aliasId:null, model:null, enabled:true }]);
@@ -499,129 +489,112 @@ function CreateFallbackModelApp() {
   const _otherAliasIds = []; // empty => no exclusion
 
   return (
-    <div className="cam-app-shell">
-      <BodhiSidebar section="models" subPage="new-fallback-model" />
-      <div className="cam-content">
+    <>
+    <AppShell
+      section="models" subPage="new-fallback-model" resizeKey="createmodel"
+      breadcrumb={[
+        { label: 'Bodhi', href: 'Bodhi Chat.html' },
+        { label: 'Models', href: 'Bodhi Models.html' },
+        { label: 'New Fallback Alias', current: true },
+      ]}
+      contentClass="flush" mainScroll={false}
+    >
+        {/* ── Scroll · form column + info rail ── */}
+        <div className="bf-scroll">
+          <div className="cfm-layout">
 
-        {/* ── Top bar ── */}
-        <header className="cam-top-bar">
-          <img src="assets/bodhi-logo-60.svg" alt="Bodhi" className="cam-logo-img" />
-          <nav className="cam-breadcrumb">
-            <a href="Bodhi Models.html">Bodhi</a>
-            <span className="cam-bc-sep">/</span>
-            <a href="Bodhi Models.html">Model Aliases</a>
-            <span className="cam-bc-sep">/</span>
-            <span className="cfm-bc-curr">New Fallback Alias</span>
-          </nav>
-          <div className="cam-spacer" />
-          <div className="cam-top-actions">
-            <button className="cam-btn cam-btn-cancel">Cancel</button>
-            <button
-              className="cfm-btn-create"
-              disabled={!isValid}
-            >
-              <Icon name="route" size={13} />
-              Create Fallback Alias
-            </button>
-          </div>
-        </header>
-
-        {/* ── Page ── */}
-        <div className="cfm-page-wrap">
-          {/* MAIN COLUMN */}
-          <main className="cfm-main-col">
-            <h1 className="cam-page-title">New Fallback Alias</h1>
-            <p className="cam-page-sub">
-              Chain multiple model aliases into a prioritized sequence. When a request arrives with this alias name as its <code style={{fontFamily:'var(--font-mono)', fontSize:11, background:'hsl(var(--muted))', padding:'1px 5px', borderRadius:3}}>model</code>, each step is tried in order — on error, the next step takes over.
-            </p>
-
-            {/* ═══ Section 1 · Identity ═══ */}
-            <div className="cfm-section">
-              <div className="cfm-sec-header">
-                <div className="cfm-sec-num">1</div>
-                <div>
-                  <div className="cfm-sec-title">Identity</div>
-                </div>
+            {/* FORM COLUMN */}
+            <div className="cfm-form-col">
+              <div className="bf-page-head">
+                <h1 className="bf-page-title">New Fallback Alias</h1>
+                <p className="bf-page-sub">
+                  Chain multiple model aliases into a prioritized sequence. When a request arrives with this alias name as its <code className="cfm-code">model</code>, each step is tried in order — on error, the next step takes over.
+                </p>
               </div>
 
-              <div className="cam-field">
-                <label className="cam-label">
-                  <span className="cam-label-text">Alias name</span>
-                  <span className="cam-req-badge">Required</span>
-                </label>
-                <input
-                  className="cam-input"
-                  value={aliasName}
-                  onChange={e => setAliasName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="e.g. smart-fallback"
-                />
-                <div className="cam-hint">
-                  Lowercase letters, digits, and dashes only. This becomes the <code style={{fontFamily:'var(--font-mono)', fontSize:11, background:'hsl(var(--muted))', padding:'1px 4px', borderRadius:3}}>model</code> value clients send to your API.
-                </div>
-              </div>
-            </div>
+              <div className="bf-card">
+                <div className="bf-card-body">
 
-            {/* ═══ Section 2 · Fallback Sequence ═══ */}
-            <div className="cfm-section">
-              <div className="cfm-sec-header">
-                <div className="cfm-sec-num">2</div>
-                <div>
-                  <div className="cfm-sec-title">Fallback Sequence</div>
-                  <div className="cfm-sec-desc">
-                    Tried top-to-bottom. The first step that responds without error wins.
-                    Pick any alias type — local files, model aliases, or API models.
+                  {/* ═══ Section 1 · Identity ═══ */}
+                  <div className="bf-section">
+                    <div className="bf-section-title">Identity</div>
+                    <div className="bf-field">
+                      <label className="bf-label">
+                        <span className="bf-label-text">Alias name</span>
+                        <span className="bf-req">*</span>
+                      </label>
+                      <input
+                        className="bf-input bf-input-mono"
+                        value={aliasName}
+                        onChange={e => setAliasName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                        placeholder="e.g. smart-fallback"
+                      />
+                      <div className="bf-hint">
+                        Lowercase letters, digits, and dashes only. This becomes the <code className="cfm-code">model</code> value clients send to your API.
+                      </div>
+                    </div>
                   </div>
+
+                  <div className="bf-divider"></div>
+
+                  {/* ═══ Section 2 · Fallback Sequence ═══ */}
+                  <div className="bf-section">
+                    <div className="bf-section-title">Fallback Sequence</div>
+                    <p className="bf-section-desc">
+                      Tried top-to-bottom. The first step that responds without error wins.
+                      Pick any alias type — local files, model aliases, or API models.
+                    </p>
+
+                    <div className="cfm-steps">
+                      {steps.map((step, i) => (
+                        <React.Fragment key={step.id}>
+                          <StepCard
+                            step={step}
+                            index={i}
+                            total={steps.length}
+                            onRemove={removeStep}
+                            onChange={updateStep}
+                            onMove={moveStep}
+                            onToggleEnabled={toggleEnabled}
+                            otherAliasIds={_otherAliasIds}
+                          />
+                          {i < steps.length - 1 && <StepConnector />}
+                        </React.Fragment>
+                      ))}
+                    </div>
+
+                    <button className="cfm-add-step" onClick={addStep}>
+                      <Icon name="plus-circle" size={14} />
+                      Add step
+                    </button>
+                  </div>
+                </div>{/* end card-body */}
+
+                {/* ═══ FOOTER — the ONLY place actions live ═══ */}
+                <div className="bf-footer">
+                  {validationMsg ? (
+                    <div className="cfm-foot-msg warn">
+                      <Icon name="info" size={12} />
+                      {validationMsg}
+                    </div>
+                  ) : (
+                    <div className="cfm-foot-msg ok">
+                      <Icon name="check-circle" size={12} />
+                      Ready to create.
+                    </div>
+                  )}
+                  <div className="bf-footer-spacer" />
+                  <button className="bf-btn bf-btn-ghost">Cancel</button>
+                  <button className="bf-btn bf-btn-primary" disabled={!isValid}>
+                    <Icon name="route" size={13} />
+                    Create Fallback Alias
+                  </button>
                 </div>
-              </div>
+              </div>{/* end card */}
+            </div>{/* end form-col */}
 
-              <div className="cfm-steps">
-                {steps.map((step, i) => (
-                  <React.Fragment key={step.id}>
-                    <StepCard
-                      step={step}
-                      index={i}
-                      total={steps.length}
-                      onRemove={removeStep}
-                      onChange={updateStep}
-                      onMove={moveStep}
-                      onToggleEnabled={toggleEnabled}
-                      otherAliasIds={_otherAliasIds}
-                    />
-                    {i < steps.length - 1 && <StepConnector />}
-                  </React.Fragment>
-                ))}
-              </div>
-
-              <button className="cfm-add-step" onClick={addStep}>
-                <Icon name="plus-circle" size={14} />
-                Add step
-              </button>
-            </div>
-
-            {/* Bottom action bar */}
-            <div className="cfm-action-bar">
-              {validationMsg ? (
-                <div className="cfm-action-msg">
-                  <Icon name="info" size={12} style={{ color:'var(--c-saffron-text)' }} />
-                  {validationMsg}
-                </div>
-              ) : (
-                <div className="cfm-action-msg" style={{ color:'var(--c-teal-text)' }}>
-                  <Icon name="check-circle" size={12} />
-                  Ready to create.
-                </div>
-              )}
-              <div className="cfm-action-spacer" />
-              <button className="cam-btn cam-btn-cancel">Cancel</button>
-              <button className="cfm-btn-create" disabled={!isValid}>
-                <Icon name="route" size={13} />
-                Create Fallback Alias
-              </button>
-            </div>
-          </main>
-
-          {/* RIGHT SIDEBAR */}
-          <aside className="cfm-side-col">
+            {/* INFO RAIL */}
+            <aside className="cfm-side-col">
             {/* Validation badge */}
             {validationMsg ? (
               <div className="cfm-validation-badge warn">
@@ -689,29 +662,11 @@ function CreateFallbackModelApp() {
                 ))}
               </div>
             </div>
-          </aside>
-        </div>
-
-        {/* Mobile bottom bar */}
-        <div className="cam-mobile-bar">
-          <button className="cam-btn cam-btn-cancel">Cancel</button>
-          <button className="cfm-btn-create" disabled={!isValid} style={{ flex:1, justifyContent:'center' }}>
-            <Icon name="route" size={13} />
-            Create
-          </button>
-        </div>
-      </div>
-
-      <TweaksPanel>
-        <TweakSection title="Theme">
-          <TweakRadio
-            value={tweaks.theme}
-            options={[{label:'Light',value:'light'},{label:'Dark',value:'dark'}]}
-            onChange={v => setTweak('theme', v)}
-          />
-        </TweakSection>
-      </TweaksPanel>
-    </div>
+          </aside>{/* end info rail */}
+          </div>{/* end cfm-layout */}
+        </div>{/* end bf-scroll */}
+    </AppShell>
+    </>
   );
 }
 

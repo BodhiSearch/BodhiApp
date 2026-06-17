@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bodhi · Sign in</title>
+  <link rel="stylesheet" href="colors_and_type.css">
+  <script src="bodhi-theme.js"></script>
+  <link rel="stylesheet" href="bodhi-auth.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- ════════════════ Keycloak template: login.ftl ════════════════ -->
+  <div class="ba-page">
+    <div class="ba-watermark"></div>
+    <button class="ba-theme-toggle" id="ba-theme" aria-label="Toggle light or dark theme">
+      <i data-lucide="moon"></i><span class="ba-tt-label">Dark</span>
+    </button>
+
+    <div class="ba-card" data-kc-page="login.ftl">
+      <div class="ba-brand">
+        <div class="ba-brand-mark"></div>
+        <div class="ba-brand-word">B<span class="om">O</span>DHI</div>
+      </div>
+
+      <div class="ba-head">
+        <h1 class="ba-title">Sign in</h1>
+        <p class="ba-sub">Welcome back. Continue to your Bodhi workspace.</p>
+      </div>
+
+      <form class="ba-form" id="kc-form-login" onsubmit="return false">
+        <div class="ba-group">
+          <label class="ba-label" for="username">Email</label>
+          <div class="ba-input-wrap">
+            <!-- Email IS the username — Keycloak still posts this as `username`. -->
+            <input class="ba-input" id="username" name="username" type="email"
+                   autocomplete="email" inputmode="email" autofocus data-kc-field="username"
+                   placeholder="you@example.com">
+          </div>
+        </div>
+
+        <div class="ba-group">
+          <label class="ba-label" for="password">Password</label>
+          <div class="ba-pw-wrap">
+            <input class="ba-input" id="password" name="password" type="password"
+                   autocomplete="current-password" data-kc-field="password"
+                   placeholder="Enter your password">
+            <button type="button" class="ba-pw-toggle" data-pw-toggle aria-label="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="ba-options">
+          <label class="ba-check">
+            <input class="ba-checkbox" type="checkbox" id="rememberMe" name="rememberMe" data-kc-field="rememberMe">
+            <span class="ba-check-label">Remember me</span>
+          </label>
+          <a class="ba-link" href="forgot-password.html" data-kc-link="login-reset-credentials">Forgot password?</a>
+        </div>
+
+        <button class="ba-btn ba-btn-primary ba-btn-block" id="kc-login" type="submit">Sign in</button>
+      </form>
+
+      <div class="ba-divider">Or continue with</div>
+      <div class="ba-social is-grid" id="kc-social-providers">
+        <a class="ba-social-item" href="#" data-kc-provider="google"><span class="ba-ic-google"></span><span class="ba-social-name">Google</span></a>
+        <a class="ba-social-item" href="#" data-kc-provider="microsoft"><span class="ba-ic-microsoft"></span><span class="ba-social-name">Microsoft</span></a>
+        <a class="ba-social-item" href="#" data-kc-provider="twitter"><span class="ba-ic-twitter"></span><span class="ba-social-name">Twitter</span></a>
+        <a class="ba-social-item" href="#" data-kc-provider="github"><span class="ba-ic-github"></span><span class="ba-social-name">GitHub</span></a>
+      </div>
+
+      <div class="ba-foot" id="kc-registration">
+        New to Bodhi? <a href="register.html" data-kc-link="registration">Create an account</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="bodhi-auth.js"></script>
+</body>
+</html>

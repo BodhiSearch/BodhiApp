@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bodhi · Grant access</title>
+  <link rel="stylesheet" href="colors_and_type.css">
+  <script src="bodhi-theme.js"></script>
+  <link rel="stylesheet" href="bodhi-auth.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- ════════════ Keycloak template: login-oauth-grant.ftl ════════════ -->
+  <div class="ba-page">
+    <div class="ba-watermark"></div>
+    <button class="ba-theme-toggle" id="ba-theme" aria-label="Toggle light or dark theme">
+      <i data-lucide="moon"></i><span class="ba-tt-label">Dark</span>
+    </button>
+
+    <div class="ba-card" data-kc-page="login-oauth-grant.ftl">
+      <div class="ba-brand">
+        <div class="ba-brand-mark"></div>
+        <div class="ba-brand-word">B<span class="om">O</span>DHI</div>
+      </div>
+
+      <div class="ba-head">
+        <h1 class="ba-title">Grant access</h1>
+        <p class="ba-sub">Do you grant these access privileges?</p>
+      </div>
+
+      <div class="ba-grant-app">
+        <div class="ba-grant-app-icon"><i data-lucide="app-window" style="width:22px;height:22px"></i></div>
+        <div>
+          <div class="ba-grant-app-name" data-kc-field="oauth.client.name">Karpathy’s LLM Wiki</div>
+          <div class="ba-grant-app-meta">is requesting access to your Bodhi account</div>
+        </div>
+      </div>
+
+      <!-- oauth.clientScopesRequested -->
+      <ul class="ba-scopes" id="kc-oauth-grant-list">
+        <li class="ba-scope">
+          <span class="ba-scope-check"><i data-lucide="check" style="width:13px;height:13px"></i></span>
+          <div class="ba-scope-text">Your user profile<div class="ba-scope-sub">Name, username and avatar</div></div>
+        </li>
+        <li class="ba-scope">
+          <span class="ba-scope-check"><i data-lucide="check" style="width:13px;height:13px"></i></span>
+          <div class="ba-scope-text">Your email address</div>
+        </li>
+        <li class="ba-scope">
+          <span class="ba-scope-check"><i data-lucide="check" style="width:13px;height:13px"></i></span>
+          <div class="ba-scope-text">Your roles &amp; permissions</div>
+        </li>
+      </ul>
+
+      <form class="ba-actions" id="kc-oauth-grant-form" onsubmit="return false">
+        <button class="ba-btn ba-btn-secondary" id="kc-cancel" name="cancel" type="submit">No, deny</button>
+        <button class="ba-btn ba-btn-primary" id="kc-login" name="accept" type="submit">Yes, allow</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="bodhi-auth.js"></script>
+</body>
+</html>

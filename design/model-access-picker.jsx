@@ -42,6 +42,7 @@
     onClose,
     suggestedIds = [],
     requiredCaps  = [],
+    itemNoun = 'model',
   }) {
     const [search,     setSearch]     = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
@@ -101,7 +102,7 @@
           <div className="panel-filters">
             <input
               className="panel-search"
-              placeholder="Search models…"
+              placeholder={`Search ${itemNoun}s…`}
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoFocus
@@ -142,6 +143,7 @@
                       </div>
                       <span className="panel-row-name">{getDisplayName(m)}</span>
                       <div className="panel-row-tags">
+                        {m.meta && <span className="panel-row-meta">{m.meta}</span>}
                         {isSuggested     && <span className="tag tag-lotus">★ best</span>}
                         {missingCaps.length > 0 && (
                           <span className="tag tag-saffron">missing: {missingCaps.join(', ')}</span>
@@ -161,7 +163,7 @@
           {/* Footer */}
           <div className="panel-foot">
             <span className="panel-foot-count">
-              {selectedIds.length} model{selectedIds.length !== 1 ? 's' : ''} selected
+              {selectedIds.length} {itemNoun}{selectedIds.length !== 1 ? 's' : ''} selected
             </span>
             <button className="btn-sm btn-sm-indigo" onClick={onClose}>Done</button>
           </div>
@@ -198,6 +200,11 @@
     requiredCaps  = [],
     showRanks     = false,
     onReorder,
+    itemNoun = 'model',
+    allLabel,
+    allDesc,
+    specificLabel,
+    specificDesc,
   }) {
     const [panelOpen, setPanelOpen] = useState(false);
     const dragItem = useRef(null);
@@ -247,11 +254,11 @@
             </div>
             <div className="map-radio-body">
               <span className="map-radio-text">
-                All Models
+                {allLabel || 'All Models'}
                 <span className="map-future-badge">+ future</span>
               </span>
               <span className="map-radio-desc">
-                Grant access to all current and future models.
+                {allDesc || 'Grant access to all current and future models.'}
               </span>
             </div>
           </div>
@@ -267,9 +274,9 @@
               </div>
             </div>
             <div className="map-radio-body">
-              <span className="map-radio-text">Specific Models</span>
+              <span className="map-radio-text">{specificLabel || 'Specific Models'}</span>
               <span className="map-radio-desc">
-                Choose exactly which models are accessible.
+                {specificDesc || 'Choose exactly which models are accessible.'}
               </span>
             </div>
           </div>
@@ -299,6 +306,7 @@
                       <div className={`map-rank-badge${idx === 0 ? ' r1' : ''}`}>{idx + 1}</div>
                     )}
                     <span className="map-selected-name">{getDisplayName(m)}</span>
+                    {m.meta && <span className="map-selected-meta">{m.meta}</span>}
                     {m.type === 'local' && <span className="model-type-local">local</span>}
                     {m.type === 'api'   && <span className="model-type-api">api</span>}
                     <button
@@ -312,12 +320,12 @@
                 ))}
               </div>
             ) : (
-              <div className="map-empty-hint">No models selected — no access will be granted.</div>
+              <div className="map-empty-hint">No {itemNoun}s selected — no access will be granted.</div>
             )}
 
             <button className="map-add-btn" onClick={() => setPanelOpen(true)}>
               <i data-lucide="plus"></i>
-              {selectedModels.length > 0 ? 'Add more models' : 'Select models'}
+              {selectedModels.length > 0 ? `Add more ${itemNoun}s` : `Select ${itemNoun}s`}
             </button>
           </div>
         )}
@@ -333,6 +341,7 @@
             onClose={() => setPanelOpen(false)}
             suggestedIds={suggestedIds}
             requiredCaps={requiredCaps}
+            itemNoun={itemNoun}
           />
         )}
       </>

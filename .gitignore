@@ -6,6 +6,7 @@ docker-data/
 hf-home/
 .playwright-mcp/
 changelogs/
+design/.thumbnail
 
 **/.vscode/**/*
 !/.vscode/keybindings-mac.json

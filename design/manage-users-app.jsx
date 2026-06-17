@@ -1,11 +1,20 @@
 /* ═══════════════════════════════════════════════════
-   MANAGE USERS — React App
-   Tabs: Pending Requests · All Requests · All Users
+   MANAGE USERS — Settings page (on AppShell)
+   Sidebar views: Access Requests (Pending zone + History zone) · All Users
+   manage-users-app.jsx  (load after bodhi-app-shell.jsx + bodhi-list.jsx + tweaks-panel.jsx)
 ═══════════════════════════════════════════════════ */
 
 const MU_TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "theme": "light"
+  "tenancy": "multi"
 }/*EDITMODE-END*/;
+
+const MU_TENANTS = [
+  { id: 'acme',      name: 'Acme Corp',         role: 'Admin',      plan: 'Enterprise' },
+  { id: 'northwind', name: 'Northwind Trading', role: 'Power User', plan: 'Team' },
+  { id: 'initech',   name: 'Initech Labs',      role: 'User',       plan: 'Free' },
+];
+
+const Ic = ShellIcon;
 
 /* ── Sample data ── */
 const INITIAL_USERS = [
@@ -24,33 +33,31 @@ const INITIAL_REQUESTS = [
 
 const ROLES = ['Admin', 'Power User', 'User'];
 
-/* ── Icon helper ── */
-function Icon({ name, size = 14, style = {} }) {
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    if (!ref.current) return;
-    ref.current.innerHTML = '';
-    const el = document.createElement('i');
-    el.setAttribute('data-lucide', name);
-    ref.current.appendChild(el);
-    lucide.createIcons({ nodes: [el] });
-  }, [name, size]);
-  return (
-    <span ref={ref} style={{
-      display: 'inline-flex', width: size, height: size,
-      alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0, ...style
-    }} />
-  );
-}
+const TABS = [
+  { id: 'requests', label: 'Access Requests', icon: 'shield-check' },
+  { id: 'users',    label: 'All Users',       icon: 'users' },
+];
 
-/* ── Sidebar tab list ── */
-function SidebarTabs({ activeTab, setActiveTab, pendingCount }) {
-  const tabs = [
-    { id: 'pending', label: 'Pending Requests', icon: 'shield-check', badge: pendingCount > 0 ? pendingCount : null },
-    { id: 'all',     label: 'All Requests',     icon: 'clock',        badge: null },
-    { id: 'users',   label: 'All Users',         icon: 'users',        badge: null },
-  ];
+/* ── Sidebar view list (collapse-aware) ── */
+function ManageUsersSidebar({ activeTab, setActiveTab, pendingCount }) {
+  const { collapsed } = useShell();
+  const tabs = TABS.map(t => ({ ...t, badge: t.id === 'requests' && pendingCount > 0 ? pendingCount : null }));
+
+  if (collapsed) {
+    return (
+      <>
+        {tabs.map(tab => (
+          <button key={tab.id}
+            className={`shell-railbtn shell-tip${activeTab === tab.id ? ' on' : ''}`}
+            data-tip={tab.label}
+            onClick={() => setActiveTab(tab.id)}>
+            <Ic name={tab.icon} size={18} />
+            {tab.badge !== null && <span className="rb-badge">{tab.badge}</span>}
+          </button>
+        ))}
+      </>
+    );
+  }
 
   return (
     <div className="mu-sidebar-tabs">
@@ -61,26 +68,22 @@ function SidebarTabs({ activeTab, setActiveTab, pendingCount }) {
           className={`mu-sidebar-tab${activeTab === tab.id ? ' active' : ''}`}
           onClick={() => setActiveTab(tab.id)}
         >
-          <Icon name={tab.icon} size={14} />
+          <Ic name={tab.icon} size={14} />
           <span>{tab.label}</span>
-          {tab.badge !== null && (
-            <span className="mu-sidebar-tab-badge">{tab.badge}</span>
-          )}
+          {tab.badge !== null && <span className="mu-sidebar-tab-badge">{tab.badge}</span>}
         </button>
       ))}
     </div>
   );
 }
 
-/* ── Status badge ── */
+/* ── Badges ── */
 function StatusBadge({ status }) {
-  if (status === 'Pending')  return <span className="mu-badge mu-badge-pending"><Icon name="clock" size={11} />{status}</span>;
-  if (status === 'Approved') return <span className="mu-badge mu-badge-approved"><Icon name="check" size={11} />{status}</span>;
-  if (status === 'Rejected') return <span className="mu-badge mu-badge-rejected"><Icon name="x" size={11} />{status}</span>;
+  if (status === 'Pending')  return <span className="mu-badge mu-badge-pending"><Ic name="clock" size={11} />{status}</span>;
+  if (status === 'Approved') return <span className="mu-badge mu-badge-approved"><Ic name="check" size={11} />{status}</span>;
+  if (status === 'Rejected') return <span className="mu-badge mu-badge-rejected"><Ic name="x" size={11} />{status}</span>;
   return <span className="mu-badge mu-badge-user">{status}</span>;
 }
-
-/* ── Role badge (display only) ── */
 function RoleBadge({ role }) {
   const cls = role === 'Admin' ? 'mu-badge-admin' : role === 'Power User' ? 'mu-badge-power' : 'mu-badge-user';
   return <span className={`mu-badge ${cls}`}>{role}</span>;
@@ -90,7 +93,7 @@ function RoleBadge({ role }) {
 function Toast({ message, show, icon }) {
   return (
     <div className={`mu-toast${show ? ' show' : ''}`}>
-      {icon && <Icon name={icon} size={13} />}
+      {icon && <Ic name={icon} size={13} />}
       {message}
     </div>
   );
@@ -113,132 +116,21 @@ function ConfirmDialog({ title, body, confirmLabel, confirmClass, onConfirm, onC
 }
 
 /* ══════════════════════════════════════════════════
-   TAB: ALL USERS
+   VIEW: ACCESS REQUESTS  (Pending zone + History zone)
 ══════════════════════════════════════════════════ */
-function AllUsersTab({ users, setUsers, showToast }) {
-  const [confirm, setConfirm] = React.useState(null); // { userId, username }
-
-  function handleRoleChange(id, newRole) {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
-    showToast('Role updated', 'check');
-  }
-
-  function handleRemoveClick(user) {
-    setConfirm({ userId: user.id, username: user.username });
-  }
-
-  function handleRemoveConfirm() {
-    setUsers(prev => prev.filter(u => u.id !== confirm.userId));
-    showToast('User removed', 'trash-2');
-    setConfirm(null);
-  }
-
-  return (
-    <>
-      <div className="mu-card">
-        {/* Header */}
-        <div className="mu-card-header">
-          <div>
-            <div className="mu-card-title-group">
-              <span className="mu-card-icon"><Icon name="users" size={20} /></span>
-              <h2 className="mu-card-title">All Users</h2>
-            </div>
-            <p className="mu-card-sub">Manage user access and roles</p>
-          </div>
-        </div>
-
-        {users.length === 0 ? (
-          <div className="mu-empty">
-            <div className="mu-empty-icon"><Icon name="users" size={20} /></div>
-            <div className="mu-empty-title">No users yet</div>
-            <div className="mu-empty-sub">Approved users will appear here.</div>
-          </div>
-        ) : (
-          <table className="mu-table">
-            <thead className="mu-table-head">
-              <tr>
-                <th className="mu-col-user">Username</th>
-                <th className="mu-col-role">Role</th>
-                <th className="mu-col-actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(user => (
-                <tr key={user.id} className="mu-row">
-                  <td className="mu-col-user">
-                    <span className="mu-username">{user.username}</span>
-                  </td>
-                  <td className="mu-col-role">
-                    <RoleBadge role={user.role} />
-                  </td>
-                  <td className="mu-col-actions">
-                    <div className="mu-actions-cell">
-                      {user.isYou ? (
-                        <span className="mu-you-label">You</span>
-                      ) : (
-                        <>
-                          <select
-                            className="mu-role-select"
-                            value={user.role}
-                            onChange={e => handleRoleChange(user.id, e.target.value)}
-                          >
-                            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                          </select>
-                          <button
-                            className="mu-btn mu-btn-remove"
-                            onClick={() => handleRemoveClick(user)}
-                          >
-                            <Icon name="trash-2" size={13} />
-                            Remove
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {confirm && (
-        <ConfirmDialog
-          title="Remove user?"
-          body={<>Are you sure you want to remove <strong style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{confirm.username}</strong>? They will lose all access immediately.</>}
-          confirmLabel="Remove"
-          confirmClass="mu-btn-remove"
-          onConfirm={handleRemoveConfirm}
-          onCancel={() => setConfirm(null)}
-        />
-      )}
-    </>
-  );
-}
-
-/* ══════════════════════════════════════════════════
-   TAB: PENDING REQUESTS
-══════════════════════════════════════════════════ */
-function PendingRequestsTab({ requests, setRequests, setUsers, showToast }) {
-  const pending = requests.filter(r => r.status === 'Pending');
+function AccessRequestsView({ requests, setRequests, setUsers, showToast }) {
+  const [search, setSearch] = React.useState('');
   const [roleMap, setRoleMap] = React.useState(() => {
-    const m = {};
-    requests.forEach(r => { m[r.id] = r.role; });
-    return m;
+    const m = {}; requests.forEach(r => { m[r.id] = r.role; }); return m;
   });
-  const [confirm, setConfirm] = React.useState(null); // { type: 'approve'|'reject', req }
+  const [confirm, setConfirm] = React.useState(null);
 
-  function handleRoleChange(id, val) {
-    setRoleMap(prev => ({ ...prev, [id]: val }));
-  }
+  const q = search.trim().toLowerCase();
+  const match = r => !q || r.username.toLowerCase().includes(q);
+  const pending = requests.filter(r => r.status === 'Pending' && match(r));
+  const history = requests.filter(r => r.status !== 'Pending' && match(r));
 
-  function handleApprove(req) {
-    setConfirm({ type: 'approve', req });
-  }
-
-  function handleReject(req) {
-    setConfirm({ type: 'reject', req });
-  }
+  const setRole = (id, val) => setRoleMap(prev => ({ ...prev, [id]: val }));
 
   function confirmAction() {
     const { type, req } = confirm;
@@ -254,73 +146,66 @@ function PendingRequestsTab({ requests, setRequests, setUsers, showToast }) {
   }
 
   return (
-    <>
-      <div className="mu-card">
-        <div className="mu-card-header">
-          <div>
-            <div className="mu-card-title-group">
-              <span className="mu-card-icon"><Icon name="shield-check" size={20} /></span>
-              <h2 className="mu-card-title">Pending Access Requests</h2>
-            </div>
-            <p className="mu-card-sub">
-              {pending.length === 0
-                ? 'No requests awaiting review'
-                : `${pending.length} request${pending.length > 1 ? 's' : ''} awaiting review`}
-            </p>
-          </div>
-        </div>
+    <div className="l-page">
+      <ListToolbar search={search} onSearch={setSearch} searchPlaceholder="Search requests by username…" />
+      <div className="l-scroll">
 
+        <div className="l-sectionhead">
+          <span className="l-sectionhead-t">Pending</span>
+          <span className="l-sectionhead-n warn">{pending.length}</span>
+          <span className="l-sectionhead-sub">awaiting your review</span>
+        </div>
         {pending.length === 0 ? (
-          <div className="mu-empty">
-            <div className="mu-empty-icon"><Icon name="shield-check" size={20} /></div>
-            <div className="mu-empty-title">All caught up</div>
-            <div className="mu-empty-sub">No pending access requests at this time.</div>
-          </div>
+          <div className="mu-zone-empty"><Ic name="shield-check" size={15} /> {q ? 'No matching pending requests.' : 'All caught up — no pending requests.'}</div>
         ) : (
-          <table className="mu-table">
-            <thead className="mu-table-head">
-              <tr>
-                <th className="mu-col-user">Username</th>
-                <th className="mu-col-date">Requested Date</th>
-                <th className="mu-col-status">Status</th>
-                <th className="mu-col-actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map(req => (
-                <tr key={req.id} className="mu-row">
-                  <td className="mu-col-user">
-                    <span className="mu-username">{req.username}</span>
-                  </td>
-                  <td className="mu-col-date">
-                    <span className="mu-date">{req.requestedDate}</span>
-                  </td>
-                  <td className="mu-col-status">
-                    <StatusBadge status={req.status} />
-                  </td>
-                  <td className="mu-col-actions">
-                    <div className="mu-actions-cell">
-                      <select
-                        className="mu-role-select"
-                        value={roleMap[req.id] || req.role}
-                        onChange={e => handleRoleChange(req.id, e.target.value)}
-                      >
-                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                      <button className="mu-btn mu-btn-approve" onClick={() => handleApprove(req)}>
-                        <Icon name="check" size={13} />
-                        Approve
-                      </button>
-                      <button className="mu-btn mu-btn-reject" onClick={() => handleReject(req)}>
-                        <Icon name="x" size={13} />
-                        Reject
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ListView head={
+            <>
+              <div className="mu-user l-lh">Username</div>
+              <div className="mu-date l-lh">Requested</div>
+              <div className="mu-act l-lh mu-act-lh">Actions</div>
+            </>
+          }>
+            {pending.map(req => (
+              <div className="l-listrow mu-listrow" key={req.id}>
+                <div className="mu-user"><span className="mu-username">{req.username}</span></div>
+                <div className="mu-date"><span className="mu-date-val">{req.requestedDate}</span></div>
+                <div className="mu-act">
+                  <select className="mu-role-select" value={roleMap[req.id] || req.role} onChange={e => setRole(req.id, e.target.value)}>
+                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                  <button className="mu-btn mu-btn-approve" onClick={() => setConfirm({ type: 'approve', req })}><Ic name="check" size={13} /> Approve</button>
+                  <button className="mu-btn mu-btn-reject" onClick={() => setConfirm({ type: 'reject', req })}><Ic name="x" size={13} /> Reject</button>
+                </div>
+              </div>
+            ))}
+          </ListView>
+        )}
+
+        <div className="l-sectionhead">
+          <span className="l-sectionhead-t">History</span>
+          <span className="l-sectionhead-n">{history.length}</span>
+          <span className="l-sectionhead-sub">decided requests</span>
+        </div>
+        {history.length === 0 ? (
+          <div className="mu-zone-empty"><Ic name="inbox" size={15} /> {q ? 'No matching history.' : 'No decided requests yet.'}</div>
+        ) : (
+          <ListView head={
+            <>
+              <div className="mu-user l-lh">Username</div>
+              <div className="mu-date l-lh">Requested</div>
+              <div className="mu-role l-lh">Role</div>
+              <div className="mu-status l-lh">Status</div>
+            </>
+          }>
+            {history.map(req => (
+              <div className="l-listrow mu-listrow" key={req.id}>
+                <div className="mu-user"><span className="mu-username">{req.username}</span></div>
+                <div className="mu-date"><span className="mu-date-val">{req.requestedDate}</span></div>
+                <div className="mu-role"><RoleBadge role={req.role} /></div>
+                <div className="mu-status"><StatusBadge status={req.status} /></div>
+              </div>
+            ))}
+          </ListView>
         )}
       </div>
 
@@ -338,87 +223,147 @@ function PendingRequestsTab({ requests, setRequests, setUsers, showToast }) {
           onCancel={() => setConfirm(null)}
         />
       )}
-    </>
+    </div>
   );
 }
 
 /* ══════════════════════════════════════════════════
-   TAB: ALL REQUESTS
+   VIEW: ALL USERS  (list only — details/actions in the rail)
 ══════════════════════════════════════════════════ */
-function AllRequestsTab({ requests }) {
-  const [filter, setFilter] = React.useState('All');
-  const statuses = ['All', 'Pending', 'Approved', 'Rejected'];
+function AllUsersView({ users, search, setSearch, selId, onSelect }) {
+  const { openRail } = useShell();
+  const select = id => { onSelect(id); openRail(); };
+  const [cat, setCat] = React.useState('all');
 
-  const filtered = filter === 'All' ? requests : requests.filter(r => r.status === filter);
+  const q = search.trim().toLowerCase();
+  const byRole = role => users.filter(u => u.role === role).length;
+  const counts = { all: users.length, Admin: byRole('Admin'), 'Power User': byRole('Power User'), User: byRole('User') };
+  const visible = users.filter(u =>
+    (cat === 'all' || u.role === cat) && (!q || u.username.toLowerCase().includes(q)));
 
   return (
-    <div className="mu-card">
-      <div className="mu-card-header">
-        <div>
-          <div className="mu-card-title-group">
-            <span className="mu-card-icon"><Icon name="clock" size={20} /></span>
-            <h2 className="mu-card-title">All Requests</h2>
+    <div className="l-page">
+      <ListToolbar
+        categories={[
+          { id: 'all',        label: 'All',        badge: counts.all },
+          { id: 'Admin',      label: 'Admin',      badge: counts.Admin },
+          { id: 'Power User', label: 'Power User', badge: counts['Power User'] },
+          { id: 'User',       label: 'User',       badge: counts.User },
+        ]}
+        category={cat} onCategory={setCat}
+        search={search} onSearch={setSearch} searchPlaceholder="Search users by username…" />
+      <div className="l-scroll">
+        {visible.length === 0 ? (
+          <div className="l-empty">
+            <Ic name="users" size={30} />
+            <div className="l-empty-t">{q ? 'No users match your search' : 'No users yet'}</div>
+            <div className="l-empty-s">{q ? 'Try a different search term.' : 'Approved users will appear here.'}</div>
           </div>
-          <p className="mu-card-sub">Complete history of access requests</p>
-        </div>
-        {/* Filter pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {statuses.map(s => (
-            <button
-              key={s}
-              onClick={() => setFilter(s)}
-              style={{
-                height: 28, padding: '0 12px', borderRadius: 99,
-                fontSize: 11.5, fontWeight: 600,
-                border: filter === s ? '1px solid hsl(var(--ring))' : '1px solid hsl(var(--border))',
-                background: filter === s ? 'var(--c-lotus-bg)' : 'transparent',
-                color: filter === s ? 'var(--c-lotus-text)' : 'hsl(var(--muted-foreground))',
-                cursor: 'pointer', transition: 'all 120ms', fontFamily: 'inherit',
-              }}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        ) : (
+          <ListView head={
+            <>
+              <div className="mu-user l-lh">Username</div>
+              <div className="mu-role l-lh">Role</div>
+            </>
+          }>
+            {visible.map(user => (
+              <div className={`l-listrow mu-listrow${user.id === selId ? ' active' : ''}`} key={user.id} onClick={() => select(user.id)}>
+                <div className="mu-user"><span className="mu-username">{user.username}</span></div>
+                <div className="mu-role">
+                  <RoleBadge role={user.role} />
+                  {user.isYou && <span className="mu-you-label" style={{ marginLeft: 8 }}>You</span>}
+                </div>
+              </div>
+            ))}
+          </ListView>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function userInitial(username) { return (username || '?').trim().charAt(0).toUpperCase(); }
+
+/* ── Rail header (railHeader slot) ── */
+function UserDetailHeader({ user, onClose }) {
+  return (
+    <div className="dp-head">
+      <div className="dp-head-icon" style={{ background: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }}>{userInitial(user.username)}</div>
+      <div className="dp-head-body">
+        <div className="dp-head-title mono">{user.username}</div>
+        <div className="dp-head-sub">{user.role}{user.isYou ? ' · You' : ''}</div>
+      </div>
+      <button className="dp-close" onClick={onClose} title="Close"><Ic name="x" size={15} /></button>
+    </div>
+  );
+}
+
+/* ── Rail body (rail slot) — role form + remove ── */
+function UserDetailPanel({ user, onSave, onRemove }) {
+  const [draftRole, setDraftRole] = React.useState(user ? user.role : 'User');
+  const [confirm, setConfirm] = React.useState(false);
+  React.useEffect(() => { setDraftRole(user ? user.role : 'User'); setConfirm(false); }, [user && user.id]);
+
+  const dirty = draftRole !== user.role;
+
+  return (
+    <div className="dp-panel">
+      <div className="dp-status-row">
+        <RoleBadge role={user.role} />
+        {user.isYou && <span className="mu-you-label" style={{ marginLeft: 'auto' }}>This is you</span>}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="mu-empty">
-          <div className="mu-empty-icon"><Icon name="inbox" size={20} /></div>
-          <div className="mu-empty-title">No requests</div>
-          <div className="mu-empty-sub">No {filter.toLowerCase()} requests found.</div>
+      <div className="dp-body">
+        <div className="dp-section">
+          <div className="dp-sec-lbl">Account</div>
+          <div className="dp-rows">
+            <div className="dp-row"><span className="dp-row-k"><Ic name="at-sign" size={13} /> Username</span><span className="dp-row-v mono">{user.username}</span></div>
+            <div className="dp-row"><span className="dp-row-k"><Ic name="shield" size={13} /> Current role</span><span className="dp-row-v">{user.role}</span></div>
+          </div>
         </div>
-      ) : (
-        <table className="mu-table">
-          <thead className="mu-table-head">
-            <tr>
-              <th className="mu-col-user">Username</th>
-              <th className="mu-col-date">Requested Date</th>
-              <th className="mu-col-role">Role</th>
-              <th style={{ textAlign: 'left' }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(req => (
-              <tr key={req.id} className="mu-row">
-                <td className="mu-col-user">
-                  <span className="mu-username">{req.username}</span>
-                </td>
-                <td className="mu-col-date">
-                  <span className="mu-date">{req.requestedDate}</span>
-                </td>
-                <td className="mu-col-role">
-                  <RoleBadge role={req.role} />
-                </td>
-                <td>
-                  <StatusBadge status={req.status} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+        {user.isYou ? (
+          <div className="dp-section">
+            <div className="dp-sec-lbl">Role</div>
+            <div className="dp-field-hint">You can't change your own role or remove your own account. Ask another admin if you need changes.</div>
+          </div>
+        ) : (
+          <div className="dp-section">
+            <div className="dp-sec-lbl">Change role</div>
+            <div className="dp-field">
+              <select className="mu-role-select" style={{ width: '100%' }} value={draftRole} onChange={e => setDraftRole(e.target.value)}>
+                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <span className="dp-field-hint">Updating the role changes what this user can access across Bodhi.</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!user.isYou && (
+        <div className="dp-foot">
+          <button className="dp-btn dp-btn-accent" disabled={!dirty} onClick={() => onSave(user.id, draftRole)}>
+            <Ic name="check" size={14} /> {dirty ? 'Save changes' : 'Saved'}
+          </button>
+          {confirm ? (
+            <button className="dp-btn dp-btn-danger" style={{ borderColor: 'hsl(var(--destructive))', background: 'rgba(220,38,38,.05)', color: 'hsl(var(--destructive))' }}
+                    onClick={() => onRemove(user.id)}><Ic name="trash-2" size={14} /> Confirm remove</button>
+          ) : (
+            <button className="dp-btn dp-btn-danger" onClick={() => setConfirm(true)}><Ic name="trash-2" size={14} /> Remove user</button>
+          )}
+          {confirm && <div className="dp-field-hint" style={{ textAlign: 'center' }}>They'll lose all access immediately. Click again to confirm.</div>}
+        </div>
       )}
     </div>
+  );
+}
+
+/* ── GitHub header action ── */
+function GitHubBtn() {
+  return (
+    <button className="mu-icon-btn" title="View on GitHub">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+    </button>
   );
 }
 
@@ -428,9 +373,9 @@ function AllRequestsTab({ requests }) {
 function ManageUsersApp() {
   const [tweaks, setTweak] = useTweaks(MU_TWEAK_DEFAULTS);
 
-  const [activeTab, setActiveTab] = React.useState('pending');
   const [users, setUsers] = React.useState(INITIAL_USERS);
-  const [requests, setRequests] = React.useState(INITIAL_REQUESTS);
+  const [userSearch, setUserSearch] = React.useState('');
+  const [selUserId, setSelUserId] = React.useState(null);
 
   const [toast, setToast] = React.useState({ show: false, message: '', icon: '' });
   const toastTimer = React.useRef(null);
@@ -441,82 +386,55 @@ function ManageUsersApp() {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 2200);
   }
 
-  const pendingCount = requests.filter(r => r.status === 'Pending').length;
+  function handleRoleSave(id, newRole) {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
+    showToast('Role updated', 'check');
+  }
+  function handleRemoveUser(id) {
+    setUsers(prev => prev.filter(u => u.id !== id));
+    setSelUserId(s => s === id ? null : s);
+    showToast('User removed', 'trash-2');
+  }
 
-  React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', tweaks.theme);
-  }, [tweaks.theme]);
-
-  React.useEffect(() => { lucide.createIcons(); });
+  const selUser = users.find(u => u.id === selUserId) || null;
 
   return (
-    <div className="mu-app">
+    <>
+      <AppShell
+        section="users" subPage="all-users" resizeKey="users"
+        user={{
+          initials: 'YO', name: 'Yogesh', email: 'yogesh@email.com', role: 'Admin',
+          multiTenant: tweaks.tenancy === 'multi',
+          tenants: MU_TENANTS, currentTenantId: 'acme',
+        }}
+        contentClass="flush" mainScroll={false} railScroll={false}
+        breadcrumb={[
+          { label: 'Bodhi', href: 'Bodhi Chat.html' },
+          { label: 'Users', href: 'User Access Requests.html' },
+          { label: 'All Users', current: true },
+        ]}
+        headerActions={<GitHubBtn />}
+        rail={selUser ? <UserDetailPanel user={selUser} onSave={handleRoleSave} onRemove={handleRemoveUser} /> : undefined}
+        railHeader={selUser ? <UserDetailHeader user={selUser} onClose={() => setSelUserId(null)} /> : undefined}
+      >
+        <AllUsersView users={users} search={userSearch} setSearch={setUserSearch} selId={selUserId} onSelect={setSelUserId} />
+      </AppShell>
 
-      {/* ══ SIDEBAR ══ */}
-      <BodhiSidebar section="settings">
-        <SidebarTabs activeTab={activeTab} setActiveTab={setActiveTab} pendingCount={pendingCount} />
-      </BodhiSidebar>
-
-      {/* ══ MAIN ══ */}
-      <main className="mu-main">
-
-        {/* Topbar */}
-        <div className="mu-topbar">
-          <div className="mu-breadcrumb">
-            <span>Bodhi</span>
-            <i data-lucide="chevron-right" className="mu-bc-sep"></i>
-            <span>Manage Users</span>
-            <i data-lucide="chevron-right" className="mu-bc-sep"></i>
-            <span className="mu-bc-curr">
-              {activeTab === 'pending' ? 'Pending Requests' : activeTab === 'all' ? 'All Requests' : 'All Users'}
-            </span>
-          </div>
-          <div className="mu-topbar-right">
-            <button className="mu-icon-btn" title="View on GitHub">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Scroll area */}
-        <div className="mu-scroll">
-          <div style={{ maxWidth: 900, margin: '0 auto', paddingTop: 24 }}>
-            {activeTab === 'pending' && (
-              <PendingRequestsTab
-                requests={requests}
-                setRequests={setRequests}
-                setUsers={setUsers}
-                showToast={showToast}
-              />
-            )}
-            {activeTab === 'all' && (
-              <AllRequestsTab requests={requests} />
-            )}
-            {activeTab === 'users' && (
-              <AllUsersTab
-                users={users}
-                setUsers={setUsers}
-                showToast={showToast}
-              />
-            )}
-          </div>
-        </div>
-      </main>
-
-      {/* ══ TWEAKS ══ */}
       <TweaksPanel>
-        <TweakSection title="Theme">
+        <TweakSection title="Server mode">
           <TweakRadio
-            value={tweaks.theme}
-            options={[{ label: 'Light', value: 'light' }, { label: 'Dark', value: 'dark' }]}
-            onChange={v => setTweak('theme', v)}
+            value={tweaks.tenancy}
+            options={[{ label: 'Single-tenant', value: 'single' }, { label: 'Multi-tenant', value: 'multi' }]}
+            onChange={v => setTweak('tenancy', v)}
           />
+          <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginTop: 8, lineHeight: 1.5 }}>
+            Multi-tenant lets the same account belong to several organizations. Open the user menu (bottom-left) to switch tenant.
+          </div>
         </TweakSection>
       </TweaksPanel>
 
-      {/* Toast */}
       <Toast show={toast.show} message={toast.message} icon={toast.icon} />
-    </div>
+    </>
   );
 }
 

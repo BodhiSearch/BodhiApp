@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bodhi · New UI Migration Roadmap</title>
+<link rel="stylesheet" href="colors_and_type.css">
+  <script src="bodhi-theme.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: hsl(var(--surface-2)); }
+  body {
+    font-family: var(--font-sans);
+    color: hsl(var(--foreground));
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 1040px;
+    margin: 0 auto;
+    background: hsl(var(--background));
+    min-height: 100vh;
+    box-shadow: var(--shadow-lg);
+  }
+  .pad { padding: 0 clamp(28px, 6vw, 80px); }
+
+  /* ── Masthead ── */
+  .masthead {
+    padding-top: 64px; padding-bottom: 40px;
+    border-bottom: 1px solid hsl(var(--border));
+    background:
+      radial-gradient(120% 90% at 100% 0%, hsl(var(--primary) / 0.10), transparent 55%),
+      radial-gradient(90% 80% at 0% 0%, hsl(var(--accent) / 0.06), transparent 50%);
+  }
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: hsl(var(--primary-hover));
+    display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before {
+    content: ""; width: 22px; height: 22px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, var(--bodhi-lotus-300), var(--bodhi-lotus-500));
+    box-shadow: var(--shadow-glow);
+  }
+  h1.title {
+    font-family: var(--font-serif);
+    font-size: clamp(38px, 6vw, 60px);
+    line-height: 1.04; font-weight: 600; letter-spacing: -0.02em;
+    margin: 18px 0 16px;
+  }
+  .lede {
+    font-size: 19px; line-height: 1.6; color: hsl(var(--muted-foreground));
+    max-width: 64ch;
+  }
+  .lede strong { color: hsl(var(--foreground)); font-weight: 600; }
+  .meta {
+    margin-top: 28px; display: flex; flex-wrap: wrap; gap: 28px;
+    font-size: 13px; color: hsl(var(--muted-foreground));
+  }
+  .meta b { display: block; font-size: 22px; color: hsl(var(--foreground)); font-weight: 700; letter-spacing: -0.01em; }
+
+  /* ── Section scaffolding ── */
+  section { padding-top: 56px; padding-bottom: 8px; }
+  .kicker {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+    color: hsl(var(--primary-hover)); letter-spacing: 0.02em; margin-bottom: 10px;
+  }
+  h2 {
+    font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 14px;
+  }
+  .section-intro { font-size: 16px; color: hsl(var(--muted-foreground)); max-width: 70ch; margin-bottom: 28px; }
+
+  /* ── Thesis callout ── */
+  .thesis {
+    margin-top: 32px;
+    border: 1px solid hsl(var(--primary) / 0.4);
+    background: hsl(var(--primary) / 0.06);
+    border-radius: var(--radius-lg);
+    padding: 26px 28px;
+    display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start;
+  }
+  .thesis .num {
+    font-family: var(--font-serif); font-size: 40px; font-weight: 600;
+    color: hsl(var(--primary-hover)); line-height: 1;
+  }
+  .thesis p { font-size: 17px; line-height: 1.6; }
+  .thesis p strong { color: hsl(var(--primary-hover)); }
+
+  /* ── Inventory matrix ── */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground)); font-weight: 600;
+    padding: 0 14px 12px; border-bottom: 1px solid hsl(var(--border));
+  }
+  tbody td { padding: 16px 14px; border-bottom: 1px solid hsl(var(--border)); vertical-align: top; }
+  tbody tr:hover { background: hsl(var(--surface-2)); }
+  .feat { font-weight: 600; font-size: 15px; }
+  .feat .sec { font-family: var(--font-mono); font-size: 11px; color: hsl(var(--muted-foreground)); display: block; margin-top: 3px; font-weight: 400; }
+  .screens { color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.7; }
+  .dots { display: inline-flex; gap: 3px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: hsl(var(--border)); }
+  .dot.on-r { background: var(--bodhi-lotus-500); }
+  .dot.on-t { background: var(--bodhi-saffron-400); }
+  .dot.on-e { background: var(--bodhi-indigo-400); }
+  .dcap { font-size: 10px; color: hsl(var(--muted-foreground)); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+
+  /* ── Roadmap timeline ── */
+  .road { position: relative; margin-top: 12px; padding-left: 40px; }
+  .road::before {
+    content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px;
+    background: linear-gradient(hsl(var(--primary) / 0.5), hsl(var(--accent) / 0.4));
+  }
+  .phase { position: relative; margin-bottom: 22px; }
+  .phase::before {
+    content: ""; position: absolute; left: -32px; top: 4px; width: 18px; height: 18px;
+    border-radius: 50%; background: hsl(var(--background));
+    border: 3px solid var(--bodhi-lotus-400);
+  }
+  .phase.found::before { border-color: var(--bodhi-indigo-400); }
+  .phase.crown::before { border-color: var(--bodhi-saffron-500); background: var(--bodhi-saffron-50); }
+  .pcard {
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg);
+    padding: 22px 24px; background: hsl(var(--card)); box-shadow: var(--shadow-xs);
+  }
+  .phead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .ptag {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: hsl(var(--primary-hover));
+    background: hsl(var(--primary) / 0.12); padding: 3px 9px; border-radius: var(--radius-full);
+  }
+  .phase.found .ptag { color: var(--bodhi-indigo-400); background: hsl(var(--accent) / 0.12); }
+  .phase.crown .ptag { color: var(--bodhi-saffron-600); background: var(--bodhi-saffron-100); }
+  .pname { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  .pmeta { font-size: 12px; color: hsl(var(--muted-foreground)); font-family: var(--font-mono); margin-left: auto; }
+  .pcard p { font-size: 14.5px; color: hsl(var(--muted-foreground)); line-height: 1.6; margin: 8px 0 14px; }
+  .pcard p strong { color: hsl(var(--foreground)); font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+  .chip {
+    font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: var(--radius-full);
+    background: hsl(var(--surface-3)); color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+  }
+  .exit {
+    font-size: 13px; display: flex; gap: 10px; align-items: flex-start;
+    padding-top: 12px; border-top: 1px dashed hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+  .exit b { color: var(--bodhi-leaf-500); font-weight: 600; white-space: nowrap; }
+
+  /* ── Principle cards ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+  .pc {
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius-md);
+    padding: 20px 22px; background: hsl(var(--card));
+  }
+  .pc h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 9px; }
+  .pc h3 .b { width: 7px; height: 18px; border-radius: 3px; background: var(--bodhi-lotus-400); }
+  .pc p { font-size: 13.5px; color: hsl(var(--muted-foreground)); line-height: 1.6; }
+  .pc code { font-family: var(--font-mono); font-size: 12px; background: hsl(var(--muted)); padding: 1px 5px; border-radius: 4px; color: hsl(var(--foreground)); }
+
+  /* ── Guardrails list ── */
+  .rails { margin-top: 8px; display: grid; gap: 0; border: 1px solid hsl(var(--border)); border-radius: var(--radius-md); overflow: hidden; }
+  .rail { display: grid; grid-template-columns: 26px 1fr; gap: 14px; padding: 16px 22px; background: hsl(var(--card)); border-bottom: 1px solid hsl(var(--border)); }
+  .rail:last-child { border-bottom: 0; }
+  .rail .ic { font-family: var(--font-mono); font-weight: 600; color: hsl(var(--primary-hover)); font-size: 13px; }
+  .rail .t { font-size: 14px; line-height: 1.55; }
+  .rail .t b { font-weight: 600; }
+  .rail .t code { font-family: var(--font-mono); font-size: 12px; background: hsl(var(--muted)); padding: 1px 5px; border-radius: 4px; }
+
+  footer { padding-top: 48px; padding-bottom: 64px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+  footer .rule { height: 1px; background: hsl(var(--border)); margin-bottom: 20px; }
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; font-size: 12px; color: hsl(var(--muted-foreground)); margin-bottom: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  @media (max-width: 720px) {
+    .grid2 { grid-template-columns: 1fr; }
+    .thesis { grid-template-columns: 1fr; gap: 10px; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody td { border: none; padding: 4px 0; }
+    tbody tr { border-bottom: 1px solid hsl(var(--border)); padding: 14px 0; }
+    .feat { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- MASTHEAD -->
+  <header class="masthead pad" data-screen-label="Masthead">
+    <div class="eyebrow">Bodhi App · New UI</div>
+    <h1 class="title">Migrating the app,<br>one wing at a time.</h1>
+    <p class="lede">All 14 redesigned screens already sit on <strong>one foundation</strong> — a single <strong>AppShell</strong> plus the shared design tokens. That shared base is the lever: we don't swap 14 screens in isolation, we ship the frame once, then replace the rooms behind it, feature by feature, lowest-risk first.</p>
+    <div class="meta">
+      <div><b>14</b> screens</div>
+      <div><b>5</b> feature groups</div>
+      <div><b>6</b> phases</div>
+      <div><b>1</b> shared shell</div>
+    </div>
+  </header>
+
+  <!-- STRATEGY -->
+  <section class="pad" data-screen-label="Strategy">
+    <div class="kicker">01 · The approach</div>
+    <h2>Strangler, not big-bang</h2>
+    <p class="section-intro">Your instinct — group by feature, then sequence — is right. I'd add one move in front of it: migrate the <em>chrome</em> before the <em>content</em>. Wrap the existing app in the new shell so old and new screens coexist under one navigation frame, then replace screen interiors as self-contained pull requests. Every step ships; nothing is a cliff.</p>
+
+    <div class="thesis">
+      <div class="num">“</div>
+      <p>Ship the <strong>design tokens</strong> app-wide and the <strong>AppShell</strong> as a coexistence layer first. Old routes render <em>inside</em> the new frame. From there, each screen is an isolated swap behind a flag — reversible, dogfoodable, and deletable in one piece when a whole feature is done.</p>
+    </div>
+  </section>
+
+  <!-- INVENTORY -->
+  <section class="pad" data-screen-label="Inventory">
+    <div class="kicker">02 · What we're moving</div>
+    <h2>Screen inventory, grouped by feature</h2>
+    <p class="section-intro">The five groups map 1:1 to the app's nav sections and to the shared CSS batches the new UI already organizes by. A squad can own a vertical slice end-to-end, and the whole section's legacy code gets deleted at once when its wing lands.</p>
+
+    <div class="legend">
+      <span><i class="dot on-r"></i><i class="dot on-r"></i><i class="dot"></i> Risk</span>
+      <span><i class="dot on-t"></i><i class="dot on-t"></i><i class="dot"></i> Traffic</span>
+      <span><i class="dot on-e"></i><i class="dot on-e"></i><i class="dot"></i> Effort</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th style="width:24%">Feature</th><th style="width:40%">Screens</th><th>Risk</th><th>Traffic</th><th>Effort</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="feat">API Keys<span class="sec">section · api-keys</span></td>
+          <td class="screens">App Tokens · New App Token · Access Requests · Access-Request review <span class="dcap">4 screens · tables + forms</span></td>
+          <td><span class="dots"><i class="dot on-r"></i><i class="dot"></i><i class="dot"></i></span></td>
+          <td><span class="dots"><i class="dot on-t"></i><i class="dot"></i><i class="dot"></i></span></td>
+          <td><span class="dots"><i class="dot on-e"></i><i class="dot"></i><i class="dot"></i></span></td>
+        </tr>
+        <tr>
+          <td class="feat">Settings<span class="sec">section · settings</span></td>
+          <td class="screens">App Settings · Manage Users <span class="dcap">2 screens · settings + table/dialogs</span></td>
+          <td><span class="dots"><i class="dot on-r"></i><i class="dot"></i><i class="dot"></i></span></td>
+          <td><span class="dots"><i class="dot on-t"></i><i class="dot"></i><i class="dot"></i></span></td>
+          <td><span class="dots"><i class="dot on-e"></i><i class="dot"></i><i class="dot"></i></span></td>
+        </tr>
+        <tr>
+          <td class="feat">Models<span class="sec">section · models</span></td>
+          <td class="screens">Models list/detail · New Local Model · New API Model · New Fallback Alias <span class="dcap">4 screens · list/detail + 3 forms</span></td>
+          <td><span class="dots"><i class="dot on-r"></i><i class="dot on-r"></i><i class="dot"></i></span></td>
+          <td><span class="dots"><i class="dot on-t"></i><i class="dot on-t"></i><i class="dot"></i></span></td>
+          <td><span class="dots"><i class="dot on-e"></i><i class="dot on-e"></i><i class="dot"></i></span></td>
+        </tr>
+        <tr>
+          <td class="feat">MCP<span class="sec">section · mcp</span></td>
+          <td class="screens">Discover · Playground (My Instances) · New Instance <span class="dcap">3 screens · 3-col + live workspace</span></td>
+          <td><span class="dots"><i class="dot on-r"></i><i class="dot on-r"></i><i class="dot on-r"></i></span></td>
+          <td><span class="dots"><i class="dot on-t"></i><i class="dot on-t"></i><i class="dot"></i></span></td>
+          <td><span class="dots"><i class="dot on-e"></i><i class="dot on-e"></i><i class="dot on-e"></i></span></td>
+        </tr>
+        <tr>
+          <td class="feat">Chat<span class="sec">section · chat</span></td>
+          <td class="screens">Bodhi Chat <span class="dcap">1 screen · streaming + history</span></td>
+          <td><span class="dots"><i class="dot on-r"></i><i class="dot on-r"></i><i class="dot on-r"></i></span></td>
+          <td><span class="dots"><i class="dot on-t"></i><i class="dot on-t"></i><i class="dot on-t"></i></span></td>
+          <td><span class="dots"><i class="dot on-e"></i><i class="dot on-e"></i><i class="dot"></i></span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ROADMAP -->
+  <section class="pad" data-screen-label="Roadmap">
+    <div class="kicker">03 · The sequence</div>
+    <h2>Six phases, increasing stakes</h2>
+    <p class="section-intro">Front-load the learning on low-blast-radius surfaces, climb in complexity, and finish on the highest-traffic surface only once the patterns are battle-tested. Each phase reuses what the one before proved.</p>
+
+    <div class="road">
+
+      <div class="phase found">
+        <div class="pcard">
+          <div class="phead">
+            <span class="ptag">Phase 0 · Foundation</span>
+            <span class="pname">Coexistence layer</span>
+            <span class="pmeta">no screens redesigned</span>
+          </div>
+          <p>Two reversible drops. <strong>Ship the design tokens</strong> (<code style="font-family:var(--font-mono);font-size:12px">colors_and_type.css</code>) app-wide — instant color/type modernization on screens that consume tokens, no layout risk. Then <strong>mount AppShell</strong> as the outer frame so existing routes render inside the new sidebar/header/nav. This is the keystone: after it, every screen migration is just swapping an inner panel.</p>
+          <div class="chips">
+            <span class="chip">Design tokens (global)</span>
+            <span class="chip">AppShell chrome</span>
+            <span class="chip">Theme toggle</span>
+            <span class="chip">Feature-flag harness</span>
+          </div>
+          <div class="exit"><b>Exit ✓</b><span>Every existing route loads inside AppShell with the right nav highlight; light/dark works; zero functional regressions.</span></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="pcard">
+          <div class="phead">
+            <span class="ptag">Phase 1 · Pilot</span>
+            <span class="pname">API Keys</span>
+            <span class="pmeta">4 screens · low risk</span>
+          </div>
+          <p>The safest real surface — self-contained CRUD on tables and forms, low traffic. Use it to <strong>prove the end-to-end patterns</strong>: list page, form page, the shared API-Keys/Settings primitive sheet, flag-gated rollout, and the per-screen definition of done. Mistakes here are cheap.</p>
+          <div class="chips">
+            <span class="chip">App Tokens</span><span class="chip">New App Token</span><span class="chip">Access Requests</span><span class="chip">Access-Request review</span>
+          </div>
+          <div class="exit"><b>Exit ✓</b><span>Section fully on new screens; old API-Keys screen code deleted; list + form patterns documented for reuse.</span></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="pcard">
+          <div class="phead">
+            <span class="ptag">Phase 2</span>
+            <span class="pname">Settings</span>
+            <span class="pmeta">2 screens · low risk</span>
+          </div>
+          <p>Reuses Phase 1's table + form patterns almost wholesale. Adds two wrinkles worth rehearsing before high-traffic work — App Settings' <strong>restart banner</strong> and Manage Users' <strong>dialogs + toast</strong>. Still admin-tier, low traffic, easy to dogfood internally.</p>
+          <div class="chips">
+            <span class="chip">App Settings</span><span class="chip">Manage Users</span>
+          </div>
+          <div class="exit"><b>Exit ✓</b><span>Settings section on new screens; banner + dialog + toast primitives proven and shared.</span></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="pcard">
+          <div class="phead">
+            <span class="ptag">Phase 3</span>
+            <span class="pname">Models</span>
+            <span class="pmeta">4 screens · core value</span>
+          </div>
+          <p>The first <strong>core, user-facing</strong> feature. The three create flows reuse the proven form pattern; the list/detail screen introduces the <strong>3-column detail rail</strong> at scale — the structural pattern MCP and Chat will lean on. High value, moderate complexity, patterns mostly in hand.</p>
+          <div class="chips">
+            <span class="chip">Models list/detail</span><span class="chip">New Local Model</span><span class="chip">New API Model</span><span class="chip">New Fallback Alias</span>
+          </div>
+          <div class="exit"><b>Exit ✓</b><span>Models section migrated; list/detail rail + resizable columns validated on a heavily-used surface.</span></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="pcard">
+          <div class="phead">
+            <span class="ptag">Phase 4</span>
+            <span class="pname">MCP</span>
+            <span class="pmeta">3 screens · most complex</span>
+          </div>
+          <p>The most interactive wing — a 3-column Discover, a live tool <strong>Playground workspace</strong> with an exec log, and a dynamic auth form. Highest structural complexity, but it's the newest feature with the fewest legacy constraints, and Phase 3 already shipped the rail it builds on.</p>
+          <div class="chips">
+            <span class="chip">Discover</span><span class="chip">Playground</span><span class="chip">New Instance</span>
+          </div>
+          <div class="exit"><b>Exit ✓</b><span>MCP section migrated; live workspace + slide-over config interactions verified.</span></div>
+        </div>
+      </div>
+
+      <div class="phase crown">
+        <div class="pcard">
+          <div class="phead">
+            <span class="ptag">Phase 5 · Crown jewel</span>
+            <span class="pname">Chat</span>
+            <span class="pmeta">1 screen · highest traffic</span>
+          </div>
+          <p>One screen, but the <strong>most-used and most stateful</strong> — streaming responses, conversation history, real-time. Deliberately last: by now the shell, the resizable sidebar, and the responsive drawers are hardened across five sections, so the riskiest swap happens on the most proven foundation. Ramp behind a flag with the tightest dogfooding loop.</p>
+          <div class="chips">
+            <span class="chip">Bodhi Chat</span>
+          </div>
+          <div class="exit"><b>Exit ✓</b><span>Chat on new UI; streaming + history parity confirmed; old layout systems deleted app-wide.</span></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PRINCIPLES -->
+  <section class="pad" data-screen-label="Principles">
+    <div class="kicker">04 · Why this order</div>
+    <h2>The sequencing lens</h2>
+    <div class="grid2">
+      <div class="pc">
+        <h3><span class="b"></span>Risk-adjusted, not alphabetical</h3>
+        <p>Order features by <em>risk × traffic</em>. Cheap-to-get-wrong surfaces go first so the team learns the patterns where mistakes don't hurt; the surface users touch most goes last, on a proven base.</p>
+      </div>
+      <div class="pc">
+        <h3><span class="b"></span>Each phase feeds the next</h3>
+        <p>API Keys proves list + form. Settings adds banners + dialogs. Models proves the detail rail. MCP and Chat inherit all of it. No phase starts a pattern from scratch.</p>
+      </div>
+      <div class="pc">
+        <h3><span class="b"></span>Migrate whole sections</h3>
+        <p>Finishing a nav section before moving on avoids a half-redesigned area and lets you <strong>delete the old section's code in one piece</strong> — the cleanup the migration notes already call for.</p>
+      </div>
+      <div class="pc">
+        <h3><span class="b"></span>Within a feature, safe screens first</h3>
+        <p>Read-only and list screens before create forms before destructive/admin actions. Each ships behind its own flag — dogfood internally, then ramp.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GUARDRAILS -->
+  <section class="pad" data-screen-label="Guardrails">
+    <div class="kicker">05 · Hold the line</div>
+    <h2>Cross-cutting guardrails</h2>
+    <p class="section-intro">Lifted straight from your own migration notes — the things that bite when many screens share one foundation. These are the per-screen and global checks every phase runs.</p>
+    <div class="rails">
+      <div class="rail"><span class="ic">DoD</span><span class="t"><b>One AppShell per screen.</b> Renders a single shell, correct <code>section</code>/<code>subPage</code> highlight, no console errors, background-verified.</span></div>
+      <div class="rail"><span class="ic">↔</span><span class="t"><b>Shell behaviors must pass.</b> Collapse-to-icon-rail, hover-reveal column resize, and responsive overlay drawers under 768px all work before a screen is called done.</span></div>
+      <div class="rail"><span class="ic">⊞</span><span class="t"><b>Never transition <code>grid-template-columns</code></b> with <code>var()</code> tracks — Chromium sticks the old width. Collapse is instant by design.</span></div>
+      <div class="rail"><span class="ic">◆</span><span class="t"><b>Tokens, not literals.</b> Color/type/spacing come from the design tokens; page CSS holds only page-unique rules.</span></div>
+      <div class="rail"><span class="ic">⚠</span><span class="t"><b>Shared files are global.</b> After touching the shell or a shared sheet, re-verify a sample of <em>every</em> screen type that consumes it — not just the one in front of you.</span></div>
+    </div>
+  </section>
+
+  <footer class="pad">
+    <div class="rule"></div>
+    <p>A recommendation, not a mandate — sequencing is easy to re-rank if business priorities pull a feature forward. The one piece I'd keep fixed: <strong style="color:hsl(var(--foreground))">Phase 0 foundation first, Chat last.</strong> Open questions worth settling before Phase 1: production stack &amp; router (does AppShell drop in as a layout route?), feature-flag tooling, and how aggressively we can dogfood each section internally.</p>
+  </footer>
+
+</div>
+</body>
+</html>

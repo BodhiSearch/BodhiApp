@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bodhi · Dark Theme Review & Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ════════════════════════════════════════════════════════════════
+   This document is rendered IN THE PROPOSED DARK PALETTE.
+   Reading it is itself a preview of the recommendation.
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  /* ── PROPOSED dark surface ramp (elevation by lightness) ── */
+  --bg:        234 17% 8%;    /* app base canvas (deepest)         */
+  --s1:        233 16% 10%;   /* sunken: inputs, code wells        */
+  --s2:        232 14% 13%;   /* base raised: cards, chrome panels */
+  --s3:        231 13% 17%;   /* hover / nested / selected         */
+  --s4:        230 12% 21%;   /* highest: menus, popovers, tooltip */
+  --bd:        231 11% 25%;   /* primary border / divider          */
+  --bd-strong: 231 11% 32%;   /* emphasized divider / input edge   */
+  --fg:        233 14% 95%;   /* primary text (warm near-white)    */
+  --fg-mut:    231 12% 73%;   /* secondary text                    */
+  --fg-faint:  231 10% 55%;   /* tertiary / disabled               */
+  --pri:       347 88% 78%;   /* lotus, lightly desaturated        */
+  --pri-fg:    235 40% 12%;
+  --ind:       232 60% 74%;
+  --leaf:      130 45% 62%;
+  --saf:       33 88% 65%;
+  --teal:      174 55% 58%;
+
+  --font: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --maxw: 1080px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font);
+  background:
+     radial-gradient(1200px 600px at 78% -8%, hsl(347 40% 16% / .22), transparent 60%),
+     radial-gradient(1000px 700px at 0% 0%, hsl(232 50% 20% / .18), transparent 55%),
+     hsl(var(--bg));
+  color:hsl(var(--fg));
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:120px;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+a{color:hsl(var(--pri));text-decoration:none}
+
+/* ── Hero ── */
+.hero{padding:84px 0 52px;border-bottom:1px solid hsl(var(--bd))}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:hsl(var(--pri));font-weight:600;display:flex;align-items:center;gap:10px}
+.kicker::before{content:"";width:26px;height:26px;border-radius:50%;background:
+  radial-gradient(circle at 50% 38%, hsl(347 90% 80%), hsl(347 80% 62%) 60%, hsl(20 85% 60%));
+  box-shadow:0 0 0 4px hsl(347 80% 70% / .14);display:inline-block;flex:none}
+h1.title{font-size:clamp(38px,5.4vw,62px);line-height:1.04;letter-spacing:-.03em;font-weight:800;margin:22px 0 18px;max-width:16ch;text-wrap:balance}
+.title em{font-style:normal;color:hsl(var(--pri))}
+.lede{font-size:19px;line-height:1.6;color:hsl(var(--fg-mut));max-width:62ch;text-wrap:pretty}
+.meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.pill{font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:999px;border:1px solid hsl(var(--bd));background:hsl(var(--s2));color:hsl(var(--fg-mut))}
+.pill b{color:hsl(var(--fg));font-weight:600}
+
+/* ── Section scaffolding ── */
+section{padding:62px 0;border-bottom:1px solid hsl(var(--bd) / .6)}
+.sec-no{font-family:var(--mono);font-size:12px;color:hsl(var(--pri));letter-spacing:.18em;font-weight:600}
+h2{font-size:clamp(26px,3.4vw,36px);line-height:1.12;letter-spacing:-.02em;font-weight:700;margin:10px 0 16px;text-wrap:balance}
+h3{font-size:20px;letter-spacing:-.01em;font-weight:700;margin:34px 0 12px}
+h4{font-size:14px;font-weight:700;margin:22px 0 10px;letter-spacing:.01em}
+p{margin:12px 0;color:hsl(var(--fg-mut));max-width:74ch;text-wrap:pretty}
+p strong,li strong{color:hsl(var(--fg));font-weight:600}
+ul,ol{margin:14px 0;padding-left:4px;list-style:none;max-width:74ch}
+li{position:relative;padding-left:26px;margin:9px 0;color:hsl(var(--fg-mut))}
+li::before{content:"";position:absolute;left:4px;top:11px;width:6px;height:6px;border-radius:2px;background:hsl(var(--pri) / .85);transform:rotate(45deg)}
+ol{counter-reset:c}
+ol li{padding-left:34px}
+ol li::before{counter-increment:c;content:counter(c);top:2px;left:0;width:20px;height:20px;border-radius:6px;background:hsl(var(--s3));color:hsl(var(--fg));font:600 11px/20px var(--mono);text-align:center;transform:none}
+code{font-family:var(--mono);font-size:.86em;background:hsl(var(--s1));border:1px solid hsl(var(--bd));padding:1px 6px;border-radius:5px;color:hsl(var(--fg))}
+
+/* ── Callout cards ── */
+.note{border:1px solid hsl(var(--bd));background:hsl(var(--s2));border-radius:14px;padding:20px 22px;margin:22px 0}
+.note.bad{border-color:hsl(356 60% 50% / .4);background:hsl(356 50% 30% / .12)}
+.note.good{border-color:hsl(142 45% 45% / .4);background:hsl(142 40% 30% / .12)}
+.note.key{border-color:hsl(347 70% 65% / .4);background:hsl(347 50% 35% / .12)}
+.note .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;display:block;margin-bottom:7px}
+.note.bad .lbl{color:hsl(356 75% 74%)}
+.note.good .lbl{color:hsl(142 55% 66%)}
+.note.key .lbl{color:hsl(347 90% 80%)}
+.note p{margin:6px 0;color:hsl(var(--fg-mut))}
+.note p:first-of-type{margin-top:0}
+
+/* ── Grid ── */
+.grid{display:grid;gap:16px;margin:24px 0}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid hsl(var(--bd));background:hsl(var(--s2));border-radius:14px;padding:20px}
+.card h4{margin-top:0}
+.card p{font-size:14px;margin:6px 0}
+
+/* ── Lightness band visualization ── */
+.band{margin:26px 0}
+.band-title{font-family:var(--mono);font-size:12px;color:hsl(var(--fg-faint));text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px}
+.band-track{position:relative;height:72px;border-radius:12px;border:1px solid hsl(var(--bd));overflow:hidden;background:linear-gradient(90deg, hsl(232 14% 4%), hsl(232 14% 30%))}
+.band-mark{position:absolute;top:0;bottom:0;width:2px;background:hsl(var(--fg));opacity:.9}
+.band-mark span{position:absolute;top:6px;left:6px;font-family:var(--mono);font-size:10px;white-space:nowrap;color:hsl(var(--fg));background:hsl(var(--bg)/.75);padding:1px 5px;border-radius:4px}
+.band-mark.lo span{top:auto;bottom:6px}
+.band-cluster{position:absolute;top:0;bottom:0;border-radius:6px;border:1.5px dashed hsl(356 80% 70%);background:hsl(356 70% 50% / .12)}
+.band-cluster span{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:10px;color:hsl(356 80% 74%);white-space:nowrap}
+
+/* ── Swatch ladder ── */
+.ladder{display:flex;flex-direction:column;gap:2px;border-radius:12px;overflow:hidden;border:1px solid hsl(var(--bd))}
+.rung{display:flex;align-items:center;gap:14px;padding:13px 16px}
+.rung .chip{width:34px;height:34px;border-radius:8px;border:1px solid hsl(0 0% 100% / .08);flex:none}
+.rung .rname{font-weight:600;font-size:13.5px;min-width:130px}
+.rung .rval{font-family:var(--mono);font-size:11.5px;color:hsl(var(--fg-mut))}
+.rung .ruse{font-size:12px;color:hsl(var(--fg-faint));margin-left:auto;text-align:right;max-width:40%}
+@media(max-width:760px){.rung .ruse{display:none}}
+
+/* ── Token comparison table ── */
+.tbl{width:100%;border-collapse:collapse;margin:20px 0;font-size:13px}
+.tbl th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:hsl(var(--fg-faint));font-weight:600;padding:8px 12px;border-bottom:1px solid hsl(var(--bd))}
+.tbl td{padding:9px 12px;border-bottom:1px solid hsl(var(--bd)/.5);vertical-align:middle}
+.tbl td.tok{font-family:var(--mono);font-size:12px;color:hsl(var(--fg))}
+.tbl td.val{font-family:var(--mono);font-size:11.5px;color:hsl(var(--fg-mut));white-space:nowrap}
+.sw{display:inline-block;width:15px;height:15px;border-radius:4px;border:1px solid hsl(0 0% 100% / .12);vertical-align:-3px;margin-right:7px}
+.delta{font-family:var(--mono);font-size:11px;color:hsl(var(--leaf));font-weight:600}
+
+/* ── Before / After mock shell ── */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:26px 0}
+@media(max-width:860px){.compare{grid-template-columns:1fr}}
+.mock-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.mock-label.cur{color:hsl(356 78% 74%)}
+.mock-label.pro{color:hsl(142 55% 66%)}
+.mock{border-radius:14px;overflow:hidden;border:1px solid hsl(var(--bd));height:320px;display:grid;grid-template-columns:96px 1fr;font-size:11px}
+.mk-side{display:flex;flex-direction:column;padding:10px 8px;gap:7px}
+.mk-brand{display:flex;align-items:center;gap:6px;font-weight:700;font-size:11px}
+.mk-dot{width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,hsl(347 85% 78%),hsl(28 85% 62%));flex:none}
+.mk-nav{height:9px;border-radius:4px;margin-top:2px}
+.mk-nav.on{background:hsl(347 70% 60% / .22)}
+.mk-main{display:flex;flex-direction:column}
+.mk-head{height:38px;display:flex;align-items:center;padding:0 12px;font-weight:700;font-size:11.5px;gap:6px}
+.mk-body{flex:1;padding:12px;display:flex;flex-direction:column;gap:9px;overflow:hidden}
+.mk-card{border-radius:9px;padding:10px 11px}
+.mk-card .t{font-weight:600;font-size:11px}
+.mk-card .s{font-size:10px;margin-top:4px}
+.mk-chip{display:inline-block;font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:99px;margin-top:7px}
+.mk-btn{align-self:flex-start;font-size:10px;font-weight:700;padding:5px 12px;border-radius:7px;margin-top:2px}
+
+/* mock — CURRENT palette */
+.cur-pal{--m-bg:235 30% 6%;--m-card:235 28% 9%;--m-s3:235 26% 14%;--m-bd:235 20% 18%;--m-fg:240 15% 94%;--m-mut:240 10% 68%;--m-pri:347 100% 78%;--m-lotxt:#B02A52;--m-leaf:#1F7D3F}
+.pro-pal{--m-bg:234 17% 8%;--m-card:232 14% 13%;--m-s3:231 13% 17%;--m-bd:231 11% 25%;--m-fg:233 14% 95%;--m-mut:231 12% 73%;--m-pri:347 88% 78%;--m-lotxt:hsl(347 90% 80%);--m-leaf:hsl(130 45% 62%)}
+.mock{background:hsl(var(--m-bg));color:hsl(var(--m-fg))}
+.mk-side{background:hsl(var(--m-card));border-right:1px solid hsl(var(--m-bd))}
+.mk-head{background:hsl(var(--m-card));border-bottom:1px solid hsl(var(--m-bd))}
+.mk-card{background:hsl(var(--m-card));border:1px solid hsl(var(--m-bd))}
+.mk-card.raised{background:hsl(var(--m-s3))}
+.mk-card .s{color:hsl(var(--m-mut))}
+.mk-brand-s{color:hsl(var(--m-mut))}
+.mk-chip{background:hsl(var(--m-pri)/.16);color:var(--m-lotxt);border:1px solid hsl(var(--m-pri)/.3)}
+.mk-chip.leaf{background:transparent;color:var(--m-leaf)}
+.mk-btn{background:hsl(var(--m-pri));color:hsl(235 40% 12%)}
+
+/* ── Principle chips ── */
+.principles{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:24px 0}
+@media(max-width:760px){.principles{grid-template-columns:1fr}}
+.prin{border:1px solid hsl(var(--bd));border-radius:13px;padding:18px 20px;background:hsl(var(--s2))}
+.prin .n{font-family:var(--mono);font-size:11px;color:hsl(var(--pri));font-weight:600}
+.prin h4{margin:8px 0 6px;font-size:15px}
+.prin p{font-size:13.5px;margin:0}
+
+/* ── File-change map ── */
+.fmap{border:1px solid hsl(var(--bd));border-radius:14px;overflow:hidden;margin:22px 0}
+.frow{display:grid;grid-template-columns:230px 1fr;gap:0;border-bottom:1px solid hsl(var(--bd)/.55)}
+.frow:last-child{border-bottom:none}
+.frow .ff{font-family:var(--mono);font-size:12px;padding:13px 16px;background:hsl(var(--s1));color:hsl(var(--fg));border-right:1px solid hsl(var(--bd)/.55);font-weight:500}
+.frow .fd{padding:13px 16px;font-size:13px;color:hsl(var(--fg-mut))}
+.frow .fd b{color:hsl(var(--fg))}
+@media(max-width:760px){.frow{grid-template-columns:1fr}.frow .ff{border-right:none;border-bottom:1px solid hsl(var(--bd)/.55)}}
+.tag{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:1px}
+.tag.fw{background:hsl(347 60% 45% / .2);color:hsl(347 90% 80%)}
+.tag.lay{background:hsl(232 55% 55% / .2);color:hsl(232 70% 80%)}
+.tag.cmp{background:hsl(33 70% 50% / .18);color:hsl(33 90% 70%)}
+
+/* ── Checklist ── */
+.check li{padding-left:32px}
+.check li::before{content:"";top:4px;left:2px;width:16px;height:16px;border-radius:5px;border:1.5px solid hsl(var(--pri)/.6);background:hsl(var(--pri)/.1);transform:none}
+
+.foot{padding:50px 0 0;color:hsl(var(--fg-faint));font-size:13px}
+.foot p{color:hsl(var(--fg-faint));max-width:none}
+
+/* ── On-screen section nav ── */
+.tocbar{position:sticky;top:0;z-index:20;background:hsl(var(--bg)/.82);backdrop-filter:blur(14px);border-bottom:1px solid hsl(var(--bd));margin-bottom:0}
+.tocbar .wrap{display:flex;align-items:center;gap:4px;height:52px;overflow-x:auto;scrollbar-width:none}
+.tocbar .wrap::-webkit-scrollbar{display:none}
+.tocbar a{font-size:12.5px;color:hsl(var(--fg-mut));padding:6px 11px;border-radius:8px;white-space:nowrap;font-weight:500}
+.tocbar a:hover{background:hsl(var(--s2));color:hsl(var(--fg))}
+.tocbar .brand{font-weight:700;color:hsl(var(--fg));margin-right:10px;display:flex;align-items:center;gap:8px;flex:none}
+.tocbar .brand .mk-dot{width:18px;height:18px}
+@media print{.tocbar{display:none}body{padding-bottom:0}}
+</style>
+</head>
+<body>
+
+<nav class="tocbar">
+  <div class="wrap">
+    <span class="brand"><span class="mk-dot"></span>Dark Theme</span>
+    <a href="#diagnosis">Diagnosis</a>
+    <a href="#principles">Principles</a>
+    <a href="#system">Proposed system</a>
+    <a href="#compare">Before / after</a>
+    <a href="#changes">Framework changes</a>
+    <a href="#tokens">Token sheet</a>
+    <a href="#rollout">Rollout</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">Bodhi AI Gateway · UI Review</div>
+    <h1 class="title">Making dark mode actually <em>usable</em>.</h1>
+    <p class="lede">A holistic, framework-level review of every dark-theme page — and a proposed fix that lives almost entirely in two shared files, so it ripples to all 13 screens at once. This document is rendered in the proposed palette: what you're reading is the recommendation.</p>
+    <div class="meta-row">
+      <span class="pill">Scope · <b>All pages</b></span>
+      <span class="pill">Status · <b>Proposal — awaiting approval</b></span>
+      <span class="pill">Root cause · <b>Token system, not pages</b></span>
+      <span class="pill">Effort · <b>~2 shared files + component sweep</b></span>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ TL;DR ══════════════ -->
+<section id="tldr">
+  <div class="wrap">
+    <div class="sec-no">00 — SUMMARY</div>
+    <h2>The short version</h2>
+    <p>Dark mode looks broken not because any single page is wrong, but because the <strong>shared color tokens</strong> behind every page put the sidebar, header, main content, and cards inside a ~4% lightness band at the very bottom of the scale. At those luminance values the human eye can't separate them, so the whole app reads as one flat near-black void held together by hairline borders. A second, compounding problem: <strong>components hardcode light-mode hex values</strong> (dark pink/green/indigo text) that never flip, so secondary labels, status text, and the entire Tweaks panel silently fail in dark.</p>
+    <div class="note key">
+      <span class="lbl">The fix in one breath</span>
+      <p>Widen the surface ramp so elevation reads as <strong>lightness</strong> (cards lighter than content, content lighter… no — content is the base; chrome and cards lift above it), bump secondary-text and border contrast into a comfortable-but-calm range, lightly desaturate accents for dark, and replace every hardcoded component color with a token. Six moves, mostly in <code>colors_and_type.css</code> and <code>bodhi-app-shell.css</code>.</p>
+    </div>
+    <div class="g3 grid">
+      <div class="card"><h4>1 · Widen the ramp</h4><p>Five distinct elevation surfaces spanning 8%→21% lightness instead of four crammed into 5%→14%.</p></div>
+      <div class="card"><h4>2 · Lift cards with light</h4><p>Elevation = a lighter surface + a subtle border. Shadows do almost nothing on dark and are demoted to popovers only.</p></div>
+      <div class="card"><h4>3 · Readable, calm text</h4><p>Secondary text 68%→73%, borders 18%→25% lightness. Crosses AA without the harsh glare of pure white.</p></div>
+      <div class="card"><h4>4 · Tune accents</h4><p>Lotus pink lightly desaturated so it stops vibrating; accent washes become translucent so brand color survives on dark.</p></div>
+      <div class="card"><h4>5 · Kill hardcoded hex</h4><p>~40 component colors (dark pink/green/indigo text, light washes) replaced with theme-aware tokens.</p></div>
+      <div class="card"><h4>6 · Fix the Tweaks panel</h4><p>It's 100% light-hardcoded today. Rebuild on tokens so it's legible in both themes.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ DIAGNOSIS ══════════════ -->
+<section id="diagnosis">
+  <div class="wrap">
+    <div class="sec-no">01 — DIAGNOSIS</div>
+    <h2>Why the current dark theme fails</h2>
+    <p>The architecture is good: there's a single token file (<code>colors_and_type.css</code>) and a single shell (<code>bodhi-app-shell.css</code>) that almost every page consumes through <code>hsl(var(--…))</code>. That's exactly why this is fixable centrally. The values inside those tokens are the problem.</p>
+
+    <h3>Problem 1 — Every surface lives in the same 4% band</h3>
+    <p>Here is where today's dark surfaces actually sit on the 0–30% lightness scale. Background, sidebar, header, and base cards are all crushed into the far-left corner:</p>
+
+    <div class="band">
+      <div class="band-title">Current dark surfaces — lightness (L%)</div>
+      <div class="band-track">
+        <div class="band-cluster" style="left:13.3%;width:18%"><span>sidebar · bg · card · surface-2 all here →  imperceptible</span></div>
+        <div class="band-mark lo" style="left:16.6%"><span>bg 6%</span></div>
+        <div class="band-mark" style="left:30%"><span>card / s2 9%</span></div>
+        <div class="band-mark lo" style="left:46.6%"><span>s3 14%</span></div>
+        <div class="band-mark" style="left:60%"><span>border 18%</span></div>
+      </div>
+    </div>
+
+    <ul>
+      <li><strong>Card is only +3% over background.</strong> At the bottom of the luminance curve a 3% delta is below the threshold most people can perceive — so cards don't look raised, panels don't look like panels.</li>
+      <li><strong><code>--surface-2</code> equals <code>--card</code></strong> (both 9%). Two named elevation levels resolve to one color, so the system can't express "slightly raised."</li>
+      <li><strong>Sidebar is <em>darker</em> than the content it frames</strong> (the <code>--sidebar</code> token is 5%) — and worse, the shell doesn't even use it: <code>.shell-sidebar</code> is painted with <code>--card</code>, leaving the sidebar tokens dead. Either way, chrome and content never visually separate.</li>
+      <li><strong>Borders are the only thing doing the work.</strong> Remove the 1px hairlines and the layout dissolves. That's the tell-tale sign of missing elevation.</li>
+    </ul>
+
+    <div class="note bad">
+      <span class="lbl">What this looks like</span>
+      <p>In the Chat screenshot the left rail, the message column, and the right parameters rail are three different surfaces — but they read as one continuous black sheet. The "You" bubble and the tool-call card barely lift off the page. On the Users / Tokens / Settings pages the effect is even flatter because they have fewer colored accents to break it up.</p>
+    </div>
+
+    <h3>Problem 2 — Components hardcode light-mode colors that never flip</h3>
+    <p>Many components bypass the tokens and write raw hex chosen for <em>light</em> mode. These do not respond to the theme at all, so in dark they're either invisible or low-contrast. A non-exhaustive audit of the CSS/JSX found:</p>
+    <ul>
+      <li><strong>Dark-on-light text colors used as foreground</strong> — <code>#B02A52</code> (dark lotus), <code>#1F7D3F</code>/<code>#2a9b36</code> (dark green), <code>#B4500A</code> (dark saffron), <code>#3E4AA8</code> (indigo). Found in active tabs, model tags, inline code, chips, "local/cost" meta, connected-status text — <strong>~30+ occurrences across 8 files.</strong> All stay dark on a dark surface.</li>
+      <li><strong>Light-wash backgrounds</strong> — e.g. the chat tool-call card uses <code>rgba(238,240,251,.5)</code> (a pale indigo wash) and a fixed <code>#0B0D1A</code> code block. Brittle: one is a light-mode wash on dark, the other a fixed near-black that ignores theme entirely.</li>
+      <li><strong>The Tweaks panel is fully light-hardcoded</strong> — <code>rgba(255,255,255,.6)</code> field backgrounds, <code>rgba(0,0,0,.1)</code> borders, <code>#fff</code> thumbs. In dark it renders as glaring white controls.</li>
+      <li><strong>Status greens</strong> have partial dark overrides on some pages and none on others — inconsistent because the rule lives per-page instead of in one token.</li>
+    </ul>
+
+    <h3>Problem 3 — Calibration & polish gaps</h3>
+    <div class="grid g2">
+      <div class="card"><h4>Saturated accents vibrate</h4><p>The lotus primary is <code>347 100% 78%</code> — full saturation. Bright saturated hues optically "shimmer" against dark surfaces and strain the eye; best practice is to desaturate for dark.</p></div>
+      <div class="card"><h4>Secondary text is borderline</h4><p><code>--muted-foreground</code> at 68% sits right at the edge of comfortable on the darkest surfaces, and most secondary labels render on the <em>darkest</em> plane.</p></div>
+      <div class="card"><h4>Shadows are doing nothing</h4><p>The dark shadow tokens are tuned with black <code>rgba</code> — invisible against a near-black background. Depth has no fallback because elevation-by-lightness isn't set up.</p></div>
+      <div class="card"><h4>No "highest" surface</h4><p>Popovers, menus, and tooltips use <code>--popover</code> (10%) — barely above cards. Floating UI should clearly out-elevate the page beneath it.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ PRINCIPLES ══════════════ -->
+<section id="principles">
+  <div class="wrap">
+    <div class="sec-no">02 — PRINCIPLES</div>
+    <h2>What good dark themes do</h2>
+    <p>These are the load-bearing rules from Material Design's dark theme guidance and the broader practitioner consensus. The proposal applies each one to Bodhi specifically.</p>
+
+    <div class="principles">
+      <div class="prin"><div class="n">P1</div><h4>Dark grey, never pure black</h4><p>Black can't show shadows or elevation and causes a harsh "halation" glow under light text. Use a dark, slightly-tinted grey base (Material's reference is #121212). Bodhi keeps a faint indigo tint — on-brand and endorsed for screens.</p></div>
+      <div class="prin"><div class="n">P2</div><h4>Elevation = lighter surface</h4><p>Shadows barely register on dark. Communicate hierarchy by making higher surfaces lighter. The higher the layer, the lighter it gets — a strict "lighter-on-top-of-darker" stack.</p></div>
+      <div class="prin"><div class="n">P3</div><h4>Desaturate accents</h4><p>Saturated colors vibrate and often fail AA on dark. Shift toward lighter, less-saturated tones (the 200–50 range of a palette) so brand color stays legible and calm.</p></div>
+      <div class="prin"><div class="n">P4</div><h4>Don't use pure white text</h4><p>#FFFFFF on dark shimmers. Use a slightly dimmed near-white, then step secondary/tertiary text down in opacity-equivalent lightness for a clean hierarchy.</p></div>
+      <div class="prin"><div class="n">P5</div><h4>Enough contrast at every layer</h4><p>Body text should clear WCAG AA (4.5:1) on the <em>lightest</em> surface it can land on. Material targets ≥15.8:1 of white-on-base so headroom survives as surfaces lift.</p></div>
+      <div class="prin"><div class="n">P6</div><h4>Limited color, mostly surface</h4><p>Most of a dark UI should be dark surface with sparse, intentional accent. Tint accent <em>fills</em> as translucency over the surface so they read at any elevation.</p></div>
+    </div>
+    <p style="font-size:13px;color:hsl(var(--fg-faint));margin-top:18px">Sources: Material Design 2 — Dark theme; Nielsen/UX-Planet & Toptal dark-UI guides; practitioner write-ups on scalable token architectures. Summarized, not quoted.</p>
+  </div>
+</section>
+
+<!-- ══════════════ PROPOSED SYSTEM ══════════════ -->
+<section id="system">
+  <div class="wrap">
+    <div class="sec-no">03 — PROPOSED SYSTEM</div>
+    <h2>The new dark foundation</h2>
+    <p>A semantic <strong>elevation ramp</strong> replaces the flat surface set. You choose by <em>role</em> ("this is a card", "this is a popover"), not by guessing a lightness. Each step is a clearly perceptible jump, all warm-indigo-tinted, all low-chroma so they read as sophisticated slate-navy rather than saturated blue.</p>
+
+    <h3>Surface elevation ladder</h3>
+    <div class="ladder">
+      <div class="rung" style="background:hsl(234 17% 8%)"><span class="chip" style="background:hsl(234 17% 8%)"></span><span class="rname">--background</span><span class="rval">234 17% 8%</span><span class="ruse">App base canvas · main content well (deepest plane)</span></div>
+      <div class="rung" style="background:hsl(233 16% 10%)"><span class="chip" style="background:hsl(233 16% 10%)"></span><span class="rname">--surface-1</span><span class="rval">233 16% 10%</span><span class="ruse">Sunken: inputs, code blocks, table zebra</span></div>
+      <div class="rung" style="background:hsl(232 14% 13%)"><span class="chip" style="background:hsl(232 14% 13%)"></span><span class="rname">--surface-2 / --card</span><span class="rval">232 14% 13%</span><span class="ruse">Base raised: cards, sidebar, rail, header chrome</span></div>
+      <div class="rung" style="background:hsl(231 13% 17%)"><span class="chip" style="background:hsl(231 13% 17%)"></span><span class="rname">--surface-3</span><span class="rval">231 13% 17%</span><span class="ruse">Hover, nested card, selected row</span></div>
+      <div class="rung" style="background:hsl(230 12% 21%)"><span class="chip" style="background:hsl(230 12% 21%)"></span><span class="rname">--surface-4 / --popover</span><span class="rval">230 12% 21%</span><span class="ruse">Highest: menus, dropdowns, tooltips, modals</span></div>
+    </div>
+    <div class="note good">
+      <span class="lbl">Why this works</span>
+      <p>Spread of 8%→21% gives five steps that are each individually distinguishable, instead of four steps inside 5%→14%. The main content stays the darkest plane (calm, low-glare); sidebar/header/cards lift above it; floating UI sits clearly highest. Borders become a <em>supporting</em> hairline, not the only separator.</p>
+    </div>
+
+    <h3>Text & contrast — "balanced, readable, calm"</h3>
+    <div class="ladder">
+      <div class="rung" style="background:hsl(232 14% 13%)"><span class="chip" style="background:hsl(233 14% 95%)"></span><span class="rname" style="color:hsl(233 14% 95%)">--foreground</span><span class="rval">233 14% 95%</span><span class="ruse">Primary text — warm near-white, not #FFF (no halation)</span></div>
+      <div class="rung" style="background:hsl(232 14% 13%)"><span class="chip" style="background:hsl(231 12% 73%)"></span><span class="rname" style="color:hsl(231 12% 73%)">--muted-foreground</span><span class="rval">231 12% 73%</span><span class="ruse">Secondary labels — up from 68%, clears AA on base</span></div>
+      <div class="rung" style="background:hsl(232 14% 13%)"><span class="chip" style="background:hsl(231 10% 55%)"></span><span class="rname" style="color:hsl(231 10% 55%)">--faint-foreground</span><span class="rval">231 10% 55%</span><span class="ruse">Tertiary / placeholder / disabled (new token)</span></div>
+    </div>
+
+    <h3>Borders & dividers</h3>
+    <div class="ladder">
+      <div class="rung" style="background:hsl(234 17% 8%)"><span class="chip" style="background:hsl(231 11% 25%)"></span><span class="rname">--border</span><span class="rval">231 11% 25%</span><span class="ruse">Default separators — up from 18%, now visible without the band</span></div>
+      <div class="rung" style="background:hsl(234 17% 8%)"><span class="chip" style="background:hsl(231 11% 32%)"></span><span class="rname">--border-strong</span><span class="rval">231 11% 32%</span><span class="ruse">Input edges, emphasized dividers (new token)</span></div>
+    </div>
+
+    <h3>Accents — desaturated + translucent</h3>
+    <p>You asked to keep the lotus identity but were open to tuning and to translucent fills. Both: the solid primary drops from 100%→88% saturation (stops the shimmer), and accent <em>backgrounds</em> become translucent overlays so brand color reads correctly at any elevation — and so the <strong>same</strong> token works in light and dark.</p>
+    <div class="grid g3">
+      <div class="card" style="border-color:hsl(347 70% 65% / .4)"><h4 style="color:hsl(347 90% 80%)">Lotus · primary</h4><p><code>347 88% 78%</code> solid for buttons. Fills: <code>lotus 16% / surface</code>. Text-on-dark uses the light <code>#FFA4B8</code>, never <code>#B02A52</code>.</p><span class="mk-chip" style="background:hsl(347 88% 78% /.16);color:hsl(347 90% 80%);border:1px solid hsl(347 88% 78% /.3)">active chip</span></div>
+      <div class="card" style="border-color:hsl(232 55% 60% / .4)"><h4 style="color:hsl(232 70% 80%)">Indigo · accent</h4><p><code>232 60% 74%</code> — lighter & calmer than today's 68%. Used for model tags, info.</p><span class="mk-chip" style="background:hsl(232 60% 74% /.16);color:hsl(232 70% 82%);border:1px solid hsl(232 60% 74% /.3)">@ API Model</span></div>
+      <div class="card" style="border-color:hsl(142 45% 50% / .4)"><h4 style="color:hsl(142 55% 66%)">Leaf / Saffron / Teal</h4><p>Semantic states, all shifted lighter for dark. Status text uses light variants via one shared token.</p><span class="mk-chip leaf" style="background:hsl(142 45% 55% /.16);color:hsl(142 55% 68%);border:1px solid hsl(142 45% 55% /.3)">connected</span></div>
+    </div>
+
+    <h3>Elevation, shadow & focus</h3>
+    <ul>
+      <li><strong>Depth comes from the ramp + a hairline border</strong>, applied consistently. Shadows are kept only for genuinely floating layers (popovers, menus, modals, toasts) and paired with a subtle light top-edge so they register.</li>
+      <li><strong>Focus rings</strong> switch to a lotus ring at higher opacity so keyboard focus is unmistakable on dark.</li>
+      <li><strong>Optional:</strong> a 1px <code>hsl(0 0% 100% / .04)</code> inner top highlight on raised cards (the "overlay" trick) for extra tactility. Easy to toggle.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════════ BEFORE / AFTER ══════════════ -->
+<section id="compare">
+  <div class="wrap">
+    <div class="sec-no">04 — BEFORE / AFTER</div>
+    <h2>Same layout, two palettes</h2>
+    <p>A miniature of the app shell — sidebar, header, content well, two cards and a chip — rendered with today's tokens on the left and the proposed ramp on the right. Note how the right separates chrome from content and lifts the cards, using the <em>same</em> markup.</p>
+
+    <div class="compare">
+      <div>
+        <div class="mock-label cur">● Current — flat band</div>
+        <div class="mock cur-pal">
+          <div class="mk-side">
+            <div class="mk-brand"><span class="mk-dot"></span>Bodhi</div>
+            <div class="mk-nav on"></div><div class="mk-nav"></div><div class="mk-nav"></div><div class="mk-nav"></div>
+          </div>
+          <div class="mk-main">
+            <div class="mk-head">Models › All Models</div>
+            <div class="mk-body">
+              <div class="mk-card"><div class="t">Qwen3-Coder-32B</div><div class="s">Local file · Q4_K_M · 4.9 GB</div><span class="mk-chip">Local File</span></div>
+              <div class="mk-card raised"><div class="t">Anthropic</div><div class="s">8 models · connected</div><span class="mk-chip leaf">connected</span></div>
+              <div class="mk-btn">+ New model</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="mock-label pro">● Proposed — elevation ramp</div>
+        <div class="mock pro-pal">
+          <div class="mk-side">
+            <div class="mk-brand"><span class="mk-dot"></span>Bodhi</div>
+            <div class="mk-nav on"></div><div class="mk-nav"></div><div class="mk-nav"></div><div class="mk-nav"></div>
+          </div>
+          <div class="mk-main">
+            <div class="mk-head">Models › All Models</div>
+            <div class="mk-body">
+              <div class="mk-card"><div class="t">Qwen3-Coder-32B</div><div class="s">Local file · Q4_K_M · 4.9 GB</div><span class="mk-chip">Local File</span></div>
+              <div class="mk-card raised"><div class="t">Anthropic</div><div class="s">8 models · connected</div><span class="mk-chip leaf">connected</span></div>
+              <div class="mk-btn">+ New model</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:hsl(var(--fg-faint))">The left chip text (<code>#B02A52</code>) is the real bug in miniature: dark pink on a dark chip. On the right it uses the light lotus token and reads cleanly.</p>
+  </div>
+</section>
+
+<!-- ══════════════ FRAMEWORK CHANGES ══════════════ -->
+<section id="changes">
+  <div class="wrap">
+    <div class="sec-no">05 — FRAMEWORK CHANGES</div>
+    <h2>What actually changes, and where</h2>
+    <p>Most of the work is in two shared files. The rest is a mechanical sweep replacing hardcoded hex with tokens. Tags: <span class="tag fw">FRAMEWORK</span> shared tokens · <span class="tag lay">LAYOUT</span> shell/structure · <span class="tag cmp">COMPONENT</span> per-page CSS.</p>
+
+    <div class="fmap">
+      <div class="frow"><div class="ff">colors_and_type.css<span class="tag fw">FW</span></div><div class="fd">Rewrite the <code>.dark</code> token block: new <b>5-step surface ramp</b>, raised border/text contrast, <b>desaturated accents</b>, new <code>--surface-4</code>, <code>--border-strong</code>, <code>--faint-foreground</code>. The single highest-leverage change.</div></div>
+      <div class="frow"><div class="ff">bodhi-app-shell.css<span class="tag lay">LAY</span></div><div class="fd">Map shell regions to the new ramp: main = <code>--background</code>, sidebar/rail/header = <code>--card</code>, popovers/menus/tooltips = <code>--surface-4</code>. Add dark elevation-overlay + focus-ring rules. Retire the dead <code>--sidebar</code> tokens (or wire them up).</div></div>
+      <div class="frow"><div class="ff">— shared accent helpers<span class="tag fw">FW</span></div><div class="fd">Consolidate the duplicated <code>--c-lotus/saffron/leaf/indigo/teal</code> blocks (copy-pasted into 5+ files) into one source of truth with correct dark <code>*-text</code> values, so status/chip text never hardcodes dark hex again.</div></div>
+      <div class="frow"><div class="ff">tweaks-panel.jsx<span class="tag cmp">CMP</span></div><div class="fd">Rebuild its inline styles on tokens (fields, borders, thumbs, segmented control). Currently 100% light-hardcoded → unusable in dark.</div></div>
+      <div class="frow"><div class="ff">bodhi-chat.css<span class="tag cmp">CMP</span></div><div class="fd">Replace hardcoded tool-call wash, fixed code-block bg, and <code>#B02A52 / #1F7D3F / #3E4AA8</code> text in tabs, model tags, inline code, meta.</div></div>
+      <div class="frow"><div class="ff">bodhi-models.css<span class="tag cmp">CMP</span></div><div class="fd">Chip text, status greens, key-ok text → tokens. Solid <code>.act-use / .btn-add</code> backgrounds already pink; keep, but use token.</div></div>
+      <div class="frow"><div class="ff">access-request(s) · local-model · create-fallback · mcp-*<span class="tag cmp">CMP</span></div><div class="fd">Each carries a copy of the accent block with light-mode <code>*-text</code> values + a few <code>#fff</code>/dark-hex spots. Point them at the shared helpers; spot-fix remaining literals.</div></div>
+      <div class="frow"><div class="ff">All pages (verification)<span class="tag lay">LAY</span></div><div class="fd">Toggle each of the 13 screens in dark and confirm: chrome≠content, cards lift, all text ≥AA, no white controls, accents calm.</div></div>
+    </div>
+
+    <div class="note key">
+      <span class="lbl">Backwards-compatible by design</span>
+      <p>Because pages already consume <code>hsl(var(--card))</code>, <code>var(--border)</code>, etc., editing the token <em>values</em> updates them with zero page edits. The component sweep only touches the minority of spots that bypassed the tokens. Light mode is untouched.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ TOKEN SHEET ══════════════ -->
+<section id="tokens">
+  <div class="wrap">
+    <div class="sec-no">06 — TOKEN SHEET</div>
+    <h2>Proposed <code>.dark</code> values</h2>
+    <p>Copy-paste-ready. Left = today, right = proposed. Swatches are live.</p>
+    <table class="tbl">
+      <thead><tr><th>Token</th><th>Current</th><th>Proposed</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td class="tok">--background</td><td class="val"><span class="sw" style="background:hsl(235 30% 6%)"></span>235 30% 6%</td><td class="val"><span class="sw" style="background:hsl(234 17% 8%)"></span>234 17% 8%</td><td><span class="delta">+2% L, calmer tint</span></td></tr>
+        <tr><td class="tok">--surface-1</td><td class="val"><span class="sw" style="background:hsl(235 30% 6%)"></span>235 30% 6%</td><td class="val"><span class="sw" style="background:hsl(233 16% 10%)"></span>233 16% 10%</td><td><span class="delta">now distinct from bg</span></td></tr>
+        <tr><td class="tok">--card / --surface-2</td><td class="val"><span class="sw" style="background:hsl(235 28% 9%)"></span>235 28% 9%</td><td class="val"><span class="sw" style="background:hsl(232 14% 13%)"></span>232 14% 13%</td><td><span class="delta">+4% lift</span></td></tr>
+        <tr><td class="tok">--surface-3</td><td class="val"><span class="sw" style="background:hsl(235 26% 14%)"></span>235 26% 14%</td><td class="val"><span class="sw" style="background:hsl(231 13% 17%)"></span>231 13% 17%</td><td><span class="delta">hover/nested</span></td></tr>
+        <tr><td class="tok">--surface-4 / --popover</td><td class="val"><span class="sw" style="background:hsl(235 28% 10%)"></span>235 28% 10%</td><td class="val"><span class="sw" style="background:hsl(230 12% 21%)"></span>230 12% 21%</td><td><span class="delta">new top layer</span></td></tr>
+        <tr><td class="tok">--border</td><td class="val"><span class="sw" style="background:hsl(235 20% 18%)"></span>235 20% 18%</td><td class="val"><span class="sw" style="background:hsl(231 11% 25%)"></span>231 11% 25%</td><td><span class="delta">+7% visible</span></td></tr>
+        <tr><td class="tok">--border-strong</td><td class="val">—</td><td class="val"><span class="sw" style="background:hsl(231 11% 32%)"></span>231 11% 32%</td><td><span class="delta">new</span></td></tr>
+        <tr><td class="tok">--foreground</td><td class="val"><span class="sw" style="background:hsl(240 15% 94%)"></span>240 15% 94%</td><td class="val"><span class="sw" style="background:hsl(233 14% 95%)"></span>233 14% 95%</td><td><span class="delta">~same, warmer</span></td></tr>
+        <tr><td class="tok">--muted-foreground</td><td class="val"><span class="sw" style="background:hsl(240 10% 68%)"></span>240 10% 68%</td><td class="val"><span class="sw" style="background:hsl(231 12% 73%)"></span>231 12% 73%</td><td><span class="delta">+5% AA</span></td></tr>
+        <tr><td class="tok">--faint-foreground</td><td class="val">—</td><td class="val"><span class="sw" style="background:hsl(231 10% 55%)"></span>231 10% 55%</td><td><span class="delta">new tertiary</span></td></tr>
+        <tr><td class="tok">--primary</td><td class="val"><span class="sw" style="background:hsl(347 100% 78%)"></span>347 100% 78%</td><td class="val"><span class="sw" style="background:hsl(347 88% 78%)"></span>347 88% 78%</td><td><span class="delta">−12% sat, calmer</span></td></tr>
+        <tr><td class="tok">--accent (indigo)</td><td class="val"><span class="sw" style="background:hsl(234 60% 68%)"></span>234 60% 68%</td><td class="val"><span class="sw" style="background:hsl(232 60% 74%)"></span>232 60% 74%</td><td><span class="delta">lighter</span></td></tr>
+        <tr><td class="tok">--success (leaf)</td><td class="val"><span class="sw" style="background:hsl(142 55% 52%)"></span>142 55% 52%</td><td class="val"><span class="sw" style="background:hsl(142 48% 60%)"></span>142 48% 60%</td><td><span class="delta">lighter/softer</span></td></tr>
+        <tr><td class="tok">--c-lotus-text (chips)</td><td class="val"><span class="sw" style="background:hsl(347 100% 82%)"></span>#FFA4B8 ✓</td><td class="val"><span class="sw" style="background:hsl(347 100% 82%)"></span>#FFA4B8</td><td><span class="delta">enforce — kill #B02A52 literals</span></td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:hsl(var(--fg-faint))">Hues nudged 1–4° and chroma lowered across the ramp so the stack reads as one cohesive warm slate-navy family rather than drifting blue. Exact values are tunable during implementation.</p>
+  </div>
+</section>
+
+<!-- ══════════════ ROLLOUT ══════════════ -->
+<section id="rollout">
+  <div class="wrap">
+    <div class="sec-no">07 — ROLLOUT</div>
+    <h2>How I'd ship it</h2>
+    <ol>
+      <li><strong>Foundation</strong> — rewrite the <code>.dark</code> block in <code>colors_and_type.css</code> + shell surface mapping in <code>bodhi-app-shell.css</code>. ~80% of the visible improvement, two files.</li>
+      <li><strong>Shared accent helpers</strong> — one source of truth for the <code>--c-*</code> chip/status tokens with correct dark text values.</li>
+      <li><strong>Component sweep</strong> — replace the ~40 hardcoded literals (chat, models, access-request, local-model, fallback, mcp pages) with tokens.</li>
+      <li><strong>Tweaks panel</strong> — rebuild on tokens for both themes.</li>
+      <li><strong>Verify all 13 screens</strong> in dark via the in-app toggle; fix stragglers; confirm AA.</li>
+    </ol>
+
+    <h3>Your call before I build</h3>
+    <ul class="check">
+      <li>Approve the <strong>elevation-by-lightness</strong> direction (content = darkest base; chrome & cards lift above).</li>
+      <li>Approve the <strong>warm slate-navy</strong> tone — keep a faint indigo tint but lower the saturation (vs. today's stronger navy).</li>
+      <li>Approve <strong>lightly desaturated lotus</strong> + translucent accent fills.</li>
+      <li>OK to do the <strong>component hex sweep</strong> (touches ~8 page CSS files + the Tweaks panel).</li>
+      <li>Any screen you want me to prototype <strong>first</strong> as a full proof before the global rollout? (Chat is the most complex — good candidate.)</li>
+    </ul>
+
+    <div class="note good">
+      <span class="lbl">On approval</span>
+      <p>Say go and I'll implement the foundation first, show you Chat + Models + Settings in dark as proof, then complete the sweep across the rest and verify every screen.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><strong style="color:hsl(var(--fg))">Bodhi AI Gateway</strong> — Dark Theme Review &amp; Proposal · rendered in the proposed palette · awaiting approval.</p>
+  </div>
+</footer>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#11131a"/>
+    <circle cx="50" cy="42" r="16" fill="#ffa4b8"/>
+    <rect x="30" y="64" width="40" height="6" rx="3" fill="#3a3f52"/>
+    <rect x="30" y="74" width="26" height="6" rx="3" fill="#2a2e3d"/>
+  </svg>
+</template>
+
+</body>
+</html>

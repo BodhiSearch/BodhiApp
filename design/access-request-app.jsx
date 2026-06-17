@@ -171,7 +171,14 @@ function AccessRequestForm() {
   const approveCount = enabledSlots + readyMcps.filter(s=>s.selectedInst).length + 1;
   const isBlocked    = blockedMcps.length > 0;
 
-  return (<>
+  return (
+    <div className="ar-main">
+    <div className="ar-scroll">
+    <div className="ar-inner">
+      <div className="page-header" style={{display:'block',marginBottom:24}}>
+        <div className="page-title">Review Access Request</div>
+        <div className="page-subtitle">Decide which of your resources this 3rd-party app can use.</div>
+      </div>
     <div className="form-card">
       <div className="app-identity">
         <div className="app-icon" style={{background:REQUEST.appColor}}>{REQUEST.appInitial}</div>
@@ -229,52 +236,66 @@ function AccessRequestForm() {
       <div>
         {isBlocked
           ? <div className="action-warn"><Icon name="alert-triangle" size={14}/>{blockedMcps.length} MCP {blockedMcps.length===1?'server needs':'servers need'} setup before approving</div>
-          : <div className="action-ok">All resources ready to approve</div>
+          : <div className="action-ok"><Icon name="check-circle-2" size={14}/>All resources ready to approve</div>
         }
       </div>
-      <div style={{display:'flex',gap:10}}>
-        <button className="btn-deny">Deny</button>
+      <div className="action-btns">
+        <button className="btn-deny">Deny &amp; return to app</button>
         <button className="btn-approve" disabled={isBlocked}>
           <Icon name="check" size={15}/>
           {`Approve ${approveCount} resource${approveCount!==1?'s':''}`}
         </button>
       </div>
     </div>
+    </div>{/* ar-inner */}
+    </div>{/* ar-scroll */}
 
     {openConfig && <AdminConfigPanel server={mcpServers.find(s=>s.id===openConfig)} onSave={()=>saveConfig(openConfig)} onClose={()=>setOpenConfig(null)} />}
-  </>);
-}
-
-/* ── Full page app ── */
-function AccessRequestApp() {
-  useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
-  return (
-    <div className="app">
-      <BodhiSidebar section="api-keys" subPage="access-requests" />
-      <main className="main">
-        <div className="topbar">
-          <nav className="breadcrumb">
-            <a className="bc-seg" href="#">Bodhi</a>
-            <Icon name="chevron-right" size={10} />
-            <a className="bc-seg" href="App Tokens.html">API Keys</a>
-            <Icon name="chevron-right" size={10} />
-            <a className="bc-seg" href="Access Requests.html">Access Requests</a>
-            <Icon name="chevron-right" size={10} />
-            <span className="bc-current">Review Request</span>
-          </nav>
-        </div>
-        <div className="page-body">
-          <div className="page-body-inner">
-            <div className="page-header" style={{display:'block',marginBottom:24}}>
-              <div className="page-title">Review Access Request</div>
-              <div className="page-subtitle">Decide which of your resources this 3rd-party app can use.</div>
-            </div>
-            <AccessRequestForm />
-          </div>
-        </div>
-      </main>
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('app-root')).render(<AccessRequestApp />);
+/* ── Theme toggle (top bar) ── */
+function StdThemeToggle() {
+  const [dark, setDark] = useState(() => window.bodhiTheme && window.bodhiTheme.resolved === 'dark');
+  useEffect(() => {
+    if (!window.bodhiTheme) return;
+    return window.bodhiTheme.subscribe((m, r) => setDark(r === 'dark'));
+  }, []);
+  return (
+    <button className="std-theme-toggle" onClick={() => window.bodhiTheme && window.bodhiTheme.toggle()}>
+      <Icon name={dark ? 'sun' : 'moon'} size={15} />
+      <span className="std-tt-label">{dark ? 'Light' : 'Dark'}</span>
+    </button>
+  );
+}
+
+/* ── Full page app (standalone — no shell, no breadcrumb) ── */
+function AccessRequestApp() {
+  useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+  return (
+    <div className="std-page">
+      <div className="std-topbar">
+        <a className="std-brand" href="Bodhi Chat.html">
+          <span className="std-brand-mark"></span>
+          <span className="std-brand-text">
+            <span className="std-brand-word">Bodhi</span>
+            <span className="std-brand-sub">AI Gateway</span>
+          </span>
+        </a>
+        <StdThemeToggle />
+      </div>
+      <div className="std-main is-fill">
+        <AccessRequestForm />
+      </div>
+    </div>
+  );
+}
+
+let __rootEl = document.getElementById('root');
+if (!__rootEl) {
+  __rootEl = document.createElement('div');
+  __rootEl.id = 'root';
+  document.body.appendChild(__rootEl);
+}
+ReactDOM.createRoot(__rootEl).render(<AccessRequestApp />);

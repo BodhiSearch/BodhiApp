@@ -1,15 +1,13 @@
 /* ═══════════════════════════════════════════════════
-   NEW APP TOKEN — React App
+   NEW APP TOKEN — React App  (bodhi-form.css layout)
    Sections:
      1 · Token Identity
      2 · Model Access
      3 · MCP Access
-     4 · User Role
+     4 · Token Scope
+   Generic shell + form primitives come from bodhi-form.css (.bf-*).
+   Page-unique: selection box, role cards, token reveal (new-app-token.css).
 ═══════════════════════════════════════════════════ */
-
-const NAT_TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "theme": "light"
-}/*EDITMODE-END*/;
 
 /* ── Sample data ── */
 const SAMPLE_MODELS = [
@@ -155,12 +153,8 @@ function SelectableList({ items, selected, onToggle, onClearAll, onSelectAll, se
   );
 }
 
-
-
 /* ── Main App ── */
 function NewAppTokenApp() {
-  const [tweaks, setTweak] = useTweaks(NAT_TWEAK_DEFAULTS);
-
   /* Section 1 — Token Identity */
   const [tokenName, setTokenName] = React.useState('');
 
@@ -172,23 +166,13 @@ function NewAppTokenApp() {
   const [mcpMode,        setMcpMode]        = React.useState('all'); // 'all' | 'specific'
   const [selectedMcps,   setSelectedMcps]   = React.useState([]);
 
-  /* Section 4 — User Role */
+  /* Section 4 — Token Scope */
   const [role, setRole] = React.useState('user');
 
   /* Success state */
   const [generated,   setGenerated]   = React.useState(false);
   const [tokenValue,  setTokenValue]  = React.useState('');
   const [copied,      setCopied]      = React.useState(false);
-
-  /* Active section in sidebar — unused after section nav removal */
-  const [activeSection, setActiveSection] = React.useState('identity');
-
-  /* Sync theme */
-  React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', tweaks.theme);
-  }, [tweaks.theme]);
-
-
 
   /* Lucide icons after render */
   React.useEffect(() => { lucide.createIcons(); });
@@ -197,7 +181,6 @@ function NewAppTokenApp() {
   const toggleModel = id => setSelectedModels(prev =>
     prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
   );
-
   const toggleMcp = id => setSelectedMcps(prev =>
     prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
   );
@@ -206,6 +189,12 @@ function NewAppTokenApp() {
     ids.forEach(id => { if (!next.includes(id)) next.push(id); });
     return next;
   });
+
+  const resetForm = () => {
+    setGenerated(false); setTokenName('');
+    setSelectedModels([]); setSelectedMcps([]);
+    setModelMode('all'); setMcpMode('all'); setRole('user');
+  };
 
   const handleGenerate = () => {
     const fake = 'bdt_' + Array.from({ length: 48 }, () =>
@@ -226,220 +215,172 @@ function NewAppTokenApp() {
   };
 
   return (
-    <div className="nat-app">
-
-      {/* ══ SIDEBAR ══ */}
-      <BodhiSidebar section="api-keys" subPage="new-token" />
-
-      {/* ══ MAIN ══ */}
-      <main className="nat-main">
-
-        {/* Topbar */}
-        <div className="nat-topbar">
-          <div className="nat-breadcrumb">
-            <span>Bodhi</span>
-            <i data-lucide="chevron-right" className="nat-bc-sep"></i>
-            <span>API Keys</span>
-            <i data-lucide="chevron-right" className="nat-bc-sep"></i>
-            <span className="nat-bc-curr">New App Token</span>
-          </div>
-          <div className="nat-topbar-actions">
-            <button className="nat-btn nat-btn-cancel" onClick={() => setGenerated(false) || setTokenName('') || setSelectedModels([]) || setSelectedMcps([]) || setRole('user')}>
-              Cancel
-            </button>
-            {!generated && (
-              <button className="nat-btn nat-btn-generate" onClick={handleGenerate}>
-                <Icon name="shield-plus" size={13} />
-                Generate Token
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Scroll area */}
-        <div className="nat-scroll" id="natScroll">
-          <div className="nat-form-card">
-
-            <h1 className="nat-page-title">New App Token</h1>
-            <p className="nat-page-sub">
-              Generate a scoped token for programmatic access to the Bodhi API.
-              Configure which models, MCPs, and capabilities this token can access.
-            </p>
-
-            {/* ── GENERATED TOKEN REVEAL ── */}
-            {generated && (
-              <div style={{ marginTop: 20 }}>
-                <div className="nat-token-reveal">
-                  <div className="nat-token-reveal-header">
-                    <Icon name="check-circle-2" size={14} style={{ color: 'var(--c-leaf-text)' }} />
-                    <span className="nat-token-reveal-title">Token generated — copy it now</span>
-                  </div>
-                  <div className="nat-token-reveal-body">
-                    <span className="nat-token-value">{tokenValue}</span>
-                    <button className="nat-copy-btn" onClick={handleCopy}>
-                      <Icon name={copied ? 'check' : 'copy'} size={11} />
-                      {copied ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
-                  <div className="nat-token-warn">
-                    This token will not be shown again. Store it securely.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ══ SECTION 1: TOKEN IDENTITY ══ */}
-            <hr className="nat-divider" id="nat-sec-identity" />
-
-            <div className="nat-field">
-              <label className="nat-label">
-                Token Name
-                <span className="nat-opt-badge">Optional</span>
-              </label>
-              <input
-                className="nat-input"
-                type="text"
-                value={tokenName}
-                onChange={e => setTokenName(e.target.value)}
-                placeholder="e.g. my-app-token"
-              />
-              <div className="nat-hint">A human-readable label to identify this token in the token list.</div>
+    <>
+    <AppShell
+      section="api-keys" subPage="new-token" resizeKey="api-keys"
+      breadcrumb={[
+        { label: 'Bodhi', href: 'Bodhi Chat.html' },
+        { label: 'Access Tokens', href: 'API Tokens.html' },
+        { label: 'New App Token', current: true },
+      ]}
+      contentClass="flush" mainScroll={false}
+    >
+        {/* Scroll · centered container */}
+        <div className="bf-scroll" id="natScroll">
+          <div className="bf-container">
+            <div className="bf-page-head">
+              <h1 className="bf-page-title">New App Token</h1>
+              <p className="bf-page-sub">
+                Generate a scoped token for programmatic access to the Bodhi API.
+                Configure which models, MCPs, and capabilities this token can access.
+              </p>
             </div>
 
-            {/* ══ SECTION 2: MODEL ACCESS ══ */}
-            <hr className="nat-divider" id="nat-sec-models" />
+            <div className="bf-card">
+              <div className="bf-card-body">
 
-            <div className="nat-field">
-              <label className="nat-label">Model Access</label>
-              <ModelAccessPicker
-                mode={modelMode}
-                onModeChange={setModelMode}
-                allModels={SAMPLE_MODELS}
-                selectedIds={selectedModels}
-                onToggle={toggleModel}
-                panelTitle="Select Models"
-                panelSubtitle="Choose which models this token can access"
-              />
-            </div>
-
-            {/* ══ SECTION 3: MCP ACCESS ══ */}
-            <hr className="nat-divider" id="nat-sec-mcps" />
-
-            <div className="nat-field">
-              <label className="nat-label">MCP Access</label>
-              <div className="nat-radio-group">
-                <div
-                  className={`nat-radio-option${mcpMode === 'all' ? ' selected' : ''}`}
-                  onClick={() => setMcpMode('all')}
-                >
-                  <div className="nat-radio-dot">
-                    <div className="nat-radio-dot-inner" style={{ transform: mcpMode === 'all' ? 'scale(1)' : 'scale(0)' }}></div>
-                  </div>
-                  <div className="nat-radio-body">
-                    <span className="nat-radio-text">
-                      All MCPs
-                      <span className="nat-future-badge" style={{ marginLeft: 6 }}>+ future</span>
-                    </span>
-                    <span className="nat-radio-desc">Access all currently registered MCP servers and any added in the future.</span>
-                  </div>
-                </div>
-                <div
-                  className={`nat-radio-option${mcpMode === 'specific' ? ' selected' : ''}`}
-                  onClick={() => setMcpMode('specific')}
-                >
-                  <div className="nat-radio-dot">
-                    <div className="nat-radio-dot-inner" style={{ transform: mcpMode === 'specific' ? 'scale(1)' : 'scale(0)' }}></div>
-                  </div>
-                  <div className="nat-radio-body">
-                    <span className="nat-radio-text">Select specific MCPs</span>
-                    <span className="nat-radio-desc">Choose exactly which MCP servers this token can invoke.</span>
-                  </div>
-                </div>
-              </div>
-              {mcpMode === 'specific' && (
-                <div style={{ marginTop: 10 }}>
-                  <SelectableList
-                    items={SAMPLE_MCPS}
-                    selected={selectedMcps}
-                    onToggle={toggleMcp}
-                    onClearAll={() => setSelectedMcps([])}
-                    onSelectAll={selectAllMcps}
-                    searchPlaceholder="Filter MCPs…"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* ══ SECTION 4: USER ROLE ══ */}
-            <hr className="nat-divider" id="nat-sec-role" />
-
-            <div className="nat-field">
-              <label className="nat-label" style={{ marginBottom: 8 }}>Token Scope</label>
-              <div className="nat-role-grid">
-
-                {/* User */}
-                <div
-                  className={`nat-role-card${role === 'user' ? ' selected' : ''}`}
-                  onClick={() => setRole('user')}
-                >
-                  <div className="nat-role-card-header">
-                    <span className="nat-role-card-name">User</span>
-                    <div className="nat-radio-dot">
-                      <div className="nat-radio-dot-inner" style={{ transform: role === 'user' ? 'scale(1)' : 'scale(0)' }}></div>
+                {/* ── GENERATED TOKEN REVEAL ── */}
+                {generated && (
+                  <div className="nat-token-reveal" style={{ marginBottom: 22 }}>
+                    <div className="nat-token-reveal-header">
+                      <Icon name="check-circle-2" size={14} />
+                      <span className="nat-token-reveal-title">Token generated — copy it now</span>
+                    </div>
+                    <div className="nat-token-reveal-body">
+                      <span className="nat-token-value">{tokenValue}</span>
+                      <button className="nat-copy-btn" onClick={handleCopy}>
+                        <Icon name={copied ? 'check' : 'copy'} size={11} />
+                        {copied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <div className="nat-token-warn">
+                      This token will not be shown again. Store it securely.
                     </div>
                   </div>
-                  <div className="nat-role-card-desc">
-                    Standard access. Can make inference requests, list models and MCPs permitted by this token.
+                )}
+
+                {/* ══ SECTION 1: TOKEN IDENTITY ══ */}
+                <div className="bf-section">
+                  <div className="bf-section-title">Token Identity</div>
+                  <div className="bf-field">
+                    <label className="bf-label">
+                      <span className="bf-label-text">Token Name</span>
+                      <span className="bf-optional">Optional</span>
+                    </label>
+                    <input
+                      className="bf-input bf-input-mono"
+                      type="text"
+                      value={tokenName}
+                      onChange={e => setTokenName(e.target.value)}
+                      placeholder="e.g. my-app-token"
+                    />
+                    <div className="bf-hint">A human-readable label to identify this token in the token list.</div>
                   </div>
-                  <span className="nat-role-badge user">scope_token_user</span>
                 </div>
 
-                {/* Power User */}
-                <div
-                  className={`nat-role-card${role === 'power' ? ' selected' : ''}`}
-                  onClick={() => setRole('power')}
-                >
-                  <div className="nat-role-card-header">
-                    <span className="nat-role-card-name">Power User</span>
-                    <div className="nat-radio-dot">
-                      <div className="nat-radio-dot-inner" style={{ transform: role === 'power' ? 'scale(1)' : 'scale(0)' }}></div>
+                <div className="bf-divider"></div>
+
+                {/* ══ SECTION 2: MODEL ACCESS ══ */}
+                <div className="bf-section">
+                  <div className="bf-section-title">Model Access</div>
+                  <div className="bf-field">
+                    <ModelAccessPicker
+                      mode={modelMode}
+                      onModeChange={setModelMode}
+                      allModels={SAMPLE_MODELS}
+                      selectedIds={selectedModels}
+                      onToggle={toggleModel}
+                      panelTitle="Select Models"
+                      panelSubtitle="Choose which models this token can access"
+                    />
+                  </div>
+                </div>
+
+                <div className="bf-divider"></div>
+
+                {/* ══ SECTION 3: MCP ACCESS ══ */}
+                <div className="bf-section">
+                  <div className="bf-section-title">MCP Access</div>
+                  <div className="bf-field">
+                    <ModelAccessPicker
+                      mode={mcpMode}
+                      onModeChange={setMcpMode}
+                      allModels={SAMPLE_MCPS}
+                      selectedIds={selectedMcps}
+                      onToggle={toggleMcp}
+                      panelTitle="Select MCPs"
+                      panelSubtitle="Choose which MCP servers this token can invoke"
+                      itemNoun="MCP"
+                      allLabel="All MCPs"
+                      allDesc="Access all currently registered MCP servers and any added in the future."
+                      specificLabel="Specific MCPs"
+                      specificDesc="Choose exactly which MCP servers this token can invoke."
+                    />
+                  </div>
+                </div>
+
+                <div className="bf-divider"></div>
+
+                {/* ══ SECTION 4: TOKEN SCOPE ══ */}
+                <div className="bf-section">
+                  <div className="bf-section-title">Token Scope</div>
+                  <div className="bf-field">
+                    <div className="nat-role-grid">
+
+                      {/* User */}
+                      <div
+                        className={`nat-role-card${role === 'user' ? ' selected' : ''}`}
+                        onClick={() => setRole('user')}
+                      >
+                        <div className="nat-role-card-header">
+                          <span className="nat-role-card-name">User</span>
+                          <div className="bf-radio-dot">
+                            <div className="bf-radio-dot-inner" style={{ transform: role === 'user' ? 'scale(1)' : 'scale(0)' }}></div>
+                          </div>
+                        </div>
+                        <div className="nat-role-card-desc">
+                          Standard access. Can make inference requests, list models and MCPs permitted by this token.
+                        </div>
+                        <span className="nat-role-badge user">scope_token_user</span>
+                      </div>
+
+                      {/* Power User */}
+                      <div
+                        className={`nat-role-card${role === 'power' ? ' selected' : ''}`}
+                        onClick={() => setRole('power')}
+                      >
+                        <div className="nat-role-card-header">
+                          <span className="nat-role-card-name">Power User</span>
+                          <div className="bf-radio-dot">
+                            <div className="bf-radio-dot-inner" style={{ transform: role === 'power' ? 'scale(1)' : 'scale(0)' }}></div>
+                          </div>
+                        </div>
+                        <div className="nat-role-card-desc">
+                          Elevated access. Can manage models, configure MCP servers, and perform admin-level API operations.
+                        </div>
+                        <span className="nat-role-badge power">scope_token_power_user</span>
+                      </div>
+
                     </div>
                   </div>
-                  <div className="nat-role-card-desc">
-                    Elevated access. Can manage models, configure MCP servers, and perform admin-level API operations.
-                  </div>
-                  <span className="nat-role-badge power">scope_token_power_user</span>
                 </div>
 
+              </div>{/* end card-body */}
+
+              {/* ══ FOOTER — the ONLY place actions live ══ */}
+              <div className="bf-footer">
+                <div className="bf-footer-spacer"></div>
+                <button className="bf-btn bf-btn-ghost" onClick={resetForm}>Cancel</button>
+                <button className="bf-btn bf-btn-primary" onClick={handleGenerate}>
+                  <Icon name="shield-plus" size={13} />
+                  Generate Token
+                </button>
               </div>
-            </div>
-
-            {/* ── BOTTOM ACTION BAR ── */}
-            <div className="nat-action-bar">
-              <div className="nat-action-spacer"></div>
-              <button className="nat-btn nat-btn-cancel">Cancel</button>
-              <button className="nat-btn nat-btn-generate" onClick={handleGenerate}>
-                <Icon name="shield-plus" size={13} />
-                Generate Token
-              </button>
-            </div>
-
+            </div>{/* end card */}
           </div>
         </div>
-      </main>
-
-      {/* ══ TWEAKS ══ */}
-      <TweaksPanel>
-        <TweakSection title="Theme">
-          <TweakRadio
-            value={tweaks.theme}
-            options={[{ label: 'Light', value: 'light' }, { label: 'Dark', value: 'dark' }]}
-            onChange={v => setTweak('theme', v)}
-          />
-        </TweakSection>
-      </TweaksPanel>
-
-    </div>
+    </AppShell>
+    </>
   );
 }
 

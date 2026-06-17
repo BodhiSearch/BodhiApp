@@ -1,0 +1,166 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi Standalone — minimal chrome for in-app full-page flows
+   bodhi-standalone.css   ·   load AFTER colors_and_type.css
+
+   For pages the Bodhi app renders OUTSIDE the main shell (no sidebar,
+   no breadcrumb): access consent, request-access, request-pending.
+   Neutral app background + a slim branded top bar. Calm, focused.
+═══════════════════════════════════════════════════════════════ */
+
+.std-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+}
+
+/* ── Slim top bar: brand left, theme toggle right ─────────────── */
+.std-topbar {
+  flex: none;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(16px, 4vw, 28px);
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+}
+.std-brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+.std-brand-mark {
+  width: 30px; height: 30px; flex: none;
+  background: url("assets/bodhi-logo-60.svg") center/contain no-repeat;
+}
+.std-brand-text { display: flex; flex-direction: column; line-height: 1.05; }
+.std-brand-word { font-size: 15px; font-weight: 700; letter-spacing: .01em; color: hsl(var(--foreground)); }
+.std-brand-sub  { font-size: 10.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: hsl(var(--faint-foreground)); }
+
+.std-theme-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 13px 0 11px;
+  border-radius: var(--radius-full);
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-sans); font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
+}
+.std-theme-toggle:hover { color: hsl(var(--foreground)); border-color: hsl(var(--border-strong)); background: hsl(var(--muted) / .5); }
+.std-theme-toggle svg { width: 15px; height: 15px; }
+@media (max-width: 480px) { .std-theme-toggle .std-tt-label { display: none; } .std-theme-toggle { padding: 0 10px; } }
+
+/* ── Body region ──────────────────────────────────────────────── */
+/* .is-fill → child manages its own scroll (rich consent form).
+   default  → centers a card and scrolls the whole region (simple pages). */
+.std-main { flex: 1; min-height: 0; }
+.std-main.is-fill { display: flex; flex-direction: column; }
+.std-main.is-center {
+  overflow-y: auto;
+  display: flex;
+  /* align-items:center clips the top of a card taller than the viewport when
+     scrolling; centring via the card's auto margins collapses to top
+     alignment on overflow so the whole card stays reachable. */
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(24px, 6vh, 64px) 20px;
+}
+
+/* ── Simple centered card (request-access / pending) ──────────── */
+.std-card {
+  width: 100%;
+  max-width: 460px;
+  margin: auto;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: 38px 38px 34px;
+  box-sizing: border-box;
+  text-align: center;
+}
+[data-theme="dark"] .std-card { border-color: hsl(var(--border-strong)); }
+
+.std-status-icon {
+  width: 60px; height: 60px;
+  margin: 0 auto 20px;
+  border-radius: var(--radius-lg);
+  display: flex; align-items: center; justify-content: center;
+}
+.std-status-icon svg { width: 27px; height: 27px; }
+.std-status-icon.is-primary { background: hsl(var(--primary) / .16); color: hsl(var(--primary-hover)); }
+.std-status-icon.is-pending { background: hsl(var(--warning) / .14); color: hsl(var(--warning)); }
+[data-theme="dark"] .std-status-icon.is-pending { color: hsl(34 92% 70%); }
+
+.std-title { font-size: 23px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 9px; }
+.std-sub { font-size: 13.8px; line-height: 1.6; color: hsl(var(--muted-foreground)); margin: 0; text-wrap: pretty; }
+.std-sub strong { color: hsl(var(--foreground)); font-weight: 600; }
+
+/* Workspace identity chip inside the simple card */
+.std-workspace {
+  display: flex; align-items: center; gap: 12px;
+  text-align: left;
+  padding: 13px 15px;
+  margin: 24px 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--muted) / .45);
+}
+[data-theme="dark"] .std-workspace { background: hsl(var(--surface-1)); }
+.std-workspace-mark {
+  width: 38px; height: 38px; flex: none;
+  border-radius: var(--radius-md);
+  background: url("assets/bodhi-logo-60.svg") center/contain no-repeat, hsl(var(--primary) / .12);
+  background-size: 26px, cover;
+}
+.std-workspace-body { min-width: 0; }
+.std-workspace-name { font-size: 14px; font-weight: 700; color: hsl(var(--foreground)); }
+.std-workspace-meta { font-size: 11.5px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+.std-workspace-meta code { font-family: var(--font-mono); font-size: 11px; }
+
+/* Buttons inside simple card */
+.std-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  height: 46px;
+  padding: 0 18px;
+  font-family: var(--font-sans); font-size: 14.5px; font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.std-btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: var(--shadow-sm); }
+.std-btn-primary:hover { background: hsl(var(--primary-hover)); color: #fff; box-shadow: var(--shadow-glow); }
+.std-btn svg { width: 17px; height: 17px; }
+
+/* Signed-in footer line */
+.std-foot {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid hsl(var(--border));
+  font-size: 12.5px;
+  color: hsl(var(--muted-foreground));
+}
+.std-foot a { color: hsl(var(--primary-hover)); font-weight: 600; text-decoration: none; }
+.std-foot a:hover { text-decoration: underline; }
+
+/* Pending status meta row */
+.std-pending-meta {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 20px;
+  padding: 7px 13px;
+  border-radius: var(--radius-full);
+  background: hsl(var(--warning) / .12);
+  color: hsl(var(--warning));
+  font-size: 12px; font-weight: 600;
+}
+[data-theme="dark"] .std-pending-meta { color: hsl(34 92% 72%); }
+.std-pending-meta svg { width: 13px; height: 13px; }
+
+@media (max-width: 480px) {
+  .std-card { padding: 30px 22px 26px; border-radius: var(--radius-lg); }
+}

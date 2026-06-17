@@ -1,0 +1,184 @@
+/* ═══════════════════════════════════════════════════
+   BODHI APP SETTINGS — page-unique styles
+   Load AFTER bodhi-app-shell.css. Chrome (sidebar, topbar,
+   breadcrumb, grid, reset, color helpers, tweaks panel) comes from
+   AppShell + colors_and_type + tweaks-panel.jsx. This file holds the
+   settings-group sidebar nav, search/filter bar, settings table, and
+   the edit drawer.
+═══════════════════════════════════════════════════ */
+
+/* ── SETTINGS-GROUP NAV (sidebar slot) ── */
+.section-nav { display: flex; flex-direction: column; gap: 2px; }
+.snav-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: hsl(var(--muted-foreground));
+  padding: 6px 8px 4px;
+}
+.snav-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border-radius: 7px;
+  font-size: 12.5px; font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer; border: none; background: transparent; width: 100%; text-align: left;
+  transition: background 80ms, color 80ms;
+}
+.snav-item svg { width: 13px; height: 13px; flex: none; }
+.snav-item:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.snav-item.active { background: var(--c-indigo-bg); color: var(--c-indigo-text); font-weight: 600; }
+.snav-count {
+  margin-left: auto; font-size: 10px; font-weight: 600;
+  padding: 1px 5px; border-radius: 99px;
+  background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+}
+.snav-item.active .snav-count { background: var(--c-indigo-bg); color: var(--c-indigo-text); }
+
+.snav-legend { padding: 12px 8px 4px; border-top: 1px solid hsl(var(--border)); margin-top: 14px; }
+.snav-legend-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: hsl(var(--muted-foreground)); margin-bottom: 6px; }
+.snav-legend-rows { display: flex; flex-direction: column; gap: 4px; }
+.snav-legend-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+
+/* ── RESTART BANNER (AppShell banner slot) ── */
+.restart-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px clamp(16px, 4vw, 24px);
+  background: var(--c-warning-bg);
+  border-bottom: 1px solid var(--c-warning-bd);
+}
+.restart-banner.leaf { background: var(--c-leaf-bg); border-bottom-color: var(--c-leaf-bd); }
+.restart-banner > svg { width: 15px; height: 15px; color: var(--c-warning-text); flex-shrink: 0; }
+.restart-banner.leaf > svg { color: var(--c-leaf-text); }
+.restart-banner-text { flex: 1; font-size: 12.5px; color: var(--c-warning-text); font-weight: 500; }
+.restart-banner.leaf .restart-banner-text { color: var(--c-leaf-text); }
+.restart-banner-text strong { font-weight: 700; }
+.btn-restart {
+  height: 28px; padding: 0 14px; border-radius: 6px;
+  background: var(--c-saffron-text); color: #fff; border: none;
+  font-size: 11.5px; font-weight: 700;
+  display: flex; align-items: center; gap: 5px; cursor: pointer; flex-shrink: 0;
+  transition: opacity 150ms;
+}
+.btn-restart:hover { opacity: .85; }
+.btn-restart svg { width: 12px; height: 12px; }
+.btn-dismiss {
+  width: 26px; height: 26px; border-radius: 6px; background: none; border: none;
+  color: var(--c-warning-text); opacity: .6;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity 150ms;
+}
+.btn-dismiss:hover { opacity: 1; }
+.btn-dismiss svg { width: 13px; height: 13px; }
+
+/* ── SETTINGS CONTENT (flush main) ── */
+.settings-content { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+/* Search bar */
+.search-bar {
+  padding: 12px 20px; border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card)); flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.search-input-wrap {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  background: hsl(var(--background)); border: 1px solid hsl(var(--border));
+  border-radius: 9px; padding: 0 12px; height: 34px;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.search-input-wrap:focus-within { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px rgba(255,164,184,.15); }
+.search-input-wrap svg { width: 13px; height: 13px; color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+.search-input-wrap input {
+  flex: 1; border: none; outline: none; font-size: 13px; font-family: inherit;
+  background: transparent; color: hsl(var(--foreground));
+}
+.search-input-wrap input::placeholder { color: hsl(var(--muted-foreground)); }
+.search-clear {
+  width: 18px; height: 18px; border-radius: 50%; background: hsl(var(--muted)); border: none;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; color: hsl(var(--muted-foreground));
+}
+.search-clear:hover { background: hsl(var(--border)); }
+.search-clear svg { width: 10px; height: 10px; }
+.filter-chips { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.filter-chip {
+  height: 28px; padding: 0 10px; border-radius: 6px; font-size: 11.5px; font-weight: 500;
+  border: 1px solid hsl(var(--border)); background: transparent; color: hsl(var(--muted-foreground));
+  cursor: pointer; transition: all 100ms; white-space: nowrap;
+}
+.filter-chip:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.filter-chip.active { background: var(--c-lotus-bg); border-color: var(--c-lotus-bd); color: var(--c-lotus-text); font-weight: 600; }
+
+/* Settings scroll + table */
+.settings-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.settings-scroll::-webkit-scrollbar { width: 5px; }
+.settings-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+
+.section-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px 8px; position: sticky; top: 0;
+  background: hsl(var(--background)); z-index: 2;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.section-header svg { width: 14px; height: 14px; color: hsl(var(--muted-foreground)); }
+.section-header-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: hsl(var(--muted-foreground)); }
+.section-header-desc { font-size: 11.5px; color: hsl(var(--muted-foreground)); opacity: .7; }
+
+.setting-row {
+  display: grid;
+  grid-template-columns: 220px 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: start;
+  padding: 0 20px;
+  border-bottom: 1px solid hsl(var(--border));
+  cursor: pointer; transition: background 80ms; position: relative;
+}
+.setting-row:hover { background: hsl(var(--muted) / .6); }
+.setting-row:hover .row-edit-btn { opacity: 1; }
+.setting-row.modified { border-left: 3px solid var(--c-lotus-text); padding-left: 17px; }
+.setting-row.has-restart { border-left: 3px solid var(--c-saffron-text); padding-left: 17px; }
+.setting-row.no-highlight.modified, .setting-row.no-highlight.has-restart { border-left-color: transparent; }
+
+.row-key { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; padding: 11px 12px 4px 0; }
+.key-name { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--c-indigo-text); letter-spacing: -.01em; line-height: 1.2; }
+
+.badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px; border-radius: 4px; border: 1px solid; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.badge-default  { background: hsl(var(--muted)); border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+.badge-env      { background: var(--c-leaf-bg); border-color: var(--c-leaf-bd); color: var(--c-leaf-text); }
+.badge-cmdline  { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
+.badge-modified { background: var(--c-lotus-bg); border-color: var(--c-lotus-bd); color: var(--c-lotus-text); }
+.badge-restart  { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
+
+.row-desc { grid-column: 1 / -1; grid-row: 2; font-size: 11.5px; color: hsl(var(--muted-foreground)); padding: 0 0 9px 0; line-height: 1.4; }
+.row-value { grid-column: 2; grid-row: 1; font-family: var(--font-mono); font-size: 11.5px; color: hsl(var(--foreground)); padding: 11px 16px 4px 0; word-break: break-all; white-space: normal; line-height: 1.5; font-weight: 500; }
+.row-value.at-default { color: hsl(var(--muted-foreground)); font-weight: 400; }
+.row-actions { grid-column: 3; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; gap: 5px; padding: 11px 0 4px; flex-wrap: nowrap; white-space: nowrap; }
+.type-badge { font-size: 10px; font-weight: 600; font-family: var(--font-mono); padding: 2px 6px; border-radius: 4px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); border: 1px solid hsl(var(--border)); white-space: nowrap; }
+.row-edit-btn { width: 26px; height: 26px; border-radius: 6px; background: none; border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 100ms, background 100ms; flex-shrink: 0; }
+.row-edit-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.row-edit-btn svg { width: 12px; height: 12px; }
+
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 60px 20px; text-align: center; }
+.empty-state svg { width: 32px; height: 32px; color: hsl(var(--muted-foreground)); opacity: .4; }
+.empty-state p { font-size: 13.5px; color: hsl(var(--muted-foreground)); }
+
+mark { background: rgba(250,138,46,.22); color: inherit; border-radius: 2px; padding: 0 1px; }
+
+/* ── RAIL DETAIL PANEL (rail slot) ──
+   Base dp-* classes come from bodhi-list.css. Below: settings-specific
+   form controls + the restart warning + footer button row. */
+.setting-row.active { background: var(--c-indigo-bg); }
+.setting-row.active:hover { background: var(--c-indigo-bg); }
+
+.dp-restart-warn {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; margin-bottom: 18px;
+  background: var(--c-warning-bg); border: 1px solid var(--c-warning-bd); border-radius: 9px;
+  font-size: 12px; color: var(--c-warning-text); line-height: 1.5;
+}
+.dp-restart-warn svg { width: 15px; height: 15px; color: var(--c-saffron-text); margin-top: 1px; flex-shrink: 0; }
+.dp-restart-warn strong { font-weight: 700; }
+
+.dp-foot-row { display: flex; gap: 8px; }
+.dp-foot-row .dp-btn { flex: 1; }
+
+/* Form controls (input / select) used inside the rail edit form */
+.field-input { width: 100%; height: 38px; padding: 0 12px; border: 1px solid hsl(var(--border)); border-radius: 9px; font-size: 13px; font-family: var(--font-mono); background: hsl(var(--background)); color: hsl(var(--foreground)); outline: none; transition: border-color 150ms, box-shadow 150ms; }
+.field-input:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px rgba(255,164,184,.15); }
+.field-select { width: 100%; height: 38px; padding: 0 32px 0 12px; border: 1px solid hsl(var(--border)); border-radius: 9px; font-size: 13px; font-family: inherit; background: hsl(var(--background)); color: hsl(var(--foreground)); outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; cursor: pointer; transition: border-color 150ms, box-shadow 150ms; }
+.field-select:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px rgba(255,164,184,.15); }

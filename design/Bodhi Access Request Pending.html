@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bodhi · Access Request Pending</title>
+<link rel="stylesheet" href="colors_and_type.css">
+<script src="bodhi-theme.js"></script>
+<link rel="stylesheet" href="bodhi-standalone.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+<div class="std-page">
+  <div class="std-topbar">
+    <a class="std-brand" href="Bodhi Chat.html">
+      <span class="std-brand-mark"></span>
+      <span class="std-brand-text">
+        <span class="std-brand-word">Bodhi</span>
+        <span class="std-brand-sub">AI Gateway</span>
+      </span>
+    </a>
+    <button class="std-theme-toggle" id="std-theme" aria-label="Toggle light or dark theme">
+      <span class="std-tt-ico"><i data-lucide="moon"></i></span><span class="std-tt-label">Dark</span>
+    </button>
+  </div>
+
+  <div class="std-main is-center">
+    <div class="std-card">
+      <div class="std-status-icon is-pending"><i data-lucide="clock"></i></div>
+      <h1 class="std-title">Access Request Pending</h1>
+      <p class="std-sub">Your access request is in the queue. An administrator will review it shortly — you'll be notified by email once they respond.</p>
+
+      <div class="std-workspace">
+        <span class="std-workspace-mark"></span>
+        <div class="std-workspace-body">
+          <div class="std-workspace-name">Acme Corp</div>
+          <div class="std-workspace-meta"><code>cloud.getbodhi.app</code> · Bodhi AI Gateway</div>
+        </div>
+      </div>
+
+      <div class="std-pending-meta">
+        <i data-lucide="clock"></i> Submitted 17 Jun 2026
+      </div>
+
+      <div class="std-foot">
+        Signed in as <strong>yogesh@email.com</strong> · <a href="login.html">Sign out</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    function icons() { if (window.lucide) lucide.createIcons(); }
+    icons();
+    var t = document.getElementById('std-theme');
+    if (t && window.bodhiTheme) {
+      var sync = function () {
+        var dark = window.bodhiTheme.resolved === 'dark';
+        t.querySelector('.std-tt-ico').innerHTML = '<i data-lucide="' + (dark ? 'sun' : 'moon') + '"></i>';
+        t.querySelector('.std-tt-label').textContent = dark ? 'Light' : 'Dark';
+        icons();
+      };
+      t.addEventListener('click', function () { window.bodhiTheme.toggle(); sync(); });
+      window.bodhiTheme.subscribe(sync);
+      sync();
+    }
+  })();
+</script>
+</body>
+</html>
