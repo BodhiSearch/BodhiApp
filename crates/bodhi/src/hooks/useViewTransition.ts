@@ -26,15 +26,18 @@ const prefersReducedMotion = (): boolean =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-type StartViewTransition = (callback: UpdateFn) => { finished: Promise<void> };
+interface DocWithViewTransition {
+  startViewTransition(callback: UpdateFn): { finished: Promise<void> };
+}
 
 export function startViewTransition(updateFn: UpdateFn): void {
   if (!supportsViewTransitions() || prefersReducedMotion()) {
     updateFn();
     return;
   }
-  const start = (document as unknown as { startViewTransition: StartViewTransition }).startViewTransition;
-  const transition = start(updateFn);
+  // Must be invoked as a method of `document` — calling an extracted reference
+  // throws "Illegal invocation".
+  const transition = (document as unknown as DocWithViewTransition).startViewTransition(updateFn);
   // Swallow the rejection raised when a transition is skipped/interrupted
   // (e.g. a rapid second update) — the DOM is still updated correctly.
   transition.finished.catch(() => {});
