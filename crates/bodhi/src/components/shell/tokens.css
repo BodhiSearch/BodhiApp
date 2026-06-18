@@ -1,0 +1,158 @@
+/* App Tokens — token-row cell layout + token-specific chips.
+   Ported from design/app-tokens.css. The list frame (rows, sticky head, toolbar,
+   search, filter pills) comes from list.css; this holds only the token-row cells.
+   Real-data subset: no model/MCP access pills, no Revoke/Delete buttons (the status
+   toggle drives the real active/inactive update). */
+
+.tk-row {
+  cursor: pointer;
+}
+
+.tk-icon {
+  width: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.token-key-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-indigo-bg);
+  border: 1px solid var(--c-indigo-bd);
+  color: var(--c-indigo-text);
+}
+.tk-id {
+  flex: 1;
+  min-width: 0;
+}
+.token-name {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.token-name.unnamed {
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+.token-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tk-created,
+.tk-used {
+  width: 124px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tk-date-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+.tk-date-val {
+  font-size: 12px;
+  color: hsl(var(--foreground));
+}
+.tk-status {
+  width: 150px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* header date cells render as a single label, not the 2-line stack */
+.l-listhead .tk-created,
+.l-listhead .tk-used {
+  flex-direction: row;
+  gap: 0;
+}
+
+/* status chip */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.status-active {
+  background: var(--c-leaf-bg);
+  border-color: var(--c-leaf-bd);
+  color: var(--c-leaf-text);
+}
+.status-inactive {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+/* scope badges */
+.scope-user {
+  background: var(--c-indigo-bg);
+  border: 1px solid var(--c-indigo-bd);
+  color: var(--c-indigo-text);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.scope-power {
+  background: var(--c-saffron-bg);
+  border: 1px solid var(--c-saffron-bd);
+  color: var(--c-saffron-text);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* rail footer: the "Token active" toggle row */
+.dp-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.dp-toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* responsive: drop the updated column as the list narrows */
+@container lscroll (max-width: 680px) {
+  .tk-used {
+    display: none;
+  }
+}
+@container lscroll (max-width: 560px) {
+  .tk-created {
+    display: none;
+  }
+}

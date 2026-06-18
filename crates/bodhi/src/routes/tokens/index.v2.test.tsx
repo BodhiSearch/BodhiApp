@@ -124,11 +124,15 @@ describe('TokenPage V2', () => {
     expect(screen.queryByTestId('token-name-token-2')).not.toBeInTheDocument();
   });
 
-  it('filters rows by search', async () => {
+  it('reveals the search input from the search button and filters rows', async () => {
     const user = userEvent.setup();
     await renderReady();
 
-    await user.type(screen.getByTestId('tokens-search'), 'dev');
+    // search is collapsed behind a button until clicked
+    expect(screen.queryByPlaceholderText(/search tokens/i)).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('tokens-search-toggle'));
+
+    await user.type(screen.getByPlaceholderText(/search tokens/i), 'dev');
     expect(screen.getByTestId('token-name-token-2')).toBeInTheDocument();
     expect(screen.queryByTestId('token-name-token-1')).not.toBeInTheDocument();
   });
@@ -139,15 +143,8 @@ describe('TokenPage V2', () => {
 
     await user.click(screen.getByTestId('token-row-token-1'));
     const rail = await screen.findByTestId('token-detail-rail');
+    // prefix (Token ID) + scope + the created date are shown in the rail Details
     expect(within(rail).getByText('bodhiapp_prod001')).toBeInTheDocument();
     expect(within(rail).getByText('scope_token_power_user')).toBeInTheDocument();
-  });
-
-  it('navigates to the new-token page from the header action', async () => {
-    const user = userEvent.setup();
-    await renderReady();
-
-    await user.click(screen.getByTestId('new-token-button'));
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/tokens/new/' });
   });
 });

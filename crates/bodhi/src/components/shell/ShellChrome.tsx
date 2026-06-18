@@ -252,13 +252,30 @@ const THEME_OPTIONS: { id: 'light' | 'dark' | 'system'; label: string; icon: str
 
 function ThemeSwitch({ collapsed }: { collapsed?: boolean }) {
   const { theme, setTheme } = useTheme();
+
+  // Collapsed: a single button showing the current theme's icon, cycling
+  // Light → Dark → System on click (all three reachable without expanding).
+  if (collapsed) {
+    const idx = THEME_OPTIONS.findIndex((o) => o.id === theme);
+    const cur = THEME_OPTIONS[idx === -1 ? 2 : idx];
+    const next = THEME_OPTIONS[(idx + 1) % THEME_OPTIONS.length];
+    return (
+      <div className="shell-theme is-collapsed" role="group" aria-label="Theme" data-testid="shell-theme-switch">
+        <button
+          type="button"
+          className="shell-theme-btn on"
+          aria-label={`Theme: ${cur.label}. Switch to ${next.label}`}
+          onClick={() => setTheme(next.id)}
+          data-testid="shell-theme-cycle"
+        >
+          <ShellIcon name={cur.icon} size={15} />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={'shell-theme' + (collapsed ? ' is-collapsed' : '')}
-      role="group"
-      aria-label="Theme"
-      data-testid="shell-theme-switch"
-    >
+    <div className="shell-theme" role="group" aria-label="Theme" data-testid="shell-theme-switch">
       {THEME_OPTIONS.map((opt) => (
         <button
           key={opt.id}

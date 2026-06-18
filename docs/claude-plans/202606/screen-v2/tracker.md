@@ -31,7 +31,7 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 6 | MCP | All MCPs / Discover | `/mcps/` | shell | `mcp-discover` | ⬜ | Batch 4. Needs the reference-API catalog. |
 | 7 | MCP | New Instance | `/mcps/new/` (+ edit) | shell | `new-mcp` | ⬜ | Batch 4. |
 | 8 | MCP | Playground | `/mcps/playground/` | shell | `mcp-playground` | ⬜ | Batch 4. |
-| 9 | **API Keys** | **App Tokens (list)** | `/tokens/` | shell | — (retired) | ✅ | Breadcrumb + New Token action + filter tabs (derived counts) + search + detail rail. **Detail-rail open/close has a view transition.** |
+| 9 | **API Keys** | **App Tokens (list)** | `/tokens/` | shell | — (retired) | ✅ | Design-faithful: table (Token/Created/Updated/Status cols), themed filter pills (All/Active/Inactive), collapsible search button, selectable rows → detail rail (Details + Token-active toggle). No "New Token" header button (it's in the sidebar nav). Real data only (no model/MCP-access chips, no last-used). **Detail-rail open/close has a view transition.** |
 | 10 | **API Keys** | **New App Token** | `/tokens/new/` (NEW) | shell | — (retired) | ✅ | Was a dialog → full page. Real `useCreateToken`; reuses `TokenDialog` reveal; Done → `/tokens/`. Name+scope only (real data). |
 | 11 | **API Keys** | **Access Requests (list)** | `/users/access-requests/` | shell | — (retired) | ✅ | Breadcrumb + pending-count pill + filter tabs + approve/reject. |
 | 12 | **API Keys** | **Access Request review** | `/apps/access-requests/review/?id=` | ▫️ bare | — (retired) | ✅ | OAuth consent. Renders via `BareLayout` (slim topbar). MCP servers+instances + role + approve/deny (real data; no model-slots). |
@@ -52,6 +52,8 @@ Keycloak/auth (@screen-coverage.md §C).
 - **View Transitions** (React-18 native): router `defaultViewTransition` (route cross-fade) +
   `useViewTransition()` for the App-Tokens detail-rail open/close. Skill:
   `web-animation-view-transitions`. Details + rules: @view-transitions.md.
+- **Theme switch in the sidebar footer** (above the user chip, always visible): icon-only
+  Light/Dark/System segments expanded; a single cycling button when the sidebar is collapsed.
 - **Helper CSS vars** (`--font-*`, `--shadow-*`, `--border-strong`, …) added to `globals.css`
   (repaired a Batch-0 token-merge gap).
 

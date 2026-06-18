@@ -5,7 +5,6 @@ export class TokensPage extends BasePage {
   selectors = {
     // Page elements
     tokensPage: '[data-testid="tokens-page"]',
-    newTokenButton: '[data-testid="new-token-button"]',
 
     // New App Token page (dialog → page in V2)
     newTokenPage: '[data-testid="new-token-page"]',
@@ -52,12 +51,11 @@ export class TokensPage extends BasePage {
   }
 
   /**
-   * Open the New App Token page by clicking "New Token" (was a dialog; now a page route).
+   * Open the New App Token page. "New Token" now lives in the API-Keys shell nav
+   * (the header button was removed to match the design), so navigate via the nav.
    */
   async openNewTokenPage() {
-    const newTokenButton = this.page.locator(this.selectors.newTokenButton);
-    await expect(newTokenButton).toBeVisible();
-    await newTokenButton.click();
+    await this.navViaShell('api-keys', 'new-token');
     await this.page.waitForURL(/\/ui\/tokens\/new\/?$/);
     await this.page.waitForSelector(this.selectors.tokenForm);
   }

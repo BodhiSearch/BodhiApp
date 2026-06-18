@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { TokenDetail } from '@bodhiapp/ts-client';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Pagination } from '@/components/DataTable';
-import { ShellIcon, useShellChrome } from '@/components/shell';
-import { Badge } from '@/components/ui/badge';
+import { ShellIcon, ShellSearch, useShellChrome } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
+import '@/components/shell/tokens.css';
 import { useGetAppInfo } from '@/hooks/info';
 import { useListTokens, useUpdateToken } from '@/hooks/tokens';
 import { useToastMessages } from '@/hooks/use-toast-messages';
@@ -19,11 +19,6 @@ import { useViewTransition } from '@/hooks/useViewTransition';
 export const Route = createFileRoute('/tokens/')({
   component: TokenPage,
 });
-
-function StatusBadge({ status }: { status: string }) {
-  const variant = status === 'active' ? 'default' : 'secondary';
-  return <Badge variant={variant}>{status}</Badge>;
-}
 
 const TOKEN_BREADCRUMB = [
   { label: 'Bodhi' },
@@ -36,12 +31,16 @@ type TokenFilter = 'all' | 'active' | 'inactive';
 const FILTER_TABS: { id: TokenFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'active', label: 'Active' },
-  { id: 'inactive', label: 'Revoked' },
+  { id: 'inactive', label: 'Inactive' },
 ];
 
-/* Presentation: real fields only (name, scope, status, prefix, created/updated).
-   The prototype's per-token model/MCP-access badges + "last used" have no backing
-   data and are intentionally omitted until those backend features land. */
+const scopeLabel = (scopes: string) => (scopes.includes('power') ? 'Power User' : 'User');
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+/* Presentation matches the App Tokens design, bound to real data only: no per-token
+   model/MCP-access chips and no "last used" (the backend has neither). The status
+   toggle drives the real active/inactive update; there is no revoke/delete endpoint. */
 
 export function TokenPageContent() {
   const { isLoading: appLoading } = useGetAppInfo();
@@ -58,27 +57,22 @@ export function TokenPageContent() {
     enabled: !appLoading,
   });
 
-  const onStatusChange = (token: TokenDetail, checked: boolean) => {
-    updateToken({ id: token.id, name: token.name, status: checked ? 'active' : 'inactive' });
-  };
+  const onStatusChange = useCallback(
+    (token: TokenDetail, checked: boolean) =>
+      updateToken({ id: token.id, name: token.name, status: checked ? 'active' : 'inactive' }),
+    [updateToken]
+  );
 
-  const navigate = useNavigate();
   const withViewTransition = useViewTransition();
   const [filter, setFilter] = useState<TokenFilter>('all');
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Animate the spatial changes: opening/closing the detail rail and swapping
-  // the filtered row set. Search-as-you-type is left un-transitioned (too rapid).
   const selectToken = useCallback(
     (id: string | null) => withViewTransition(() => setSelectedId(id)),
     [withViewTransition]
   );
-  // Filter swaps update the list in place (no view transition): a persistent
-  // view-transition-name on the always-mounted, frequently-refetching list body
-  // races status-toggle/refetch re-renders. The rail open/close (below) is the
-  // transition that actually smooths a "side panel".
-  const changeFilter = setFilter;
 
   const tokens = tokensData?.data ?? [];
   const total = tokensData?.total ?? 0;
@@ -106,22 +100,21 @@ export function TokenPageContent() {
 
   const selected = useMemo(() => tokens.find((t) => t.id === selectedId) ?? null, [tokens, selectedId]);
 
-  const headerActions = useMemo(
-    () => (
-      <button className="btn-accent" data-testid="new-token-button" onClick={() => navigate({ to: '/tokens/new/' })}>
-        <ShellIcon name="plus" size={14} />
-        New Token
-      </button>
-    ),
-    [navigate]
-  );
-
-  const rail = useMemo(
-    () => (selected ? <TokenDetailRail token={selected} onClose={() => selectToken(null)} /> : null),
+  const railHeader = useMemo(
+    () => (selected ? <TokenRailHeader token={selected} onClose={() => selectToken(null)} /> : null),
     [selected, selectToken]
   );
+  const rail = useMemo(
+    () => (selected ? <TokenDetailPanel token={selected} onStatusChange={onStatusChange} /> : null),
+    [selected, onStatusChange]
+  );
 
-  useShellChrome({ breadcrumb: TOKEN_BREADCRUMB, headerActions, rail, railDefaultOpen: false });
+  useShellChrome({
+    breadcrumb: TOKEN_BREADCRUMB,
+    rail,
+    railHeader,
+    railDefaultOpen: false,
+  });
 
   if (appLoading) {
     return (
@@ -141,36 +134,56 @@ export function TokenPageContent() {
       data-pagestatus={tokensLoading ? 'loading' : 'ready'}
     >
       <div className="l-controls">
-        <div className="l-searchrow">
-          <div className="search-wrap" style={{ flex: 1, maxWidth: 280 }}>
-            <span className="search-icon">
-              <ShellIcon name="search" size={14} />
-            </span>
-            <input
-              className="search-input"
-              style={{ width: '100%' }}
-              placeholder="Search tokens…"
+        {searchOpen && (
+          <div className="l-searchrow">
+            <ShellSearch
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              data-testid="tokens-search"
+              onChange={setSearch}
+              placeholder="Search tokens by name or id…"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setSearchOpen(false);
+              }}
             />
+            <button
+              className="l-iconbtn"
+              title="Close search"
+              onClick={() => {
+                setSearch('');
+                setSearchOpen(false);
+              }}
+              data-testid="tokens-search-close"
+            >
+              <ShellIcon name="x" size={15} />
+            </button>
           </div>
-        </div>
+        )}
         <div className="l-toolbar">
-          <div className="filter-tabs" role="tablist" aria-label="Filter tokens">
+          <div className="l-cats" role="tablist" aria-label="Filter tokens">
             {FILTER_TABS.map((tab) => (
               <button
                 key={tab.id}
                 role="tab"
                 aria-selected={filter === tab.id}
-                className={'filter-tab' + (filter === tab.id ? ' active' : '')}
-                onClick={() => changeFilter(tab.id)}
+                className={'l-cat' + (filter === tab.id ? ' on' : '')}
+                onClick={() => setFilter(tab.id)}
                 data-testid={`tokens-filter-${tab.id}`}
               >
                 {tab.label}
-                <span className="tab-count">{counts[tab.id]}</span>
+                <span className="l-cat-badge">{counts[tab.id]}</span>
               </button>
             ))}
+          </div>
+          <div className="l-tb-actions">
+            <button
+              className={'l-iconbtn' + (searchOpen ? ' on' : '')}
+              title="Search"
+              onClick={() => setSearchOpen((o) => !o)}
+              data-testid="tokens-search-toggle"
+            >
+              <ShellIcon name="search" size={15} />
+              {search && !searchOpen && <span className="l-dot" />}
+            </button>
           </div>
         </div>
       </div>
@@ -186,6 +199,13 @@ export function TokenPageContent() {
           </div>
         ) : (
           <div className="l-listview">
+            <div className="l-listhead">
+              <div className="l-lh tk-icon" />
+              <div className="l-lh tk-id">Token</div>
+              <div className="l-lh tk-created">Created</div>
+              <div className="l-lh tk-used">Updated</div>
+              <div className="l-lh tk-status">Status</div>
+            </div>
             {visible.map((token) => (
               <TokenRow
                 key={token.id}
@@ -207,6 +227,19 @@ export function TokenPageContent() {
   );
 }
 
+function TokenKeyIcon() {
+  return (
+    <span className="token-key-icon">
+      <ShellIcon name="key-round" size={16} />
+    </span>
+  );
+}
+
+function ScopeChip({ scopes }: { scopes: string }) {
+  const power = scopes.includes('power');
+  return <span className={power ? 'scope-power' : 'scope-user'}>{scopes}</span>;
+}
+
 interface TokenRowProps {
   token: TokenDetail;
   active: boolean;
@@ -215,63 +248,116 @@ interface TokenRowProps {
 }
 
 function TokenRow({ token, active, onSelect, onStatusChange }: TokenRowProps) {
+  const isActive = token.status === 'active';
   return (
-    <div className={'l-listrow' + (active ? ' active' : '')} onClick={onSelect} data-testid={`token-row-${token.id}`}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div data-testid={`token-name-${token.id}`} style={{ fontWeight: 600, fontSize: 13.5 }}>
-          {token.name || '-'}
+    <div
+      className={'l-listrow tk-row' + (active ? ' active' : '')}
+      onClick={onSelect}
+      data-testid={`token-row-${token.id}`}
+    >
+      <div className="tk-icon">
+        <TokenKeyIcon />
+      </div>
+      <div className="tk-id">
+        <div className={'token-name' + (token.name ? '' : ' unnamed')} data-testid={`token-name-${token.id}`}>
+          {token.name || 'Unnamed token'}
         </div>
-        <div data-testid={`token-scope-${token.id}`}>
-          <span className="tag tag-muted">{token.scopes}</span>
+        <div className="token-meta" data-testid={`token-scope-${token.id}`}>
+          <ScopeChip scopes={token.scopes} />
         </div>
       </div>
-      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <div className="tk-created">
+        <span className="tk-date-lbl">Created</span>
+        <span className="tk-date-val">{fmtDate(token.created_at)}</span>
+      </div>
+      <div className="tk-used">
+        <span className="tk-date-lbl">Updated</span>
+        <span className="tk-date-val">{fmtDate(token.updated_at)}</span>
+      </div>
+      <div className="tk-status" onClick={(e) => e.stopPropagation()}>
         <Switch
-          checked={token.status === 'active'}
+          checked={isActive}
           onCheckedChange={(checked) => onStatusChange(token, checked)}
           aria-label="Toggle token status"
           data-testid={`token-status-switch-${token.id}`}
         />
-        <StatusBadge status={token.status} />
+        <span className={'status-chip ' + (isActive ? 'status-active' : 'status-inactive')}>{token.status}</span>
       </div>
     </div>
   );
 }
 
-function TokenDetailRail({ token, onClose }: { token: TokenDetail; onClose: () => void }) {
+function TokenRailHeader({ token, onClose }: { token: TokenDetail; onClose: () => void }) {
   return (
-    <div className="dp-panel vt-rail" data-testid="token-detail-rail">
+    <div className="dp-head">
+      <div className="dp-head-icon" style={{ background: 'var(--c-indigo-text)' }}>
+        <ShellIcon name="key-round" size={15} />
+      </div>
+      <div className="dp-head-body">
+        <div className={'dp-head-title' + (token.name ? ' mono' : '')}>{token.name || 'Unnamed token'}</div>
+        <div className="dp-head-sub">{token.token_prefix}</div>
+      </div>
+      <button className="dp-close" onClick={onClose} title="Close">
+        <ShellIcon name="x" size={15} />
+      </button>
+    </div>
+  );
+}
+
+function TokenDetailPanel({
+  token,
+  onStatusChange,
+}: {
+  token: TokenDetail;
+  onStatusChange: (token: TokenDetail, checked: boolean) => void;
+}) {
+  const isActive = token.status === 'active';
+  return (
+    <div className="dp-panel" data-testid="token-detail-rail">
       <div className="dp-status-row">
-        <StatusBadge status={token.status} />
-        <button className="dp-close" onClick={onClose} title="Close" style={{ marginLeft: 'auto' }}>
-          <ShellIcon name="x" size={15} />
-        </button>
+        <span className={'status-chip ' + (isActive ? 'status-active' : 'status-inactive')}>{token.status}</span>
+        <span className={isActive ? 'scope-power' : 'scope-user'}>{token.scopes}</span>
       </div>
       <div className="dp-body">
         <div className="dp-section">
           <div className="dp-sec-lbl">Details</div>
           <div className="dp-rows">
             <div className="dp-row">
-              <span className="dp-row-k">Name</span>
-              <span className="dp-row-v">{token.name || '-'}</span>
-            </div>
-            <div className="dp-row">
-              <span className="dp-row-k">Scope</span>
-              <span className="dp-row-v">{token.scopes}</span>
-            </div>
-            <div className="dp-row">
-              <span className="dp-row-k">Prefix</span>
+              <span className="dp-row-k">
+                <ShellIcon name="hash" size={13} /> Token ID
+              </span>
               <span className="dp-row-v mono">{token.token_prefix}</span>
             </div>
             <div className="dp-row">
-              <span className="dp-row-k">Created</span>
-              <span className="dp-row-v">{new Date(token.created_at).toLocaleDateString()}</span>
+              <span className="dp-row-k">
+                <ShellIcon name="shield" size={13} /> Scope
+              </span>
+              <span className="dp-row-v">{scopeLabel(token.scopes)}</span>
             </div>
             <div className="dp-row">
-              <span className="dp-row-k">Updated</span>
-              <span className="dp-row-v">{new Date(token.updated_at).toLocaleDateString()}</span>
+              <span className="dp-row-k">
+                <ShellIcon name="calendar" size={13} /> Created
+              </span>
+              <span className="dp-row-v">{fmtDate(token.created_at)}</span>
+            </div>
+            <div className="dp-row">
+              <span className="dp-row-k">
+                <ShellIcon name="activity" size={13} /> Updated
+              </span>
+              <span className="dp-row-v">{fmtDate(token.updated_at)}</span>
             </div>
           </div>
+        </div>
+      </div>
+      <div className="dp-foot">
+        <div className="dp-toggle-row">
+          <span className="dp-toggle-label">Token active</span>
+          <Switch
+            checked={isActive}
+            onCheckedChange={(checked) => onStatusChange(token, checked)}
+            aria-label="Toggle token status"
+            data-testid="token-detail-status-switch"
+          />
         </div>
       </div>
     </div>

@@ -16,21 +16,31 @@ export class BasePage {
   }
 
   /**
-   * Navigate via the V2 AppShell left-sidebar nav (black-box). Opens the section
-   * switcher, picks the section, then (optionally) its sub-page. Sub-page links
-   * only render once their section is active, so order matters.
+   * Navigate via the V2 AppShell left-sidebar nav (black-box). The active section's
+   * sub-pages render in an always-visible sub-nav; switching section uses the trigger
+   * dropdown. The dropdown overlays the sub-nav, so when a target sub-page link is
+   * already visible (its section is active) we click it directly without opening the
+   * dropdown.
    * @param {string} section - shell nav section id (e.g. 'api-keys')
    * @param {string} [subPage] - shell nav sub-page id (e.g. 'app-tokens')
    */
   async navViaShell(section, subPage) {
-    const sectionLink = this.page.locator(`[data-testid="shell-nav-${section}"]`).first();
-    if (!(await sectionLink.isVisible().catch(() => false))) {
-      await this.page.locator('[data-testid="shell-nav-trigger"]').first().click();
+    const subLink = subPage ? this.page.locator(`[data-testid="shell-sub-${subPage}"]`).first() : null;
+
+    // Fast path: the sub-page is already reachable (section is active) — just click it.
+    if (subLink && (await subLink.isVisible().catch(() => false))) {
+      await subLink.click();
+      await this.waitForSPAReady();
+      return;
     }
-    await sectionLink.click();
+
+    // Switch section via the dropdown trigger, then pick the sub-page.
+    await this.page.locator('[data-testid="shell-nav-trigger"]').first().click();
+    await this.page.locator(`[data-testid="shell-nav-${section}"]`).first().click();
     await this.waitForSPAReady();
-    if (subPage) {
-      await this.page.locator(`[data-testid="shell-sub-${subPage}"]`).first().click();
+    if (subLink) {
+      await subLink.waitFor({ state: 'visible' });
+      await subLink.click();
       await this.waitForSPAReady();
     }
   }
