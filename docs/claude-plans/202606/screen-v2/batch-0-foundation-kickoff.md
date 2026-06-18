@@ -1,51 +1,46 @@
 # Kick-off — Batch 0: Foundation
 
-> Entry point for the first batch of the UI V2 migration. Run the per-batch loop from the charter
-> (`docs/claude-plans/202606/we-have-new-designs-swift-pillow.md`, §6). This is **Batch 0** — no
-> screen is redesigned; it lays the shell + flag + token + backend foundation every later batch needs.
+> Entry point for the first batch of the UI V2 migration. First load the shared context via
+> @common-prompt.md, then run the per-batch loop (@process.md §"The per-batch loop"). This is
+> **Batch 0** — no screen is redesigned; it lays the shell + flag + token + backend foundation every
+> later batch needs (full scope in @process.md §"Batch 0 — Foundation").
 
-## Start here (loop step 1 — Explore)
-1. Read the charter (`../we-have-new-designs-swift-pillow.md`) end-to-end — especially §6 (loop),
-   §7 (per-screen recipe), §8 (Batch 0 scope + exit criteria), §9 (risks).
-2. Re-inspect current state before planning (it may have drifted since the charter was written):
-   - `crates/bodhi/src/routes/__root.tsx` — current root layout (ThemeProvider → ClientProviders →
-     NavigationProvider → AppHeader → Outlet → Toaster).
-   - `crates/bodhi/src/components/navigation/AppHeader.tsx`, `AppNavigation.tsx` — old chrome to be
-     superseded (deleted only at the very end, Batch 5).
-   - `crates/bodhi/src/styles/globals.css` + `tailwind.config.ts` — token surface to merge.
-   - `crates/bodhi/src/components/ThemeProvider.tsx` — confirm `.dark`/`.light` class behavior.
-   - `design/bodhi-app-shell.jsx` + `bodhi-app-shell.css` + `colors_and_type.css` — port sources.
-   - Backend: `crates/services/src/auth/auth_service.rs` (`exchange_auth_code`),
-     `crates/services/src/session_keys.rs`, `crates/routes_app/src/users/users_api_schemas.rs`,
-     `crates/routes_app/src/setup/setup_api_schemas.rs`, `crates/services/src/settings/*`.
+## Loop step 1 — Explore
+1. Read @context.md, @design-reference.md, @architecture.md, @reference-api.md, @process.md.
+2. View the prototype visually (server on :8000 + Claude-in-Chrome) per @design-reference.md.
+3. Inspect the current production code fresh (it may have drifted from these docs — trust the code):
+   - the root layout + current top-header chrome under `crates/bodhi/src/`,
+   - the theming/token surface (`globals.css` + `tailwind.config.ts` + the ThemeProvider),
+   - the AppShell port sources in `design/` (`bodhi-app-shell.jsx` + `.css`, `colors_and_type.css`),
+   - the backend auth/session/user/app-info/settings areas for the id_token + reference-endpoint work.
 
-## Loop step 2 — Prerequisites (none external for Batch 0)
-Batch 0 has no reference-API prerequisite (those are per-batch, charter §4). Its own deliverables ARE
-the prerequisites for Batches 1–5: shell components, per-screen flag mechanism, token merge,
-reference-API client scaffold, backend id_token + `reference_api_endpoint` + regen.
+## Loop step 2 — Prerequisites
+Batch 0 has **no reference-API prerequisite** (those are per-batch — @reference-api.md). Its own
+deliverables ARE the prerequisites for Batches 1–5: shell components, per-screen flag mechanism,
+token merge, reference-API client scaffold, backend id_token + reference-endpoint + regen.
 
 ## Loop step 3 — Plan → refine → approve
-Write `batch-0-foundation-plan.md` in this folder with the concrete scope from charter §8, broken
-into ordered, individually-verifiable steps (suggest: backend first — upstream→downstream — then
-ts-client regen, then shell port, then token merge, then root-layout + flag wiring, then wrap each
-nav-section route's existing content in `<Shell>` behind a default-old flag). Include the test list
-and the exact exit criteria. Present it, refine with the user, get approval **before** implementing.
+Write `batch-0-foundation-plan.md` in this folder using the Batch 0 scope in @process.md, broken
+into ordered, individually-verifiable steps (suggested order: backend first, upstream→downstream →
+ts-client regen → shell port → token merge → root-layout + flag wiring → wrap each nav-section
+route's existing content in the shell behind a default-old flag). Include the test list and the exit
+criteria below. Present it, refine with the user, get approval **before** implementing.
 
 ## Loop steps 4–9
-Implement → migrate/keep tests green → run ALL gate checks (`npm run test`, `make test.backend`,
+Implement → keep/migrate tests green → run ALL gate checks (`npm run test`, `make test.backend`,
 `make build.ts-client`, `make test.e2e`) → commit per batch → write `batch-0-foundation-retro.md`
 → write `batch-1-api-keys-kickoff.md`.
 
-## Batch 0 exit criteria (from charter §8)
-- Every nav-section route renders inside `<Shell>` with correct `section`/`subPage` highlight; old
+## Batch 0 exit criteria (from @process.md)
+- Every nav-section route renders inside AppShell with correct `section`/`subPage` highlight; old
   content unchanged behind a default-old per-screen flag.
-- Light/dark works (no ThemeProvider change needed; design dark selector covers `.dark`).
-- Backend surfaces OAuth `id_token` on `GET /bodhi/v1/user` and `reference_api_endpoint` on
-  `GET /bodhi/v1/info`; OpenAPI + ts-client regenerated and committed.
+- Light/dark works (no ThemeProvider change expected; the design dark selector covers `.dark`).
+- Backend surfaces the OAuth `id_token` to the frontend and a configurable reference-API endpoint;
+  OpenAPI + ts-client regenerated and committed.
 - **All existing RTL + e2e tests still pass** — the shell wrapper must be transparent to old testids.
-- Adoption boundary respected: `setup/*`, `login/`, `request-access/`, `auth/*` render bare;
-  `AppInitializer` stays outside `<Shell>` and its redirects still fire.
+- Adoption boundary respected: setup/login/request-access/auth render bare; the app-initializer
+  stays outside the shell and its redirects still fire.
 
 ## Carry-forward watch-outs
-Charter §9 — esp. the global `--primary` purple→pink flip at token merge (eyeball every screen once),
-the `lucide`/`window`/`ReactDOM.createRoot` strip-on-port rule, and trailing-slash routing.
+@process.md §"Carry-forward risks" — esp. the global `--primary` purple→pink flip at token merge
+(eyeball every screen once), the strip-on-port rule, and trailing-slash routing.
