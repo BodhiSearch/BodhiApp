@@ -1,0 +1,256 @@
+/* API Keys / Settings — shared page content primitives.
+   Ported from design/api-keys-shell.css. Scoped under `.api-keys-screen` because the design's
+   class names are generic (.page-header, .filter-tab, .btn-accent, …) and would otherwise risk
+   colliding with app/Tailwind utilities. A migrated screen adds `api-keys-screen` to its root.
+   Chrome (sidebar/topbar/breadcrumb/grid) comes from AppShell; this is only the inner content. */
+
+.api-keys-screen .page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.api-keys-screen .page-header-text {
+  min-width: 0;
+}
+.api-keys-screen .page-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.api-keys-screen .page-subtitle {
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+
+.api-keys-screen .form-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 14px;
+  padding: 28px;
+}
+.api-keys-screen .form-divider {
+  height: 1px;
+  background: hsl(var(--border));
+  margin: 24px 0;
+}
+
+.api-keys-screen .section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  white-space: nowrap;
+}
+.api-keys-screen .section-label-count {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+.api-keys-screen .btn-accent {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 9px;
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: opacity 120ms;
+  white-space: nowrap;
+}
+.api-keys-screen .btn-accent:hover {
+  opacity: 0.85;
+}
+.api-keys-screen .btn-accent svg {
+  width: 14px;
+  height: 14px;
+}
+.api-keys-screen .btn-ghost {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1.5px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 100ms;
+  white-space: nowrap;
+}
+.api-keys-screen .btn-ghost:hover {
+  background: hsl(var(--muted));
+}
+
+.api-keys-screen .filter-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: hsl(var(--muted));
+  border-radius: 9px;
+  width: fit-content;
+}
+.api-keys-screen .filter-tab {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition:
+    background 100ms,
+    color 100ms;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.api-keys-screen .filter-tab:hover {
+  color: hsl(var(--foreground));
+}
+.api-keys-screen .filter-tab.active {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.api-keys-screen .filter-tab .tab-count {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+.api-keys-screen .filter-tab.active .tab-count {
+  background: var(--c-lotus-bg);
+  color: var(--c-lotus-text);
+}
+
+.api-keys-screen .toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.api-keys-screen .toolbar-spacer {
+  flex: 1;
+}
+
+.api-keys-screen .search-wrap {
+  position: relative;
+}
+.api-keys-screen .search-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.api-keys-screen .search-input {
+  height: 32px;
+  padding: 0 10px 0 30px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 7px;
+  font-size: 12.5px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 140ms;
+  width: 220px;
+}
+.api-keys-screen .search-input:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px rgba(255, 164, 184, 0.12);
+}
+.api-keys-screen .search-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.api-keys-screen .empty-state {
+  padding: 56px 24px;
+  text-align: center;
+}
+.api-keys-screen .empty-icon {
+  margin-bottom: 12px;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  justify-content: center;
+}
+.api-keys-screen .empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+.api-keys-screen .empty-sub {
+  font-size: 12.5px;
+  color: hsl(var(--muted-foreground));
+}
+
+.api-keys-screen .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.api-keys-screen .tag-indigo {
+  background: var(--c-indigo-bg);
+  border-color: var(--c-indigo-bd);
+  color: var(--c-indigo-text);
+}
+.api-keys-screen .tag-lotus {
+  background: var(--c-lotus-bg);
+  border-color: var(--c-lotus-bd);
+  color: var(--c-lotus-text);
+}
+.api-keys-screen .tag-saffron {
+  background: var(--c-saffron-bg);
+  border-color: var(--c-saffron-bd);
+  color: var(--c-saffron-text);
+}
+.api-keys-screen .tag-leaf {
+  background: var(--c-leaf-bg);
+  border-color: var(--c-leaf-bd);
+  color: var(--c-leaf-text);
+}
+.api-keys-screen .tag-teal {
+  background: var(--c-teal-bg);
+  border-color: var(--c-teal-bd);
+  color: var(--c-teal-text);
+}
+.api-keys-screen .tag-muted {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}

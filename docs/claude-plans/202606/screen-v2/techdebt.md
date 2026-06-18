@@ -31,3 +31,22 @@ Fails identically in `standalone` + `multi_tenant`.
   `tests/mocks/framer-motion.tsx`; etc.). Batch-0 files are lint-clean. Not addressed here.
 - `make test.backend` requires Docker (PostgreSQL); pg-variant DB tests panic at fixture setup if
   Docker is down. Start Docker before the backend gate.
+
+## Migration scaffolding to REMOVE when the whole migration completes (added Batch 1)
+Temporary structures introduced to enable in-place, flag-gated coexistence. **Delete these once
+every screen is migrated** (tracked here so they don't become permanent non-obvious cruft):
+- **`ShellSlotsContext` + `useShellChrome`** (`components/shell/ShellSlotsContext.tsx`) — lets a
+  migrated screen publish breadcrumb/headerActions/rail up to the single root `<AppShell>` during
+  coexistence. Once all screens are migrated, screens pass props to a per-route `<AppShell>` directly
+  (or we adopt pathless `_layout` routes) and this context is deleted.
+- **Per-screen `useUiV2Flag` machinery** (`lib/uiV2Flags.ts`, `hooks/useUiV2Flag.ts`) — removed when
+  the last batch lands and every screen is V2-only.
+
+## Deferred architectural improvement (planned follow-up, NOT temporary) (added Batch 1)
+- **Scalable route-declared layout seam.** Batch 1 makes the bare review screen work the minimal way:
+  add `/apps/access-requests/review` to `resolveShellRoute.ts`'s `BARE_PREFIXES` + render bare routes
+  through the new reusable `components/shell/BareLayout.tsx`. The **central `BARE_PREFIXES` pathname
+  switch should eventually be replaced** by each route declaring its layout — TanStack Router
+  `staticData.layout: 'shell' | 'bare'` read in `__root` via `useMatches()`, converging to idiomatic
+  pathless `_shell/`/`_bare/` layout routes. Deferred to a dedicated routing step (out of scope for
+  the API-Keys batch); `BareLayout` is built so this lands as a drop-in.

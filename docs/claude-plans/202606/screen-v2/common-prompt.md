@@ -42,6 +42,11 @@ exploratory** process. Read the context below before doing anything.
 - **Build to our conventions.** Vite + TanStack Router/Query + shadcn/ui + `lucide-react` +
   `ThemeProvider`; strip prototype-only idioms on port (see @process.md recipe). Follow root
   `CLAUDE.md`, `crates/CLAUDE.md`, `crates/bodhi/src/CLAUDE.md`.
+- **Consult the framework skills on every screen port** (they encode the idioms we build to):
+  `tanstack-router` (file-based routing, trailing-slash, pathless/bare layouts, `staticData`),
+  `tanstack-query` (query keys, invalidation, derived/`select` data, master-detail from cache),
+  `vercel-react-best-practices` (re-render/derived-state/no-inline-component rules), and
+  `web-design-guidelines` (accessibility/UX review of the ported UI).
 - **Never skip e2e** before commit; keep `data-testid`/ARIA stable across restructures.
 
 If anything in the context is stale or contradicts the current code, trust the code and flag the

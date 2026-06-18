@@ -6,19 +6,15 @@ export class AllAccessRequestsPage extends UsersManagementPage {
   allRequestsSelectors = {
     // Page structure
     pageContainer: '[data-testid="all-requests-page"]',
-    pageTitle: '[data-testid="page-title"]',
     requestCount: '[data-testid="request-count"]',
 
-    // Navigation tabs
-    navLinkPending: '[data-testid="nav-link-pending"]',
-    navLinkAll: '[data-testid="nav-link-all"]',
-    navLinkUsers: '[data-testid="nav-link-users"]',
+    // V2 filter tabs (replaced the old nav-link tabs)
+    filterTab: (id) => `[data-testid="requests-filter-${id}"]`,
 
-    // Table structure
+    // List structure (V2 list rows; no <table>)
     requestsTable: '[data-testid="requests-table"]',
-    tableBody: 'tbody',
 
-    // Row-level selectors (will use dynamic testid)
+    // Row-level selectors (dynamic testid)
     requestRow: (username) => `[data-testid="request-row-${username}"]`,
 
     // Cell-level selectors
@@ -40,9 +36,14 @@ export class AllAccessRequestsPage extends UsersManagementPage {
 
   // Navigation methods
   async navigateToAllRequests() {
-    await this.navigate('/ui/users/access-requests');
+    await this.navigate('/ui/users/access-requests/');
     await this.waitForSPAReady();
-    await this.expectVisible(this.allRequestsSelectors.pageContainer);
+    await this.page.waitForSelector('[data-testid="all-requests-page"][data-pagestatus="ready"]');
+  }
+
+  async navigateToAllRequestsViaShell() {
+    await this.navViaShell('api-keys', 'access-requests');
+    await this.page.waitForSelector('[data-testid="all-requests-page"][data-pagestatus="ready"]');
   }
 
   async expectAllRequestsPage() {
@@ -50,10 +51,18 @@ export class AllAccessRequestsPage extends UsersManagementPage {
     await this.expectVisible(this.allRequestsSelectors.pageContainer);
   }
 
-  // Request verification methods
+  /**
+   * V2 list rows are `request-row-${username}` divs (no <table>). Override the
+   * parent's table-based lookup so the inherited approve/reject/role-select
+   * helpers operate on the correct row.
+   */
+  async findRequestRowByUsername(username) {
+    const row = this.page.locator(this.allRequestsSelectors.requestRow(username));
+    await row.waitFor({ state: 'visible' });
+    return row;
+  }
+
   async findRequestByUsername(username) {
-    // Use the existing findRequestRowByUsername from parent class for table rows
-    // This uses the standard table structure selectors
     return await this.findRequestRowByUsername(username);
   }
 
@@ -120,26 +129,17 @@ export class AllAccessRequestsPage extends UsersManagementPage {
   }
 
   async getTotalRequestCount() {
-    // Wait for table to load or show empty state
-    try {
-      // Check if we have the requests table
-      await this.page.waitForSelector(this.allRequestsSelectors.requestsTable);
-
-      // Check if empty state is showing
-      if (await this.page.locator(this.allRequestsSelectors.emptyState).isVisible()) {
-        return 0;
-      }
-
-      // Count table rows
-      const rows = await this.page.locator('tbody tr').all();
-      return rows.length;
-    } catch (error) {
-      // If table doesn't exist, might be empty state
-      if (await this.page.locator(this.allRequestsSelectors.emptyState).isVisible()) {
-        return 0;
-      }
+    await this.page.waitForSelector(this.allRequestsSelectors.requestsTable);
+    if (
+      await this.page
+        .locator(this.allRequestsSelectors.emptyState)
+        .isVisible()
+        .catch(() => false)
+    ) {
       return 0;
     }
+    // V2 list rows (no <table>)
+    return await this.page.locator('[data-testid^="request-row-"]').count();
   }
 
   async verifyRequestCount(expectedCount) {
@@ -159,9 +159,8 @@ export class AllAccessRequestsPage extends UsersManagementPage {
   }
 
   async verifyPageTitle() {
-    await this.expectVisible(this.allRequestsSelectors.pageTitle);
-    const titleText = await this.page.locator(this.allRequestsSelectors.pageTitle).textContent();
-    expect(titleText).toContain('All Access Requests');
+    // V2 identifies the page by its container + breadcrumb (no page-title cell).
+    await this.expectVisible(this.allRequestsSelectors.pageContainer);
   }
 
   async verifyRequestCountDisplay(expectedTotal) {

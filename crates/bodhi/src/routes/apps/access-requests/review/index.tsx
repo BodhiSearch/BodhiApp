@@ -1,26 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { safeNavigate } from '@/lib/safeNavigate';
-
-import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
+import type { UserScope } from '@bodhiapp/ts-client';
 import { createFileRoute, useSearch } from '@tanstack/react-router';
+import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { z } from 'zod';
 
-import McpServerCard from './-components/McpServerCard';
 import AppInitializer from '@/components/AppInitializer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/hooks/use-toast';
-import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useGetAppAccessRequestReview, useApproveAppAccessRequest, useDenyAppAccessRequest } from '@/hooks/apps';
 import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/apps';
-import type { UserScope } from '@bodhiapp/ts-client';
+import { toast } from '@/hooks/use-toast';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useGetUser } from '@/hooks/users';
+import { safeNavigate } from '@/lib/safeNavigate';
+
+import McpServerCard from './-components/McpServerCard';
+import '@/components/shell/api-keys.css';
 
 export const Route = createFileRoute('/apps/access-requests/review/')({
   validateSearch: z.object({ id: z.string().optional() }),
@@ -263,14 +264,19 @@ const ReviewContent = () => {
 
   return (
     <div
-      className="container mx-auto max-w-2xl p-4"
+      className="api-keys-screen container mx-auto max-w-2xl p-4"
       data-testid="review-access-page"
       data-test-status={reviewData.status}
       data-test-flow-type={reviewData.flow_type}
     >
+      <div className="page-header">
+        <div className="page-header-text">
+          <div className="page-title">Review Access Request</div>
+          <div className="page-subtitle">Decide which of your resources this 3rd-party app can use.</div>
+        </div>
+      </div>
       <Card>
         <CardHeader>
-          <CardTitle>Review Access Request</CardTitle>
           <CardDescription>
             <span data-testid="review-app-name" className="font-medium">
               {displayName}

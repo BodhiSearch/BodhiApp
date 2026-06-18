@@ -1,12 +1,13 @@
 # UI V2 Migration — Screen Coverage
 
-> **SCOPE (locked):** This migration task + phased plan covers **only the 13 shell app screens**
-> (Chat, Models ×4, MCP ×3, API Keys ×3, Settings ×2 — the "shell" layout family). The
-> **access-request** standalone screens, the **setup** wizard, and the **Keycloak/auth** screens
-> are **OUT OF SCOPE for now** (designs exist in `design/` — `bodhi-standalone.css`,
-> `setup-flow.css`, `bodhi-auth.css` families — but are deferred; they keep their current
-> production layouts and render OUTSIDE the AppShell). The layout model below is built **shell vs
-> bare** so those families can be added later without rework.
+> **SCOPE (locked):** This migration covers the **13 shell app screens** (Chat, Models ×4, MCP ×3,
+> API Keys ×3, Settings ×2 — the "shell" layout family) **plus the OAuth-consent Access Request
+> review** at `/apps/access-requests/review/`, which Batch 1 promoted into scope as the first **bare**
+> (standalone, no-sidebar) screen — so 14 screens total. The remaining **access-request standalone**
+> screens (`/request-access/`, pending), the **setup** wizard, and the **Keycloak/auth** screens
+> stay **OUT OF SCOPE for now** (designs exist in `design/` — `bodhi-standalone.css`, `setup-flow.css`,
+> `bodhi-auth.css` families — but are deferred). The layout model is built **shell vs bare** (Batch 1
+> ships the reusable `BareLayout`) so those families can be added later without rework.
 
 
 Which app screens **have** a V2 design, which **consolidate** into a shared screen, and which are
@@ -39,7 +40,7 @@ consolidate further. It complements [architecture.md](@architecture.md) (where s
 | `/settings/` | Bodhi App Settings | settings / app-settings |
 | `/users/` | Manage Users | settings / manage-users |
 | `/users/access-requests/` (**consolidated**, see B) | Access Requests | api-keys / access-requests |
-| `/apps/access-requests/review/` | Bodhi Access Request (review) | api-keys / access-requests |
+| `/apps/access-requests/review/?id=` | Bodhi Access Request (review) | **bare / standalone** (no AppShell; app-initiated OAuth consent) |
 
 ## B. Consolidations — multiple app routes → one V2 screen
 
@@ -69,7 +70,7 @@ task picks them up, they map to the design families noted below.
 
 | Family | Design source (`design/`) | App route(s) | Notes |
 |---|---|---|---|
-| **Access-request standalone** (3) | `Bodhi Request Access.html`, `Bodhi Access Request Pending.html`, `Bodhi Access Request.html` (`bodhi-standalone.css`) | `/request-access/`, pending, `/apps/access-requests/review/` | `.std-*` layout: slim topbar + centered card, no sidebar. (Note: the *admin* Access Request **review** under the API-Keys section IS in scope §A; the user-facing request/pending standalone screens are deferred.) |
+| **Access-request standalone** (2 still deferred) | `Bodhi Request Access.html`, `Bodhi Access Request Pending.html` (`bodhi-standalone.css`) | `/request-access/`, pending | `.std-*` layout: slim topbar + centered card, no sidebar. **Deferred.** (`Bodhi Access Request.html` = the OAuth-consent **review** at `/apps/access-requests/review/` is NOW in scope §A as a **bare** screen — Batch 1; it is the first standalone screen we build, establishing the reusable `BareLayout`.) |
 | **Setup / onboarding** (6) | `setup-1-get-started.html` … `setup-6-complete.html` (`setup-flow.css`, `setup-shell.jsx`) | `/setup/*` | Centered column + top stepper. Linear flow, bare. |
 | **Keycloak / auth** (7) | `login.html`, `register.html`, `forgot-password.html`, `update-password.html`, `verify-email.html`, `consent.html`, `error.html` (`bodhi-auth.css`, `KEYCLOAK-MAPPING.md`) | IdP-hosted (`/login`, `/register`, …) | Keycloak FreeMarker themes; served by the auth server, not the app. |
 

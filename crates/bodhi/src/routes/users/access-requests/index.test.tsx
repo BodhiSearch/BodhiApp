@@ -1,4 +1,5 @@
 import AllRequestsPage from '@/routes/users/access-requests/index';
+import { ShellSlotsProvider } from '@/components/shell';
 import { createWrapper } from '@/tests/wrapper';
 import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
@@ -43,19 +44,8 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// Mock DataTable to avoid sorting prop issues
+// The V2 list renders its own rows; only Pagination is still consumed from this module.
 vi.mock('@/components/DataTable', () => ({
-  DataTable: ({ data, renderRow }: any) => (
-    <div data-testid="data-table">
-      <table>
-        <tbody>
-          {data.map((item: any, index: number) => (
-            <tr key={index}>{renderRow(item)}</tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  ),
   Pagination: ({ page, totalPages }: any) => (
     <div data-testid="pagination">
       Page {page} of {totalPages}
@@ -98,11 +88,16 @@ describe('AllRequestsPage Role-Based Access Control', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     expect(screen.getByTestId('all-requests-page')).toBeInTheDocument();
-    expect(screen.getByText('All Access Requests')).toBeInTheDocument();
+    expect(screen.getByTestId('request-count')).toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
@@ -122,7 +117,12 @@ describe('AllRequestsPage Role-Based Access Control', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     // Redirect-on-insufficient-role is AppInitializer's job (mocked here); assert the page doesn't crash.
@@ -157,7 +157,12 @@ describe('AllRequestsPage Data Display', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -166,9 +171,10 @@ describe('AllRequestsPage Data Display', () => {
     expect(screen.getByText('approved@example.com')).toBeInTheDocument();
     expect(screen.getByText('rejected@example.com')).toBeInTheDocument();
 
-    expect(screen.getByText('Pending')).toBeInTheDocument();
-    expect(screen.getByText('Approved')).toBeInTheDocument();
-    expect(screen.getByText('Rejected')).toBeInTheDocument();
+    // status badges (filter tabs also contain these words, so target the row status testids)
+    expect(screen.getByTestId('request-status-pending')).toBeInTheDocument();
+    expect(screen.getByTestId('request-status-approved')).toBeInTheDocument();
+    expect(screen.getByTestId('request-status-rejected')).toBeInTheDocument();
 
     const reviewerElements = screen.getAllByText('admin@example.com');
     expect(reviewerElements).toHaveLength(2); // One for approved, one for rejected
@@ -178,7 +184,12 @@ describe('AllRequestsPage Data Display', () => {
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_admin' }), ...mockAccessRequestsEmpty());
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await waitFor(() => {
@@ -206,7 +217,12 @@ describe('AllRequestsPage Data Display', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await waitFor(() => {
@@ -234,7 +250,12 @@ describe('AllRequestsPage Data Display', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -264,7 +285,12 @@ describe('AllRequestsPage Data Display', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -296,7 +322,12 @@ describe('AllRequestsPage Request Management', () => {
 
   it('displays inline role selection and approve buttons', async () => {
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -322,7 +353,12 @@ describe('AllRequestsPage Request Management', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -338,7 +374,12 @@ describe('AllRequestsPage Request Management', () => {
 
   it('shows reject button for pending requests', async () => {
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -350,7 +391,12 @@ describe('AllRequestsPage Request Management', () => {
     server.use(...mockAccessRequestReject(mockPendingRequest.id));
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -382,14 +428,19 @@ describe('AllRequestsPage Error Handling', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     // Component doesn't handle errors, so shows empty state instead
     await waitFor(() => {
       expect(screen.getByText('No Access Requests')).toBeInTheDocument();
     });
-    expect(screen.getByText('No access requests have been submitted yet')).toBeInTheDocument();
+    expect(screen.getByText('No access requests match this filter.')).toBeInTheDocument();
   });
 
   it('handles approve request failure via toast (not on screen)', async () => {
@@ -408,7 +459,12 @@ describe('AllRequestsPage Error Handling', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -439,7 +495,12 @@ describe('AllRequestsPage Error Handling', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');
@@ -466,13 +527,18 @@ describe('AllRequestsPage Loading States', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     expect(screen.getByTestId('all-requests-page')).toBeInTheDocument();
 
     await screen.findByText('user@example.com');
-    expect(screen.getByText('All Access Requests')).toBeInTheDocument();
+    expect(screen.getByTestId('request-count')).toBeInTheDocument();
   });
 
   it('shows approve and reject buttons for pending requests', async () => {
@@ -490,7 +556,12 @@ describe('AllRequestsPage Loading States', () => {
     );
 
     await act(async () => {
-      render(<AllRequestsPage />, { wrapper: createWrapper() });
+      render(
+        <ShellSlotsProvider>
+          <AllRequestsPage />
+        </ShellSlotsProvider>,
+        { wrapper: createWrapper() }
+      );
     });
 
     await screen.findByText('user@example.com');

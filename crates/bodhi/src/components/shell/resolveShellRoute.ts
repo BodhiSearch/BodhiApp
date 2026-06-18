@@ -9,10 +9,15 @@ export interface ResolvedShellRoute {
 
 /**
  * Route prefixes that render OUTSIDE the AppShell (bare): setup wizard, login, auth/oauth
- * callbacks, request-access, and the root redirectors. Everything else is a shell (app) route.
- * These are deferred design families (see screen-coverage.md) — they keep their current layouts.
+ * callbacks, request-access, the root redirectors, and the standalone OAuth access-request
+ * review (an in-app full-page consent flow — in scope, rendered via BareLayout). Everything else
+ * is a shell (app) route.
+ *
+ * INTERIM: this central prefix switch is migration scaffolding — a route-declared layout seam
+ * (route `staticData.layout` / pathless `_bare` routes) is the deferred follow-up; see
+ * screen-v2/techdebt.md.
  */
-const BARE_PREFIXES = ['/setup', '/login', '/auth', '/request-access', '/mcps/oauth'];
+const BARE_PREFIXES = ['/setup', '/login', '/auth', '/request-access', '/mcps/oauth', '/apps/access-requests/review'];
 
 /** Strips the `/ui` basepath and any trailing slash so we can match against SHELL_NAV hrefs. */
 function normalize(pathname: string): string {

@@ -1,0 +1,62 @@
+import { ShellSlotsProvider, useShellChrome, useShellSlots } from '@/components/shell/ShellSlotsContext';
+import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+
+/** Renders the currently-published slots so the test can assert on them. */
+function SlotsProbe() {
+  const slots = useShellSlots();
+  return (
+    <div data-testid="probe">
+      <span data-testid="probe-actions">{slots.headerActions ?? 'none'}</span>
+    </div>
+  );
+}
+
+function Publisher({ label }: { label: string }) {
+  useShellChrome({ headerActions: <span>{label}</span> });
+  return <div>publisher</div>;
+}
+
+describe('ShellSlotsContext', () => {
+  it('publishes a screen-provided slot to the root consumer', () => {
+    render(
+      <ShellSlotsProvider>
+        <SlotsProbe />
+        <Publisher label="New Token" />
+      </ShellSlotsProvider>
+    );
+    expect(screen.getByTestId('probe-actions')).toHaveTextContent('New Token');
+  });
+
+  it('clears the published slot when the publishing screen unmounts', async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [show, setShow] = useState(true);
+      return (
+        <ShellSlotsProvider>
+          <button onClick={() => setShow(false)}>hide</button>
+          <SlotsProbe />
+          {show && <Publisher label="New Token" />}
+        </ShellSlotsProvider>
+      );
+    }
+
+    render(<Harness />);
+    expect(screen.getByTestId('probe-actions')).toHaveTextContent('New Token');
+
+    await user.click(screen.getByRole('button', { name: 'hide' }));
+    expect(screen.getByTestId('probe-actions')).toHaveTextContent('none');
+  });
+
+  it('returns empty slots with no publisher mounted', () => {
+    render(
+      <ShellSlotsProvider>
+        <SlotsProbe />
+      </ShellSlotsProvider>
+    );
+    expect(screen.getByTestId('probe-actions')).toHaveTextContent('none');
+  });
+});

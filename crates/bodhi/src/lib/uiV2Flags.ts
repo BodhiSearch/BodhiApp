@@ -8,7 +8,10 @@
  * playbook in docs/claude-plans/202606/screen-v2/).
  *
  * Toggle from the browser console, e.g.:
- *   localStorage.setItem('bodhi.ui-v2.app-tokens', 'true')
+ *   localStorage.setItem('bodhi.ui-v2.app-settings', 'true')
+ *
+ * (The API-Keys screens — App Tokens, New Token, Access Requests, Access Request review —
+ * have shipped V2-only; their flags were retired in Batch 1, so they're no longer listed.)
  */
 
 export type UiV2Screen =
@@ -20,10 +23,6 @@ export type UiV2Screen =
   | 'mcp-discover'
   | 'new-mcp'
   | 'mcp-playground'
-  | 'app-tokens'
-  | 'new-token'
-  | 'access-requests'
-  | 'access-request-review'
   | 'app-settings'
   | 'manage-users';
 

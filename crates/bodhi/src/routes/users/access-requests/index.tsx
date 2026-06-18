@@ -1,23 +1,22 @@
-import { createFileRoute } from '@tanstack/react-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import { UserAccessRequest } from '@bodhiapp/ts-client';
-import { Shield, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { createFileRoute } from '@tanstack/react-router';
+import { Clock, CheckCircle, XCircle } from 'lucide-react';
 
 import AppInitializer from '@/components/AppInitializer';
-import { DataTable, Pagination } from '@/components/DataTable';
+import { Pagination } from '@/components/DataTable';
+import { ShellIcon, useShellChrome } from '@/components/shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TableCell } from '@/components/ui/table';
-import { UserManagementTabs } from '@/components/UserManagementTabs';
+import '@/components/shell/api-keys.css';
+import '@/components/shell/list.css';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useListAllRequests, useApproveRequest, useRejectRequest } from '@/hooks/users';
 import { useGetAuthenticatedUser } from '@/hooks/users';
 import { getAvailableRoles } from '@/lib/roles';
-import { SortState } from '@/types/models';
 
 export const Route = createFileRoute('/users/access-requests/')({
   component: AccessRequestsPage,
@@ -51,200 +50,202 @@ function getStatusBadge(status: string) {
   }
 }
 
-function AllRequestRow({ request, userRole }: { request: UserAccessRequest; userRole: string }) {
+/* ── V2 (AppShell) render — same hooks/mutations, restructured presentation ── */
+
+const REQUEST_BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'API Keys', href: '/tokens/' },
+  { label: 'Access Requests', current: true },
+];
+
+type RequestFilter = 'all' | 'pending' | 'approved' | 'rejected';
+
+const REQUEST_FILTER_TABS: { id: RequestFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'rejected', label: 'Denied' },
+];
+
+function AllRequestsContentV2() {
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [filter, setFilter] = useState<RequestFilter>('all');
+
+  const { data: userInfo } = useGetAuthenticatedUser();
+  const { data: requestsData, isLoading } = useListAllRequests(page, pageSize);
+  const userRole = typeof userInfo?.role === 'string' ? userInfo.role : '';
+
+  const requests = useMemo(() => requestsData?.requests ?? [], [requestsData]);
+  const total = requestsData?.total ?? 0;
+
+  // counts derived during render from the fetched page
+  const counts = useMemo(() => {
+    const c = { all: requests.length, pending: 0, approved: 0, rejected: 0 };
+    for (const r of requests) {
+      if (r.status === 'pending') c.pending++;
+      else if (r.status === 'approved') c.approved++;
+      else if (r.status === 'rejected') c.rejected++;
+    }
+    return c;
+  }, [requests]);
+
+  const visible = useMemo(
+    () => (filter === 'all' ? requests : requests.filter((r) => r.status === filter)),
+    [requests, filter]
+  );
+
+  const headerActions = useMemo(
+    () =>
+      counts.pending > 0 ? (
+        <span className="tag tag-saffron" data-testid="pending-pill">
+          <ShellIcon name="clock" size={12} />
+          {counts.pending} pending review
+        </span>
+      ) : null,
+    [counts.pending]
+  );
+
+  useShellChrome({ breadcrumb: REQUEST_BREADCRUMB, headerActions });
+
+  return (
+    <div
+      className="api-keys-screen l-page"
+      data-testid="all-requests-page"
+      data-pagestatus={isLoading ? 'loading' : 'ready'}
+    >
+      <div className="l-controls">
+        <div className="l-toolbar">
+          <div className="filter-tabs" role="tablist" aria-label="Filter access requests">
+            {REQUEST_FILTER_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={filter === tab.id}
+                className={'filter-tab' + (filter === tab.id ? ' active' : '')}
+                onClick={() => setFilter(tab.id)}
+                data-testid={`requests-filter-${tab.id}`}
+              >
+                {tab.label}
+                <span className="tab-count">{counts[tab.id]}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ flex: 1 }} />
+          <span data-testid="request-count" className="page-subtitle">
+            {total} total {total === 1 ? 'request' : 'requests'}
+          </span>
+        </div>
+      </div>
+
+      <div className="l-scroll" data-testid="requests-table">
+        {isLoading ? (
+          <div style={{ padding: 16 }} data-testid="loading-skeleton">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full mb-3" />
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="empty-state" data-testid="no-requests">
+            <div className="empty-icon">
+              <ShellIcon name="shield-check" size={28} />
+            </div>
+            <div className="empty-title">No Access Requests</div>
+            <div className="empty-sub">No access requests match this filter.</div>
+          </div>
+        ) : (
+          <div className="l-listview">
+            {visible.map((request) => (
+              <AllRequestRowV2 key={request.id} request={request} userRole={userRole} />
+            ))}
+          </div>
+        )}
+        {total > pageSize && (
+          <div style={{ padding: '14px 16px' }} data-testid="pagination">
+            <Pagination page={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AllRequestRowV2({ request, userRole }: { request: UserAccessRequest; userRole: string }) {
   const [selectedRole, setSelectedRole] = useState<string>('resource_user');
   const { showSuccess, showError } = useToastMessages();
 
   const { mutate: approveRequest, isPending: isApproving } = useApproveRequest({
-    onSuccess: () => {
-      showSuccess('Request Approved', `Access granted to ${request.username}`);
-    },
-    onError: (message) => {
-      showError('Approval Failed', message);
-    },
+    onSuccess: () => showSuccess('Request Approved', `Access granted to ${request.username}`),
+    onError: (message) => showError('Approval Failed', message),
   });
-
   const { mutate: rejectRequest, isPending: isRejecting } = useRejectRequest({
-    onSuccess: () => {
-      showSuccess('Request Rejected', `Access rejected for ${request.username}`);
-    },
-    onError: (message) => {
-      showError('Rejection Failed', message);
-    },
+    onSuccess: () => showSuccess('Request Rejected', `Access rejected for ${request.username}`),
+    onError: (message) => showError('Rejection Failed', message),
   });
-
-  const handleApprove = () => {
-    if (!selectedRole) return;
-    approveRequest({ id: request.id, role: selectedRole });
-  };
-
-  const handleReject = () => {
-    rejectRequest(request.id);
-  };
 
   const availableRoles = getAvailableRoles(userRole);
 
   return (
-    <>
-      <TableCell className="font-medium" data-testid="request-username">
-        {request.username}
-      </TableCell>
-      <TableCell className="hidden sm:table-cell" data-testid="request-date">
-        {request.status === 'pending'
-          ? new Date(request.created_at).toLocaleDateString()
-          : new Date(request.updated_at).toLocaleDateString()}
-      </TableCell>
-      <TableCell data-testid={`request-status-${request.status}`}>{getStatusBadge(request.status)}</TableCell>
-      <TableCell>
-        {request.status !== 'pending' && request.reviewer ? (
-          <span className="text-sm text-muted-foreground" data-testid="request-reviewer">
-            {request.reviewer}
-          </span>
-        ) : request.status !== 'pending' ? (
-          <span className="text-muted-foreground">-</span>
-        ) : null}
-      </TableCell>
-      <TableCell>
-        {request.status === 'pending' ? (
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={selectedRole}
-              onValueChange={setSelectedRole}
-              data-testid={`role-select-${request.username}`}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableRoles.map((role) => (
-                  <SelectItem key={role.value} value={role.value}>
-                    {role.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              onClick={handleApprove}
-              disabled={isApproving || !selectedRole}
-              data-testid={`approve-btn-${request.username}`}
-            >
-              {isApproving ? 'Approving...' : 'Approve'}
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleReject}
-              disabled={isRejecting}
-              data-testid={`reject-btn-${request.username}`}
-            >
-              {isRejecting ? 'Rejecting...' : 'Reject'}
-            </Button>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )}
-      </TableCell>
-    </>
-  );
-}
-
-function AllRequestsContent() {
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  // Dummy sort values - no actual sorting functionality
-  const dummySort: SortState = { column: '', direction: 'asc' };
-  const noOpSortChange = () => {};
-  const getItemId = (request: UserAccessRequest) => request.id;
-
-  const { data: userInfo } = useGetAuthenticatedUser();
-  const { data: requestsData, isLoading } = useListAllRequests(page, pageSize);
-
-  const userRole = typeof userInfo?.role === 'string' ? userInfo.role : '';
-
-  const columns = [
-    { id: 'username', name: 'Username', sorted: false },
-    { id: 'date', name: 'Date', sorted: false, className: 'hidden sm:table-cell' },
-    { id: 'status', name: 'Status', sorted: false },
-    { id: 'reviewer', name: 'Reviewer', sorted: false },
-    { id: 'actions', name: 'Actions', sorted: false },
-  ];
-
-  if (isLoading) {
-    return (
-      <Card data-testid="loading-skeleton">
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-32" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const requests = requestsData?.requests || [];
-  const total = requestsData?.total || 0;
-
-  if (requests.length === 0) {
-    return (
-      <Card className="text-center py-8" data-testid="no-requests">
-        <CardContent>
-          <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Access Requests</h3>
-          <p className="text-muted-foreground">No access requests have been submitted yet</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const renderRow = (request: UserAccessRequest) => <AllRequestRow request={request} userRole={userRole} />;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2" data-testid="page-title">
-          <Shield className="h-5 w-5" />
-          All Access Requests
-        </CardTitle>
-        <CardDescription data-testid="request-count">
-          {total} total {total === 1 ? 'request' : 'requests'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div data-testid="requests-table">
-          <DataTable
-            columns={columns}
-            data={requests}
-            renderRow={renderRow}
-            loading={isLoading}
-            sort={dummySort}
-            onSortChange={noOpSortChange}
-            getItemId={getItemId}
-          />
+    <div className="l-listrow" data-testid={`request-row-${request.username}`}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div data-testid="request-username" style={{ fontWeight: 600, fontSize: 13.5 }}>
+          {request.username}
         </div>
-        {total > pageSize && (
-          <div className="mt-4" data-testid="pagination">
-            <Pagination page={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        <div data-testid="request-date" className="page-subtitle">
+          {request.status === 'pending'
+            ? new Date(request.created_at).toLocaleDateString()
+            : new Date(request.updated_at).toLocaleDateString()}
+        </div>
+      </div>
+      <div data-testid={`request-status-${request.status}`} style={{ marginRight: 12 }}>
+        {getStatusBadge(request.status)}
+      </div>
+      {request.status !== 'pending' && request.reviewer ? (
+        <span className="page-subtitle" data-testid="request-reviewer" style={{ marginRight: 12 }}>
+          {request.reviewer}
+        </span>
+      ) : null}
+      {request.status === 'pending' ? (
+        <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+          <Select value={selectedRole} onValueChange={setSelectedRole} data-testid={`role-select-${request.username}`}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Select role" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableRoles.map((role) => (
+                <SelectItem key={role.value} value={role.value}>
+                  {role.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            onClick={() => selectedRole && approveRequest({ id: request.id, role: selectedRole })}
+            disabled={isApproving || !selectedRole}
+            data-testid={`approve-btn-${request.username}`}
+          >
+            {isApproving ? 'Approving...' : 'Approve'}
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => rejectRequest(request.id)}
+            disabled={isRejecting}
+            data-testid={`reject-btn-${request.username}`}
+          >
+            {isRejecting ? 'Rejecting...' : 'Reject'}
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 export default function AccessRequestsPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true} minRole="manager">
-      <div className="container mx-auto p-4" data-testid="all-requests-page">
-        <UserManagementTabs />
-        <AllRequestsContent />
-      </div>
+      <AllRequestsContentV2 />
     </AppInitializer>
   );
 }

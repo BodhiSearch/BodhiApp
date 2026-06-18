@@ -4,6 +4,8 @@ import '@/styles/globals.css';
 
 import ClientProviders from '@/components/ClientProviders';
 import { AppShell } from '@/components/shell';
+import { BareLayout } from '@/components/shell/BareLayout';
+import { ShellSlotsProvider, useShellSlots } from '@/components/shell/ShellSlotsContext';
 import { isBareRoute, resolveShellRoute } from '@/components/shell/resolveShellRoute';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
@@ -15,25 +17,29 @@ export const Route = createRootRoute({
 
 /**
  * Decides the layout for the current route:
- * - Bare routes (setup / login / auth / request-access / root redirectors) render chrome-less —
- *   they keep their own current layouts and are out of scope for the V2 shell migration.
+ * - Bare routes (setup / login / auth / request-access / oauth / root redirectors AND the
+ *   standalone OAuth access-request review) render OUTSIDE the AppShell, through the slim-topbar
+ *   `BareLayout`. (The central `BARE_PREFIXES` switch in resolveShellRoute is interim — a
+ *   route-declared layout seam is the deferred follow-up; see screen-v2/techdebt.md.)
  * - App routes render inside the V2 AppShell, with the active section/subPage derived from the
- *   pathname. During coexistence, unmigrated screens render their existing content inside the shell.
+ *   pathname. A migrated screen contributes breadcrumb/headerActions/rail via `useShellChrome`
+ *   (ShellSlotsContext); unmigrated screens render their existing content inside the shell.
  */
 function RootShell() {
   const { pathname } = useLocation();
+  const slots = useShellSlots();
 
   if (isBareRoute(pathname)) {
     return (
-      <main data-testid="app-main">
+      <BareLayout>
         <Outlet />
-      </main>
+      </BareLayout>
     );
   }
 
   const resolved = resolveShellRoute(pathname) ?? { section: '', subPage: null };
   return (
-    <AppShell section={resolved.section} subPage={resolved.subPage} contentClass="flush">
+    <AppShell section={resolved.section} subPage={resolved.subPage} contentClass="flush" {...slots}>
       <Outlet />
     </AppShell>
   );
@@ -44,10 +50,12 @@ function RootLayout() {
     <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">
       <ClientProviders>
         <NavigationProvider items={defaultNavigationItems}>
-          <div data-testid="root-layout">
-            <RootShell />
-            <Toaster />
-          </div>
+          <ShellSlotsProvider>
+            <div data-testid="root-layout">
+              <RootShell />
+              <Toaster />
+            </div>
+          </ShellSlotsProvider>
         </NavigationProvider>
       </ClientProviders>
     </ThemeProvider>

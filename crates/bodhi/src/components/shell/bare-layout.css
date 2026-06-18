@@ -1,0 +1,67 @@
+/* Bare layout — minimal chrome for in-app full-page flows rendered OUTSIDE the
+   AppShell (no sidebar, no breadcrumb): OAuth access-request review, and future
+   request-access / status pages. Ported from design/bodhi-standalone.css, mapped
+   to the production token set (no undefined --faint-foreground/--shadow-*/
+--font-* vars). */
+
+.bare-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.bare-topbar {
+  flex: none;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(16px, 4vw, 28px);
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+}
+
+.bare-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-decoration: none;
+}
+.bare-brand-mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+.bare-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+.bare-brand-word {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: hsl(var(--foreground));
+}
+.bare-brand-sub {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Centered, scrollable content region. align-items:flex-start so a card taller
+   than the viewport stays fully reachable on overflow. */
+.bare-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(24px, 6vh, 64px) 20px;
+}

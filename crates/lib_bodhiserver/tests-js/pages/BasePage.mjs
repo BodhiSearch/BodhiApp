@@ -15,6 +15,26 @@ export class BasePage {
     await this.waitForSPAReady();
   }
 
+  /**
+   * Navigate via the V2 AppShell left-sidebar nav (black-box). Opens the section
+   * switcher, picks the section, then (optionally) its sub-page. Sub-page links
+   * only render once their section is active, so order matters.
+   * @param {string} section - shell nav section id (e.g. 'api-keys')
+   * @param {string} [subPage] - shell nav sub-page id (e.g. 'app-tokens')
+   */
+  async navViaShell(section, subPage) {
+    const sectionLink = this.page.locator(`[data-testid="shell-nav-${section}"]`).first();
+    if (!(await sectionLink.isVisible().catch(() => false))) {
+      await this.page.locator('[data-testid="shell-nav-trigger"]').first().click();
+    }
+    await sectionLink.click();
+    await this.waitForSPAReady();
+    if (subPage) {
+      await this.page.locator(`[data-testid="shell-sub-${subPage}"]`).first().click();
+      await this.waitForSPAReady();
+    }
+  }
+
   async waitForSPAReady() {
     await this.page.waitForLoadState('domcontentloaded');
   }
