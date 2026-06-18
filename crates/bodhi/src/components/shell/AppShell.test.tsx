@@ -79,6 +79,28 @@ describe('AppShell', () => {
     expect(screen.getByText('Discover')).toBeInTheDocument();
   });
 
+  it('auto-opens the rail when rail content appears (e.g. selecting a row)', () => {
+    const { rerender } = render(
+      <AppShell section="api-keys" railDefaultOpen={false}>
+        <div>page content</div>
+      </AppShell>
+    );
+    // no rail content yet
+    expect(screen.queryByTestId('the-rail')).not.toBeInTheDocument();
+
+    // a screen publishes rail content → the rail column should open and show it
+    rerender(
+      <AppShell section="api-keys" railDefaultOpen={false} rail={<div data-testid="the-rail">details</div>}>
+        <div>page content</div>
+      </AppShell>
+    );
+    const rail = screen.getByTestId('the-rail');
+    expect(rail).toBeInTheDocument();
+    // the rail column is not collapsed (width 0) — its containing shell lacks rail-collapsed
+    const shell = rail.closest('.shell');
+    expect(shell).not.toHaveClass('rail-collapsed');
+  });
+
   it('collapses the sidebar to the icon rail when the toggle is clicked', async () => {
     const user = userEvent.setup();
     render(

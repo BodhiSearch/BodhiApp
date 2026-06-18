@@ -1,4 +1,4 @@
-import { type KeyboardEvent } from 'react';
+import { type FocusEvent, type KeyboardEvent } from 'react';
 
 import { ShellIcon } from './ShellIcon';
 
@@ -10,6 +10,7 @@ export interface ShellSearchProps {
   kbd?: string;
   autoFocus?: boolean;
   onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
+  onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
 }
 
 export function ShellSearch({
@@ -20,6 +21,7 @@ export function ShellSearch({
   kbd,
   autoFocus,
   onKeyDown,
+  onBlur,
 }: ShellSearchProps) {
   const cls = 'shell-search' + (size === 'sm' ? ' sm' : '') + (kbd ? ' has-kbd' : '');
   return (
@@ -33,6 +35,7 @@ export function ShellSearch({
         value={value}
         autoFocus={autoFocus}
         onKeyDown={onKeyDown}
+        onBlur={onBlur}
         onChange={(e) => onChange?.(e.target.value)}
       />
       {kbd && <span className="ss-kbd">{kbd}</span>}

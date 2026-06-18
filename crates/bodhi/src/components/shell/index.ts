@@ -3,6 +3,8 @@ export { Shell } from './Shell';
 export { ShellNav, type ShellNavProps } from './ShellNav';
 export { ShellIcon, type ShellIconProps } from './ShellIcon';
 export { ShellSearch, type ShellSearchProps } from './ShellSearch';
+export { useCollapsibleSearch, type ShellCollapsibleSearchProps } from './ShellCollapsibleSearch';
+export { ShellFilterTabs, type ShellFilterTabsProps, type ShellFilterTab } from './ShellFilterTabs';
 export { ShellModeSwitch, type ShellModeSwitchProps, type ShellModeOption } from './ShellModeSwitch';
 export { ShellFilterGroup, type ShellFilterGroupProps, type ShellFilterChip } from './ShellFilterGroup';
 export {

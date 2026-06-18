@@ -6,7 +6,7 @@ import { Clock, CheckCircle, XCircle } from 'lucide-react';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Pagination } from '@/components/DataTable';
-import { ShellIcon, useShellChrome } from '@/components/shell';
+import { ShellFilterTabs, ShellIcon, useShellChrome } from '@/components/shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -90,6 +90,8 @@ function AllRequestsContentV2() {
     return c;
   }, [requests]);
 
+  const filterTabs = useMemo(() => REQUEST_FILTER_TABS.map((t) => ({ ...t, count: counts[t.id] })), [counts]);
+
   const visible = useMemo(
     () => (filter === 'all' ? requests : requests.filter((r) => r.status === filter)),
     [requests, filter]
@@ -116,21 +118,13 @@ function AllRequestsContentV2() {
     >
       <div className="l-controls">
         <div className="l-toolbar">
-          <div className="filter-tabs" role="tablist" aria-label="Filter access requests">
-            {REQUEST_FILTER_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                role="tab"
-                aria-selected={filter === tab.id}
-                className={'filter-tab' + (filter === tab.id ? ' active' : '')}
-                onClick={() => setFilter(tab.id)}
-                data-testid={`requests-filter-${tab.id}`}
-              >
-                {tab.label}
-                <span className="tab-count">{counts[tab.id]}</span>
-              </button>
-            ))}
-          </div>
+          <ShellFilterTabs
+            tabs={filterTabs}
+            value={filter}
+            onChange={setFilter}
+            label="Filter access requests"
+            testIdPrefix="requests-filter"
+          />
           <div style={{ flex: 1 }} />
           <span data-testid="request-count" className="page-subtitle">
             {total} total {total === 1 ? 'request' : 'requests'}

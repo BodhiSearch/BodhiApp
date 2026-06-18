@@ -124,6 +124,20 @@ export function AppShell({
   const hasBand = Boolean(toolbar || sidebarToolbar || railToolbar);
   const effCollapsed = collapsed && !isMobile;
 
+  // When a screen publishes rail content (e.g. selecting a row), open the rail so
+  // it's actually visible; clear it when the content goes away. Without this the
+  // column stays at the initial collapsed width and the panel never shows.
+  const prevHasRail = useRef(hasRail);
+  useEffect(() => {
+    if (hasRail && !prevHasRail.current) {
+      if (isMobile) setRailOpen(true);
+      else setRailCollapsed(false);
+    } else if (!hasRail && prevHasRail.current) {
+      setRailOpen(false);
+    }
+    prevHasRail.current = hasRail;
+  }, [hasRail, isMobile]);
+
   /* ── column resize (widths persist; collapse does not) ── */
   useEffect(() => {
     const shell = shellRef.current;

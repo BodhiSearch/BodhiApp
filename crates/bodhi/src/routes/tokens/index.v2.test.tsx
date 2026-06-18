@@ -137,6 +137,25 @@ describe('TokenPage V2', () => {
     expect(screen.queryByTestId('token-name-token-1')).not.toBeInTheDocument();
   });
 
+  it('collapses the search on blur when empty, but stays open when it has text', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    // open + type → blurring keeps it open (has text)
+    await user.click(screen.getByTestId('tokens-search-toggle'));
+    const input = screen.getByPlaceholderText(/search tokens/i);
+    await user.type(input, 'prod');
+    input.blur();
+    expect(screen.getByPlaceholderText(/search tokens/i)).toBeInTheDocument();
+
+    // clear it, then blur → collapses (removed)
+    await user.clear(input);
+    input.blur();
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/search tokens/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('opens the detail rail with real fields on row select', async () => {
     const user = userEvent.setup();
     await renderReady();

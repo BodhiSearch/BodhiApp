@@ -54,6 +54,14 @@ Keycloak/auth (@screen-coverage.md §C).
   `web-animation-view-transitions`. Details + rules: @view-transitions.md.
 - **Theme switch in the sidebar footer** (above the user chip, always visible): icon-only
   Light/Dark/System segments expanded; a single cycling button when the sidebar is collapsed.
+- **Reusable list-toolbar components** (`components/shell/`, first built on App Tokens — **reuse
+  these on every later list screen** instead of re-inlining markup):
+  - `ShellFilterTabs` — themed single-select filter pills (`l-cat`) with count badges. Used by App
+    Tokens + Access Requests.
+  - `useCollapsibleSearch` — search icon button that expands to a search row and **collapses on blur
+    when empty** (also Esc / close). Returns `{ row, toggle }` for the toolbar to place.
+  - `ShellSearch` gained an `onBlur` prop. `AppShell` now **auto-opens the rail** when a screen
+    publishes rail content (so row-click → detail panel works without a manual rail toggle).
 - **Helper CSS vars** (`--font-*`, `--shadow-*`, `--border-strong`, …) added to `globals.css`
   (repaired a Batch-0 token-merge gap).
 

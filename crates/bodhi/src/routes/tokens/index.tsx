@@ -5,7 +5,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Pagination } from '@/components/DataTable';
-import { ShellIcon, ShellSearch, useShellChrome } from '@/components/shell';
+import { ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import '@/components/shell/api-keys.css';
@@ -66,8 +66,15 @@ export function TokenPageContent() {
   const withViewTransition = useViewTransition();
   const [filter, setFilter] = useState<TokenFilter>('all');
   const [search, setSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const searchNode = useCollapsibleSearch({
+    value: search,
+    onChange: setSearch,
+    placeholder: 'Search tokens by name or id…',
+    toggleTestId: 'tokens-search-toggle',
+    closeTestId: 'tokens-search-close',
+  });
 
   const selectToken = useCallback(
     (id: string | null) => withViewTransition(() => setSelectedId(id)),
@@ -88,6 +95,8 @@ export function TokenPageContent() {
     }
     return { all: tokens.length, active, inactive };
   }, [tokens]);
+
+  const filterTabs = useMemo(() => FILTER_TABS.map((t) => ({ ...t, count: counts[t.id] })), [counts]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -134,57 +143,16 @@ export function TokenPageContent() {
       data-pagestatus={tokensLoading ? 'loading' : 'ready'}
     >
       <div className="l-controls">
-        {searchOpen && (
-          <div className="l-searchrow">
-            <ShellSearch
-              value={search}
-              onChange={setSearch}
-              placeholder="Search tokens by name or id…"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') setSearchOpen(false);
-              }}
-            />
-            <button
-              className="l-iconbtn"
-              title="Close search"
-              onClick={() => {
-                setSearch('');
-                setSearchOpen(false);
-              }}
-              data-testid="tokens-search-close"
-            >
-              <ShellIcon name="x" size={15} />
-            </button>
-          </div>
-        )}
+        {searchNode.row}
         <div className="l-toolbar">
-          <div className="l-cats" role="tablist" aria-label="Filter tokens">
-            {FILTER_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                role="tab"
-                aria-selected={filter === tab.id}
-                className={'l-cat' + (filter === tab.id ? ' on' : '')}
-                onClick={() => setFilter(tab.id)}
-                data-testid={`tokens-filter-${tab.id}`}
-              >
-                {tab.label}
-                <span className="l-cat-badge">{counts[tab.id]}</span>
-              </button>
-            ))}
-          </div>
-          <div className="l-tb-actions">
-            <button
-              className={'l-iconbtn' + (searchOpen ? ' on' : '')}
-              title="Search"
-              onClick={() => setSearchOpen((o) => !o)}
-              data-testid="tokens-search-toggle"
-            >
-              <ShellIcon name="search" size={15} />
-              {search && !searchOpen && <span className="l-dot" />}
-            </button>
-          </div>
+          <ShellFilterTabs
+            tabs={filterTabs}
+            value={filter}
+            onChange={setFilter}
+            label="Filter tokens"
+            testIdPrefix="tokens-filter"
+          />
+          <div className="l-tb-actions">{searchNode.toggle}</div>
         </div>
       </div>
 
