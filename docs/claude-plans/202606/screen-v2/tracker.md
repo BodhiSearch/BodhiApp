@@ -59,6 +59,14 @@ Keycloak/auth (@screen-coverage.md §C).
   transition's `ready` promise too (not just `finished`) — an interrupted transition (router
   cross-fade overlapping an in-page rail toggle) rejects `ready` with `InvalidStateError`, which was
   surfacing as an uncaught console exception app-wide. Caught live in GATE B.
+- **Mobile rail-drawer fix** (Batch 2 follow-up): at `<768px` the rail is a `position:fixed` drawer
+  that slides in via its own `transform` transition. Two fixes so **clicking a row opens the panel on
+  mobile** (was broken — applies to every migrated list+rail screen): (1) `useViewTransition` now
+  **skips the transition on mobile** (the document-level VT fought the drawer's transform and left it
+  closed — same skip path as `prefers-reduced-motion`); (2) `AppShell`'s auto-open effect opens the
+  mobile drawer **whenever rail content is present** (not only on the `hasRail` false→true edge), so
+  re-selecting after a manual close still opens it. Guarded by RTL (`AppShell`/`useViewTransition`
+  mobile cases) + a live mobile E2E (`specs/users/mobile-rail.spec.mjs`, 390px viewport).
 - **View Transitions** (React-18 native): router `defaultViewTransition` (route cross-fade) +
   `useViewTransition()` for the App-Tokens detail-rail open/close. Skill:
   `web-animation-view-transitions`. Details + rules: @view-transitions.md.

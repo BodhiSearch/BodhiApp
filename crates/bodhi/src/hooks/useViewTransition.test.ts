@@ -81,4 +81,21 @@ describe('startViewTransition', () => {
       (document as unknown as { startViewTransition: ReturnType<typeof vi.fn> }).startViewTransition
     ).not.toHaveBeenCalled();
   });
+
+  it('skips the transition on a mobile viewport (<768px), still applying the update', () => {
+    // On mobile the rail is a fixed drawer with its own transform transition; a document-level
+    // view transition fights it and can leave the drawer from opening — so we skip it.
+    (document as unknown as { startViewTransition: unknown }).startViewTransition = vi.fn();
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) => ({ matches: query.includes('max-width: 767px') }) as MediaQueryList
+    );
+
+    const update = vi.fn();
+    startViewTransition(update);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(
+      (document as unknown as { startViewTransition: ReturnType<typeof vi.fn> }).startViewTransition
+    ).not.toHaveBeenCalled();
+  });
 });

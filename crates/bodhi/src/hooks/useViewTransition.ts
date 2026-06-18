@@ -13,6 +13,10 @@ import { useCallback } from 'react';
  *   browsers (Chromium <111, Firefox <144, Safari <18.2).
  * - Honors `prefers-reduced-motion`: skips the transition entirely so motion-
  *   sensitive users get an instant update (CSS also guards via a media query).
+ * - Skips the transition on mobile (<768px). The rail there is a `position: fixed`
+ *   drawer that slides in via its own `transform` transition; wrapping the selection
+ *   in a document-level view transition fights that drawer animation and can leave
+ *   the panel from opening. The drawer's CSS transition handles the motion instead.
  * The actual animation is CSS-driven via `::view-transition-*` pseudo-elements
  * in `styles/view-transitions.css`.
  */
@@ -21,17 +25,20 @@ type UpdateFn = () => void;
 
 const supportsViewTransitions = (): boolean => typeof document !== 'undefined' && 'startViewTransition' in document;
 
-const prefersReducedMotion = (): boolean =>
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const matchesMedia = (query: string): boolean =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(query).matches;
+
+const prefersReducedMotion = (): boolean => matchesMedia('(prefers-reduced-motion: reduce)');
+
+// Mobile = the shell's drawer breakpoint (shell.css `@media (max-width: 767px)`).
+const isMobileViewport = (): boolean => matchesMedia('(max-width: 767px)');
 
 interface DocWithViewTransition {
   startViewTransition(callback: UpdateFn): { ready: Promise<void>; finished: Promise<void> };
 }
 
 export function startViewTransition(updateFn: UpdateFn): void {
-  if (!supportsViewTransitions() || prefersReducedMotion()) {
+  if (!supportsViewTransitions() || prefersReducedMotion() || isMobileViewport()) {
     updateFn();
     return;
   }

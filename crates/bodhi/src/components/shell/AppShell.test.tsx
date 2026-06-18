@@ -101,6 +101,40 @@ describe('AppShell', () => {
     expect(shell).not.toHaveClass('rail-collapsed');
   });
 
+  it('opens the mobile rail drawer when rail content appears (rail-open class)', () => {
+    // On mobile the rail is a fixed drawer gated by `.shell.rail-open`; publishing rail
+    // content must add that class so the drawer slides in on the first row select.
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query.includes('max-width:767px'),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    try {
+      const { rerender } = render(
+        <AppShell section="api-keys" railDefaultOpen={false}>
+          <div>page content</div>
+        </AppShell>
+      );
+      rerender(
+        <AppShell section="api-keys" railDefaultOpen={false} rail={<div data-testid="m-rail">details</div>}>
+          <div>page content</div>
+        </AppShell>
+      );
+
+      const shell = screen.getByTestId('m-rail').closest('.shell');
+      expect(shell).toHaveClass('rail-open');
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   it('collapses the sidebar to the icon rail when the toggle is clicked', async () => {
     const user = userEvent.setup();
     render(

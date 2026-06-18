@@ -127,15 +127,15 @@ export function AppShell({
   // When a screen publishes rail content (e.g. selecting a row), open the rail so
   // it's actually visible; clear it when the content goes away. Without this the
   // column stays at the initial collapsed width and the panel never shows.
-  const prevHasRail = useRef(hasRail);
+  // On mobile the rail is a fixed drawer: open it whenever content is present (not just
+  // on the false→true edge), so re-selecting a row after a manual close still opens it.
   useEffect(() => {
-    if (hasRail && !prevHasRail.current) {
+    if (hasRail) {
       if (isMobile) setRailOpen(true);
       else setRailCollapsed(false);
-    } else if (!hasRail && prevHasRail.current) {
+    } else {
       setRailOpen(false);
     }
-    prevHasRail.current = hasRail;
   }, [hasRail, isMobile]);
 
   /* ── column resize (widths persist; collapse does not) ── */
