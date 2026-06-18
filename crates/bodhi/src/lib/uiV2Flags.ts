@@ -8,10 +8,10 @@
  * playbook in docs/claude-plans/202606/screen-v2/).
  *
  * Toggle from the browser console, e.g.:
- *   localStorage.setItem('bodhi.ui-v2.app-settings', 'true')
+ *   localStorage.setItem('bodhi.ui-v2.mcp-discover', 'true')
  *
- * (The API-Keys screens — App Tokens, New Token, Access Requests, Access Request review —
- * have shipped V2-only; their flags were retired in Batch 1, so they're no longer listed.)
+ * (The API-Keys screens — Batch 1 — and the Settings screens — App Settings, Manage Users,
+ * Batch 2 — have shipped V2-only; their flags were retired, so they're no longer listed.)
  */
 
 export type UiV2Screen =
@@ -22,9 +22,7 @@ export type UiV2Screen =
   | 'new-fallback-model'
   | 'mcp-discover'
   | 'new-mcp'
-  | 'mcp-playground'
-  | 'app-settings'
-  | 'manage-users';
+  | 'mcp-playground';
 
 export const UI_V2_FLAG_PREFIX = 'bodhi.ui-v2.';
 

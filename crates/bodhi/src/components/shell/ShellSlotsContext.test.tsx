@@ -10,6 +10,7 @@ function SlotsProbe() {
   return (
     <div data-testid="probe">
       <span data-testid="probe-actions">{slots.headerActions ?? 'none'}</span>
+      <span data-testid="probe-sidebar">{slots.sidebar ?? 'none'}</span>
     </div>
   );
 }
@@ -17,6 +18,11 @@ function SlotsProbe() {
 function Publisher({ label }: { label: string }) {
   useShellChrome({ headerActions: <span>{label}</span> });
   return <div>publisher</div>;
+}
+
+function SidebarPublisher({ label }: { label: string }) {
+  useShellChrome({ sidebar: <span>{label}</span> });
+  return <div>sidebar-publisher</div>;
 }
 
 describe('ShellSlotsContext', () => {
@@ -58,5 +64,27 @@ describe('ShellSlotsContext', () => {
       </ShellSlotsProvider>
     );
     expect(screen.getByTestId('probe-actions')).toHaveTextContent('none');
+    expect(screen.getByTestId('probe-sidebar')).toHaveTextContent('none');
+  });
+
+  it('publishes a screen-provided sidebar slot and clears it on unmount', async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [show, setShow] = useState(true);
+      return (
+        <ShellSlotsProvider>
+          <button onClick={() => setShow(false)}>hide</button>
+          <SlotsProbe />
+          {show && <SidebarPublisher label="Settings Groups" />}
+        </ShellSlotsProvider>
+      );
+    }
+
+    render(<Harness />);
+    expect(screen.getByTestId('probe-sidebar')).toHaveTextContent('Settings Groups');
+
+    await user.click(screen.getByRole('button', { name: 'hide' }));
+    expect(screen.getByTestId('probe-sidebar')).toHaveTextContent('none');
   });
 });

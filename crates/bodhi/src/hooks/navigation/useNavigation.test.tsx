@@ -154,7 +154,6 @@ describe('useNavigation', () => {
 
   it.each([
     ['/users/', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
-    ['/users/pending', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
     ['/users/access-requests', 'Manage Users', '/users/', 'Manage users and access control', 'Settings'],
   ])(
     'should return %s > %s for %s paths',

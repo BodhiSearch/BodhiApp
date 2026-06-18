@@ -15,7 +15,7 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 0 | Foundation (AppShell, flags, tokens merge, id_token, reference_api_url) | ✅ done |
 | 1 | **API Keys → Access Tokens** (4 screens) | ✅ done |
 | 1.1 | **Batch-1 follow-up** — IA correction (2026-06-18): nav section "API Keys"→"Access Tokens" (sub-pages "API Tokens"/"New API Token"); new top-level **Users** section (User Access Requests + Manage Users, moved out of Settings); Access Requests redesigned to match `design/User Access Requests.html` (avatar rows, status chips, role/approve-reject flow, detail rail). | ✅ done |
-| 2 | Settings (App Settings) — Manage Users nav moved to **Users** in 1.1 | ⬜ not started (kickoff written: @batch-2-settings-kickoff.md) |
+| 2 | **Settings** (App Settings) + **Manage Users** (nav under Users per 1.1) | ✅ done |
 | 3 | Models (4 screens) | ⬜ not started |
 | 4 | MCP (3 screens) | ⬜ not started |
 | 5 | Chat (1 screen, highest risk, last) | ⬜ not started |
@@ -36,12 +36,13 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 10 | **Access Tokens** | **New API Token** | `/tokens/new/` (NEW) | shell | — (retired) | ✅ | Nav sub-page "New API Token" (was "New Token"). Was a dialog → full page. Real `useCreateToken`; reuses `TokenDialog` reveal; Done → `/tokens/`. Name+scope only (real data). |
 | 11 | **Users** | **User Access Requests (list)** | `/users/access-requests/` | shell | — (retired) | ✅ | Moved out of API-Keys into the new **Users** section (1.1). Redesigned to match `design/User Access Requests.html`: avatar rows · status chips (pending/approved/rejected) · pending-count header pill · filter tabs + collapsible search · pending rows show role picker + approve/reject; **selectable rows → detail rail** mirroring the row (Account/Assign-role/Timeline; decided rows show a decided-note, no actions). Role picker is an **approval input** (no role stored on a request). |
 | 12 | **Access Tokens** | **Access Request review** | `/apps/access-requests/review/?id=` | ▫️ bare | — (retired) | ✅ | OAuth consent (3rd-party app, deep-linked — NOT a nav item). Renders via `BareLayout` (slim topbar). MCP servers+instances + role + approve/deny (real data; no model-slots). |
-| 13 | Settings | App Settings | `/settings/` | shell | `app-settings` | ⬜ | Batch 2. `reference_api_url` NOT editable. |
-| 14 | **Users** | Manage Users | `/users/` | shell | `manage-users` | ⬜ | Batch 2 (page body unchanged). Nav moved Settings→**Users** in 1.1. Reuses `list.css`. |
+| 13 | Settings | App Settings | `/settings/` | shell | — (retired) | ✅ | Batch 2. V2 shell list: **published `sidebar`** = settings-group scroll-spy nav + Legend; All/Modified/Env filter pills (counts derived); collapsible search w/ highlight; rows → detail rail. **Read-only rail by default** — editor (NEW VALUE + Save/Cancel/Reset via `useUpdateSetting`/`useDeleteSetting`) only for the 2 backend-editable keys (`BODHI_EXEC_VARIANT`, `BODHI_KEEP_ALIVE_SECS`); others show a "read-only (set via *source*)" note. `source==='system'` hides current value. Dropped the prototype's restart banner/"Needs Restart" tab (no backing data). Rail open = view transition. |
+| 14 | **Users** | Manage Users | `/users/` | shell | — (retired) | ✅ | Batch 2. V2 shell list mirroring Access Requests: 5 role filter pills (All/User/Power User/Manager/Admin, per-page counts) + collapsible search; rows → **role-editor rail** (CHANGE ROLE select + Save via `useChangeUserRole`, two-click Remove via `useRemoveUser`) reproducing the real role-hierarchy guards (self → "You", outranked → "Restricted"). Real pagination kept. **Invite link** ported as a header-action popover (multi-tenant only). Reuses `list.css`. |
 
 **Retired/consolidated (no separate screen):** `/users/pending/` → folded into Access Requests
-(Batch 1 migrated the target; confirm `/users/pending/` + `UserManagementTabs` deletion in Batch 2).
-`/models/files/`, `/models/files/pull/`, `/mcps/servers/*` → absorbed (see @screen-coverage.md §B).
+(Batch 1 migrated the target; **`/users/pending/` route + `UserManagementTabs` + the V1 `components/users/`
+table/dialogs DELETED in Batch 2**). `/models/files/`, `/models/files/pull/`, `/mcps/servers/*` →
+absorbed (see @screen-coverage.md §B).
 
 **Out of scope (deferred):** access-request standalone (`/request-access/`, pending), setup wizard,
 Keycloak/auth (@screen-coverage.md §C).
@@ -50,6 +51,14 @@ Keycloak/auth (@screen-coverage.md §C).
 - **Reusable patterns** (Batch 1): `BareLayout` (standalone chrome) + `ShellSlotsContext`/`useShellChrome`
   (screens publish breadcrumb/headerActions/rail to the root `<AppShell>`). Both are **temporary
   scaffolding** → @techdebt.md.
+- **`sidebar` chrome slot** (Batch 2): `ShellSlots` gained a `sidebar?: ReactNode` slot so a screen
+  can publish a page-body sidebar to the root `<AppShell>` (App Settings' settings-group scroll-spy
+  nav is the first consumer; `__root` already spreads `{...slots}`, so no root edit). Part of the
+  temporary `ShellSlotsContext` scaffolding.
+- **`useViewTransition` hardening** (Batch 2): the hook now swallows the **async** rejection of the
+  transition's `ready` promise too (not just `finished`) — an interrupted transition (router
+  cross-fade overlapping an in-page rail toggle) rejects `ready` with `InvalidStateError`, which was
+  surfacing as an uncaught console exception app-wide. Caught live in GATE B.
 - **View Transitions** (React-18 native): router `defaultViewTransition` (route cross-fade) +
   `useViewTransition()` for the App-Tokens detail-rail open/close. Skill:
   `web-animation-view-transitions`. Details + rules: @view-transitions.md.

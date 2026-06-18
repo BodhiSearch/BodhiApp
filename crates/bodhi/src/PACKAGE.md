@@ -65,14 +65,12 @@ src/components/
 ├── ui/                          # Shadcn/ui base components (button, input, dialog, etc.)
 ├── navigation/                  # AppHeader, AppNavigation, AppBreadcrumb
 ├── api-models/                  # ApiModelForm, providers, form fields, actions
-├── users/                       # UsersTable, UserRow, RoleChangeDialog, RemoveUserDialog
 ├── setup/                       # BrowserExtensionCard, BrowserSelector
 ├── AppInitializer.tsx           # App status check and routing
 ├── ClientProviders.tsx          # QueryClientProvider wrapper
 ├── ThemeProvider.tsx             # Dark/light theme
 ├── DataTable.tsx                # Generic data table
 ├── ModelSelector.tsx            # Model alias selector
-├── UserManagementTabs.tsx       # User/access tabs
 ├── McpManagementTabs.tsx        # MCP instances/servers tabs
 ├── LoginMenu.tsx                # Login/logout menu
 ├── DeleteConfirmDialog.tsx      # Reusable delete confirmation

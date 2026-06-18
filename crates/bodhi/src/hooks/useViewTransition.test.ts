@@ -25,7 +25,7 @@ describe('startViewTransition', () => {
     const stub = vi.fn(function (this: unknown, cb: () => void) {
       calls.push({ thisArg: this });
       cb();
-      return { finished: Promise.resolve() };
+      return { ready: Promise.resolve(), finished: Promise.resolve() };
     });
     (document as unknown as { startViewTransition: unknown }).startViewTransition = stub;
 
@@ -36,6 +36,24 @@ describe('startViewTransition', () => {
     expect(update).toHaveBeenCalledTimes(1);
     // called as document.startViewTransition(...) → `this` is the document
     expect(calls[0].thisArg).toBe(document);
+  });
+
+  it('swallows an async ready/finished rejection from an interrupted transition', async () => {
+    // When the router-level navigation cross-fade interrupts an in-page transition, `ready`
+    // rejects asynchronously with InvalidStateError; it must not surface as an unhandled rejection.
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
+    const rejected = Promise.reject(new DOMException('aborted', 'InvalidStateError'));
+    (document as unknown as { startViewTransition: unknown }).startViewTransition = vi.fn((cb: () => void) => {
+      cb();
+      return { ready: rejected, finished: Promise.reject(new DOMException('aborted', 'InvalidStateError')) };
+    });
+
+    const update = vi.fn();
+    expect(() => startViewTransition(update)).not.toThrow();
+    expect(update).toHaveBeenCalledTimes(1);
+    // let the microtask queue flush so the .catch() handlers run
+    await Promise.resolve();
+    await Promise.resolve();
   });
 
   it('applies the update when startViewTransition throws synchronously (InvalidStateError)', () => {

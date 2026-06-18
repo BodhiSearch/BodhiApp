@@ -25,8 +25,8 @@
 ## This batch — Settings section (2 screens)
 | Screen | design source | prod route | section / subPage | notes |
 |---|---|---|---|---|
-| App Settings | `Bodhi App Settings.html` + its app jsx | `routes/settings/index.tsx` | settings / app-settings | settings list/editor; **`reference_api_url` is NOT editable** (env/default only) |
-| Manage Users | `Manage Users.html` + its app jsx | `routes/users/index.tsx` | settings / manage-users | user list + role management; **shares `list.css`** with the API-Keys lists |
+| App Settings | `Bodhi App Settings.html` + its app jsx | `routes/settings/index.tsx` | settings / app-settings | settings list/editor; only **`BODHI_EXEC_VARIANT` + `BODHI_KEEP_ALIVE_SECS`** are editable (backend `EDIT_SETTINGS_ALLOWED`); everything else read-only. (`reference_api_url` is **not** a setting — it's `AppInfo` — so the earlier "not editable" note is moot.) |
+| Manage Users | `Manage Users.html` + its app jsx | `routes/users/index.tsx` | **users / manage-users** | user list + role management; **shares `list.css`** with the API-Keys lists. NB: in `SHELL_NAV` this screen lives under the **`users`** section (sibling of the Batch-1 Access Requests), **not** `settings` — nav via `navViaShell('users', 'manage-users')`. |
 
 > `/users/pending/` is **retired** (consolidated into `/users/access-requests/`, migrated in Batch 1).
 > Confirm during Explore whether `/users/pending/` route + `UserManagementTabs` can now be deleted
@@ -79,7 +79,8 @@ done, drive the **real running app** (`make app.run.live`, log in) with Claude-i
    directly, so chrome slots only appear inside that harness). If Manage Users gets a detail rail,
    remember: `AppShell` auto-opens the rail when a screen publishes rail content.
 5. **Migrate tests + e2e** — preserve `data-testid`/ARIA; update the settings + users page objects
-   (nav → `navViaShell('settings', 'app-settings' | 'manage-users')`); update specs.
+   (nav → `navViaShell('settings', 'app-settings')` for App Settings, `navViaShell('users', 'manage-users')`
+   for Manage Users — the latter lives under the `users` section in `SHELL_NAV`); update specs.
 6. **Validate live (GATE B)** — drive the running app in Claude-in-Chrome: each screen + interactions
    in **light + dark + responsive**, with a **console-clean** check. Only then is a screen "done".
 7. **All gates green** (RTL + E2E + GATE B) → retire flags + delete old Settings code (and, if

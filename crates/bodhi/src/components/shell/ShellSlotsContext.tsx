@@ -7,8 +7,9 @@ import type { ShellBreadcrumbProps } from './ShellChrome';
  *
  * During the in-place flag-gated migration, `__root` renders ONE `<AppShell>` and only knows
  * the active section/subPage. A migrated screen needs to contribute rich chrome (breadcrumb,
- * header actions, an optional detail rail) up to that single shell. This context is the seam:
- * a screen publishes its slots via `useShellChrome(...)`; the root shell consumes them.
+ * header actions, an optional page sidebar, an optional detail rail) up to that single shell.
+ * This context is the seam: a screen publishes its slots via `useShellChrome(...)`; the root
+ * shell consumes them.
  *
  * Once every screen is migrated, screens pass props to a per-route `<AppShell>` directly (or we
  * adopt pathless layout routes) and this whole file is deleted.
@@ -21,6 +22,8 @@ import type { ShellBreadcrumbProps } from './ShellChrome';
 export interface ShellSlots {
   breadcrumb?: ShellBreadcrumbProps['items'];
   headerActions?: ReactNode;
+  /** page-body sidebar (below the nav) — e.g. App Settings' settings-group scroll-spy nav. */
+  sidebar?: ReactNode;
   rail?: ReactNode;
   railHeader?: ReactNode;
   railDefaultOpen?: boolean;
@@ -58,12 +61,12 @@ export function useShellSlots(): ShellSlots {
  */
 export function useShellChrome(slots: ShellSlots): void {
   const setSlots = useContext(ShellSlotsSetContext);
-  const { breadcrumb, headerActions, rail, railHeader, railDefaultOpen } = slots;
+  const { breadcrumb, headerActions, sidebar, rail, railHeader, railDefaultOpen } = slots;
 
   // Re-publish whenever any individual slot changes; stable nodes keep this from thrashing.
   const next = useMemo<ShellSlots>(
-    () => ({ breadcrumb, headerActions, rail, railHeader, railDefaultOpen }),
-    [breadcrumb, headerActions, rail, railHeader, railDefaultOpen]
+    () => ({ breadcrumb, headerActions, sidebar, rail, railHeader, railDefaultOpen }),
+    [breadcrumb, headerActions, sidebar, rail, railHeader, railDefaultOpen]
   );
 
   useEffect(() => {

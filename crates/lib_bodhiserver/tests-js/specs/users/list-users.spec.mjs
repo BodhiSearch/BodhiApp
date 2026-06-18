@@ -114,8 +114,6 @@ test.describe('Enhanced Users Management Flow', () => {
     await adminUsersPage.navigateToUsers();
     await adminUsersPage.expectUsersPage();
 
-    await adminPage.waitForSelector('tbody tr');
-
     const expectedOrder = [
       testUsers.admin.username,
       testUsers.manager.username,
@@ -136,64 +134,33 @@ test.describe('Enhanced Users Management Flow', () => {
     await adminUsersPage.expectUserExists(testUsers.user.username);
     await adminUsersPage.expectUserRole(testUsers.user.username, 'User');
 
+    // Admin can't act on self (rail shows "You"); can act on every lower-ranked user.
     await adminUsersPage.expectNoActionsForUser(testUsers.admin.username);
     await adminUsersPage.expectCurrentUserIndicator(testUsers.admin.username);
-
-    const managerRow = await adminUsersPage.findUserRowByUsername(testUsers.manager.username);
-    const managerRemoveBtn = managerRow.locator(
-      `[data-testid="remove-user-btn-${testUsers.manager.username}"]`
-    );
-    await expect(managerRemoveBtn).toBeVisible();
-
-    const powerUserRow = await adminUsersPage.findUserRowByUsername(testUsers.powerUser.username);
-    const powerUserRemoveBtn = powerUserRow.locator(
-      `[data-testid="remove-user-btn-${testUsers.powerUser.username}"]`
-    );
-    await expect(powerUserRemoveBtn).toBeVisible();
-
-    const userRow = await adminUsersPage.findUserRowByUsername(testUsers.user.username);
-    const userRemoveBtn = userRow.locator(
-      `[data-testid="remove-user-btn-${testUsers.user.username}"]`
-    );
-    await expect(userRemoveBtn).toBeVisible();
-
-    await adminUsersPage.navigateToPendingRequests();
-    await adminUsersPage.navigateToAllRequests();
-    await adminUsersPage.navigateToUsers();
-    await adminUsersPage.expectUsersPage();
+    await adminUsersPage.expectActionsForUser(testUsers.manager.username);
+    await adminUsersPage.expectActionsForUser(testUsers.powerUser.username);
+    await adminUsersPage.expectActionsForUser(testUsers.user.username);
 
     const userCount = await adminUsersPage.getUserCount();
     expect(userCount).toBe(4);
 
+    // Admin can promote anyone to Admin.
     await adminUsersPage.expectRoleAvailable(testUsers.manager.username, 'Admin');
     await adminUsersPage.expectRoleAvailable(testUsers.powerUser.username, 'Admin');
     await adminUsersPage.expectRoleAvailable(testUsers.user.username, 'Admin');
 
-    await adminUsersPage.selectRoleForUser(testUsers.manager.username, 'User');
-    await adminUsersPage.expectRoleChangeDialog();
-
-    const confirmButton = adminPage.locator('[data-testid="role-change-confirm"]');
-    await confirmButton.click();
-
-    await adminPage.waitForSelector('[data-testid="role-change-dialog"]', { state: 'hidden' });
-
-    await adminUsersPage.waitForRoleChangeSuccess();
-
+    // Demote manager → User, then restore → Manager (rail select + Save).
+    await adminUsersPage.changeUserRole(testUsers.manager.username, 'resource_user', 'User');
     await adminPage.reload();
     await adminUsersPage.expectUsersPage();
     await adminUsersPage.expectUserRole(testUsers.manager.username, 'User');
 
-    await adminUsersPage.selectRoleForUser(testUsers.manager.username, 'Manager');
-    await adminUsersPage.expectRoleChangeDialog();
-    const confirmButton2 = adminPage.locator('[data-testid="role-change-confirm"]');
-    await confirmButton2.click();
-    await adminPage.waitForSelector('[data-testid="role-change-dialog"]', { state: 'hidden' });
-    await adminUsersPage.waitForRoleChangeSuccess();
-
+    await adminUsersPage.changeUserRole(testUsers.manager.username, 'resource_manager', 'Manager');
     await adminPage.reload();
     await adminUsersPage.expectUsersPage();
     await adminUsersPage.expectUserRole(testUsers.manager.username, 'Manager');
 
+    // Manager session: hierarchy enforcement.
     managerContext = await browser.newContext();
     const managerPageNew = await managerContext.newPage();
     const managerLoginNew = new LoginPage(
@@ -214,24 +181,10 @@ test.describe('Enhanced Users Management Flow', () => {
     await managerUsersPageNew.expectNoActionsForUser(testUsers.admin.username);
     await managerUsersPageNew.expectRestrictedUserIndicator(testUsers.admin.username);
 
-    const managerPowerUserRow = await managerUsersPageNew.findUserRowByUsername(
-      testUsers.powerUser.username
-    );
-    const managerPowerUserActions = managerPowerUserRow.locator('td:last-child');
-    const managerPowerUserDropdown = managerPowerUserActions.locator('button[role="combobox"]');
-    const managerPowerUserRemoveBtn = managerPowerUserActions.locator('button:has-text("Remove")');
+    await managerUsersPageNew.expectActionsForUser(testUsers.powerUser.username);
+    await managerUsersPageNew.expectActionsForUser(testUsers.user.username);
 
-    await expect(managerPowerUserDropdown).toBeVisible();
-    await expect(managerPowerUserRemoveBtn).toBeVisible();
-
-    const managerUserRow = await managerUsersPageNew.findUserRowByUsername(testUsers.user.username);
-    const managerUserActions = managerUserRow.locator('td:last-child');
-    const managerUserDropdown = managerUserActions.locator('button[role="combobox"]');
-    const managerUserRemoveBtn = managerUserActions.locator('button:has-text("Remove")');
-
-    await expect(managerUserDropdown).toBeVisible();
-    await expect(managerUserRemoveBtn).toBeVisible();
-
+    // Manager can't grant Admin (would outrank self).
     await managerUsersPageNew.expectRoleNotAvailable(testUsers.powerUser.username, 'Admin');
     await managerUsersPageNew.expectRoleAvailable(testUsers.powerUser.username, 'Manager');
     await managerUsersPageNew.expectRoleAvailable(testUsers.powerUser.username, 'Power User');
@@ -239,9 +192,8 @@ test.describe('Enhanced Users Management Flow', () => {
 
     await managerUsersPageNew.expectRoleNotAvailable(testUsers.user.username, 'Admin');
     await managerUsersPageNew.expectRoleAvailable(testUsers.user.username, 'Manager');
-    await managerUsersPageNew.expectRoleAvailable(testUsers.user.username, 'Power User');
-    await managerUsersPageNew.expectRoleAvailable(testUsers.user.username, 'User');
 
+    // Power user can't reach Manage Users at all.
     powerUserContext = await browser.newContext();
     const powerUserPage = await powerUserContext.newPage();
     const powerUserLogin = new LoginPage(
@@ -254,40 +206,34 @@ test.describe('Enhanced Users Management Flow', () => {
 
     await powerUserPage.goto(`${baseUrl}/ui/users`);
     await powerUserPage.waitForLoadState('networkidle');
-
     await powerUserPage.waitForURL(`${baseUrl}/ui/login/?error=insufficient-role`);
+    expect(powerUserPage.url()).toBe(`${baseUrl}/ui/login/?error=insufficient-role`);
 
-    const currentUrl = powerUserPage.url();
-    expect(currentUrl).toBe(`${baseUrl}/ui/login/?error=insufficient-role`);
-
-    await managerUsersPageNew.changeUserRole(testUsers.powerUser.username, 'User');
-    await managerUsersPageNew.waitForRoleChangeSuccess();
-    await managerUsersPageNew.expectUserRole(testUsers.powerUser.username, 'User');
-
-    await managerUsersPageNew.navigateToPendingRequests();
+    // Manager demotes power-user → User, promotes user → Power User.
+    await managerUsersPageNew.changeUserRole(testUsers.powerUser.username, 'resource_user', 'User');
     await managerUsersPageNew.navigateToUsers();
     await managerUsersPageNew.expectUsersPage();
     await managerUsersPageNew.expectUserRole(testUsers.powerUser.username, 'User');
 
-    await managerUsersPageNew.changeUserRole(testUsers.user.username, 'Power User');
-    await managerUsersPageNew.waitForRoleChangeSuccess();
-    await managerUsersPageNew.expectUserRole(testUsers.user.username, 'Power User');
+    await managerUsersPageNew.changeUserRole(
+      testUsers.user.username,
+      'resource_power_user',
+      'Power User'
+    );
 
+    // The (now demoted) power-user's session loses elevated access.
     await powerUserPage.goto(`${baseUrl}/ui/models`);
     await powerUserPage.waitForLoadState('networkidle');
-
     await powerUserPage.waitForURL(`${baseUrl}/ui/login/`);
 
     await adminUsersPage.navigateToUsers();
     await adminUsersPage.expectUsersPage();
-
     await adminUsersPage.expectUserRole(testUsers.powerUser.username, 'User');
     await adminUsersPage.expectUserRole(testUsers.user.username, 'Power User');
 
     await managerPageNew.reload();
     await managerUsersPageNew.waitForSPAReady();
     await managerUsersPageNew.expectUsersPage();
-
     await managerUsersPageNew.expectUserRole(testUsers.powerUser.username, 'User');
     await managerUsersPageNew.expectUserRole(testUsers.user.username, 'Power User');
 
@@ -296,26 +242,13 @@ test.describe('Enhanced Users Management Flow', () => {
       powerUserContext = null;
     }
 
+    // Admin removes the demoted power-user via the rail's two-click confirm.
     await adminUsersPage.navigateToUsers();
     await adminUsersPage.expectUsersPage();
-
-    const powerUserRemoveButton = adminPage.locator(
-      `[data-testid="remove-user-btn-${testUsers.powerUser.username}"]`
-    );
-    await expect(powerUserRemoveButton).toBeVisible();
-
     await adminUsersPage.removeUser(testUsers.powerUser.username);
-    await adminUsersPage.waitForUserRemovalSuccess();
-
     await adminUsersPage.expectUserNotExists(testUsers.powerUser.username);
 
-    const cancelTestRemoveBtn = adminPage.locator(
-      `[data-testid="remove-user-btn-${testUsers.user.username}"]`
-    );
-    await cancelTestRemoveBtn.click();
-    await adminUsersPage.expectRemoveUserDialog();
-    await adminUsersPage.cancelRemoveUser();
-
+    // The remaining user is still present (not removed).
     await adminUsersPage.expectUserExists(testUsers.user.username);
 
     await managerUsersPageNew.expectNoActionsForUser(testUsers.admin.username);

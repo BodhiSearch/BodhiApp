@@ -1,67 +1,45 @@
 import { BasePage } from '@/pages/BasePage.mjs';
 import { expect } from '@playwright/test';
 
+/**
+ * Manage Users (V2) page object. The V2 screen is an AppShell list: rows are `div`s
+ * (`user-row-{username}`), and role-change / remove happen in the right detail rail opened
+ * by clicking a row.
+ */
 export class AllUsersPage extends BasePage {
   selectors = {
-    // Page container
     usersPage: '[data-testid="users-page"]',
+    row: (username) => `[data-testid="user-row-${username}"]`,
+    rowUsername: '[data-testid="user-username"]',
+    roleCell: (username) => `[data-testid="user-role-${username}"]`,
+    role: '[data-testid="user-role"]',
 
-    // Navigation links
-    pendingRequestsLink: 'a[href="/ui/users/pending"]',
-    allRequestsLink: 'a[href="/ui/users/access-requests"]',
-    usersLink: 'a[href="/ui/users"]',
-
-    // Table structure
-    tableRow: 'tbody tr',
-    userUsername: '[data-testid="user-username"]',
-    userRole: '[data-testid="user-role"]',
-    userStatus: '[data-testid="user-status"]',
-    userCreated: '[data-testid="user-created"]',
-    userActions: '[data-testid="user-actions"]',
-
-    // Role selection elements
+    // rail (opens on row select)
+    rail: (username) => `[data-testid="user-detail-${username}"]`,
+    railClose: '[data-testid="user-detail-close"]',
     roleSelect: (username) => `[data-testid="role-select-${username}"]`,
-    roleSelectTrigger: 'button[role="combobox"]',
-    roleSelectContent: '[role="listbox"]',
-    roleSelectItem: '[role="option"]',
+    saveRole: (username) => `[data-testid="save-role-${username}"]`,
+    removeBtn: (username) => `[data-testid="remove-user-btn-${username}"]`,
+    noActions: (username) => `[data-testid="no-actions-${username}"]`,
+    currentUserIndicator: '[data-testid="current-user-indicator"]',
+    restrictedUserIndicator: '[data-testid="restricted-user-indicator"]',
 
-    // Action buttons
-    removeUserBtn: (username) => `[data-testid="remove-user-btn-${username}"]`,
-    removingButton: 'button:has-text("Removing...")',
-
-    // Role change confirmation dialog
-    roleChangeDialog: '[data-testid="role-change-dialog"]',
-    roleChangeTitle: '[data-testid="role-change-title"]',
-    roleChangeDescription: '[data-testid="role-change-description"]',
-    roleChangeCancel: '[data-testid="role-change-cancel"]',
-    roleChangeConfirm: '[data-testid="role-change-confirm"]',
-    changingRoleButton: 'button:has-text("Changing...")',
-
-    // Remove user confirmation dialog
-    removeUserDialog: '[data-testid="remove-user-dialog"]',
-    removeUserTitle: '[data-testid="remove-user-title"]',
-    removeUserDescription: '[data-testid="remove-user-description"]',
-    removeUserCancel: '[data-testid="remove-user-cancel"]',
-    removeUserConfirm: '[data-testid="remove-user-confirm"]',
-
-    // Status messages
-    successToast:
-      '[data-state="open"]:has-text("Role Updated"), [data-state="open"]:has-text("User Removed")',
-    errorToast:
-      '[data-state="open"]:has-text("Update Failed"), [data-state="open"]:has-text("Removal Failed")',
-
-    // Empty state
-    noUsersMessage: 'h3:has-text("No Users")',
-    noUsersDescription: 'p:has-text("User management API not yet implemented")',
-
-    // Loading states
-    skeleton: '.animate-pulse',
+    // filters / empty
+    filterAll: '[data-testid="users-filter-all"]',
+    noUsers: '[data-testid="no-users"]',
   };
 
   async navigateToUsers() {
+    // Skip the rail view-transition so the close button doesn't detach mid-animation (the hook
+    // honors prefers-reduced-motion and applies the update synchronously).
+    await this.page.emulateMedia({ reducedMotion: 'reduce' });
     await this.navigate('/ui/users');
     await this.waitForSPAReady();
     await this.expectVisible(this.selectors.usersPage);
+    await expect(this.page.locator(this.selectors.usersPage)).toHaveAttribute(
+      'data-pagestatus',
+      'ready'
+    );
   }
 
   async expectUsersPage() {
@@ -69,431 +47,157 @@ export class AllUsersPage extends BasePage {
     await this.expectVisible(this.selectors.usersPage);
   }
 
-  async findUserRowByUsername(username) {
-    await this.page.waitForSelector(this.selectors.tableRow);
-    const rows = await this.page.locator(this.selectors.tableRow).all();
-
-    for (const row of rows) {
-      const usernameElement = row.locator(this.selectors.userUsername);
-      const usernameText = await usernameElement.textContent();
-      if (usernameText && usernameText.trim() === username) {
-        return row;
-      }
-    }
-
-    throw new Error(`No user found with username: ${username}`);
-  }
-
   async expectUserExists(username) {
-    const row = await this.findUserRowByUsername(username);
-    await expect(row).toBeVisible();
+    await expect(this.page.locator(this.selectors.row(username))).toBeVisible();
   }
 
   async expectUserNotExists(username) {
-    try {
-      const row = await this.findUserRowByUsername(username);
-      await expect(row).not.toBeVisible();
-    } catch (error) {
-      console.log(`Confirmed: User ${username} is not in the list`);
-    }
-  }
-
-  async getUserRole(username) {
-    const row = await this.findUserRowByUsername(username);
-    const roleElement = row.locator(this.selectors.userRole);
-    return await roleElement.textContent();
+    await expect(this.page.locator(this.selectors.row(username))).toHaveCount(0);
   }
 
   async expectUserRole(username, expectedRole) {
-    const roleCell = this.page.locator(`[data-testid="user-role-${username}"]`);
-    const roleElement = roleCell.locator(this.selectors.userRole);
-    await expect(roleElement).toHaveText(expectedRole);
+    const roleEl = this.page
+      .locator(this.selectors.roleCell(username))
+      .locator(this.selectors.role);
+    await expect(roleEl).toHaveText(expectedRole);
   }
 
-  async getUserStatus(username) {
-    const row = await this.findUserRowByUsername(username);
-    const statusElement = row.locator(this.selectors.userStatus);
-    return await statusElement.textContent();
+  /** Open a user's detail rail by clicking the row (no rail must already be open). */
+  async openUser(username) {
+    await this.closeRail();
+    const row = this.page.locator(this.selectors.row(username));
+    await expect(row).toBeVisible();
+    await row.click();
+    await this.expectVisible(this.selectors.rail(username));
   }
 
-  async selectRoleForUser(username, roleDisplayName) {
-    const row = await this.findUserRowByUsername(username);
-
-    // Click the role select trigger in this row
-    const roleSelectTrigger = row.locator(this.selectors.roleSelectTrigger);
-    await roleSelectTrigger.click();
-
-    // Wait for the select content to be visible
-    await this.page.waitForSelector(this.selectors.roleSelectContent, {
-      state: 'visible',
-    });
-
-    // Find role option by exact display name
-    const roleOption = this.page
-      .locator(this.selectors.roleSelectItem)
-      .filter({ hasText: new RegExp(`^${roleDisplayName}$`) });
-
-    // Wait for the option to be visible and click it
-    await roleOption.waitFor({ state: 'visible' });
-    await roleOption.click();
-
-    // Wait for dropdown to close
-    await this.page.waitForSelector(this.selectors.roleSelectContent, {
-      state: 'hidden',
-    });
-
-    console.log(`Selected role: ${roleDisplayName} for user: ${username}`);
+  /** Close any open detail rail and wait for the view-transition to fully remove it. */
+  async closeRail() {
+    const close = this.page.locator(this.selectors.railClose);
+    // The rail open/close is a view transition; the close button detaches mid-animation.
+    // Click only if present, then wait for it to be gone (toHaveCount(0) auto-retries).
+    if ((await close.count()) > 0) {
+      await close.click({ force: true }).catch(() => {});
+    }
+    await expect(close).toHaveCount(0);
   }
 
-  async changeUserRole(username, newRoleDisplayName) {
-    // Select the new role
-    await this.selectRoleForUser(username, newRoleDisplayName);
-
-    // Wait for role change dialog to appear
-    await this.expectVisible(this.selectors.roleChangeDialog);
-    await this.expectVisible(this.selectors.roleChangeTitle);
-
-    // Click confirm button
-    const confirmButton = this.page.locator(this.selectors.roleChangeConfirm);
-    await expect(confirmButton).toBeEnabled();
-    await confirmButton.click();
-
-    // Wait for any success toast to disappear (optional)
-    await this.waitForToastToHideOptional();
-
-    // Wait for dialog to close
-    await this.page.waitForSelector(this.selectors.roleChangeDialog, {
-      state: 'hidden',
-    });
+  /** Change a user's role via the rail's native select + Save. */
+  async changeUserRole(username, newRoleValue, expectedLabel) {
+    await this.closeRail();
+    await this.openUser(username);
+    const select = this.page.locator(this.selectors.roleSelect(username));
+    await select.selectOption(newRoleValue);
+    await expect(select).toHaveValue(newRoleValue);
+    const save = this.page.locator(this.selectors.saveRole(username));
+    await expect(save).toBeEnabled();
+    await save.click();
+    // The mutation invalidates + refetches the list; the rail re-renders with the new role,
+    // which flips Save back to its disabled "Saved" state. Wait for that to confirm the PUT settled.
+    await expect(save).toBeDisabled();
+    if (expectedLabel) {
+      await expect(
+        this.page.locator(this.selectors.roleCell(username)).locator(this.selectors.role)
+      ).toHaveText(expectedLabel);
+    }
+    await this.closeRail();
+    await this.waitForSPAReady();
   }
 
+  /** Remove a user via the rail's two-click confirm. */
   async removeUser(username) {
-    const row = await this.findUserRowByUsername(username);
-
-    // Click remove button
-    const removeButton = row.locator(this.selectors.removeUserBtn(username));
-    await expect(removeButton).toBeEnabled();
-    await removeButton.click();
-
-    // Wait for remove dialog to appear
-    await this.expectVisible(this.selectors.removeUserDialog);
-    await this.expectVisible(this.selectors.removeUserTitle);
-
-    // Click confirm button
-    const confirmButton = this.page.locator(this.selectors.removeUserConfirm);
-    await expect(confirmButton).toBeEnabled();
-    await confirmButton.click();
-
-    // Wait for dialog to close
-    await this.page.waitForSelector(this.selectors.removeUserDialog, {
-      state: 'hidden',
-    });
-  }
-
-  async expectRoleChangeDialog() {
-    await this.expectVisible(this.selectors.roleChangeDialog);
-    await this.expectVisible(this.selectors.roleChangeTitle);
-    await this.expectVisible(this.selectors.roleChangeDescription);
-  }
-
-  async expectRemoveUserDialog() {
-    await this.expectVisible(this.selectors.removeUserDialog);
-    await this.expectVisible(this.selectors.removeUserTitle);
-    await this.expectVisible(this.selectors.removeUserDescription);
-  }
-
-  async cancelRoleChange() {
-    const cancelButton = this.page.locator(this.selectors.roleChangeCancel);
-    await expect(cancelButton).toBeEnabled();
-    await cancelButton.click();
-
-    // Wait for dialog to close
-    await this.page.waitForSelector(this.selectors.roleChangeDialog, {
-      state: 'hidden',
-    });
-  }
-
-  async cancelRemoveUser() {
-    const cancelButton = this.page.locator(this.selectors.removeUserCancel);
-    await expect(cancelButton).toBeEnabled();
-    await cancelButton.click();
-
-    // Wait for dialog to close
-    await this.page.waitForSelector(this.selectors.removeUserDialog, {
-      state: 'hidden',
-    });
-  }
-
-  async expectRoleChangeInProgress() {
-    // Check if changing button is visible
-    await this.expectVisible(this.selectors.changingRoleButton);
-  }
-
-  async expectRemovalInProgress(username) {
-    const row = await this.findUserRowByUsername(username);
-    const removingButton = row.locator(this.selectors.removingButton);
-    await expect(removingButton).toBeVisible();
-  }
-
-  async waitForRoleChangeSuccess() {
-    await this.waitForToastOptional(/Role Updated/);
-  }
-
-  async waitForUserRemovalSuccess() {
-    await this.waitForToastOptional(/User Removed/);
-  }
-
-  async waitForRoleChangeError() {
-    await this.waitForToastOptional(/Update Failed/);
-  }
-
-  async waitForRemovalError() {
-    await this.waitForToastOptional(/Removal Failed/);
+    await this.openUser(username);
+    const removeBtn = this.page.locator(this.selectors.removeBtn(username));
+    await expect(removeBtn).toHaveText(/Remove user/);
+    await removeBtn.click();
+    await expect(removeBtn).toHaveText(/Confirm remove/);
+    await removeBtn.click();
+    await this.waitForSPAReady();
   }
 
   async getUserCount() {
-    // Wait for at least one table row to ensure table is loaded
-    await this.page.waitForSelector(this.selectors.tableRow);
-
-    // Now count all rows
-    const rows = await this.page.locator(this.selectors.tableRow).count();
-    return rows;
-  }
-
-  async expectNoUsers() {
-    await this.expectVisible(this.selectors.noUsersMessage);
-    await this.expectVisible(this.selectors.noUsersDescription);
+    await this.page.waitForSelector('[data-testid^="user-row-"]');
+    return this.page.locator('[data-testid^="user-row-"]').count();
   }
 
   async getAllUsernames() {
-    const rows = await this.page.locator(this.selectors.tableRow).all();
-    const usernames = [];
-
-    for (const row of rows) {
-      const usernameElement = row.locator(this.selectors.userUsername);
-      const usernameText = await usernameElement.textContent();
-      if (usernameText) {
-        usernames.push(usernameText.trim());
-      }
-    }
-
-    return usernames;
-  }
-
-  async getAvailableRolesForUser(username) {
-    const row = await this.findUserRowByUsername(username);
-
-    // Click the role select trigger to open dropdown
-    const roleSelectTrigger = row.locator(this.selectors.roleSelectTrigger);
-    await roleSelectTrigger.click();
-
-    // Wait for the dropdown to open
-    await this.page.waitForSelector(this.selectors.roleSelectContent, {
-      state: 'visible',
-    });
-
-    // Get all available role options
-    const roleOptions = await this.page.locator(this.selectors.roleSelectItem).allTextContents();
-
-    // Close dropdown by pressing Escape key
-    await this.page.keyboard.press('Escape');
-
-    // Wait for dropdown to close
-    await this.page.waitForSelector(this.selectors.roleSelectContent, {
-      state: 'hidden',
-    });
-
-    return roleOptions.map((role) => role.trim());
-  }
-
-  async expectRoleNotAvailable(username, roleName) {
-    const availableRoles = await this.getAvailableRolesForUser(username);
-
-    if (availableRoles.includes(roleName)) {
-      throw new Error(
-        `Role "${roleName}" should not be available for user ${username}, but found in: ${availableRoles.join(', ')}`
-      );
-    }
-
-    console.log(
-      `Confirmed: Role "${roleName}" not available for ${username}. Available roles: ${availableRoles.join(', ')}`
-    );
-  }
-
-  async expectRoleAvailable(username, roleName) {
-    const availableRoles = await this.getAvailableRolesForUser(username);
-
-    if (!availableRoles.includes(roleName)) {
-      throw new Error(
-        `Role "${roleName}" should be available for user ${username}, but not found in: ${availableRoles.join(', ')}`
-      );
-    }
-
-    console.log(
-      `Confirmed: Role "${roleName}" available for ${username}. Available roles: ${availableRoles.join(', ')}`
-    );
-  }
-
-  async expectUsersPageLoading() {
-    await this.expectVisible(this.selectors.skeleton);
-  }
-
-  async waitForUsersPageLoaded() {
-    // Wait for loading to finish
-    await this.page.waitForSelector(this.selectors.skeleton, {
-      state: 'hidden',
-    });
-  }
-
-  // Additional methods for UI restriction testing
-
-  async navigateToPendingRequests() {
-    await this.navigate('/ui/users/pending');
-    await this.waitForSPAReady();
-  }
-
-  async navigateToAllRequests() {
-    await this.navigate('/ui/users/access-requests');
-    await this.waitForSPAReady();
-  }
-
-  async expectNoActionsForUser(username) {
-    // Wait for the user row to be fully loaded
-    await this.page.waitForSelector(
-      `tbody tr:has([data-testid="user-username"]:has-text("${username}"))`,
-      {
-        timeout: 10000,
-      }
-    );
-
-    const row = await this.findUserRowByUsername(username);
-    const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
-
-    // Check for "no actions" indicators (either "You" or "Restricted")
-    const noActionsIndicator = actionsCell.locator(`[data-testid="no-actions-${username}"]`);
-    await expect(noActionsIndicator).toBeVisible();
-
-    // Ensure role select and remove buttons are not present
-    const roleSelect = actionsCell.locator(`[data-testid="role-select-${username}"]`);
-    const removeButton = actionsCell.locator(`[data-testid="remove-user-btn-${username}"]`);
-
-    await expect(roleSelect).not.toBeVisible();
-    await expect(removeButton).not.toBeVisible();
-
-    console.log(
-      `Confirmed: User ${username} has no action buttons (self-modification/hierarchy restriction)`
-    );
-  }
-
-  async expectActionsForUser(username) {
-    // Wait for the user row to be fully loaded
-    await this.page.waitForSelector(
-      `tbody tr:has([data-testid="user-username"]:has-text("${username}"))`,
-      {
-        timeout: 10000,
-      }
-    );
-
-    const row = await this.findUserRowByUsername(username);
-    const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
-
-    // Check for actions container
-    const actionsContainer = actionsCell.locator(
-      `[data-testid="user-actions-container-${username}"]`
-    );
-    await expect(actionsContainer).toBeVisible();
-
-    // Ensure role select and remove buttons are present
-    const roleSelect = actionsCell.locator(`[data-testid="role-select-${username}"]`);
-    const removeButton = actionsCell.locator(`[data-testid="remove-user-btn-${username}"]`);
-
-    await expect(roleSelect).toBeVisible();
-    await expect(removeButton).toBeVisible();
-
-    console.log(`Confirmed: User ${username} has visible action buttons`);
-  }
-
-  async expectCurrentUserIndicator(username) {
-    const row = await this.findUserRowByUsername(username);
-    const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
-    const currentUserIndicator = actionsCell.locator('[data-testid="current-user-indicator"]');
-
-    await expect(currentUserIndicator).toBeVisible();
-    const text = await currentUserIndicator.textContent();
-    expect(text.trim()).toBe('You');
-
-    console.log(`Confirmed: User ${username} shows "You" indicator`);
-  }
-
-  async expectRestrictedUserIndicator(username) {
-    const row = await this.findUserRowByUsername(username);
-    const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
-    const restrictedIndicator = actionsCell.locator('[data-testid="restricted-user-indicator"]');
-
-    await expect(restrictedIndicator).toBeVisible();
-    const text = await restrictedIndicator.textContent();
-    expect(text.trim()).toBe('Restricted');
-
-    console.log(`Confirmed: User ${username} shows "Restricted" indicator`);
-  }
-
-  async getUserActionsVisibility(username) {
-    try {
-      await this.expectActionsForUser(username);
-      return 'visible';
-    } catch {
-      try {
-        await this.expectNoActionsForUser(username);
-        const row = await this.findUserRowByUsername(username);
-        const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
-        const currentUserIndicator = actionsCell.locator('[data-testid="current-user-indicator"]');
-
-        if (await currentUserIndicator.isVisible()) {
-          return 'self';
-        }
-        return 'restricted';
-      } catch {
-        return 'unknown';
-      }
-    }
+    const cells = await this.page
+      .locator('[data-testid^="user-row-"] [data-testid="user-username"]')
+      .allTextContents();
+    return cells.map((t) => t.trim());
   }
 
   async verifyUsersInHierarchicalOrder(expectedUsernames) {
-    const actualUsernames = await this.getAllUsernames();
-    expect(actualUsernames).toEqual(expectedUsernames);
-    console.log(`Confirmed: Users displayed in hierarchical order: ${actualUsernames.join(' → ')}`);
+    const actual = await this.getAllUsernames();
+    expect(actual).toEqual(expectedUsernames);
   }
 
-  // Combined action + verification methods (CI-friendly)
-  async changeUserRoleAndVerify(username, newRole) {
-    await this.changeUserRole(username, newRole);
-    await this.waitForRoleChangeSuccess();
-    // Primary verification: check the actual role change in UI
-    await this.expectUserRole(username, newRole);
+  /** A user the actor can't modify (self or higher-ranked): rail shows a read-only note, no controls. */
+  async expectNoActionsForUser(username) {
+    await this.openUser(username);
+    await expect(this.page.locator(this.selectors.noActions(username))).toBeVisible();
+    await expect(this.page.locator(this.selectors.roleSelect(username))).toHaveCount(0);
+    await expect(this.page.locator(this.selectors.removeBtn(username))).toHaveCount(0);
+    await this.closeRail();
+  }
+
+  /** A modifiable user: rail shows the role select + remove button. */
+  async expectActionsForUser(username) {
+    await this.openUser(username);
+    await expect(this.page.locator(this.selectors.roleSelect(username))).toBeVisible();
+    await expect(this.page.locator(this.selectors.removeBtn(username))).toBeVisible();
+    await this.closeRail();
+  }
+
+  async expectCurrentUserIndicator(username) {
+    await this.openUser(username);
+    const indicator = this.page
+      .locator(this.selectors.rail(username))
+      .locator(this.selectors.currentUserIndicator);
+    await expect(indicator).toBeVisible();
+    await this.closeRail();
+  }
+
+  async expectRestrictedUserIndicator(username) {
+    await this.openUser(username);
+    const indicator = this.page
+      .locator(this.selectors.rail(username))
+      .locator(this.selectors.restrictedUserIndicator);
+    await expect(indicator).toBeVisible();
+    await this.closeRail();
+  }
+
+  /** Roles the actor may assign to a user, read from the rail's native <option>s. */
+  async getAvailableRolesForUser(username) {
+    await this.openUser(username);
+    const options = await this.page
+      .locator(this.selectors.roleSelect(username))
+      .locator('option')
+      .allTextContents();
+    await this.closeRail();
+    return options.map((o) => o.trim());
+  }
+
+  async expectRoleAvailable(username, roleLabel) {
+    const available = await this.getAvailableRolesForUser(username);
+    expect(available).toContain(roleLabel);
+  }
+
+  async expectRoleNotAvailable(username, roleLabel) {
+    const available = await this.getAvailableRolesForUser(username);
+    expect(available).not.toContain(roleLabel);
+  }
+
+  async changeUserRoleAndVerify(username, newRoleValue, expectedLabel) {
+    await this.changeUserRole(username, newRoleValue);
+    await this.expectUserRole(username, expectedLabel);
   }
 
   async removeUserAndVerify(username) {
     const countBefore = await this.getUserCount();
     await this.removeUser(username);
-    await this.waitForUserRemovalSuccess();
-
-    // Primary verification: count and user absence
+    await expect(this.page.locator(this.selectors.row(username))).toHaveCount(0);
     const countAfter = await this.getUserCount();
     expect(countAfter).toBe(countBefore - 1);
-
-    // Verify user is gone from the list
-    const userExists = await this.isUserInList(username);
-    expect(userExists).toBe(false);
-  }
-
-  async isUserInList(username) {
-    try {
-      await this.page.waitForSelector(
-        `tbody tr:has([data-testid="user-username"]:has-text("${username}"))`
-      );
-      return true;
-    } catch {
-      return false;
-    }
   }
 }
