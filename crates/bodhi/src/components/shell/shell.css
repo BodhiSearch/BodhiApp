@@ -273,57 +273,57 @@ a {
   gap: 8px;
 }
 
-/* theme switch — quick light/dark pill above the user chip */
-.shell-theme-seg {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  background: hsl(var(--muted));
-  border: 1px solid hsl(var(--border));
-  border-radius: 9px;
-  padding: 3px;
-}
-.shell-theme-thumb {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc(50% - 3px);
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 6px;
-  box-shadow: var(--shadow-xs);
-  transition: transform var(--dur-base) var(--ease-out);
-}
-.shell-theme-thumb[data-side='dark'] {
-  transform: translateX(100%);
-}
-.shell-theme-opt {
-  position: relative;
-  z-index: 1;
+/* Theme switch — always visible above the user chip. A 3-segment Light/Dark/System
+   control (expanded), collapsing to a vertical icon stack on the icon rail. */
+.shell-theme {
   display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: hsl(var(--muted));
+  border-radius: 9px;
+}
+.shell-theme.is-collapsed {
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  background: transparent;
+}
+.shell-theme-btn {
+  flex: 1;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 5px 4px;
+  padding: 6px 4px;
   border: none;
-  background: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
+  border-radius: 7px;
+  background: transparent;
   color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: color 130ms;
+  transition:
+    background 120ms,
+    color 120ms;
 }
-.shell-theme-opt svg {
-  width: 14px;
-  height: 14px;
+.shell-theme-btn svg {
+  width: 15px;
+  height: 15px;
 }
-.shell-theme-opt.on {
+.shell-theme-btn:hover {
   color: hsl(var(--foreground));
 }
-.shell-theme-rail svg {
-  transition: color 130ms;
+.shell-theme-btn.on {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: var(--shadow-xs);
+}
+.shell-theme.is-collapsed .shell-theme-btn {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 8px;
 }
 .shell-avatar {
   width: 30px;
@@ -558,6 +558,7 @@ a {
 .shell-um-item:hover .shell-um-count {
   background: hsl(var(--background));
 }
+
 .shell-um-logout {
   color: hsl(var(--destructive));
 }

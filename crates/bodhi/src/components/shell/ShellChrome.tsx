@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { useTheme } from '@/components/ThemeProvider';
 import { BASE_PATH, ROUTE_CHAT } from '@/lib/constants';
 
 import { ShellIcon } from './ShellIcon';
@@ -218,6 +219,8 @@ export function ShellFooter({ user, collapsed }: ShellFooterProps) {
 
   return (
     <>
+      {/* Always-visible theme switch, above the user chip. Collapsed: icon-only stack. */}
+      <ThemeSwitch collapsed={collapsed} />
       {chip}
       <UserMenuPop open={open} anchorRef={anchorRef} collapsed={collapsed} onClose={() => setOpen(false)}>
         <div className="shell-um-head">
@@ -235,6 +238,41 @@ export function ShellFooter({ user, collapsed }: ShellFooterProps) {
         </div>
       </UserMenuPop>
     </>
+  );
+}
+
+/* ── Theme switch — always visible in the sidebar footer, above the user chip ──
+   A 3-segment Light/Dark/System control (icon-only when the sidebar is collapsed),
+   so migrated screens are easy to eyeball in both modes. Uses ThemeProvider. */
+const THEME_OPTIONS: { id: 'light' | 'dark' | 'system'; label: string; icon: string }[] = [
+  { id: 'light', label: 'Light', icon: 'sun' },
+  { id: 'dark', label: 'Dark', icon: 'moon' },
+  { id: 'system', label: 'System', icon: 'monitor' },
+];
+
+function ThemeSwitch({ collapsed }: { collapsed?: boolean }) {
+  const { theme, setTheme } = useTheme();
+  return (
+    <div
+      className={'shell-theme' + (collapsed ? ' is-collapsed' : '')}
+      role="group"
+      aria-label="Theme"
+      data-testid="shell-theme-switch"
+    >
+      {THEME_OPTIONS.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          className={'shell-theme-btn' + (theme === opt.id ? ' on' : '')}
+          aria-pressed={theme === opt.id}
+          aria-label={opt.label}
+          onClick={() => setTheme(opt.id)}
+          data-testid={`shell-theme-${opt.id}`}
+        >
+          <ShellIcon name={opt.icon} size={15} />
+        </button>
+      ))}
+    </div>
   );
 }
 
