@@ -115,6 +115,7 @@ describe('AllRequestsPage Data Display', () => {
   });
 
   it('displays all requests with status chips and reviewer for decided rows', async () => {
+    const user = userEvent.setup();
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
@@ -128,6 +129,9 @@ describe('AllRequestsPage Data Display', () => {
 
     await renderPage();
     await screen.findByText('user@example.com');
+
+    // default filter is Pending; switch to All to see decided rows too
+    await user.click(screen.getByTestId('requests-filter-all'));
 
     expect(screen.getByText('user@example.com')).toBeInTheDocument();
     expect(screen.getByText('approved@example.com')).toBeInTheDocument();
@@ -185,6 +189,9 @@ describe('AllRequestsPage Data Display', () => {
     await renderPage();
     await screen.findByText('user@example.com');
 
+    // default filter is Pending; switch to All so the search can reach the approved row
+    await user.click(screen.getByTestId('requests-filter-all'));
+
     await user.click(screen.getByTestId('requests-search-toggle'));
     await user.type(screen.getByPlaceholderText('Search requests by email…'), 'approved');
 
@@ -217,6 +224,7 @@ describe('AllRequestsPage Data Display', () => {
   });
 
   it('shows decided rows without a role dropdown or action buttons', async () => {
+    const user = userEvent.setup();
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
@@ -224,6 +232,9 @@ describe('AllRequestsPage Data Display', () => {
     );
 
     await renderPage();
+
+    // default filter is Pending; the only request is approved, so switch to All to see it
+    await user.click(screen.getByTestId('requests-filter-all'));
     await screen.findByText('approved@example.com');
 
     expect(screen.queryByTestId('approve-btn-approved@example.com')).not.toBeInTheDocument();

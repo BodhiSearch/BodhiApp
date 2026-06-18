@@ -100,10 +100,33 @@ describe('AccessRequestsPage V2 chrome', () => {
     expect(within(rail).getByTestId('request-detail-reject')).toBeInTheDocument();
   });
 
+  it('renders each row as an accessible link and activating it opens the rail', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    const row = screen.getByTestId('request-row-user@example.com');
+    const link = within(row).getByTestId('row-link');
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAccessibleName('Open access request from user@example.com');
+
+    await user.click(link);
+    expect(within(screen.getByTestId('harness-rail')).getByTestId('request-detail-rail')).toBeInTheDocument();
+  });
+
+  it('changing the in-row role select does not open the rail (control stays above the link)', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    await user.selectOptions(screen.getByTestId('role-select-user@example.com'), 'resource_power_user');
+    expect(within(screen.getByTestId('harness-rail')).queryByTestId('request-detail-rail')).not.toBeInTheDocument();
+  });
+
   it('shows a static decided rail (no actions) for a decided row', async () => {
     const user = userEvent.setup();
     await renderReady();
 
+    // default filter is Pending; switch to All to reach the decided row
+    await user.click(screen.getByTestId('requests-filter-all'));
     await user.click(screen.getByTestId(`request-row-${mockApprovedRequest.username}`));
 
     const rail = within(screen.getByTestId('harness-rail')).getByTestId('request-detail-rail');

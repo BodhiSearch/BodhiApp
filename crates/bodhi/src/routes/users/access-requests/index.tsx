@@ -5,7 +5,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Pagination } from '@/components/DataTable';
-import { ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
+import { LinkRow, ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
@@ -28,10 +28,10 @@ const REQUEST_BREADCRUMB = [
 type RequestFilter = 'all' | 'pending' | 'approved' | 'rejected';
 
 const REQUEST_FILTER_TABS: { id: RequestFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
   { id: 'pending', label: 'Pending' },
   { id: 'approved', label: 'Approved' },
   { id: 'rejected', label: 'Rejected' },
+  { id: 'all', label: 'All' },
 ];
 
 const STATUS_ICON: Record<string, string> = {
@@ -71,7 +71,7 @@ function StatusChip({ status }: { status: string }) {
 function AccessRequestsContent() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
-  const [filter, setFilter] = useState<RequestFilter>('all');
+  const [filter, setFilter] = useState<RequestFilter>('pending');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>('resource_user');
@@ -317,6 +317,7 @@ function RequestRow({
       onClick={onSelect}
       data-testid={`request-row-${request.username}`}
     >
+      <LinkRow onActivate={onSelect} label={`Open access request from ${request.username}`} />
       <div className="ua-icon">
         <div className="ua-avatar" style={{ background: avatarColor(request.username) }}>
           {initials(request.username)}
