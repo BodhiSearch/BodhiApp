@@ -255,7 +255,7 @@ function McpCard({ s, role, active, onOpen }) {
 
 function McpRow({ s, role, active, onOpen }) {
   return (
-    <div className={`l-listrow ${statusClass(s)}${active ? ' active' : ''}`} onClick={() => onOpen(s.id)}>
+    <ListRow className={statusClass(s)} active={active} onSelect={() => onOpen(s.id)} label={`Open ${s.name}`}>
       <div className="row-icon"><div className="row-icon-box" style={{ background: s.iconBg, color: s.iconColor, borderColor: s.iconBg }}>{s.icon}</div></div>
       <div className="row-body">
         <div className="row-name">{s.name}</div>
@@ -266,7 +266,7 @@ function McpRow({ s, role, active, onOpen }) {
       <div className="row-auth"><AuthBadges auths={s.auth} /></div>
       <div className="row-stat"><StatusLine s={s} /></div>
       <div className="row-act"><Cta s={s} role={role} onOpen={onOpen} /></div>
-    </div>
+    </ListRow>
   );
 }
 

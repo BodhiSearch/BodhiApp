@@ -267,13 +267,14 @@ function AllUsersView({ users, search, setSearch, selId, onSelect }) {
             </>
           }>
             {visible.map(user => (
-              <div className={`l-listrow mu-listrow${user.id === selId ? ' active' : ''}`} key={user.id} onClick={() => select(user.id)}>
+              <ListRow className="mu-listrow" key={user.id} active={user.id === selId}
+                       onSelect={() => select(user.id)} label={`Open user ${user.username}`}>
                 <div className="mu-user"><span className="mu-username">{user.username}</span></div>
                 <div className="mu-role">
                   <RoleBadge role={user.role} />
                   {user.isYou && <span className="mu-you-label" style={{ marginLeft: 8 }}>You</span>}
                 </div>
-              </div>
+              </ListRow>
             ))}
           </ListView>
         )}

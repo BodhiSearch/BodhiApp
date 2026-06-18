@@ -85,6 +85,43 @@ function ListToolbar({
   );
 }
 
+/* ── RowLink ─────────────────────────────────────────
+   An empty, stretched <a href="#"> that turns a selectable row into a real
+   LINK target — so keyboard/accessibility tools (e.g. the Vimium extension)
+   surface the whole row when listing links, and screen readers announce it.
+   It fills the row but sits BEHIND the row's own controls (see .l-rowlink in
+   bodhi-list.css), so buttons / selects keep working and a normal mouse click
+   still lands on the row. Activating the link runs the same select handler. */
+function RowLink({ onActivate, label }) {
+  return (
+    <a className="l-rowlink" href="#" aria-label={label || 'Open details'}
+       onClick={e => { e.preventDefault(); if (onActivate) onActivate(); }}>
+    </a>
+  );
+}
+
+/* ── ListRow ─────────────────────────────────────────
+   The shared selectable list row. Renders the .l-listrow frame + the stretched
+   RowLink + your cell children. Selecting (mouse OR link/keyboard) calls
+   onSelect; the selected row gets an app-wide left accent border (.active).
+     active    → selected state (wash + --c-lotus-text left border)
+     accent    → status stripe color (adds .accent, sets --row-accent)
+     className → page-local classes for cell layout
+     onSelect  → fired on row click AND on RowLink activation
+     label     → aria-label for the row link
+     style     → merged through (pages can still pass CSS vars) */
+function ListRow({ active, accent, className = '', style, onSelect, label, children, ...rest }) {
+  const cls = ['l-listrow', accent ? 'accent' : '', active ? 'active' : '', className]
+    .filter(Boolean).join(' ');
+  const mergedStyle = accent ? { ...style, '--row-accent': accent } : style;
+  return (
+    <div className={cls} style={mergedStyle} onClick={() => onSelect && onSelect()} {...rest}>
+      <RowLink onActivate={onSelect} label={label} />
+      {children}
+    </div>
+  );
+}
+
 function ListView({ head, columns, children, className = '' }) {
   const headNode = head || (columns && columns.map((c, i) => (
     <div key={i} className={'l-lh ' + (c.cls || '')} style={c.style}>{c.label}</div>
@@ -107,4 +144,4 @@ function ListPage({ toolbar, children, scrollClass = '' }) {
   );
 }
 
-Object.assign(window, { ListToolbar, ListView, ListPage });
+Object.assign(window, { ListToolbar, ListView, ListPage, RowLink, ListRow });

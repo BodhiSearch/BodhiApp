@@ -117,9 +117,12 @@
 .model-list::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
 
 /* generic m-row (local + api) */
-.m-row { display: flex; align-items: flex-start; padding: 10px 16px; border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 80ms; }
+.m-row { position: relative; display: flex; align-items: flex-start; padding: 10px 16px; border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 80ms; }
 .m-row:hover { background: hsl(var(--muted)); }
-.m-row.active { background: var(--c-lotus-bg); }
+.m-row.active { background: var(--c-lotus-bg); box-shadow: inset 3px 0 0 var(--c-lotus-text); }
+/* row link sits above the static cells; only real controls are raised above it */
+.m-row button, .m-row select, .m-row input, .m-row a:not(.l-rowlink),
+.my-card button, .my-card select, .my-card input, .my-card a:not(.l-rowlink) { position: relative; z-index: 1; }
 .model-list.compact .m-row, .model-list.compact .my-card { padding-top: 7px; padding-bottom: 7px; }
 .model-list.hide-tags .m-tags { display: none; }
 .model-list.hide-scorelbl .m-score-lbl { display: none; }
@@ -154,7 +157,7 @@
 
 /* ── My Models flat rows ── */
 .model-list.my-mode { padding: 0; }
-.my-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: none; border-bottom: 1px solid hsl(var(--border)); background: transparent; cursor: pointer; transition: background 80ms; }
+.my-card { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: none; border-bottom: 1px solid hsl(var(--border)); background: transparent; cursor: pointer; transition: background 80ms; }
 .my-card:hover { background: hsl(var(--muted) / .6); }
 .my-card.active { background: var(--c-lotus-bg); box-shadow: inset 3px 0 0 var(--c-lotus-text); }
 .my-icon-box { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 1px; }

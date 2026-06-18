@@ -34,13 +34,13 @@ const STATUS_ICON = { pending: 'clock', approved: 'check-circle-2', denied: 'x-c
 const statusAccent = s => s === 'pending' ? 'var(--c-saffron-bd)' : s === 'approved' ? 'var(--c-leaf-bd)' : 'hsl(var(--border))';
 const whenText = req => req.status === 'pending'
   ? `Requested ${req.requestedAgo}`
-  : `${req.status === 'denied' ? 'Denied' : 'Approved'} ${req.decidedAt}`;
+  : `${req.status === 'denied' ? 'Rejected' : 'Approved'} ${req.decidedAt}`;
 
 function StatusChip({ status }) {
   return (
     <span className={`ua-status ${status}`}>
       <Ic name={STATUS_ICON[status]} size={11} />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {status === 'denied' ? 'Rejected' : status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 }
@@ -57,8 +57,8 @@ function RoleSelect({ value, onChange, className = 'ua-role-select' }) {
 function RequestRow({ req, selected, onSelect, onRole, onApprove, onReject }) {
   const pending = req.status === 'pending';
   return (
-    <div className={`l-listrow ua-row accent ${req.status}${selected ? ' active' : ''}`}
-         style={{ '--row-accent': statusAccent(req.status) }} onClick={() => onSelect(req.id)}>
+    <ListRow className={`ua-row ${req.status}`} accent={statusAccent(req.status)} active={selected}
+             onSelect={() => onSelect(req.id)} label={`Open access request from ${req.email}`}>
       <div className="ua-icon"><div className="ua-avatar" style={{ background: avatarColor(req.email) }}>{initials(req.email)}</div></div>
 
       <div className="ua-id">
@@ -86,7 +86,7 @@ function RequestRow({ req, selected, onSelect, onRole, onApprove, onReject }) {
           </>
         )}
       </div>
-    </div>
+    </ListRow>
   );
 }
 
@@ -142,7 +142,7 @@ function RequestDetailPanel({ req, onRole, onApprove, onReject }) {
           <div className="dp-rows">
             <div className="dp-row"><span className="dp-row-k"><Ic name="clock" size={13} /> Requested</span><span className="dp-row-v">{req.requestedAt}</span></div>
             {req.decidedAt && (
-              <div className="dp-row"><span className="dp-row-k"><Ic name={approved ? 'check' : 'x'} size={13} /> {approved ? 'Approved' : 'Denied'}</span><span className="dp-row-v">{req.decidedAt}</span></div>
+              <div className="dp-row"><span className="dp-row-k"><Ic name={approved ? 'check' : 'x'} size={13} /> {approved ? 'Approved' : 'Rejected'}</span><span className="dp-row-v">{req.decidedAt}</span></div>
             )}
           </div>
         </div>
@@ -182,7 +182,7 @@ function UserRequestsMain({ requests, filter, setFilter, search, setSearch, coun
           { id: 'all',      label: 'All',      badge: counts.all },
           { id: 'pending',  label: 'Pending',  badge: counts.pending },
           { id: 'approved', label: 'Approved', badge: counts.approved },
-          { id: 'denied',   label: 'Denied',   badge: counts.denied },
+          { id: 'denied',   label: 'Rejected', badge: counts.denied },
         ]}
         category={filter} onCategory={setFilter}
         search={search} onSearch={setSearch} searchPlaceholder="Search requests by email…" />

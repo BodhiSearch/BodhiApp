@@ -51,7 +51,8 @@ function TokenToggle({ token, onToggle, size = 'sm' }) {
 function TokenRow({ token, selected, onSelect, onToggle }) {
   const inactive = token.status !== 'active';
   return (
-    <div className={`l-listrow tk-row${inactive ? ' is-dim' : ''}${selected ? ' active' : ''}`} onClick={() => onSelect(token.id)}>
+    <ListRow className={`tk-row${inactive ? ' is-dim' : ''}`} active={selected}
+             onSelect={() => onSelect(token.id)} label={`Open token ${token.name}`}>
       <div className="tk-icon">
         <div className="app-token-avatar" style={{ background: token.color }}>{token.initial}</div>
       </div>
@@ -76,7 +77,7 @@ function TokenRow({ token, selected, onSelect, onToggle }) {
       <div className="tk-act">
         <TokenToggle token={token} onToggle={onToggle} />
       </div>
-    </div>
+    </ListRow>
   );
 }
 

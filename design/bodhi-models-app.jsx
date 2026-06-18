@@ -110,12 +110,13 @@ function MyRow({ item, active, onClick }) {
       </div>
     </>;
   }
-  return <div className={'my-card' + (active ? ' active' : '')} onClick={onClick}>{body}</div>;
+  return <div className={'my-card' + (active ? ' active' : '')} onClick={onClick}><RowLink onActivate={onClick} label={'Open ' + (item.name || item.repo || 'model')} />{body}</div>;
 }
 
 function LocalRow({ m, active, onClick }) {
   return (
     <div className={'m-row' + (active ? ' active' : '')} onClick={onClick}>
+      <RowLink onActivate={onClick} label={'Open ' + m.org + '/' + m.repo} />
       <div className="m-num">#{m.rank}</div>
       <div className="m-body">
         <div className="m-name"><span className="m-org">{m.org}</span><span className="m-sep">/</span><span className="m-repo">{m.repo}</span></div>
@@ -140,6 +141,7 @@ function ApiRow({ p, active, onClick }) {
   const suffix = p.models >= 100 ? '+' : '';
   return (
     <div className={'m-row' + (active ? ' active' : '')} onClick={onClick}>
+      <RowLink onActivate={onClick} label={'Open ' + p.provider} />
       <div className="m-num">#{p.rank}</div>
       <div className="prov-avatar" style={{ background: color + '1a', color, border: '1.5px solid ' + color + '40' }}>{p.provider.slice(0, 2).toUpperCase()}</div>
       <div className="m-body">

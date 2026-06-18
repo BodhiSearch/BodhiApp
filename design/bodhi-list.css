@@ -86,11 +86,28 @@
 .l-listview { display: flex; flex-direction: column; }
 .l-listhead { display: flex; align-items: center; gap: 0; padding: 7px 16px; border-bottom: 1px solid hsl(var(--border)); position: sticky; top: 0; z-index: 5; background: hsl(var(--background)); flex-shrink: 0; }
 .l-lh { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: hsl(var(--muted-foreground)); }
-.l-listrow { display: flex; align-items: center; gap: 0; padding: 10px 16px; border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 80ms; }
+.l-listrow { position: relative; display: flex; align-items: center; gap: 0; padding: 10px 16px; border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 80ms; }
 .l-listrow:hover { background: hsl(var(--muted)); }
-.l-listrow.active { background: var(--c-lotus-bg); }
+/* selected row — app-wide identifiable left accent border (--c-lotus-text) */
+.l-listrow.active { background: var(--c-lotus-bg); box-shadow: inset 3px 0 0 var(--c-lotus-text); }
 /* status accent stripe — pages set --row-accent on the row */
 .l-listrow.accent { border-left: 3px solid var(--row-accent, transparent); padding-left: 13px; }
+/* when an accent row is selected, recolor its existing stripe (no double bar) */
+.l-listrow.accent.active { box-shadow: none; border-left-color: var(--c-lotus-text); }
+
+/* ── Stretched row link (keyboard / Vimium nav + a11y) ──────────────
+   <RowLink/> renders an empty <a> filling the row, BEHIND its content, so the
+   row is a real link target while its own controls stay clickable. */
+.l-rowlink { position: absolute; inset: 0; z-index: 0; border-radius: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.l-rowlink:focus-visible { outline: 2px solid hsl(var(--primary-ring)); outline-offset: -2px; border-radius: 4px; }
+/* The row link sits ABOVE the static cells (text/avatars) so Vimium's overlay
+   check finds it at the row's corners. Only real CONTROLS are raised above the
+   link, so buttons/selects stay clickable while the rest of the row is the link. */
+.l-listrow button, .l-listrow select, .l-listrow input, .l-listrow textarea,
+.l-listrow label, .l-listrow a:not(.l-rowlink),
+.l-listrow [role="switch"], .l-listrow [role="button"], .l-listrow [tabindex]:not(.l-rowlink) {
+  position: relative; z-index: 1;
+}
 .l-listrow.is-dim { opacity: .6; }
 
 /* ═══════════════════════════════════════════════════
@@ -162,5 +179,6 @@
 .l-card.is-dim { opacity: .65; }
 
 /* ── Dark — selected row / card: wash + a clear accent border ── */
-[data-theme="dark"] .l-listrow.active { background: hsl(var(--primary) / .10); box-shadow: inset 3px 0 0 hsl(var(--primary) / .7); }
+[data-theme="dark"] .l-listrow.active { background: hsl(var(--primary) / .10); box-shadow: inset 3px 0 0 var(--c-lotus-text); }
+[data-theme="dark"] .l-listrow.accent.active { box-shadow: none; border-left-color: var(--c-lotus-text); }
 [data-theme="dark"] .l-card.active { border-color: hsl(var(--primary) / .6); background: hsl(var(--primary) / .10); }
