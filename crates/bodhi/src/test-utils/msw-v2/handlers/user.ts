@@ -102,13 +102,16 @@ export function mockUsers(
     has_previous = false,
     ...rest
   }: Partial<components['schemas']['UserListResponse']> = {},
-  { stub }: { stub?: boolean } = {}
+  { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
+      if (delayMs) {
+        await delay(delayMs);
+      }
       const responseData = {
         client_id,
         users,

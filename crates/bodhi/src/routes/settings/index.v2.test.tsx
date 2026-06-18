@@ -2,7 +2,7 @@ import { Route as SettingsRoute } from '@/routes/settings/index';
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
-import { mockSettingsDefault, mockUpdateSetting } from '@/test-utils/msw-v2/handlers/settings';
+import { mockSettings, mockSettingsDefault, mockUpdateSetting } from '@/test-utils/msw-v2/handlers/settings';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
@@ -68,6 +68,29 @@ async function renderReady() {
 }
 
 describe('SettingsPage V2', () => {
+  it('shows shimmer filter badges while the settings query is pending', async () => {
+    server.use(...mockSettings([], { delayMs: 200, stub: true }));
+
+    render(
+      <ShellSlotsProvider>
+        <SlotsConsumer />
+        <SettingsPage />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-filter-all')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('settings-page')).toHaveAttribute('data-pagestatus', 'loading');
+    expect(screen.getAllByLabelText('Loading count').length).toBeGreaterThan(0);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-page')).toHaveAttribute('data-pagestatus', 'ready');
+    });
+    expect(screen.queryByLabelText('Loading count')).not.toBeInTheDocument();
+  });
+
   it('publishes the settings-group nav to the shell sidebar slot', async () => {
     await renderReady();
     const nav = within(screen.getByTestId('harness-sidebar')).getByTestId('settings-group-nav');

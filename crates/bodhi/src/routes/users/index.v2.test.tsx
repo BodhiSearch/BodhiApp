@@ -3,6 +3,7 @@ import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { mockAppInfo, mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockUserLoggedIn,
+  mockUsers,
   mockUsersDefault,
   mockUserRoleChange,
   mockUserRemove,
@@ -76,6 +77,34 @@ async function renderReady() {
 }
 
 describe('ManageUsers V2', () => {
+  it('shows shimmer filter badges while the users query is pending', async () => {
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ user_id: 'admin-id', username: 'admin@example.com', role: 'resource_admin' }),
+      ...mockUsers({}, { delayMs: 200, stub: true }),
+      ...mockAccessRequestsDefault()
+    );
+
+    render(
+      <ShellSlotsProvider>
+        <SlotsConsumer />
+        <UsersPage />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('users-filter-all')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('users-page')).toHaveAttribute('data-pagestatus', 'loading');
+    expect(screen.getAllByLabelText('Loading count').length).toBeGreaterThan(0);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('users-page')).toHaveAttribute('data-pagestatus', 'ready');
+    });
+    expect(screen.queryByLabelText('Loading count')).not.toBeInTheDocument();
+  });
+
   it('renders the user list with role badges', async () => {
     seed();
     await renderReady();

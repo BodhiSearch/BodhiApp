@@ -13,7 +13,7 @@ export function mockTokens(
     page_size = 10,
     ...rest
   }: Partial<components['schemas']['PaginatedTokenResponse']> = {},
-  { stub }: { stub?: boolean } = {}
+  { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -21,6 +21,9 @@ export function mockTokens(
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
+      if (delayMs) {
+        await delay(delayMs);
+      }
       const responseData: components['schemas']['PaginatedTokenResponse'] = {
         data,
         total,

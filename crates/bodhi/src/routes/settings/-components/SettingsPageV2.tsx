@@ -535,6 +535,7 @@ export function SettingsPageV2({ config: staticConfig }: { config: SettingsConfi
             onChange={setFilter}
             label="Filter settings"
             testIdPrefix="settings-filter"
+            loading={isLoading}
           />
           <div className="l-tb-actions">{searchNode.toggle}</div>
         </div>

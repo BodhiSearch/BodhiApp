@@ -151,13 +151,20 @@ export function TokenPageContent() {
             onChange={setFilter}
             label="Filter tokens"
             testIdPrefix="tokens-filter"
+            loading={tokensLoading}
           />
           <div className="l-tb-actions">{searchNode.toggle}</div>
         </div>
       </div>
 
       <div className="l-scroll" data-testid="tokens-table">
-        {visible.length === 0 ? (
+        {tokensLoading ? (
+          <div style={{ padding: 16 }} data-testid="loading-skeleton">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full mb-3" />
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
           <div className="empty-state" data-testid="tokens-empty">
             <div className="empty-icon">
               <ShellIcon name="key-round" size={28} />

@@ -392,6 +392,7 @@ function ManageUsersContent() {
             onChange={setFilter}
             label="Filter users by role"
             testIdPrefix="users-filter"
+            loading={isLoading}
           />
           <div className="l-tb-actions">{searchNode.toggle}</div>
         </div>

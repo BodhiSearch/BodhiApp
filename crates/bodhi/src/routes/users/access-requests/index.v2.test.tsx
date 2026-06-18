@@ -76,6 +76,35 @@ async function renderReady() {
 }
 
 describe('AccessRequestsPage V2 chrome', () => {
+  it('shows shimmer filter badges while the requests query is pending', async () => {
+    server.use(
+      ...mockAccessRequests(
+        { requests: mockAllRequests.requests, total: mockAllRequests.total },
+        { delayMs: 200, stub: true }
+      )
+    );
+
+    render(
+      <ShellSlotsProvider>
+        <SlotsConsumer />
+        <AllRequestsPage />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('requests-filter-pending')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('all-requests-page')).toHaveAttribute('data-pagestatus', 'loading');
+    expect(screen.getAllByLabelText('Loading count').length).toBeGreaterThan(0);
+
+    // resolves to real counts, no shimmer
+    await waitFor(() => {
+      expect(screen.getByTestId('all-requests-page')).toHaveAttribute('data-pagestatus', 'ready');
+    });
+    expect(screen.queryByLabelText('Loading count')).not.toBeInTheDocument();
+  });
+
   it('publishes a pending-count pill to the shell header', async () => {
     await renderReady();
 

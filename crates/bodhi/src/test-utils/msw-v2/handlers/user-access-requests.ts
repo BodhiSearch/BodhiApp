@@ -22,7 +22,7 @@ export function mockAccessRequests(
     page_size = 10,
     ...rest
   }: Partial<components['schemas']['PaginatedUserAccessResponse']> = {},
-  { stub }: { stub?: boolean } = {}
+  { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -31,6 +31,9 @@ export function mockAccessRequests(
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
+      if (delayMs) {
+        await delay(delayMs);
+      }
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
         requests,
         total: total || requests.length,

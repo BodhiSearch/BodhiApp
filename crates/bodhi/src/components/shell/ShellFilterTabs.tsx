@@ -19,6 +19,8 @@ export interface ShellFilterTabsProps<T extends string = string> {
   label?: string;
   /** testid prefix → `${testIdPrefix}-${tab.id}` per tab */
   testIdPrefix?: string;
+  /** while true, badges show a shimmer placeholder instead of (possibly zero) counts */
+  loading?: boolean;
 }
 
 export function ShellFilterTabs<T extends string = string>({
@@ -27,6 +29,7 @@ export function ShellFilterTabs<T extends string = string>({
   onChange,
   label = 'Filter',
   testIdPrefix,
+  loading = false,
 }: ShellFilterTabsProps<T>) {
   return (
     <div className="l-cats" role="tablist" aria-label={label}>
@@ -40,7 +43,11 @@ export function ShellFilterTabs<T extends string = string>({
           data-testid={testIdPrefix ? `${testIdPrefix}-${tab.id}` : undefined}
         >
           {tab.label}
-          {tab.count != null && <span className="l-cat-badge">{tab.count}</span>}
+          {loading ? (
+            <span className="l-cat-badge l-cat-badge--loading" aria-label="Loading count" />
+          ) : (
+            tab.count != null && <span className="l-cat-badge">{tab.count}</span>
+          )}
         </button>
       ))}
     </div>

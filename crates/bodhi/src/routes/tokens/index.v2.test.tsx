@@ -102,6 +102,37 @@ async function renderReady() {
 }
 
 describe('TokenPage V2', () => {
+  it('shows shimmer badges and a body skeleton while the tokens query is pending', async () => {
+    // hold the tokens list pending (app-info still resolves) so we can observe the loading window
+    server.use(...mockTokens({ data: TOKENS, total: 2 }, { delayMs: 200, stub: true }));
+
+    render(
+      <ShellHarness>
+        <TokenPage />
+      </ShellHarness>,
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tokens-filter-all')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('tokens-page')).toHaveAttribute('data-pagestatus', 'loading');
+
+    // category badges shimmer instead of showing (0); list body shows the skeleton, not the empty state
+    expect(screen.getAllByLabelText('Loading count').length).toBeGreaterThan(0);
+    expect(within(screen.getByTestId('tokens-filter-all')).queryByText('2')).not.toBeInTheDocument();
+    expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('tokens-empty')).not.toBeInTheDocument();
+
+    // once loaded, the shimmer is replaced by real counts and the skeleton disappears
+    await waitFor(() => {
+      expect(screen.getByTestId('tokens-page')).toHaveAttribute('data-pagestatus', 'ready');
+    });
+    expect(screen.queryByLabelText('Loading count')).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('tokens-filter-all')).getByText('2')).toBeInTheDocument();
+    expect(screen.queryByTestId('loading-skeleton')).not.toBeInTheDocument();
+  });
+
   it('renders V2 rows with preserved testids and filter tabs', async () => {
     await renderReady();
 

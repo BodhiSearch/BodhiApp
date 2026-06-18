@@ -4,12 +4,18 @@ import { ENDPOINT_SETTINGS, ENDPOINT_SETTING_KEY } from '@/hooks/settings';
 
 import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 
-export function mockSettings(settings: components['schemas']['SettingInfo'][] = [], { stub }: { stub?: boolean } = {}) {
+export function mockSettings(
+  settings: components['schemas']['SettingInfo'][] = [],
+  { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_SETTINGS, async ({ response }) => {
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
+      if (delayMs) {
+        await delay(delayMs);
+      }
       const responseData: components['schemas']['SettingInfo'][] = settings;
       return response(200 as const).json(responseData);
     }),

@@ -192,6 +192,7 @@ function AccessRequestsContent() {
             onChange={setFilter}
             label="Filter access requests"
             testIdPrefix="requests-filter"
+            loading={isLoading}
           />
           <div className="l-tb-actions">{searchNode.toggle}</div>
         </div>
