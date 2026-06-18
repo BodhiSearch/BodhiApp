@@ -1,12 +1,13 @@
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router';
 import 'prismjs/themes/prism-tomorrow.css';
 import '@/styles/globals.css';
+import '@/styles/view-transitions.css';
 
 import ClientProviders from '@/components/ClientProviders';
 import { AppShell } from '@/components/shell';
 import { BareLayout } from '@/components/shell/BareLayout';
-import { ShellSlotsProvider, useShellSlots } from '@/components/shell/ShellSlotsContext';
 import { isBareRoute, resolveShellRoute } from '@/components/shell/resolveShellRoute';
+import { ShellSlotsProvider, useShellSlots } from '@/components/shell/ShellSlotsContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { NavigationProvider, defaultNavigationItems } from '@/hooks/navigation';

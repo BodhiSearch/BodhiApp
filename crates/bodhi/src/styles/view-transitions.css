@@ -1,0 +1,64 @@
+/* View Transitions — native (document.startViewTransition) animation recipes.
+   React-18-safe: driven by the browser API, not React 19's <ViewTransition>.
+   - Route changes: TanStack Router's defaultViewTransition animates the `root`
+     snapshot (cross-fade below).
+   - In-page changes (detail rail, filtered list): scoped via named transitions
+     assigned to specific elements, triggered through useViewTransition().
+   Timing kept under 300ms (vestibular safety). All motion is gated by the
+   prefers-reduced-motion guard at the bottom. */
+
+:root {
+  --vt-fade-dur: 180ms;
+  --vt-rail-dur: 220ms;
+  --vt-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ── Route change: cross-fade the whole document snapshot ──────────────── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--vt-fade-dur);
+  animation-timing-function: ease;
+}
+
+/* ── Detail rail (token list): slide + fade the rail panel on open/close ──
+   The rail content carries `vt-rail`; only this element animates, leaving the
+   surrounding shell grid untouched (the grid track must NOT be transitioned —
+   Chromium sticks the old width). */
+.vt-rail {
+  view-transition-name: vt-rail;
+}
+::view-transition-old(vt-rail) {
+  animation: vt-rail-out var(--vt-rail-dur) var(--vt-ease) both;
+}
+::view-transition-new(vt-rail) {
+  animation: vt-rail-in var(--vt-rail-dur) var(--vt-ease) both;
+}
+@keyframes vt-rail-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes vt-rail-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+/* ── Accessibility: honor reduced-motion (JS also skips the transition) ──── */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/agents-inc/cli/main/src/schemas/metadata.schema.json
+category: web-animation
+slug: view-transitions
+domain: web
+author: "@vince"
+displayName: View Transitions
+cliDescription: Page transition animations
+usageGuidance: Use when implementing page transitions with View Transitions API.

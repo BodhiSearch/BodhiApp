@@ -158,10 +158,22 @@ export class TokensPage extends BasePage {
   /**
    * Find a token row in the list by name.
    * @param {string} name - Token name to find
+   * @param {{ waitFor?: boolean }} [opts] - waitFor (default true) auto-waits for a row to
+   *   appear before scanning, absorbing the brief route view-transition cross-fade.
    * @returns {Promise<Object|null>} Token data or null if not found
    */
-  async findTokenByName(name) {
+  async findTokenByName(name, { waitFor = true } = {}) {
     const rows = this.page.locator(this.selectors.listRow);
+    if (waitFor) {
+      // After create/navigate, the list refetches behind a route view-transition; wait for
+      // THIS token's row to actually land (not just any row) so the scan doesn't race the
+      // transition + refetch.
+      await rows
+        .filter({ has: this.page.locator(`[data-testid^="token-name-"]`, { hasText: name }) })
+        .first()
+        .waitFor({ state: 'visible' })
+        .catch(() => {});
+    }
     const count = await rows.count();
 
     for (let i = 0; i < count; i++) {
@@ -186,13 +198,20 @@ export class TokensPage extends BasePage {
   }
 
   async expectTokenInList(name, expectedStatus = 'active') {
+    // Wait for the specific row to appear (absorbs the post-create/navigate view
+    // transition + list refetch) before reading its status.
+    await this.page
+      .locator(this.selectors.listRow)
+      .filter({ has: this.page.locator(`[data-testid^="token-name-"]`, { hasText: name }) })
+      .first()
+      .waitFor({ state: 'visible' });
     const token = await this.findTokenByName(name);
     expect(token).not.toBeNull();
     expect(token.status).toBe(expectedStatus);
   }
 
   async expectTokenNotInList(name) {
-    const token = await this.findTokenByName(name);
+    const token = await this.findTokenByName(name, { waitFor: false });
     expect(token).toBeNull();
   }
 
@@ -233,8 +252,12 @@ export class TokensPage extends BasePage {
   }
 
   async expectTokenStatus(name, expectedStatus) {
-    const token = await this.findTokenByName(name);
-    expect(token).not.toBeNull();
-    expect(token.status).toBe(expectedStatus);
+    // Poll: a status toggle invalidates + refetches the list, re-rendering the row;
+    // read the live switch state until it settles to the expected value.
+    await expect
+      .poll(async () => (await this.findTokenByName(name))?.status, {
+        message: `token "${name}" should be ${expectedStatus}`,
+      })
+      .toBe(expectedStatus);
   }
 }

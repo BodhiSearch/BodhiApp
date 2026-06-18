@@ -1,7 +1,9 @@
 import '@fontsource-variable/inter';
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+
 import { RouterProvider, createRouter } from '@tanstack/react-router';
+import ReactDOM from 'react-dom/client';
+
 import { routeTree } from './routeTree.gen';
 
 const router = createRouter({
@@ -9,6 +11,9 @@ const router = createRouter({
   basepath: '/ui',
   defaultPreload: 'intent',
   trailingSlash: 'always',
+  // Wrap navigations in the native document.startViewTransition() (React-18-safe;
+  // ignored on browsers without the API). CSS recipes in styles/view-transitions.css.
+  defaultViewTransition: true,
 });
 
 declare module '@tanstack/react-router' {

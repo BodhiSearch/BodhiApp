@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { TokenDetail } from '@bodhiapp/ts-client';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -14,6 +14,7 @@ import '@/components/shell/list.css';
 import { useGetAppInfo } from '@/hooks/info';
 import { useListTokens, useUpdateToken } from '@/hooks/tokens';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useViewTransition } from '@/hooks/useViewTransition';
 
 export const Route = createFileRoute('/tokens/')({
   component: TokenPage,
@@ -62,9 +63,22 @@ export function TokenPageContent() {
   };
 
   const navigate = useNavigate();
+  const withViewTransition = useViewTransition();
   const [filter, setFilter] = useState<TokenFilter>('all');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Animate the spatial changes: opening/closing the detail rail and swapping
+  // the filtered row set. Search-as-you-type is left un-transitioned (too rapid).
+  const selectToken = useCallback(
+    (id: string | null) => withViewTransition(() => setSelectedId(id)),
+    [withViewTransition]
+  );
+  // Filter swaps update the list in place (no view transition): a persistent
+  // view-transition-name on the always-mounted, frequently-refetching list body
+  // races status-toggle/refetch re-renders. The rail open/close (below) is the
+  // transition that actually smooths a "side panel".
+  const changeFilter = setFilter;
 
   const tokens = tokensData?.data ?? [];
   const total = tokensData?.total ?? 0;
@@ -103,8 +117,8 @@ export function TokenPageContent() {
   );
 
   const rail = useMemo(
-    () => (selected ? <TokenDetailRail token={selected} onClose={() => setSelectedId(null)} /> : null),
-    [selected]
+    () => (selected ? <TokenDetailRail token={selected} onClose={() => selectToken(null)} /> : null),
+    [selected, selectToken]
   );
 
   useShellChrome({ breadcrumb: TOKEN_BREADCRUMB, headerActions, rail, railDefaultOpen: false });
@@ -150,7 +164,7 @@ export function TokenPageContent() {
                 role="tab"
                 aria-selected={filter === tab.id}
                 className={'filter-tab' + (filter === tab.id ? ' active' : '')}
-                onClick={() => setFilter(tab.id)}
+                onClick={() => changeFilter(tab.id)}
                 data-testid={`tokens-filter-${tab.id}`}
               >
                 {tab.label}
@@ -177,7 +191,7 @@ export function TokenPageContent() {
                 key={token.id}
                 token={token}
                 active={token.id === selectedId}
-                onSelect={() => setSelectedId(token.id)}
+                onSelect={() => selectToken(token.id)}
                 onStatusChange={onStatusChange}
               />
             ))}
@@ -226,7 +240,7 @@ function TokenRow({ token, active, onSelect, onStatusChange }: TokenRowProps) {
 
 function TokenDetailRail({ token, onClose }: { token: TokenDetail; onClose: () => void }) {
   return (
-    <div className="dp-panel" data-testid="token-detail-rail">
+    <div className="dp-panel vt-rail" data-testid="token-detail-rail">
       <div className="dp-status-row">
         <StatusBadge status={token.status} />
         <button className="dp-close" onClick={onClose} title="Close" style={{ marginLeft: 'auto' }}>

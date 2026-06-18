@@ -13,6 +13,12 @@
       "skillPath": "skills/react-view-transitions/SKILL.md",
       "computedHash": "c8952fc9127fa0564d0cb71dccb4215a5608ac933b5831104f09173a97a46f85"
     },
+    "web-animation-view-transitions": {
+      "source": "agents-inc/skills",
+      "sourceType": "github",
+      "skillPath": "src/skills/web-animation-view-transitions/SKILL.md",
+      "computedHash": "218d796267587e3dbf072a298bcc1d9266181b5981ce32369a0da18a7dc7b69b"
+    },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",

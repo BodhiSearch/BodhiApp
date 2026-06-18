@@ -47,6 +47,10 @@ exploratory** process. Read the context below before doing anything.
   `tanstack-query` (query keys, invalidation, derived/`select` data, master-detail from cache),
   `vercel-react-best-practices` (re-render/derived-state/no-inline-component rules), and
   `web-design-guidelines` (accessibility/UX review of the ported UI).
+- **View transitions are React-18 native** (this app is React 18, NOT 19). Use `useViewTransition()`
+  + TanStack Router `defaultViewTransition` per @view-transitions.md and the
+  `web-animation-view-transitions` skill — do NOT use React 19's `<ViewTransition>` component or the
+  `vercel-react-view-transitions` skill's examples (they require a React upgrade).
 - **Never skip e2e** before commit; keep `data-testid`/ARIA stable across restructures.
 
 If anything in the context is stale or contradicts the current code, trust the code and flag the
