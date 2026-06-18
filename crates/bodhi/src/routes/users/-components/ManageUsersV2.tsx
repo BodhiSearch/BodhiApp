@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { UserInfo } from '@bodhiapp/ts-client';
 
 import { Pagination } from '@/components/DataTable';
-import { ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
+import { LinkRow, ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
 import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
 import '@/components/shell/manage-users.css';
@@ -66,6 +66,7 @@ function UserRow({ user, active, self, onSelect }: UserRowProps) {
       onClick={onSelect}
       data-testid={`user-row-${user.username}`}
     >
+      <LinkRow onActivate={onSelect} label={`Open user ${user.username}`} />
       <div className="mu-icon">
         <div className="mu-avatar" style={{ background: avatarColor(user.username) }}>
           {initials(user.username)}

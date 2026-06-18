@@ -155,6 +155,33 @@
   background: var(--c-indigo-bg);
 }
 
+/* ── Stretched row link (keyboard / Vimium nav + a11y) — see LinkRow.tsx ──
+   .setting-row is a CSS grid; an inset:0 link is taken out of grid flow and spans the whole
+   card (key/value row + .row-desc). The .modified stripe is a real border-left, so inset:0
+   sits inside the border box and never covers it. */
+.settings-screen .setting-row > .l-rowlink {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.settings-screen .setting-row > .l-rowlink:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+.settings-screen .setting-row button,
+.settings-screen .setting-row select,
+.settings-screen .setting-row input,
+.settings-screen .setting-row a:not(.l-rowlink),
+.settings-screen .setting-row [role='button'],
+.settings-screen .setting-row [tabindex]:not(.l-rowlink) {
+  position: relative;
+  z-index: 1;
+}
+
 .settings-screen .row-key {
   grid-column: 1;
   grid-row: 1;

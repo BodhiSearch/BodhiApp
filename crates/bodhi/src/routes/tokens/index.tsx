@@ -5,7 +5,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Pagination } from '@/components/DataTable';
-import { ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
+import { LinkRow, ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import '@/components/shell/api-keys.css';
@@ -223,6 +223,7 @@ function TokenRow({ token, active, onSelect, onStatusChange }: TokenRowProps) {
       onClick={onSelect}
       data-testid={`token-row-${token.id}`}
     >
+      <LinkRow onActivate={onSelect} label={`Open token ${token.name || 'Unnamed token'}`} />
       <div className="tk-icon">
         <TokenKeyIcon />
       </div>

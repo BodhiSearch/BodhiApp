@@ -72,6 +72,16 @@ Presentation-only — hooks, queries, mutations, fixtures unchanged.
    `Object.assign(window,…)`/other `window.*` globals, `ReactDOM.createRoot`, `data-theme` setattr
    effects, `TweaksPanel`/`useTweaks`/`EDITMODE` scaffolding. Grep each ported file before "done".
 6. **Preserve `data-testid` + ARIA roles verbatim** across the markup restructure.
+7. **Selectable rows are links.** Any master-detail row (a list/grid row that opens the detail rail)
+   must render the shared `LinkRow` (`@/components/shell` → `components/shell/LinkRow.tsx`) as its
+   **first child**: `<LinkRow onActivate={onSelect} label={`Open <entity> ${name}`} />`. This makes
+   the row a real `<a>` target so keyboard / link-hint tools (Vimium's `f`) and screen readers can
+   reach it. Keep the row's own `onClick={onSelect}` (mouse clicks on static cells). Inner controls
+   stay clickable because the control-raising z-index selector in `list.css` (and the `.setting-row`
+   copy in `settings.css`) lifts `button/select/input/[role]/[tabindex]` above the stretched link;
+   if a row uses a control type not in that selector, extend it. Selection is local state (no URL),
+   so the link is `href="#"` + `preventDefault` + `stopPropagation` — `LinkRow` handles all three.
+   Non-master-detail rows (e.g. the settings sidebar scroll-spy nav) do **not** get a `LinkRow`.
 
 ## E2E migration context
 

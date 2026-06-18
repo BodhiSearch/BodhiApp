@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { SettingInfo } from '@bodhiapp/ts-client';
 
-import { ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
+import { LinkRow, ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
 import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
 import '@/components/shell/settings.css';
@@ -102,6 +102,7 @@ function SettingRow({ setting, description, active, query, onSelect }: SettingRo
       onClick={onSelect}
       data-testid={`setting-row-${setting.key}`}
     >
+      <LinkRow onActivate={onSelect} label={`Open setting ${setting.key}`} />
       <div className="row-key">
         <span className="key-name" data-testid={`setting-key-${setting.key}`}>
           {highlight(setting.key, query)}

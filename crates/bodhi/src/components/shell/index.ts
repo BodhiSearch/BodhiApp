@@ -2,6 +2,7 @@ export { AppShell, type AppShellProps } from './AppShell';
 export { Shell } from './Shell';
 export { ShellNav, type ShellNavProps } from './ShellNav';
 export { ShellIcon, type ShellIconProps } from './ShellIcon';
+export { LinkRow, type LinkRowProps } from './LinkRow';
 export { ShellSearch, type ShellSearchProps } from './ShellSearch';
 export { useCollapsibleSearch, type ShellCollapsibleSearchProps } from './ShellCollapsibleSearch';
 export { ShellFilterTabs, type ShellFilterTabsProps, type ShellFilterTab } from './ShellFilterTabs';

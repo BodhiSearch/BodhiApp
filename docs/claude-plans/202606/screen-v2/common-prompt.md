@@ -60,6 +60,9 @@ exploratory** process. Read the context below before doing anything.
   + TanStack Router `defaultViewTransition` per @view-transitions.md and the
   `web-animation-view-transitions` skill — do NOT use React 19's `<ViewTransition>` component (it
   requires a React upgrade and is not available here).
+- **Selectable rows are links.** Every master-detail list/grid row ships the shared `LinkRow` anchor
+  as its first child so keyboard / link-hint tools (Vimium) and screen readers can target it — part of
+  "done" for any list screen. See the per-screen recipe step in @process.md.
 - **Never skip e2e** before commit; keep `data-testid`/ARIA stable across restructures.
 
 If anything in the context is stale or contradicts the current code, trust the code and flag the

@@ -342,6 +342,7 @@
   color: hsl(var(--muted-foreground));
 }
 .l-listrow {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0;
@@ -353,16 +354,55 @@
 .l-listrow:hover {
   background: hsl(var(--muted));
 }
+/* selected row — app-wide identifiable left accent border (--c-lotus-text) */
 .l-listrow.active {
   background: var(--c-lotus-bg);
+  box-shadow: inset 3px 0 0 var(--c-lotus-text);
 }
 /* status accent stripe — pages set --row-accent on the row */
 .l-listrow.accent {
   border-left: 3px solid var(--row-accent, transparent);
   padding-left: 13px;
 }
+/* when an accent row is selected, recolor its existing stripe (no double bar) */
+.l-listrow.accent.active {
+  box-shadow: none;
+  border-left-color: var(--c-lotus-text);
+}
 .l-listrow.is-dim {
   opacity: 0.6;
+}
+
+/* ── Stretched row link (keyboard / Vimium nav + a11y) ──────────────
+   <LinkRow/> renders an empty <a> filling the row, behind its content, so the row is a real
+   link target while its own controls stay clickable. The inset starts 3px from the left so it
+   never overlaps the .accent border-left / .active inset accent stripe. */
+.l-rowlink {
+  position: absolute;
+  inset: 0 0 0 3px;
+  z-index: 0;
+  border-radius: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.l-rowlink:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -3px;
+  border-radius: 4px;
+}
+/* Raise real CONTROLS above the link so clicks land on them, not the link; the rest of the
+   row stays the link target so link-hint tools find it at the row corners. */
+.l-listrow button,
+.l-listrow select,
+.l-listrow input,
+.l-listrow textarea,
+.l-listrow label,
+.l-listrow a:not(.l-rowlink),
+.l-listrow [role='switch'],
+.l-listrow [role='button'],
+.l-listrow [tabindex]:not(.l-rowlink) {
+  position: relative;
+  z-index: 1;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -673,7 +713,12 @@
 .dark .l-listrow.active,
 [data-theme='dark'] .l-listrow.active {
   background: hsl(var(--primary) / 0.1);
-  box-shadow: inset 3px 0 0 hsl(var(--primary) / 0.7);
+  box-shadow: inset 3px 0 0 var(--c-lotus-text);
+}
+.dark .l-listrow.accent.active,
+[data-theme='dark'] .l-listrow.accent.active {
+  box-shadow: none;
+  border-left-color: var(--c-lotus-text);
 }
 .dark .l-card.active,
 [data-theme='dark'] .l-card.active {

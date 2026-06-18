@@ -103,6 +103,18 @@ describe('ManageUsers V2', () => {
     expect(within(rail).getByTestId('remove-user-btn-user1@example.com')).toBeInTheDocument();
   });
 
+  it('renders each row as an accessible link and activating it opens the rail', async () => {
+    const user = userEvent.setup();
+    seed();
+    await renderReady();
+    const row = screen.getByTestId('user-row-user1@example.com');
+    const link = within(row).getByTestId('row-link');
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAccessibleName('Open user user1@example.com');
+    await user.click(link);
+    expect(within(screen.getByTestId('harness-rail')).getByTestId('user-detail-user1@example.com')).toBeInTheDocument();
+  });
+
   it('shows a read-only "You" rail for the current user (no role select / remove)', async () => {
     const user = userEvent.setup();
     seed();

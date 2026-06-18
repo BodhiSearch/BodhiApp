@@ -1,7 +1,7 @@
 import { TokenPage } from '@/routes/tokens/index';
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
-import { mockTokens } from '@/test-utils/msw-v2/handlers/tokens';
+import { mockTokens, mockUpdateTokenStatus } from '@/test-utils/msw-v2/handlers/tokens';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -165,5 +165,27 @@ describe('TokenPage V2', () => {
     // prefix (Token ID) + scope + the created date are shown in the rail Details
     expect(within(rail).getByText('bodhiapp_prod001')).toBeInTheDocument();
     expect(within(rail).getByText('scope_token_power_user')).toBeInTheDocument();
+  });
+
+  it('renders each row as an accessible link and activating it opens the rail', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    const row = screen.getByTestId('token-row-token-1');
+    const link = within(row).getByTestId('row-link');
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAccessibleName('Open token Production API');
+
+    await user.click(link);
+    expect(await screen.findByTestId('token-detail-rail')).toBeInTheDocument();
+  });
+
+  it('toggling the status switch does not open the rail (control stays above the link)', async () => {
+    server.use(...mockUpdateTokenStatus('token-1', 'inactive'));
+    const user = userEvent.setup();
+    await renderReady();
+
+    await user.click(screen.getByTestId('token-status-switch-token-1'));
+    expect(screen.queryByTestId('token-detail-rail')).not.toBeInTheDocument();
   });
 });

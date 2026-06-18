@@ -101,6 +101,17 @@ describe('SettingsPage V2', () => {
     expect(within(rail).queryByTestId('setting-save')).not.toBeInTheDocument();
   });
 
+  it('renders each row as an accessible link and activating it opens the rail', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+    const row = screen.getByTestId('setting-row-BODHI_HOME');
+    const link = within(row).getByTestId('row-link');
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAccessibleName('Open setting BODHI_HOME');
+    await user.click(link);
+    expect(within(screen.getByTestId('harness-rail')).getByTestId('setting-detail-BODHI_HOME')).toBeInTheDocument();
+  });
+
   it('opens an editable rail with a Save button for an editable setting', async () => {
     const user = userEvent.setup();
     await renderReady();
