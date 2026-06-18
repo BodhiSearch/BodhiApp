@@ -33,7 +33,12 @@ test.describe('API Models Setup Integration', () => {
     baseUrl = await serverManager.startServer();
 
     welcomePage = new SetupWelcomePage(page, baseUrl);
-    resourceAdminPage = new SetupResourceAdminPage(page, baseUrl, authServerConfig, testCredentials);
+    resourceAdminPage = new SetupResourceAdminPage(
+      page,
+      baseUrl,
+      authServerConfig,
+      testCredentials
+    );
     downloadModelsPage = new SetupDownloadModelsPage(page, baseUrl);
     apiModelsPage = new SetupApiModelsPage(page, baseUrl);
   });

@@ -24,7 +24,7 @@ export class ApiModelFormComponent {
     testConnectionButton: '[data-testid="test-connection-button"]',
     createButton: '[data-testid="create-api-model-button"]',
     updateButton: '[data-testid="update-api-model-button"]',
-    modelOption: model => `[data-testid="available-model-${model}"]`,
+    modelOption: (model) => `[data-testid="available-model-${model}"]`,
     modelsScrollArea: '.scroll-area',
     modelSearchInput: '[data-testid="model-search-input"]',
     successToast: '[data-state="open"]',
@@ -55,9 +55,13 @@ export class ApiModelFormComponent {
 
     // Wait for base URL to be auto-populated for known formats
     if (format === 'openai' || format === 'openai_responses') {
-      await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue('https://api.openai.com/v1');
+      await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
+        'https://api.openai.com/v1'
+      );
     } else if (format === 'anthropic' || format === 'anthropic_oauth') {
-      await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue('https://api.anthropic.com/v1');
+      await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
+        'https://api.anthropic.com/v1'
+      );
     } else if (format === 'gemini') {
       await expect(this.page.locator(this.selectors.baseUrlInput)).toHaveValue(
         'https://generativelanguage.googleapis.com/v1beta'
@@ -129,7 +133,9 @@ export class ApiModelFormComponent {
   }
 
   async expectLlmLibertyEnvelopeError(substring) {
-    await expect(this.page.locator('[data-testid="llm-liberty-envelope-error"]')).toContainText(substring);
+    await expect(this.page.locator('[data-testid="llm-liberty-envelope-error"]')).toContainText(
+      substring
+    );
   }
 
   // Extra Headers / Extra Body methods
@@ -154,11 +160,15 @@ export class ApiModelFormComponent {
   }
 
   async expectExtraHeadersError(substring) {
-    await expect(this.page.locator('[data-testid="extra-headers-input-error"]')).toContainText(substring);
+    await expect(this.page.locator('[data-testid="extra-headers-input-error"]')).toContainText(
+      substring
+    );
   }
 
   async expectExtraBodyError(substring) {
-    await expect(this.page.locator('[data-testid="extra-body-input-error"]')).toContainText(substring);
+    await expect(this.page.locator('[data-testid="extra-body-input-error"]')).toContainText(
+      substring
+    );
   }
 
   async expectExtrasVisible(visible = true) {
@@ -242,7 +252,10 @@ export class ApiModelFormComponent {
 
   async expectModelSelectionState(state) {
     // state: 'enabled' | 'disabled'
-    await expect(this.page.locator('[data-testid="model-selection-section"]')).toHaveAttribute('data-teststate', state);
+    await expect(this.page.locator('[data-testid="model-selection-section"]')).toHaveAttribute(
+      'data-teststate',
+      state
+    );
   }
 
   // Model Management
@@ -368,9 +381,13 @@ export class ApiModelFormComponent {
       } catch (error) {
         if (attempt < maxAttempts) {
           console.log(`Test connection attempt ${attempt} failed, retrying...`);
-          await this.page.locator(this.selectors.testConnectionButton).waitFor({ state: 'visible' });
+          await this.page
+            .locator(this.selectors.testConnectionButton)
+            .waitFor({ state: 'visible' });
         } else {
-          throw new Error(`Failed to test connection after ${maxAttempts} attempts. Last error: ${error.message}`);
+          throw new Error(
+            `Failed to test connection after ${maxAttempts} attempts. Last error: ${error.message}`
+          );
         }
       }
     }
@@ -390,7 +407,9 @@ export class ApiModelFormComponent {
   }
 
   async expectButtonDisabled(buttonSelector) {
-    await expect(this.page.locator(this.selectors[buttonSelector] || buttonSelector)).toBeDisabled();
+    await expect(
+      this.page.locator(this.selectors[buttonSelector] || buttonSelector)
+    ).toBeDisabled();
   }
 
   async expectFetchModelsButtonEnabled() {
@@ -411,13 +430,20 @@ export class ApiModelFormComponent {
 
   // Form Pre-population Verification
   async verifyFormPreFilled(api_format = 'openai', baseUrl = 'https://api.openai.com/v1') {
-    await this.expectText(this.selectors.apiFormatSelect, ApiModelFormComponent.getFormatDisplayName(api_format));
+    await this.expectText(
+      this.selectors.apiFormatSelect,
+      ApiModelFormComponent.getFormatDisplayName(api_format)
+    );
     await this.expectValue(this.selectors.baseUrlInput, baseUrl);
     // API key should be empty (masked for security)
     await this.expectValue(this.selectors.apiKeyInput, '');
   }
 
-  async verifyFormPreFilledWithPrefix(api_format = 'openai', baseUrl = 'https://api.openai.com/v1', prefix = null) {
+  async verifyFormPreFilledWithPrefix(
+    api_format = 'openai',
+    baseUrl = 'https://api.openai.com/v1',
+    prefix = null
+  ) {
     await this.verifyFormPreFilled(api_format, baseUrl);
 
     if (prefix) {
@@ -474,9 +500,15 @@ export class ApiModelFormComponent {
       const finalOptions = { timeout, ...options };
 
       if (message instanceof RegExp) {
-        await expect(this.page.locator(this.selectors.successToast)).toContainText(message, finalOptions);
+        await expect(this.page.locator(this.selectors.successToast)).toContainText(
+          message,
+          finalOptions
+        );
       } else {
-        await expect(this.page.locator(this.selectors.successToast)).toContainText(message, finalOptions);
+        await expect(this.page.locator(this.selectors.successToast)).toContainText(
+          message,
+          finalOptions
+        );
       }
     } catch (error) {
       console.log(`Toast check skipped (CI=${!!process.env.CI}):`, message);

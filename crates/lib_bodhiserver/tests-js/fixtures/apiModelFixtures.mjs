@@ -34,7 +34,7 @@ export class ApiModelFixtures {
         model,
         messages: [{ role: 'user', content: question }],
       }),
-      extractPrimaryResponse: data => data.choices?.[0]?.message?.content ?? '',
+      extractPrimaryResponse: (data) => data.choices?.[0]?.message?.content ?? '',
       // Prefix used when multiple formats are registered simultaneously to avoid
       // model-name collisions (e.g. both openai and openai_responses use gpt-4.1-nano).
       // The effective model ID becomes `${multiTestPrefix}${model}`.
@@ -59,7 +59,7 @@ export class ApiModelFixtures {
         model,
         input: question,
       }),
-      extractPrimaryResponse: data => {
+      extractPrimaryResponse: (data) => {
         // Responses API: output[].content[].text
         if (Array.isArray(data.output)) {
           for (const item of data.output) {
@@ -96,7 +96,7 @@ export class ApiModelFixtures {
         max_tokens: 50,
         messages: [{ role: 'user', content: question }],
       }),
-      extractPrimaryResponse: data => data.content?.[0]?.text ?? '',
+      extractPrimaryResponse: (data) => data.content?.[0]?.text ?? '',
       // Claude model name is already unique; no prefix needed for disambiguation.
       multiTestPrefix: '',
       // Anthropic format IS supported by /v1/chat/completions (routes to api.anthropic.com/v1/chat/completions).
@@ -118,7 +118,7 @@ export class ApiModelFixtures {
         max_tokens: 50,
         messages: [{ role: 'user', content: question }],
       }),
-      extractPrimaryResponse: data => data.content?.[0]?.text ?? '',
+      extractPrimaryResponse: (data) => data.content?.[0]?.text ?? '',
       multiTestPrefix: 'oauth/',
       supportsUniversalChatCompletions: true,
       extraHeaders: {
@@ -128,7 +128,9 @@ export class ApiModelFixtures {
       },
       extraBody: {
         max_tokens: 4096,
-        system: [{ type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." }],
+        system: [
+          { type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." },
+        ],
       },
     },
     gemini: {
@@ -141,19 +143,23 @@ export class ApiModelFixtures {
       chatExpected: 'tuesday',
       chatEndpoint: `/v1beta/models/${ApiModelFixtures.GEMINI_MODEL}:generateContent`,
       mockResponse: 'David Smith is from Chicago',
-      primaryEndpoints: effectiveModel => [
+      primaryEndpoints: (effectiveModel) => [
         `/v1beta/models/${effectiveModel}:generateContent`,
         `/v1beta/models/${effectiveModel}:streamGenerateContent`,
       ],
       // Streaming endpoints require SSE-aware fetch; map endpoint suffix to fetch strategy.
-      streamingEndpoints: effectiveModel => [`/v1beta/models/${effectiveModel}:streamGenerateContent`],
+      streamingEndpoints: (effectiveModel) => [
+        `/v1beta/models/${effectiveModel}:streamGenerateContent`,
+      ],
       buildPrimaryBody: (model, question) => ({
         contents: [{ role: 'user', parts: [{ text: question }] }],
       }),
-      extractPrimaryResponse: data => {
+      extractPrimaryResponse: (data) => {
         // Streaming: concat text parts across all SSE chunks.
         if (Array.isArray(data.chunks) && data.chunks.length > 0) {
-          return data.chunks.map(c => c.candidates?.[0]?.content?.parts?.[0]?.text ?? '').join('');
+          return data.chunks
+            .map((c) => c.candidates?.[0]?.content?.parts?.[0]?.text ?? '')
+            .join('');
         }
         return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
       },
@@ -207,7 +213,7 @@ export class ApiModelFixtures {
   // Test data validation
   static validateModelData(data) {
     const required = ['name', 'api_format', 'baseUrl', 'models'];
-    const missing = required.filter(field => !data[field]);
+    const missing = required.filter((field) => !data[field]);
 
     if (missing.length > 0) {
       throw new Error(`Missing required fields: ${missing.join(', ')}`);

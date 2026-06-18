@@ -149,6 +149,8 @@ test.describe('LLM Liberty OAuth - openai-codex end-to-end (local only)', () => 
     await chatPage.waitForResponseComplete();
 
     const reply = await chatPage.getLastAssistantMessage();
-    expect(reply, 'assistant reply must contain "hello bodhi" (case-insensitive)').toMatch(/hello bodhi/i);
+    expect(reply, 'assistant reply must contain "hello bodhi" (case-insensitive)').toMatch(
+      /hello bodhi/i
+    );
   });
 });

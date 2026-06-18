@@ -16,8 +16,17 @@ import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
-import { fetchWithApiKey, fetchWithBearer, fetchWithBearerSSE, mintApiToken } from '@/utils/api-model-helpers.mjs';
-import { getAuthServerConfig, getPreConfiguredAppClient, getTestCredentials } from '@/utils/auth-server-client.mjs';
+import {
+  fetchWithApiKey,
+  fetchWithBearer,
+  fetchWithBearerSSE,
+  mintApiToken,
+} from '@/utils/api-model-helpers.mjs';
+import {
+  getAuthServerConfig,
+  getPreConfiguredAppClient,
+  getTestCredentials,
+} from '@/utils/auth-server-client.mjs';
 
 // Live upstream tests: validate end-to-end API flow for all supported formats.
 //
@@ -120,7 +129,12 @@ test.describe('Live upstream - API token', () => {
 
       // Mint one BodhiApp API token shared across all format tests
       await test.step('Mint API token', async () => {
-        apiToken = await mintApiToken(tokensPage, page, 'live-upstream-api-token', 'scope_token_user');
+        apiToken = await mintApiToken(
+          tokensPage,
+          page,
+          'live-upstream-api-token',
+          'scope_token_user'
+        );
         expect(apiToken).toMatch(/^bodhiapp_/);
       });
 
@@ -131,11 +145,15 @@ test.describe('Live upstream - API token', () => {
           const streamingEndpoints = formatConfig.streamingEndpoints?.(effectiveModel) ?? [];
           for (const endpoint of formatConfig.primaryEndpoints(effectiveModel)) {
             const body = formatConfig.buildPrimaryBody(effectiveModel, formatConfig.chatQuestion);
-            const fetchFn = streamingEndpoints.includes(endpoint) ? fetchWithBearerSSE : fetchWithBearer;
+            const fetchFn = streamingEndpoints.includes(endpoint)
+              ? fetchWithBearerSSE
+              : fetchWithBearer;
             const { resp, data } = await fetchFn(sharedServerUrl, apiToken, endpoint, body);
             expect(resp.status, `${formatKey} ${endpoint}`).toBe(200);
             const content = formatConfig.extractPrimaryResponse(data);
-            expect(content.toLowerCase(), `${formatKey} ${endpoint} response`).toContain(formatConfig.chatExpected);
+            expect(content.toLowerCase(), `${formatKey} ${endpoint} response`).toContain(
+              formatConfig.chatExpected
+            );
           }
         }
       });
@@ -148,10 +166,17 @@ test.describe('Live upstream - API token', () => {
         const formatConfig = ApiModelFixtures.API_FORMATS.anthropic;
         const { effectiveModel } = models.anthropic;
         const body = formatConfig.buildPrimaryBody(effectiveModel, formatConfig.chatQuestion);
-        const { resp, data } = await fetchWithApiKey(sharedServerUrl, apiToken, '/anthropic/v1/messages', body);
+        const { resp, data } = await fetchWithApiKey(
+          sharedServerUrl,
+          apiToken,
+          '/anthropic/v1/messages',
+          body
+        );
         expect(resp.status, 'anthropic x-api-key /anthropic/v1/messages').toBe(200);
         const content = formatConfig.extractPrimaryResponse(data);
-        expect(content.toLowerCase(), 'anthropic x-api-key response').toContain(formatConfig.chatExpected);
+        expect(content.toLowerCase(), 'anthropic x-api-key response').toContain(
+          formatConfig.chatExpected
+        );
       });
 
       // Formats where BodhiApp allows routing to /v1/chat/completions.
@@ -165,10 +190,17 @@ test.describe('Live upstream - API token', () => {
             model: effectiveModel,
             messages: [{ role: 'user', content: formatConfig.chatQuestion }],
           };
-          const { resp, data } = await fetchWithBearer(sharedServerUrl, apiToken, '/v1/chat/completions', body);
+          const { resp, data } = await fetchWithBearer(
+            sharedServerUrl,
+            apiToken,
+            '/v1/chat/completions',
+            body
+          );
           expect(resp.status, `${formatKey} /v1/chat/completions`).toBe(200);
           const content = data.choices?.[0]?.message?.content ?? '';
-          expect(content.toLowerCase(), `${formatKey} chat completions response`).toContain(formatConfig.chatExpected);
+          expect(content.toLowerCase(), `${formatKey} chat completions response`).toContain(
+            formatConfig.chatExpected
+          );
         }
       });
 
@@ -252,7 +284,10 @@ test.describe('Live upstream - OAuth app token', () => {
     formPage = new ApiModelFormPage(page, sharedServerUrl);
   });
 
-  test('OAuth app token: verify primary and universal endpoints for all formats', async ({ page, sharedServerUrl }) => {
+  test('OAuth app token: verify primary and universal endpoints for all formats', async ({
+    page,
+    sharedServerUrl,
+  }) => {
     let models;
     let oauthToken;
 
@@ -308,11 +343,15 @@ test.describe('Live upstream - OAuth app token', () => {
           const streamingEndpoints = formatConfig.streamingEndpoints?.(effectiveModel) ?? [];
           for (const endpoint of formatConfig.primaryEndpoints(effectiveModel)) {
             const body = formatConfig.buildPrimaryBody(effectiveModel, formatConfig.chatQuestion);
-            const fetchFn = streamingEndpoints.includes(endpoint) ? fetchWithBearerSSE : fetchWithBearer;
+            const fetchFn = streamingEndpoints.includes(endpoint)
+              ? fetchWithBearerSSE
+              : fetchWithBearer;
             const { resp, data } = await fetchFn(sharedServerUrl, oauthToken, endpoint, body);
             expect(resp.status, `${formatKey} ${endpoint}`).toBe(200);
             const content = formatConfig.extractPrimaryResponse(data);
-            expect(content.toLowerCase(), `${formatKey} ${endpoint} response`).toContain(formatConfig.chatExpected);
+            expect(content.toLowerCase(), `${formatKey} ${endpoint} response`).toContain(
+              formatConfig.chatExpected
+            );
           }
         }
       });
@@ -326,10 +365,17 @@ test.describe('Live upstream - OAuth app token', () => {
             model: effectiveModel,
             messages: [{ role: 'user', content: formatConfig.chatQuestion }],
           };
-          const { resp, data } = await fetchWithBearer(sharedServerUrl, oauthToken, '/v1/chat/completions', body);
+          const { resp, data } = await fetchWithBearer(
+            sharedServerUrl,
+            oauthToken,
+            '/v1/chat/completions',
+            body
+          );
           expect(resp.status, `${formatKey} /v1/chat/completions`).toBe(200);
           const content = data.choices?.[0]?.message?.content ?? '';
-          expect(content.toLowerCase(), `${formatKey} chat completions response`).toContain(formatConfig.chatExpected);
+          expect(content.toLowerCase(), `${formatKey} chat completions response`).toContain(
+            formatConfig.chatExpected
+          );
         }
       });
     } finally {

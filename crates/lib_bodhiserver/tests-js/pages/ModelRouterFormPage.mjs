@@ -59,6 +59,8 @@ export class ModelRouterFormPage extends BasePage {
   }
 
   async expectModelOnForm(idx, expectedModel) {
-    await expect(this.page.locator(`[data-testid="target-model-${idx}"]`)).toHaveValue(expectedModel);
+    await expect(this.page.locator(`[data-testid="target-model-${idx}"]`)).toHaveValue(
+      expectedModel
+    );
   }
 }
