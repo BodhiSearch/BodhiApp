@@ -32,6 +32,7 @@ async fn create_anthropic_alias(
     .header("Cookie", cookie)
     .json(&json!({
       "api_format": "anthropic",
+      "name": "test-anthropic",
       "base_url": upstream_url,
       "api_key": {"action": "set", "value": "sk-ant-test-key"},
       "models": models,
@@ -189,6 +190,7 @@ async fn test_anthropic_messages_proxy_rejects_wrong_format() -> anyhow::Result<
     .header("Cookie", &cookie)
     .json(&json!({
       "api_format": "openai",
+      "name": "test-openai",
       "base_url": mock_openai_server.url(),
       "api_key": {"action": "set", "value": "sk-test"},
       "models": ["gpt-4o"],

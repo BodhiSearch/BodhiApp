@@ -353,7 +353,9 @@ export class ModelsListPage extends BasePage {
     const modelRow = this.page.locator(this.selectors.modelRow(modelId)).first();
     await expect(modelRow).toBeVisible();
 
-    const id = await this.page.locator(this.selectors.aliasCell(modelId)).textContent();
+    // The alias cell renders the user-facing name above the id, so read the id
+    // from the cell's dedicated data attribute rather than its concatenated text.
+    const id = await this.page.locator(this.selectors.aliasCell(modelId)).getAttribute('data-model-id');
     const api_format = await this.page.locator(this.selectors.repoCell(modelId)).textContent();
     const base_url = await this.page.locator(this.selectors.filenameCell(modelId)).textContent();
     const prefix = await this.page.locator(this.selectors.prefixCell(modelId)).textContent();

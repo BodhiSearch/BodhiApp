@@ -25,6 +25,7 @@ async fn create_openai_alias(
     .header("Cookie", cookie)
     .json(&json!({
       "api_format": "openai",
+      "name": "test-openai",
       "base_url": upstream_url,
       "api_key": {"action": "set", "value": "sk-test-key"},
       "models": ["gpt-4"],

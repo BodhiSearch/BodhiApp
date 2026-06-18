@@ -33,12 +33,7 @@ test.describe('API Models Setup Integration', () => {
     baseUrl = await serverManager.startServer();
 
     welcomePage = new SetupWelcomePage(page, baseUrl);
-    resourceAdminPage = new SetupResourceAdminPage(
-      page,
-      baseUrl,
-      authServerConfig,
-      testCredentials
-    );
+    resourceAdminPage = new SetupResourceAdminPage(page, baseUrl, authServerConfig, testCredentials);
     downloadModelsPage = new SetupDownloadModelsPage(page, baseUrl);
     apiModelsPage = new SetupApiModelsPage(page, baseUrl);
   });
@@ -136,6 +131,9 @@ test.describe('API Models Setup Integration', () => {
 
     // Navigate to API models page
     await navigateToApiModelsPage(page);
+
+    // Name is required before the form can be submitted
+    await apiModelsPage.form.fillName('Setup OpenAI');
 
     // Select API format (OpenAI)
     await apiModelsPage.selectApiFormat('openai');
