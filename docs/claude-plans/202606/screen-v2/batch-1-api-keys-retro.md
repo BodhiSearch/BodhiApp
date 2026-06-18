@@ -90,3 +90,55 @@ dark) — fixes the dangling refs **and** unblocks the ported CSS.
    routing step is scheduled; convert `BARE_PREFIXES` → `staticData.layout` → pathless `_layout`.
 3. Carry the temporary-scaffolding removal (ShellSlotsContext, useUiV2Flag) to the end-of-migration
    cleanup (techdebt.md).
+
+## Insights — why there was back-and-forth (process learnings for later phases)
+
+Batch 1 worked but took **more iterations than it should have**. The rework clustered into a few
+root causes; the fixes below are now **mandatory in the kickoff** (hard gates), not suggestions.
+
+### 1. We didn't analyze the *interactive* design up front — only screenshots / prototype source.
+- **Symptom:** the first App Tokens build was a flat list; the user had to supply screenshots + the
+  design URL and ask us to look again. The design's real substance is **interactive** — the
+  right-sidepanel (detail rail) that opens on row-select, the search that's a button until clicked,
+  the collapsed-sidebar states, themed filter pills. A static screenshot doesn't reveal these.
+- **Learning:** **walk the design live in Claude-in-Chrome BEFORE planning** — click rows, open the
+  rail, toggle search, collapse the sidebar, switch light/dark. Capture the *behaviors*, not just the
+  layout. This is the requirements-gathering step, and it's now a blocking pre-plan gate.
+
+### 2. We trusted RTL/E2E and shipped a browser-only bug.
+- **Symptom:** clicking a token never opened the rail. RTL passed (jsdom has no
+  `startViewTransition`, so the hook silently took its fallback path) and E2E passed (the click was
+  followed by other actions that masked the thrown handler). The real cause —
+  `document.startViewTransition` called unbound → **`TypeError: Illegal invocation`** — only showed
+  up when we drove the **live app** and read the **browser console**.
+- **Learning:** **live visual validation + a console-error scan are required before a screen is
+  "done"** — RTL/E2E are necessary but not sufficient; they cannot catch browser-only runtime errors
+  or visual/theme/responsive regressions. Added a regression test that stubs the API and asserts the
+  `this`-binding so this class of bug fails CI in future.
+
+### 3. We theorized fixes before reading the actual error.
+- **Symptom:** the e2e failure was chased through `vt-list`, then the status toggle, before we read
+  the real assertion (a token-not-found-after-create at a specific spec line). Two wasted cycles.
+- **Learning:** **read the real assertion/stack first** (full reporter, error-context.md, console),
+  identify the exact failing line, THEN fix. Don't pattern-match a hypothesis onto a vague symptom.
+
+### 4. Approach not grounded in the runtime before committing to it.
+- **Symptom:** view transitions were planned around React 19's `<ViewTransition>` before checking
+  the app is **React 18.3.1** (where it doesn't exist), forcing a pivot to the native API + swapping
+  the skill (`vercel-react-view-transitions` → `web-animation-view-transitions`).
+- **Learning:** **verify the runtime/version constraints first** (React version, available APIs,
+  installed deps) before choosing an approach or a skill. The `claude-api`-style "check before you
+  answer" discipline applies to framework features too.
+
+### 5. Under-specified UI placement → multiple visual iterations.
+- **Symptom:** the theme switch took several passes (popup → always-visible → icon-only / no-tooltip
+  → collapsed single-cycle).
+- **Learning:** for net-new chrome with no design reference, **ask one upfront placement/form
+  question** (AskUserQuestion) rather than iterating in code.
+
+### Net process changes (now enforced in the kickoff)
+- **Pre-plan:** thorough Claude-in-Chrome interactive design walk → requirements (blocking).
+- **Per-screen done-definition:** live Claude-in-Chrome validation in **light + dark + responsive**,
+  with a **console-clean** check (0 errors/exceptions) on load and on key interactions (blocking).
+- **Debugging:** read the real error before fixing; verify runtime/version assumptions before
+  choosing an approach.

@@ -22,10 +22,14 @@ between batches if priorities shift.
 
 Run this for each batch, with manual check-ins between steps:
 
-1. **Explore** — load this folder via [common-prompt.md](@common-prompt.md); read the prior batch's
-   retro + this batch's kick-off; inspect what's already migrated; survey this section's screens
-   (prototype in `design/` ↔ current production routes/hooks/tests). View the prototype visually
-   (see [design-reference.md](@design-reference.md)).
+1. **Explore + interactive design analysis (HARD GATE A)** — load this folder via
+   [common-prompt.md](@common-prompt.md); read the prior batch's retro + this batch's kick-off;
+   inspect what's already migrated; survey this section's screens (prototype in `design/` ↔ current
+   production routes/hooks/tests). **Do NOT plan from screenshots / `*-app.jsx` source alone** —
+   *walk each prototype live in Claude-in-Chrome* (server on :8000): click rows, open detail rails,
+   toggle search/controls, collapse the sidebar, switch light/dark, narrow the viewport. The
+   design's substance is interactive; capture the **behaviors** as requirements. (Batch 1 rework
+   came from skipping this — see batch-1 retro §"Insights".)
 2. **Prerequisites** — ensure everything this batch depends on is in place **before** implementing:
    shared components/CSS, reference-API interface+spec+stub if any ([reference-api.md](@reference-api.md)),
    backend changes + OpenAPI/ts-client regen if any, per-screen flags wired.
@@ -35,9 +39,16 @@ Run this for each batch, with manual check-ins between steps:
 4. **Implement** — migrate the section's screens behind their flags (recipe below).
 5. **Migrate e2e + tests** — update RTL tests and the section's page objects/specs (testid
    discipline below).
-6. **Ensure all pass** — run **all** gate checks for what changed: `cd crates/bodhi && npm run test`
-   (RTL), `make test.backend` (if Rust changed), `make build.ts-client` (if regen),
-   `make test.e2e` (from `crates/lib_bodhiserver/tests-js`). Never skip e2e before commit.
+6. **Ensure all pass + validate live (HARD GATE B)** — run **all** automated gate checks for what
+   changed: `cd crates/bodhi && npm run test` (RTL), `make test.backend` (if Rust changed),
+   `make build.ts-client` (if regen), `make test.e2e` (from `crates/lib_bodhiserver/tests-js`). Never
+   skip e2e before commit. **Then validate LIVE in Claude-in-Chrome** (`make app.run.live`, log in) —
+   RTL/E2E are necessary but NOT sufficient (they miss browser-only runtime errors and
+   visual/theme/responsive regressions; Batch 1 shipped an `Illegal invocation` that broke the rail
+   while every test passed). For each migrated screen confirm: interactions work (select→rail,
+   filter, search, toggles, nav); **light AND dark** render; **responsive** (container-query column
+   drops, sidebar collapse, mobile drawers); and **`read_console_messages` shows 0 errors/exceptions**
+   on load and on each key interaction. A screen isn't "done" until live validation passes.
 7. **Retire flags + commit** — remove this section's flags, delete its old versions/dead code,
    commit per batch (trunk-based, directly on `main`; rebase onto `origin/main` first).
 8. **Retrospect** — write `batch-N-<section>-retro.md`: what landed, divergences (folded vs left

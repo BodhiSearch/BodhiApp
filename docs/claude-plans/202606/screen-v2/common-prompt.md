@@ -39,6 +39,15 @@ exploratory** process. Read the context below before doing anything.
   batch; retire the flag + delete old code as part of the batch; commit per batch.
 - **Plan before code.** Each batch: explore → ensure prerequisites → write `batch-N-<section>-plan.md`
   here → get approval → implement → all gate checks green → commit → retro → next-batch kick-off.
+- **HARD GATE A — analyze the design interactively before planning.** Do NOT plan from screenshots or
+  `*-app.jsx` source alone. Walk each prototype live in Claude-in-Chrome (server on :8000): click
+  rows, open detail rails, toggle search/controls, collapse the sidebar, switch light/dark, narrow
+  the viewport. Capture the **behaviors** as requirements. (Batch-1 rework came from skipping this.)
+- **HARD GATE B — validate live before a screen is "done".** RTL/E2E are necessary but NOT sufficient
+  (they miss browser-only runtime errors and visual/theme/responsive regressions). Drive the running
+  app in Claude-in-Chrome and confirm: interactions work; **light AND dark**; **responsive**; and
+  **console is clean (0 errors/exceptions)** on load and on key interactions. See @process.md + the
+  batch-1 retro §"Insights".
 - **Build to our conventions.** Vite + TanStack Router/Query + shadcn/ui + `lucide-react` +
   `ThemeProvider`; strip prototype-only idioms on port (see @process.md recipe). Follow root
   `CLAUDE.md`, `crates/CLAUDE.md`, `crates/bodhi/src/CLAUDE.md`.
@@ -49,8 +58,8 @@ exploratory** process. Read the context below before doing anything.
   `web-design-guidelines` (accessibility/UX review of the ported UI).
 - **View transitions are React-18 native** (this app is React 18, NOT 19). Use `useViewTransition()`
   + TanStack Router `defaultViewTransition` per @view-transitions.md and the
-  `web-animation-view-transitions` skill — do NOT use React 19's `<ViewTransition>` component or the
-  `vercel-react-view-transitions` skill's examples (they require a React upgrade).
+  `web-animation-view-transitions` skill — do NOT use React 19's `<ViewTransition>` component (it
+  requires a React upgrade and is not available here).
 - **Never skip e2e** before commit; keep `data-testid`/ARIA stable across restructures.
 
 If anything in the context is stale or contradicts the current code, trust the code and flag the

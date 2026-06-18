@@ -12,8 +12,8 @@ API** (`document.startViewTransition`), which is exactly what React 19's compone
 result, React-18-safe, framework-agnostic, graceful degradation.
 
 Reference skill (installed): **`web-animation-view-transitions`** (`agents-inc/skills`) — native API,
-React-18-compatible. (The `vercel-react-view-transitions` skill targets React 19 — do **not** follow
-its `<ViewTransition>` examples here.)
+React-18-compatible. **Do not adopt React 19's `<ViewTransition>` component** (not available on
+React 18) or any skill built around it — use the native `document.startViewTransition` API.
 
 ## The two mechanisms
 
