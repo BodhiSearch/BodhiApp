@@ -165,7 +165,7 @@ function RequestDetailPanel({ req, onRole, onApprove, onReject }) {
   );
 }
 
-function UserRequestsMain({ requests, filter, setFilter, search, setSearch, counts, selId, onSelect, onRole, onApprove, onReject }) {
+function UserRequestsMain({ requests, filter, setFilter, search, setSearch, counts, loading, selId, onSelect, onRole, onApprove, onReject }) {
   const { openRail } = useShell();
   const select = id => { onSelect(id); openRail(); };
 
@@ -178,17 +178,23 @@ function UserRequestsMain({ requests, filter, setFilter, search, setSearch, coun
   return (
     <div className="l-page">
       <ListToolbar
+        loading={loading}
         categories={[
-          { id: 'all',      label: 'All',      badge: counts.all },
           { id: 'pending',  label: 'Pending',  badge: counts.pending },
           { id: 'approved', label: 'Approved', badge: counts.approved },
           { id: 'denied',   label: 'Rejected', badge: counts.denied },
+          { id: 'all',      label: 'All',      badge: counts.all },
         ]}
         category={filter} onCategory={setFilter}
         search={search} onSearch={setSearch} searchPlaceholder="Search requests by email…" />
 
       <div className="l-scroll">
-        {visible.length === 0 ? (
+        {loading ? (
+          <div className="l-empty">
+            <span className="ua-spin"><Ic name="loader-2" size={28} /></span>
+            <div className="l-empty-t">Loading requests…</div>
+          </div>
+        ) : visible.length === 0 ? (
           <div className="l-empty">
             <Ic name="user-check" size={32} />
             <div className="l-empty-t">{search ? 'No requests match your search' : `No ${filter === 'all' ? '' : filter + ' '}requests`}</div>
@@ -217,12 +223,21 @@ function UserRequestsMain({ requests, filter, setFilter, search, setSearch, coun
 
 function UserRequestsApp() {
   const [requests, setRequests] = useState(SAMPLE_REQUESTS);
-  const [filter,   setFilter]   = useState('all');
+  const [filter,   setFilter]   = useState('pending');
   const [search,   setSearch]   = useState('');
   const [selId,    setSelId]    = useState(null);
+  const [loading,  setLoading]  = useState(true);
 
   React.useEffect(() => {
-    if (!window.matchMedia('(max-width:767px)').matches) setSelId(SAMPLE_REQUESTS[0].id);
+    // simulate the initial data fetch resolving
+    const t = setTimeout(() => {
+      setLoading(false);
+      if (!window.matchMedia('(max-width:767px)').matches) {
+        const firstPending = SAMPLE_REQUESTS.find(r => r.status === 'pending');
+        setSelId((firstPending || SAMPLE_REQUESTS[0]).id);
+      }
+    }, 1100);
+    return () => clearTimeout(t);
   }, []);
 
   const setRole    = (id, role) => setRequests(p => p.map(r => r.id === id ? { ...r, role } : r));
@@ -248,7 +263,7 @@ function UserRequestsApp() {
         { label: 'User Access Requests', current: true },
       ]}
       headerActions={
-        counts.pending > 0 && (
+        !loading && counts.pending > 0 && (
           <div className="ua-pending-pill">
             <Ic name="clock" size={12} />
             {counts.pending} pending review
@@ -259,7 +274,7 @@ function UserRequestsApp() {
       railHeader={selected ? <RequestDetailHeader req={selected} onClose={() => setSelId(null)} /> : undefined}
     >
       <UserRequestsMain requests={requests} filter={filter} setFilter={setFilter} search={search} setSearch={setSearch}
-        counts={counts} selId={selId} onSelect={setSelId} onRole={setRole} onApprove={approve} onReject={reject} />
+        counts={counts} loading={loading} selId={selId} onSelect={setSelId} onRole={setRole} onApprove={approve} onReject={reject} />
     </AppShell>
   );
 }

@@ -11,6 +11,7 @@
      <ListToolbar
        categories={[{ id, label, cls, badge }]}   // sub-category pills (left)
        category={id} onCategory={fn}
+       loading={bool}                               // badges show a shimmer until data resolves
        search={q} onSearch={fn} searchPlaceholder="…"
        searchMode="collapse" | "inline" | "none"   // collapse = icon → row above
        searchKbd="⌘K"                              // inline mode only
@@ -33,6 +34,7 @@ function ListToolbar({
   categories = [], category, onCategory,
   search = '', onSearch, searchPlaceholder = 'Search…',
   searchMode = 'collapse', searchKbd,
+  loading = false,
   actions, children,
 }) {
   const [open, setOpen] = React.useState(false);
@@ -47,7 +49,11 @@ function ListToolbar({
                 className={'l-cat ' + (c.cls || '') + (category === c.id ? ' on' : '')}
                 onClick={() => onCategory && onCategory(c.id)}>
           {c.label}
-          {c.badge != null && <span className="l-cat-badge">{c.badge}</span>}
+          {(loading || c.badge != null) && (
+            loading
+              ? <span className="l-cat-badge l-cat-badge--loading" aria-label="Loading count" />
+              : <span className="l-cat-badge">{c.badge}</span>
+          )}
         </button>
       ))}
     </div>

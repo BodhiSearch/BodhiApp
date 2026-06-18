@@ -51,6 +51,12 @@
 .l-cat.c-saffron.on .l-cat-badge,
 .l-cat.c-lotus.on .l-cat-badge,
 .l-cat.c-teal.on .l-cat-badge { background: rgba(0,0,0,.08); color: inherit; }
+/* loading state: shimmer placeholder shown until counts resolve */
+.l-cat-badge--loading { width: 17px; min-width: 17px; padding: 0; color: transparent; position: relative; overflow: hidden; }
+.l-cat-badge--loading::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation: l-badge-shimmer 1.15s ease-in-out infinite; }
+.l-cat.on .l-cat-badge--loading::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); }
+@keyframes l-badge-shimmer { 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .l-cat-badge--loading::after { animation: none; } .l-cat-badge--loading { opacity: .55; } }
 
 /* right-side actions */
 .l-tb-actions { display: flex; align-items: center; gap: 6px; flex: none; }
