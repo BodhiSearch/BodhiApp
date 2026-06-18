@@ -348,12 +348,13 @@ async fn test_exchange_auth_code_success() -> anyhow::Result<()> {
     .create();
 
   let service = test_auth_service(&url);
-  let (access_token, refresh_token) = service
+  let (access_token, refresh_token, id_token) = service
     .exchange_auth_code(code, client_id, client_secret, redirect_uri, code_verifier)
     .await?;
 
   assert_eq!("test_access_token", access_token.secret());
   assert_eq!("test_refresh_token", refresh_token.secret());
+  assert_eq!(Some("test_id_token".to_string()), id_token);
   mock.assert();
   Ok(())
 }

@@ -4,111 +4,160 @@
 
 @layer base {
   :root {
+    /* ── Bodhi V2 design tokens (lotus palette). Merged from design/colors_and_type.css.
+       Prod-only vars (--header*, --secondary, --chart-*, --sidebar-* names) preserved below. ── */
+
+    /* Brand raw ramps (direct hex access) */
+    --bodhi-saffron-50: #fff5ec;
+    --bodhi-saffron-100: #ffe5ca;
+    --bodhi-saffron-200: #ffcb95;
+    --bodhi-saffron-300: #ffab5c;
+    --bodhi-saffron-400: #fa8a2e;
+    --bodhi-saffron-500: #e36a0f;
+    --bodhi-saffron-600: #b4500a;
+    --bodhi-lotus-50: #fff1f4;
+    --bodhi-lotus-100: #ffe0e8;
+    --bodhi-lotus-200: #ffc1d1;
+    --bodhi-lotus-300: #ffa4b8;
+    --bodhi-lotus-400: #f27090;
+    --bodhi-lotus-500: #db456c;
+    --bodhi-lotus-600: #b02a52;
+    --bodhi-leaf-200: #befa91;
+    --bodhi-leaf-400: #5ab23b;
+    --bodhi-leaf-500: #2f7d1f;
+    --bodhi-indigo-300: #6e7bcc;
+    --bodhi-indigo-400: #3e4aa8;
+    --bodhi-indigo-500: #242b75;
+    --bodhi-teal-400: #1e9d8f;
+    --bodhi-teal-500: #0f6f67;
+
     /* Base colors */
-    --background: 240 10% 98%; /* Slightly off-white for base layer */
-    --foreground: 240 10% 3.9%;
+    --background: 240 20% 99%;
+    --foreground: 235 30% 10%;
 
     /* Component colors */
-    --card: 0 0% 100%; /* Pure white for content */
-    --card-foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 235 30% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 235 30% 10%;
 
-    /* Header colors */
-    --header: 0 0% 100%; /* White base for header */
-    --header-alpha: 80%; /* Transparency for blur effect */
-    --header-elevated: 240 10% 94%; /* Slightly darker than background for light theme */
+    /* Surfaces (V2) */
+    --surface-1: 240 20% 99%;
+    --surface-2: 240 14% 96%;
+    --surface-3: 240 10% 92%;
 
-    /* Primary colors */
-    --primary: 250 95% 64%;
-    --primary-foreground: 0 0% 100%;
+    /* Header colors (prod-only; kept until old AppHeader is deleted) */
+    --header: 0 0% 100%;
+    --header-alpha: 80%;
+    --header-elevated: 240 10% 94%;
 
-    /* Secondary colors */
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    /* Primary colors — lotus */
+    --primary: 347 100% 82%;
+    --primary-foreground: 235 40% 12%;
+    --primary-hover: 341 65% 56%;
+
+    /* Secondary colors — saffron (prod uses --secondary as a neutral too; V2 sets brand) */
+    --secondary: 30 100% 58%;
+    --secondary-foreground: 0 0% 100%;
 
     /* Muted colors */
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 240 14% 96%;
+    --muted-foreground: 240 8% 42%;
 
-    /* Accent colors */
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    /* Accent colors — indigo */
+    --accent: 234 47% 45%;
+    --accent-foreground: 0 0% 100%;
 
     /* Status colors */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 142 72% 29%;
-    --success-foreground: 0 0% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 98%;
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 98%;
+    --destructive: 356 78% 54%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 60% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 30 95% 50%;
+    --warning-foreground: 30 40% 12%;
+    --info: 234 60% 55%;
+    --info-foreground: 0 0% 100%;
 
     /* UI elements */
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 250 95% 64%;
+    --border: 240 10% 90%;
+    --input: 240 10% 90%;
+    --ring: 347 100% 70%;
     --radius: 0.5rem;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-full: 999px;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-background: 240 18% 97%;
+    --sidebar-foreground: 235 25% 20%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 240 14% 93%;
+    --sidebar-accent-foreground: 235 30% 10%;
+    --sidebar-border: 240 10% 88%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 240 10% 1%; /* Almost black for base layer: #020203 */
-    --foreground: 0 0% 98%;
+    --background: 235 30% 6%;
+    --foreground: 240 15% 94%;
 
-    --card: 240 10% 4.5%; /* Noticeably lighter for content: #0B0B0D */
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 4.5%; /* Match card background */
-    --popover-foreground: 0 0% 98%;
+    --card: 235 28% 9%;
+    --card-foreground: 240 15% 94%;
+    --popover: 235 28% 10%;
+    --popover-foreground: 240 15% 94%;
 
-    /* Header colors */
-    --header: 240 10% 5%; /* Slightly lighter than card: #0D0D0F */
-    --header-alpha: 80%; /* More opacity in dark mode for contrast */
-    --header-elevated: 240 10% 10%; /* Slightly lighter than header for dark theme */
+    --surface-1: 235 30% 6%;
+    --surface-2: 235 28% 9%;
+    --surface-3: 235 26% 14%;
 
-    --primary: 250 95% 64%;
-    --primary-foreground: 0 0% 100%;
+    /* Header colors (prod-only; kept until old AppHeader is deleted) */
+    --header: 240 10% 5%;
+    --header-alpha: 80%;
+    --header-elevated: 240 10% 10%;
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --primary: 347 100% 78%;
+    --primary-foreground: 235 40% 10%;
+    --primary-hover: 341 80% 70%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --secondary: 30 95% 62%;
+    --secondary-foreground: 30 40% 10%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --muted: 235 20% 16%;
+    --muted-foreground: 240 10% 68%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --accent: 234 60% 68%;
+    --accent-foreground: 235 40% 10%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 250 95% 64%;
+    --destructive: 356 78% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 55% 52%;
+    --success-foreground: 140 40% 8%;
+    --warning: 30 95% 62%;
+    --warning-foreground: 30 40% 10%;
+    --info: 234 80% 74%;
+    --info-foreground: 235 40% 10%;
+
+    --border: 235 20% 18%;
+    --input: 235 20% 18%;
+    --ring: 347 100% 74%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-background: 235 30% 5%;
+    --sidebar-foreground: 240 12% 86%;
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-accent: 235 24% 12%;
+    --sidebar-accent-foreground: 240 15% 94%;
+    --sidebar-border: 235 20% 14%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }

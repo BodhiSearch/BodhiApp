@@ -21,6 +21,7 @@ exploratory** process. Read the context below before doing anything.
 - @process.md — the per-batch loop, the per-screen recipe, e2e/testid discipline, batch sequence,
   Batch 0 scope, and the carry-forward risks.
 - @glossary.md — shared vocabulary.
+- @techdebt.md — tracked failing tests + deferred fixes carried across batches.
 
 ## Then orient to the current batch
 

@@ -1,3 +1,4 @@
+use crate::middleware::id_token_key;
 use crate::{
   AuthScope, BodhiErrorResponse, DashboardUser, TokenInfo, UserInfoEnvelope, UserResponse,
   API_TAG_AUTH, ENDPOINT_USER_INFO,
@@ -6,6 +7,7 @@ use axum::Json;
 use services::AppRole;
 use services::AuthContext;
 use services::{extract_claims, Claims};
+use tower_sessions::Session;
 use tracing::debug;
 
 #[utoipa::path(
@@ -53,6 +55,7 @@ use tracing::debug;
 )]
 pub async fn users_info(
   auth_scope: AuthScope,
+  session: Session,
 ) -> Result<Json<UserInfoEnvelope>, BodhiErrorResponse> {
   let (user, dashboard) = match auth_scope.auth_context().clone() {
     AuthContext::Anonymous { .. } => {
@@ -62,10 +65,15 @@ pub async fn users_info(
     AuthContext::Session {
       ref token,
       ref role,
+      ref client_id,
       ..
     } => {
       debug!("session auth");
       let claims: Claims = extract_claims::<Claims>(token)?;
+      let id_token = session
+        .get::<String>(&id_token_key(client_id))
+        .await
+        .unwrap_or(None);
       (
         UserResponse::LoggedIn(services::UserInfo {
           user_id: claims.sub,
@@ -73,6 +81,7 @@ pub async fn users_info(
           first_name: claims.given_name,
           last_name: claims.family_name,
           role: Some(AppRole::Session(*role)),
+          id_token,
         }),
         None,
       )
@@ -99,6 +108,7 @@ pub async fn users_info(
           first_name: claims.given_name,
           last_name: claims.family_name,
           role: Some(AppRole::Session(*role)),
+          id_token: None,
         })
       } else {
         UserResponse::LoggedOut
@@ -123,6 +133,7 @@ pub async fn users_info(
           first_name: claims.given_name,
           last_name: claims.family_name,
           role: role.as_ref().map(|&r| AppRole::ExchangedToken(r)),
+          id_token: None,
         }),
         None,
       )

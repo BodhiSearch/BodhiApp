@@ -17,6 +17,7 @@ const mockAppInfoData: AppInfo = {
   status: 'ready',
   deployment: 'standalone',
   url: 'http://localhost:1135',
+  reference_api_url: 'https://api.getbodhi.app/',
 };
 
 const mockUserInfoData = {

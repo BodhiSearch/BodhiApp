@@ -1,5 +1,14 @@
 # UI V2 Migration — Screen Coverage
 
+> **SCOPE (locked):** This migration task + phased plan covers **only the 13 shell app screens**
+> (Chat, Models ×4, MCP ×3, API Keys ×3, Settings ×2 — the "shell" layout family). The
+> **access-request** standalone screens, the **setup** wizard, and the **Keycloak/auth** screens
+> are **OUT OF SCOPE for now** (designs exist in `design/` — `bodhi-standalone.css`,
+> `setup-flow.css`, `bodhi-auth.css` families — but are deferred; they keep their current
+> production layouts and render OUTSIDE the AppShell). The layout model below is built **shell vs
+> bare** so those families can be added later without rework.
+
+
 Which app screens **have** a V2 design, which **consolidate** into a shared screen, and which are
 **design-pending**. This is a **live checklist** — update it as designs are provided or as screens
 consolidate further. It complements [architecture.md](@architecture.md) (where screens live) and
@@ -51,21 +60,21 @@ The V2 design intentionally folds several dedicated app screens into shared scre
   design covers pending + history (filter tabs). → `/users/pending/` is **retired** (no separate
   design).
 
-## C. Design-pending — screens with NO V2 design yet (user will provide)
+## C. OUT OF SCOPE for this task — designs exist, deferred
 
-These need designs the user will provide; update each row's status when a design lands. They are
-**not** part of the AppShell-section batches in the same way — most are auth/onboarding surfaces
-(see [process.md](@process.md): setup/login/auth render **bare**, outside AppShell).
+Designs for these now exist in `design/` (three standalone layout families), but the user has
+**explicitly deferred them** — this task + phased plan cover only the 13 shell app screens. They
+render **bare** (outside AppShell) today and keep their current production layouts. When a future
+task picks them up, they map to the design families noted below.
 
-| Screen / area | App route(s) | Status | Notes |
+| Family | Design source (`design/`) | App route(s) | Notes |
 |---|---|---|---|
-| **Login** (non-multi-tenant) | `/login/` | ☐ design pending (user) | Shows user info + Logout. Renders **bare** (outside AppShell). |
-| **Login** (multi-tenant) | `/login/` | ☐ design pending (user) | Shows tenant switcher / switch tenancy. Bare. |
-| **Request Access** | `/request-access/` | ☐ design pending (user) | Currently rendered **with** AppShell; will be made **AppShell-independent** (standalone, bare). Distinct from the admin *review* screen (which IS designed, §A). |
-| **Setup / onboarding (all steps)** | `/setup/`, `/setup/tenants/`, `/setup/resource-admin/`, `/setup/download-models/`, `/setup/api-models/`, `/setup/llm-engine/`, `/setup/browser-extension/`, `/setup/complete/` | ☐ design pending (user) | Whole wizard; will be created. Renders bare (its own SetupLayout). |
-| **Auth callbacks** | `/auth/callback/`, `/auth/dashboard/callback/` | ☐ design pending (user) | Will create these. Largely redirect/processing UI; bare. |
-| **MCP OAuth callback** | `/mcps/oauth/callback/` | ☐ design pending (user) | Will create. Bare. |
-| **Keycloak login screens** | (external IdP, not an app route) | ☐ design pending (user) | The IdP-hosted login/registration screens. Tracked here; provided/created separately. |
+| **Access-request standalone** (3) | `Bodhi Request Access.html`, `Bodhi Access Request Pending.html`, `Bodhi Access Request.html` (`bodhi-standalone.css`) | `/request-access/`, pending, `/apps/access-requests/review/` | `.std-*` layout: slim topbar + centered card, no sidebar. (Note: the *admin* Access Request **review** under the API-Keys section IS in scope §A; the user-facing request/pending standalone screens are deferred.) |
+| **Setup / onboarding** (6) | `setup-1-get-started.html` … `setup-6-complete.html` (`setup-flow.css`, `setup-shell.jsx`) | `/setup/*` | Centered column + top stepper. Linear flow, bare. |
+| **Keycloak / auth** (7) | `login.html`, `register.html`, `forgot-password.html`, `update-password.html`, `verify-email.html`, `consent.html`, `error.html` (`bodhi-auth.css`, `KEYCLOAK-MAPPING.md`) | IdP-hosted (`/login`, `/register`, …) | Keycloak FreeMarker themes; served by the auth server, not the app. |
+
+Plus app routes that render bare and aren't redesigned in this task: `/login/`, `/auth/callback/`,
+`/auth/dashboard/callback/`, `/mcps/oauth/callback/`.
 
 ## D. No design needed (redirect-only, no real UI)
 

@@ -1,6 +1,6 @@
 use crate::middleware::{
-  access_token_key, generate_random_string, refresh_token_key, SESSION_KEY_ACTIVE_CLIENT_ID,
-  SESSION_KEY_USER_ID,
+  access_token_key, generate_random_string, id_token_key, refresh_token_key,
+  SESSION_KEY_ACTIVE_CLIENT_ID, SESSION_KEY_USER_ID,
 };
 use crate::shared::{utils::extract_request_host, AuthScope};
 use crate::BodhiErrorResponse;
@@ -258,6 +258,7 @@ pub async fn auth_callback(
   let status_resource_admin = app_status == AppStatus::ResourceAdmin;
   let mut access_token = token_response.0.secret().to_string();
   let mut refresh_token = token_response.1.secret().to_string();
+  let id_token = token_response.2;
 
   let claims = extract_claims::<Claims>(&access_token)?;
   let user_id = claims.sub.clone();
@@ -296,6 +297,12 @@ pub async fn auth_callback(
     .insert(&refresh_token_key(&instance.client_id), refresh_token)
     .await
     .map_err(AuthRouteError::from)?;
+  if let Some(id_token) = id_token {
+    session
+      .insert(&id_token_key(&instance.client_id), id_token)
+      .await
+      .map_err(AuthRouteError::from)?;
+  }
 
   let ui_setup_resume = if let Ok(parsed_url) = Url::parse(&callback_url) {
     let mut new_url = parsed_url.clone();

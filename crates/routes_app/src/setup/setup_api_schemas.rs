@@ -15,7 +15,8 @@ use utoipa::ToSchema;
     "status": "ready",
     "deployment": "standalone",
     "client_id": "my-client-id",
-    "url": "https://example.com"
+    "url": "https://example.com",
+    "reference_api_url": "https://api.getbodhi.app/"
 }))]
 pub struct AppInfo {
   /// Application version number (semantic versioning)
@@ -37,6 +38,10 @@ pub struct AppInfo {
   /// Public URL of the server
   #[schema(example = "https://example.com")]
   pub url: String,
+  /// Base URL of the external reference API the frontend calls directly (configurable via
+  /// `BODHI_REFERENCE_API_URL`, env-overridable for tests)
+  #[schema(example = "https://api.getbodhi.app/")]
+  pub reference_api_url: String,
 }
 
 /// Request to setup the application in authenticated mode

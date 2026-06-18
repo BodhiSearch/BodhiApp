@@ -1237,31 +1237,23 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AccessRequestActionResponse: {
-            /** @description Updated status after action */
             status: components["schemas"]["AppAccessRequestStatus"];
-            /** @description Flow type of the access request */
             flow_type: components["schemas"]["FlowType"];
-            /** @description Redirect URL (present for redirect flow) */
+            /** @description Present for redirect flow */
             redirect_url?: string | null;
         };
         AccessRequestReviewResponse: {
-            /** @description Access request ID */
             id: string;
-            /** @description App client ID */
             app_client_id: string;
-            /** @description App name from KC (if available) */
+            /** @description From KC, if available */
             app_name?: string | null;
-            /** @description App description from KC (if available) */
+            /** @description From KC, if available */
             app_description?: string | null;
-            /** @description Flow type: "redirect" or "popup" */
+            /** @description One of: "redirect", "popup" */
             flow_type: components["schemas"]["FlowType"];
-            /** @description Current status */
             status: components["schemas"]["AppAccessRequestStatus"];
-            /** @description Role requested by the app */
             requested_role: string;
-            /** @description Resources requested */
             requested: components["schemas"]["RequestedResources"];
-            /** @description MCP server information with user instances */
             mcps_info?: components["schemas"]["McpServerReviewInfo"][];
         };
         /** @example {
@@ -1272,14 +1264,12 @@ export interface components {
          *       "status": "approved"
          *     } */
         AccessRequestStatusResponse: {
-            /** @description Access request ID */
             id: string;
-            /** @description Current status: "draft", "approved", "denied", "failed" */
+            /** @description One of: "draft", "approved", "denied", "failed" */
             status: components["schemas"]["AppAccessRequestStatus"];
-            /** @description Role requested by the app */
             requested_role: components["schemas"]["UserScope"];
             approved_role?: null | components["schemas"]["UserScope"];
-            /** @description Access request scope (present when user-approved with tools) */
+            /** @description Present when user-approved with tools */
             access_request_scope?: string | null;
         };
         /** @description Flat enum representing all types of model aliases
@@ -1317,10 +1307,9 @@ export interface components {
             max_input_tokens?: number | null;
             /** Format: int64 */
             max_tokens?: number | null;
-            /** @description Always `"model"` — included for Anthropic API compatibility. */
             type: string;
         };
-        /** @description Model capability information (Anthropic ModelCapabilities schema). */
+        /** @description Anthropic ModelCapabilities schema. */
         AnthropicModelCapabilities: {
             batch: components["schemas"]["CapabilitySupport"];
             citations: components["schemas"]["CapabilitySupport"];
@@ -1454,6 +1443,7 @@ export interface components {
          *       "client_id": "my-client-id",
          *       "commit_sha": "abc1234",
          *       "deployment": "standalone",
+         *       "reference_api_url": "https://api.getbodhi.app/",
          *       "status": "ready",
          *       "url": "https://example.com",
          *       "version": "0.1.0"
@@ -1484,6 +1474,12 @@ export interface components {
              * @example https://example.com
              */
             url: string;
+            /**
+             * @description Base URL of the external reference API the frontend calls directly (configurable via
+             *     `BODHI_REFERENCE_API_URL`, env-overridable for tests)
+             * @example https://api.getbodhi.app/
+             */
+            reference_api_url: string;
         };
         AppRole: components["schemas"]["ResourceRole"] | components["schemas"]["TokenScope"] | components["schemas"]["UserScope"];
         /**
@@ -1493,9 +1489,7 @@ export interface components {
         AppStatus: "setup" | "ready" | "resource_admin";
         /** @enum {string} */
         ApprovalStatus: "approved" | "denied";
-        /**
-         * @description Request for approving an app access request
-         * @example {
+        /** @example {
          *       "approved": {
          *         "mcps": [
          *           {
@@ -1510,8 +1504,7 @@ export interface components {
          *         "version": "1"
          *       },
          *       "approved_role": "scope_user_user"
-         *     }
-         */
+         *     } */
         ApproveAccessRequest: {
             /** @description Role to grant for the approved request (scope_user_user or scope_user_power_user) */
             approved_role: components["schemas"]["UserScope"];
@@ -1528,8 +1521,7 @@ export interface components {
             /** @description Role to assign to the user */
             role: components["schemas"]["ResourceRole"];
         };
-        /** @description Versioned envelope for approved resources.
-         *     The `version` tag is mandatory and must match the corresponding `RequestedResources` version. */
+        /** @description The `version` tag is mandatory and must match the corresponding `RequestedResources` version. */
         ApprovedResources: components["schemas"]["ApprovedResourcesV1"] & {
             /** @enum {string} */
             version: "1";
@@ -1543,12 +1535,12 @@ export interface components {
          *     } */
         AuthCallbackRequest: {
             /**
-             * @description OAuth authorization code from successful authentication (required for success flow)
+             * @description Required for the success flow
              * @example auth_code_123
              */
             code?: string | null;
             /**
-             * @description OAuth state parameter for CSRF protection (must match initiated request)
+             * @description CSRF protection — must match the initiated request
              * @example random_state_456
              */
             state?: string | null;
@@ -1557,10 +1549,7 @@ export interface components {
              * @example access_denied
              */
             error?: string | null;
-            /**
-             * @description Human-readable OAuth error description if authentication failed
-             * @example The user denied the request
-             */
+            /** @example The user denied the request */
             error_description?: string | null;
         } & {
             [key: string]: string;
@@ -1637,7 +1626,6 @@ export interface components {
             /** @description Error details following Bodhi API error format */
             error: components["schemas"]["BodhiError"];
         };
-        /** @description Whether a single capability is supported by the model. */
         CapabilitySupport: {
             supported: boolean;
         };
@@ -1652,7 +1640,6 @@ export interface components {
             /** Format: int64 */
             max_output_tokens?: number | null;
         };
-        /** @description Context management capability details. */
         ContextManagementCapability: {
             clear_thinking_20251015?: null | components["schemas"]["CapabilitySupport"];
             clear_tool_uses_20250919?: null | components["schemas"]["CapabilitySupport"];
@@ -1661,9 +1648,7 @@ export interface components {
         CopyAliasRequest: {
             alias: string;
         };
-        /**
-         * @description Request for creating an app access request
-         * @example {
+        /** @example {
          *       "app_client_id": "my-app-client",
          *       "flow_type": "redirect",
          *       "redirect_url": "https://myapp.com/callback",
@@ -1676,8 +1661,7 @@ export interface components {
          *         "version": "1"
          *       },
          *       "requested_role": "scope_user_user"
-         *     }
-         */
+         *     } */
         CreateAccessRequest: {
             /** @description App client ID from Keycloak */
             app_client_id: string;
@@ -1696,11 +1680,9 @@ export interface components {
          *       "status": "draft"
          *     } */
         CreateAccessRequestResponse: {
-            /** @description Access request ID */
             id: string;
-            /** @description Status (always "draft") */
+            /** @description Always "draft" */
             status: components["schemas"]["AppAccessRequestStatus"];
-            /** @description Review URL for user to approve/deny */
             review_url: string;
         };
         /** @description Wrapper for creating auth configs with server_id in body instead of path */
@@ -1964,6 +1946,7 @@ export interface components {
             /** @description Whether to forward all requests with this prefix */
             forward_all_with_prefix?: boolean;
         };
+        /** @description Envelope sub-types mirror the llm-liberty JSON contract v1.0.0. */
         LlmLibertyAuthSpec: {
             in: string;
             key: string;
@@ -2038,7 +2021,6 @@ export interface components {
             /** @description Test prompt (max 30 characters for cost control) */
             prompt: string;
         };
-        /** @description Local model file response */
         LocalModelResponse: {
             repo: string;
             filename: string;
@@ -2052,32 +2034,24 @@ export interface components {
         };
         /** @description User-owned MCP server instance. */
         Mcp: {
-            /** @description Unique instance identifier (UUID) */
             id: string;
             /** @description Server info resolved via JOIN */
             mcp_server: components["schemas"]["McpServerInfo"];
-            /** @description User-defined slug for this instance */
             slug: string;
-            /** @description Human-readable name */
             name: string;
-            /** @description Optional description for this instance */
             description?: string | null;
-            /** @description Whether this instance is enabled */
             enabled: boolean;
-            /** @description MCP proxy path for this instance */
             path: string;
             auth_type: components["schemas"]["McpAuthType"];
             /** @description Reference to the auth config (mcp_auth_configs.id) */
             auth_config_id?: string | null;
             /**
              * Format: date-time
-             * @description When this instance was created
              * @example 2024-11-10T04:52:06.786Z
              */
             created_at: string;
             /**
              * Format: date-time
-             * @description When this instance was last updated
              * @example 2024-11-10T04:52:06.786Z
              */
             updated_at: string;
@@ -2139,6 +2113,7 @@ export interface components {
         McpAuthConfigsListResponse: {
             auth_configs: components["schemas"]["McpAuthConfigResponse"][];
         };
+        /** @description Masked auth param response. */
         McpAuthParam: {
             id: string;
             param_type: components["schemas"]["McpAuthParamType"];
@@ -2161,51 +2136,37 @@ export interface components {
         };
         /** @description Input for creating or updating an MCP instance. */
         McpRequest: {
-            /** @description Human-readable name (required) */
             name: string;
-            /** @description User-defined slug for this instance (1-24 chars, alphanumeric + hyphens) */
+            /** @description 1-24 chars, alphanumeric + hyphens. */
             slug: string;
-            /** @description MCP server ID (required for create, ignored for update) */
+            /** @description Required for create, ignored for update. */
             mcp_server_id?: string | null;
-            /** @description Optional description */
             description?: string | null;
-            /** @description Whether this instance is enabled */
             enabled: boolean;
-            /** @description Authentication type */
             auth_type?: components["schemas"]["McpAuthType"];
-            /** @description Reference to auth config */
             auth_config_id?: string | null;
-            /** @description Instance-level auth params (values for the auth config's key definitions) */
+            /** @description Instance-level values for the auth config's key definitions. */
             credentials?: components["schemas"]["McpAuthParamInput"][] | null;
-            /** @description OAuth token ID to link to this MCP instance (set after OAuth flow) */
+            /** @description OAuth token ID to link to this MCP instance (set after OAuth flow). */
             oauth_token_id?: string | null;
         };
-        /** @description Admin-managed MCP server registry entry.
-         *     Admins/managers register MCP server URLs that users can then create instances of. */
+        /** @description Admin-managed MCP server registry entry that users create instances of. */
         McpServer: {
-            /** @description Unique identifier (UUID) */
             id: string;
             /** @description MCP server endpoint URL (trimmed, case-insensitive unique) */
             url: string;
-            /** @description Human-readable display name */
             name: string;
-            /** @description Optional description */
             description?: string | null;
-            /** @description Whether this MCP server is enabled */
             enabled: boolean;
-            /** @description User who created this entry */
             created_by: string;
-            /** @description User who last updated this entry */
             updated_by: string;
             /**
              * Format: date-time
-             * @description When this entry was created
              * @example 2024-11-10T04:52:06.786Z
              */
             created_at: string;
             /**
              * Format: date-time
-             * @description When this entry was last updated
              * @example 2024-11-10T04:52:06.786Z
              */
             updated_at: string;
@@ -2219,13 +2180,10 @@ export interface components {
         };
         /** @description Input for creating or updating an MCP server. */
         McpServerRequest: {
-            /** @description MCP server endpoint URL (trimmed, case-insensitive unique) */
+            /** @description MCP server endpoint URL (trimmed, case-insensitive unique). */
             url: string;
-            /** @description Human-readable display name */
             name: string;
-            /** @description Optional description */
             description?: string | null;
-            /** @description Whether this MCP server is enabled */
             enabled: boolean;
             auth_config?: null | components["schemas"]["CreateMcpAuthConfigRequest"];
         };
@@ -2238,7 +2196,6 @@ export interface components {
             auth_config?: null | components["schemas"]["McpAuthConfigResponse"];
         };
         McpServerReviewInfo: {
-            /** @description Requested MCP server URL */
             url: string;
             /** @description User's MCP instances connected to this server URL */
             instances: components["schemas"]["Mcp"][];
@@ -2418,7 +2375,6 @@ export interface components {
             page: number;
             page_size: number;
         };
-        /** @description Paginated list of local model files */
         PaginatedLocalModelResponse: {
             data: components["schemas"]["LocalModelResponse"][];
             total: number;
@@ -2502,7 +2458,6 @@ export interface components {
              */
             message: string;
         };
-        /** @description Response for queue status operations */
         QueueStatusResponse: {
             /** @description Queue status ("idle" or "processing") */
             status: string;
@@ -2560,8 +2515,7 @@ export interface components {
         RequestedMcpServer: {
             url: string;
         };
-        /** @description Versioned envelope for requested resources.
-         *     The `version` tag is mandatory — clients must specify which version they are using. */
+        /** @description The `version` tag is mandatory — clients must specify which version they are using. */
         RequestedResources: components["schemas"]["RequestedResourcesV1"] & {
             /** @enum {string} */
             version: "1";
@@ -2722,12 +2676,10 @@ export interface components {
             response?: string | null;
             error?: string | null;
         };
-        /** @description Thinking capability and supported type configurations. */
         ThinkingCapability: {
             supported: boolean;
             types: components["schemas"]["ThinkingTypes"];
         };
-        /** @description Supported thinking type configurations. */
         ThinkingTypes: {
             adaptive: components["schemas"]["CapabilitySupport"];
             enabled: components["schemas"]["CapabilitySupport"];
@@ -2766,14 +2718,11 @@ export interface components {
             function_calling?: boolean | null;
             structured_output?: boolean | null;
         };
-        /**
-         * @description Request to update a setting value
-         * @example {
+        /** @example {
          *       "value": "debug"
-         *     }
-         */
+         *     } */
         UpdateSettingRequest: {
-            /** @description New value for the setting (type depends on setting metadata) */
+            /** @description type depends on setting metadata */
             value: unknown;
         };
         /** @example {
@@ -2898,6 +2847,9 @@ export interface components {
             /** @example Doe */
             last_name?: string | null;
             role?: null | components["schemas"]["AppRole"];
+            /** @description OIDC id_token for the active session, when present. Used by the frontend to
+             *     authenticate direct calls to the external reference API. Omitted for token/exchange auth. */
+            id_token?: string | null;
         };
         /** @description Envelope wrapping UserResponse with additional session info */
         UserInfoEnvelope: components["schemas"]["UserResponse"] & {
@@ -7313,7 +7265,7 @@ export interface operations {
                  *       "value": "debug"
                  *     } */
                 "application/json": {
-                    /** @description New value for the setting (type depends on setting metadata) */
+                    /** @description type depends on setting metadata */
                     value: unknown;
                 };
             };

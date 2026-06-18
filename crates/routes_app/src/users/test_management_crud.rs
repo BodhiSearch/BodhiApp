@@ -38,6 +38,7 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
         first_name: Some("Admin".to_string()),
         last_name: Some("User".to_string()),
         role: Some(AppRole::Session(ResourceRole::Admin)),
+        id_token: None,
       },
       UserInfo {
         user_id: "550e8400-e29b-41d4-a716-446655440001".to_string(),
@@ -45,6 +46,7 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
         first_name: Some("Regular".to_string()),
         last_name: Some("User".to_string()),
         role: Some(AppRole::Session(ResourceRole::User)),
+        id_token: None,
       },
     ],
     page: 1,
@@ -276,6 +278,7 @@ async fn test_remove_user_handler_success(_temp_bodhi_home: TempDir) -> anyhow::
         first_name: Some("Target".to_string()),
         last_name: Some("User".to_string()),
         role: Some(services::AppRole::Session(services::ResourceRole::User)),
+        id_token: None,
       }))
     });
   mock_auth

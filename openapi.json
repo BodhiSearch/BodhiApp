@@ -5753,13 +5753,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "description": "Request to update a setting value",
                 "required": [
                   "value"
                 ],
                 "properties": {
                   "value": {
-                    "description": "New value for the setting (type depends on setting metadata)"
+                    "description": "type depends on setting metadata"
                   }
                 },
                 "example": {
@@ -7269,19 +7268,17 @@
         ],
         "properties": {
           "status": {
-            "$ref": "#/components/schemas/AppAccessRequestStatus",
-            "description": "Updated status after action"
+            "$ref": "#/components/schemas/AppAccessRequestStatus"
           },
           "flow_type": {
-            "$ref": "#/components/schemas/FlowType",
-            "description": "Flow type of the access request"
+            "$ref": "#/components/schemas/FlowType"
           },
           "redirect_url": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Redirect URL (present for redirect flow)"
+            "description": "Present for redirect flow"
           }
         }
       },
@@ -7297,49 +7294,43 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "Access request ID"
+            "type": "string"
           },
           "app_client_id": {
-            "type": "string",
-            "description": "App client ID"
+            "type": "string"
           },
           "app_name": {
             "type": [
               "string",
               "null"
             ],
-            "description": "App name from KC (if available)"
+            "description": "From KC, if available"
           },
           "app_description": {
             "type": [
               "string",
               "null"
             ],
-            "description": "App description from KC (if available)"
+            "description": "From KC, if available"
           },
           "flow_type": {
             "$ref": "#/components/schemas/FlowType",
-            "description": "Flow type: \"redirect\" or \"popup\""
+            "description": "One of: \"redirect\", \"popup\""
           },
           "status": {
-            "$ref": "#/components/schemas/AppAccessRequestStatus",
-            "description": "Current status"
+            "$ref": "#/components/schemas/AppAccessRequestStatus"
           },
           "requested_role": {
-            "type": "string",
-            "description": "Role requested by the app"
+            "type": "string"
           },
           "requested": {
-            "$ref": "#/components/schemas/RequestedResources",
-            "description": "Resources requested"
+            "$ref": "#/components/schemas/RequestedResources"
           },
           "mcps_info": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/McpServerReviewInfo"
-            },
-            "description": "MCP server information with user instances"
+            }
           }
         }
       },
@@ -7352,16 +7343,14 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "Access request ID"
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/AppAccessRequestStatus",
-            "description": "Current status: \"draft\", \"approved\", \"denied\", \"failed\""
+            "description": "One of: \"draft\", \"approved\", \"denied\", \"failed\""
           },
           "requested_role": {
-            "$ref": "#/components/schemas/UserScope",
-            "description": "Role requested by the app"
+            "$ref": "#/components/schemas/UserScope"
           },
           "approved_role": {
             "oneOf": [
@@ -7370,7 +7359,7 @@
               },
               {
                 "$ref": "#/components/schemas/UserScope",
-                "description": "Role approved (present when approved)"
+                "description": "Present when approved"
               }
             ]
           },
@@ -7379,7 +7368,7 @@
               "string",
               "null"
             ],
-            "description": "Access request scope (present when user-approved with tools)"
+            "description": "Present when user-approved with tools"
           }
         },
         "example": {
@@ -7553,14 +7542,13 @@
             "format": "int64"
           },
           "type": {
-            "type": "string",
-            "description": "Always `\"model\"` — included for Anthropic API compatibility."
+            "type": "string"
           }
         }
       },
       "AnthropicModelCapabilities": {
         "type": "object",
-        "description": "Model capability information (Anthropic ModelCapabilities schema).",
+        "description": "Anthropic ModelCapabilities schema.",
         "required": [
           "batch",
           "citations",
@@ -8040,7 +8028,8 @@
           "commit_sha",
           "status",
           "deployment",
-          "url"
+          "url",
+          "reference_api_url"
         ],
         "properties": {
           "version": {
@@ -8073,12 +8062,18 @@
             "type": "string",
             "description": "Public URL of the server",
             "example": "https://example.com"
+          },
+          "reference_api_url": {
+            "type": "string",
+            "description": "Base URL of the external reference API the frontend calls directly (configurable via\n`BODHI_REFERENCE_API_URL`, env-overridable for tests)",
+            "example": "https://api.getbodhi.app/"
           }
         },
         "example": {
           "client_id": "my-client-id",
           "commit_sha": "abc1234",
           "deployment": "standalone",
+          "reference_api_url": "https://api.getbodhi.app/",
           "status": "ready",
           "url": "https://example.com",
           "version": "0.1.0"
@@ -8115,7 +8110,6 @@
       },
       "ApproveAccessRequest": {
         "type": "object",
-        "description": "Request for approving an app access request",
         "required": [
           "approved_role",
           "approved"
@@ -8187,7 +8181,7 @@
             ]
           }
         ],
-        "description": "Versioned envelope for approved resources.\nThe `version` tag is mandatory and must match the corresponding `RequestedResources` version."
+        "description": "The `version` tag is mandatory and must match the corresponding `RequestedResources` version."
       },
       "ApprovedResourcesV1": {
         "type": "object",
@@ -8208,7 +8202,7 @@
               "string",
               "null"
             ],
-            "description": "OAuth authorization code from successful authentication (required for success flow)",
+            "description": "Required for the success flow",
             "example": "auth_code_123"
           },
           "state": {
@@ -8216,7 +8210,7 @@
               "string",
               "null"
             ],
-            "description": "OAuth state parameter for CSRF protection (must match initiated request)",
+            "description": "CSRF protection — must match the initiated request",
             "example": "random_state_456"
           },
           "error": {
@@ -8232,7 +8226,6 @@
               "string",
               "null"
             ],
-            "description": "Human-readable OAuth error description if authentication failed",
             "example": "The user denied the request"
           }
         },
@@ -8350,7 +8343,6 @@
       },
       "CapabilitySupport": {
         "type": "object",
-        "description": "Whether a single capability is supported by the model.",
         "required": [
           "supported"
         ],
@@ -8396,7 +8388,6 @@
       },
       "ContextManagementCapability": {
         "type": "object",
-        "description": "Context management capability details.",
         "properties": {
           "clear_thinking_20251015": {
             "oneOf": [
@@ -8443,7 +8434,6 @@
       },
       "CreateAccessRequest": {
         "type": "object",
-        "description": "Request for creating an app access request",
         "required": [
           "app_client_id",
           "flow_type",
@@ -8499,16 +8489,14 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "Access request ID"
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/AppAccessRequestStatus",
-            "description": "Status (always \"draft\")"
+            "description": "Always \"draft\""
           },
           "review_url": {
-            "type": "string",
-            "description": "Review URL for user to approve/deny"
+            "type": "string"
           }
         },
         "example": {
@@ -9360,6 +9348,7 @@
       },
       "LlmLibertyAuthSpec": {
         "type": "object",
+        "description": "Envelope sub-types mirror the llm-liberty JSON contract v1.0.0.",
         "required": [
           "in",
           "key",
@@ -9583,7 +9572,6 @@
       },
       "LocalModelResponse": {
         "type": "object",
-        "description": "Local model file response",
         "required": [
           "repo",
           "filename",
@@ -9644,35 +9632,29 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "Unique instance identifier (UUID)"
+            "type": "string"
           },
           "mcp_server": {
             "$ref": "#/components/schemas/McpServerInfo",
             "description": "Server info resolved via JOIN"
           },
           "slug": {
-            "type": "string",
-            "description": "User-defined slug for this instance"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "Human-readable name"
+            "type": "string"
           },
           "description": {
             "type": [
               "string",
               "null"
-            ],
-            "description": "Optional description for this instance"
+            ]
           },
           "enabled": {
-            "type": "boolean",
-            "description": "Whether this instance is enabled"
+            "type": "boolean"
           },
           "path": {
-            "type": "string",
-            "description": "MCP proxy path for this instance"
+            "type": "string"
           },
           "auth_type": {
             "$ref": "#/components/schemas/McpAuthType"
@@ -9687,13 +9669,11 @@
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this instance was created",
             "example": "2024-11-10T04:52:06.786Z"
           },
           "updated_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this instance was last updated",
             "example": "2024-11-10T04:52:06.786Z"
           }
         }
@@ -9922,6 +9902,7 @@
       },
       "McpAuthParam": {
         "type": "object",
+        "description": "Masked auth param response.",
         "required": [
           "id",
           "param_type",
@@ -10003,41 +9984,36 @@
         ],
         "properties": {
           "name": {
-            "type": "string",
-            "description": "Human-readable name (required)"
+            "type": "string"
           },
           "slug": {
             "type": "string",
-            "description": "User-defined slug for this instance (1-24 chars, alphanumeric + hyphens)"
+            "description": "1-24 chars, alphanumeric + hyphens."
           },
           "mcp_server_id": {
             "type": [
               "string",
               "null"
             ],
-            "description": "MCP server ID (required for create, ignored for update)"
+            "description": "Required for create, ignored for update."
           },
           "description": {
             "type": [
               "string",
               "null"
-            ],
-            "description": "Optional description"
+            ]
           },
           "enabled": {
-            "type": "boolean",
-            "description": "Whether this instance is enabled"
+            "type": "boolean"
           },
           "auth_type": {
-            "$ref": "#/components/schemas/McpAuthType",
-            "description": "Authentication type"
+            "$ref": "#/components/schemas/McpAuthType"
           },
           "auth_config_id": {
             "type": [
               "string",
               "null"
-            ],
-            "description": "Reference to auth config"
+            ]
           },
           "credentials": {
             "type": [
@@ -10047,20 +10023,20 @@
             "items": {
               "$ref": "#/components/schemas/McpAuthParamInput"
             },
-            "description": "Instance-level auth params (values for the auth config's key definitions)"
+            "description": "Instance-level values for the auth config's key definitions."
           },
           "oauth_token_id": {
             "type": [
               "string",
               "null"
             ],
-            "description": "OAuth token ID to link to this MCP instance (set after OAuth flow)"
+            "description": "OAuth token ID to link to this MCP instance (set after OAuth flow)."
           }
         }
       },
       "McpServer": {
         "type": "object",
-        "description": "Admin-managed MCP server registry entry.\nAdmins/managers register MCP server URLs that users can then create instances of.",
+        "description": "Admin-managed MCP server registry entry that users create instances of.",
         "required": [
           "id",
           "url",
@@ -10073,46 +10049,38 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "Unique identifier (UUID)"
+            "type": "string"
           },
           "url": {
             "type": "string",
             "description": "MCP server endpoint URL (trimmed, case-insensitive unique)"
           },
           "name": {
-            "type": "string",
-            "description": "Human-readable display name"
+            "type": "string"
           },
           "description": {
             "type": [
               "string",
               "null"
-            ],
-            "description": "Optional description"
+            ]
           },
           "enabled": {
-            "type": "boolean",
-            "description": "Whether this MCP server is enabled"
+            "type": "boolean"
           },
           "created_by": {
-            "type": "string",
-            "description": "User who created this entry"
+            "type": "string"
           },
           "updated_by": {
-            "type": "string",
-            "description": "User who last updated this entry"
+            "type": "string"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this entry was created",
             "example": "2024-11-10T04:52:06.786Z"
           },
           "updated_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this entry was last updated",
             "example": "2024-11-10T04:52:06.786Z"
           }
         }
@@ -10152,22 +10120,19 @@
         "properties": {
           "url": {
             "type": "string",
-            "description": "MCP server endpoint URL (trimmed, case-insensitive unique)"
+            "description": "MCP server endpoint URL (trimmed, case-insensitive unique)."
           },
           "name": {
-            "type": "string",
-            "description": "Human-readable display name"
+            "type": "string"
           },
           "description": {
             "type": [
               "string",
               "null"
-            ],
-            "description": "Optional description"
+            ]
           },
           "enabled": {
-            "type": "boolean",
-            "description": "Whether this MCP server is enabled"
+            "type": "boolean"
           },
           "auth_config": {
             "oneOf": [
@@ -10176,7 +10141,7 @@
               },
               {
                 "$ref": "#/components/schemas/CreateMcpAuthConfigRequest",
-                "description": "Optional auth config to create alongside the server (create only)"
+                "description": "Optional auth config to create alongside the server (create only)."
               }
             ]
           }
@@ -10225,8 +10190,7 @@
         ],
         "properties": {
           "url": {
-            "type": "string",
-            "description": "Requested MCP server URL"
+            "type": "string"
           },
           "instances": {
             "type": "array",
@@ -10852,7 +10816,6 @@
       },
       "PaginatedLocalModelResponse": {
         "type": "object",
-        "description": "Paginated list of local model files",
         "required": [
           "data",
           "total",
@@ -11040,7 +11003,6 @@
       },
       "QueueStatusResponse": {
         "type": "object",
-        "description": "Response for queue status operations",
         "required": [
           "status"
         ],
@@ -11191,7 +11153,7 @@
             ]
           }
         ],
-        "description": "Versioned envelope for requested resources.\nThe `version` tag is mandatory — clients must specify which version they are using."
+        "description": "The `version` tag is mandatory — clients must specify which version they are using."
       },
       "RequestedResourcesV1": {
         "type": "object",
@@ -11728,7 +11690,6 @@
       },
       "ThinkingCapability": {
         "type": "object",
-        "description": "Thinking capability and supported type configurations.",
         "required": [
           "supported",
           "types"
@@ -11744,7 +11705,6 @@
       },
       "ThinkingTypes": {
         "type": "object",
-        "description": "Supported thinking type configurations.",
         "required": [
           "adaptive",
           "enabled"
@@ -11860,13 +11820,12 @@
       },
       "UpdateSettingRequest": {
         "type": "object",
-        "description": "Request to update a setting value",
         "required": [
           "value"
         ],
         "properties": {
           "value": {
-            "description": "New value for the setting (type depends on setting metadata)"
+            "description": "type depends on setting metadata"
           }
         },
         "example": {
@@ -12197,6 +12156,13 @@
                 "$ref": "#/components/schemas/AppRole"
               }
             ]
+          },
+          "id_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "OIDC id_token for the active session, when present. Used by the frontend to\nauthenticate direct calls to the external reference API. Omitted for token/exchange auth."
           }
         }
       },

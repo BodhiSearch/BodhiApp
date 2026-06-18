@@ -11,6 +11,7 @@
 /// Tenant-namespaced keys use `{client_id}:<key_type>` format:
 /// - `{client_id}:access_token`
 /// - `{client_id}:refresh_token`
+/// - `{client_id}:id_token`
 ///
 /// Lock keys use `{client_id}:{session_id}:<lock_type>` format.
 
@@ -25,4 +26,8 @@ pub fn access_token_key(client_id: &str) -> String {
 
 pub fn refresh_token_key(client_id: &str) -> String {
   format!("{client_id}:refresh_token")
+}
+
+pub fn id_token_key(client_id: &str) -> String {
+  format!("{client_id}:id_token")
 }

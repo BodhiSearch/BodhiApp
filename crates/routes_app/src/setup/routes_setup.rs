@@ -85,6 +85,7 @@ pub async fn setup_show(auth_scope: AuthScope) -> Result<Json<AppInfo>, BodhiErr
     deployment,
     client_id,
     url: settings.public_server_url().await,
+    reference_api_url: settings.reference_api_url().await,
   }))
 }
 

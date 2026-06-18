@@ -9,6 +9,7 @@ export function mockAppInfo(
     status = 'ready',
     version = '0.1.0',
     deployment = 'standalone',
+    reference_api_url = 'https://api.getbodhi.app/',
     ...rest
   }: Partial<components['schemas']['AppInfo']> = {},
   { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
@@ -30,6 +31,7 @@ export function mockAppInfo(
         version,
         deployment,
         url: 'http://localhost:1135',
+        reference_api_url,
         ...rest,
       };
 

@@ -25,7 +25,7 @@ Shared vocabulary for this task.
   [reference-api.md](@reference-api.md).
 - **id_token** — the user's OAuth identity token, sent to the reference API as `Bearer` for per-user
   rate-limiting/analytics. Currently discarded by the backend at login; Batch 0 surfaces it.
-- **reference_api_endpoint** — the configurable reference-API base URL (a `SettingService` setting,
+- **reference_api_url** — the configurable reference-API base URL (a `SettingService` setting,
   env-overridable), surfaced to the frontend so dev/prod/test can point at different origins.
 - **Prototype** — the static `design/` site (Babel-in-browser). **Visual reference only** — we build
   to production conventions, not by copying prototype code.

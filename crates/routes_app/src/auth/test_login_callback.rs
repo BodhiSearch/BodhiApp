@@ -69,6 +69,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
       Ok((
         AccessToken::new(token_clone.clone()),
         RefreshToken::new("test_refresh_token".to_string()),
+        Some("test_id_token".to_string()),
       ))
     });
 
@@ -151,6 +152,12 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .expect("refresh_token not found in session");
   let refresh_token = refresh_token.as_str().expect("refresh_token not a string");
   assert_eq!("test_refresh_token", refresh_token);
+  let id_token = session_service
+    .get_session_value(session_id.value(), "test_client_id:id_token")
+    .await
+    .expect("id_token not found in session");
+  let id_token = id_token.as_str().expect("id_token not a string");
+  assert_eq!("test_id_token", id_token);
   let active_client_id = session_service
     .get_session_value(session_id.value(), "active_client_id")
     .await
@@ -243,6 +250,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
       Ok((
         AccessToken::new(token_clone.clone()),
         RefreshToken::new("test_refresh_token".to_string()),
+        Some("test_id_token".to_string()),
       ))
     });
 

@@ -27,7 +27,7 @@ comes from an **external reference API**, called **directly from the frontend**.
   current-user response (the natural home for user identity). Explore the current auth/session/user
   code before implementing — signatures change.
 - **Endpoint config:** the reference-API base URL is a new `SettingService` setting
-  (`BODHI_REFERENCE_API_ENDPOINT`, default `https://api.getbodhi.app/`, env-overridable) surfaced on
+  (`BODHI_REFERENCE_API_URL`, default `https://api.getbodhi.app/`, env-overridable) surfaced on
   the app-info response. (The user's first instinct was to put it on `/bodhi/v1/info`; pick whatever
   config/info endpoint is the best fit after exploring — keep it light, don't over-engineer.)
 

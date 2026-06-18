@@ -6,8 +6,8 @@ use async_trait::async_trait;
 use errmeta::{impl_error_from, AppError, ErrorType};
 use oauth2::{
   basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
-  EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
-  TokenResponse,
+  EmptyExtraTokenFields, ExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken,
+  StandardTokenResponse, TokenResponse,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -17,6 +17,17 @@ pub struct ClientRegistrationResponse {
   pub client_id: String,
   pub client_secret: String,
 }
+
+/// OIDC token-response extra fields. The OAuth `StandardTokenResponse` only models
+/// access/refresh tokens; the OIDC `id_token` arrives as an extra field, so we capture
+/// it here instead of discarding it with `EmptyExtraTokenFields`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct IdTokenFields {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub id_token: Option<String>,
+}
+
+impl ExtraTokenFields for IdTokenFields {}
 
 pub const GRANT_REFRESH_TOKEN: &str = "refresh_token";
 pub const TOKEN_TYPE_OFFLINE: &str = "Offline";
@@ -59,6 +70,9 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     redirect_uris: Vec<String>,
   ) -> Result<ClientRegistrationResponse>;
 
+  /// Exchanges an authorization code for tokens. Returns
+  /// `(access_token, refresh_token, id_token)` — the OIDC `id_token` is `None` when the
+  /// provider did not include one.
   async fn exchange_auth_code(
     &self,
     code: AuthorizationCode,
@@ -66,7 +80,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     client_secret: ClientSecret,
     redirect_uri: RedirectUrl,
     code_verifier: PkceCodeVerifier,
-  ) -> Result<(AccessToken, RefreshToken)>;
+  ) -> Result<(AccessToken, RefreshToken, Option<String>)>;
 
   async fn refresh_token(
     &self,
@@ -268,6 +282,7 @@ impl From<UserInfoResponse> for UserInfo {
       first_name: response.first_name,
       last_name: response.last_name,
       role,
+      id_token: None,
     }
   }
 }
@@ -348,7 +363,7 @@ impl AuthService for KeycloakAuthService {
     client_secret: ClientSecret,
     redirect_uri: RedirectUrl,
     code_verifier: PkceCodeVerifier,
-  ) -> Result<(AccessToken, RefreshToken)> {
+  ) -> Result<(AccessToken, RefreshToken, Option<String>)> {
     let params = [
       ("grant_type", "authorization_code"),
       ("code", code.secret()),
@@ -370,14 +385,16 @@ impl AuthService for KeycloakAuthService {
       .await?;
 
     if response.status().is_success() {
-      let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
+      let token_response: StandardTokenResponse<IdTokenFields, BasicTokenType> =
         response.json().await?;
+      let id_token = token_response.extra_fields().id_token.clone();
       Ok((
         token_response.access_token().to_owned(),
         token_response
           .refresh_token()
           .expect("refresh token is not present when exchaging for auth code")
           .to_owned(),
+        id_token,
       ))
     } else {
       let error = response.json::<KeycloakError>().await?;

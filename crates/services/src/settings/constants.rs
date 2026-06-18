@@ -26,6 +26,7 @@ pub const BODHI_EXEC_NAME: &str = "BODHI_EXEC_NAME";
 pub const BODHI_EXEC_VARIANTS: &str = "BODHI_EXEC_VARIANTS";
 pub const BODHI_LLAMACPP_ARGS: &str = "BODHI_LLAMACPP_ARGS";
 pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
+pub const BODHI_REFERENCE_API_URL: &str = "BODHI_REFERENCE_API_URL";
 
 pub const DEFAULT_SCHEME: &str = "http";
 pub const DEFAULT_HOST: &str = "0.0.0.0";
@@ -35,6 +36,7 @@ pub const DEFAULT_LOG_LEVEL: &str = "warn";
 pub const DEFAULT_LOG_STDOUT: bool = false;
 pub const DEFAULT_KEEP_ALIVE_SECS: i64 = 300;
 pub const DEFAULT_CANONICAL_REDIRECT: bool = true;
+pub const DEFAULT_REFERENCE_API_URL: &str = "https://api.getbodhi.app/";
 
 pub const SETTINGS_YAML: &str = "settings.yaml";
 
@@ -88,4 +90,5 @@ pub const SETTING_VARS: &[&str] = &[
   BODHI_SESSION_DB_URL,
   BODHI_APP_DB_URL,
   BODHI_DEPLOYMENT,
+  BODHI_REFERENCE_API_URL,
 ];

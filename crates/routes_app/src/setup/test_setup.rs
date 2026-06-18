@@ -33,6 +33,7 @@ use tower::ServiceExt;
     deployment: services::DeploymentMode::Standalone,
     client_id: Some("test-client".to_string()),
     url: "http://localhost:1135".to_string(),
+    reference_api_url: "https://api.getbodhi.app/".to_string(),
   }
 )]
 #[tokio::test]
@@ -105,6 +106,7 @@ async fn test_app_info_handler_with_client_id() -> anyhow::Result<()> {
       deployment: services::DeploymentMode::Standalone,
       client_id: Some("my-test-client-id".to_string()),
       url: "http://localhost:1135".to_string(),
+      reference_api_url: "https://api.getbodhi.app/".to_string(),
     },
     value
   );

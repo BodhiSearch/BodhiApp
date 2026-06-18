@@ -47,7 +47,7 @@ plans than binding future batches to a recipe written against today's code.
   build to **our** conventions (it is not code to copy).
 - [architecture.md](@architecture.md) — orientation to the production frontend + backend: where
   routes, hooks, theming, tests live, and the directional pointers for the AppShell port and the
-  backend id_token / reference_api_endpoint work. Pointers, not file:line maps.
+  backend id_token / reference_api_url work. Pointers, not file:line maps.
 - [screen-coverage.md](@screen-coverage.md) — the live coverage checklist: app screen ↔ V2 design,
   consolidations (e.g. model files→alias page, MCP servers→Discover, /new/+/edit/ share one design),
   and the design-pending surfaces the user will provide (login, setup, auth callbacks, Keycloak).
@@ -58,6 +58,9 @@ plans than binding future batches to a recipe written against today's code.
   context, batch sequence, Batch 0 foundation scope, and the carry-forward risks/watch-outs.
 - [glossary.md](@glossary.md) — shared vocabulary (AppShell, rail, section/subPage, batch, flag,
   reference API, id_token, prototype).
+- [techdebt.md](@techdebt.md) — tracked failing tests + deferred fixes carried across batches
+  (Batch 0: 2 pre-existing backend live-tests; 3 E2E specs to classify — the chat spec to verify
+  before the Chat batch).
 
 ## Working-folder convention
 

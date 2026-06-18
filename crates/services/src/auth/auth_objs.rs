@@ -212,6 +212,10 @@ pub struct UserInfo {
   pub last_name: Option<String>,
   #[schema(example = "resource_user")]
   pub role: Option<AppRole>,
+  /// OIDC id_token for the active session, when present. Used by the frontend to
+  /// authenticate direct calls to the external reference API. Omitted for token/exchange auth.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub id_token: Option<String>,
 }
 
 #[cfg(test)]
