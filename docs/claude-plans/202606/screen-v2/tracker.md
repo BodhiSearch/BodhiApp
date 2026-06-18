@@ -13,8 +13,9 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | Batch | Section | Status |
 |---|---|---|
 | 0 | Foundation (AppShell, flags, tokens merge, id_token, reference_api_url) | ✅ done |
-| 1 | **API Keys** (4 screens) | ✅ done |
-| 2 | Settings (App Settings, Manage Users) | ⬜ not started (kickoff written: @batch-2-settings-kickoff.md) |
+| 1 | **API Keys → Access Tokens** (4 screens) | ✅ done |
+| 1.1 | **Batch-1 follow-up** — IA correction (2026-06-18): nav section "API Keys"→"Access Tokens" (sub-pages "API Tokens"/"New API Token"); new top-level **Users** section (User Access Requests + Manage Users, moved out of Settings); Access Requests redesigned to match `design/User Access Requests.html` (avatar rows, status chips, role/approve-reject flow, detail rail). | ✅ done |
+| 2 | Settings (App Settings) — Manage Users nav moved to **Users** in 1.1 | ⬜ not started (kickoff written: @batch-2-settings-kickoff.md) |
 | 3 | Models (4 screens) | ⬜ not started |
 | 4 | MCP (3 screens) | ⬜ not started |
 | 5 | Chat (1 screen, highest risk, last) | ⬜ not started |
@@ -31,12 +32,12 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 6 | MCP | All MCPs / Discover | `/mcps/` | shell | `mcp-discover` | ⬜ | Batch 4. Needs the reference-API catalog. |
 | 7 | MCP | New Instance | `/mcps/new/` (+ edit) | shell | `new-mcp` | ⬜ | Batch 4. |
 | 8 | MCP | Playground | `/mcps/playground/` | shell | `mcp-playground` | ⬜ | Batch 4. |
-| 9 | **API Keys** | **App Tokens (list)** | `/tokens/` | shell | — (retired) | ✅ | Design-faithful: table (Token/Created/Updated/Status cols), themed filter pills (All/Active/Inactive), collapsible search button, selectable rows → detail rail (Details + Token-active toggle). No "New Token" header button (it's in the sidebar nav). Real data only (no model/MCP-access chips, no last-used). **Detail-rail open/close has a view transition.** |
-| 10 | **API Keys** | **New App Token** | `/tokens/new/` (NEW) | shell | — (retired) | ✅ | Was a dialog → full page. Real `useCreateToken`; reuses `TokenDialog` reveal; Done → `/tokens/`. Name+scope only (real data). |
-| 11 | **API Keys** | **Access Requests (list)** | `/users/access-requests/` | shell | — (retired) | ✅ | Breadcrumb + pending-count pill + filter tabs + approve/reject. |
-| 12 | **API Keys** | **Access Request review** | `/apps/access-requests/review/?id=` | ▫️ bare | — (retired) | ✅ | OAuth consent. Renders via `BareLayout` (slim topbar). MCP servers+instances + role + approve/deny (real data; no model-slots). |
+| 9 | **Access Tokens** | **API Tokens (list)** | `/tokens/` | shell | — (retired) | ✅ | Nav sub-page "API Tokens" (was "App Tokens"). Design-faithful: table (Token/Created/Updated/Status cols), themed filter pills (All/Active/Inactive), collapsible search button, selectable rows → detail rail (Details + Token-active toggle). No "New Token" header button (it's in the sidebar nav). Real data only (no model/MCP-access chips, no last-used). **Detail-rail open/close has a view transition.** |
+| 10 | **Access Tokens** | **New API Token** | `/tokens/new/` (NEW) | shell | — (retired) | ✅ | Nav sub-page "New API Token" (was "New Token"). Was a dialog → full page. Real `useCreateToken`; reuses `TokenDialog` reveal; Done → `/tokens/`. Name+scope only (real data). |
+| 11 | **Users** | **User Access Requests (list)** | `/users/access-requests/` | shell | — (retired) | ✅ | Moved out of API-Keys into the new **Users** section (1.1). Redesigned to match `design/User Access Requests.html`: avatar rows · status chips (pending/approved/rejected) · pending-count header pill · filter tabs + collapsible search · pending rows show role picker + approve/reject; **selectable rows → detail rail** mirroring the row (Account/Assign-role/Timeline; decided rows show a decided-note, no actions). Role picker is an **approval input** (no role stored on a request). |
+| 12 | **Access Tokens** | **Access Request review** | `/apps/access-requests/review/?id=` | ▫️ bare | — (retired) | ✅ | OAuth consent (3rd-party app, deep-linked — NOT a nav item). Renders via `BareLayout` (slim topbar). MCP servers+instances + role + approve/deny (real data; no model-slots). |
 | 13 | Settings | App Settings | `/settings/` | shell | `app-settings` | ⬜ | Batch 2. `reference_api_url` NOT editable. |
-| 14 | Settings | Manage Users | `/users/` | shell | `manage-users` | ⬜ | Batch 2. Reuses `list.css`. |
+| 14 | **Users** | Manage Users | `/users/` | shell | `manage-users` | ⬜ | Batch 2 (page body unchanged). Nav moved Settings→**Users** in 1.1. Reuses `list.css`. |
 
 **Retired/consolidated (no separate screen):** `/users/pending/` → folded into Access Requests
 (Batch 1 migrated the target; confirm `/users/pending/` + `UserManagementTabs` deletion in Batch 2).

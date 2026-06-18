@@ -1,0 +1,240 @@
+/* ═══════════════════════════════════════════════════
+   USER ACCESS REQUESTS — page-unique styles (slim edge-to-edge rows)
+   Load AFTER api-keys.css + list.css. Frame/toolbar/search/rows come
+   from list.css; this adds only the page-local `ua-*` cells. Each row
+   shows user · status · role · approve/reject; click a row to open the
+   detail rail (dp-* primitives in list.css).
+═══════════════════════════════════════════════════ */
+.ua-row {
+  cursor: pointer;
+}
+
+/* cells */
+.ua-icon {
+  width: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.ua-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.ua-id {
+  flex: 1;
+  min-width: 0;
+}
+.ua-email {
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ua-sub {
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ua-status-cell {
+  width: 104px;
+  flex-shrink: 0;
+}
+.ua-role-cell {
+  width: 132px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.ua-act {
+  width: 184px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* status chip */
+.ua-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.ua-status svg {
+  width: 11px;
+  height: 11px;
+}
+.ua-status.pending {
+  background: var(--c-saffron-bg);
+  border-color: var(--c-saffron-bd);
+  color: var(--c-saffron-text);
+}
+.ua-status.approved {
+  background: var(--c-leaf-bg);
+  border-color: var(--c-leaf-bd);
+  color: var(--c-leaf-text);
+}
+.ua-status.rejected {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+/* role: dropdown (pending) + static badge (decided) */
+.ua-role-select {
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 7px;
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  width: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  outline: none;
+  transition: border-color 140ms;
+}
+.ua-role-select:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px rgba(255, 164, 184, 0.14);
+}
+.ua-role-static {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.ua-role-static svg {
+  width: 11px;
+  height: 11px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* approve / reject row buttons */
+.ua-approve {
+  height: 30px;
+  padding: 0 13px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--c-leaf-text);
+  color: #fff;
+  border: 1px solid var(--c-leaf-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: opacity 120ms;
+  white-space: nowrap;
+}
+.ua-approve svg {
+  width: 13px;
+  height: 13px;
+}
+.ua-approve:hover {
+  opacity: 0.88;
+}
+.ua-approve:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ua-reject {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  background: transparent;
+  color: hsl(var(--destructive));
+  border: 1px solid hsl(var(--border));
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 120ms;
+  white-space: nowrap;
+}
+.ua-reject:hover {
+  border-color: hsl(var(--destructive));
+  background: rgba(220, 38, 38, 0.06);
+}
+.ua-reject:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* rail: approve button (green) + role select full-width */
+.dp-btn-approve {
+  background: var(--c-leaf-text);
+  color: #fff;
+}
+.dp-btn-approve:hover {
+  opacity: 0.88;
+}
+.dp-btn-approve:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.dp-role-select {
+  width: 100%;
+}
+
+/* rail: final-decision note (no further actions) */
+.ua-decided-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+  padding: 11px 13px;
+}
+.ua-decided-note svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* responsive: drop columns as the list narrows */
+@container lscroll (max-width: 620px) {
+  .ua-status-cell {
+    display: none;
+  }
+}
+@container lscroll (max-width: 480px) {
+  .ua-role-cell {
+    display: none;
+  }
+}

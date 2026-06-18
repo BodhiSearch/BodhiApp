@@ -22,8 +22,8 @@ export const Route = createFileRoute('/tokens/')({
 
 const TOKEN_BREADCRUMB = [
   { label: 'Bodhi' },
-  { label: 'API Keys', href: '/tokens/' },
-  { label: 'App Tokens', current: true },
+  { label: 'Access Tokens', href: '/tokens/' },
+  { label: 'API Tokens', current: true },
 ];
 
 type TokenFilter = 'all' | 'active' | 'inactive';

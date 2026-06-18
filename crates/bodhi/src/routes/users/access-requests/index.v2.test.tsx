@@ -3,7 +3,7 @@ import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { mockAccessRequests, mockAccessRequestApprove } from '@/test-utils/msw-v2/handlers/user-access-requests';
-import { mockAllRequests } from '@/test-fixtures/access-requests';
+import { mockAllRequests, mockApprovedRequest } from '@/test-fixtures/access-requests';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
@@ -30,9 +30,16 @@ vi.mock('@/hooks/use-toast-messages', () => ({
 
 setupMswV2();
 
+// Mirror the root shell: render the published header-actions and rail slots so we can assert them.
 function SlotsConsumer() {
-  const { headerActions } = useShellSlots();
-  return <div data-testid="harness-header-actions">{headerActions}</div>;
+  const { headerActions, rail, railHeader } = useShellSlots();
+  return (
+    <>
+      <div data-testid="harness-header-actions">{headerActions}</div>
+      <div data-testid="harness-rail-header">{railHeader}</div>
+      <div data-testid="harness-rail">{rail}</div>
+    </>
+  );
 }
 
 beforeEach(() => {
@@ -68,41 +75,59 @@ async function renderReady() {
   });
 }
 
-describe('AccessRequestsPage V2', () => {
-  it('renders rows with preserved testids and a pending pill in the header', async () => {
+describe('AccessRequestsPage V2 chrome', () => {
+  it('publishes a pending-count pill to the shell header', async () => {
     await renderReady();
 
-    expect(screen.getByTestId('request-row-user@example.com')).toBeInTheDocument();
-    expect(screen.getByTestId('request-status-pending')).toBeInTheDocument();
-    expect(screen.getByTestId('request-status-approved')).toBeInTheDocument();
-    expect(screen.getByTestId('request-status-rejected')).toBeInTheDocument();
-
-    // pending-count pill published to the shell header (1 pending in the fixture)
     const pill = within(screen.getByTestId('harness-header-actions')).getByTestId('pending-pill');
     expect(pill).toHaveTextContent('1 pending review');
   });
 
-  it('derives filter-tab counts and filters rows', async () => {
+  it('opens the detail rail when a pending row is selected', async () => {
     const user = userEvent.setup();
     await renderReady();
 
-    expect(within(screen.getByTestId('requests-filter-all')).getByText('3')).toBeInTheDocument();
-    expect(within(screen.getByTestId('requests-filter-pending')).getByText('1')).toBeInTheDocument();
+    // no rail until a row is selected
+    expect(within(screen.getByTestId('harness-rail')).queryByTestId('request-detail-rail')).not.toBeInTheDocument();
 
-    await user.click(screen.getByTestId('requests-filter-approved'));
-    expect(screen.getByTestId('request-row-approved@example.com')).toBeInTheDocument();
-    expect(screen.queryByTestId('request-row-user@example.com')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('request-row-user@example.com'));
+
+    const rail = within(screen.getByTestId('harness-rail')).getByTestId('request-detail-rail');
+    expect(rail).toBeInTheDocument();
+    // pending → rail offers assign-role + approve/reject
+    expect(within(rail).getByTestId('request-detail-role-select')).toBeInTheDocument();
+    expect(within(rail).getByTestId('request-detail-approve')).toBeInTheDocument();
+    expect(within(rail).getByTestId('request-detail-reject')).toBeInTheDocument();
   });
 
-  it('approves a pending request via the real mutation', async () => {
+  it('shows a static decided rail (no actions) for a decided row', async () => {
+    const user = userEvent.setup();
+    await renderReady();
+
+    await user.click(screen.getByTestId(`request-row-${mockApprovedRequest.username}`));
+
+    const rail = within(screen.getByTestId('harness-rail')).getByTestId('request-detail-rail');
+    expect(within(rail).queryByTestId('request-detail-approve')).not.toBeInTheDocument();
+    expect(within(rail).queryByTestId('request-detail-role-select')).not.toBeInTheDocument();
+    // decided branch: status chip in the rail + decided-note carrying the decision date
+    expect(within(rail).getByTestId('request-status-approved')).toBeInTheDocument();
+    expect(
+      within(rail).getAllByText((_content, el) => el?.textContent === 'Approved Jan 2, 2024').length
+    ).toBeGreaterThan(0);
+  });
+
+  it('approves from the rail via the real mutation', async () => {
     const user = userEvent.setup();
     server.use(...mockAccessRequestApprove('01HQXYZ0000000000000000001'));
     await renderReady();
 
-    const approve = screen.getByTestId('approve-btn-user@example.com');
+    await user.click(screen.getByTestId('request-row-user@example.com'));
+    const approve = within(screen.getByTestId('harness-rail')).getByTestId('request-detail-approve');
     expect(approve).toBeEnabled();
     await user.click(approve);
-    // mutation fires; success toast is mocked — assert the button entered its pending path or settled
-    await waitFor(() => expect(screen.getByTestId('approve-btn-user@example.com')).toBeInTheDocument());
+
+    await waitFor(() =>
+      expect(within(screen.getByTestId('harness-rail')).getByTestId('request-detail-approve')).toBeInTheDocument()
+    );
   });
 });

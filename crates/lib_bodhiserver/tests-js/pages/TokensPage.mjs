@@ -6,7 +6,7 @@ export class TokensPage extends BasePage {
     // Page elements
     tokensPage: '[data-testid="tokens-page"]',
 
-    // New App Token page (dialog → page in V2)
+    // New API Token page (dialog → page in V2)
     newTokenPage: '[data-testid="new-token-page"]',
     tokenForm: '[data-testid="token-form"]',
     tokenNameInput: '[data-testid="token-name-input"]',
@@ -39,10 +39,10 @@ export class TokensPage extends BasePage {
   }
 
   /**
-   * Navigate to the API Keys section / App Tokens via the shell nav (black-box nav).
+   * Navigate to the Access Tokens section / API Tokens via the shell nav (black-box nav).
    */
   async navigateToTokensViaShell() {
-    await this.navViaShell('api-keys', 'app-tokens');
+    await this.navViaShell('api-keys', 'api-tokens');
     await this.page.waitForSelector('[data-testid="tokens-page"][data-pagestatus="ready"]');
   }
 
@@ -51,7 +51,7 @@ export class TokensPage extends BasePage {
   }
 
   /**
-   * Open the New App Token page. "New Token" now lives in the API-Keys shell nav
+   * Open the New API Token page. "New API Token" lives in the Access Tokens shell nav
    * (the header button was removed to match the design), so navigate via the nav.
    */
   async openNewTokenPage() {

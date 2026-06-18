@@ -43,9 +43,13 @@ describe('resolveShellRoute', () => {
     expect(resolveShellRoute('/tokens/new/')).toEqual({ section: 'api-keys', subPage: 'new-token' });
   });
 
-  it('maps /users/ to settings/manage-users and /users/access-requests/ to api-keys', () => {
-    expect(resolveShellRoute('/users/')).toEqual({ section: 'settings', subPage: 'manage-users' });
-    expect(resolveShellRoute('/users/access-requests/')).toEqual({ section: 'api-keys', subPage: 'access-requests' });
+  it('maps both /users/ routes to the users section', () => {
+    expect(resolveShellRoute('/users/')).toEqual({ section: 'users', subPage: 'manage-users' });
+    expect(resolveShellRoute('/users/access-requests/')).toEqual({ section: 'users', subPage: 'access-requests' });
+  });
+
+  it('resolves the tokens landing to the api-tokens sub-page', () => {
+    expect(resolveShellRoute('/tokens/')).toEqual({ section: 'api-keys', subPage: 'api-tokens' });
   });
 
   it('falls back to the section landing for an app route not in the nav', () => {

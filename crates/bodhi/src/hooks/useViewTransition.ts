@@ -35,12 +35,19 @@ export function startViewTransition(updateFn: UpdateFn): void {
     updateFn();
     return;
   }
-  // Must be invoked as a method of `document` — calling an extracted reference
-  // throws "Illegal invocation".
-  const transition = (document as unknown as DocWithViewTransition).startViewTransition(updateFn);
-  // Swallow the rejection raised when a transition is skipped/interrupted
-  // (e.g. a rapid second update) — the DOM is still updated correctly.
-  transition.finished.catch(() => {});
+  try {
+    // Must be invoked as a method of `document` — calling an extracted reference
+    // throws "Illegal invocation".
+    const transition = (document as unknown as DocWithViewTransition).startViewTransition(updateFn);
+    // Swallow the rejection raised when a transition is skipped/interrupted
+    // (e.g. a rapid second update) — the DOM is still updated correctly.
+    transition.finished.catch(() => {});
+  } catch {
+    // startViewTransition throws synchronously (InvalidStateError) when another
+    // transition — e.g. the router-level navigation cross-fade — is mid-flight.
+    // Apply the update directly so selection/rail state still changes.
+    updateFn();
+  }
 }
 
 /**

@@ -26,6 +26,16 @@ coexistence screens that render their own sidebar, or narrow the handle's pointe
 Fails identically in `standalone` + `multi_tenant`.
 
 ## Other deferred items
+- **Router view-transition `InvalidStateError` on navigation.** `main.tsx` sets
+  `defaultViewTransition: true`; on every shell-route navigation the browser logs one
+  `InvalidStateError: Transition was aborted because of invalid state` (at `:0:0`, no app stack —
+  an unhandled rejection from TanStack Router's own transition `.finished`, which the app can't
+  catch from `useViewTransition`). Screen-agnostic: reproduces identically on the shipped API Tokens
+  screen. Functionally harmless (DOM updates correctly). `useViewTransition.startViewTransition` was
+  hardened (try/catch → synchronous fallback) so in-page selection/rail transitions no longer throw;
+  the navigation-time one is router-internal and remains. Real fix = revisiting the router-level
+  `defaultViewTransition` config (e.g. gating/awaiting in-flight transitions) — cross-cutting, deferred.
+  This is carry-forward risk #1 from the Batch-1 retro.
 - Repo-wide ESLint: ~289 pre-existing errors in files untouched by the migration (import/order in
   `stores/initStores.ts`, `types/chat.ts`; a missing `react/display-name` rule in
   `tests/mocks/framer-motion.tsx`; etc.). Batch-0 files are lint-clean. Not addressed here.

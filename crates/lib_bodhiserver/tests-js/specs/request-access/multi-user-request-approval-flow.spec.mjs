@@ -242,8 +242,19 @@ test.describe('Multi-User Request and Approval Flow', () => {
       // 3.3c Manager verifies all requests page shows correct data after PowerUser approval
       console.log('3.3c Manager verifies all requests page with approved/pending requests');
       const allRequestsPage = new AllAccessRequestsPage(managerPage, baseUrl);
-      await allRequestsPage.navigateToAllRequests();
+      // Reach the redesigned page via the shell nav — proves it lives under the Users section.
+      await allRequestsPage.navigateToAllRequestsViaShell();
       await allRequestsPage.expectAllRequestsPage();
+
+      // One pending request remains → header pending pill shows it.
+      await allRequestsPage.verifyPendingPill(1);
+
+      // The detail rail opens on row select and mirrors the row (decided row → no actions).
+      await allRequestsPage.openDetailRail(managerCredentials.username);
+      await expect(
+        managerPage.locator(allRequestsPage.allRequestsSelectors.detailApprove)
+      ).toHaveCount(0);
+      await managerPage.locator(allRequestsPage.allRequestsSelectors.detailClose).click();
 
       // Verify total count
       await allRequestsPage.verifyRequestCount(3);

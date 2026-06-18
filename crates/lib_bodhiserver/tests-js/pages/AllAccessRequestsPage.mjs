@@ -6,7 +6,8 @@ export class AllAccessRequestsPage extends UsersManagementPage {
   allRequestsSelectors = {
     // Page structure
     pageContainer: '[data-testid="all-requests-page"]',
-    requestCount: '[data-testid="request-count"]',
+    // Pending-count pill published to the shell header (replaced the old request-count subtitle)
+    pendingPill: '[data-testid="pending-pill"]',
 
     // V2 filter tabs (replaced the old nav-link tabs)
     filterTab: (id) => `[data-testid="requests-filter-${id}"]`,
@@ -28,6 +29,13 @@ export class AllAccessRequestsPage extends UsersManagementPage {
     approveBtn: (username) => `[data-testid="approve-btn-${username}"]`,
     rejectBtn: (username) => `[data-testid="reject-btn-${username}"]`,
 
+    // Detail rail (opens on row select; mirrors the row's role/approve/reject)
+    detailRail: '[data-testid="request-detail-rail"]',
+    detailRoleSelect: '[data-testid="request-detail-role-select"]',
+    detailApprove: '[data-testid="request-detail-approve"]',
+    detailReject: '[data-testid="request-detail-reject"]',
+    detailClose: '[data-testid="request-detail-close"]',
+
     // State indicators
     emptyState: '[data-testid="no-requests"]',
     loadingSkeleton: '[data-testid="loading-skeleton"]',
@@ -42,7 +50,7 @@ export class AllAccessRequestsPage extends UsersManagementPage {
   }
 
   async navigateToAllRequestsViaShell() {
-    await this.navViaShell('api-keys', 'access-requests');
+    await this.navViaShell('users', 'access-requests');
     await this.page.waitForSelector('[data-testid="all-requests-page"][data-pagestatus="ready"]');
   }
 
@@ -95,10 +103,23 @@ export class AllAccessRequestsPage extends UsersManagementPage {
     const reviewerCell = row.locator(this.allRequestsSelectors.reviewerCell);
     if (await reviewerCell.isVisible()) {
       const text = await reviewerCell.textContent();
-      // Extract reviewer name from "by {reviewer}" format
-      return text?.replace('by ', '').trim() || null;
+      return text?.trim() || null;
     }
     return null;
+  }
+
+  // Detail-rail helpers (the rail opens when a row is selected) ──────────────
+  async openDetailRail(username) {
+    await (await this.findRequestRowByUsername(username)).click();
+    await this.page.waitForSelector(this.allRequestsSelectors.detailRail);
+  }
+
+  async approveFromRail() {
+    await this.page.locator(this.allRequestsSelectors.detailApprove).click();
+  }
+
+  async rejectFromRail() {
+    await this.page.locator(this.allRequestsSelectors.detailReject).click();
   }
 
   async hasActions(row) {
@@ -163,10 +184,12 @@ export class AllAccessRequestsPage extends UsersManagementPage {
     await this.expectVisible(this.allRequestsSelectors.pageContainer);
   }
 
-  async verifyRequestCountDisplay(expectedTotal) {
-    const countText = await this.page.locator(this.allRequestsSelectors.requestCount).textContent();
-    const expectedText =
-      expectedTotal === 1 ? '1 total request' : `${expectedTotal} total requests`;
-    expect(countText).toBe(expectedText);
+  async verifyPendingPill(expectedPending) {
+    const pill = this.page.locator(this.allRequestsSelectors.pendingPill);
+    if (expectedPending > 0) {
+      await expect(pill).toHaveText(`${expectedPending} pending review`);
+    } else {
+      await expect(pill).toHaveCount(0);
+    }
   }
 }

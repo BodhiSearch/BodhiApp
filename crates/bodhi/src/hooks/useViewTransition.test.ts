@@ -38,6 +38,19 @@ describe('startViewTransition', () => {
     expect(calls[0].thisArg).toBe(document);
   });
 
+  it('applies the update when startViewTransition throws synchronously (InvalidStateError)', () => {
+    // The browser throws InvalidStateError when another transition (e.g. the router-level
+    // navigation cross-fade) is mid-flight; the update must still run.
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
+    (document as unknown as { startViewTransition: unknown }).startViewTransition = vi.fn(() => {
+      throw new DOMException('Transition was aborted because of invalid state', 'InvalidStateError');
+    });
+
+    const update = vi.fn();
+    expect(() => startViewTransition(update)).not.toThrow();
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
   it('skips the transition when prefers-reduced-motion is set, still applying the update', () => {
     (document as unknown as { startViewTransition: unknown }).startViewTransition = vi.fn();
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);

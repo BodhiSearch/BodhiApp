@@ -35,12 +35,18 @@ consolidate further. It complements [architecture.md](@architecture.md) (where s
 | `/mcps/` (+ Discover) | Bodhi MCP Discover v2 (All MCPs) | mcp / discover |
 | `/mcps/new/` (+ edit) | Bodhi MCP New Instance | mcp / new-mcp |
 | `/mcps/playground/` | Bodhi MCP Playground | mcp / (playground) |
-| `/tokens/` | App Tokens | api-keys / app-tokens |
-| `/tokens/new/` (create; **was a dialog**, design promotes to full page) | New App Token | api-keys / new-token |
+| `/tokens/` | API Tokens (was "App Tokens") | api-keys (**"Access Tokens"**) / api-tokens |
+| `/tokens/new/` (create; **was a dialog**, design promotes to full page) | New API Token (was "New App Token") | api-keys / new-token |
 | `/settings/` | Bodhi App Settings | settings / app-settings |
-| `/users/` | Manage Users | settings / manage-users |
-| `/users/access-requests/` (**consolidated**, see B) | Access Requests | api-keys / access-requests |
-| `/apps/access-requests/review/?id=` | Bodhi Access Request (review) | **bare / standalone** (no AppShell; app-initiated OAuth consent) |
+| `/users/` | Manage Users | **users** / manage-users (moved from Settings, 2026-06-18) |
+| `/users/access-requests/` (**consolidated**, see B) | User Access Requests | **users** / access-requests (moved from API-Keys, 2026-06-18) |
+| `/apps/access-requests/review/?id=` | Bodhi Access Request (review) | **bare / standalone** (no AppShell; app-initiated OAuth consent — NOT a nav item) |
+
+> **IA correction (2026-06-18, Batch-1 follow-up).** The nav now matches the prototype: a top-level
+> **Users** section holds *User Access Requests* + *Manage Users* (the latter moved out of Settings);
+> the token section is labelled **Access Tokens** with sub-pages *API Tokens* + *New API Token*. The
+> prototype's third "App Tokens" sub-page is prototype-only (a model-key screen we don't have) and is
+> **not** added. See `docs/claude-plans/202606/we-implemented-api-tokens-gleaming-gray.md`.
 
 ## B. Consolidations — multiple app routes → one V2 screen
 

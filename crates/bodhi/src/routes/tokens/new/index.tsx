@@ -17,8 +17,8 @@ export const Route = createFileRoute('/tokens/new/')({
 
 const NEW_TOKEN_BREADCRUMB = [
   { label: 'Bodhi' },
-  { label: 'API Keys', href: '/tokens/' },
-  { label: 'New App Token', current: true },
+  { label: 'Access Tokens', href: '/tokens/' },
+  { label: 'New API Token', current: true },
 ];
 
 function NewTokenContent() {
@@ -36,7 +36,7 @@ function NewTokenContent() {
     <div className="api-keys-screen container mx-auto max-w-2xl p-6" data-testid="new-token-page">
       <Card>
         <CardHeader>
-          <CardTitle>New App Token</CardTitle>
+          <CardTitle>New API Token</CardTitle>
           <CardDescription>Generate a scoped token for programmatic access to the Bodhi API.</CardDescription>
         </CardHeader>
         <CardContent>

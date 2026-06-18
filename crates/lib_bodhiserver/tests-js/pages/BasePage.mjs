@@ -25,7 +25,9 @@ export class BasePage {
    * @param {string} [subPage] - shell nav sub-page id (e.g. 'app-tokens')
    */
   async navViaShell(section, subPage) {
-    const subLink = subPage ? this.page.locator(`[data-testid="shell-sub-${subPage}"]`).first() : null;
+    const subLink = subPage
+      ? this.page.locator(`[data-testid="shell-sub-${subPage}"]`).first()
+      : null;
 
     // Fast path: the sub-page is already reachable (section is active) — just click it.
     if (subLink && (await subLink.isVisible().catch(() => false))) {

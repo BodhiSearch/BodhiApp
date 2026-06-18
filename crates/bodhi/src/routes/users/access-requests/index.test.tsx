@@ -20,12 +20,8 @@ import {
   mockPendingRequest,
   mockApprovedRequest,
   mockRejectedRequest,
-  mockEmptyRequests,
-  mockAllRequests,
-  createMockUserInfo,
 } from '@/test-fixtures/access-requests';
-import { createMockAdminUser } from '@/test-utils/mock-user';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -67,6 +63,17 @@ afterEach(() => {
   navigateMock.mockClear();
 });
 
+function renderPage() {
+  return act(async () => {
+    render(
+      <ShellSlotsProvider>
+        <AllRequestsPage />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
+    );
+  });
+}
+
 describe('AllRequestsPage Role-Based Access Control', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -75,55 +82,25 @@ describe('AllRequestsPage Role-Based Access Control', () => {
   it.each(ADMIN_ROLES)('allows access for %s role', async (role) => {
     server.use(
       ...mockAppInfoReady(),
-      ...mockUserLoggedIn({
-        username: `${role}@example.com`,
-        role: `resource_${role}`,
-      }),
-      ...mockAccessRequests({
-        requests: mockAllRequests.requests,
-        total: mockAllRequests.total,
-        page: mockAllRequests.page,
-        page_size: mockAllRequests.page_size,
-      })
+      ...mockUserLoggedIn({ username: `${role}@example.com`, role: `resource_${role}` }),
+      ...mockAccessRequests({ requests: [mockPendingRequest], total: 1, page: 1, page_size: 10 })
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
+    await renderPage();
 
     expect(screen.getByTestId('all-requests-page')).toBeInTheDocument();
-    expect(screen.getByTestId('request-count')).toBeInTheDocument();
+    await screen.findByText('user@example.com');
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it.each(BLOCKED_ROLES)('blocks access for %s role', async (role) => {
     server.use(
       ...mockAppInfoReady(),
-      ...mockUserLoggedIn({
-        username: `${role}@example.com`,
-        role: `resource_${role}`,
-      }),
-      ...mockAccessRequests({
-        requests: mockAllRequests.requests,
-        total: mockAllRequests.total,
-        page: mockAllRequests.page,
-        page_size: mockAllRequests.page_size,
-      })
+      ...mockUserLoggedIn({ username: `${role}@example.com`, role: `resource_${role}` }),
+      ...mockAccessRequests({ requests: [mockPendingRequest], total: 1, page: 1, page_size: 10 })
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
+    await renderPage();
 
     // Redirect-on-insufficient-role is AppInitializer's job (mocked here); assert the page doesn't crash.
     await waitFor(() => {
@@ -137,60 +114,88 @@ describe('AllRequestsPage Data Display', () => {
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }), ...mockAccessRequestsDefault());
   });
 
-  it('displays all requests with correct status badges and reviewer information', async () => {
-    const allRequestsData = {
-      requests: [mockPendingRequest, mockApprovedRequest, mockRejectedRequest],
-      total: 3,
-      page: 1,
-      page_size: 10,
-    };
-
+  it('displays all requests with status chips and reviewer for decided rows', async () => {
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
       ...mockAccessRequests({
-        requests: allRequestsData.requests,
-        total: allRequestsData.total,
-        page: allRequestsData.page,
-        page_size: allRequestsData.page_size,
+        requests: [mockPendingRequest, mockApprovedRequest, mockRejectedRequest],
+        total: 3,
+        page: 1,
+        page_size: 10,
       })
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
+    await renderPage();
     await screen.findByText('user@example.com');
 
     expect(screen.getByText('user@example.com')).toBeInTheDocument();
     expect(screen.getByText('approved@example.com')).toBeInTheDocument();
     expect(screen.getByText('rejected@example.com')).toBeInTheDocument();
 
-    // status badges (filter tabs also contain these words, so target the row status testids)
+    // status chips appear on rows (filter pills carry the same words, so target the row testids)
     expect(screen.getByTestId('request-status-pending')).toBeInTheDocument();
     expect(screen.getByTestId('request-status-approved')).toBeInTheDocument();
     expect(screen.getByTestId('request-status-rejected')).toBeInTheDocument();
 
-    const reviewerElements = screen.getAllByText('admin@example.com');
-    expect(reviewerElements).toHaveLength(2); // One for approved, one for rejected
+    // reviewer shows in the role cell of decided rows only (2 of 3)
+    const reviewerElements = screen.getAllByTestId('request-reviewer');
+    expect(reviewerElements).toHaveLength(2);
+    reviewerElements.forEach((el) => expect(el).toHaveTextContent('admin@example.com'));
+  });
+
+  it('derives filter-tab counts and filters rows by status', async () => {
+    const user = userEvent.setup();
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockAccessRequests({
+        requests: [mockPendingRequest, mockApprovedRequest, mockRejectedRequest],
+        total: 3,
+        page: 1,
+        page_size: 10,
+      })
+    );
+
+    await renderPage();
+    await screen.findByText('user@example.com');
+
+    expect(within(screen.getByTestId('requests-filter-all')).getByText('3')).toBeInTheDocument();
+    expect(within(screen.getByTestId('requests-filter-pending')).getByText('1')).toBeInTheDocument();
+    expect(within(screen.getByTestId('requests-filter-rejected')).getByText('1')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('requests-filter-approved'));
+    expect(screen.getByTestId('request-row-approved@example.com')).toBeInTheDocument();
+    expect(screen.queryByTestId('request-row-user@example.com')).not.toBeInTheDocument();
+  });
+
+  it('filters rows by search query on username', async () => {
+    const user = userEvent.setup();
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockAccessRequests({
+        requests: [mockPendingRequest, mockApprovedRequest, mockRejectedRequest],
+        total: 3,
+        page: 1,
+        page_size: 10,
+      })
+    );
+
+    await renderPage();
+    await screen.findByText('user@example.com');
+
+    await user.click(screen.getByTestId('requests-search-toggle'));
+    await user.type(screen.getByPlaceholderText('Search requests by email…'), 'approved');
+
+    expect(screen.getByTestId('request-row-approved@example.com')).toBeInTheDocument();
+    expect(screen.queryByTestId('request-row-user@example.com')).not.toBeInTheDocument();
   });
 
   it('displays empty state when no requests exist', async () => {
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_admin' }), ...mockAccessRequestsEmpty());
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
+    await renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('No Access Requests')).toBeInTheDocument();
@@ -198,109 +203,32 @@ describe('AllRequestsPage Data Display', () => {
   });
 
   it('handles pagination correctly', async () => {
-    const paginatedData = {
-      requests: [mockPendingRequest],
-      total: 25,
-      page: 1,
-      page_size: 10,
-    };
-
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: paginatedData.requests,
-        total: paginatedData.total,
-        page: paginatedData.page,
-        page_size: paginatedData.page_size,
-      })
+      ...mockAccessRequests({ requests: [mockPendingRequest], total: 25, page: 1, page_size: 10 })
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
+    await renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
     });
   });
 
-  it('displays correct date for pending vs processed requests', async () => {
-    const allRequestsData = {
-      requests: [mockPendingRequest, mockApprovedRequest],
-      total: 2,
-      page: 1,
-      page_size: 10,
-    };
-
+  it('shows decided rows without a role dropdown or action buttons', async () => {
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: allRequestsData.requests,
-        total: allRequestsData.total,
-        page: allRequestsData.page,
-        page_size: allRequestsData.page_size,
-      })
+      ...mockAccessRequests({ requests: [mockApprovedRequest], total: 1, page: 1, page_size: 10 })
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
+    await renderPage();
+    await screen.findByText('approved@example.com');
 
-    await screen.findByText('user@example.com');
-
-    // Pending request shows created_at; approved request shows updated_at.
-    expect(screen.getByText('1/1/2024')).toBeInTheDocument();
-    expect(screen.getByText('1/2/2024')).toBeInTheDocument();
-  });
-
-  it('shows reviewer information only for approved/rejected requests', async () => {
-    const allRequestsData = {
-      requests: [mockPendingRequest, mockApprovedRequest, mockRejectedRequest],
-      total: 3,
-      page: 1,
-      page_size: 10,
-    };
-
-    server.use(
-      ...mockAppInfoReady(),
-      ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: allRequestsData.requests,
-        total: allRequestsData.total,
-        page: allRequestsData.page,
-        page_size: allRequestsData.page_size,
-      })
-    );
-
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
-    await screen.findByText('user@example.com');
-
-    const reviewerElements = screen.getAllByTestId('request-reviewer');
-    expect(reviewerElements).toHaveLength(2); // Only approved and rejected, not pending
-
-    reviewerElements.forEach((element) => {
-      expect(element).toHaveTextContent('admin@example.com');
-    });
+    expect(screen.queryByTestId('approve-btn-approved@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reject-btn-approved@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('role-select-approved@example.com')).not.toBeInTheDocument();
   });
 });
 
@@ -311,267 +239,99 @@ describe('AllRequestsPage Request Management', () => {
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: [mockPendingRequest],
-        total: 1,
-        page: 1,
-        page_size: 10,
-      })
+      ...mockAccessRequests({ requests: [mockPendingRequest], total: 1, page: 1, page_size: 10 })
     );
   });
 
-  it('displays inline role selection and approve buttons', async () => {
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
+  it('shows inline role selection, approve and reject for pending requests', async () => {
+    await renderPage();
     await screen.findByText('user@example.com');
 
-    expect(screen.getByText('Approve')).toBeInTheDocument();
-    expect(screen.getByText('Reject')).toBeInTheDocument();
-
-    // Role options only render once the combobox is opened.
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByTestId('approve-btn-user@example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('reject-btn-user@example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('role-select-user@example.com')).toBeInTheDocument();
   });
 
   it('successfully approves request when approve button clicked', async () => {
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: [mockPendingRequest],
-        total: 1,
-        page: 1,
-        page_size: 10,
-      }),
+      ...mockAccessRequests({ requests: [mockPendingRequest], total: 1, page: 1, page_size: 10 }),
       ...mockAccessRequestApprove(mockPendingRequest.id)
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
+    await renderPage();
     await screen.findByText('user@example.com');
 
-    // Role defaults to 'resource_user'.
-    const approveButton = screen.getByText('Approve');
+    const approveButton = screen.getByTestId('approve-btn-user@example.com');
     await user.click(approveButton);
 
-    await waitFor(() => {
-      expect(approveButton).toBeInTheDocument();
-    });
-  });
-
-  it('shows reject button for pending requests', async () => {
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
-    await screen.findByText('user@example.com');
-
-    expect(screen.getByText('Reject')).toBeInTheDocument();
+    await waitFor(() => expect(approveButton).toBeInTheDocument());
   });
 
   it('successfully rejects request when reject button clicked', async () => {
     server.use(...mockAccessRequestReject(mockPendingRequest.id));
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
+    await renderPage();
     await screen.findByText('user@example.com');
 
-    const rejectButton = screen.getByText('Reject');
+    const rejectButton = screen.getByTestId('reject-btn-user@example.com');
     await user.click(rejectButton);
 
-    await waitFor(() => {
-      expect(rejectButton).toBeInTheDocument();
-    });
+    await waitFor(() => expect(rejectButton).toBeInTheDocument());
   });
 });
 
 describe('AllRequestsPage Error Handling', () => {
-  it('shows empty state when API call fails (no error handling in component)', async () => {
+  it('shows empty state when the list API fails (no inline error handling)', async () => {
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequestsError({
-        status: 500,
-        code: 'internal_error',
-        message: 'Internal server error',
-      }),
-      ...mockAccessRequestsError({
-        status: 500,
-        code: 'internal_error',
-        message: 'Internal server error',
-      })
+      ...mockAccessRequestsError({ status: 500, code: 'internal_error', message: 'Internal server error' }),
+      ...mockAccessRequestsError({ status: 500, code: 'internal_error', message: 'Internal server error' })
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
+    await renderPage();
 
-    // Component doesn't handle errors, so shows empty state instead
     await waitFor(() => {
       expect(screen.getByText('No Access Requests')).toBeInTheDocument();
     });
     expect(screen.getByText('No access requests match this filter.')).toBeInTheDocument();
   });
 
-  it('handles approve request failure via toast (not on screen)', async () => {
-    const user = userEvent.setup();
-
+  it('handles approve failure via toast (not on screen)', async () => {
+    const u = userEvent.setup();
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: [mockPendingRequest],
-        total: 1,
-        page: 1,
-        page_size: 10,
-      }),
+      ...mockAccessRequests({ requests: [mockPendingRequest], total: 1, page: 1, page_size: 10 }),
       ...mockAccessRequestApproveError(mockPendingRequest.id)
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
+    await renderPage();
     await screen.findByText('user@example.com');
 
-    const approveButton = screen.getByText('Approve');
-    await user.click(approveButton);
+    const approveButton = screen.getByTestId('approve-btn-user@example.com');
+    await u.click(approveButton);
 
-    const roleSelect = screen.getByRole('combobox');
-    await user.click(roleSelect);
-
-    // Failure surfaces via toast, not on screen.
     expect(approveButton).toBeInTheDocument();
   });
 
-  it('handles reject request failure via toast (not on screen)', async () => {
-    const user = userEvent.setup();
-
+  it('handles reject failure via toast (not on screen)', async () => {
+    const u = userEvent.setup();
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: [mockPendingRequest],
-        total: 1,
-        page: 1,
-        page_size: 10,
-      }),
+      ...mockAccessRequests({ requests: [mockPendingRequest], total: 1, page: 1, page_size: 10 }),
       ...mockAccessRequestRejectError(mockPendingRequest.id)
     );
 
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
+    await renderPage();
     await screen.findByText('user@example.com');
 
-    const rejectButton = screen.getByText('Reject');
-    await user.click(rejectButton);
+    const rejectButton = screen.getByTestId('reject-btn-user@example.com');
+    await u.click(rejectButton);
 
-    // Failure surfaces via toast, not on screen.
     expect(rejectButton).toBeInTheDocument();
-  });
-});
-
-describe('AllRequestsPage Loading States', () => {
-  it('shows page and eventually loads data', async () => {
-    server.use(
-      ...mockAppInfoReady(),
-      ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: [mockPendingRequest],
-        total: 1,
-        page: 1,
-        page_size: 10,
-      })
-    );
-
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
-    expect(screen.getByTestId('all-requests-page')).toBeInTheDocument();
-
-    await screen.findByText('user@example.com');
-    expect(screen.getByTestId('request-count')).toBeInTheDocument();
-  });
-
-  it('shows approve and reject buttons for pending requests', async () => {
-    const user = userEvent.setup();
-
-    server.use(
-      ...mockAppInfoReady(),
-      ...mockUserLoggedIn({ role: 'resource_admin' }),
-      ...mockAccessRequests({
-        requests: [mockPendingRequest],
-        total: 1,
-        page: 1,
-        page_size: 10,
-      })
-    );
-
-    await act(async () => {
-      render(
-        <ShellSlotsProvider>
-          <AllRequestsPage />
-        </ShellSlotsProvider>,
-        { wrapper: createWrapper() }
-      );
-    });
-
-    await screen.findByText('user@example.com');
-
-    const approveButton = screen.getByText('Approve');
-    const rejectButton = screen.getByText('Reject');
-
-    expect(approveButton).toBeInTheDocument();
-    expect(rejectButton).toBeInTheDocument();
-
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 });

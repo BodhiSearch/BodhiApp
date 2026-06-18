@@ -45,13 +45,22 @@ export const SHELL_NAV: ShellNavItem[] = [
   },
   {
     id: 'api-keys',
-    label: 'API Keys',
+    label: 'Access Tokens',
     icon: 'key-round',
     href: '/tokens/',
     subPages: [
-      { id: 'app-tokens', label: 'App Tokens', icon: 'key-round', href: '/tokens/' },
-      { id: 'new-token', label: 'New Token', icon: 'plus-circle', href: '/tokens/new/' },
-      { id: 'access-requests', label: 'Access Requests', icon: 'shield-check', href: '/users/access-requests/' },
+      { id: 'api-tokens', label: 'API Tokens', icon: 'key-round', href: '/tokens/' },
+      { id: 'new-token', label: 'New API Token', icon: 'plus-circle', href: '/tokens/new/' },
+    ],
+  },
+  {
+    id: 'users',
+    label: 'Users',
+    icon: 'users',
+    href: '/users/access-requests/',
+    subPages: [
+      { id: 'access-requests', label: 'User Access Requests', icon: 'user-check', href: '/users/access-requests/' },
+      { id: 'manage-users', label: 'Manage Users', icon: 'users', href: ROUTE_USERS },
     ],
   },
   {
@@ -59,9 +68,6 @@ export const SHELL_NAV: ShellNavItem[] = [
     label: 'Settings',
     icon: 'settings',
     href: '/settings/',
-    subPages: [
-      { id: 'app-settings', label: 'App Settings', icon: 'settings', href: '/settings/' },
-      { id: 'manage-users', label: 'Manage Users', icon: 'users', href: ROUTE_USERS },
-    ],
+    subPages: [{ id: 'app-settings', label: 'App Settings', icon: 'settings', href: '/settings/' }],
   },
 ];
