@@ -3,5 +3,10 @@
     "allow": [],
     "deny": []
   },
+  "enabledPlugins": {
+    "tanstack-router@tanstack-skills": true,
+    "tanstack-query@tanstack-skills": true,
+    "tanstack-devtools@tanstack-skills": true
+  },
   "plansDirectory": "docs/claude-plans/202606/"
 }
