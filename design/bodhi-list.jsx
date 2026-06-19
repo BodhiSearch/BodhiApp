@@ -101,6 +101,7 @@ function ListToolbar({
 function RowLink({ onActivate, label }) {
   return (
     <a className="l-rowlink" href="#" aria-label={label || 'Open details'}
+       onMouseDown={e => e.preventDefault()}
        onClick={e => { e.preventDefault(); if (onActivate) onActivate(); }}>
     </a>
   );
@@ -121,11 +122,64 @@ function ListRow({ active, accent, className = '', style, onSelect, label, child
     .filter(Boolean).join(' ');
   const mergedStyle = accent ? { ...style, '--row-accent': accent } : style;
   return (
-    <div className={cls} style={mergedStyle} onClick={() => onSelect && onSelect()} {...rest}>
+    <div className={cls} style={mergedStyle} onClick={() => onSelect && onSelect()}
+         role={onSelect ? 'option' : undefined} aria-selected={onSelect ? !!active : undefined} {...rest}>
       <RowLink onActivate={onSelect} label={label} />
       {children}
     </div>
   );
+}
+
+/* ── useListKeyNav ───────────────────────────────────────
+   Arrow-key navigation for a selectable master-detail list. ↑/↓ move the
+   selection by one row — EAGER: selecting also opens the detail panel, exactly
+   like a click — Home/End jump to first/last, and movement STOPS at the ends
+   (no wrap). It works by activating the target row's stretched <a.l-rowlink>,
+   reusing each page's existing select handler, so no per-page state wiring is
+   needed. One call per page from the component that renders the list.
+   Scoped: ignores keys while focus is in a text field, the left sidebar, or the
+   right detail rail, so typing and panel use are never hijacked.
+     rowSelector  → rows to navigate     (default '.l-listrow')
+     rootSelector → the scroll container (default '.l-scroll')        */
+function useListKeyNav(opts = {}) {
+  const rowSelector  = opts.rowSelector  || '.l-listrow';
+  const rootSelector = opts.rootSelector || '.l-scroll';
+  React.useEffect(() => {
+    function scrollIntoView(root, row) {
+      const cr = root.getBoundingClientRect();
+      const rr = row.getBoundingClientRect();
+      const head = root.querySelector('.l-listhead');
+      const top = cr.top + (head ? head.offsetHeight : 0) + 6;
+      if (rr.top < top) root.scrollTop -= (top - rr.top);
+      else if (rr.bottom > cr.bottom - 6) root.scrollTop += (rr.bottom - cr.bottom + 6);
+    }
+    function onKey(e) {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+      const ae = document.activeElement;
+      if (ae && ae.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], .shell-sidebar, .shell-rail')) return;
+      const root = document.querySelector(rootSelector);
+      if (!root) return;
+      const rows = Array.from(root.querySelectorAll(rowSelector)).filter(el => el.offsetParent !== null);
+      if (!rows.length) return;
+      let cur = rows.findIndex(r => r.classList.contains('active'));
+      if (cur < 0 && ae) cur = rows.findIndex(r => r.contains(ae));
+      let next;
+      if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = rows.length - 1;
+      else if (e.key === 'ArrowDown') next = cur < 0 ? 0 : Math.min(rows.length - 1, cur + 1);
+      else next = cur < 0 ? rows.length - 1 : Math.max(0, cur - 1);
+      e.preventDefault();
+      if (next === cur) return;            // stop at ends — no wrap
+      const row = rows[next];
+      const link = row.querySelector('.l-rowlink') || row;
+      link.focus({ preventScroll: true }); // ring follows keyboard selection
+      link.click();                        // reuse the row's existing select handler
+      scrollIntoView(root, row);
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [rowSelector, rootSelector]);
 }
 
 function ListView({ head, columns, children, className = '' }) {
@@ -150,4 +204,4 @@ function ListPage({ toolbar, children, scrollClass = '' }) {
   );
 }
 
-Object.assign(window, { ListToolbar, ListView, ListPage, RowLink, ListRow });
+Object.assign(window, { ListToolbar, ListView, ListPage, RowLink, ListRow, useListKeyNav });

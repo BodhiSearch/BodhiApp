@@ -49,7 +49,9 @@ const SHELL_NAV = (typeof window !== 'undefined' && window.BSB_NAV) || [
   {
     id: 'models', label: 'Models', icon: 'cpu', href: 'Bodhi Models.html', badge: '14',
     subPages: [
-      { id: 'all-models',         label: 'All Models',         icon: 'globe-2',     href: 'Bodhi Models.html' },
+      { id: 'my-models',          label: 'My Models',            icon: 'layers',      href: 'Bodhi Models.html' },
+      { id: 'explore-local',      label: 'Explore · Local Models', icon: 'hard-drive', href: 'Bodhi Models Local.html' },
+      { id: 'explore-api',        label: 'Explore · API Models',   icon: 'at-sign',    href: 'Bodhi Models API.html' },
       { id: 'new-local-model',    label: 'New Local Model',    icon: 'plus-circle', href: 'Create New Local Model v4.html' },
       { id: 'new-api-model',      label: 'New API Model',      icon: 'plug-zap',    href: 'Create API Model.html' },
       { id: 'new-fallback-model', label: 'New Fallback Alias', icon: 'route',       href: 'Create Fallback Model.html' },
@@ -294,8 +296,36 @@ function ShellModeSwitch({ value, onChange, options = [], label }) {
   );
 }
 
+/* ── Dual-handle range slider ───────────────────────────────── */
+function ShellRangeSlider({ min = 0, max = 100, step = 1, unit = '', defaultMin, defaultMax }) {
+  const [lo, setLo] = React.useState(defaultMin != null ? defaultMin : min);
+  const [hi, setHi] = React.useState(defaultMax != null ? defaultMax : max);
+  const pct = v => ((v - min) / (max - min)) * 100;
+  const fmt = v => v + (v >= max ? '+' : '') + unit;
+
+  const onLo = e => setLo(Math.min(Number(e.target.value), hi - step));
+  const onHi = e => setHi(Math.max(Number(e.target.value), lo + step));
+
+  return (
+    <div className="shell-range">
+      <div className="shell-range-vals">
+        <span>{fmt(lo)}</span>
+        <span>{fmt(hi)}</span>
+      </div>
+      <div className="shell-range-track">
+        <div className="shell-range-rail" />
+        <div className="shell-range-fill" style={{ left: pct(lo) + '%', right: (100 - pct(hi)) + '%' }} />
+        <input type="range" min={min} max={max} step={step} value={lo} onChange={onLo}
+               className="shell-range-input" style={{ zIndex: lo > max - step ? 5 : 3 }} aria-label="Minimum" />
+        <input type="range" min={min} max={max} step={step} value={hi} onChange={onHi}
+               className="shell-range-input" style={{ zIndex: 4 }} aria-label="Maximum" />
+      </div>
+    </div>
+  );
+}
+
 /* ── Filter group (page control) ────────────────────────────── */
-function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable }) {
+function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable, range }) {
   const { collapsed, openPop, setOpenPop } = useShell();
   const popId = 'fg:' + label;
   const open = openPop === popId;
@@ -328,7 +358,8 @@ function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable 
             <span>{label}</span>
             {clearable && sel.size > 0 && <button className="fg-clear" onClick={clear}>Clear</button>}
           </div>
-          <div className="shell-pop-chips">{chipEls}</div>
+          {range ? <div className="shell-pop-chips"><ShellRangeSlider {...range} /></div>
+                 : <div className="shell-pop-chips">{chipEls}</div>}
         </AnchoredPopover>
       </>
     );
@@ -341,7 +372,7 @@ function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable 
         <span className="fg-name">{label}{note && <span className="fg-note"> {note}</span>}</span>
         {clearable && sel.size > 0 && <button className="fg-clear" onClick={clear}>Clear</button>}
       </div>
-      <div className="shell-fc-row">{chipEls}</div>
+      {range ? <ShellRangeSlider {...range} /> : <div className="shell-fc-row">{chipEls}</div>}
     </div>
   );
 }

@@ -466,6 +466,41 @@ a { text-decoration: none; color: inherit; }
 .shell-fc.fc-teal.on    { background: var(--c-teal-bg);    border-color: var(--c-teal-bd);    color: var(--c-teal-text); }
 .shell-fc.fc-neutral.on { background: hsl(var(--muted));   border-color: hsl(var(--border));  color: hsl(var(--foreground)); font-weight: 600; }
 
+/* Dual-handle range slider (filter group) */
+.shell-range { padding: 4px 10px 6px; }
+.shell-range-vals {
+  display: flex; justify-content: space-between;
+  font-size: 11px; font-weight: 600; color: hsl(var(--foreground));
+  font-variant-numeric: tabular-nums; margin-bottom: 9px;
+}
+.shell-range-track { position: relative; height: 16px; }
+.shell-range-rail {
+  position: absolute; top: 50%; left: 0; right: 0; height: 4px;
+  transform: translateY(-50%); border-radius: 99px; background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+}
+.shell-range-fill {
+  position: absolute; top: 50%; height: 4px; transform: translateY(-50%);
+  border-radius: 99px; background: var(--c-lotus-text);
+}
+.shell-range-input {
+  position: absolute; top: 0; left: 0; width: 100%; height: 16px;
+  margin: 0; background: none; pointer-events: none;
+  -webkit-appearance: none; appearance: none;
+}
+.shell-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; pointer-events: auto;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: hsl(var(--background)); border: 2px solid var(--c-lotus-text);
+  cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.15);
+}
+.shell-range-input::-webkit-slider-thumb:active { cursor: grabbing; }
+.shell-range-input::-moz-range-thumb {
+  pointer-events: auto; width: 14px; height: 14px; border-radius: 50%;
+  background: hsl(var(--background)); border: 2px solid var(--c-lotus-text);
+  cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.15);
+}
+
 /* ════════════════════════════════════════════════════════════
    MAIN chrome — header / breadcrumb
 ════════════════════════════════════════════════════════════ */

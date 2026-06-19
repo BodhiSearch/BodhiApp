@@ -232,6 +232,7 @@ function AccessRequestsView({ requests, setRequests, setUsers, showToast }) {
 ══════════════════════════════════════════════════ */
 function AllUsersView({ users, search, setSearch, selId, onSelect }) {
   const { openRail } = useShell();
+  useListKeyNav();
   const select = id => { onSelect(id); openRail(); };
   const [cat, setCat] = React.useState('all');
 

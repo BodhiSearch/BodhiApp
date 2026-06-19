@@ -167,6 +167,7 @@ function RequestDetailPanel({ req, onRole, onApprove, onReject }) {
 
 function UserRequestsMain({ requests, filter, setFilter, search, setSearch, counts, loading, selId, onSelect, onRole, onApprove, onReject }) {
   const { openRail } = useShell();
+  useListKeyNav();
   const select = id => { onSelect(id); openRail(); };
 
   const visible = requests.filter(r => {

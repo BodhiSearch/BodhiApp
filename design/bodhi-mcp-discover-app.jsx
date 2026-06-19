@@ -682,6 +682,7 @@ function DiscoverApp() {
    edge-to-edge <ListView>. */
 function MainArea({ visible, view, setView, stab, setStab, search, setSearch, role, activeId, STABS, totalApprovals, onOpen }) {
   const { openRail } = useShell();
+  useListKeyNav();
   const open = (id, t) => { onOpen(id, t); openRail(); };
 
   const cats = STABS.map(t => ({ id: t.id, label: t.label, cls: t.catCls }));

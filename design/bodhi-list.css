@@ -104,8 +104,11 @@
 /* ── Stretched row link (keyboard / Vimium nav + a11y) ──────────────
    <RowLink/> renders an empty <a> filling the row, BEHIND its content, so the
    row is a real link target while its own controls stay clickable. */
-.l-rowlink { position: absolute; inset: 0; z-index: 0; border-radius: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
-.l-rowlink:focus-visible { outline: 2px solid hsl(var(--primary-ring)); outline-offset: -2px; border-radius: 4px; }
+.l-rowlink { position: absolute; inset: 0; z-index: 0; border-radius: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; outline: none; }
+/* no focus ring on the row link \u2014 the selected-row lotus border is the single
+   source of truth for "current row"; a focus ring would lag behind keyboard /
+   Vimium navigation and read as a stray highlight. */
+.l-rowlink:focus, .l-rowlink:focus-visible { outline: none; }
 /* The row link sits ABOVE the static cells (text/avatars) so Vimium's overlay
    check finds it at the row's corners. Only real CONTROLS are raised above the
    link, so buttons/selects stay clickable while the rest of the row is the link. */

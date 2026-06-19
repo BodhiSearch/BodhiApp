@@ -9,11 +9,12 @@ const Ic = ShellIcon;
 const tagClass = (t) => 'tag ' + (TAG_MAP[t] || 'tag-muted');
 const Tag = ({ t, big }) => <span className={tagClass(t)} style={big ? { fontSize: 12, padding: '3px 9px' } : null}>{t}</span>;
 
-/* ── Sidebar filter config per mode ───────────────────────────── */
-const MODE_OPTIONS = [
-{ id: 'my-models', label: 'My Models', sub: 'configured on your BodhiApp', icon: 'layers' },
-{ id: 'local', label: 'Local Models', sub: 'huggingface.co · GGUF', icon: 'hard-drive' },
-{ id: 'api', label: 'API Models', sub: 'hosted-API providers', icon: 'at-sign' }];
+/* ── Mode config (one fixed mode per page) ────────────────────── */
+const MODE_CFG = {
+  'my-models': { subPage: 'my-models',     label: 'My Models' },
+  'local':     { subPage: 'explore-local', label: 'Explore · Local Models' },
+  'api':       { subPage: 'explore-api',   label: 'Explore · API Models' }
+};
 
 
 const FILTERS = {
@@ -22,9 +23,8 @@ const FILTERS = {
     { label: 'Local File', color: 'saffron' }, { label: 'Model Alias', color: 'lotus' },
     { label: 'API Model', color: 'indigo' }, { label: 'Fallback', color: 'teal' }] },
   { icon: 'sparkles', label: 'Capability', chips: ['chat', 'tool-use', 'vision', 'embeddings', 'reasoning'].map((l) => ({ label: l })) },
-  { icon: 'ruler', label: 'Size', note: '(local files)', chips: ['<4 GB', '4–8 GB', '>8 GB'].map((l) => ({ label: l })) },
-  { icon: 'plug', label: 'API Format', note: '(API only)', chips: ['OpenAI-compat', 'Native API'].map((l) => ({ label: l })) },
-  { icon: 'list-ordered', label: 'Steps', note: '(fallback)', chips: ['2 steps', '3+ steps'].map((l) => ({ label: l })) }],
+  { icon: 'ruler', label: 'Size', note: '(local files)', range: { min: 0, max: 16, step: 1, unit: ' GB', defaultMin: 0, defaultMax: 16 } },
+  { icon: 'plug', label: 'API Format', note: '(API only)', chips: ['OpenAI', 'Responses', 'Anthropic', 'Gemini'].map((l) => ({ label: l })) }],
 
   'local': [
   { icon: 'compass', label: 'Browse', chips: [{ label: '↗ Trending' }, { label: '✦ New' }] },
@@ -52,13 +52,12 @@ const FILTERS = {
 
 };
 
-function ModelsSidebar({ mode, setMode }) {
+function ModelsSidebar({ mode }) {
   return (
     <>
-      <ShellModeSwitch label="Model Type" value={mode} onChange={setMode} options={MODE_OPTIONS} />
       {FILTERS[mode].map((g) =>
       <ShellFilterGroup key={mode + '-' + g.label} icon={g.icon} label={g.label}
-      note={g.note} clearable={g.clearable} chips={g.chips} />
+      note={g.note} clearable={g.clearable} chips={g.chips} range={g.range} />
       )}
     </>);
 
@@ -174,6 +173,7 @@ const PLACEHOLDER = {
 
 function ModelsMain({ mode, sel, onSelect, density, showTags, showScore }) {
   const { openRail } = useShell();
+  useListKeyNav({ rootSelector: '.model-list', rowSelector: '.m-row, .my-card' });
   const [q, setQ] = useState('');
   const pick = (kind, item, idx) => {onSelect({ kind, item, idx });openRail();};
 
@@ -421,7 +421,8 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar }) {
 /* ── Tweaks panel (host protocol) ─────────────────────────────── */
 /* ── Root ─────────────────────────────────────────────────────── */
 function ModelsApp() {
-  const [mode, setModeRaw] = useState('my-models');
+  const mode = window.MODELS_MODE || 'my-models';
+  const cfg = MODE_CFG[mode];
   const [sel, setSel] = useState(null);
   const [tab, setTab] = useState('overview');
   const [starred, setStarred] = useState(() => new Set());
@@ -431,21 +432,21 @@ function ModelsApp() {
 
   /* default selection on desktop */
   useEffect(() => {
-    if (!window.matchMedia('(max-width:767px)').matches) setSel({ kind: 'my', item: MY_MODELS[0], idx: 0 });
+    if (window.matchMedia('(max-width:767px)').matches) return;
+    if (mode === 'local') setSel({ kind: 'local', item: LOCAL_MODELS[0], idx: 0 });
+    else if (mode === 'api') setSel({ kind: 'api', item: API_PROVIDERS[0], idx: 0 });
+    else setSel({ kind: 'my', item: MY_MODELS[0], idx: 0 });
   }, []);
 
-  const setMode = (m) => {setModeRaw(m);setSel(null);};
   const onSelect = (s) => {setSel(s);setTab('overview');};
   const toggleStar = (key) => setStarred((prev) => {const n = new Set(prev);n.has(key) ? n.delete(key) : n.add(key);return n;});
 
-  const modeLabel = MODE_OPTIONS.find((o) => o.id === mode).label;
-
   return <>
     <AppShell
-      section="models" subPage="all-models"
+      section="models" subPage={cfg.subPage}
       resizeKey="models"
-      breadcrumb={[{ label: 'Bodhi', href: 'Bodhi Chat.html' }, { label: 'Models', href: '#' }, { label: modeLabel, current: true }]}
-      sidebar={<ModelsSidebar mode={mode} setMode={setMode} />}
+      breadcrumb={[{ label: 'Bodhi', href: 'Bodhi Chat.html' }, { label: 'Models', href: 'Bodhi Models.html' }, { label: cfg.label, current: true }]}
+      sidebar={<ModelsSidebar mode={mode} />}
       contentClass="flush" mainScroll={false} railScroll={false}
       rail={sel ? <DetailBody sel={sel} tab={tab} setTab={setTab} starred={starred} toggleStar={toggleStar} /> : null}
       railHeader={sel ? <DetailHeader sel={sel} onDeselect={() => setSel(null)} /> : undefined}>

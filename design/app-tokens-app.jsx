@@ -169,6 +169,7 @@ function TokenDetailPanel({ token, onToggle, onDelete, onEdit }) {
 
 function AppTokensMain({ tokens, filter, setFilter, search, setSearch, counts, selId, onSelect, onToggle }) {
   const { openRail } = useShell();
+  useListKeyNav();
   const select = id => { onSelect(id); openRail(); };
 
   const visible = tokens.filter(t => {
