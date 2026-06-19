@@ -74,6 +74,67 @@ export class AllAccessRequestsPage extends UsersManagementPage {
     return await this.findRequestRowByUsername(username);
   }
 
+  // Filter tabs (V2 replaces the old /ui/users/pending route with a `pending` filter) ──
+  /** Click a status filter tab (`pending` | `approved` | `rejected` | `all`). */
+  async filterBy(status) {
+    await this.page.locator(this.allRequestsSelectors.filterTab(status)).click();
+  }
+
+  /** Navigate to the requests page on its default `pending` filter (replaces navigateToPendingRequests). */
+  async navigateToPending() {
+    await this.navigateToAllRequests();
+    await this.filterBy('pending');
+  }
+
+  async expectRequestVisible(username) {
+    await expect(this.page.locator(this.allRequestsSelectors.requestRow(username))).toBeVisible();
+  }
+
+  async expectRequestNotVisible(username) {
+    await expect(this.page.locator(this.allRequestsSelectors.requestRow(username))).toHaveCount(0);
+  }
+
+  async expectEmpty() {
+    await this.expectVisible(this.allRequestsSelectors.emptyState);
+  }
+
+  // In-row approval (V2 lists approve/reject + a native role <select> per pending row) ──
+  /**
+   * Set a pending row's role <select> to the given role value
+   * (e.g. 'resource_manager', 'resource_power_user'). The page binds every row's
+   * select to a single shared `selectedRole`, so this must be set immediately
+   * before approving that row.
+   */
+  async selectRole(username, roleValue) {
+    await this.page.locator(this.allRequestsSelectors.roleSelect(username)).selectOption(roleValue);
+  }
+
+  /** Labels of the role options offered for a pending request (mirrors getAvailableRoles). */
+  async getAvailableRoleLabels(username) {
+    const labels = await this.page
+      .locator(`${this.allRequestsSelectors.roleSelect(username)} option`)
+      .allTextContents();
+    return labels.map((l) => l.trim());
+  }
+
+  async expectRoleNotAvailable(username, roleLabel) {
+    const labels = await this.getAvailableRoleLabels(username);
+    expect(labels).not.toContain(roleLabel);
+  }
+
+  /** Approve a pending request with a role value, waiting for the success toast. */
+  async approveRequest(username, roleValue) {
+    await this.selectRole(username, roleValue);
+    await this.page.locator(this.allRequestsSelectors.approveBtn(username)).click();
+    await this.waitForToast(/Request Approved/);
+  }
+
+  /** Reject a pending request, waiting for the success toast. */
+  async rejectRequest(username) {
+    await this.page.locator(this.allRequestsSelectors.rejectBtn(username)).click();
+    await this.waitForToast(/Request Rejected/);
+  }
+
   async getRequestData(username) {
     const row = await this.findRequestByUsername(username);
 

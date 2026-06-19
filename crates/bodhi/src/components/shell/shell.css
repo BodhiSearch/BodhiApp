@@ -1266,7 +1266,7 @@ a {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 16px;
+  width: 12px;
   z-index: 40;
   cursor: col-resize;
   touch-action: none;
@@ -1291,6 +1291,14 @@ a {
 .shell-resize:hover::before,
 .shell-resize.is-active::before {
   background: hsl(var(--ring));
+}
+.shell-resize.left::before {
+  left: 0;
+  transform: none;
+}
+.shell-resize.left .shell-resize-grip {
+  left: 0;
+  transform: translate(-50%, -50%);
 }
 .shell-resize-grip {
   position: absolute;

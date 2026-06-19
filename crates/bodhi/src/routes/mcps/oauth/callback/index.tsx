@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
 import { z } from 'zod';
 
@@ -20,6 +20,10 @@ export const Route = createFileRoute('/mcps/oauth/callback/')({
   component: McpOAuthCallbackPage,
 });
 
+// Dedupe by code across remounts (a useRef resets on StrictMode/route remount,
+// letting a 2nd exchange 400 and wipe the form-restore session).
+export const exchangedCodes = new Set<string>();
+
 function OAuthCallbackContent() {
   const navigate = useNavigate();
   const search = useSearch({ from: '/mcps/oauth/callback/' });
@@ -30,15 +34,11 @@ function OAuthCallbackContent() {
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
-  // Ref, not state: under React StrictMode dev mode effects double-invoke before
-  // the state update commits, so a useState guard would let the token exchange
-  // fire twice and the second call would 400 with invalid_grant.
-  const exchangedRef = useRef(false);
 
   const tokenExchangeMutation = useOAuthTokenExchange();
 
   useEffect(() => {
-    if (exchangedRef.current) return;
+    if (code && exchangedCodes.has(code)) return;
 
     if (error) {
       setStatus('error');
@@ -83,12 +83,10 @@ function OAuthCallbackContent() {
 
     const mcpId = formState.mcp_id || undefined;
 
-    exchangedRef.current = true;
+    exchangedCodes.add(code);
     const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback/`;
 
-    // mutateAsync, not mutate+per-call callbacks: react-query skips per-call
-    // callbacks if the component unmounts before the response, which StrictMode's
-    // dev-mode double-mount reliably triggers here.
+    // mutateAsync: per-call callbacks are skipped if the component unmounts mid-request.
     tokenExchangeMutation
       .mutateAsync({ id: configId, mcp_id: mcpId, code, redirect_uri: redirectUri, state })
       .then((response) => {

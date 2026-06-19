@@ -308,7 +308,7 @@ export function AppShell({
         {!isMobile && (
           <div
             className="shell-resize left"
-            style={{ left: 'var(--shell-sb-track)', transform: 'translateX(-50%)' }}
+            style={{ left: 'var(--shell-sb-track)' }}
             onPointerDown={(e) => startDrag('left', e)}
             onDoubleClick={() => resetWidth('left')}
           >

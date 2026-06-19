@@ -1,7 +1,7 @@
 import { AllAccessRequestsPage } from '@/pages/AllAccessRequestsPage.mjs';
+import { AllUsersPage } from '@/pages/AllUsersPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { RequestAccessPage } from '@/pages/RequestAccessPage.mjs';
-import { UsersManagementPage } from '@/pages/UsersManagementPage.mjs';
 import { randomPort } from '@/test-helpers.mjs';
 import { createAuthServerTestClient, getAuthServerConfig } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
@@ -175,24 +175,24 @@ test.describe('Multi-User Request and Approval Flow', () => {
       const adminPage = await adminContext.newPage();
 
       const adminLogin = new LoginPage(adminPage, baseUrl, authServerConfig, adminCredentials);
-      const adminUsersPage = new UsersManagementPage(adminPage, baseUrl);
+      const adminRequestsPage = new AllAccessRequestsPage(adminPage, baseUrl);
 
       await adminLogin.performOAuthLogin();
-      await adminUsersPage.navigateToPendingRequests();
+      await adminRequestsPage.navigateToPending();
 
       // Verify all 3 requests are visible
-      await adminUsersPage.expectRequestExists(managerCredentials.username);
-      await adminUsersPage.expectRequestExists(powerUserCredentials.username);
-      await adminUsersPage.expectRequestExists(userCredentials.username);
+      await adminRequestsPage.expectRequestVisible(managerCredentials.username);
+      await adminRequestsPage.expectRequestVisible(powerUserCredentials.username);
+      await adminRequestsPage.expectRequestVisible(userCredentials.username);
 
       // 2.2 Admin approves only manager with "Manager" role
       console.log('2.2 Admin approves manager with Manager role');
-      await adminUsersPage.approveRequest(managerCredentials.username, 'Manager');
+      await adminRequestsPage.approveRequest(managerCredentials.username, 'resource_manager');
 
-      // Verify manager request is gone but others remain
-      await adminUsersPage.expectRequestNotInList(managerCredentials.username);
-      await adminUsersPage.expectRequestExists(powerUserCredentials.username);
-      await adminUsersPage.expectRequestExists(userCredentials.username);
+      // Verify manager request is gone from the pending filter but others remain
+      await adminRequestsPage.expectRequestNotVisible(managerCredentials.username);
+      await adminRequestsPage.expectRequestVisible(powerUserCredentials.username);
+      await adminRequestsPage.expectRequestVisible(userCredentials.username);
 
       // ========== Phase 3: Manager Session Invalidation & Admin Access ==========
       console.log('=== Phase 3: Manager Session Invalidation & Admin Access ===');
@@ -215,33 +215,36 @@ test.describe('Multi-User Request and Approval Flow', () => {
 
       // 3.2 Manager accesses admin pages with new role
       console.log('3.2 Manager tests admin access with new role');
-      const managerUsersPage = new UsersManagementPage(managerPage, baseUrl);
+      const managerRequestsPage = new AllAccessRequestsPage(managerPage, baseUrl);
 
       // Navigate to admin pages
-      await managerUsersPage.navigateToPendingRequests();
+      await managerRequestsPage.navigateToPending();
 
       // Should see 2 remaining requests
-      await managerUsersPage.expectRequestExists(powerUserCredentials.username);
-      await managerUsersPage.expectRequestExists(userCredentials.username);
+      await managerRequestsPage.expectRequestVisible(powerUserCredentials.username);
+      await managerRequestsPage.expectRequestVisible(userCredentials.username);
 
       // 3.3 Manager role hierarchy validation - verify Admin role not available
       console.log('3.3 Manager role hierarchy validation - testing Admin role restriction');
 
       // Verify that Admin role is not available in dropdown for manager
       console.log('3.3a Manager verifies Admin role not available in dropdown');
-      await managerUsersPage.expectRoleNotAvailable(powerUserCredentials.username, 'Admin');
+      await managerRequestsPage.expectRoleNotAvailable(powerUserCredentials.username, 'Admin');
 
       // 3.3b Now assign the correct PowerUser role (should succeed)
       console.log('3.3b Manager assigns correct Power User role to PowerUser');
-      await managerUsersPage.approveRequest(powerUserCredentials.username, 'Power User');
+      await managerRequestsPage.approveRequest(
+        powerUserCredentials.username,
+        'resource_power_user'
+      );
 
-      // Verify poweruser request is gone after successful assignment
-      await managerUsersPage.expectRequestNotInList(powerUserCredentials.username);
-      await managerUsersPage.expectRequestExists(userCredentials.username);
+      // Verify poweruser request is gone from the pending filter after successful assignment
+      await managerRequestsPage.expectRequestNotVisible(powerUserCredentials.username);
+      await managerRequestsPage.expectRequestVisible(userCredentials.username);
 
       // 3.3c Manager verifies all requests page shows correct data after PowerUser approval
       console.log('3.3c Manager verifies all requests page with approved/pending requests');
-      const allRequestsPage = new AllAccessRequestsPage(managerPage, baseUrl);
+      const allRequestsPage = managerRequestsPage;
       // Reach the redesigned page via the shell nav — proves it lives under the Users section.
       await allRequestsPage.navigateToAllRequestsViaShell();
       await allRequestsPage.expectAllRequestsPage();
@@ -250,13 +253,15 @@ test.describe('Multi-User Request and Approval Flow', () => {
       await allRequestsPage.verifyPendingPill(1);
 
       // The detail rail opens on row select and mirrors the row (decided row → no actions).
+      // The approved manager row only shows under a status filter that includes it.
+      await allRequestsPage.filterBy('all');
       await allRequestsPage.openDetailRail(managerCredentials.username);
       await expect(
         managerPage.locator(allRequestsPage.allRequestsSelectors.detailApprove)
       ).toHaveCount(0);
       await managerPage.locator(allRequestsPage.allRequestsSelectors.detailClose).click();
 
-      // Verify total count
+      // Verify total count across all statuses
       await allRequestsPage.verifyRequestCount(3);
 
       // Verify each request with detailed assertions
@@ -289,18 +294,20 @@ test.describe('Multi-User Request and Approval Flow', () => {
 
       // 3.4 Manager navigates between admin pages
       console.log('3.4 Manager tests admin page navigation');
-      await managerUsersPage.navigateToUsers();
+      const managerUsersListPage = new AllUsersPage(managerPage, baseUrl);
+      await managerUsersListPage.navigateToUsers();
       // Should access users page
 
       // 3.5 Manager rejects last request
       console.log('3.5 Manager rejects user request');
-      await managerUsersPage.navigateToPendingRequests();
-      await managerUsersPage.rejectRequest(userCredentials.username);
-      await managerUsersPage.expectRequestNotInList(userCredentials.username);
+      await allRequestsPage.navigateToPending();
+      await allRequestsPage.rejectRequest(userCredentials.username);
+      await allRequestsPage.expectRequestNotVisible(userCredentials.username);
 
       // 3.6 Manager verifies final state with all requests processed
       console.log('3.6 Manager verifies all requests processed');
       await allRequestsPage.navigateToAllRequests();
+      await allRequestsPage.filterBy('all');
 
       // Verify all 3 requests are processed
       await allRequestsPage.verifyRequestCount(3);
@@ -324,8 +331,8 @@ test.describe('Multi-User Request and Approval Flow', () => {
       ]);
 
       // Verify no pending requests remain
-      await managerUsersPage.navigateToPendingRequests();
-      await managerUsersPage.expectNoRequests();
+      await allRequestsPage.navigateToPending();
+      await allRequestsPage.expectEmpty();
 
       console.log('✓ All requests processed: 2 approved, 1 rejected, 0 pending');
 

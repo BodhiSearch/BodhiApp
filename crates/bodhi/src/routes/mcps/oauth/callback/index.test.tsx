@@ -1,4 +1,4 @@
-import OAuthCallbackPage from '@/routes/mcps/oauth/callback/index';
+import OAuthCallbackPage, { exchangedCodes } from '@/routes/mcps/oauth/callback/index';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockOAuthToken, mockOAuthTokenExchange } from '@/test-utils/msw-v2/handlers/mcps';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
@@ -33,6 +33,7 @@ beforeEach(() => {
   navigateMock.mockClear();
   mockSearch = {};
   sessionStorage.clear();
+  exchangedCodes.clear();
 });
 
 afterEach(() => {
