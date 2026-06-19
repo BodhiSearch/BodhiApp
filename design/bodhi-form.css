@@ -74,6 +74,30 @@
 }
 .bf-card-body { padding: 24px 26px; }
 
+/* Card header — heading + subtitle living INSIDE the card, above the body */
+.bf-card-head {
+  padding: 22px 26px 18px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.bf-card-title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+  margin: 0 0 5px;
+}
+.bf-card-sub {
+  font-size: 13px;
+  line-height: 1.55;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+  max-width: 64ch;
+  text-wrap: pretty;
+}
+@media (max-width: 640px) {
+  .bf-card-head { padding: 18px 16px 16px; }
+}
+
 /* ── Sections inside the card ──────────────────── */
 .bf-section { margin-bottom: 22px; }
 .bf-section:last-child { margin-bottom: 0; }

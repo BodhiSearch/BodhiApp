@@ -119,7 +119,7 @@ function AmfModelSelection({ selectedModels, onToggle, onClearAll, onSelectAll }
 }
 
 /* ── The form card (sections + footer) ── */
-function ApiModelForm({ showCancel = true }) {
+function ApiModelForm({ showCancel = true, title, subtitle }) {
   /* Provider Connection */
   const [apiFormat, setApiFormat] = React.useState('openai-completions');
   const [baseUrl, setBaseUrl] = React.useState('https://api.openai.com/v1');
@@ -148,6 +148,12 @@ function ApiModelForm({ showCancel = true }) {
 
   return (
     <div className="bf-card">
+      {title && (
+        <div className="bf-card-head">
+          <h1 className="bf-card-title">{title}</h1>
+          {subtitle && <p className="bf-card-sub">{subtitle}</p>}
+        </div>
+      )}
       <div className="bf-card-body">
 
         {/* ══ PROVIDER CONNECTION ══ */}

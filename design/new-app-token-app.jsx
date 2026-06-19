@@ -228,15 +228,14 @@ function NewAppTokenApp() {
         {/* Scroll · centered container */}
         <div className="bf-scroll" id="natScroll">
           <div className="bf-container">
-            <div className="bf-page-head">
-              <h1 className="bf-page-title">New App Token</h1>
-              <p className="bf-page-sub">
-                Generate a scoped token for programmatic access to the Bodhi API.
-                Configure which models, MCPs, and capabilities this token can access.
-              </p>
-            </div>
 
             <div className="bf-card">
+              <div className="bf-card-head">
+                <h1 className="bf-card-title">New App Token</h1>
+                <p className="bf-card-sub">
+                  Generate a scoped token for API access — pick the models, MCPs, and capabilities it can use.
+                </p>
+              </div>
               <div className="bf-card-body">
 
                 {/* ── GENERATED TOKEN REVEAL ── */}

@@ -332,14 +332,14 @@ function LocalModelApp() {
         {/* ═══ SCROLL · centered container ═══ */}
         <div className="bf-scroll">
           <div className="bf-container">
-            <div className="bf-page-head">
-              <h1 className="bf-page-title">Create New Local Model</h1>
-              <p className="bf-page-sub">
-                Configure a named alias for a local GGUF model. Runtime flags control the llama.cpp server; request defaults apply to every OpenAI-compatible API call.
-              </p>
-            </div>
 
             <div className="bf-card">
+              <div className="bf-card-head">
+                <h1 className="bf-card-title">Create New Local Model</h1>
+                <p className="bf-card-sub">
+                  Set up a named alias for a local GGUF model, with runtime flags and request defaults.
+                </p>
+              </div>
               <div className="bf-card-body">
 
                 {/* ── Identity ── */}
@@ -586,10 +586,6 @@ function LocalModelApp() {
 
               {/* ═══ FOOTER — the ONLY place actions live ═══ */}
               <div className="bf-footer">
-                <button className="bf-btn bf-btn-secondary">
-                  <Icon name="plug-zap" size={13} />
-                  Save &amp; test
-                </button>
                 <div className="bf-footer-spacer"></div>
                 <button className="bf-btn bf-btn-ghost">Cancel</button>
                 <button className="bf-btn bf-btn-primary">Create alias</button>

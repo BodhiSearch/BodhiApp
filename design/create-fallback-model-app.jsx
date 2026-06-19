@@ -505,14 +505,14 @@ function CreateFallbackModelApp() {
 
             {/* FORM COLUMN */}
             <div className="cfm-form-col">
-              <div className="bf-page-head">
-                <h1 className="bf-page-title">New Fallback Alias</h1>
-                <p className="bf-page-sub">
-                  Chain multiple model aliases into a prioritized sequence. When a request arrives with this alias name as its <code className="cfm-code">model</code>, each step is tried in order — on error, the next step takes over.
-                </p>
-              </div>
 
               <div className="bf-card">
+                <div className="bf-card-head">
+                  <h1 className="bf-card-title">New Fallback Alias</h1>
+                  <p className="bf-card-sub">
+                    Chain aliases into a priority order — each step is tried in turn, falling through to the next on error.
+                  </p>
+                </div>
                 <div className="bf-card-body">
 
                   {/* ═══ Section 1 · Identity ═══ */}

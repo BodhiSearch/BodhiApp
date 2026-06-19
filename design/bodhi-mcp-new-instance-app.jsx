@@ -284,12 +284,12 @@ function NewInstanceApp() {
     >
       <div className="bf-scroll">
         <div className="bf-container">
-          <div className="bf-page-head">
-            <h1 className="bf-page-title">New MCP Instance</h1>
-            <p className="bf-page-sub">Connect to an MCP server and configure your personal instance</p>
-          </div>
 
           <div className="bf-card">
+            <div className="bf-card-head">
+              <h1 className="bf-card-title">New MCP Instance</h1>
+              <p className="bf-card-sub">Connect to an MCP server and set up your personal instance.</p>
+            </div>
             <div className="bf-card-body">
               <div className="bf-field">
                 <label className="bf-label"><span className="bf-label-text">MCP Server</span><span className="bf-req">*</span></label>

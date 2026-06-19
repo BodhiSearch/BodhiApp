@@ -19,12 +19,11 @@ function CreateApiModelApp() {
     >
       <div className="bf-scroll">
         <div className="bf-container">
-          <div className="bf-page-head">
-            <h1 className="bf-page-title">Create New API Model</h1>
-            <p className="bf-page-sub">Configure a new external AI API model. Connect a provider, choose routing, and pick which models forward through this alias.</p>
-          </div>
-
-          <ApiModelForm showCancel={true} />
+          <ApiModelForm
+            showCancel={true}
+            title="Create New API Model"
+            subtitle="Connect an external provider and choose which of its models route through this alias."
+          />
         </div>
       </div>
     </AppShell>
