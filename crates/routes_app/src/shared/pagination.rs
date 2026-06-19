@@ -71,6 +71,12 @@ pub struct AliasFilterParams {
   #[serde(default)]
   #[schema(example = "vision,tool_use")]
   pub capability: Option<String>,
+
+  /// Free-text search (case-insensitive substring) over a row's identifying fields — alias/name,
+  /// repo, filename for local rows; id, name, base_url for API rows; alias for routers.
+  #[serde(default)]
+  #[schema(example = "llama")]
+  pub search: Option<String>,
 }
 
 impl AliasFilterParams {
@@ -103,6 +109,15 @@ impl AliasFilterParams {
     Self::tokens(&self.capability)
   }
 
+  /// The trimmed, lowercased free-text search query, or None when blank.
+  pub fn search_query(&self) -> Option<String> {
+    self
+      .search
+      .as_deref()
+      .map(|s| s.trim().to_lowercase())
+      .filter(|s| !s.is_empty())
+  }
+
   /// True when no facet is active (the common, unfiltered path).
   pub fn is_empty(&self) -> bool {
     self.type_tokens().is_empty()
@@ -110,6 +125,7 @@ impl AliasFilterParams {
       && self.capability_tokens().is_empty()
       && self.size_min.is_none()
       && self.size_max.is_none()
+      && self.search_query().is_none()
   }
 
   /// True when a capability facet is requested (forces a whole-list metadata fetch).

@@ -19,7 +19,7 @@ describe('AppShell', () => {
   it('renders the nav with the active section highlighted', async () => {
     const user = userEvent.setup();
     render(
-      <AppShell section="models" subPage="all-models">
+      <AppShell section="models" subPage="my-models">
         <div>page content</div>
       </AppShell>
     );
@@ -43,7 +43,7 @@ describe('AppShell', () => {
       </AppShell>
     );
 
-    expect(screen.getByTestId('shell-sub-all-models')).toBeInTheDocument();
+    expect(screen.getByTestId('shell-sub-my-models')).toBeInTheDocument();
     expect(screen.getByTestId('shell-sub-new-local-model')).toBeInTheDocument();
 
     const active = screen.getByTestId('shell-sub-new-api-model');
@@ -58,7 +58,7 @@ describe('AppShell', () => {
       </AppShell>
     );
 
-    expect(screen.queryByTestId('shell-sub-all-models')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('shell-sub-my-models')).not.toBeInTheDocument();
     expect(screen.queryByTestId('shell-sub-discover')).not.toBeInTheDocument();
   });
 
@@ -138,13 +138,13 @@ describe('AppShell', () => {
   it('collapses the sidebar to the icon rail when the toggle is clicked', async () => {
     const user = userEvent.setup();
     render(
-      <AppShell section="models" subPage="all-models">
+      <AppShell section="models" subPage="my-models">
         <div>page content</div>
       </AppShell>
     );
 
     // expanded: sub-page link carries its label text inline
-    expect(screen.getByText('All Models')).toBeInTheDocument();
+    expect(screen.getByText('My Models')).toBeInTheDocument();
 
     const toggle = screen.getByTitle('Collapse sidebar');
     await user.click(toggle);
@@ -152,7 +152,7 @@ describe('AppShell', () => {
     // icon-rail variant: the section button + sub-page icon buttons are still
     // present via data-testid, but the inline text label is gone.
     expect(screen.getByTestId('shell-nav-models')).toBeInTheDocument();
-    expect(screen.getByTestId('shell-sub-all-models')).toBeInTheDocument();
-    expect(screen.queryByText('All Models')).not.toBeInTheDocument();
+    expect(screen.getByTestId('shell-sub-my-models')).toBeInTheDocument();
+    expect(screen.queryByText('My Models')).not.toBeInTheDocument();
   });
 });

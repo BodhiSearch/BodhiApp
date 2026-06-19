@@ -28,7 +28,7 @@ consolidate further. It complements [architecture.md](@architecture.md) (where s
 | App route(s) | V2 design (`design/`) | Section / subPage |
 |---|---|---|
 | `/chat/` | Bodhi Chat | chat |
-| `/models/` | Bodhi Models (All Models) | models / all-models |
+| `/models/` | Bodhi Models (My Models) | models / my-models |
 | `/models/alias/new/` **+** `/models/alias/edit/` | Create New Local Model | models / new-local-model |
 | `/models/api/new/` **+** `/models/api/edit/` | Create API Model | models / new-api-model |
 | `/models/router/new/` **+** `/models/router/edit/` | Create Fallback Model (router = fallback alias) | models / new-fallback-model |

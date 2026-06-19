@@ -97,6 +97,24 @@ Status: implementation complete; backend (816) + RTL (979) green; the V2 E2E spe
   dark + responsive (414px) + mobile rail drawer**, **console-clean** on all in-page interactions
   (only the known router-nav VT exception on route entry).
 
+## Follow-up refinements (2026-06-19, post-3-1, design update)
+After the initial 3-1 commit the design was refined; four changes landed on top:
+1. **Nav rename** `all-models` → **`my-models`** (label "My Models", testid `shell-sub-my-models`) —
+   `shell-nav-config.tsx` + `AppShell.test.tsx`/`resolveShellRoute.test.ts`/`screen-coverage.md`.
+2. **Top-bar TYPE quick-tabs removed** — TYPE lives only in the sidebar facet now; the toolbar is just
+   the **always-visible** search (was the collapsible `useCollapsibleSearch`).
+3. **Search moved server-side** — new `search` field on `AliasFilterParams` (case-insensitive
+   substring over alias/repo/filename for local rows, id/name/base_url for API, alias for routers),
+   applied before size/capability (pure, no I/O). Frontend submits on **Enter** (clearing live-resets);
+   `ModelsFilter.search` threads through `useListModels`. Regen flows the param to ts-client.
+4. **More colorful, per the design** — color-coded **icon tiles** per type
+   (`m-icon-local/alias/api/fallback` = saffron/lotus/indigo/teal), API rows show the **provider** as a
+   green `m-provider-badge` (api_format uppercased) + connection status with icon, fallback badge
+   leaf→**teal**, and an **active-row left-accent** (`inset 3px var(--c-lotus-text)`).
+- Validated: backend +1 search test (22 list tests), RTL +3 (search-on-Enter, clear-resets, no-top-bar
+  tabs; 14 V2 tests; full suite 986 pass), V2 E2E +1 search test (2/2 pass), GATE B live (search
+  filters server-side, colorful treatment, light+dark, console-clean).
+
 ## Follow-ups
 1. **Run the FULL E2E matrix** (both projects) at commit time — the shared `useListModels`
    `keepPreviousData` + the backend list changes are app-wide.

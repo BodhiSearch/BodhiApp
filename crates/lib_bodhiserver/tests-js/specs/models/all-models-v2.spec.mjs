@@ -57,4 +57,22 @@ test.describe('All Models V2', () => {
       modelsPage.page.locator(`${modelsPage.selectors.empty}, ${modelsPage.selectors.anyRow}`).first()
     ).toBeVisible();
   });
+
+  test('search submits to the backend on Enter and narrows the list; clearing restores it', async () => {
+    await loginPage.performOAuthLogin();
+    await modelsPage.navigateToModels();
+    await modelsPage.expectModelsPageV2();
+
+    const all = await modelsPage.getRowCount();
+    expect(all).toBeGreaterThan(0);
+
+    // A query that no row matches → empty state (server-side search).
+    await modelsPage.searchFor('zzz-no-such-model-zzz');
+    await modelsPage.expectVisible(modelsPage.selectors.empty);
+
+    // Clearing the box restores the full list.
+    await modelsPage.clearSearch();
+    await expect(modelsPage.page.locator(modelsPage.selectors.anyRow).first()).toBeVisible();
+    expect(await modelsPage.getRowCount()).toBe(all);
+  });
 });

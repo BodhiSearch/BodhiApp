@@ -85,12 +85,16 @@ pub async fn models_index(
   // reflect the filtered set). type + api_format are pure; size + capability need on-disk size /
   // metadata for the whole candidate set, resolved only when those facets are active. ---
   if !filters.is_empty() {
-    // type + api_format (no I/O)
+    // type + api_format + search (no I/O)
     let type_tokens = filters.type_tokens();
     let api_format_tokens = filters.api_format_tokens();
+    let search = filters.search_query();
     aliases.retain(|alias| {
       (type_tokens.is_empty() || alias_matches_type(alias, &type_tokens))
         && (api_format_tokens.is_empty() || alias_matches_api_format(alias, &api_format_tokens))
+        && search
+          .as_deref()
+          .is_none_or(|q| alias_matches_search(alias, q))
     });
 
     // size range (resolve on-disk size for the surviving local rows)
@@ -348,6 +352,19 @@ fn alias_matches_api_format(alias: &Alias, tokens: &[String]) -> bool {
     ApiFormat::LlmLibertyOauth => "liberty",
   };
   tokens.iter().any(|t| t == bucket)
+}
+
+/// Case-insensitive substring search over a row's identifying fields (`query` is already
+/// lowercased). Local rows match on alias / repo / filename; API rows on id / name / base_url;
+/// routers on alias. Mirrors the frontend's match set so server + client agree.
+fn alias_matches_search(alias: &Alias, query: &str) -> bool {
+  let fields: Vec<String> = match alias {
+    Alias::User(u) => vec![u.alias.clone(), u.repo.to_string(), u.filename.clone()],
+    Alias::Model(m) => vec![m.alias.clone(), m.repo.to_string(), m.filename.clone()],
+    Alias::Api(a) => vec![a.id.clone(), a.name.clone(), a.base_url.clone()],
+    Alias::ModelRouter(r) => vec![r.alias.clone()],
+  };
+  fields.iter().any(|f| f.to_lowercase().contains(query))
 }
 
 /// Map a CAPABILITY facet token to the corresponding `ModelCapabilities` field. Unknown tokens

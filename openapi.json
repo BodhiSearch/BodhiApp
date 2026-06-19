@@ -3279,6 +3279,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Free-text search (case-insensitive substring) over a row's identifying fields — alias/name,\nrepo, filename for local rows; id, name, base_url for API rows; alias for routers.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -7570,6 +7579,14 @@
             ],
             "description": "Capability facet (comma-separated), local rows only: `vision`, `tool_use`, `reasoning`.\nA row passes only if it has metadata with every requested capability set true.",
             "example": "vision,tool_use"
+          },
+          "search": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Free-text search (case-insensitive substring) over a row's identifying fields — alias/name,\nrepo, filename for local rows; id, name, base_url for API rows; alias for routers.",
+            "example": "llama"
           }
         }
       },

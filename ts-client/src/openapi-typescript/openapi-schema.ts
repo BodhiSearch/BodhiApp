@@ -1321,6 +1321,12 @@ export interface components {
              * @example vision,tool_use
              */
             capability?: string | null;
+            /**
+             * @description Free-text search (case-insensitive substring) over a row's identifying fields — alias/name,
+             *     repo, filename for local rows; id, name, base_url for API rows; alias for routers.
+             * @example llama
+             */
+            search?: string | null;
         };
         /** @description Response envelope for model aliases - hides internal implementation details
          *     Uses untagged serialization - each variant has its own "source" field */
@@ -5484,6 +5490,9 @@ export interface operations {
                 /** @description Capability facet (comma-separated), local rows only: `vision`, `tool_use`, `reasoning`.
                  *     A row passes only if it has metadata with every requested capability set true. */
                 capability?: string;
+                /** @description Free-text search (case-insensitive substring) over a row's identifying fields — alias/name,
+                 *     repo, filename for local rows; id, name, base_url for API rows; alias for routers. */
+                search?: string;
             };
             header?: never;
             path?: never;

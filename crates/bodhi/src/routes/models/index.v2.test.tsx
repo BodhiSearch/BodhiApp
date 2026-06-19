@@ -104,8 +104,43 @@ describe('ModelsScreen V2', () => {
     expect(screen.getByTestId('harness-breadcrumb')).toHaveTextContent('Bodhi / Models / My Models');
     expect(within(screen.getByTestId('model-type-org/local-gguf:Q4')).getByText('Local File')).toBeInTheDocument();
     expect(within(screen.getByTestId('model-type-my-coder')).getByText('Model Alias')).toBeInTheDocument();
-    expect(within(screen.getByTestId('model-type-openai-main')).getByText('API Model')).toBeInTheDocument();
+    // API rows show the provider (api_format) as the badge, not a generic "API Model".
+    expect(within(screen.getByTestId('model-type-openai-main')).getByText('OPENAI')).toBeInTheDocument();
     expect(within(screen.getByTestId('model-type-router-1')).getByText('Fallback')).toBeInTheDocument();
+  });
+
+  it('has no TYPE filter tabs in the top toolbar (facets live only in the sidebar)', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderReady();
+    // The always-visible search is present; the old top-bar TYPE quick-tabs are gone.
+    expect(screen.getByTestId('models-search')).toBeInTheDocument();
+    expect(screen.queryByTestId('models-type-all')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('models-type-api_model')).not.toBeInTheDocument();
+  });
+
+  it('submits search to the backend `search` param on Enter', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    await renderReady();
+
+    const input = within(screen.getByTestId('models-search')).getByRole('textbox');
+    await userEvent.type(input, 'llama');
+    // No request fired yet for the typed text — search is submit-on-Enter, not per-keystroke.
+    expect(capture.last?.get('search')).toBeNull();
+    await userEvent.type(input, '{Enter}');
+    await waitFor(() => expect(capture.last?.get('search')).toBe('llama'));
+  });
+
+  it('clearing the search box resets the backend `search` param', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    await renderReady();
+
+    const input = within(screen.getByTestId('models-search')).getByRole('textbox');
+    await userEvent.type(input, 'llama{Enter}');
+    await waitFor(() => expect(capture.last?.get('search')).toBe('llama'));
+    await userEvent.clear(input);
+    await waitFor(() => expect(capture.last?.get('search')).toBeNull());
   });
 
   it('publishes the faceted sidebar (type / capability / size / api-format incl. Liberty)', async () => {

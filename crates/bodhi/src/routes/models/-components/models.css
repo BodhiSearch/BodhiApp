@@ -30,8 +30,31 @@
   height: 30px;
   flex-shrink: 0;
   border-radius: var(--radius-md);
+  /* default tile; the per-type .m-icon-* class overrides bg+color for the colored treatment */
   background: hsl(var(--surface-2));
   color: hsl(var(--muted-foreground));
+}
+/* Color-coded icon tiles per alias type (mirrors the design's my-icon-* + the type badges). */
+.m-icon-local {
+  background: var(--c-saffron-bg);
+  color: var(--c-saffron-text);
+}
+.m-icon-alias {
+  background: var(--c-lotus-bg);
+  color: var(--c-lotus-text);
+}
+.m-icon-api {
+  background: var(--c-indigo-bg);
+  color: var(--c-indigo-text);
+}
+.m-icon-fallback {
+  background: var(--c-teal-bg);
+  color: var(--c-teal-text);
+}
+/* Active row: tint + a left accent bar (design's .m-row.active). */
+.m-row.active {
+  background: var(--c-lotus-bg);
+  box-shadow: inset 3px 0 0 var(--c-lotus-text);
 }
 .m-row-body {
   min-width: 0;
@@ -89,13 +112,29 @@
   color: var(--c-indigo-text);
 }
 .m-badge-fallback {
+  background: var(--c-teal-bg);
+  border-color: var(--c-teal-bd);
+  color: var(--c-teal-text);
+}
+
+/* ── API provider badge (green, like the design's my-provider-badge) ── */
+.m-provider-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
   background: var(--c-leaf-bg);
-  border-color: var(--c-leaf-bd);
+  border: 1px solid var(--c-leaf-bd);
   color: var(--c-leaf-text);
 }
 
 /* ── Connection status ── */
 .m-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 10.5px;
   font-weight: 600;
   white-space: nowrap;
@@ -105,6 +144,19 @@
 }
 .m-conn.warn {
   color: var(--c-saffron-text);
+}
+
+/* ── Toolbar: always-visible search + a trailing icon button (no filter tabs; facets live in
+   the sidebar). ── */
+.m-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.m-search {
+  flex: 1;
+  min-width: 0;
 }
 
 /* ── Pagination wrapper ── */

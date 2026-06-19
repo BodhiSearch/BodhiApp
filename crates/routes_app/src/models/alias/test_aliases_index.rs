@@ -338,3 +338,36 @@ async fn test_list_aliases_filter_capability_without_metadata_is_empty(
   assert!(response.data.is_empty());
   Ok(())
 }
+
+/// SEARCH: case-insensitive substring over alias/repo/filename narrows the list, every returned row
+/// matches the query, and `total` reflects the filtered set.
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_list_aliases_filter_search(
+  #[future] router_state_stub: Arc<dyn services::AppService>,
+) -> anyhow::Result<()> {
+  let all = list_with_query(router_state_stub.clone(), "page_size=100").await?;
+  // 'llama' matches the user alias `llama3:instruct` (repo QuantFactory/Meta-Llama-3-8B-...).
+  let hits = list_with_query(router_state_stub, "page_size=100&search=LLAMA").await?;
+  assert_eq!(hits.total, hits.data.len());
+  assert!(hits.total > 0, "expected at least one 'llama' match");
+  assert!(
+    hits.total < all.total,
+    "search must narrow the unfiltered list"
+  );
+  for alias in &hits.data {
+    let hay = match alias {
+      AliasResponse::User(u) => format!("{} {} {}", u.alias, u.repo, u.filename),
+      AliasResponse::Model(m) => format!("{} {} {}", m.alias, m.repo, m.filename),
+      AliasResponse::Api(a) => format!("{} {} {}", a.id, a.name, a.base_url),
+      AliasResponse::ModelRouter(r) => r.alias.clone(),
+    };
+    assert!(
+      hay.to_lowercase().contains("llama"),
+      "row {hay:?} does not match search 'llama'"
+    );
+  }
+  Ok(())
+}

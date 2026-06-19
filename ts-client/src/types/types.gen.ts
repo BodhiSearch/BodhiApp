@@ -89,6 +89,11 @@ export type AliasFilterParams = {
      * A row passes only if it has metadata with every requested capability set true.
      */
     capability?: string | null;
+    /**
+     * Free-text search (case-insensitive substring) over a row's identifying fields — alias/name,
+     * repo, filename for local rows; id, name, base_url for API rows; alias for routers.
+     */
+    search?: string | null;
 };
 
 /**
@@ -3454,6 +3459,11 @@ export type ListAllModelsData = {
          * A row passes only if it has metadata with every requested capability set true.
          */
         capability?: string;
+        /**
+         * Free-text search (case-insensitive substring) over a row's identifying fields — alias/name,
+         * repo, filename for local rows; id, name, base_url for API rows; alias for routers.
+         */
+        search?: string;
     };
     url: '/bodhi/v1/models';
 };

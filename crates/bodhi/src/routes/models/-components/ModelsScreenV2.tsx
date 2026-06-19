@@ -4,14 +4,7 @@ import { AliasResponse, ApiAliasResponse } from '@bodhiapp/ts-client';
 import { useNavigate } from '@tanstack/react-router';
 
 import { Pagination } from '@/components/DataTable';
-import {
-  LinkRow,
-  ShellFilterTabs,
-  ShellIcon,
-  useCollapsibleSearch,
-  useListKeyNav,
-  useShellChrome,
-} from '@/components/shell';
+import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ModelsFilter, ModelTypeFacet, useListModels } from '@/hooks/models';
@@ -34,17 +27,47 @@ function aliasId(alias: AliasResponse): string {
   return alias.alias;
 }
 
-/** TYPE-facet token + display label + badge class for an alias row. */
-function typeMeta(alias: AliasResponse): { token: ModelTypeFacet; label: string; cls: string } {
+/** TYPE-facet token + display label + badge + icon-tile classes (color-coded per type). */
+function typeMeta(alias: AliasResponse): {
+  token: ModelTypeFacet;
+  label: string;
+  badgeCls: string;
+  iconCls: string;
+  icon: string;
+} {
   switch (alias.source) {
     case 'model':
-      return { token: 'local_file', label: 'Local File', cls: 'm-badge-local' };
+      return {
+        token: 'local_file',
+        label: 'Local File',
+        badgeCls: 'm-badge-local',
+        iconCls: 'm-icon-local',
+        icon: 'hard-drive',
+      };
     case 'user':
-      return { token: 'model_alias', label: 'Model Alias', cls: 'm-badge-alias' };
+      return {
+        token: 'model_alias',
+        label: 'Model Alias',
+        badgeCls: 'm-badge-alias',
+        iconCls: 'm-icon-alias',
+        icon: 'tag',
+      };
     case 'api':
-      return { token: 'api_model', label: 'API Model', cls: 'm-badge-api' };
+      return {
+        token: 'api_model',
+        label: 'API Model',
+        badgeCls: 'm-badge-api',
+        iconCls: 'm-icon-api',
+        icon: 'at-sign',
+      };
     default:
-      return { token: 'fallback', label: 'Fallback', cls: 'm-badge-fallback' };
+      return {
+        token: 'fallback',
+        label: 'Fallback',
+        badgeCls: 'm-badge-fallback',
+        iconCls: 'm-icon-fallback',
+        icon: 'route',
+      };
   }
 }
 
@@ -79,10 +102,10 @@ function ModelRow({ alias, active, query, onSelect }: ModelRowProps) {
   const title = rowTitle(alias);
   const subtitle = rowSubtitle(alias);
 
-  // Connection status for API rows (no key vs configured), real data only.
-  const apiStatus = isApiAlias(alias) ? (alias.has_api_key ? 'connected' : 'no key') : null;
-
   const id = aliasId(alias);
+  // API rows show the provider (api_format) as a green badge + a connection status, mirroring the
+  // design; other rows show the type badge. The model-type testid is preserved on both.
+  const api = isApiAlias(alias) ? (alias as ApiAliasResponse) : null;
   return (
     <div
       className={`l-listrow m-row${active ? ' active' : ''}`}
@@ -93,8 +116,8 @@ function ModelRow({ alias, active, query, onSelect }: ModelRowProps) {
       data-model-type={alias.source}
     >
       <LinkRow onActivate={onSelect} label={`Open model ${title}`} />
-      <div className="m-row-icon">
-        <ShellIcon name={rowIcon(alias)} size={15} />
+      <div className={`m-row-icon ${meta.iconCls}`}>
+        <ShellIcon name={meta.icon} size={15} />
       </div>
       <div className="m-row-body">
         <div className="m-row-title" data-testid={`model-title-${id}`}>
@@ -103,26 +126,24 @@ function ModelRow({ alias, active, query, onSelect }: ModelRowProps) {
         <div className="m-row-sub mono">{highlight(subtitle, query)}</div>
       </div>
       <div className="m-row-meta">
-        <span className={`m-badge ${meta.cls}`} data-testid={`model-type-${id}`}>
-          {meta.label}
-        </span>
-        {apiStatus && (
-          <span
-            className={`m-conn ${alias.source === 'api' && (alias as ApiAliasResponse).has_api_key ? 'ok' : 'warn'}`}
-          >
-            {apiStatus}
+        {api ? (
+          <span className="m-provider-badge" data-testid={`model-type-${id}`}>
+            {api.api_format.toUpperCase()}
+          </span>
+        ) : (
+          <span className={`m-badge ${meta.badgeCls}`} data-testid={`model-type-${id}`}>
+            {meta.label}
+          </span>
+        )}
+        {api && (
+          <span className={`m-conn ${api.has_api_key ? 'ok' : 'warn'}`}>
+            <ShellIcon name={api.has_api_key ? 'check-circle' : 'key'} size={10} />
+            {api.has_api_key ? 'connected' : 'no key'}
           </span>
         )}
       </div>
     </div>
   );
-}
-
-function rowIcon(alias: AliasResponse): string {
-  if (isApiAlias(alias)) return 'cloud';
-  if (isModelRouterAlias(alias)) return 'route';
-  if (isUserAlias(alias)) return 'tag';
-  return 'hard-drive';
 }
 
 function highlight(text: string, query: string) {
@@ -143,7 +164,9 @@ export function ModelsScreenV2() {
   const navigate = useNavigate();
 
   const [filter, setFilter] = useState<ModelsFilter>({});
-  const [search, setSearch] = useState('');
+  // `searchInput` is the live text box; it's committed to `filter.search` (the backend param) on
+  // Enter, or when cleared to empty.
+  const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -152,24 +175,20 @@ export function ModelsScreenV2() {
 
   const { data, isLoading, error } = useListModels(page, PAGE_SIZE, 'alias', 'asc', filter);
 
-  // Client-side search over the (already server-filtered) page — repo/filename/base-url/alias.
-  const q = search.trim().toLowerCase();
+  // Rows come pre-filtered from the server (facets + search). Dedup by id — be resilient to the
+  // backend returning the same alias twice (Batch-2 gotcha) which would dup React keys.
   const rows = useMemo(() => {
-    // Dedup by id — be resilient to the backend returning the same alias twice (Batch-2 gotcha),
-    // which would otherwise produce duplicate React keys.
     const seen = new Set<string>();
-    const all = (data?.data ?? []).filter((a) => {
+    return (data?.data ?? []).filter((a) => {
       const id = aliasId(a);
       if (seen.has(id)) return false;
       seen.add(id);
       return true;
     });
-    if (!q) return all;
-    return all.filter((a) => {
-      const hay = [rowTitle(a), rowSubtitle(a)].join(' ').toLowerCase();
-      return hay.includes(q);
-    });
-  }, [data?.data, q]);
+  }, [data?.data]);
+
+  // Highlight matches the committed server query (lowercased), not the in-progress text box.
+  const q = (filter.search ?? '').trim().toLowerCase();
 
   const selected = useMemo(() => rows.find((a) => aliasId(a) === selectedId) ?? null, [rows, selectedId]);
 
@@ -177,6 +196,31 @@ export function ModelsScreenV2() {
     setFilter(next);
     setPage(1);
   }, []);
+
+  // Commit the search box to the backend filter (Enter to run; clearing to empty resets it).
+  const commitSearch = useCallback(
+    (value: string) => {
+      const trimmed = value.trim();
+      onFilterChange({ ...filter, search: trimmed || undefined });
+    },
+    [filter, onFilterChange]
+  );
+
+  const onSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') commitSearch(searchInput);
+    },
+    [commitSearch, searchInput]
+  );
+
+  const onSearchChange = useCallback(
+    (value: string) => {
+      setSearchInput(value);
+      // Clearing the box live-resets the server search (so the full list returns without Enter).
+      if (value.trim() === '') commitSearch('');
+    },
+    [commitSearch]
+  );
 
   const onEdit = useCallback(
     (alias: AliasResponse) => {
@@ -186,14 +230,6 @@ export function ModelsScreenV2() {
     },
     [navigate]
   );
-
-  const searchNode = useCollapsibleSearch({
-    value: search,
-    onChange: setSearch,
-    placeholder: 'Search by alias, repo, filename, base URL…',
-    toggleTestId: 'models-search-toggle',
-    closeTestId: 'models-search-close',
-  });
 
   const sidebar = useMemo(
     () => <ModelSidebarFacets filter={filter} onChange={onFilterChange} />,
@@ -227,17 +263,26 @@ export function ModelsScreenV2() {
       data-pagestatus={isLoading ? 'loading' : 'ready'}
     >
       <div className="l-controls">
-        {searchNode.row}
-        <div className="l-toolbar">
-          <ShellFilterTabs
-            tabs={TYPE_TABS}
-            value={primaryType(filter)}
-            onChange={(id) => onFilterChange(applyPrimaryType(filter, id))}
-            label="Filter by type"
-            testIdPrefix="models-type"
-            loading={isLoading}
-          />
-          <div className="l-tb-actions">{searchNode.toggle}</div>
+        <div className="m-toolbar">
+          <div className="m-search" data-testid="models-search">
+            <ShellSearch
+              value={searchInput}
+              onChange={onSearchChange}
+              onKeyDown={onSearchKeyDown}
+              placeholder="Search by alias, repo, filename, base URL"
+              kbd="⌘K"
+            />
+          </div>
+          <button
+            type="button"
+            className="l-iconbtn"
+            title="Import / download model"
+            aria-label="Import or download model"
+            data-testid="models-download"
+            onClick={() => navigate({ to: '/models/alias/new/' })}
+          >
+            <ShellIcon name="arrow-down-to-line" size={15} />
+          </button>
         </div>
       </div>
 
@@ -255,7 +300,7 @@ export function ModelsScreenV2() {
             </div>
             <div className="empty-title">No models match</div>
             <div className="empty-sub">
-              {search || hasActiveFacet(filter)
+              {q || hasActiveFacet(filter)
                 ? 'Try a different search term or clear the filters.'
                 : 'No models configured yet.'}
             </div>
@@ -284,30 +329,13 @@ export function ModelsScreenV2() {
   );
 }
 
-// --- Toolbar TYPE quick-tabs (mirror a subset of the sidebar TYPE facet for fast switching) ---
-
-const TYPE_TABS: { id: 'all' | ModelTypeFacet; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'local_file', label: 'Local' },
-  { id: 'model_alias', label: 'Alias' },
-  { id: 'api_model', label: 'API' },
-  { id: 'fallback', label: 'Fallback' },
-];
-
-function primaryType(filter: ModelsFilter): 'all' | ModelTypeFacet {
-  return filter.types?.length === 1 ? filter.types[0] : 'all';
-}
-
-function applyPrimaryType(filter: ModelsFilter, id: 'all' | ModelTypeFacet): ModelsFilter {
-  return { ...filter, types: id === 'all' ? undefined : [id] };
-}
-
 function hasActiveFacet(filter: ModelsFilter): boolean {
   return Boolean(
     filter.types?.length ||
       filter.apiFormats?.length ||
       filter.capabilities?.length ||
       filter.sizeMin != null ||
-      filter.sizeMax != null
+      filter.sizeMax != null ||
+      filter.search
   );
 }

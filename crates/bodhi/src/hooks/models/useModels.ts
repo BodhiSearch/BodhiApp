@@ -21,6 +21,8 @@ export interface ModelsFilter {
   /** Local-file size range in BYTES, inclusive. Omit a bound to leave it open. */
   sizeMin?: number;
   sizeMax?: number;
+  /** Free-text search (alias/repo/filename/base-url substring), matched server-side. */
+  search?: string;
 }
 
 /** Build the backend query params for a filter (CSV for multi-value facets; omits empties). */
@@ -31,6 +33,7 @@ export function buildModelsFilterParams(filter?: ModelsFilter): Record<string, s
   if (filter?.capabilities?.length) params.capability = filter.capabilities.join(',');
   if (filter?.sizeMin != null) params.size_min = filter.sizeMin;
   if (filter?.sizeMax != null) params.size_max = filter.sizeMax;
+  if (filter?.search) params.search = filter.search;
   return params;
 }
 

@@ -26,7 +26,8 @@ export class ModelsListPageV2 extends BasePage {
     railClose: '[data-testid="model-detail-close"]',
     railEdit: '[data-testid="model-detail-edit"]',
     empty: '[data-testid="no-models"]',
-    searchToggle: '[data-testid="models-search-toggle"]',
+    search: '[data-testid="models-search"] input',
+    download: '[data-testid="models-download"]',
   };
 
   /** Set the `models` V2 flag in localStorage before any page script runs. */
@@ -61,6 +62,26 @@ export class ModelsListPageV2 extends BasePage {
       .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)
       .first()
       .waitFor({ state: 'visible' });
+  }
+
+  /** Type a query into the always-visible search and submit it (Enter → backend `search`). */
+  async searchFor(query) {
+    const input = this.page.locator(this.selectors.search);
+    await input.click();
+    await input.fill(query);
+    await input.press('Enter');
+    await this.waitForSPAReady();
+    await this.page
+      .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)
+      .first()
+      .waitFor({ state: 'visible' });
+  }
+
+  /** Clear the search box (live-resets the server search to the full list). */
+  async clearSearch() {
+    const input = this.page.locator(this.selectors.search);
+    await input.fill('');
+    await this.waitForSPAReady();
   }
 
   /** Open the detail rail for a given alias id (or the first row if omitted). */
