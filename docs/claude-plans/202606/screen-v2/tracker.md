@@ -16,19 +16,28 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 1 | **API Keys → Access Tokens** (4 screens) | ✅ done |
 | 1.1 | **Batch-1 follow-up** — IA correction (2026-06-18): nav section "API Keys"→"Access Tokens" (sub-pages "API Tokens"/"New API Token"); new top-level **Users** section (User Access Requests + Manage Users, moved out of Settings); Access Requests redesigned to match `design/User Access Requests.html` (avatar rows, status chips, role/approve-reject flow, detail rail). | ✅ done |
 | 2 | **Settings** (App Settings) + **Manage Users** (nav under Users per 1.1) | ✅ done |
-| 3 | Models (4 screens) | ⬜ not started |
+| 3 | Models — **split into sub-phases 3-1…3-5** (2026-06-19, see below) | 🚧 in progress |
+| 3-1 | **All Models** list + faceted sidebar + detail rail (first **full-stack** batch: backend `size`/capability + server-side filters) | ✅ done |
+| 3-2 | **New Local Model** form (`alias/new`+`edit`) — V2 styling, real fields | ⬜ not started |
+| 3-3 | files / pull consolidation (fold download into the local-model form) | ⬜ not started |
+| 3-4 | **New Fallback Alias** + **New API Model** forms | ⬜ not started |
+| 3-5 | **Local Models** + **API Models** discovery sub-views (reference API) | ⬜ not started |
 | 4 | MCP (3 screens) | ⬜ not started |
 | 5 | Chat (1 screen, highest risk, last) | ⬜ not started |
+
+> **Batch 3 split (2026-06-19):** the All Models *list* lands first on the real backend with a
+> server-side faceted sidebar (3-1); the 3 forms + the reference-API discovery views follow as 3-2…3-5.
+> Kick-offs: `batch-3-2…3-5-*-kickoff.md`. Rationale + decisions: `batch-3-1-models-retro.md`.
 
 ## Screen-by-screen
 
 | # | Section | Screen | Route | Layout | Flag | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 1 | Chat | Chat | `/chat/` | shell | `chat` | ⬜ | Batch 5 (last). Old chat UI renders inside the new shell today. |
-| 2 | Models | All Models | `/models/` | shell | `models` | ⬜ | Batch 3. |
-| 3 | Models | New Local Model | `/models/alias/new/` (+ edit) | shell | `new-local-model` | ⬜ | Batch 3. `/new/`+`/edit/` share one design. |
-| 4 | Models | New API Model | `/models/api/new/` (+ edit) | shell | `new-api-model` | ⬜ | Batch 3. |
-| 5 | Models | New Fallback Alias | `/models/router/new/` (+ edit) | shell | `new-fallback-model` | ⬜ | Batch 3. |
+| 2 | Models | All Models | `/models/` | shell | `models` | ✅ | **Batch 3-1.** V2 shell list + published **faceted `sidebar`** (TYPE / CAPABILITY vision·tool-use·reasoning / SIZE dual-slider / API-FORMAT incl. **Liberty**) + toolbar TYPE quick-tabs + collapsible search + selectable rows (`LinkRow`) + **read-only detail rail, 4 variants** (Local File / Model Alias / API Model w/ models list / Fallback w/ routing chain), Edit CTA → V1 form routes. **First full-stack batch:** added `size`+capability to list rows + **server-side facet filters** (`type`/`api_format`/`size_*`/`capability`) to `GET /bodhi/v1/models` + regen. `useListModels` gained `keepPreviousData`. |
+| 3 | Models | New Local Model | `/models/alias/new/` (+ edit) | shell | `new-local-model` | ⬜ | Batch **3-2**. `/new/`+`/edit/` share one design. |
+| 4 | Models | New API Model | `/models/api/new/` (+ edit) | shell | `new-api-model` | ⬜ | Batch **3-4**. |
+| 5 | Models | New Fallback Alias | `/models/router/new/` (+ edit) | shell | `new-fallback-model` | ⬜ | Batch **3-4**. |
 | 6 | MCP | All MCPs / Discover | `/mcps/` | shell | `mcp-discover` | ⬜ | Batch 4. Needs the reference-API catalog. |
 | 7 | MCP | New Instance | `/mcps/new/` (+ edit) | shell | `new-mcp` | ⬜ | Batch 4. |
 | 8 | MCP | Playground | `/mcps/playground/` | shell | `mcp-playground` | ⬜ | Batch 4. |

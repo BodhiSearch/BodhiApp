@@ -21,7 +21,8 @@ export {
   ENDPOINT_MODEL_ROUTERS,
   ENDPOINT_MODEL_ROUTER_ID,
 } from './constants';
-export { useListModels, useGetModel, useCreateModel, useUpdateModel } from './useModels';
+export { useListModels, useGetModel, useCreateModel, useUpdateModel, buildModelsFilterParams } from './useModels';
+export type { ModelsFilter, ModelTypeFacet, ApiFormatFacet, CapabilityFacet } from './useModels';
 export { useListModelFiles } from './useModelFiles';
 export { useListDownloads, usePullModel } from './useDownloads';
 export {

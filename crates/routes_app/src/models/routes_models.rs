@@ -1,6 +1,6 @@
 use crate::shared::AuthScope;
 use crate::BodhiErrorResponse;
-use crate::{PaginationSortParams, API_TAG_MODELS, ENDPOINT_MODELS};
+use crate::{AliasFilterParams, PaginationSortParams, API_TAG_MODELS, ENDPOINT_MODELS};
 use axum::{
   extract::{Path, Query},
   Json,
@@ -8,8 +8,13 @@ use axum::{
 use services::Alias;
 use services::{
   AliasResponse, ApiAliasResponse, ApiFormat, DataServiceError, LlmLibertySummary,
-  PaginatedAliasResponse, UserAliasResponse,
+  PaginatedAliasResponse, Repo, UserAliasResponse,
 };
+use std::collections::HashMap;
+use std::str::FromStr;
+
+/// (repo, filename, snapshot) — the composite key for resolving a local file's size + metadata.
+type FileKey = (String, String, String);
 
 /// List all model aliases as discriminated union (user, model, and API aliases)
 #[utoipa::path(
@@ -18,9 +23,10 @@ use services::{
     tag = API_TAG_MODELS,
     operation_id = "listAllModels",
     summary = "List All Model Aliases",
-    description = "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).",
+    description = "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with server-side facet filtering (type, api_format, size range, capability) and sorting. Requires any authenticated user (User level permissions or higher).",
     params(
-        PaginationSortParams
+        PaginationSortParams,
+        AliasFilterParams
     ),
     responses(
         (status = 200, description = "Paginated list of model aliases retrieved successfully", body = PaginatedAliasResponse,
@@ -69,10 +75,68 @@ use services::{
 pub async fn models_index(
   auth_scope: AuthScope,
   Query(params): Query<PaginationSortParams>,
+  Query(filters): Query<AliasFilterParams>,
 ) -> Result<Json<PaginatedAliasResponse>, BodhiErrorResponse> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
 
   let mut aliases = auth_scope.data().list_aliases().await?;
+
+  // --- Server-side facet filtering (applied before sort + pagination so `total` and the page
+  // reflect the filtered set). type + api_format are pure; size + capability need on-disk size /
+  // metadata for the whole candidate set, resolved only when those facets are active. ---
+  if !filters.is_empty() {
+    // type + api_format (no I/O)
+    let type_tokens = filters.type_tokens();
+    let api_format_tokens = filters.api_format_tokens();
+    aliases.retain(|alias| {
+      (type_tokens.is_empty() || alias_matches_type(alias, &type_tokens))
+        && (api_format_tokens.is_empty() || alias_matches_api_format(alias, &api_format_tokens))
+    });
+
+    // size range (resolve on-disk size for the surviving local rows)
+    if filters.size_min.is_some() || filters.size_max.is_some() {
+      let sizes = resolve_sizes(&auth_scope, &aliases);
+      let (min, max) = (filters.size_min.unwrap_or(0), filters.size_max);
+      aliases.retain(|alias| match local_file_key(alias) {
+        // local rows: keep only when size is known and within [min, max]
+        Some(key) => sizes
+          .get(&key)
+          .copied()
+          .flatten()
+          .is_some_and(|sz| sz >= min && max.is_none_or(|mx| sz <= mx)),
+        // API/router rows have no local file: never hidden by the size facet
+        None => true,
+      });
+    }
+
+    // capability (require metadata for the whole candidate set)
+    let capability_tokens = filters.capability_tokens();
+    if !capability_tokens.is_empty() {
+      let keys = local_file_keys(&aliases);
+      let metadata_map = if keys.is_empty() {
+        HashMap::new()
+      } else {
+        auth_scope
+          .db_service()
+          .batch_get_metadata_by_files("", &keys)
+          .await
+          .unwrap_or_default()
+      };
+      aliases.retain(|alias| match local_file_key(alias) {
+        Some(key) => metadata_map
+          .get(&key)
+          .map(|row| {
+            let metadata: services::ModelMetadata = row.clone().into();
+            capability_tokens
+              .iter()
+              .all(|cap| capability_is_set(&metadata, cap))
+          })
+          .unwrap_or(false),
+        // API/router rows have no capability metadata: excluded when a capability facet is active
+        None => false,
+      });
+    }
+  }
 
   sort_aliases(&mut aliases, &sort, &sort_order);
 
@@ -80,14 +144,7 @@ pub async fn models_index(
   let (start, end) = calculate_pagination(page, page_size, total);
   let paginated_aliases: Vec<Alias> = aliases.into_iter().skip(start).take(end - start).collect();
 
-  let file_keys: Vec<(String, String, String)> = paginated_aliases
-    .iter()
-    .filter_map(|alias| match alias {
-      Alias::User(u) => Some((u.repo.to_string(), u.filename.clone(), u.snapshot.clone())),
-      Alias::Model(m) => Some((m.repo.to_string(), m.filename.clone(), m.snapshot.clone())),
-      Alias::Api(_) | Alias::ModelRouter(_) => None,
-    })
-    .collect();
+  let file_keys: Vec<FileKey> = local_file_keys(&paginated_aliases);
 
   // Model metadata is not tenant-scoped (shared across tenants), use empty string for tenant_id
   let metadata_map = if !file_keys.is_empty() {
@@ -97,12 +154,15 @@ pub async fn models_index(
       .await
       .unwrap_or_default()
   } else {
-    std::collections::HashMap::new()
+    HashMap::new()
   };
+
+  // Resolve on-disk file size for the local rows on this page (for display).
+  let size_map = resolve_sizes(&auth_scope, &paginated_aliases);
 
   // Pre-fetch llm_liberty summaries for any LlmLibertyOauth API aliases on this page so the
   // chat UI can route requests by `provider` without a follow-up alias-detail call.
-  let llm_liberty_summaries: std::collections::HashMap<String, LlmLibertySummary> = {
+  let llm_liberty_summaries: HashMap<String, LlmLibertySummary> = {
     let llm_liberty_ids: Vec<String> = paginated_aliases
       .iter()
       .filter_map(|alias| match alias {
@@ -111,12 +171,12 @@ pub async fn models_index(
       })
       .collect();
     if llm_liberty_ids.is_empty() {
-      std::collections::HashMap::new()
+      HashMap::new()
     } else {
       let tenant_id = auth_scope.require_tenant_id()?;
       let user_id = auth_scope.require_user_id()?;
       let db_service = auth_scope.db_service();
-      let mut map = std::collections::HashMap::new();
+      let mut map = HashMap::new();
       for id in llm_liberty_ids {
         if let Ok(Some(summary)) = db_service
           .get_llm_liberty_summary(tenant_id, user_id, &id)
@@ -139,18 +199,16 @@ pub async fn models_index(
         }
         _ => AliasResponse::from(alias.clone()),
       };
-      let key = match alias {
-        Alias::User(u) => Some((u.repo.to_string(), u.filename, u.snapshot)),
-        Alias::Model(m) => Some((m.repo.to_string(), m.filename, m.snapshot)),
-        Alias::Api(_) | Alias::ModelRouter(_) => None,
-      };
-      if let Some(k) = key {
-        if let Some(metadata_row) = metadata_map.get(&k) {
-          let metadata: services::ModelMetadata = metadata_row.clone().into();
-          return response.with_metadata(Some(metadata));
+      match local_file_key(&alias) {
+        Some(key) => {
+          let size = size_map.get(&key).copied().flatten();
+          let metadata = metadata_map
+            .get(&key)
+            .map(|row| services::ModelMetadata::from(row.clone()));
+          response.with_size(size).with_metadata(metadata)
         }
+        None => response,
       }
-      response
     })
     .collect();
 
@@ -227,6 +285,80 @@ fn get_alias_source(alias: &Alias) -> &str {
     Alias::Model(_) => "model",
     Alias::Api(_) => "api",
     Alias::ModelRouter(_) => "model_router",
+  }
+}
+
+/// The (repo, filename, snapshot) key for a local alias (User/Model); None for API/router.
+fn local_file_key(alias: &Alias) -> Option<FileKey> {
+  match alias {
+    Alias::User(u) => Some((u.repo.to_string(), u.filename.clone(), u.snapshot.clone())),
+    Alias::Model(m) => Some((m.repo.to_string(), m.filename.clone(), m.snapshot.clone())),
+    Alias::Api(_) | Alias::ModelRouter(_) => None,
+  }
+}
+
+fn local_file_keys(aliases: &[Alias]) -> Vec<FileKey> {
+  aliases.iter().filter_map(local_file_key).collect()
+}
+
+/// Resolve on-disk byte size for every local alias in `aliases`, keyed by file key. Statting is
+/// page/candidate-scoped by the caller; a file that can't be resolved maps to `None`.
+fn resolve_sizes(auth_scope: &AuthScope, aliases: &[Alias]) -> HashMap<FileKey, Option<u64>> {
+  let hub_service = auth_scope.hub_service();
+  aliases
+    .iter()
+    .filter_map(local_file_key)
+    .map(|key| {
+      let (repo, filename, snapshot) = &key;
+      let size = Repo::from_str(repo).ok().and_then(|repo| {
+        hub_service
+          .find_local_file(&repo, filename, Some(snapshot.clone()))
+          .ok()
+          .and_then(|hub_file| hub_file.size)
+      });
+      (key, size)
+    })
+    .collect()
+}
+
+/// Map an alias to its TYPE facet token (`local_file` / `model_alias` / `api_model` / `fallback`)
+/// and test membership in the requested set.
+fn alias_matches_type(alias: &Alias, tokens: &[String]) -> bool {
+  let token = match alias {
+    Alias::Model(_) => "local_file",
+    Alias::User(_) => "model_alias",
+    Alias::Api(_) => "api_model",
+    Alias::ModelRouter(_) => "fallback",
+  };
+  tokens.iter().any(|t| t == token)
+}
+
+/// Test whether an API alias' `api_format` falls in the requested API-FORMAT facet set. The facet
+/// tokens are UI buckets: `anthropic` covers both anthropic and anthropic_oauth; `responses` =
+/// openai_responses; `liberty` = llm_liberty_oauth. Non-API aliases never match.
+fn alias_matches_api_format(alias: &Alias, tokens: &[String]) -> bool {
+  let Alias::Api(api) = alias else {
+    return false;
+  };
+  let bucket = match api.api_format {
+    ApiFormat::OpenAI => "openai",
+    ApiFormat::OpenAIResponses => "responses",
+    ApiFormat::Anthropic | ApiFormat::AnthropicOAuth => "anthropic",
+    ApiFormat::Gemini => "gemini",
+    ApiFormat::LlmLibertyOauth => "liberty",
+  };
+  tokens.iter().any(|t| t == bucket)
+}
+
+/// Map a CAPABILITY facet token to the corresponding `ModelCapabilities` field. Unknown tokens
+/// never match. `tool_use` → tools.function_calling; `reasoning` → thinking; `vision` → vision.
+fn capability_is_set(metadata: &services::ModelMetadata, token: &str) -> bool {
+  let caps = &metadata.capabilities;
+  match token {
+    "vision" => caps.vision == Some(true),
+    "tool_use" | "tool-use" => caps.tools.function_calling == Some(true),
+    "reasoning" => caps.thinking == Some(true),
+    _ => false,
   }
 }
 

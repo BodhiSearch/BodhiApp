@@ -1,0 +1,335 @@
+/* ============================================================================
+   Models — All Models (V2) page-specific CSS.
+   Reuses the shared list primitives (l-*) + detail-panel primitives (dp-*) from
+   components/shell/list.css. This file only adds Models-specific pieces:
+   the faceted sidebar (.m-facets), list rows (.m-row), type/connection badges,
+   the SIZE dual-slider, the fallback routing chain, and capability chips.
+   All generic names are m-prefixed; nothing leaks to the global scope.
+   ============================================================================ */
+
+/* Search-match highlight — scoped so it doesn't use the harsh browser-default yellow in dark mode. */
+.models-screen mark {
+  background: rgba(250, 138, 46, 0.22);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ── List rows ── */
+.m-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+}
+.m-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: hsl(var(--surface-2));
+  color: hsl(var(--muted-foreground));
+}
+.m-row-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.m-row-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-row-sub {
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-row-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Type badges ── */
+.m-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.m-badge-local {
+  background: var(--c-saffron-bg);
+  border-color: var(--c-saffron-bd);
+  color: var(--c-saffron-text);
+}
+.m-badge-alias {
+  background: var(--c-lotus-bg);
+  border-color: var(--c-lotus-bd);
+  color: var(--c-lotus-text);
+}
+.m-badge-api {
+  background: var(--c-indigo-bg);
+  border-color: var(--c-indigo-bd);
+  color: var(--c-indigo-text);
+}
+.m-badge-fallback {
+  background: var(--c-leaf-bg);
+  border-color: var(--c-leaf-bd);
+  color: var(--c-leaf-text);
+}
+
+/* ── Connection status ── */
+.m-conn {
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.m-conn.ok {
+  color: var(--c-leaf-text);
+}
+.m-conn.warn {
+  color: var(--c-saffron-text);
+}
+
+/* ── Pagination wrapper ── */
+.m-pagination {
+  padding: 12px 16px;
+}
+
+/* ============================================================================
+   Faceted sidebar (published as the shell `sidebar` slot).
+   ============================================================================ */
+.m-facets {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 14px 14px 22px;
+}
+.m-facet-group {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.m-facet-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+.m-facet-hint {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+.m-facet-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.m-facet-pill {
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border: 1px solid hsl(var(--border));
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 100ms,
+    color 100ms,
+    background 100ms;
+}
+.m-facet-pill:hover:not(.active) {
+  border-color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
+}
+.m-facet-pill.active {
+  background: hsl(var(--primary) / 0.12);
+  border-color: hsl(var(--primary) / 0.45);
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+/* ── SIZE dual-slider ── */
+.m-size {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.m-size-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.m-size-slider {
+  position: relative;
+  height: 22px;
+}
+.m-size-slider input[type='range'] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  margin: 0;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+/* Shared track painted by the first input; the second only contributes its thumb. */
+.m-size-slider input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: hsl(var(--border));
+}
+.m-size-slider.active input[type='range']::-webkit-slider-runnable-track {
+  background: hsl(var(--primary) / 0.4);
+}
+.m-size-slider input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: hsl(var(--border));
+}
+.m-size-slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--primary));
+  cursor: pointer;
+}
+.m-size-slider input[type='range']::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--primary));
+  cursor: pointer;
+}
+
+/* ============================================================================
+   Detail rail extras (compose with dp-* from list.css).
+   ============================================================================ */
+.m-cap-chips,
+.m-model-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.m-cap-chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--c-leaf-bg);
+  border: 1px solid var(--c-leaf-bd);
+  color: var(--c-leaf-text);
+}
+.m-model-list {
+  flex-direction: column;
+  gap: 0;
+}
+.m-model-item {
+  font-size: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+.m-model-item:last-child {
+  border-bottom: none;
+}
+
+/* ── Fallback routing chain ── */
+.m-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.m-chain-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  background: hsl(var(--surface-2));
+}
+.m-chain-step.disabled {
+  opacity: 0.55;
+}
+.m-chain-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--c-leaf-bg);
+  color: var(--c-leaf-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+.m-chain-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.m-chain-alias {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.m-chain-model {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+.m-chain-disabled {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Responsive: hide the secondary subtitle on very narrow rails ── */
+@media (max-width: 480px) {
+  .m-row-sub {
+    display: none;
+  }
+}

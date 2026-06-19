@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 
-import { createFileRoute } from '@tanstack/react-router';
 import { AliasResponse } from '@bodhiapp/ts-client';
-import { Globe, MessageSquare, Plus } from 'lucide-react';
+import { createFileRoute } from '@tanstack/react-router';
 import { useNavigate } from '@tanstack/react-router';
+import { Globe, MessageSquare, Plus } from 'lucide-react';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable, Pagination } from '@/components/DataTable';
@@ -12,14 +12,16 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { useToast } from '@/hooks/use-toast';
 import { useDeleteApiModel, useDeleteModelRouter, useListModels } from '@/hooks/models';
+import { useToast } from '@/hooks/use-toast';
+import { useUiV2Flag } from '@/hooks/useUiV2Flag';
 import { hasLocalFileProperties, isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
 import { SortState } from '@/types/models';
 
-import { ModelTableRow } from './-components/ModelTableRow';
 import { ModelPreviewModal } from './-components/ModelPreviewModal';
+import { ModelsScreenV2 } from './-components/ModelsScreenV2';
+import { ModelTableRow } from './-components/ModelTableRow';
 
 export const Route = createFileRoute('/models/')({
   component: ModelsPage,
@@ -334,10 +336,15 @@ function ModelsPageContent() {
   );
 }
 
+function ModelsPageInner() {
+  const [v2Enabled] = useUiV2Flag('models');
+  return v2Enabled ? <ModelsScreenV2 /> : <ModelsPageContent />;
+}
+
 export default function ModelsPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true}>
-      <ModelsPageContent />
+      <ModelsPageInner />
     </AppInitializer>
   );
 }

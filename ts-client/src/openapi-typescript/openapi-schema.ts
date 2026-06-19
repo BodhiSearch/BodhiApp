@@ -563,7 +563,7 @@ export interface paths {
         };
         /**
          * List All Model Aliases
-         * @description Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).
+         * @description Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with server-side facet filtering (type, api_format, size range, capability) and sorting. Requires any authenticated user (User level permissions or higher).
          */
         get: operations["listAllModels"];
         put?: never;
@@ -1287,6 +1287,41 @@ export interface components {
             /** @enum {string} */
             source: "model_router";
         });
+        /** @description Facet filter query parameters for the All-Models list (`GET /bodhi/v1/models`).
+         *
+         *     All facets are server-side and applied before pagination so `total` and the page
+         *     reflect the filtered set. Multi-value facets accept a comma-separated list; an empty
+         *     or absent value means "no filter for this facet" (all rows pass). */
+        AliasFilterParams: {
+            /**
+             * @description Alias type facet (comma-separated): `local_file`, `model_alias`, `api_model`, `fallback`.
+             * @example local_file,model_alias
+             */
+            type?: string | null;
+            /**
+             * @description API-format facet (comma-separated), API rows only: `openai`, `responses`, `anthropic`,
+             *     `gemini`, `liberty`. `anthropic` matches both anthropic and anthropic_oauth aliases.
+             * @example openai,anthropic
+             */
+            api_format?: string | null;
+            /**
+             * Format: int64
+             * @description Minimum local-file size in bytes (inclusive). Applies to local rows with a known size;
+             *     rows without a size (API/router) are not filtered out by size.
+             */
+            size_min?: number | null;
+            /**
+             * Format: int64
+             * @description Maximum local-file size in bytes (inclusive). See `size_min`.
+             */
+            size_max?: number | null;
+            /**
+             * @description Capability facet (comma-separated), local rows only: `vision`, `tool_use`, `reasoning`.
+             *     A row passes only if it has metadata with every requested capability set true.
+             * @example vision,tool_use
+             */
+            capability?: string | null;
+        };
         /** @description Response envelope for model aliases - hides internal implementation details
          *     Uses untagged serialization - each variant has its own "source" field */
         AliasResponse: components["schemas"]["ModelRouterResponse"] | components["schemas"]["UserAliasResponse"] | components["schemas"]["ModelAliasResponse"] | components["schemas"]["ApiAliasResponse"];
@@ -2228,6 +2263,11 @@ export interface components {
             repo: string;
             filename: string;
             snapshot: string;
+            /**
+             * Format: int64
+             * @description Local GGUF file size in bytes (present when the file is resolvable on disk)
+             */
+            size?: number | null;
             metadata?: null | components["schemas"]["ModelMetadata"];
         };
         ModelArchitecture: {
@@ -2835,6 +2875,11 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            /**
+             * Format: int64
+             * @description Local GGUF file size in bytes (present when the file is resolvable on disk)
+             */
+            size?: number | null;
             metadata?: null | components["schemas"]["ModelMetadata"];
         };
         UserInfo: {
@@ -5426,6 +5471,19 @@ export interface operations {
                 sort?: string;
                 /** @description Sort order: 'asc' for ascending, 'desc' for descending */
                 sort_order?: string;
+                /** @description Alias type facet (comma-separated): `local_file`, `model_alias`, `api_model`, `fallback`. */
+                type?: string;
+                /** @description API-format facet (comma-separated), API rows only: `openai`, `responses`, `anthropic`,
+                 *     `gemini`, `liberty`. `anthropic` matches both anthropic and anthropic_oauth aliases. */
+                api_format?: string;
+                /** @description Minimum local-file size in bytes (inclusive). Applies to local rows with a known size;
+                 *     rows without a size (API/router) are not filtered out by size. */
+                size_min?: number;
+                /** @description Maximum local-file size in bytes (inclusive). See `size_min`. */
+                size_max?: number;
+                /** @description Capability facet (comma-separated), local rows only: `vision`, `tool_use`, `reasoning`.
+                 *     A row passes only if it has metadata with every requested capability set true. */
+                capability?: string;
             };
             header?: never;
             path?: never;

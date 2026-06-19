@@ -1,7 +1,7 @@
 use crate::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
-  AuthCallbackRequest, AuthInitiateRequest, CreateAccessRequestResponse, LocalModelResponse,
-  PaginationSortParams, PingResponse,
+  AliasFilterParams, AuthCallbackRequest, AuthInitiateRequest, CreateAccessRequestResponse,
+  LocalModelResponse, PaginationSortParams, PingResponse,
 };
 use crate::{
   AppInfo, DashboardUser, ListUsersParams, PaginatedLocalModelResponse, QueueStatusResponse,
@@ -345,6 +345,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             ModelAliasResponse,
             ApiAliasResponse,
             PaginationSortParams,
+            AliasFilterParams,
             PaginatedAliasResponse,
             AliasResponse,
             Alias,

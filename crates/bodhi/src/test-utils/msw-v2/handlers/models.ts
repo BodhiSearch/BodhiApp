@@ -39,6 +39,43 @@ export function mockModels(
   ];
 }
 
+/** Captures the query params of each `GET /models` request — for asserting facet→param wiring. */
+export interface ModelsRequestCapture {
+  /** Search params of the most recent request (null until first call). */
+  last: URLSearchParams | null;
+  /** Search params of every request, in order. */
+  all: URLSearchParams[];
+}
+
+/**
+ * Like {@link mockModels} but always-on (stub) and records every request's query params into the
+ * returned `capture`, so a test can assert the screen sent the right `type`/`api_format`/`size_*`/
+ * `capability` params. Returns `{ handlers, capture }`.
+ */
+export function mockModelsWithCapture(init: Partial<components['schemas']['PaginatedAliasResponse']> = {}): {
+  handlers: ReturnType<typeof typedHttp.get>[];
+  capture: ModelsRequestCapture;
+} {
+  const { data = [], page = 1, page_size = 30, total = data.length, ...rest } = init;
+  const capture: ModelsRequestCapture = { last: null, all: [] };
+  const handlers = [
+    typedHttp.get(ENDPOINT_MODELS, async ({ request, response }) => {
+      const url = new URL(request.url);
+      capture.last = url.searchParams;
+      capture.all.push(url.searchParams);
+      const responseData: components['schemas']['PaginatedAliasResponse'] = {
+        data,
+        page,
+        page_size,
+        total,
+        ...rest,
+      };
+      return response(200 as const).json(responseData);
+    }),
+  ];
+  return { handlers, capture };
+}
+
 export function mockModelsDefault() {
   return mockModels({
     data: [createMockUserAlias()],

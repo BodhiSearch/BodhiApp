@@ -59,6 +59,39 @@ export type Alias = (UserAlias & {
 });
 
 /**
+ * Facet filter query parameters for the All-Models list (`GET /bodhi/v1/models`).
+ *
+ * All facets are server-side and applied before pagination so `total` and the page
+ * reflect the filtered set. Multi-value facets accept a comma-separated list; an empty
+ * or absent value means "no filter for this facet" (all rows pass).
+ */
+export type AliasFilterParams = {
+    /**
+     * Alias type facet (comma-separated): `local_file`, `model_alias`, `api_model`, `fallback`.
+     */
+    type?: string | null;
+    /**
+     * API-format facet (comma-separated), API rows only: `openai`, `responses`, `anthropic`,
+     * `gemini`, `liberty`. `anthropic` matches both anthropic and anthropic_oauth aliases.
+     */
+    api_format?: string | null;
+    /**
+     * Minimum local-file size in bytes (inclusive). Applies to local rows with a known size;
+     * rows without a size (API/router) are not filtered out by size.
+     */
+    size_min?: number | null;
+    /**
+     * Maximum local-file size in bytes (inclusive). See `size_min`.
+     */
+    size_max?: number | null;
+    /**
+     * Capability facet (comma-separated), local rows only: `vision`, `tool_use`, `reasoning`.
+     * A row passes only if it has metadata with every requested capability set true.
+     */
+    capability?: string | null;
+};
+
+/**
  * Response envelope for model aliases - hides internal implementation details
  * Uses untagged serialization - each variant has its own "source" field
  */
@@ -1053,6 +1086,10 @@ export type ModelAliasResponse = {
     repo: string;
     filename: string;
     snapshot: string;
+    /**
+     * Local GGUF file size in bytes (present when the file is resolvable on disk)
+     */
+    size?: number | null;
     metadata?: null | ModelMetadata;
 };
 
@@ -1664,6 +1701,10 @@ export type UserAliasResponse = {
     context_params: Array<string>;
     created_at: string;
     updated_at: string;
+    /**
+     * Local GGUF file size in bytes (present when the file is resolvable on disk)
+     */
+    size?: number | null;
     metadata?: null | ModelMetadata;
 };
 
@@ -3390,6 +3431,29 @@ export type ListAllModelsData = {
          * Sort order: 'asc' for ascending, 'desc' for descending
          */
         sort_order?: string;
+        /**
+         * Alias type facet (comma-separated): `local_file`, `model_alias`, `api_model`, `fallback`.
+         */
+        type?: string;
+        /**
+         * API-format facet (comma-separated), API rows only: `openai`, `responses`, `anthropic`,
+         * `gemini`, `liberty`. `anthropic` matches both anthropic and anthropic_oauth aliases.
+         */
+        api_format?: string;
+        /**
+         * Minimum local-file size in bytes (inclusive). Applies to local rows with a known size;
+         * rows without a size (API/router) are not filtered out by size.
+         */
+        size_min?: number;
+        /**
+         * Maximum local-file size in bytes (inclusive). See `size_min`.
+         */
+        size_max?: number;
+        /**
+         * Capability facet (comma-separated), local rows only: `vision`, `tool_use`, `reasoning`.
+         * A row passes only if it has metadata with every requested capability set true.
+         */
+        capability?: string;
     };
     url: '/bodhi/v1/models';
 };

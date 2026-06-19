@@ -3190,7 +3190,7 @@
           "models"
         ],
         "summary": "List All Model Aliases",
-        "description": "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).",
+        "description": "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with server-side facet filtering (type, api_format, size range, capability) and sorting. Requires any authenticated user (User level permissions or higher).",
         "operationId": "listAllModels",
         "parameters": [
           {
@@ -3226,6 +3226,55 @@
             "name": "sort_order",
             "in": "query",
             "description": "Sort order: 'asc' for ascending, 'desc' for descending",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Alias type facet (comma-separated): `local_file`, `model_alias`, `api_model`, `fallback`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api_format",
+            "in": "query",
+            "description": "API-format facet (comma-separated), API rows only: `openai`, `responses`, `anthropic`,\n`gemini`, `liberty`. `anthropic` matches both anthropic and anthropic_oauth aliases.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size_min",
+            "in": "query",
+            "description": "Minimum local-file size in bytes (inclusive). Applies to local rows with a known size;\nrows without a size (API/router) are not filtered out by size.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size_max",
+            "in": "query",
+            "description": "Maximum local-file size in bytes (inclusive). See `size_min`.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "capability",
+            "in": "query",
+            "description": "Capability facet (comma-separated), local rows only: `vision`, `tool_use`, `reasoning`.\nA row passes only if it has metadata with every requested capability set true.",
             "required": false,
             "schema": {
               "type": "string"
@@ -7476,6 +7525,54 @@
         ],
         "description": "Flat enum representing all types of model aliases\nEach variant is identified by the source field"
       },
+      "AliasFilterParams": {
+        "type": "object",
+        "description": "Facet filter query parameters for the All-Models list (`GET /bodhi/v1/models`).\n\nAll facets are server-side and applied before pagination so `total` and the page\nreflect the filtered set. Multi-value facets accept a comma-separated list; an empty\nor absent value means \"no filter for this facet\" (all rows pass).",
+        "properties": {
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Alias type facet (comma-separated): `local_file`, `model_alias`, `api_model`, `fallback`.",
+            "example": "local_file,model_alias"
+          },
+          "api_format": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "API-format facet (comma-separated), API rows only: `openai`, `responses`, `anthropic`,\n`gemini`, `liberty`. `anthropic` matches both anthropic and anthropic_oauth aliases.",
+            "example": "openai,anthropic"
+          },
+          "size_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Minimum local-file size in bytes (inclusive). Applies to local rows with a known size;\nrows without a size (API/router) are not filtered out by size.",
+            "minimum": 0
+          },
+          "size_max": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Maximum local-file size in bytes (inclusive). See `size_min`.",
+            "minimum": 0
+          },
+          "capability": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Capability facet (comma-separated), local rows only: `vision`, `tool_use`, `reasoning`.\nA row passes only if it has metadata with every requested capability set true.",
+            "example": "vision,tool_use"
+          }
+        }
+      },
       "AliasResponse": {
         "oneOf": [
           {
@@ -10281,6 +10378,15 @@
           "snapshot": {
             "type": "string"
           },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Local GGUF file size in bytes (present when the file is resolvable on disk)",
+            "minimum": 0
+          },
           "metadata": {
             "oneOf": [
               {
@@ -12104,6 +12210,15 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Local GGUF file size in bytes (present when the file is resolvable on disk)",
+            "minimum": 0
           },
           "metadata": {
             "oneOf": [

@@ -3,8 +3,8 @@ import { BODHI_API_BASE } from '@/hooks/constants';
 export const modelKeys = {
   all: ['models'] as const,
   lists: () => [...modelKeys.all, 'list'] as const,
-  list: (page: number, pageSize: number, sort: string, sortOrder: string) =>
-    [...modelKeys.lists(), page, pageSize, sort, sortOrder] as const,
+  list: (page: number, pageSize: number, sort: string, sortOrder: string, filterKey?: string) =>
+    [...modelKeys.lists(), page, pageSize, sort, sortOrder, filterKey ?? ''] as const,
   details: () => [...modelKeys.all, 'detail'] as const,
   detail: (id: string) => [...modelKeys.details(), id] as const,
 };

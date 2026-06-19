@@ -1965,6 +1965,11 @@ pub struct UserAliasResponse {
   #[schema(value_type = String, format = "date-time")]
   pub updated_at: DateTime<Utc>,
 
+  /// Local GGUF file size in bytes (present when the file is resolvable on disk)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[cfg_attr(any(test, feature = "test-utils"), builder(default))]
+  pub size: Option<u64>,
+
   /// Model metadata extracted from GGUF file (optional)
   #[serde(skip_serializing_if = "Option::is_none")]
   #[cfg_attr(any(test, feature = "test-utils"), builder(default))]
@@ -1986,6 +1991,7 @@ impl From<UserAlias> for UserAliasResponse {
       context_params: alias.context_params.into(),
       created_at: alias.created_at,
       updated_at: alias.updated_at,
+      size: None,
       metadata: None,
     }
   }
@@ -1995,6 +2001,12 @@ impl UserAliasResponse {
   /// Attach model metadata to this response
   pub fn with_metadata(mut self, metadata: Option<ModelMetadata>) -> Self {
     self.metadata = metadata;
+    self
+  }
+
+  /// Attach the resolved local file size (bytes) to this response
+  pub fn with_size(mut self, size: Option<u64>) -> Self {
+    self.size = size;
     self
   }
 }
@@ -2017,6 +2029,10 @@ pub struct ModelAliasResponse {
   pub filename: String,
   pub snapshot: String,
 
+  /// Local GGUF file size in bytes (present when the file is resolvable on disk)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub size: Option<u64>,
+
   /// Model metadata extracted from GGUF file (optional)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub metadata: Option<ModelMetadata>,
@@ -2030,6 +2046,7 @@ impl From<ModelAlias> for ModelAliasResponse {
       repo: alias.repo.to_string(),
       filename: alias.filename,
       snapshot: alias.snapshot,
+      size: None,
       metadata: None,
     }
   }
@@ -2039,6 +2056,12 @@ impl ModelAliasResponse {
   /// Attach model metadata to this response
   pub fn with_metadata(mut self, metadata: Option<ModelMetadata>) -> Self {
     self.metadata = metadata;
+    self
+  }
+
+  /// Attach the resolved local file size (bytes) to this response
+  pub fn with_size(mut self, size: Option<u64>) -> Self {
+    self.size = size;
     self
   }
 }
@@ -2167,6 +2190,16 @@ impl AliasResponse {
       AliasResponse::Model(r) => AliasResponse::Model(r.with_metadata(metadata)),
       AliasResponse::Api(r) => AliasResponse::Api(r), // API aliases don't have metadata
       AliasResponse::ModelRouter(r) => AliasResponse::ModelRouter(r), // routers don't have metadata
+    }
+  }
+
+  /// Attach the resolved local file size (only applies to User and Model variants)
+  pub fn with_size(self, size: Option<u64>) -> Self {
+    match self {
+      AliasResponse::User(r) => AliasResponse::User(r.with_size(size)),
+      AliasResponse::Model(r) => AliasResponse::Model(r.with_size(size)),
+      AliasResponse::Api(r) => AliasResponse::Api(r), // API aliases have no local file
+      AliasResponse::ModelRouter(r) => AliasResponse::ModelRouter(r), // routers have no local file
     }
   }
 }
