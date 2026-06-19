@@ -4,9 +4,10 @@ Per-screen status for review. **Scope:** the 13 shell app screens + the bare OAu
 review = **14 screens** (see @screen-coverage.md). Verified against the code, not memory
 (`grep useUiV2Flag`, `useShellChrome`, `BARE_PREFIXES`, `SHELL_NAV` on the date below).
 
-> Status key: ✅ done (V2-only, flag retired, old code deleted) · 🚧 in progress ·
-> ⬜ not started · ▫️ bare (renders outside AppShell).
-> Last verified: **2026-06-18** (after Batch 1 + the View-Transitions add-on).
+> Status key: ✅ done (V2-only, flag retired, old code deleted) · 🟩 done-behind-flag (shipped V2 but
+> flag kept default-off; V1 still present — see note) · 🚧 in progress · ⬜ not started ·
+> ▫️ bare (renders outside AppShell).
+> Last verified: **2026-06-19** (after Batch 3-1 + its design-refinement follow-up).
 
 ## Batches
 
@@ -16,28 +17,38 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 1 | **API Keys → Access Tokens** (4 screens) | ✅ done |
 | 1.1 | **Batch-1 follow-up** — IA correction (2026-06-18): nav section "API Keys"→"Access Tokens" (sub-pages "API Tokens"/"New API Token"); new top-level **Users** section (User Access Requests + Manage Users, moved out of Settings); Access Requests redesigned to match `design/User Access Requests.html` (avatar rows, status chips, role/approve-reject flow, detail rail). | ✅ done |
 | 2 | **Settings** (App Settings) + **Manage Users** (nav under Users per 1.1) | ✅ done |
-| 3 | Models — **split into sub-phases 3-1…3-5** (2026-06-19, see below) | 🚧 in progress |
-| 3-1 | **All Models** list + faceted sidebar + detail rail (first **full-stack** batch: backend `size`/capability + server-side filters) | ✅ done |
-| 3-2 | **New Local Model** form (`alias/new`+`edit`) — V2 styling, real fields | ⬜ not started |
-| 3-3 | files / pull consolidation (fold download into the local-model form) | ⬜ not started |
-| 3-4 | **New Fallback Alias** + **New API Model** forms | ⬜ not started |
-| 3-5 | **Local Models** + **API Models** discovery sub-views (reference API) | ⬜ not started |
+| 3 | Models — **split into sub-phases 3-1…3-7** (2026-06-19, see below) | 🚧 in progress |
+| 3-1 | **My Models** list + faceted sidebar + detail rail (first **full-stack** batch: backend `size`/capability/**search** + server-side filters) | 🟩 done-behind-flag |
+| 3-2 | **New API Model** form (`api/new`+`edit`) — **NEXT** | ⬜ not started |
+| 3-3 | **New Fallback** alias form (`router/new`+`edit`) | ⬜ not started |
+| 3-4 | **New Local Model** form (`alias/new`+`edit`) — richest; sequenced after the simpler forms | ⬜ not started |
+| 3-5 | files / pull consolidation (fold download + quant table into the local-model form) | ⬜ not started |
+| 3-6 | **Local Models** discovery sub-view (reference API) | ⬜ not started |
+| 3-7 | **API Models** discovery sub-view (reference API) | ⬜ not started |
 | 4 | MCP (3 screens) | ⬜ not started |
 | 5 | Chat (1 screen, highest risk, last) | ⬜ not started |
 
-> **Batch 3 split (2026-06-19):** the All Models *list* lands first on the real backend with a
-> server-side faceted sidebar (3-1); the 3 forms + the reference-API discovery views follow as 3-2…3-5.
-> Kick-offs: `batch-3-2…3-5-*-kickoff.md`. Rationale + decisions: `batch-3-1-models-retro.md`.
+> **Batch 3 split + re-sequenced (2026-06-19):** the My Models *list* lands first on the real backend
+> with a server-side faceted sidebar + search (3-1). The forms follow **simplest-first**: API (3-2) →
+> Fallback (3-3) → Local (3-4); then files/pull consolidation (3-5); then the reference-API discovery
+> views, split Local (3-6) and API (3-7). Kick-offs: `batch-3-2…3-7-*-kickoff.md`. Rationale +
+> decisions: `batch-3-1-models-retro.md`.
+>
+> **3-1 is `done-behind-flag`, not `done`:** V2 shipped behind the default-off `models` flag and the V1
+> `ModelsPageContent` list is **kept**, because the existing model/api-model E2E specs drive
+> create/edit/delete via the **V1 list↔form flow** and the forms are still V1. The `models` flag + the
+> V1 list retire in the sub-phase that migrates the last consuming form + its specs (≈3-4/3-5). See the
+> retro's flag-deferral note.
 
 ## Screen-by-screen
 
 | # | Section | Screen | Route | Layout | Flag | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 1 | Chat | Chat | `/chat/` | shell | `chat` | ⬜ | Batch 5 (last). Old chat UI renders inside the new shell today. |
-| 2 | Models | All Models | `/models/` | shell | `models` | ✅ | **Batch 3-1.** V2 shell list + published **faceted `sidebar`** (TYPE / CAPABILITY vision·tool-use·reasoning / SIZE dual-slider / API-FORMAT incl. **Liberty**) + toolbar TYPE quick-tabs + collapsible search + selectable rows (`LinkRow`) + **read-only detail rail, 4 variants** (Local File / Model Alias / API Model w/ models list / Fallback w/ routing chain), Edit CTA → V1 form routes. **First full-stack batch:** added `size`+capability to list rows + **server-side facet filters** (`type`/`api_format`/`size_*`/`capability`) to `GET /bodhi/v1/models` + regen. `useListModels` gained `keepPreviousData`. |
-| 3 | Models | New Local Model | `/models/alias/new/` (+ edit) | shell | `new-local-model` | ⬜ | Batch **3-2**. `/new/`+`/edit/` share one design. |
-| 4 | Models | New API Model | `/models/api/new/` (+ edit) | shell | `new-api-model` | ⬜ | Batch **3-4**. |
-| 5 | Models | New Fallback Alias | `/models/router/new/` (+ edit) | shell | `new-fallback-model` | ⬜ | Batch **3-4**. |
+| 2 | Models | **My Models** (was "All Models") | `/models/` | shell | `models` (default-off) | 🟩 | **Batch 3-1** (+ design refinement). V2 shell list + published **faceted `sidebar`** (TYPE / CAPABILITY vision·tool-use·reasoning / SIZE dual-slider / API-FORMAT incl. **Liberty**) + **always-visible search** + selectable rows (`LinkRow`) + **read-only detail rail, 4 variants** (Local File / Model Alias / API Model w/ models list / Fallback w/ routing chain), Edit CTA → V1 form routes. **First full-stack batch:** added `size`+capability+**`search`** + **server-side facet filters** (`type`/`api_format`/`size_*`/`capability`/`search`) to `GET /bodhi/v1/models` + regen; `useListModels` gained `keepPreviousData`. **Refinement (2026-06-19):** nav "All Models"→**"My Models"** (id `my-models`); **TYPE removed from the top bar** (sidebar-only); **search moved server-side**, submit-on-Enter; **colorful** per design (per-type icon tiles saffron/lotus/indigo/teal, API provider badge, active-row left-accent). **Flag NOT retired — V1 list kept** (see batches note). |
+| 3 | Models | New API Model | `/models/api/new/` (+ edit) | shell | `new-api-model` | ⬜ | Batch **3-2** (NEXT). `/new/`+`/edit/` share one design. |
+| 4 | Models | New Fallback Alias | `/models/router/new/` (+ edit) | shell | `new-fallback-model` | ⬜ | Batch **3-3**. |
+| 5 | Models | New Local Model | `/models/alias/new/` (+ edit) | shell | `new-local-model` | ⬜ | Batch **3-4** (richest; after the simpler forms). |
 | 6 | MCP | All MCPs / Discover | `/mcps/` | shell | `mcp-discover` | ⬜ | Batch 4. Needs the reference-API catalog. |
 | 7 | MCP | New Instance | `/mcps/new/` (+ edit) | shell | `new-mcp` | ⬜ | Batch 4. |
 | 8 | MCP | Playground | `/mcps/playground/` | shell | `mcp-playground` | ⬜ | Batch 4. |
@@ -106,10 +117,31 @@ Keycloak/auth (@screen-coverage.md §C).
    `specs/request-access/multi-user-request-approval-flow.spec.mjs` (3/3 on standalone).
 3. **Read:** @batch-1-api-keys-retro.md (what landed + decisions) and @view-transitions.md.
 
+## How to verify Batch 3-1 (My Models) yourself
+1. **Run the app:** `make app.run.live`, log in, then set the flag (default-off):
+   `localStorage.setItem('bodhi.ui-v2.models','true')` and reload `/ui/models/`.
+   ⚠ **If you changed the backend, rebuild the binary** (`ports kill 1135 3000` → `make app.run.live`) —
+   a stale `app.run.live` binary serves the new frontend via HMR but **ignores the new query params**
+   (filters/search silently no-op). See `feedback_gateb_rebuild_binary_for_backend_batches` + the retro.
+   - Left sidebar nav reads **"My Models"**; the toolbar is just the **always-visible search** (no TYPE
+     tabs). Type a query + **Enter** → server-side `?search=` filters (match highlighted); clear → resets.
+   - **Faceted sidebar**: TYPE / CAPABILITY / SIZE dual-slider / API-FORMAT (incl. **Liberty**) →
+     server-side filtering (TYPE=API → only API rows; API-FORMAT=Anthropic → the anthropic_oauth row).
+   - **Colorful:** per-type icon tiles (saffron/lotus/indigo/teal), API rows show the **provider** as a
+     green badge + connection status; click a row → detail rail (4 variants) + Edit CTA → V1 form; the
+     active row has a lotus left-accent. Light/dark/responsive all clean.
+2. **Tests:** `cargo test -p services -p routes_app --lib` (817 pass); `cd crates/bodhi && npm test`
+   (986 pass, incl. `routes/models/index.v2.test.tsx`); E2E `specs/models/all-models-v2.spec.mjs`
+   (standalone; list + facets + server-side search + rail + Edit CTA).
+3. **Read:** @batch-3-1-models-retro.md (what landed + decisions + the flag-deferral + design refinement).
+
 ## Open follow-ups (carry forward)
-- Run the **full E2E matrix** (both projects, all specs) once before Batch 2 — the shared shell/CSS +
-  the global route view-transition are app-wide; the broad sweep catches any other page object that
-  reads the DOM right after a navigation.
+- **Retire the `models` flag + delete V1 `ModelsPageContent`** when the last consuming form migrates
+  (≈3-4/3-5); migrate the model/api-model E2E specs (which drive create/edit/delete via the V1 list↔form
+  flow) at the same time. Tracked in `batch-3-1-models-retro.md`.
+- Run the **full E2E matrix** at each sub-phase commit — the shared `useListModels`/shell/nav changes
+  are app-wide. (Known pre-existing failures: chat-resize techdebt, MCP-OAuth, `api-live-upstream`
+  live-provider timeouts, browser-extension — not migration regressions; see @techdebt.md.)
 - Deferred architectural item: the scalable route-declared layout seam (replace `BARE_PREFIXES`) —
   @techdebt.md.
 

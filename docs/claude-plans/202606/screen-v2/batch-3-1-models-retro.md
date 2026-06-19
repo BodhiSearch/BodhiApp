@@ -22,7 +22,7 @@ Status: implementation complete; backend (816) + RTL (979) green; the V2 E2E spe
   and a read-only **detail rail with 4 variants** (Local File / Model Alias / API Model / Fallback)
   whose **Edit CTA** navigates to the still-V1 form routes (`alias/edit`, `api/edit`, `router/edit`).
   Real-data-only; the prototype's discovery sub-views (Local/API Models) and the 3 forms are out of
-  scope (→ 3-2…3-5).
+  scope (→ 3-2…3-7; see the re-sequenced sub-phase list below).
 
 **First full-stack screen-v2 batch — backend changes (unlike Batches 0–2, which were presentation-only):**
 - Added `size: Option<u64>` to `UserAliasResponse` + `ModelAliasResponse`; `models_index` resolves
@@ -85,17 +85,25 @@ Status: implementation complete; backend (816) + RTL (979) green; the V2 E2E spe
 - **Type-discriminated read-only rail with N variants** keyed off `source` guards
   (`isApiAlias`/`isModelRouterAlias`/`isUserAlias`), composing `dp-*` primitives + an Edit CTA.
 
-## Gate results
-- **Backend:** `cargo test -p services -p routes_app --lib` — **816 passed / 0 failed** (incl. 6 new
-  list-filter tests: type / api_format incl. Liberty+Anthropic-bucket / size / capability / size-on-rows).
-- **Frontend RTL:** full suite **974 passed / 5 skipped / 0 failed** (incl. the new
-  `routes/models/index.v2.test.tsx`, 11 tests). Typecheck clean; touched files lint-clean.
+## Gate results (after the design-refinement follow-up)
+- **Backend:** `cargo test -p services -p routes_app --lib` — **817 passed / 0 failed** (incl. 7 new
+  list tests: type / api_format incl. Liberty+Anthropic-bucket / size / capability / size-on-rows /
+  **search**).
+- **Frontend RTL:** full suite **986 passed / 5 skipped / 0 failed** (incl. `routes/models/index.v2.test.tsx`
+  — 14 tests: 4 row types, faceted sidebar, facets→query-params, no-top-bar-tabs, search-on-Enter,
+  search-clear-resets, 3 rail variants, Edit CTA, empty, V1 fallback). Typecheck clean; touched files
+  lint-clean.
 - **E2E:** `specs/models/all-models-v2.spec.mjs` (V2 list + faceted sidebar + server-side TYPE filter +
-  detail rail + Edit CTA) — **pass (~6.5s, standalone)**. Full standalone matrix run at commit time.
-- **GATE B (live):** All Models V2 on `make app.run.live` (rebuilt binary): live server-side filtering
-  (TYPE=API → API rows; API-FORMAT=Anthropic → the anthropic_oauth row), API detail rail, **light +
-  dark + responsive (414px) + mobile rail drawer**, **console-clean** on all in-page interactions
-  (only the known router-nav VT exception on route entry).
+  server-side **search** + detail rail + Edit CTA) — **2/2 pass (standalone)**. Full standalone matrix
+  was run; the only failures were pre-existing/environmental (chat-resize techdebt, MCP-OAuth,
+  `api-live-upstream` live-provider timeouts that passed in the prior baseline, browser-extension) —
+  none touch Models (verified: no E2E references the renamed `all-models` testid).
+- **GATE B (live):** My Models V2 on `make app.run.live` (**rebuilt binary** — required for the backend
+  search/filter params): live server-side filtering (TYPE=API → API rows; API-FORMAT=Anthropic → the
+  anthropic_oauth row), live `?search=llama` → 1 row (highlighted), search-clear restores; colorful
+  treatment (per-type icon tiles, provider badge, active-row left-accent); API detail rail; **light +
+  dark + responsive (414px) + mobile rail drawer**; **console-clean** on all in-page interactions (only
+  the known router-nav VT exception on route entry).
 
 ## Follow-up refinements (2026-06-19, post-3-1, design update)
 After the initial 3-1 commit the design was refined; four changes landed on top:
@@ -119,6 +127,8 @@ After the initial 3-1 commit the design was refined; four changes landed on top:
 1. **Run the FULL E2E matrix** (both projects) at commit time — the shared `useListModels`
    `keepPreviousData` + the backend list changes are app-wide.
 2. The **router-level navigation `InvalidStateError`** remains the deferred cross-cutting item (techdebt.md).
-3. **Sub-phase kickoffs** written: `batch-3-2…3-5-*-kickoff.md`. Next: 3-2 (New Local Model form).
+3. **Sub-phases re-sequenced + kickoffs written** (2026-06-19, simplest-first): `batch-3-2-new-api-model`
+   → `3-3-new-fallback-model` → `3-4-new-local-model` → `3-5-files-pull-consolidation` →
+   `3-6-local-discovery` → `3-7-api-discovery`. **Next: 3-2 (New API Model form).**
 4. Carry the temporary-scaffolding removal (`ShellSlotsContext` sidebar slot, `useUiV2Flag`) to the
    end-of-migration cleanup (techdebt.md).

@@ -135,6 +135,60 @@ Batch 0 builds what every later batch needs (no screen redesigned). Concrete sco
 6. **Chat is highest-risk and last**: streaming / IndexedDB / abort / MCP tools / self-managed
    scroll vs the shell's full-height grid — validate the scroll region before wiring its rail.
 7. **Flag + dead-code cleanup is part of the batch** — a section isn't done until its flags are
-   removed and its old code deleted.
+   removed and its old code deleted. **Exception (Batch 3-1):** when a section is split into
+   sub-phases and the existing E2E specs drive create/edit/delete through the **V1 list↔form flow**,
+   you cannot retire the list's flag while the forms are still V1 — retiring early breaks those specs.
+   In that case ship the screen **behind a default-off flag (`done-behind-flag`)** and retire it +
+   delete the V1 code + migrate the consuming specs in the sub-phase that lands the last consuming
+   form. Document the deferral in the retro + tracker; it must be deliberate, not forgotten.
 8. **Shared files are global** — after touching the shell or shared CSS, re-verify a sample of every
    screen type that consumes them, not just the one in front of you.
+
+## Learnings from Batch 3-1 (My Models) — apply to the upcoming form + discovery sub-phases
+
+**Full-stack sub-phase recipe** (when a screen needs new backend data/filters — 3-1 was the first):
+work strictly upstream→downstream: extend the backend (response field + query params) → `cargo run -p
+xtask openapi && make build.ts-client` (+ `make ci.ts-client-check` is a CI guard that *fails on
+uncommitted regen* — that's expected pre-commit, it confirms no drift) → thread an optional filter
+object through the list hook (CSV serializer + **sorted** cache-key) → publish/consume the chrome →
+RTL → E2E → GATE B. Get all upstream crates green (`cargo test -p services -p routes_app --lib`) before
+touching the frontend.
+
+**GATE B for any backend-changing batch needs the REBUILT binary live.** A stale `make app.run.live`
+serves the new frontend via Vite HMR but runs an **old `bodhi serve` binary** → it silently ignores new
+query params (filters/search no-op) while the UI looks fine, and automated tests still pass (they spawn
+a fresh dev-server). Before GATE B: `ports kill <appPort> 3000` → `make app.run.live` (rebuilds the
+binary). Presentation-only batches (0–2) don't need this. (memory:
+`feedback_gateb_rebuild_binary_for_backend_batches`.)
+
+**Server-filtered lists** need two things or they flake + flash: (1) `placeholderData:
+keepPreviousData` on the list query so the page doesn't blank on every facet/page change; (2) in E2E,
+a **settle-wait** after a facet click (wait for a row OR the empty state) before reading counts —
+otherwise the assertion races the in-flight refetch. Both landed in 3-1.
+
+**E2E nav: prefer `navigate('/ui/...')` over `navViaShell`** in list/form page objects — the shell-nav
+dropdown trigger can be intercepted by the main scroll-area viewport (30s click timeout). The V1 page
+objects already navigate directly; mirror that.
+
+**`design/` prototype files are user-owned** (the design team edits `bodhi-models-app.jsx` etc.). They
+show up as working-tree changes but are **NOT part of your implementation commit** — stage your files
+explicitly, never `git add -A`. Re-read the served prototype after the user says "design updated" (a
+hard-refresh may serve a stale cache; if `ls -la design/` timestamps + a `grep` for the new marker
+don't show it, the served JSX is stale — work from the user's screenshot + re-walk).
+
+**Search/UX placement is a one-question-up-front decision** (3-1 asked: submit-on-Enter vs debounce vs
+per-keystroke; nav-rename label-only vs id-too). Ask via `AskUserQuestion` before coding rather than
+iterating in code (Batch-1 retro insight #5).
+
+**Form sub-phases specifically** (3-2 API → 3-3 Fallback → 3-4 Local — simplest-first):
+- **`bodhi-form.css` (`bf-*`) is the form prerequisite** — Batches 0–2 + 3-1 (list screens) skipped it;
+  the **first form (3-2)** ports it scoped under a per-screen/per-form root. Decide shared-vs-per-screen
+  root at 3-2 plan time so 3-3/3-4 reuse it.
+- **`api_format` (API form) / `alias` (local form) are read-only on edit** — gate on `mode==='edit'`,
+  never infer from data; the server enforces it too.
+- **Don't drop real fields the prototype omits** (3-1: the prototype omitted resilience-config + size;
+  the backend had them). Real-data-only cuts *both* ways. The Fallback form's resilience-settings
+  question is the live example for 3-3.
+- The prod forms already carry most real fields (`ApiModelForm` / `ModelRouterForm` / `AliasForm`) +
+  the `convert*` helpers + the create/update hooks — **reuse them**; the port is presentation + chrome,
+  not a data-layer rewrite.
