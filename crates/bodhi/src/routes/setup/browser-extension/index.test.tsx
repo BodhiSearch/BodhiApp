@@ -61,6 +61,10 @@ vi.mock('lucide-react', () => ({
   Check: ({ className }: any) => <div data-testid="check-icon" className={className}></div>,
   Download: ({ className }: any) => <div data-testid="download-icon" className={className}></div>,
   RefreshCw: ({ className }: any) => <div data-testid="refresh-icon" className={className}></div>,
+  Puzzle: ({ className }: any) => <div data-testid="puzzle-icon" className={className}></div>,
+  ArrowRight: ({ className }: any) => <div data-testid="arrow-right-icon" className={className}></div>,
+  Moon: ({ className }: any) => <div data-testid="moon-icon" className={className}></div>,
+  Sun: ({ className }: any) => <div data-testid="sun-icon" className={className}></div>,
 }));
 
 vi.mock('@/components/ui/card', () => ({
@@ -134,7 +138,7 @@ describe('BrowserExtensionSetupPage', () => {
     // Check for welcome section
     expect(screen.getByText('Browser Extension Setup')).toBeInTheDocument();
     expect(
-      screen.getByText('Choose your browser and install the Bodhi extension to unlock AI features on any website.')
+      screen.getByText('Install the Bodhi extension to unlock AI features on any website you visit.')
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('browser-selector')).toBeInTheDocument();
@@ -207,9 +211,9 @@ describe('BrowserExtensionSetupPage', () => {
 
       renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-      expect(screen.getByText('Extension Ready')).toBeInTheDocument();
+      expect(screen.getByText('Extension Connected')).toBeInTheDocument();
       expect(screen.getByTestId('check-icon')).toBeInTheDocument();
-      expect(screen.getByText(/The Bodhi Browser extension is installed and ready to use/)).toBeInTheDocument();
+      expect(screen.getByText(/Bodhi is now active in your browser/)).toBeInTheDocument();
       expect(screen.getByTestId('browser-extension-continue')).toBeInTheDocument();
       expect(screen.getByText('Continue')).toBeInTheDocument();
     });
@@ -235,7 +239,7 @@ describe('BrowserExtensionSetupPage', () => {
       renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
       expect(screen.getByText('Extension Not Found')).toBeInTheDocument();
-      expect(screen.getByText(/Install the extension and click below to verify/)).toBeInTheDocument();
+      expect(screen.getByText(/Install the extension, then verify the connection below/)).toBeInTheDocument();
       expect(screen.getByTestId('refresh-button')).toBeInTheDocument();
       expect(screen.getByTestId('browser-extension-continue')).toBeInTheDocument();
       expect(screen.getByText('Skip for Now')).toBeInTheDocument();

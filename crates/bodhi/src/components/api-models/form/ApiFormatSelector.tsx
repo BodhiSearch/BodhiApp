@@ -1,7 +1,7 @@
-import { Badge } from '@/components/ui/badge';
+import { RequiredMark } from '@/components/api-models/form/FormSection';
 import { Label } from '@/components/ui/label';
-import { API_FORMAT_PRESETS, type ApiFormatPreset } from '@/schemas/apiModel';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { API_FORMAT_PRESETS, type ApiFormatPreset } from '@/schemas/apiModel';
 
 const formatDisplayName = (format: string): string => {
   const preset = API_FORMAT_PRESETS[format as ApiFormatPreset];
@@ -31,9 +31,9 @@ export function ApiFormatSelector({
 }: ApiFormatSelectorProps) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={testId} className="flex items-center gap-2">
+      <Label htmlFor={testId} className="flex items-center gap-1">
         {label}
-        {required && <Badge variant="secondary">Required</Badge>}
+        {required && <RequiredMark />}
       </Label>
 
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>

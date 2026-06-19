@@ -74,12 +74,12 @@ describe('Setup Page', () => {
     expect(screen.getByTestId('setup-form')).toBeInTheDocument();
     expect(screen.getByLabelText(/server name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /setup bodhi server/i })).toBeInTheDocument();
+    expect(screen.getByTestId('setup-submit')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
     await user.type(screen.getByLabelText(/description/i), 'Test description for my server');
 
-    await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
+    await user.click(screen.getByTestId('setup-submit'));
 
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/download-models/' });
@@ -97,7 +97,7 @@ describe('Setup Page', () => {
 
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
 
-    await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
+    await user.click(screen.getByTestId('setup-submit'));
 
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/resource-admin/' });
@@ -115,7 +115,7 @@ describe('Setup Page', () => {
 
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
 
-    await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
+    await user.click(screen.getByTestId('setup-submit'));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'Setup failed'));
@@ -131,7 +131,7 @@ describe('Setup Page', () => {
 
     await user.type(screen.getByLabelText(/server name/i), 'Short');
 
-    await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
+    await user.click(screen.getByTestId('setup-submit'));
 
     await waitFor(() => {
       expect(screen.getByText('Server name must be at least 10 characters long')).toBeInTheDocument();
@@ -150,7 +150,7 @@ describe('Setup Page', () => {
     const longName = 'a'.repeat(101);
     await user.type(screen.getByLabelText(/server name/i), longName);
 
-    await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
+    await user.click(screen.getByTestId('setup-submit'));
 
     await waitFor(() => {
       expect(screen.getByText('Server name must be less than 100 characters')).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('Setup Page', () => {
     await user.keyboard(`{Control>}a{/Control}`);
     await user.paste(longDescription);
 
-    await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
+    await user.click(screen.getByTestId('setup-submit'));
 
     await waitFor(() => {
       expect(screen.getByText('Description must be less than 500 characters')).toBeInTheDocument();
@@ -225,7 +225,7 @@ describe('Setup Page', () => {
       renderWithSetupProvider(<Setup />);
     });
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
-    await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
+    await user.click(screen.getByTestId('setup-submit'));
     await waitFor(() => {
       expect(screen.getByLabelText(/server name/i)).toBeDisabled();
       expect(screen.getByLabelText(/description/i)).toBeDisabled();
@@ -239,7 +239,7 @@ describe('Setup Page', () => {
       renderWithSetupProvider(<Setup />);
     });
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
-    await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
+    await user.click(screen.getByTestId('setup-submit'));
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/download-models/' });
     });

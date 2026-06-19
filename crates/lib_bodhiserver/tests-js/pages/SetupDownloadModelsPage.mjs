@@ -22,7 +22,7 @@ export class SetupDownloadModelsPage extends SetupBasePage {
   }
 
   async expectDownloadModelsPage() {
-    await this.page.waitForURL((url) => url.pathname === '/ui/setup/download-models/');
+    await this.page.waitForURL(url => url.pathname === '/ui/setup/download-models/');
     await this.expectVisible(this.selectors.chatModelsTitle);
     await this.expectStepIndicator(3);
     await this.expectRecommendedModelsDisplayed();
@@ -47,8 +47,8 @@ export class SetupDownloadModelsPage extends SetupBasePage {
     let downloadButton;
 
     if (modelName) {
-      // Find download button for specific model
-      const modelCard = this.page.locator(`text=${modelName}`).locator('..').locator('..'); // Navigate up to card
+      // Find the download button within the card whose name matches.
+      const modelCard = this.page.locator(this.selectors.modelCard).filter({ hasText: modelName });
       downloadButton = modelCard.locator(this.selectors.downloadButton);
     } else {
       // Download first available model

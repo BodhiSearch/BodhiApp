@@ -1,8 +1,8 @@
-import { Check, RefreshCw } from 'lucide-react';
+import { Check, Puzzle, RefreshCw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import type { BrowserInfo } from '@/lib/browser-utils';
+import { SetupCardIcon } from '@/routes/setup/-components/SetupCardIcon';
 
 import { BrowserSelector } from './BrowserSelector';
 
@@ -19,7 +19,10 @@ interface BrowserExtensionCardProps {
 function ExtensionStatusDisplay({ status, onRefresh }: { status: ExtensionStatus; onRefresh: () => void }) {
   if (status === 'detecting') {
     return (
-      <div className="rounded-lg border bg-muted/30 p-6" data-testid="extension-detecting">
+      <div
+        className="rounded-[var(--radius-lg)] border border-border bg-muted/40 p-6"
+        data-testid="extension-detecting"
+      >
         <div className="flex items-center justify-center gap-2">
           <RefreshCw className="h-4 w-4 animate-spin" data-testid="refresh-icon" />
           <span className="text-sm">Checking for extension...</span>
@@ -31,19 +34,17 @@ function ExtensionStatusDisplay({ status, onRefresh }: { status: ExtensionStatus
   if (status === 'not-installed') {
     return (
       <div
-        className="rounded-lg border bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800 p-6 space-y-4"
+        className="space-y-4 rounded-[var(--radius-lg)] border border-border bg-muted/40 p-6 text-center"
         data-testid="extension-not-found"
       >
-        <div className="text-center">
-          <p className="font-medium text-orange-900 dark:text-orange-200">Extension Not Found</p>
-          <p className="text-sm text-muted-foreground mt-2">Install the extension and click below to verify</p>
+        <div>
+          <p className="font-semibold">Extension Not Found</p>
+          <p className="mt-1 text-sm text-muted-foreground">Install the extension, then verify the connection below.</p>
         </div>
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={onRefresh} data-testid="refresh-button">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Check Again
-          </Button>
-        </div>
+        <Button variant="outline" onClick={onRefresh} data-testid="refresh-button" className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Check Again
+        </Button>
       </div>
     );
   }
@@ -51,16 +52,14 @@ function ExtensionStatusDisplay({ status, onRefresh }: { status: ExtensionStatus
   if (status === 'installed') {
     return (
       <div
-        className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10 p-6"
+        className="rounded-[var(--radius-lg)] border border-[hsl(var(--success)/0.35)] bg-[hsl(var(--success)/0.1)] p-6 text-center"
         data-testid="extension-found"
       >
-        <div className="flex items-center justify-center gap-2">
-          <Check className="h-5 w-5 text-green-600 dark:text-green-400" data-testid="check-icon" />
-          <p className="font-medium text-green-900 dark:text-green-200">Extension Ready</p>
+        <div className="mx-auto mb-3 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[hsl(var(--success)/0.16)] text-[hsl(var(--success))]">
+          <Check className="h-5 w-5" strokeWidth={3} data-testid="check-icon" />
         </div>
-        <p className="text-center text-sm text-green-700 dark:text-green-300 mt-2">
-          The Bodhi Browser extension is installed and ready to use
-        </p>
+        <p className="font-semibold text-[hsl(var(--success))]">Extension Connected</p>
+        <p className="mt-1 text-sm text-muted-foreground">Bodhi is now active in your browser. You&apos;re all set.</p>
       </div>
     );
   }
@@ -79,23 +78,26 @@ export function BrowserExtensionCard({
   const showExtensionStatus = currentBrowser?.supported;
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle>Browser Extension Setup</CardTitle>
-        <CardDescription>
-          Choose your browser and install the Bodhi extension to unlock AI features on any website.
-        </CardDescription>
-      </CardHeader>
+    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card shadow-sm">
+      <div className="px-9 py-8">
+        <header className="mb-6 text-center">
+          <SetupCardIcon icon={Puzzle} />
+          <h2 className="text-[26px] font-bold leading-tight tracking-tight">Browser Extension Setup</h2>
+          <p className="mx-auto mt-2 max-w-[50ch] text-[14.5px] leading-relaxed text-muted-foreground">
+            Install the Bodhi extension to unlock AI features on any website you visit.
+          </p>
+        </header>
 
-      <CardContent className="space-y-6">
-        <BrowserSelector
-          detectedBrowser={detectedBrowser}
-          selectedBrowser={selectedBrowser}
-          onBrowserSelect={onBrowserSelect}
-        />
+        <div className="space-y-6">
+          <BrowserSelector
+            detectedBrowser={detectedBrowser}
+            selectedBrowser={selectedBrowser}
+            onBrowserSelect={onBrowserSelect}
+          />
 
-        {showExtensionStatus && <ExtensionStatusDisplay status={extensionStatus} onRefresh={onRefresh} />}
-      </CardContent>
-    </Card>
+          {showExtensionStatus && <ExtensionStatusDisplay status={extensionStatus} onRefresh={onRefresh} />}
+        </div>
+      </div>
+    </section>
   );
 }

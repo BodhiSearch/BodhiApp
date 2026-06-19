@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 
 import { useNavigate } from '@tanstack/react-router';
-
 import { createFileRoute } from '@tanstack/react-router';
+import { motion } from 'framer-motion';
 
-import { SetupContainer, SetupCard, SetupFooter } from '../-components';
-import { ModelCard } from './-components/ModelCard';
-import { ModelInfo, ModelCatalog } from '@/hooks/models/model-catalog-types';
 import AppInitializer from '@/components/AppInitializer';
-import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useChatModelsCatalog, useEmbeddingModelsCatalog, useListDownloads, usePullModel } from '@/hooks/models';
+import { ModelInfo, ModelCatalog } from '@/hooks/models/model-catalog-types';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_SETUP_API_MODELS } from '@/lib/constants';
+
+import { SetupContainer, SetupFooter } from '../-components';
+import { itemVariants } from '../-shared/types';
+
+import { ModelCard } from './-components/ModelCard';
 
 export const Route = createFileRoute('/setup/download-models/')({
   component: ModelDownloadPage,
@@ -64,41 +67,42 @@ export function ModelDownloadContent() {
     };
   };
 
-  return (
-    <SetupContainer>
-      <SetupCard title="Chat Models" description="For conversations, content generation, summarization, and Q&A">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {chatModels.map((model) => {
-            const modelWithState = getDownloadState(model);
-            const downloadProgress = getDownloadProgress(model);
-            return (
-              <ModelCard
-                key={model.id}
-                model={modelWithState}
-                onDownload={() => handleModelDownload(model)}
-                downloadProgress={downloadProgress}
-              />
-            );
-          })}
-        </div>
-      </SetupCard>
+  const renderGrid = (models: ModelCatalog[]) => (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {models.map((model) => {
+        const modelWithState = getDownloadState(model);
+        const downloadProgress = getDownloadProgress(model);
+        return (
+          <ModelCard
+            key={model.id}
+            model={modelWithState}
+            onDownload={() => handleModelDownload(model)}
+            downloadProgress={downloadProgress}
+          />
+        );
+      })}
+    </div>
+  );
 
-      <SetupCard title="Embedding Models" description="For RAG, semantic search, and document retrieval">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {embeddingModels.map((model) => {
-            const modelWithState = getDownloadState(model);
-            const downloadProgress = getDownloadProgress(model);
-            return (
-              <ModelCard
-                key={model.id}
-                model={modelWithState}
-                onDownload={() => handleModelDownload(model)}
-                downloadProgress={downloadProgress}
-              />
-            );
-          })}
+  return (
+    <SetupContainer wide>
+      <motion.section variants={itemVariants}>
+        <div className="mb-6 text-center">
+          <h2 className="text-2xl font-bold tracking-tight">Chat Models</h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            For conversations, content generation, summarization, and Q&amp;A.
+          </p>
         </div>
-      </SetupCard>
+        {renderGrid(chatModels)}
+      </motion.section>
+
+      <motion.section variants={itemVariants} className="mt-10">
+        <div className="mb-6 text-center">
+          <h2 className="text-2xl font-bold tracking-tight">Embedding Models</h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">For RAG, semantic search, and document retrieval.</p>
+        </div>
+        {renderGrid(embeddingModels)}
+      </motion.section>
 
       <SetupFooter
         clarificationText="Downloads will continue in the background. You can download additional models later on the Models page."

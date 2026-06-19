@@ -1,9 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 import { DownloadRequest } from '@bodhiapp/ts-client';
+import { createFileRoute } from '@tanstack/react-router';
 
-import { PullForm } from './-components/PullForm';
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +11,8 @@ import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { useListDownloads } from '@/hooks/models';
 import { SortState } from '@/types/models';
+
+import { PullForm } from './-components/PullForm';
 
 export const Route = createFileRoute('/models/files/pull/')({
   component: PullPage,
@@ -59,11 +60,8 @@ function ProgressDisplay({ download }: { download: DownloadRequest }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center space-x-2">
-        <div className="w-full bg-muted rounded-full h-2">
-          <div
-            className="bg-primary h-2 rounded-full transition-all duration-300"
-            style={{ width: `${Math.min(computeProgress(download), 100)}%` }}
-          />
+        <div className="download-progress-track h-2 w-full">
+          <div className="download-progress-fill" style={{ width: `${Math.min(computeProgress(download), 100)}%` }} />
         </div>
         <span className="text-sm font-medium min-w-[3rem]">{computeProgress(download).toFixed(1)}%</span>
       </div>

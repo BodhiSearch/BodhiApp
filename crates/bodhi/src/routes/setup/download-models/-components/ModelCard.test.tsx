@@ -86,37 +86,36 @@ describe('ModelCard Display Tests', () => {
     expect(screen.getByText('Qwen2.5 14B')).toBeInTheDocument();
     expect(screen.getByText('⭐ Best Overall')).toBeInTheDocument();
 
-    expect(screen.getByText('Size:')).toBeInTheDocument();
+    // Spec chips (label + value)
+    expect(screen.getByText('Size')).toBeInTheDocument();
     expect(screen.getByText('8.99GB')).toBeInTheDocument();
-    expect(screen.getByText('Params:')).toBeInTheDocument();
+    expect(screen.getByText('Params')).toBeInTheDocument();
     expect(screen.getByText('14B')).toBeInTheDocument();
-    expect(screen.getByText('Quant:')).toBeInTheDocument();
+    expect(screen.getByText('Quant')).toBeInTheDocument();
     expect(screen.getByText('Q4_K_M')).toBeInTheDocument();
-    expect(screen.getByText('Context:')).toBeInTheDocument();
+    expect(screen.getByText('Context')).toBeInTheDocument();
     expect(screen.getByText('128K')).toBeInTheDocument();
-
-    expect(screen.getByText('MMLU:')).toBeInTheDocument();
-    expect(screen.getByText('79.7')).toBeInTheDocument();
 
     const link = screen.getByTestId('huggingface-link');
     expect(link).toHaveAttribute('href', 'https://huggingface.co/bartowski/Qwen2.5-14B-Instruct-GGUF');
 
+    // Only Quality + Speed meters in the V2 card (no Specialty / benchmark rows).
     expect(screen.getByText('Quality')).toBeInTheDocument();
     expect(screen.getByText('Speed')).toBeInTheDocument();
-    expect(screen.getByText('Specialty')).toBeInTheDocument();
+    expect(screen.queryByText('Specialty')).not.toBeInTheDocument();
+    expect(screen.queryByText('MMLU:')).not.toBeInTheDocument();
   });
 
-  it('renders embedding model with MTEB benchmark', () => {
+  it('renders embedding model with badge and specs', () => {
     render(<ModelCard model={embeddingModelFixture} onDownload={vi.fn()} />);
 
     expect(screen.getByText('Qwen3 Embedding 4B')).toBeInTheDocument();
     expect(screen.getByText('⭐ Top Choice')).toBeInTheDocument();
+    expect(screen.getByText('2.5GB')).toBeInTheDocument();
+    expect(screen.getByText('8K')).toBeInTheDocument();
 
-    expect(screen.getByText('MTEB:')).toBeInTheDocument();
-    expect(screen.getByText('70.58')).toBeInTheDocument();
-
+    expect(screen.queryByText('MTEB:')).not.toBeInTheDocument();
     expect(screen.queryByText('MMLU:')).not.toBeInTheDocument();
-    expect(screen.queryByText('HumanEval:')).not.toBeInTheDocument();
   });
 
   it('renders model without benchmarks gracefully', () => {
@@ -125,11 +124,10 @@ describe('ModelCard Display Tests', () => {
     expect(screen.getByText('Nomic Embed v1.5')).toBeInTheDocument();
     expect(screen.getByText('Most Efficient')).toBeInTheDocument();
 
-    expect(screen.getByText('Size:')).toBeInTheDocument();
+    expect(screen.getByText('Size')).toBeInTheDocument();
     expect(screen.getByText('274MB')).toBeInTheDocument();
 
     expect(screen.queryByText('MMLU:')).not.toBeInTheDocument();
-    expect(screen.queryByText('HumanEval:')).not.toBeInTheDocument();
     expect(screen.queryByText('MTEB:')).not.toBeInTheDocument();
 
     expect(screen.getByText('Quality')).toBeInTheDocument();

@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 
-import { motion } from 'framer-motion';
 import { useNavigate } from '@tanstack/react-router';
-
 import { createFileRoute } from '@tanstack/react-router';
+import { motion } from 'framer-motion';
 
-import { SetupContainer, SetupFooter } from '../-components';
-import { itemVariants } from '../-shared/types';
 import AppInitializer from '@/components/AppInitializer';
 import { BrowserExtensionCard } from '@/components/setup/BrowserExtensionCard';
 import { useBrowserDetection } from '@/hooks/use-browser-detection';
 import { useExtensionDetection } from '@/hooks/use-extension-detection';
 import type { BrowserInfo } from '@/lib/browser-utils';
 import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
+
+import { SetupContainer, SetupFooter } from '../-components';
+import { itemVariants } from '../-shared/types';
 
 export const Route = createFileRoute('/setup/browser-extension/')({
   component: BrowserExtensionSetupPage,

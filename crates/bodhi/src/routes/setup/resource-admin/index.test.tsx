@@ -56,7 +56,7 @@ describe('ResourceAdminPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Admin Setup')).toBeInTheDocument();
-      expect(screen.getByText('Continue with Login →')).toBeInTheDocument();
+      expect(screen.getByText('Continue with Login')).toBeInTheDocument();
     });
   });
 
@@ -66,7 +66,7 @@ describe('ResourceAdminPage', () => {
     renderWithSetupProvider(<ResourceAdminPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('As an Admin, you can:')).toBeInTheDocument();
+      expect(screen.getByText('As an admin, you can')).toBeInTheDocument();
       expect(screen.getByText('Manage user access and permissions')).toBeInTheDocument();
       expect(screen.getByText('Unrestricted access to system-wide settings')).toBeInTheDocument();
     });
@@ -101,7 +101,7 @@ describe('ResourceAdminPage', () => {
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
-    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login' });
     await userEvent.click(loginButton);
 
     expect(setItemSpy).toHaveBeenCalledWith('bodhi-return-url', ROUTE_SETUP_DOWNLOAD_MODELS);
@@ -116,7 +116,7 @@ describe('ResourceAdminPage', () => {
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
-    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
@@ -137,7 +137,7 @@ describe('ResourceAdminPage', () => {
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
-    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
@@ -158,7 +158,7 @@ describe('ResourceAdminPage', () => {
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
-    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
@@ -174,7 +174,7 @@ describe('ResourceAdminPage', () => {
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
-    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
@@ -182,8 +182,8 @@ describe('ResourceAdminPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Continue with Login →' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Continue with Login →' })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Continue with Login' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Continue with Login' })).not.toBeDisabled();
     });
   });
 
@@ -192,7 +192,7 @@ describe('ResourceAdminPage', () => {
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
-    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
@@ -205,7 +205,7 @@ describe('ResourceAdminPage', () => {
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
-    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
@@ -221,7 +221,7 @@ describe('ResourceAdminPage', () => {
 
     renderWithSetupProvider(<ResourceAdminPage />);
 
-    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {

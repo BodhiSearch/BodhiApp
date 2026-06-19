@@ -2,8 +2,8 @@ import { useState } from 'react';
 
 import { TestPromptRequest } from '@bodhiapp/ts-client';
 
-import { useToast } from '@/hooks/use-toast';
 import { useTestApiModel } from '@/hooks/models';
+import { useToast } from '@/hooks/use-toast';
 
 interface UseTestConnectionProps {
   mode?: 'create' | 'edit' | 'setup';

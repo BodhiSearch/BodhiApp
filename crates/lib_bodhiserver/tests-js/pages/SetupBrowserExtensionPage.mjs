@@ -85,9 +85,7 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
     await this.expectVisible(this.selectors.continueButton);
 
     // Should show install guidance
-    await expect(
-      this.page.locator('text=Install the extension and click below to verify')
-    ).toBeVisible();
+    await expect(this.page.locator('text=Install the extension, then verify the connection below')).toBeVisible();
 
     // Verify button shows "Skip for Now"
     const continueButton = this.page.locator(this.selectors.continueButton);
@@ -98,9 +96,7 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
     await this.expectVisible(this.selectors.extensionFound);
     await this.expectVisible(this.selectors.continueButton);
 
-    await expect(
-      this.page.locator('text=The Bodhi Browser extension is installed and ready to use')
-    ).toBeVisible();
+    await expect(this.page.locator('text=Bodhi is now active in your browser')).toBeVisible();
 
     // Verify button shows "Continue"
     const continueButton = this.page.locator(this.selectors.continueButton);

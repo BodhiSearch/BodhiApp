@@ -11,20 +11,21 @@ export type SetupRequirement = {
   details: string;
 };
 
+// Entrance motion is TRANSFORM-ONLY (no opacity). Resting state is fully visible so the route-level
+// view-transition root cross-fade can't capture a mid-fade (opacity:0) snapshot and leave the page
+// stuck faded — and reduced-motion / E2E always see content. Matches the design's capture-safe note.
 export const containerVariants = {
-  hidden: { opacity: 0 },
+  hidden: {},
   visible: {
-    opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.08,
     },
   },
 };
 
 export const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
+  hidden: { y: 12 },
   visible: {
     y: 0,
-    opacity: 1,
   },
 };

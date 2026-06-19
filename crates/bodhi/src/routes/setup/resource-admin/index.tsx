@@ -1,18 +1,19 @@
 import { useState } from 'react';
 
-import { motion } from 'framer-motion';
 import { useNavigate } from '@tanstack/react-router';
-
 import { createFileRoute } from '@tanstack/react-router';
+import { motion } from 'framer-motion';
+import { ArrowRight, Check, ShieldCheck } from 'lucide-react';
 
-import { SetupContainer, SetupCard } from '../-components';
-import { itemVariants } from '../-shared/types';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { useOAuthInitiate } from '@/hooks/auth';
 import { useGetAppInfo } from '@/hooks/info';
 import { ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
+
+import { SetupContainer, SetupCard, SetupCardIcon } from '../-components';
+import { itemVariants } from '../-shared/types';
 
 export const Route = createFileRoute('/setup/resource-admin/')({
   component: ResourceAdminPage,
@@ -61,51 +62,58 @@ function ResourceAdminContent() {
       <div data-testid="resource-admin-setup-page">
         <motion.div variants={itemVariants}>
           <SetupCard
-            title="Admin Setup"
-            description={
+            title={
               <>
-                <p className="py-2">You are setting up Bodhi App in authenticated mode.</p>
-                <p className="py-2">
-                  The email address you log in with will be granted admin role for this app instance.
-                </p>
+                <SetupCardIcon icon={ShieldCheck} />
+                <h2 className="text-[26px] font-bold leading-tight tracking-tight">Admin Setup</h2>
               </>
             }
+            description="You're setting up Bodhi in authenticated mode. The email address you log in with will be granted the admin role for this instance."
             footer={
               <div className="flex flex-col gap-3 w-full">
                 <Button
-                  className="w-full"
+                  className="w-full gap-2"
                   size="lg"
                   onClick={handleOAuthInitiate}
                   disabled={isButtonDisabled}
                   data-testid="continue-login-button"
                 >
-                  {isLoading ? 'Initiating...' : redirecting ? 'Redirecting...' : 'Continue with Login →'}
+                  {isLoading ? (
+                    'Initiating...'
+                  ) : redirecting ? (
+                    'Redirecting...'
+                  ) : (
+                    <>
+                      Continue with Login
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
                 </Button>
                 <p className="text-sm text-muted-foreground text-center">
-                  Login with a valid email address to continue
+                  Log in with a valid email address to continue.
                 </p>
               </div>
             }
           >
             <div className="space-y-2">
               {error && (
-                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+                <div className="rounded-[var(--radius-lg)] border border-destructive/50 bg-destructive/10 p-4">
                   <p className="text-destructive text-sm text-center">{error}</p>
                 </div>
               )}
 
-              <div className="rounded-lg bg-muted/30 p-6 space-y-4">
-                <h4 className="font-semibold text-base">As an Admin, you can:</h4>
-                <div className="space-y-3">
-                  <div className="flex items-start">
-                    <span className="text-primary mr-3 mt-0.5">✓</span>
-                    <span className="text-sm text-muted-foreground">Manage user access and permissions</span>
-                  </div>
-                  <div className="flex items-start">
-                    <span className="text-primary mr-3 mt-0.5">✓</span>
-                    <span className="text-sm text-muted-foreground">Unrestricted access to system-wide settings</span>
-                  </div>
-                </div>
+              <div className="rounded-[var(--radius-lg)] border border-border bg-muted/50 px-7 py-6">
+                <h3 className="mb-4 text-lg font-bold tracking-tight">As an admin, you can</h3>
+                <ul className="flex flex-col gap-4">
+                  {['Manage user access and permissions', 'Unrestricted access to system-wide settings'].map((cap) => (
+                    <li key={cap} className="flex items-start gap-3.5 text-[15px]">
+                      <span className="mt-px flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full bg-primary/[0.16] text-[hsl(var(--primary-hover))]">
+                        <Check className="h-[15px] w-[15px]" strokeWidth={3} />
+                      </span>
+                      <span>{cap}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </SetupCard>

@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 
 import { motion } from 'framer-motion';
 
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { itemVariants } from '../-shared/types';
 
 interface SetupCardProps {
   title?: string | ReactNode;
@@ -12,29 +12,31 @@ interface SetupCardProps {
   className?: string;
 }
 
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-  },
-};
-
+/** Calm wizard card: soft surface, generous padding, centered head. */
 export function SetupCard({ title, description, children, footer, className }: SetupCardProps) {
   return (
-    <motion.div variants={itemVariants}>
-      <Card className={className}>
+    <motion.section
+      variants={itemVariants}
+      className={`setup-card overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border-strong))] bg-card shadow-sm ${className ?? ''}`}
+    >
+      <div className="px-9 py-8">
         {title && (
-          <CardHeader className="text-center">
-            {typeof title === 'string' ? <CardTitle>{title}</CardTitle> : title}
-            {description && (
-              <CardDescription>{typeof description === 'string' ? description : <>{description}</>}</CardDescription>
+          <header className="mb-6 text-center">
+            {typeof title === 'string' ? (
+              <h2 className="text-[26px] font-bold leading-tight tracking-tight">{title}</h2>
+            ) : (
+              title
             )}
-          </CardHeader>
+            {description && (
+              <div className="mx-auto mt-2 max-w-[50ch] text-[14.5px] leading-relaxed text-muted-foreground">
+                {description}
+              </div>
+            )}
+          </header>
         )}
-        <CardContent>{children}</CardContent>
-        {footer && <CardFooter>{footer}</CardFooter>}
-      </Card>
-    </motion.div>
+        {children}
+        {footer && <div className="mt-6">{footer}</div>}
+      </div>
+    </motion.section>
   );
 }

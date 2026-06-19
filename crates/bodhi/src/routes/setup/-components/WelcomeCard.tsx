@@ -1,27 +1,17 @@
 import { motion } from 'framer-motion';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
 import { itemVariants } from '../-shared/types';
 
 export const WelcomeCard = () => {
   return (
-    <motion.div variants={itemVariants}>
-      <Card data-testid="welcome-card">
-        <CardHeader>
-          <CardTitle className="text-center text-3xl font-bold">Welcome to Bodhi App</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 px-4">
-          <p className="text-center text-muted-foreground text-lg">
-            Your Personal AI Hub - Local, Remote, and Everywhere
-          </p>
-          <div className="prose dark:prose-invert mx-auto text-center max-w-3xl">
-            <p>&quot;Bodhi&quot; (बोधि) comes from ancient Sanskrit/Pali, meaning deep wisdom and intelligence.</p>
-            <p>We believe AI should be private, secure, accessible to everyone, and available everywhere.</p>
-            <p>Bodhi App democratizes AI by putting you in control of how, where, and when you use AI.</p>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+    <motion.header variants={itemVariants} data-testid="welcome-card" className="mb-9 text-center">
+      <h1 className="mb-3 text-4xl font-bold leading-tight tracking-tight md:text-[44px]">
+        Welcome to Bodhi App <span className="font-medium text-[hsl(var(--primary-hover))]">बोधि</span>
+      </h1>
+      <p className="mx-auto max-w-[46ch] text-[17px] leading-relaxed text-muted-foreground">
+        Your Personal AI Hub — local, remote, and everywhere. &quot;Bodhi&quot; (बोधि) comes from ancient Sanskrit,
+        meaning deep wisdom and awakening.
+      </p>
+    </motion.header>
   );
 };

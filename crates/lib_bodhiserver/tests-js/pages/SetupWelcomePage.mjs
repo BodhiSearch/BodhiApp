@@ -7,13 +7,13 @@ export class SetupWelcomePage extends SetupBasePage {
     pageContainer: '[data-testid="setup-welcome-page"]',
     welcomeCard: '[data-testid="welcome-card"]',
     benefitsGrid: '[data-testid="benefits-grid"]',
-    benefitCard: (title) => `[data-testid="benefit-card-${title}"]`,
+    benefitCard: title => `[data-testid="benefit-card-${title}"]`,
     browserAIBenefit: '[data-testid="benefit-card-browser-ai-revolution"]',
     multiUserBenefit: '[data-testid="benefit-card-multi-user-ready"]',
     serverNameInput: '[data-testid="server-name-input"]',
     descriptionInput: '[data-testid="description-input"]',
     welcomeTitle: 'text=Welcome to Bodhi App',
-    setupButton: 'button:has-text("Setup Bodhi Server")',
+    setupButton: '[data-testid="setup-submit"]',
   };
 
   async navigateToSetup() {

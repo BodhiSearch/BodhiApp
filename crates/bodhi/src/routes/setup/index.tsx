@@ -1,24 +1,24 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
+import { motion } from 'framer-motion';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
-import { createFileRoute } from '@tanstack/react-router';
-
-import { BenefitCard } from './-components/BenefitCard';
-import { SetupContainer, SetupCard } from './-components';
-import { itemVariants } from './-shared/types';
-import { WelcomeCard } from './-components/WelcomeCard';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useSetupApp } from '@/hooks/info';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_SETUP_DOWNLOAD_MODELS, ROUTE_SETUP_RESOURCE_ADMIN } from '@/lib/constants';
 import { setupFormSchema, SetupFormData } from '@/schemas/objs';
+
+import { SetupContainer, SetupCard } from './-components';
+import { BenefitCard } from './-components/BenefitCard';
+import { WelcomeCard } from './-components/WelcomeCard';
+import { itemVariants } from './-shared/types';
 
 export const Route = createFileRoute('/setup/')({
   component: Setup,
@@ -99,13 +99,20 @@ function SetupContent() {
     <SetupContainer data-testid="setup-welcome-page">
       <WelcomeCard />
 
-      <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={itemVariants} data-testid="benefits-grid">
+      <motion.div
+        className="mb-6 grid grid-cols-1 gap-3.5 md:grid-cols-2"
+        variants={itemVariants}
+        data-testid="benefits-grid"
+      >
         {benefits.map((benefit) => (
           <BenefitCard key={benefit.title} {...benefit} />
         ))}
       </motion.div>
 
-      <SetupCard title="Setup Your Bodhi Server">
+      <SetupCard
+        title="Set up your Bodhi server"
+        description="Give this instance a name so you can recognize it later."
+      >
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSetup)} className="space-y-6" data-testid="setup-form">
             <FormField
@@ -153,14 +160,17 @@ function SetupContent() {
               )}
             />
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full gap-2" size="lg" disabled={isLoading} data-testid="setup-submit">
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Setting up...
                 </>
               ) : (
-                'Setup Bodhi Server →'
+                <>
+                  Set up Bodhi Server
+                  <ArrowRight className="h-4 w-4" />
+                </>
               )}
             </Button>
           </form>

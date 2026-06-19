@@ -8,6 +8,7 @@ import { ApiFormatSelector } from '@/components/api-models/form/ApiFormatSelecto
 import { ApiKeyInput } from '@/components/api-models/form/ApiKeyInput';
 import { BaseUrlInput } from '@/components/api-models/form/BaseUrlInput';
 import { ExtrasSection } from '@/components/api-models/form/ExtrasSection';
+import { FormSection } from '@/components/api-models/form/FormSection';
 import { ForwardModeSelector } from '@/components/api-models/form/ForwardModeSelector';
 import { LlmLibertyEnvelopeInput } from '@/components/api-models/form/LlmLibertyEnvelopeInput';
 import { ModelSelectionSection } from '@/components/api-models/form/ModelSelectionSection';
@@ -68,95 +69,103 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
         mode === 'edit' ? 'edit-api-model-form' : mode === 'setup' ? 'setup-api-model-form' : 'create-api-model-form'
       }
     >
-      <Card>
-        <CardHeader>
-          <CardTitle className={mode === 'setup' ? 'text-center' : ''}>
-            {mode === 'edit' ? 'Edit API Model' : mode === 'setup' ? 'Setup API Models' : 'Create New API Model'}
-          </CardTitle>
-          <CardDescription className={mode === 'setup' ? 'text-center' : ''}>
-            {mode === 'edit'
-              ? 'Update the configuration for your API model'
-              : mode === 'setup'
-                ? 'Configure cloud-based AI models for your setup'
+      <Card className="border-border bg-card shadow-sm">
+        {mode !== 'setup' && (
+          <CardHeader>
+            <CardTitle>{mode === 'edit' ? 'Edit API Model' : 'Create New API Model'}</CardTitle>
+            <CardDescription>
+              {mode === 'edit'
+                ? 'Update the configuration for your API model'
                 : 'Configure a new external AI API model'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <NameInput {...formLogic.register('name')} error={formLogic.errors.name?.message} />
+            </CardDescription>
+          </CardHeader>
+        )}
+        <CardContent className={`space-y-8 ${mode === 'setup' ? 'pt-6' : ''}`}>
+          <FormSection title="Provider Connection">
+            <NameInput {...formLogic.register('name')} error={formLogic.errors.name?.message} />
 
-          <ApiFormatSelector
-            value={formLogic.watchedValues.api_format}
-            options={formLogic.apiFormatsData}
-            onValueChange={formLogic.handleApiFormatChange}
-            disabled={isEditMode}
-          />
-
-          {formLogic.watchedValues.api_format === 'llm_liberty_oauth' ? (
-            /* LLM Liberty OAuth: envelope replaces base_url, api_key, and extras */
-            <LlmLibertyEnvelopeInput
-              value={formLogic.watchedValues.llm_liberty_envelope || ''}
-              onChange={(value) => formLogic.setValue('llm_liberty_envelope', value)}
-              error={formLogic.errors.llm_liberty_envelope?.message}
-              mode={formLogic.mode}
-              hasStoredCredentials={Boolean(initialData?.llm_liberty)}
+            <ApiFormatSelector
+              value={formLogic.watchedValues.api_format}
+              options={formLogic.apiFormatsData}
+              onValueChange={formLogic.handleApiFormatChange}
+              disabled={isEditMode}
             />
-          ) : (
-            <>
-              <BaseUrlInput {...formLogic.register('base_url')} error={formLogic.errors.base_url?.message} />
 
-              <ApiKeyInput
-                {...formLogic.register('api_key')}
+            {formLogic.watchedValues.api_format === 'llm_liberty_oauth' ? (
+              /* LLM Liberty OAuth: envelope replaces base_url, api_key, and extras */
+              <LlmLibertyEnvelopeInput
+                value={formLogic.watchedValues.llm_liberty_envelope || ''}
+                onChange={(value) => formLogic.setValue('llm_liberty_envelope', value)}
+                error={formLogic.errors.llm_liberty_envelope?.message}
                 mode={formLogic.mode}
-                enabled={formLogic.watchedValues.useApiKey}
-                onEnabledChange={(enabled) => formLogic.setValue('useApiKey', enabled)}
-                error={formLogic.errors.api_key?.message}
+                hasStoredCredentials={Boolean(initialData?.llm_liberty)}
               />
+            ) : (
+              <>
+                <BaseUrlInput {...formLogic.register('base_url')} error={formLogic.errors.base_url?.message} />
 
-              {/* Extra Headers and Body (conditionally shown for formats with defaults) */}
-              {formLogic.showExtras && (
-                <ExtrasSection
-                  extraHeaders={formLogic.watchedValues.extra_headers || ''}
-                  extraBody={formLogic.watchedValues.extra_body || ''}
-                  onExtraHeadersChange={(value) => formLogic.setValue('extra_headers', value)}
-                  onExtraBodyChange={(value) => formLogic.setValue('extra_body', value)}
-                  extraHeadersError={formLogic.errors.extra_headers?.message}
-                  extraBodyError={formLogic.errors.extra_body?.message}
+                <ApiKeyInput
+                  {...formLogic.register('api_key')}
+                  mode={formLogic.mode}
+                  enabled={formLogic.watchedValues.useApiKey}
+                  onEnabledChange={(enabled) => formLogic.setValue('useApiKey', enabled)}
+                  error={formLogic.errors.api_key?.message}
                 />
-              )}
-            </>
-          )}
 
-          <PrefixInput
-            value={formLogic.watchedValues.prefix}
-            onChange={(value) => formLogic.setValue('prefix', value)}
-            enabled={formLogic.watchedValues.usePrefix}
-            onEnabledChange={(enabled) => formLogic.setValue('usePrefix', enabled)}
-            error={formLogic.errors.prefix?.message}
-          />
+                {/* Extra Headers and Body (conditionally shown for formats with defaults) */}
+                {formLogic.showExtras && (
+                  <ExtrasSection
+                    extraHeaders={formLogic.watchedValues.extra_headers || ''}
+                    extraBody={formLogic.watchedValues.extra_body || ''}
+                    onExtraHeadersChange={(value) => formLogic.setValue('extra_headers', value)}
+                    onExtraBodyChange={(value) => formLogic.setValue('extra_body', value)}
+                    extraHeadersError={formLogic.errors.extra_headers?.message}
+                    extraBodyError={formLogic.errors.extra_body?.message}
+                  />
+                )}
+              </>
+            )}
+          </FormSection>
 
-          <ForwardModeSelector
-            forwardAll={formLogic.watchedValues.forward_all_with_prefix || false}
-            onForwardAllChange={(value) => formLogic.setValue('forward_all_with_prefix', value)}
-            prefixEnabled={formLogic.watchedValues.usePrefix}
-            prefix={formLogic.watchedValues.prefix}
-            error={formLogic.errors.forward_all_with_prefix?.message}
-          />
+          <div className="border-t border-border" />
 
-          <ModelSelectionSection
-            selectedModels={formLogic.watchedValues.models || []}
-            availableModels={formLogic.fetchModels.availableModels}
-            onModelSelect={formLogic.handleModelSelect}
-            onModelRemove={formLogic.handleModelRemove}
-            onModelsSelectAll={formLogic.handleModelsSelectAll}
-            onFetchModels={formLogic.fetchModels.onFetch}
-            isFetchingModels={formLogic.fetchModels.isLoading}
-            canFetch={formLogic.fetchModels.canFetch}
-            fetchDisabledReason={formLogic.fetchModels.disabledReason}
-            error={formLogic.errors.models?.message}
-            provider={formLogic.selectedProvider}
-            fetchStatus={formLogic.fetchModels.status}
-            disabled={formLogic.watchedValues.forward_all_with_prefix || false}
-          />
+          <FormSection title="Request Routing">
+            <PrefixInput
+              value={formLogic.watchedValues.prefix}
+              onChange={(value) => formLogic.setValue('prefix', value)}
+              enabled={formLogic.watchedValues.usePrefix}
+              onEnabledChange={(enabled) => formLogic.setValue('usePrefix', enabled)}
+              error={formLogic.errors.prefix?.message}
+            />
+
+            <ForwardModeSelector
+              forwardAll={formLogic.watchedValues.forward_all_with_prefix || false}
+              onForwardAllChange={(value) => formLogic.setValue('forward_all_with_prefix', value)}
+              prefixEnabled={formLogic.watchedValues.usePrefix}
+              prefix={formLogic.watchedValues.prefix}
+              error={formLogic.errors.forward_all_with_prefix?.message}
+            />
+          </FormSection>
+
+          <div className="border-t border-border" />
+
+          <FormSection title="Model Selection">
+            <ModelSelectionSection
+              selectedModels={formLogic.watchedValues.models || []}
+              availableModels={formLogic.fetchModels.availableModels}
+              onModelSelect={formLogic.handleModelSelect}
+              onModelRemove={formLogic.handleModelRemove}
+              onModelsSelectAll={formLogic.handleModelsSelectAll}
+              onFetchModels={formLogic.fetchModels.onFetch}
+              isFetchingModels={formLogic.fetchModels.isLoading}
+              canFetch={formLogic.fetchModels.canFetch}
+              fetchDisabledReason={formLogic.fetchModels.disabledReason}
+              error={formLogic.errors.models?.message}
+              provider={formLogic.selectedProvider}
+              fetchStatus={formLogic.fetchModels.status}
+              disabled={formLogic.watchedValues.forward_all_with_prefix || false}
+            />
+          </FormSection>
 
           <FormActions
             primaryAction={{

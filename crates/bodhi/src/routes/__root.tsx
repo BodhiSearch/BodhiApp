@@ -6,7 +6,7 @@ import '@/styles/view-transitions.css';
 import ClientProviders from '@/components/ClientProviders';
 import { AppShell } from '@/components/shell';
 import { BareLayout } from '@/components/shell/BareLayout';
-import { isBareRoute, resolveShellRoute } from '@/components/shell/resolveShellRoute';
+import { isBareRoute, isFullscreenRoute, resolveShellRoute } from '@/components/shell/resolveShellRoute';
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell/ShellSlotsContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
@@ -18,10 +18,12 @@ export const Route = createRootRoute({
 
 /**
  * Decides the layout for the current route:
- * - Bare routes (setup / login / auth / request-access / oauth / root redirectors AND the
- *   standalone OAuth access-request review) render OUTSIDE the AppShell, through the slim-topbar
- *   `BareLayout`. (The central `BARE_PREFIXES` switch in resolveShellRoute is interim — a
- *   route-declared layout seam is the deferred follow-up; see screen-v2/techdebt.md.)
+ * - Fullscreen routes (the setup wizard) render the Outlet directly with NO chrome — the wizard
+ *   owns its own centered column, logo, stepper, and theme toggle.
+ * - Bare routes (login / auth / request-access / oauth / root redirectors AND the standalone OAuth
+ *   access-request review) render OUTSIDE the AppShell, through the slim-topbar `BareLayout`. (The
+ *   central prefix switches in resolveShellRoute are interim — a route-declared layout seam is the
+ *   deferred follow-up; see screen-v2/techdebt.md.)
  * - App routes render inside the V2 AppShell, with the active section/subPage derived from the
  *   pathname. A migrated screen contributes breadcrumb/headerActions/rail via `useShellChrome`
  *   (ShellSlotsContext); unmigrated screens render their existing content inside the shell.
@@ -29,6 +31,10 @@ export const Route = createRootRoute({
 function RootShell() {
   const { pathname } = useLocation();
   const slots = useShellSlots();
+
+  if (isFullscreenRoute(pathname)) {
+    return <Outlet />;
+  }
 
   if (isBareRoute(pathname)) {
     return (

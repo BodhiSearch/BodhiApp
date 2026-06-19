@@ -18,7 +18,7 @@ export class SetupApiModelsPage extends SetupBasePage {
     setupProgress: '[data-testid="setup-progress"]',
     setupForm: '[data-testid="setup-api-model-form"]',
     skipButton: '[data-testid="skip-api-setup"]',
-    welcomeTitle: 'text=Setup API Models',
+    welcomeTitle: 'text=Set up API Models',
     helpSection: "text=Don't have an API key?",
   };
 
@@ -54,9 +54,7 @@ export class SetupApiModelsPage extends SetupBasePage {
     await this.form.expectFetchModelsButtonDisabled();
 
     // Verify correct button text
-    await expect(this.page.locator(this.form.selectors.createButton)).toContainText(
-      'Create API Model'
-    );
+    await expect(this.page.locator(this.form.selectors.createButton)).toContainText('Create API Model');
   }
 
   // Form interaction methods (delegated to form component)
@@ -126,12 +124,7 @@ export class SetupApiModelsPage extends SetupBasePage {
 
   // Setup-specific workflow methods
   async completeApiModelSetup(options = {}) {
-    const {
-      apiFormat = 'openai',
-      apiKey = 'sk-test-key-123',
-      models = ['gpt-4'],
-      skipSetup = false,
-    } = options;
+    const { apiFormat = 'openai', apiKey = 'sk-test-key-123', models = ['gpt-4'], skipSetup = false } = options;
 
     if (skipSetup) {
       await this.skipApiSetup();

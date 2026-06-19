@@ -1,25 +1,21 @@
 import { useEffect, useState } from 'react';
 
+import { useNavigate } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { ArrowRight, BookOpen } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
 import { siDiscord, siGithub, siX, siYoutube } from 'simple-icons';
 
-import { createFileRoute } from '@tanstack/react-router';
-
-import { SetupContainer, SetupCard } from '../-components';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { ROUTE_CHAT } from '@/lib/constants';
 
+import { SetupContainer, SetupCard } from '../-components';
+import { itemVariants } from '../-shared/types';
+
 export const Route = createFileRoute('/setup/complete/')({
   component: SetupCompletePage,
 });
-
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1 },
-};
 
 function SimpleIcon({ icon, className }: { icon: { path: string }; className?: string }) {
   return (
@@ -124,65 +120,65 @@ function SetupCompleteContent() {
     <main className="min-h-screen bg-background">
       {showConfetti && <Confetti />}
       <SetupContainer showProgress={false}>
-        <motion.div variants={itemVariants} className="text-center space-y-4">
-          <h1 className="text-4xl font-bold">🎉 Setup Complete!</h1>
-          <p className="text-muted-foreground">
-            Your Bodhi App is ready to use. Join our community to get the most out of it!
+        <motion.div variants={itemVariants} className="mb-9 space-y-3 text-center">
+          <h1 className="text-4xl font-bold tracking-tight md:text-[44px]">Setup Complete</h1>
+          <p className="mx-auto max-w-[46ch] text-[17px] leading-relaxed text-muted-foreground">
+            Your Bodhi App is ready to use. Join our community to get the most out of it.
           </p>
         </motion.div>
 
-        <SetupCard title="Join Our Community">
-          <div className="grid gap-4">
-            {socialLinks.map((link) => (
-              <motion.a
+        <SetupCard title="Join our community">
+          <div className="flex flex-col">
+            {socialLinks.map((link, idx) => (
+              <a
                 key={link.title}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`flex items-center gap-4 p-4 rounded-lg transition-colors ${link.color}`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                className={`group flex items-center gap-4 py-4 transition-colors hover:bg-muted/40 ${
+                  idx > 0 ? 'border-t border-border' : ''
+                }`}
               >
-                {link.icon}
-                <div className="flex-1">
-                  <h3 className="font-medium flex items-center gap-2">
-                    {link.title}
-                    {link.stats && <span className="text-sm text-muted-foreground">{link.stats}</span>}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{link.description}</p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              </motion.a>
+                <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[var(--radius-md)] bg-muted text-foreground">
+                  {link.icon}
+                </span>
+                <span className="flex-1">
+                  <span className="block font-medium">{link.title}</span>
+                  <span className="block text-sm text-muted-foreground">{link.description}</span>
+                </span>
+                <ArrowRight className="h-[18px] w-[18px] flex-none text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </a>
             ))}
           </div>
         </SetupCard>
 
-        <SetupCard title="Quick Resources">
-          <div className="grid gap-4">
+        <SetupCard title="Quick resources">
+          <div className="flex flex-col">
             {resourceLinks.map((link) => (
-              <motion.a
+              <a
                 key={link.title}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                className="group flex items-center gap-4 py-4 transition-colors hover:bg-muted/40"
               >
-                {link.icon}
-                <div>
-                  <h3 className="font-medium">{link.title}</h3>
-                  <p className="text-sm text-muted-foreground">{link.description}</p>
-                </div>
-                <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
-              </motion.a>
+                <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[var(--radius-md)] bg-muted text-foreground">
+                  {link.icon}
+                </span>
+                <span className="flex-1">
+                  <span className="block font-medium">{link.title}</span>
+                  <span className="block text-sm text-muted-foreground">{link.description}</span>
+                </span>
+                <ArrowRight className="h-[18px] w-[18px] flex-none text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </a>
             ))}
           </div>
         </SetupCard>
 
-        <motion.div variants={itemVariants} className="flex justify-center pt-4">
-          <Button size="lg" onClick={() => navigate({ to: ROUTE_CHAT })} className="px-8">
-            Start Using Bodhi App →
+        <motion.div variants={itemVariants} className="mt-6">
+          <Button size="lg" onClick={() => navigate({ to: ROUTE_CHAT })} className="w-full gap-2">
+            Start Using Bodhi App
+            <ArrowRight className="h-4 w-4" />
           </Button>
         </motion.div>
       </SetupContainer>

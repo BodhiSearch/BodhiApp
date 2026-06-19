@@ -1,0 +1,65 @@
+/* Setup wizard chrome — the few bits that read cleaner as CSS than Tailwind
+   arbitrary values: the soft "morning light" page wash, the breathing lotus,
+   and the breathing halo on the active stepper node. Everything else is
+   Tailwind utilities against the design tokens in globals.css. All motion is
+   gated on prefers-reduced-motion (E2E sets reduced-motion). */
+
+/* The wizard renders fullscreen (outside AppShell/BareLayout). Global shell.css sets
+   `html, body { height: 100%; overflow: hidden }`, so this container must own its own
+   scroll — fixed to the viewport with overflow-y:auto, like .bare-page/.bare-main. */
+.setup-wash {
+  position: fixed;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    radial-gradient(120% 60% at 50% -8%, hsl(var(--primary) / 0.1), transparent 60%),
+    radial-gradient(90% 50% at 92% 8%, hsl(var(--accent) / 0.06), transparent 55%);
+}
+
+.setup-lotus {
+  filter: drop-shadow(0 6px 18px hsl(var(--primary) / 0.28));
+  animation: setup-breathe 6s var(--ease-lotus) infinite;
+}
+@keyframes setup-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.025);
+  }
+}
+
+/* breathing halo behind the current stepper node */
+.setup-node-halo::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--primary) / 0.5);
+  animation: setup-halo 2.6s var(--ease-lotus) infinite;
+}
+@keyframes setup-halo {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  70%,
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+/* Even rhythm between stacked wizard cards (design: .su-card + .su-card spacing). */
+.setup-card + .setup-card {
+  margin-top: 1.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup-lotus,
+  .setup-node-halo::after {
+    animation: none;
+  }
+}

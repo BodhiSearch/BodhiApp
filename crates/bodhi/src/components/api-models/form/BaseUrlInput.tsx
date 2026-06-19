@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 
-import { Badge } from '@/components/ui/badge';
+import { RequiredMark } from '@/components/api-models/form/FormSection';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -33,9 +33,9 @@ export const BaseUrlInput = forwardRef<HTMLInputElement, BaseUrlInputProps>(
 
     return (
       <div className="space-y-2">
-        <Label htmlFor={testId} className="flex items-center gap-2">
+        <Label htmlFor={testId} className="flex items-center gap-1">
           {label}
-          {required && <Badge variant="secondary">Required</Badge>}
+          {required && <RequiredMark />}
         </Label>
 
         <Input

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { ModelSelector } from '@/components/ModelSelector';
-import { Label } from '@/components/ui/label';
 
 import { ApiProvider } from '../providers/constants';
 
@@ -59,8 +58,6 @@ export function ModelSelectionSection({
       data-testid={testId}
       data-teststate={disabled ? 'disabled' : 'enabled'}
     >
-      <Label>Model Selection</Label>
-
       {disabled && (
         <p className="text-sm text-muted-foreground">
           Model selection is disabled when using &quot;Forward all requests with prefix&quot; mode.

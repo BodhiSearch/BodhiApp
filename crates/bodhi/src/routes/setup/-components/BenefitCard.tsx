@@ -1,7 +1,3 @@
-import { motion } from 'framer-motion';
-
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
 interface BenefitCardProps {
   title: string;
   description: string;
@@ -13,23 +9,20 @@ export function BenefitCard({ title, description, icon, isNew }: BenefitCardProp
   const testId = `benefit-card-${title.toLowerCase().replace(/\s+/g, '-')}`;
 
   return (
-    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ type: 'spring', stiffness: 300 }}>
-      <Card className="h-full relative" data-testid={testId}>
-        {isNew && (
-          <span className="absolute top-2 right-2 text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
-            NEW
-          </span>
-        )}
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span className="text-2xl">{icon}</span>
-            <span>{title}</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">{description}</p>
-        </CardContent>
-      </Card>
-    </motion.div>
+    <article
+      data-testid={testId}
+      className="relative h-full rounded-[var(--radius-lg)] border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md"
+    >
+      {isNew && (
+        <span className="absolute right-4 top-4 rounded-full bg-[hsl(var(--accent)/0.12)] px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-[hsl(var(--accent))]">
+          NEW
+        </span>
+      )}
+      <div className="mb-3.5 flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)] bg-primary/[0.14] text-xl text-[hsl(var(--primary-hover))]">
+        {icon}
+      </div>
+      <h3 className="mb-1.5 text-base font-semibold tracking-tight">{title}</h3>
+      <p className="text-[13px] leading-relaxed text-muted-foreground">{description}</p>
+    </article>
   );
 }

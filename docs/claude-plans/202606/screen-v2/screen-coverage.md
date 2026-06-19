@@ -3,10 +3,12 @@
 > **SCOPE (locked):** This migration covers the **13 shell app screens** (Chat, Models ×4, MCP ×3,
 > API Keys ×3, Settings ×2 — the "shell" layout family) **plus the OAuth-consent Access Request
 > review** at `/apps/access-requests/review/`, which Batch 1 promoted into scope as the first **bare**
-> (standalone, no-sidebar) screen — so 14 screens total. The remaining **access-request standalone**
-> screens (`/request-access/`, pending), the **setup** wizard, and the **Keycloak/auth** screens
-> stay **OUT OF SCOPE for now** (designs exist in `design/` — `bodhi-standalone.css`, `setup-flow.css`,
-> `bodhi-auth.css` families — but are deferred). The layout model is built **shell vs bare** (Batch 1
+> (standalone, no-sidebar) screen — so 14 screens total. The **setup** wizard (6 steps) was migrated
+> as a detour batch (2026-06-19) — it renders **fullscreen** (a third layout class beyond shell/bare:
+> no BareLayout topbar, the wizard owns its full chrome). The remaining **access-request standalone**
+> screens (`/request-access/`, pending) and the **Keycloak/auth** screens stay **OUT OF SCOPE for
+> now** (designs exist in `design/` — `bodhi-standalone.css`, `bodhi-auth.css` families — but are
+> deferred). The layout model is built **shell vs bare** (Batch 1
 > ships the reusable `BareLayout`) so those families can be added later without rework.
 
 

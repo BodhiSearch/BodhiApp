@@ -2,43 +2,49 @@ import { ReactNode } from 'react';
 
 import { motion } from 'framer-motion';
 
-import { BodhiLogo } from './BodhiLogo';
+import './setup-wizard.css';
 import { SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '../-shared/constants';
-import { SetupProgress } from './SetupProgress';
+import { containerVariants } from '../-shared/types';
 
+import { BodhiLogo } from './BodhiLogo';
+import { SetupProgress } from './SetupProgress';
 import { useSetupContext } from './SetupProvider';
+import { SetupThemeToggle } from './SetupThemeToggle';
 
 interface SetupContainerProps {
   children: ReactNode;
   showLogo?: boolean;
   showProgress?: boolean;
+  /** Wide column for the model-recommendation grid (step 3). */
+  wide?: boolean;
+  'data-testid'?: string;
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-export function SetupContainer({ children, showLogo = true, showProgress = true }: SetupContainerProps) {
+export function SetupContainer({
+  children,
+  showLogo = true,
+  showProgress = true,
+  wide = false,
+  'data-testid': dataTestId,
+}: SetupContainerProps) {
   const { currentStep } = useSetupContext();
 
   return (
-    <motion.div
-      className="mx-auto max-w-4xl space-y-8 p-4 md:p-8"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      {showLogo && <BodhiLogo />}
-      {showProgress && (
-        <SetupProgress currentStep={currentStep} totalSteps={SETUP_TOTAL_STEPS} stepLabels={SETUP_STEP_LABELS} />
-      )}
-      {children}
-    </motion.div>
+    <div className="setup-wash">
+      <SetupThemeToggle />
+      <motion.div
+        data-testid={dataTestId}
+        className={`relative mx-auto w-full px-6 pb-24 pt-12 ${wide ? 'max-w-4xl' : 'max-w-2xl'}`}
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {showLogo && <BodhiLogo />}
+        {showProgress && (
+          <SetupProgress currentStep={currentStep} totalSteps={SETUP_TOTAL_STEPS} stepLabels={SETUP_STEP_LABELS} />
+        )}
+        {children}
+      </motion.div>
+    </div>
   );
 }

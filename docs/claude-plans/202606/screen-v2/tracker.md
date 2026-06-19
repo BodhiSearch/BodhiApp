@@ -93,7 +93,17 @@ tracked as a dedicated iteration in @techdebt.md.
 table/dialogs DELETED in Batch 2**). `/models/files/`, `/models/files/pull/`, `/mcps/servers/*` →
 absorbed (see @screen-coverage.md §B).
 
-**Out of scope (deferred):** access-request standalone (`/request-access/`, pending), setup wizard,
+**Setup wizard** — ✅ migrated (detour batch, 2026-06-19). All 6 steps restyled to the design
+(`setup-1..6`): fullscreen standalone chrome (own lotus + stepper + theme toggle, NO BareLayout
+topbar — added `isFullscreenRoute('/setup')` to `resolveShellRoute` + a fullscreen branch in
+`__root`), idiomatic Tailwind+tokens (no `.su-*` CSS dump; one tiny `setup-wizard.css` only for the
+wash gradient / breathing lotus / halo keyframes). **V2-only, no flag.** Reused every hook + redirect
++ the production `ApiModelForm mode="setup"` unchanged (step 4). Entrance motion made transform-only
+(no opacity) so the route VT cross-fade can't leave the page faded. Testids preserved; RTL 999/0,
+setup E2E green. The `setup-browser-extension-with-extension-installed` spec is auth-server-flaky
+(`500 /auth/callback`), passes on isolated re-run.
+
+**Out of scope (deferred):** access-request standalone (`/request-access/`, pending),
 Keycloak/auth (@screen-coverage.md §C).
 
 ## Cross-cutting (done)

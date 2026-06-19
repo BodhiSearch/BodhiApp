@@ -34,6 +34,18 @@ export function isBareRoute(pathname: string): boolean {
 }
 
 /**
+ * Route prefixes that render fullscreen — no chrome at all (no AppShell, no BareLayout slim
+ * topbar). The setup wizard owns its entire chrome (centered column, logo, stepper, theme toggle),
+ * so it renders the Outlet directly. Subset of bare routes.
+ */
+const FULLSCREEN_PREFIXES = ['/setup'];
+
+export function isFullscreenRoute(pathname: string): boolean {
+  const p = normalize(pathname);
+  return FULLSCREEN_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));
+}
+
+/**
  * Resolves the active shell section + sub-page from the current pathname by longest-prefix match
  * against SHELL_NAV. The shell nav highlight is normally prop-driven per route; this derives it
  * centrally for the coexistence root shell, where unmigrated routes don't yet pass props.

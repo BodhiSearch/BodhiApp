@@ -287,3 +287,18 @@
 .metadata-highlight {
   animation: metadata-pulse 1.5s ease-in-out;
 }
+
+/* Download progress bar — shared across setup model cards and the model-files pull
+   page. Higher-contrast lotus→amber gradient fill on a muted track (the flat
+   bg-primary fill was hard to read, esp. in dark). */
+.download-progress-track {
+  background: hsl(var(--muted));
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.download-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--warning)) 100%);
+  transition: width 0.3s ease;
+}

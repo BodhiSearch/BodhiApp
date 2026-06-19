@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 
 import { itemVariants } from '../-shared/types';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 
 interface SetupFooterProps {
   clarificationText: string;
@@ -18,23 +19,20 @@ export function SetupFooter({
   subText,
   onContinue,
   buttonLabel = 'Continue',
-  buttonVariant = 'outline',
+  buttonVariant = 'default',
   buttonTestId = 'continue-button',
 }: SetupFooterProps) {
   return (
-    <motion.div variants={itemVariants} className="space-y-4">
-      <Card className="bg-muted/30">
-        <CardContent className="py-6">
-          <div className="text-center space-y-2">
-            <p className="text-sm text-muted-foreground">{clarificationText}</p>
-            {subText && <p className="text-xs text-muted-foreground">{subText}</p>}
-          </div>
-        </CardContent>
-      </Card>
+    <motion.div variants={itemVariants} className="mt-6 space-y-5">
+      <div className="rounded-[var(--radius-lg)] border border-border bg-muted/40 px-6 py-5 text-center">
+        <p className="text-sm text-muted-foreground">{clarificationText}</p>
+        {subText && <p className="mt-1 text-xs text-muted-foreground">{subText}</p>}
+      </div>
 
-      <div className="flex justify-end">
-        <Button data-testid={buttonTestId} variant={buttonVariant} onClick={onContinue}>
+      <div className="flex items-center justify-end">
+        <Button data-testid={buttonTestId} variant={buttonVariant} size="lg" onClick={onContinue} className="gap-2">
           {buttonLabel}
+          <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
     </motion.div>

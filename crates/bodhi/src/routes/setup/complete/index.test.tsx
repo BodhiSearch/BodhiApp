@@ -52,7 +52,7 @@ describe('SetupCompletePage', () => {
       renderWithSetupProvider(<SetupCompletePage />);
     });
 
-    expect(screen.getByText(/Setup Complete!/i)).toBeInTheDocument();
+    expect(screen.getByText(/Setup Complete/i)).toBeInTheDocument();
     expect(screen.getByText(/Your Bodhi App is ready to use/i)).toBeInTheDocument();
   });
 
@@ -61,7 +61,7 @@ describe('SetupCompletePage', () => {
       renderWithSetupProvider(<SetupCompletePage />);
     });
 
-    expect(screen.getByText('Join Our Community')).toBeInTheDocument();
+    expect(screen.getByText('Join our community')).toBeInTheDocument();
     expect(screen.getByText('Star on GitHub')).toBeInTheDocument();
     expect(screen.getByText('Join Discord')).toBeInTheDocument();
     expect(screen.getByText('Follow on X')).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('SetupCompletePage', () => {
       renderWithSetupProvider(<SetupCompletePage />);
     });
 
-    expect(screen.getByText('Quick Resources')).toBeInTheDocument();
+    expect(screen.getByText('Quick resources')).toBeInTheDocument();
     expect(screen.getByText('Getting Started Guide')).toBeInTheDocument();
   });
 
