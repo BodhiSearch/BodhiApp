@@ -81,13 +81,13 @@ describe('SettingValueInput', () => {
     expect(screen.getByRole('option', { name: 'cuda' })).toBeInTheDocument();
   });
 
-  it('renders a checkbox for boolean settings and emits string booleans', async () => {
+  it('renders a switch for boolean settings and emits string booleans', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<SettingValueInput setting={booleanSetting} value="false" onChange={onChange} testId="v" />);
-    const checkbox = screen.getByTestId('v');
-    expect(checkbox).toHaveAttribute('type', 'checkbox');
-    await user.click(checkbox);
+    const toggle = screen.getByTestId('v');
+    expect(toggle).toHaveAttribute('role', 'switch');
+    await user.click(toggle);
     expect(onChange).toHaveBeenCalledWith('true');
   });
 });

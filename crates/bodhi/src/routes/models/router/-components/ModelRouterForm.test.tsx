@@ -306,12 +306,13 @@ describe('ModelRouterForm — V2 rebuild', () => {
     await user.click(screen.getByTestId('add-target'));
     await pickAlias(user, 1, 'llama3:instruct');
 
-    // Row 0 = openai-main, row 1 = llama3:instruct. Move row 1 up → swap.
+    // Row 0 = OpenAI Main, row 1 = llama3:instruct. Move row 1 up → swap.
     await user.click(screen.getByTestId('target-up-1'));
 
     await waitFor(() => {
+      // Trigger shows the human label (API alias name), not the opaque id.
       expect(screen.getByTestId('target-alias-0')).toHaveTextContent('llama3:instruct');
-      expect(screen.getByTestId('target-alias-1')).toHaveTextContent('openai-main');
+      expect(screen.getByTestId('target-alias-1')).toHaveTextContent('OpenAI Main');
     });
   });
 
@@ -342,6 +343,7 @@ describe('ModelRouterForm — V2 rebuild', () => {
     await pickAlias(user, 0, 'openai-main');
 
     const chain = await screen.findByTestId('router-rail-chain');
-    expect(within(chain).getByText('openai-main')).toBeInTheDocument();
+    // The chain shows the human alias label (API alias name), not the opaque id.
+    expect(within(chain).getByText('OpenAI Main')).toBeInTheDocument();
   });
 });

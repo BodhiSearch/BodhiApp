@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { ShellIcon, useShellChrome, type ShellSlots } from '@/components/shell';
 import { useCreateModelRouter, useListModels, useUpdateModelRouter } from '@/hooks/models';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { isApiAlias } from '@/lib/utils';
 import { ChainItem } from '@/routes/models/-components/RoutingChainPreview';
-import { aliasIdentity, AliasCombobox } from './AliasCombobox';
+import { aliasIdentity, aliasLabel, AliasCombobox } from './AliasCombobox';
 import { apiMatchableModels } from './RouteToModelField';
 import { RouterInfoRail, RouterRailHeader, type RailStatus } from './RouterInfoRail';
 import { StepCard, type TargetRow } from './StepCard';
@@ -145,7 +146,7 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
         const a = t.alias ? aliasByIdentity.get(t.alias) : undefined;
         const needsModel = t.enabled && a !== undefined && isApiAlias(a);
         return {
-          alias: a ? aliasIdentity(a) : undefined,
+          alias: a ? aliasLabel(a) : undefined,
           model: t.model || undefined,
           enabled: t.enabled,
           missingModel: needsModel && !t.model,
@@ -169,7 +170,7 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
   useShellChrome({ breadcrumb, rail, railHeader, railDefaultOpen: true });
 
   return (
-    <div className="bf-card rf-card" data-testid="model-router-form">
+    <div className="rf-card" data-testid="model-router-form">
       <div className="rf-card-head">
         <h1 className="rf-card-title">{mode === 'edit' ? 'Edit Model Router' : 'New Model Router'}</h1>
         <p className="rf-card-sub">Chain targets into a priority order and route requests through them.</p>
@@ -251,25 +252,21 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
               )}
             </div>
           </div>
-          <label className="rf-toggle-row">
-            <input
-              type="checkbox"
-              className="rf-visually-hidden"
-              data-testid="honor-retry-after-switch"
-              role="switch"
-              aria-checked={honorRetryAfter}
-              checked={honorRetryAfter}
-              onChange={(e) => setHonorRetryAfter(e.target.checked)}
-            />
-            <span className="rf-toggle-body">
-              <span className="rf-toggle-label">Honor upstream Retry-After</span>
-              <span className="rf-toggle-desc">
+          <div className="rf-toggle-row">
+            <div className="rf-toggle-body">
+              <div className="rf-toggle-label">Honor upstream Retry-After</div>
+              <div className="rf-toggle-desc">
                 When a target returns a <code className="rf-code">Retry-After</code> header, use it instead of the fixed
                 cooldown above.
-              </span>
-            </span>
-            <span className={`rf-switch${honorRetryAfter ? ' on' : ''}`} aria-hidden="true" />
-          </label>
+              </div>
+            </div>
+            <Switch
+              data-testid="honor-retry-after-switch"
+              checked={honorRetryAfter}
+              onCheckedChange={setHonorRetryAfter}
+              aria-label="Honor upstream Retry-After"
+            />
+          </div>
         </section>
 
         <div className="rf-divider" />

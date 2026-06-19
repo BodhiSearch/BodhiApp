@@ -12,7 +12,7 @@ const TYPE_FACETS: { id: ModelTypeFacet; label: string }[] = [
   { id: 'local_file', label: 'Local File' },
   { id: 'model_alias', label: 'Model Alias' },
   { id: 'api_model', label: 'API Model' },
-  { id: 'fallback', label: 'Fallback' },
+  { id: 'fallback', label: 'Router' },
 ];
 
 // Capability subset that maps to real backend metadata fields (chat/embeddings dropped — no field).

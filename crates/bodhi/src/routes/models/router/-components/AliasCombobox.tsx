@@ -12,6 +12,11 @@ export function aliasIdentity(alias: AliasResponse): string {
   return isApiAlias(alias) ? alias.id : alias.alias;
 }
 
+/** Human label shown to the user: the API alias's name (its id is opaque), or the local alias name. */
+export function aliasLabel(alias: AliasResponse): string {
+  return isApiAlias(alias) ? alias.name || alias.id : alias.alias;
+}
+
 interface AliasComboboxProps {
   value: string;
   options: AliasResponse[];
@@ -40,14 +45,14 @@ export function AliasCombobox({
 }: AliasComboboxProps) {
   const selected = value ? byIdentity.get(value) : undefined;
 
-  // cmdk filters on each item's `value`; include type + provider so search matches them too,
-  // while the rendered accessible name stays the identity (E2E selects by it).
+  // cmdk filters on each item's `value`; include the label + id + type + provider so search matches
+  // any of them, while the rendered accessible name stays the identity (E2E selects by it).
   const searchValues = useMemo(() => {
     const map = new Map<string, string>();
     options.forEach((a) => {
       const id = aliasIdentity(a);
       const provider = isApiAlias(a) ? a.api_format : '';
-      map.set(id, `${id} ${aliasKind(a)} ${provider}`);
+      map.set(id, `${aliasLabel(a)} ${id} ${aliasKind(a)} ${provider}`);
     });
     return map;
   }, [options]);
@@ -57,7 +62,7 @@ export function AliasCombobox({
       <PopoverTrigger asChild>
         <button type="button" role="combobox" aria-expanded={open} data-testid={testId} className="rf-combobox-trigger">
           <span className={selected ? 'rf-combobox-value mono' : 'rf-combobox-placeholder'}>
-            {selected ? aliasIdentity(selected) : 'Select an alias…'}
+            {selected ? aliasLabel(selected) : 'Select an alias…'}
           </span>
           <ShellIcon name="chevrons-up-down" size={13} />
         </button>
@@ -82,7 +87,7 @@ export function AliasCombobox({
                   className="rf-combobox-item"
                 >
                   <AliasTypeBadge alias={a} small />
-                  <span className="rf-combobox-item-name mono">{id}</span>
+                  <span className="rf-combobox-item-name mono">{aliasLabel(a)}</span>
                   <ProviderBadge alias={a} />
                   {id === value && <ShellIcon name="check" size={12} />}
                 </CommandItem>

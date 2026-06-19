@@ -63,7 +63,7 @@ function typeMeta(alias: AliasResponse): {
     default:
       return {
         token: 'fallback',
-        label: 'Fallback',
+        label: 'Router',
         badgeCls: 'm-badge-fallback',
         iconCls: 'm-icon-fallback',
         icon: 'route',

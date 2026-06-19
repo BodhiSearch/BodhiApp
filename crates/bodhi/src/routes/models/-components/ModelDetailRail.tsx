@@ -35,7 +35,7 @@ function railSubtitle(alias: AliasResponse): string {
     case 'user':
       return 'Model Alias';
     default:
-      return 'Fallback';
+      return 'Router';
   }
 }
 

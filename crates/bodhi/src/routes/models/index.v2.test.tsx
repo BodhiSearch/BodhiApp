@@ -106,7 +106,7 @@ describe('ModelsScreen V2', () => {
     expect(within(screen.getByTestId('model-type-my-coder')).getByText('Model Alias')).toBeInTheDocument();
     // API rows show the provider (api_format) as the badge, not a generic "API Model".
     expect(within(screen.getByTestId('model-type-openai-main')).getByText('OPENAI')).toBeInTheDocument();
-    expect(within(screen.getByTestId('model-type-router-1')).getByText('Fallback')).toBeInTheDocument();
+    expect(within(screen.getByTestId('model-type-router-1')).getByText('Router')).toBeInTheDocument();
   });
 
   it('has no TYPE filter tabs in the top toolbar (facets live only in the sidebar)', async () => {

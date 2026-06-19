@@ -1,5 +1,7 @@
 import { SettingInfo, SettingMetadata } from '@bodhiapp/ts-client';
 
+import { Switch } from '@/components/ui/switch';
+
 /**
  * Shared setting-value logic for both the V1 edit dialog and the V2 detail-rail editor, so the
  * parse/validate rules can't diverge. The V1 dialog renders shadcn controls; the V2 rail renders
@@ -57,15 +59,10 @@ export function SettingValueInput({ setting, value, onChange, testId }: SettingV
   if (metadata.type === 'boolean') {
     const checked = value === 'true';
     return (
-      <label className="field-switch">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(String(e.target.checked))}
-          data-testid={testId}
-        />
-        {checked ? 'Enabled' : 'Disabled'}
-      </label>
+      <div className="field-switch">
+        <Switch checked={checked} onCheckedChange={(c) => onChange(String(c))} data-testid={testId} />
+        <span>{checked ? 'Enabled' : 'Disabled'}</span>
+      </div>
     );
   }
 
