@@ -327,7 +327,7 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar }) {
           } />
         </div>
         <div className="panel-foot">
-          <a href="Create Fallback Model.html" className="btn-add" style={{ background: 'var(--c-teal-text)', color: '#fff' }}><Ic name="pencil" size={14} /> Edit fallback alias</a>
+          <a href="Create Fallback Model.html" className="btn-add" style={{ background: 'var(--c-teal-text)', color: '#fff' }}><Ic name="pencil" size={14} /> Edit model router</a>
         </div>
       </>;
     }

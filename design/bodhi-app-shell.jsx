@@ -54,7 +54,7 @@ const SHELL_NAV = (typeof window !== 'undefined' && window.BSB_NAV) || [
       { id: 'explore-api',        label: 'Explore · API Models',   icon: 'at-sign',    href: 'Bodhi Models API.html' },
       { id: 'new-local-model',    label: 'New Local Model',    icon: 'plus-circle', href: 'Create New Local Model v4.html' },
       { id: 'new-api-model',      label: 'New API Model',      icon: 'plug-zap',    href: 'Create API Model.html' },
-      { id: 'new-fallback-model', label: 'New Fallback Alias', icon: 'route',       href: 'Create Fallback Model.html' },
+      { id: 'new-fallback-model', label: 'New Model Router', icon: 'route',       href: 'Create Fallback Model.html' },
     ],
   },
   {

@@ -22,7 +22,49 @@
   --c-teal-bg:    rgba(94,234,212,.12);  --c-teal-bd:    rgba(94,234,212,.28);  --c-teal-text:    #5eead4;
 }
 
-/* ── 2-column layout: form card + info rail ── */
+/* ── Single form column (help now lives in the shell rail) ── */
+.cfm-form-wrap {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 30px 28px 56px;
+  box-sizing: border-box;
+}
+
+/* ── Right rail (shell detail panel) inner padding + header ── */
+.cfm-rail-pad {
+  padding: 16px 16px 28px;
+  display: flex;
+  flex-direction: column;
+}
+.cfm-rail-head {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; min-width: 0;
+}
+.cfm-rail-head-title {
+  flex: 1; min-width: 0;
+  font-size: 12px; font-weight: 600;
+  color: hsl(var(--foreground));
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cfm-rail-head > span svg,
+.cfm-rail-head svg { color: hsl(var(--muted-foreground)); }
+.cfm-rail-close {
+  width: 28px; height: 28px; border-radius: 6px;
+  border: none; background: none; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  color: hsl(var(--muted-foreground)); cursor: pointer;
+  transition: background 100ms, color 100ms;
+}
+.cfm-rail-close:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.cfm-rail-close svg { color: inherit; }
+
+/* footer: actions only — wrap + right-align so the primary button is
+   never cropped when the content column is narrow (rail open) */
+.cfm-form-wrap .bf-footer { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+.cfm-form-wrap .bf-footer .bf-footer-spacer { display: none; }
+
+/* legacy 2-column layout (kept for any other consumers) */
 .cfm-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -459,10 +501,7 @@
 .cfm-tip-bullet { color: var(--c-teal-text); flex-shrink: 0; }
 
 /* ── Responsive ── */
-@media (max-width: 980px) {
-  .cfm-layout { grid-template-columns: 1fr; }
-  .cfm-side-col { display: none; }
-}
 @media (max-width: 640px) {
   .cfm-layout { padding: 20px 16px 40px; }
+  .cfm-form-wrap { padding: 20px 16px 40px; }
 }

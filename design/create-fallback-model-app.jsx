@@ -304,9 +304,6 @@ function StepCard({ step, index, total, onRemove, onChange, onMove, onToggleEnab
     <div className={'cfm-step-card' + (enabled ? '' : ' disabled')}>
       {/* Header */}
       <div className="cfm-step-header">
-        <span className="cfm-drag-handle" title="Drag to reorder">
-          <Icon name="grip-vertical" size={14} />
-        </span>
         <span className="cfm-step-num">{index + 1}</span>
         <span className="cfm-step-label">
           Step {index + 1}
@@ -425,11 +422,31 @@ function ChainPreview({ steps }) {
   );
 }
 
+/* ── Rail header (railHeader slot) — with a close affordance like
+   every other right detail panel in the app ── */
+function CfmRailHeader() {
+  const { collapseRail } = useShell();
+  return (
+    <div className="cfm-rail-head">
+      <Icon name="info" size={13} />
+      <span className="cfm-rail-head-title">Routing &amp; help</span>
+      <button className="cfm-rail-close" title="Close panel"
+              onClick={() => collapseRail && collapseRail()}>
+        <Icon name="x" size={14} />
+      </button>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════════ */
 function CreateFallbackModelApp() {
   const [aliasName, setAliasName] = React.useState('smart-fallback');
+  const [strategy, setStrategy] = React.useState('fallback');
+  const [cooldown, setCooldown] = React.useState('30');
+  const [maxAttempts, setMaxAttempts] = React.useState('0');
+  const [honorRetry, setHonorRetry] = React.useState(true);
   const [nextStepId, setNextStepId] = React.useState(10);
   const [steps, setSteps] = React.useState([
     { id:1, aliasId:'openai-gpt-main',          model:'gpt-4o',            enabled:true },
@@ -458,9 +475,6 @@ function CreateFallbackModelApp() {
 
   /* Validation */
   const validationMsg = React.useMemo(() => {
-    const name = aliasName.trim();
-    if (!name) return 'Alias name is required.';
-    if (!/^[a-z0-9-]+$/.test(name)) return 'Alias name: lowercase, digits and dashes only.';
     const enabledSteps = steps.filter(s => s.enabled !== false);
     if (enabledSteps.length < 2) {
       if (steps.length < 2) return 'Add at least 2 steps for a useful chain.';
@@ -483,6 +497,77 @@ function CreateFallbackModelApp() {
   const isValid = !validationMsg;
   const enabledCount = steps.filter(s => s.enabled !== false).length;
 
+  /* ── Right-rail content: live chain preview + help, surfaced as the
+     shell's standard detail panel (open by default) so we don't invent
+     a new in-page side column pattern. ── */
+  const railContent = (
+    <div className="cfm-rail-pad">
+      {validationMsg && (
+        <div className="cfm-validation-badge warn">
+          <Icon name="alert-circle" size={13} />
+          <div>{validationMsg}</div>
+        </div>
+      )}
+
+      {/* Chain preview */}
+      <div className="cfm-side-card">
+        <div className="cfm-side-card-head">
+          <Icon name="route" size={11} />
+          Routing chain
+        </div>
+        <div className="cfm-side-card-body">
+          <ChainPreview steps={steps} />
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div className="cfm-side-card">
+        <div className="cfm-side-card-head">
+          <Icon name="help-circle" size={11} />
+          How it works
+        </div>
+        <div className="cfm-side-card-body">
+          {[
+            <>Client sends a request with <code style={{fontFamily:'var(--font-mono)', fontSize:10, background:'hsl(var(--muted))', padding:'0 3px', borderRadius:2}}>model={aliasName || '<router>'}</code>.</>,
+            'Step 1 is tried first. If it returns a successful response, we stop and return it.',
+            'If Step 1 errors (timeout, 5xx, rate limit, model down…), Step 2 is tried — and so on.',
+            honorRetry
+              ? 'A failed target is put on cooldown; an upstream Retry-After is honored when present.'
+              : 'A failed target is put on cooldown before it is retried again.',
+            'A final error is only surfaced when every step has failed.',
+          ].map((text, i) => (
+            <div key={i} className="cfm-how-item">
+              <span className="cfm-how-num">{i + 1}</span>
+              <span className="cfm-how-text">{text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tips */}
+      <div className="cfm-side-card">
+        <div className="cfm-side-card-head">
+          <Icon name="lightbulb" size={11} />
+          Tips
+        </div>
+        <div className="cfm-side-card-body">
+          {[
+            'Put fastest / cheapest targets first to minimize cost and latency.',
+            'End with a local model alias for a self-hosted last resort.',
+            'Cooldown keeps a failing target out of rotation so requests are not wasted retrying it.',
+            'Set max attempts to cap how many targets a single request will try before giving up.',
+            'Toggle a step off to skip it temporarily — the sequence and config are preserved.',
+          ].map((tip, i) => (
+            <div key={i} className="cfm-tip-row">
+              <span className="cfm-tip-bullet">›</span>
+              <span>{tip}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   /* Aliases already used in earlier steps — we still allow re-use,
      but in practice you usually don't repeat. We won't enforce
      uniqueness, just expose the ids list in case we want to. */
@@ -495,22 +580,23 @@ function CreateFallbackModelApp() {
       breadcrumb={[
         { label: 'Bodhi', href: 'Bodhi Chat.html' },
         { label: 'Models', href: 'Bodhi Models.html' },
-        { label: 'New Fallback Alias', current: true },
+        { label: 'New Model Router', current: true },
       ]}
+      rail={railContent}
+      railHeader={<CfmRailHeader />}
+      railDefaultOpen={true}
+      railWidth={320} railMin={280} railMax={460}
       contentClass="flush" mainScroll={false}
     >
-        {/* ── Scroll · form column + info rail ── */}
+        {/* ── Scroll · single form column (help lives in the right rail) ── */}
         <div className="bf-scroll">
-          <div className="cfm-layout">
-
-            {/* FORM COLUMN */}
-            <div className="cfm-form-col">
+          <div className="cfm-form-wrap">
 
               <div className="bf-card">
                 <div className="bf-card-head">
-                  <h1 className="bf-card-title">New Fallback Alias</h1>
+                  <h1 className="bf-card-title">New Model Router</h1>
                   <p className="bf-card-sub">
-                    Chain aliases into a priority order — each step is tried in turn, falling through to the next on error.
+                    Chain targets into a priority order and route requests through them.
                   </p>
                 </div>
                 <div className="bf-card-body">
@@ -520,30 +606,78 @@ function CreateFallbackModelApp() {
                     <div className="bf-section-title">Identity</div>
                     <div className="bf-field">
                       <label className="bf-label">
-                        <span className="bf-label-text">Alias name</span>
+                        <span className="bf-label-text">Name</span>
                         <span className="bf-req">*</span>
                       </label>
                       <input
                         className="bf-input bf-input-mono"
                         value={aliasName}
-                        onChange={e => setAliasName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                        onChange={e => setAliasName(e.target.value.replace(/\s/g, ''))}
                         placeholder="e.g. smart-fallback"
                       />
                       <div className="bf-hint">
-                        Lowercase letters, digits, and dashes only. This becomes the <code className="cfm-code">model</code> value clients send to your API.
+                        Becomes the <code className="cfm-code">model</code> value clients send to your API. No spaces.
                       </div>
+                    </div>
+                    <div className="bf-field">
+                      <label className="bf-label">
+                        <span className="bf-label-text">Strategy</span>
+                      </label>
+                      <select className="bf-select" value="fallback" disabled aria-readonly="true">
+                        <option value="fallback">Fallback</option>
+                      </select>
                     </div>
                   </div>
 
                   <div className="bf-divider"></div>
 
-                  {/* ═══ Section 2 · Fallback Sequence ═══ */}
+                  {/* ═══ Section 2 · Resilience ═══ */}
                   <div className="bf-section">
-                    <div className="bf-section-title">Fallback Sequence</div>
-                    <p className="bf-section-desc">
-                      Tried top-to-bottom. The first step that responds without error wins.
-                      Pick any alias type — local files, model aliases, or API models.
-                    </p>
+                    <div className="bf-section-title">Resilience</div>
+                    <div className="bf-field-row">
+                      <div className="bf-field">
+                        <label className="bf-label">
+                          <span className="bf-label-text">Cooldown (seconds)</span>
+                        </label>
+                        <input
+                          type="number" min="0"
+                          className="bf-input"
+                          value={cooldown}
+                          onChange={e => setCooldown(e.target.value)}
+                          placeholder="30"
+                        />
+                        <div className="bf-hint">How long a failed target is skipped before it is retried.</div>
+                      </div>
+                      <div className="bf-field">
+                        <label className="bf-label">
+                          <span className="bf-label-text">Max attempts per request</span>
+                        </label>
+                        <input
+                          type="number" min="0"
+                          className="bf-input"
+                          value={maxAttempts}
+                          onChange={e => setMaxAttempts(e.target.value)}
+                          placeholder="0"
+                        />
+                        <div className="bf-hint">0 = try all enabled targets.</div>
+                      </div>
+                    </div>
+                    <div className="bf-toggle-row" onClick={() => setHonorRetry(v => !v)} style={{ cursor:'pointer' }}>
+                      <div className="bf-toggle-body">
+                        <div className="bf-toggle-label">Honor upstream Retry-After</div>
+                        <div className="bf-toggle-desc">
+                          When a target returns a <code className="cfm-code">Retry-After</code> header, use it instead of the fixed cooldown above.
+                        </div>
+                      </div>
+                      <div className={'bf-switch' + (honorRetry ? ' on' : '')} role="switch" aria-checked={honorRetry} />
+                    </div>
+                  </div>
+
+                  <div className="bf-divider"></div>
+
+                  {/* ═══ Section 3 · Targets ═══ */}
+                  <div className="bf-section">
+                    <div className="bf-section-title">Targets (in priority order)</div>
 
                     <div className="cfm-steps">
                       {steps.map((step, i) => (
@@ -572,98 +706,15 @@ function CreateFallbackModelApp() {
 
                 {/* ═══ FOOTER — the ONLY place actions live ═══ */}
                 <div className="bf-footer">
-                  {validationMsg ? (
-                    <div className="cfm-foot-msg warn">
-                      <Icon name="info" size={12} />
-                      {validationMsg}
-                    </div>
-                  ) : (
-                    <div className="cfm-foot-msg ok">
-                      <Icon name="check-circle" size={12} />
-                      Ready to create.
-                    </div>
-                  )}
                   <div className="bf-footer-spacer" />
                   <button className="bf-btn bf-btn-ghost">Cancel</button>
                   <button className="bf-btn bf-btn-primary" disabled={!isValid}>
                     <Icon name="route" size={13} />
-                    Create Fallback Alias
+                    Create Model Router
                   </button>
                 </div>
               </div>{/* end card */}
-            </div>{/* end form-col */}
-
-            {/* INFO RAIL */}
-            <aside className="cfm-side-col">
-            {/* Validation badge */}
-            {validationMsg ? (
-              <div className="cfm-validation-badge warn">
-                <Icon name="alert-circle" size={13} />
-                <div>{validationMsg}</div>
-              </div>
-            ) : (
-              <div className="cfm-validation-badge ok">
-                <Icon name="check-circle" size={13} />
-                <div>
-                  Ready to create. Will route <strong style={{fontFamily:'var(--font-mono)'}}>{aliasName}</strong> through {enabledCount} of {steps.length} step{steps.length === 1 ? '' : 's'}.
-                </div>
-              </div>
-            )}
-
-            {/* Chain preview */}
-            <div className="cfm-side-card">
-              <div className="cfm-side-card-head">
-                <Icon name="route" size={11} />
-                Routing chain
-              </div>
-              <div className="cfm-side-card-body">
-                <ChainPreview steps={steps} />
-              </div>
-            </div>
-
-            {/* How it works */}
-            <div className="cfm-side-card">
-              <div className="cfm-side-card-head">
-                <Icon name="help-circle" size={11} />
-                How it works
-              </div>
-              <div className="cfm-side-card-body">
-                {[
-                  <>Client sends a request with <code style={{fontFamily:'var(--font-mono)', fontSize:10, background:'hsl(var(--muted))', padding:'0 3px', borderRadius:2}}>model={aliasName || '<alias>'}</code>.</>,
-                  'Step 1 is tried first. If it returns a successful response, we stop and return it.',
-                  'If Step 1 errors (timeout, 5xx, rate limit, model down…), Step 2 is tried — and so on.',
-                  'A final error is only surfaced when every step has failed.',
-                ].map((text, i) => (
-                  <div key={i} className="cfm-how-item">
-                    <span className="cfm-how-num">{i + 1}</span>
-                    <span className="cfm-how-text">{text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Tips */}
-            <div className="cfm-side-card">
-              <div className="cfm-side-card-head">
-                <Icon name="lightbulb" size={11} />
-                Tips
-              </div>
-              <div className="cfm-side-card-body">
-                {[
-                  'Put fastest / cheapest aliases first to minimize cost and latency.',
-                  'End with a local model alias for a self-hosted last resort.',
-                  'Toggle a step off to skip it temporarily — the sequence and config are preserved.',
-                  'For API-model steps, the model field is constrained when the alias was created in "selected" mode — free-text in "forward-all" mode.',
-                ].map((tip, i) => (
-                  <div key={i} className="cfm-tip-row">
-                    <span className="cfm-tip-bullet">›</span>
-                    <span>{tip}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>{/* end info rail */}
-          </div>{/* end cfm-layout */}
+          </div>{/* end form-wrap */}
         </div>{/* end bf-scroll */}
     </AppShell>
     </>
