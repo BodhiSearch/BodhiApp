@@ -36,3 +36,25 @@
 - `alias` read-only on edit. Reuse the `bf-*` root from 3-2. Scope CSS; strip prototype idioms.
 - The quant-table/download UX is **3-5**, not here. `ShellSlotsProvider` RTL harness; direct nav in e2e.
 - `design/` files user-owned — exclude from commit. Migrate V1 alias specs with the form.
+
+## Carry-forward from 3-3 (Model Router rebuild — read `batch-3-3-new-fallback-model-retro.md`)
+- **3-3 set the form-REBUILD precedent** (vs 3-2's chrome-only): decompose the prod form into
+  `-components/` sub-pieces, reuse the real mutations + request contract, V2-only no-flag. 3-4 likely
+  follows the same shape (richest form).
+- **ONE `useShellChrome` publisher per screen.** Two publishers (route breadcrumb + form rail) clobber
+  each other (the setter replaces the whole slots object). Publish breadcrumb + rail together from the
+  form (breadcrumb as a prop); use a separate breadcrumb-only publisher only in loading/error branches
+  that don't also mount the form.
+- **Keep PRODUCTION submit-gating** unless the user says otherwise — render the prototype's stricter
+  validation as **display-only** (red borders / status badge), never feed it to the disabled button.
+  Lock with explicit RTL contract tests.
+- **cmdk combobox + multi-row strict-mode:** if a form renders multiple comboboxes each listing the same
+  options, `getByRole('option',{name})` matches >1. Lift open-state so only one is open at a time AND
+  scope the page object to the open popover (`[data-radix-popper-content-wrapper] [data-state="open"]`)
+  + type-to-filter. The **single-row test won't catch it — only multi-row E2E does.**
+- **Factor shared renderers:** 3-3 extracted `RoutingChainPreview` (shared with the My-Models detail
+  rail). Look for the same reuse with the local-model card/metadata pieces.
+- **E2E ops:** sweep `ports kill 41135 51135 53000 5517x 5518x` before a Playwright run (it starts ALL
+  configured servers regardless of `--project`); filter specs by `-g "<describe title>"` (this Playwright
+  parses a bare positional after `--project` as another project name). model-router.spec is a required,
+  always-running gate (no `.skip`; throws on missing key) — same expectation for the local-model spec.

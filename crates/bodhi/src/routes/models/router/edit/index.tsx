@@ -1,7 +1,10 @@
+import { useMemo } from 'react';
+
 import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
+import { useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Loading } from '@/components/ui/Loading';
 import { useGetModelRouter } from '@/hooks/models';
@@ -12,6 +15,18 @@ export const Route = createFileRoute('/models/router/edit/')({
   component: EditModelRouter,
 });
 
+const EDIT_ROUTER_BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'Models', href: '/models/' },
+  { label: 'Edit Model Router', current: true },
+];
+
+/** Publishes the breadcrumb during loading/error states (the form publishes it once mounted). */
+function BreadcrumbOnly({ children }: { children: React.ReactNode }) {
+  useShellChrome({ breadcrumb: useMemo(() => EDIT_ROUTER_BREADCRUMB, []) });
+  return <>{children}</>;
+}
+
 function EditModelRouterContent() {
   const search = useSearch({ from: '/models/router/edit/' });
   const id = search.id;
@@ -19,19 +34,39 @@ function EditModelRouterContent() {
   const { data: router, isLoading, error } = useGetModelRouter(id || '', { enabled: !!id });
 
   if (!id) {
-    return <ErrorPage message="No model router ID provided" />;
+    return (
+      <BreadcrumbOnly>
+        <ErrorPage message="No model router ID provided" />
+      </BreadcrumbOnly>
+    );
   }
   if (isLoading) {
-    return <Loading message="Loading model router..." />;
+    return (
+      <BreadcrumbOnly>
+        <Loading message="Loading model router..." />
+      </BreadcrumbOnly>
+    );
   }
   if (error) {
     const errorMessage = error.response?.data?.error?.message || error.message || 'An unexpected error occurred';
-    return <ErrorPage message={errorMessage} />;
+    return (
+      <BreadcrumbOnly>
+        <ErrorPage message={errorMessage} />
+      </BreadcrumbOnly>
+    );
   }
   if (!router) {
-    return <ErrorPage message="Model router not found" />;
+    return (
+      <BreadcrumbOnly>
+        <ErrorPage message="Model router not found" />
+      </BreadcrumbOnly>
+    );
   }
-  return <ModelRouterForm mode="edit" initialData={router} />;
+  return (
+    <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="router-form-page" data-pagestatus="ready">
+      <ModelRouterForm mode="edit" initialData={router} breadcrumb={EDIT_ROUTER_BREADCRUMB} />
+    </div>
+  );
 }
 
 export default function EditModelRouter() {

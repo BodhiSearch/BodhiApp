@@ -11,7 +11,9 @@ import { expect, test } from '@/fixtures.mjs';
 // working OpenAI alias, select the router in chat, send a message, and receive a completion.
 // Assertions are made through the UI only (no page.evaluate / direct fetch).
 //
-// Requires INTEG_TEST_OPENAI_API_KEY in .env.test.
+// This is a required gate, not an optional spec: INTEG_TEST_OPENAI_API_KEY must be set in
+// .env.test. Each describe's beforeAll throws loudly (never test.skip) when it is missing, so
+// a missing key fails the run rather than silently skipping coverage.
 
 const OPENAI = ApiModelFixtures.API_FORMATS.openai;
 const OPENAI_MODEL = ApiModelFixtures.OPENAI_MODEL;

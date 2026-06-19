@@ -2,6 +2,7 @@ import { AliasResponse, ApiAliasResponse, ModelRouterResponse } from '@bodhiapp/
 
 import { ShellIcon } from '@/components/shell';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
+import { RoutingChainPreview } from './RoutingChainPreview';
 
 /** Bytes per GB (binary) — re-exported so the screen can share one constant. */
 export const GB = 1024 * 1024 * 1024;
@@ -179,18 +180,11 @@ function FallbackRailBody({ alias }: { alias: ModelRouterResponse }) {
       </div>
       <div className="dp-section">
         <div className="dp-sec-lbl">Routing chain</div>
-        <div className="m-chain" data-testid="model-detail-chain">
-          {alias.targets.map((t, i) => (
-            <div key={`${t.alias}-${t.model}-${i}`} className={`m-chain-step${t.enabled === false ? ' disabled' : ''}`}>
-              <span className="m-chain-num">{i + 1}</span>
-              <div className="m-chain-body">
-                <div className="m-chain-alias mono">{t.alias}</div>
-                <div className="m-chain-model mono">→ {t.model}</div>
-              </div>
-              {t.enabled === false && <span className="m-chain-disabled">disabled</span>}
-            </div>
-          ))}
-        </div>
+        <RoutingChainPreview
+          testId="model-detail-chain"
+          disabledLabel="disabled"
+          items={alias.targets.map((t) => ({ alias: t.alias, model: t.model, enabled: t.enabled !== false }))}
+        />
       </div>
       <div className="dp-section">
         <div className="dp-sec-lbl">Behavior</div>

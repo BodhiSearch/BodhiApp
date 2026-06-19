@@ -1,14 +1,22 @@
 import ModelRouterForm from '@/routes/models/router/-components/ModelRouterForm';
 import { ENDPOINT_MODEL_ROUTERS } from '@/hooks/models';
+import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { createMockOpenAIModel } from '@/test-fixtures/models';
 import { mockModels } from '@/test-utils/msw-v2/handlers/models';
 import { mockCreateModelRouter } from '@/test-utils/msw-v2/handlers/model-routers';
 import { http, HttpResponse } from 'msw';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 import { AliasResponse, ModelRouterResponse } from '@bodhiapp/ts-client';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+/** Renders the published rail slot so tests can assert the live chain preview. */
+function RailConsumer() {
+  const { rail } = useShellSlots();
+  return <div data-testid="harness-rail">{rail}</div>;
+}
 
 const navigateMock = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
@@ -181,5 +189,159 @@ describe('ModelRouterForm', () => {
     expect(screen.getByTestId('cooldown-secs-input')).toHaveValue(120);
     expect(screen.getByTestId('max-attempts-input')).toHaveValue(3);
     expect(screen.getByTestId('honor-retry-after-switch')).not.toBeChecked();
+  });
+});
+
+// ── V2 rebuild: richer step cards / combobox / route-to-model / rail / validation contract ──
+const apiSelectedAlias: AliasResponse = {
+  source: 'api',
+  id: 'openai-main',
+  name: 'OpenAI Main',
+  api_format: 'openai',
+  base_url: 'https://api.openai.com/v1',
+  has_api_key: true,
+  models: [createMockOpenAIModel('gpt-4o'), createMockOpenAIModel('gpt-4o-mini')],
+  forward_all_with_prefix: false,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+} as AliasResponse;
+
+const apiForwardAllAlias: AliasResponse = {
+  source: 'api',
+  id: 'openrouter-all',
+  name: 'OpenRouter',
+  api_format: 'openai',
+  base_url: 'https://openrouter.ai/api/v1',
+  has_api_key: true,
+  models: [],
+  prefix: 'or/',
+  forward_all_with_prefix: true,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+} as AliasResponse;
+
+describe('ModelRouterForm — V2 rebuild', () => {
+  function renderWithAliases() {
+    server.use(
+      ...mockModels(
+        { data: [localAlias, apiSelectedAlias, apiForwardAllAlias], total: 3, page: 1, page_size: 30 },
+        { stub: true }
+      ),
+      ...mockCreateModelRouter({ alias: 'my-stack' })
+    );
+    return userEvent.setup();
+  }
+
+  /** Open the cmdk combobox for target `idx` and pick the option whose accessible name is `id`. */
+  async function pickAlias(user: ReturnType<typeof userEvent.setup>, idx: number, id: string) {
+    await user.click(screen.getByTestId(`target-alias-${idx}`));
+    await user.click(await screen.findByRole('option', { name: id }));
+  }
+
+  it('shows the type + provider badges in the alias-meta line for an API target', async () => {
+    const user = renderWithAliases();
+    render(<ModelRouterForm mode="create" />, { wrapper: createWrapper() });
+
+    await user.click(screen.getByTestId('add-target'));
+    await pickAlias(user, 0, 'openai-main');
+
+    const meta = await screen.findByTestId('target-alias-meta-0');
+    expect(within(meta).getByText('API Model')).toBeInTheDocument();
+    expect(within(meta).getByText('OPENAI')).toBeInTheDocument();
+  });
+
+  it('renders a constrained model dropdown for a selected-subset API target', async () => {
+    const user = renderWithAliases();
+    render(<ModelRouterForm mode="create" />, { wrapper: createWrapper() });
+
+    await user.click(screen.getByTestId('add-target'));
+    await pickAlias(user, 0, 'openai-main');
+
+    // selected-subset → first matchable model auto-pins; route-to-model is a select trigger.
+    await waitFor(() => expect(screen.getByText('pre-configured only')).toBeInTheDocument());
+    expect(screen.getByTestId('target-model-0')).toHaveTextContent('gpt-4o');
+  });
+
+  it('renders a free-text model input for a forward-all API target and keeps Create enabled when empty', async () => {
+    const user = renderWithAliases();
+    render(<ModelRouterForm mode="create" />, { wrapper: createWrapper() });
+
+    await user.type(screen.getByTestId('router-alias-input'), 'my-stack');
+    await user.click(screen.getByTestId('add-target'));
+    await pickAlias(user, 0, 'openrouter-all');
+
+    // forward-all → free-text input (empty model is allowed; server is the authority).
+    await waitFor(() => expect(screen.getByText('any model · forward-all')).toBeInTheDocument());
+    const modelInput = screen.getByTestId('target-model-0');
+    expect(modelInput).toHaveValue('');
+    // CONTRACT (decision 3): an empty forward-all model must NOT disable Create.
+    expect(screen.getByTestId('router-submit')).toBeEnabled();
+  });
+
+  it('toggles a step off and marks it skipped in the rail chain', async () => {
+    const user = renderWithAliases();
+    render(
+      <ShellSlotsProvider>
+        <RailConsumer />
+        <ModelRouterForm mode="create" />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
+    );
+
+    await user.click(screen.getByTestId('add-target'));
+    await pickAlias(user, 0, 'llama3:instruct');
+
+    await user.click(screen.getByTestId('target-enabled-0'));
+
+    const chain = await screen.findByTestId('router-rail-chain');
+    expect(within(chain).getByText('skipped')).toBeInTheDocument();
+  });
+
+  it('reorders targets with the up/down arrows', async () => {
+    const user = renderWithAliases();
+    render(<ModelRouterForm mode="create" />, { wrapper: createWrapper() });
+
+    await user.click(screen.getByTestId('add-target'));
+    await pickAlias(user, 0, 'openai-main');
+    await user.click(screen.getByTestId('add-target'));
+    await pickAlias(user, 1, 'llama3:instruct');
+
+    // Row 0 = openai-main, row 1 = llama3:instruct. Move row 1 up → swap.
+    await user.click(screen.getByTestId('target-up-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('target-alias-0')).toHaveTextContent('llama3:instruct');
+      expect(screen.getByTestId('target-alias-1')).toHaveTextContent('openai-main');
+    });
+  });
+
+  it('keeps Create enabled with no targets and an empty name (only invalid resilience disables it)', async () => {
+    const user = renderWithAliases();
+    render(<ModelRouterForm mode="create" />, { wrapper: createWrapper() });
+
+    // 0 targets + empty name → still submittable (server authority).
+    expect(screen.getByTestId('no-targets')).toBeInTheDocument();
+    expect(screen.getByTestId('router-submit')).toBeEnabled();
+
+    // Only an invalid resilience field disables it.
+    await user.clear(screen.getByTestId('cooldown-secs-input'));
+    expect(screen.getByTestId('router-submit')).toBeDisabled();
+  });
+
+  it('publishes the live rail chain reflecting the steps in order', async () => {
+    const user = renderWithAliases();
+    render(
+      <ShellSlotsProvider>
+        <RailConsumer />
+        <ModelRouterForm mode="create" />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
+    );
+
+    await user.click(screen.getByTestId('add-target'));
+    await pickAlias(user, 0, 'openai-main');
+
+    const chain = await screen.findByTestId('router-rail-chain');
+    expect(within(chain).getByText('openai-main')).toBeInTheDocument();
   });
 });

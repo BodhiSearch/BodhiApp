@@ -30,7 +30,7 @@ export const SHELL_NAV: ShellNavItem[] = [
       { id: 'my-models', label: 'My Models', icon: 'globe-2', href: '/models/' },
       { id: 'new-local-model', label: 'New Local Model', icon: 'plus-circle', href: '/models/alias/new/' },
       { id: 'new-api-model', label: 'New API Model', icon: 'plug-zap', href: '/models/api/new/' },
-      { id: 'new-fallback-model', label: 'New Fallback Alias', icon: 'route', href: '/models/router/new/' },
+      { id: 'new-fallback-model', label: 'New Model Router', icon: 'route', href: '/models/router/new/' },
     ],
   },
   {
