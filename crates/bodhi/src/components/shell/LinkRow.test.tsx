@@ -32,4 +32,15 @@ describe('LinkRow', () => {
     expect(onActivate).toHaveBeenCalledTimes(1);
     expect(onParentClick).not.toHaveBeenCalled();
   });
+
+  it('does not retain DOM focus after a mouse click (no stale :focus-visible box)', async () => {
+    const user = userEvent.setup();
+    render(<LinkRow onActivate={vi.fn()} label="Open thing" />);
+    const link = screen.getByTestId('row-link');
+
+    await user.click(link);
+    // onMouseDown preventDefault keeps the anchor from grabbing focus on a mouse click, so the
+    // row never lingers with a stale focus outline once focus later moves elsewhere (e.g. Vimium).
+    expect(link).not.toHaveFocus();
+  });
 });

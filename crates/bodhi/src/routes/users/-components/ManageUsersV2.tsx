@@ -3,7 +3,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { UserInfo } from '@bodhiapp/ts-client';
 
 import { Pagination } from '@/components/DataTable';
-import { LinkRow, ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
+import {
+  LinkRow,
+  ShellFilterTabs,
+  ShellIcon,
+  useCollapsibleSearch,
+  useListKeyNav,
+  useShellChrome,
+} from '@/components/shell';
 import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
 import '@/components/shell/manage-users.css';
@@ -64,6 +71,8 @@ function UserRow({ user, active, self, onSelect }: UserRowProps) {
     <div
       className={`l-listrow mu-row${active ? ' active' : ''}`}
       onClick={onSelect}
+      role="option"
+      aria-selected={active}
       data-testid={`user-row-${user.username}`}
     >
       <LinkRow onActivate={onSelect} label={`Open user ${user.username}`} />
@@ -312,6 +321,7 @@ function InviteLinkAction() {
 }
 
 function ManageUsersContent() {
+  useListKeyNav();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [filter, setFilter] = useState<RoleFilter>('all');

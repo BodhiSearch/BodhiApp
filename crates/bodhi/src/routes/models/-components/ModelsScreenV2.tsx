@@ -4,7 +4,14 @@ import { AliasResponse, ApiAliasResponse } from '@bodhiapp/ts-client';
 import { useNavigate } from '@tanstack/react-router';
 
 import { Pagination } from '@/components/DataTable';
-import { LinkRow, ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
+import {
+  LinkRow,
+  ShellFilterTabs,
+  ShellIcon,
+  useCollapsibleSearch,
+  useListKeyNav,
+  useShellChrome,
+} from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ModelsFilter, ModelTypeFacet, useListModels } from '@/hooks/models';
@@ -80,6 +87,8 @@ function ModelRow({ alias, active, query, onSelect }: ModelRowProps) {
     <div
       className={`l-listrow m-row${active ? ' active' : ''}`}
       onClick={onSelect}
+      role="option"
+      aria-selected={active}
       data-testid={`model-row-${id}`}
       data-model-type={alias.source}
     >
@@ -130,6 +139,7 @@ function highlight(text: string, query: string) {
 }
 
 export function ModelsScreenV2() {
+  useListKeyNav();
   const navigate = useNavigate();
 
   const [filter, setFilter] = useState<ModelsFilter>({});

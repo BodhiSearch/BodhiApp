@@ -5,7 +5,14 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Pagination } from '@/components/DataTable';
-import { LinkRow, ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
+import {
+  LinkRow,
+  ShellFilterTabs,
+  ShellIcon,
+  useCollapsibleSearch,
+  useListKeyNav,
+  useShellChrome,
+} from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
@@ -69,6 +76,7 @@ function StatusChip({ status }: { status: string }) {
 }
 
 function AccessRequestsContent() {
+  useListKeyNav();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [filter, setFilter] = useState<RequestFilter>('pending');
@@ -316,6 +324,8 @@ function RequestRow({
     <div
       className={`l-listrow ua-row${active ? ' active' : ''}`}
       onClick={onSelect}
+      role="option"
+      aria-selected={active}
       data-testid={`request-row-${request.username}`}
     >
       <LinkRow onActivate={onSelect} label={`Open access request from ${request.username}`} />

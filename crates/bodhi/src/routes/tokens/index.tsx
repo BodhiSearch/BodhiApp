@@ -5,7 +5,14 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Pagination } from '@/components/DataTable';
-import { LinkRow, ShellFilterTabs, ShellIcon, useCollapsibleSearch, useShellChrome } from '@/components/shell';
+import {
+  LinkRow,
+  ShellFilterTabs,
+  ShellIcon,
+  useCollapsibleSearch,
+  useListKeyNav,
+  useShellChrome,
+} from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import '@/components/shell/api-keys.css';
@@ -43,6 +50,7 @@ const fmtDate = (iso: string) =>
    toggle drives the real active/inactive update; there is no revoke/delete endpoint. */
 
 export function TokenPageContent() {
+  useListKeyNav();
   const { isLoading: appLoading } = useGetAppInfo();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -228,6 +236,8 @@ function TokenRow({ token, active, onSelect, onStatusChange }: TokenRowProps) {
     <div
       className={'l-listrow tk-row' + (active ? ' active' : '')}
       onClick={onSelect}
+      role="option"
+      aria-selected={active}
       data-testid={`token-row-${token.id}`}
     >
       <LinkRow onActivate={onSelect} label={`Open token ${token.name || 'Unnamed token'}`} />
