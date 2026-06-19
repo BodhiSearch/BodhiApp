@@ -15,6 +15,46 @@
    Exports ApiModelForm to window.
 ═══════════════════════════════════════════════════ */
 
+/* ── API format catalogue (matches production) ──────
+   value          → backend api_format enum
+   label          → dropdown text
+   baseUrl        → auto-filled default when this format is chosen
+   extras         → shows Extra Headers / Extra Body textareas (anthropic_oauth only)
+   liberty        → swaps Base URL/Key/Extras for the OAuth-credentials envelope */
+const AMF_FORMATS = [
+  { value: 'openai',            label: 'OpenAI - Completions', baseUrl: 'https://api.openai.com/v1' },
+  { value: 'openai_responses',  label: 'OpenAI - Responses',   baseUrl: 'https://api.openai.com/v1' },
+  { value: 'anthropic',         label: 'Anthropic',            baseUrl: 'https://api.anthropic.com/v1' },
+  { value: 'anthropic_oauth',   label: 'Anthropic Setup Token', baseUrl: 'https://api.anthropic.com/v1', extras: true },
+  { value: 'gemini',            label: 'Google Gemini',        baseUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+  { value: 'llm_liberty_oauth', label: 'LLM Liberty OAuth',    baseUrl: '', liberty: true },
+];
+const AMF_FORMAT_MAP = Object.fromEntries(AMF_FORMATS.map((f) => [f.value, f]));
+
+/* Default JSON shown for the Anthropic Setup Token extras (indicative). */
+const AMF_DEFAULT_EXTRA_HEADERS = `{
+  "anthropic-version": "2023-06-01",
+  "anthropic-beta": "claude-code-20250219,oauth-2025-04-20",
+  "user-agent": "claude-cli/2.1.80 (external, cli)"
+}`;
+const AMF_DEFAULT_EXTRA_BODY = `{
+  "max_tokens": 4096,
+  "system": [
+    {
+      "type": "text",
+      "text": "You are Claude Code, Anthropic's official CLI for Claude."
+    }
+  ]
+}`;
+const AMF_LIBERTY_PLACEHOLDER = `{
+  "version": "1.0.0",
+  "provider": "anthropic",
+  "access_token": "...",
+  "refresh_token": "...",
+  "expires_at": 1234567890,
+  ...
+}`;
+
 /* ── All available OpenAI models ─────── */
 const AMF_ALL_MODELS = [
   'gpt-4o', 'gpt-4o-2024-11-20', 'gpt-4o-2024-08-06', 'gpt-4o-2024-05-13',
@@ -121,11 +161,38 @@ function AmfModelSelection({ selectedModels, onToggle, onClearAll, onSelectAll }
 /* ── The form card (sections + footer) ── */
 function ApiModelForm({ showCancel = true, title, subtitle }) {
   /* Provider Connection */
-  const [apiFormat, setApiFormat] = React.useState('openai-completions');
+  const [name, setName] = React.useState('');
+  const [apiFormat, setApiFormat] = React.useState('openai');
   const [baseUrl, setBaseUrl] = React.useState('https://api.openai.com/v1');
   const [useApiKey, setUseApiKey] = React.useState(true);
   const [apiKey, setApiKey] = React.useState('sk-proj-••••••••••••••••••••••••••••••••••••••••••••••••••••');
   const [showKey, setShowKey] = React.useState(false);
+
+  /* Anthropic Setup Token extras */
+  const [extraHeaders, setExtraHeaders] = React.useState(AMF_DEFAULT_EXTRA_HEADERS);
+  const [extraBody, setExtraBody] = React.useState(AMF_DEFAULT_EXTRA_BODY);
+
+  /* LLM Liberty OAuth envelope */
+  const [libertyCreds, setLibertyCreds] = React.useState('');
+  const [copiedCmd, setCopiedCmd] = React.useState(false);
+
+  /* Selecting a format auto-fills its default Base URL. */
+  const onFormatChange = (value) => {
+    setApiFormat(value);
+    const next = AMF_FORMAT_MAP[value];
+    if (next && next.baseUrl) setBaseUrl(next.baseUrl);
+  };
+
+  const fmt = AMF_FORMAT_MAP[apiFormat] || {};
+  const isLiberty = !!fmt.liberty;
+  const showExtras = !!fmt.extras;
+
+  const copyCmd = () => {
+    const cmd = 'npx @bodhiapp/llm-liberty@latest login';
+    if (navigator.clipboard) navigator.clipboard.writeText(cmd).catch(() => {});
+    setCopiedCmd(true);
+    setTimeout(() => setCopiedCmd(false), 1400);
+  };
 
   /* Request Routing */
   const [enablePrefix, setEnablePrefix] = React.useState(true);
@@ -142,9 +209,7 @@ function ApiModelForm({ showCancel = true, title, subtitle }) {
     return next;
   });
 
-  const urlHint = apiFormat === 'anthropic'
-    ? 'e.g. https://api.anthropic.com/v1'
-    : 'Enter the complete API endpoint URL for your provider';
+  const urlHint = 'Enter the complete API endpoint URL for your provider';
 
   return (
     <div className="bf-card">
@@ -161,47 +226,103 @@ function ApiModelForm({ showCancel = true, title, subtitle }) {
           <div className="bf-section-title">Provider Connection</div>
 
           <div className="bf-field">
+            <label className="bf-label"><span className="bf-label-text">Name</span><span className="bf-req">*</span></label>
+            <input className="bf-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. openai-prod" />
+            <div className="bf-hint">A unique name to identify this API model configuration.</div>
+          </div>
+
+          <div className="bf-field">
             <label className="bf-label"><span className="bf-label-text">API Format</span><span className="bf-req">*</span></label>
-            <select className="bf-select" value={apiFormat} onChange={(e) => setApiFormat(e.target.value)}>
-              <option value="openai-completions">OpenAI — Completions</option>
-              <option value="openai-chat">OpenAI — Chat Completions</option>
-              <option value="anthropic">Anthropic Messages</option>
-              <option value="cohere">Cohere Generate</option>
-              <option value="ollama">Ollama</option>
+            <select className="bf-select" value={apiFormat} onChange={(e) => onFormatChange(e.target.value)}>
+              {AMF_FORMATS.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
             </select>
           </div>
 
-          <div className="bf-field">
-            <label className="bf-label"><span className="bf-label-text">Base URL</span><span className="bf-req">*</span></label>
-            <input className="bf-input" type="url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" />
-            <div className="bf-hint">{urlHint}</div>
-          </div>
-
-          {/* API Key — input ALWAYS visible, disabled until "Use API key" is checked */}
-          <div className="bf-field">
-            <label className="bf-label"><span className="bf-label-text">API Key</span></label>
-            <div className="bf-check-row">
-              <input type="checkbox" id="amf-useApiKey" className="bf-checkbox" checked={useApiKey} onChange={(e) => setUseApiKey(e.target.checked)} />
-              <label htmlFor="amf-useApiKey" className="bf-check-label">Use API key</label>
-            </div>
-            <div className={`bf-indent${useApiKey ? '' : ' is-locked'}`}>
-              <div className="bf-pw-wrap">
-                <input
-                  className="bf-input bf-input-mono"
-                  type={showKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-…"
-                  autoComplete="new-password"
-                  disabled={!useApiKey}
-                />
-                <button className="bf-pw-toggle" type="button" onClick={() => setShowKey((v) => !v)} disabled={!useApiKey} title={showKey ? 'Hide key' : 'Show key'}>
-                  <AmfIcon name={showKey ? 'eye-off' : 'eye'} size={14} />
+          {isLiberty ? (
+            /* ── LLM Liberty OAuth envelope ── */
+            <div className="bf-field">
+              <label className="bf-label"><span className="bf-label-text">LLM Liberty OAuth Credentials</span></label>
+              <div className="bf-hint" style={{ marginTop: 0, marginBottom: 8 }}>Run the login command to get credentials, then paste the JSON output below.</div>
+              <div className="amf-cmd">
+                <code className="amf-cmd-text">npx @bodhiapp/llm-liberty@latest login</code>
+                <button className="amf-cmd-copy" type="button" onClick={copyCmd} title="Copy command">
+                  <AmfIcon name={copiedCmd ? 'check' : 'copy'} size={14} />
                 </button>
               </div>
-              <div className="bf-hint">Your API key is stored securely.</div>
+              <textarea
+                className="bf-textarea bf-input-mono"
+                style={{ minHeight: 168 }}
+                value={libertyCreds}
+                onChange={(e) => setLibertyCreds(e.target.value)}
+                placeholder={AMF_LIBERTY_PLACEHOLDER}
+                spellCheck={false}
+              />
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="bf-field">
+                <label className="bf-label"><span className="bf-label-text">Base URL</span><span className="bf-req">*</span></label>
+                <input className="bf-input" type="url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" />
+                <div className="bf-hint">{urlHint}</div>
+              </div>
+
+              {/* API Key — input ALWAYS visible, disabled until "Use API key" is checked */}
+              <div className="bf-field">
+                <label className="bf-label"><span className="bf-label-text">API Key</span></label>
+                <div className="bf-check-row">
+                  <input type="checkbox" id="amf-useApiKey" className="bf-checkbox" checked={useApiKey} onChange={(e) => setUseApiKey(e.target.checked)} />
+                  <label htmlFor="amf-useApiKey" className="bf-check-label">Use API key</label>
+                </div>
+                <div className={`bf-indent${useApiKey ? '' : ' is-locked'}`}>
+                  <div className="bf-pw-wrap">
+                    <input
+                      className="bf-input bf-input-mono"
+                      type={showKey ? 'text' : 'password'}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="sk-…"
+                      autoComplete="new-password"
+                      disabled={!useApiKey}
+                    />
+                    <button className="bf-pw-toggle" type="button" onClick={() => setShowKey((v) => !v)} disabled={!useApiKey} title={showKey ? 'Hide key' : 'Show key'}>
+                      <AmfIcon name={showKey ? 'eye-off' : 'eye'} size={14} />
+                    </button>
+                  </div>
+                  <div className="bf-hint">Your API key is stored securely.</div>
+                </div>
+              </div>
+
+              {/* Extras — Anthropic Setup Token only */}
+              {showExtras && (
+                <>
+                  <div className="bf-field">
+                    <label className="bf-label"><span className="bf-label-text">Extra Headers</span><span className="bf-optional">Optional</span></label>
+                    <textarea
+                      className="bf-textarea bf-input-mono"
+                      style={{ minHeight: 120 }}
+                      value={extraHeaders}
+                      onChange={(e) => setExtraHeaders(e.target.value)}
+                      spellCheck={false}
+                    />
+                    <div className="bf-hint">JSON object of headers added to every request.</div>
+                  </div>
+                  <div className="bf-field">
+                    <label className="bf-label"><span className="bf-label-text">Extra Body</span><span className="bf-optional">Optional</span></label>
+                    <textarea
+                      className="bf-textarea bf-input-mono"
+                      style={{ minHeight: 140 }}
+                      value={extraBody}
+                      onChange={(e) => setExtraBody(e.target.value)}
+                      spellCheck={false}
+                    />
+                    <div className="bf-hint">JSON merged into every request body.</div>
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
 
         <div className="bf-divider"></div>
@@ -260,7 +381,7 @@ function ApiModelForm({ showCancel = true, title, subtitle }) {
 
       {/* ══ FOOTER — actions ══ */}
       <div className="bf-footer">
-        <button className="bf-btn bf-btn-secondary"><AmfIcon name="plug-zap" size={13} /> Test Connection</button>
+        <button className="bf-btn bf-btn-secondary" disabled={isLiberty} title={isLiberty ? 'Not available for LLM Liberty OAuth' : undefined}><AmfIcon name="plug-zap" size={13} /> Test Connection</button>
         <div className="bf-footer-spacer"></div>
         {showCancel && <button className="bf-btn bf-btn-ghost">Cancel</button>}
         <button className="bf-btn bf-btn-primary">Create API Model</button>

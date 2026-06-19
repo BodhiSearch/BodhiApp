@@ -153,7 +153,34 @@
   .cam-model-list { max-height: 180px; }
 }
 
+/* ── LLM Liberty OAuth — login command block ── */
+.amf-cmd {
+  display: flex; align-items: center; gap: 8px;
+  background: hsl(var(--muted) / .55);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  padding: 11px 12px 11px 14px;
+  margin-bottom: 10px;
+}
+.amf-cmd-text {
+  flex: 1; min-width: 0;
+  font-family: var(--font-mono); font-size: 12.5px;
+  color: hsl(var(--foreground));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.amf-cmd-copy {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  border: none; background: transparent;
+  color: hsl(var(--muted-foreground));
+  transition: background 120ms, color 120ms;
+}
+.amf-cmd-copy:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+
 /* ── Dark — sunken selection/search wells ── */
 [data-theme="dark"] .cam-selected-area { background: hsl(var(--surface-1)); }
 [data-theme="dark"] .cam-search-input { background: hsl(var(--surface-1)); border-color: hsl(var(--border-strong)); }
 [data-theme="dark"] .cam-model-item.checked { background: hsl(var(--primary) / .10); }
+[data-theme="dark"] .amf-cmd { background: hsl(var(--surface-1)); border-color: hsl(var(--border-strong)); }
+[data-theme="dark"] .amf-cmd-copy:hover { background: hsl(var(--surface-2)); }
