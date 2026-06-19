@@ -1,0 +1,311 @@
+/* Model-selection box — ported from design/create-api-model.css (.cam-*).
+   Scoped under .model-selector-cam so the generic .cam-* names + the brand
+   semantic tokens don't leak globally. Dark selector normalized to our
+   ThemeProvider class (.dark) plus the prototype's [data-theme="dark"]. */
+
+.model-selector-cam {
+  /* brand semantic helpers (not in the AppShell palette) — light */
+  --c-lotus-bg: rgba(255, 164, 184, 0.13);
+  --c-lotus-bd: rgba(255, 164, 184, 0.32);
+  --c-lotus-text: #b02a52;
+  --c-indigo-bg: rgba(62, 74, 168, 0.09);
+  --c-indigo-bd: rgba(62, 74, 168, 0.2);
+  --c-indigo-text: #3e4aa8;
+  --c-saffron-text: #b4500a;
+}
+.dark .model-selector-cam,
+[data-theme='dark'] .model-selector-cam {
+  --c-lotus-bg: rgba(255, 164, 184, 0.14);
+  --c-lotus-bd: rgba(255, 164, 184, 0.26);
+  --c-lotus-text: #ffa4b8;
+  --c-indigo-bg: rgba(110, 123, 204, 0.16);
+  --c-indigo-bd: rgba(110, 123, 204, 0.28);
+  --c-indigo-text: #a5aee6;
+  --c-saffron-text: #ffab5c;
+}
+
+/* ─── MODEL SELECTION BOX ─── */
+.model-selector-cam .cam-model-box {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* Selected chips area */
+.model-selector-cam .cam-selected-area {
+  padding: 10px 12px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--surface-2));
+}
+.model-selector-cam .cam-selected-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.model-selector-cam .cam-selected-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+.model-selector-cam .cam-clear-all {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-saffron-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 120ms;
+}
+.model-selector-cam .cam-clear-all:hover {
+  opacity: 0.7;
+}
+.model-selector-cam .cam-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 22px;
+}
+.model-selector-cam .cam-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 9px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  border: 1px solid var(--c-indigo-bd);
+  background: var(--c-indigo-bg);
+  color: var(--c-indigo-text);
+}
+.model-selector-cam .cam-chip-x {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--c-indigo-text);
+  opacity: 0.6;
+  transition: opacity 100ms;
+  display: inline-flex;
+}
+.model-selector-cam .cam-chip-x:hover {
+  opacity: 1;
+}
+.model-selector-cam .cam-chips-empty {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Available models area */
+.model-selector-cam .cam-available-area {
+  padding: 10px 12px;
+}
+.model-selector-cam .cam-available-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.model-selector-cam .cam-available-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+.model-selector-cam .cam-available-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.model-selector-cam .cam-link-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-indigo-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 120ms;
+}
+.model-selector-cam .cam-link-btn:hover {
+  opacity: 0.7;
+}
+.model-selector-cam .cam-link-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.model-selector-cam .cam-link-btn.loading {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* Search */
+.model-selector-cam .cam-search-wrap {
+  position: relative;
+  margin-bottom: 7px;
+}
+.model-selector-cam .cam-search-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+.model-selector-cam .cam-search-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 30px;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius-sm);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font-size: 12.5px;
+  outline: none;
+  transition:
+    border-color 140ms,
+    box-shadow 140ms;
+}
+.model-selector-cam .cam-search-input:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+}
+.model-selector-cam .cam-search-input:disabled {
+  background: hsl(var(--muted) / 0.5);
+  cursor: not-allowed;
+}
+.model-selector-cam .cam-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  align-items: center;
+  transition: color 120ms;
+}
+.model-selector-cam .cam-search-clear:hover {
+  color: hsl(var(--foreground));
+}
+
+/* Model list */
+.model-selector-cam .cam-model-list {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.model-selector-cam .cam-model-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-bottom: 1px solid hsl(var(--border));
+  cursor: pointer;
+  transition: background 80ms;
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  color: hsl(var(--foreground));
+  width: 100%;
+  text-align: left;
+  background: none;
+}
+.model-selector-cam .cam-model-item:last-child {
+  border-bottom: none;
+}
+.model-selector-cam .cam-model-item:hover {
+  background: hsl(var(--muted));
+}
+.model-selector-cam .cam-model-item.checked {
+  background: var(--c-lotus-bg);
+}
+.model-selector-cam .cam-model-cb {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1.5px solid hsl(var(--input));
+  background: hsl(var(--card));
+  appearance: none;
+  cursor: pointer;
+  pointer-events: none;
+  position: relative;
+  transition:
+    background 120ms,
+    border-color 120ms;
+}
+.model-selector-cam .cam-model-item.checked .cam-model-cb {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--accent));
+}
+.model-selector-cam .cam-model-item.checked .cam-model-cb::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0px;
+  width: 5px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(42deg);
+}
+.model-selector-cam .cam-model-name {
+  flex: 1;
+}
+.model-selector-cam .cam-no-models {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-sans);
+}
+
+/* fetch spinner */
+.model-selector-cam .cam-fetch-spin {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid hsl(var(--border));
+  border-top-color: var(--c-indigo-text);
+  border-radius: 50%;
+  animation: cam-spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+@keyframes cam-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 639px) {
+  .model-selector-cam .cam-model-list {
+    max-height: 180px;
+  }
+}
+
+/* ── Dark — sunken selection/search wells ── */
+.dark .model-selector-cam .cam-selected-area,
+[data-theme='dark'] .model-selector-cam .cam-selected-area {
+  background: hsl(var(--surface-1));
+}
+.dark .model-selector-cam .cam-search-input,
+[data-theme='dark'] .model-selector-cam .cam-search-input {
+  background: hsl(var(--surface-1));
+  border-color: hsl(var(--border-strong));
+}
+.dark .model-selector-cam .cam-model-item.checked,
+[data-theme='dark'] .model-selector-cam .cam-model-item.checked {
+  background: hsl(var(--primary) / 0.1);
+}

@@ -19,7 +19,7 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 2 | **Settings** (App Settings) + **Manage Users** (nav under Users per 1.1) | ✅ done |
 | 3 | Models — **split into sub-phases 3-1…3-7** (2026-06-19, see below) | 🚧 in progress |
 | 3-1 | **My Models** list + faceted sidebar + detail rail (first **full-stack** batch: backend `size`/capability/**search** + server-side filters) | 🟩 done-behind-flag |
-| 3-2 | **New API Model** form (`api/new`+`edit`) — **NEXT** | ⬜ not started |
+| 3-2 | **New API Model** form (`api/new`+`edit`) — V2-only, **no flag** | ✅ done |
 | 3-3 | **New Fallback** alias form (`router/new`+`edit`) | ⬜ not started |
 | 3-4 | **New Local Model** form (`alias/new`+`edit`) — richest; sequenced after the simpler forms | ⬜ not started |
 | 3-5 | files / pull consolidation (fold download + quant table into the local-model form) | ⬜ not started |
@@ -40,13 +40,39 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 > V1 list retire in the sub-phase that migrates the last consuming form + its specs (≈3-4/3-5). See the
 > retro's flag-deferral note.
 
+## Active per-screen flags (`useUiV2Flag`) — what they gate + when they retire
+
+Every flag is `localStorage`-keyed `bodhi.ui-v2.<id>`, default **off**. Registered in
+`lib/uiV2Flags.ts`. The **`models` list flag** retires when the Models section flips (its E2E specs
+drive create/edit/delete through the V1 list↔form flow, so retiring it early breaks the suite) —
+tracked as a dedicated iteration in @techdebt.md.
+
+| Flag id | Gates | Default | Status | Retire when |
+|---|---|---|---|---|
+| `chat` | Chat V2 (Batch 5) | off | not built | Batch 5 (Chat) lands |
+| `models` | My Models V2 list (3-1) | off | shipped 🟩 | Models section flips (with V1-list↔form E2E migration) |
+| `new-fallback-model` | New/Edit Fallback alias V2 (3-3) | off | not built | 3-3 decides at plan time (it adds a real info rail) |
+| `new-local-model` | New/Edit Local model V2 (3-4) | off | not built | 3-4 decides at plan time |
+| `mcp-discover` | All MCPs / Discover V2 (Batch 4) | off | not built | Batch 4 (MCP) lands |
+| `new-mcp` | New MCP instance V2 (Batch 4) | off | not built | Batch 4 (MCP) lands |
+| `mcp-playground` | MCP Playground V2 (Batch 4) | off | not built | Batch 4 (MCP) lands |
+
+> **No flag (shipped V2-only):** the **New/Edit API Model form** (3-2). Its V2 chrome (breadcrumb +
+> centered container) is purely additive over the same `/models/api/new|edit` routes and reuses the
+> production `ApiModelForm` unchanged, so it ships always-on with no flag and no V1 fallback —
+> `new-api-model` was **removed** from `uiV2Flags.ts`. (Decision: the user opted to skip the flag for a
+> change this thin.)
+>
+> **Retired (deleted) flags** (V2-only, old code removed): `app-settings`, `manage-users`, the Batch-1
+> token/user flags. Not listed above — they no longer exist in `uiV2Flags.ts`.
+
 ## Screen-by-screen
 
 | # | Section | Screen | Route | Layout | Flag | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 1 | Chat | Chat | `/chat/` | shell | `chat` | ⬜ | Batch 5 (last). Old chat UI renders inside the new shell today. |
 | 2 | Models | **My Models** (was "All Models") | `/models/` | shell | `models` (default-off) | 🟩 | **Batch 3-1** (+ design refinement). V2 shell list + published **faceted `sidebar`** (TYPE / CAPABILITY vision·tool-use·reasoning / SIZE dual-slider / API-FORMAT incl. **Liberty**) + **always-visible search** + selectable rows (`LinkRow`) + **read-only detail rail, 4 variants** (Local File / Model Alias / API Model w/ models list / Fallback w/ routing chain), Edit CTA → V1 form routes. **First full-stack batch:** added `size`+capability+**`search`** + **server-side facet filters** (`type`/`api_format`/`size_*`/`capability`/`search`) to `GET /bodhi/v1/models` + regen; `useListModels` gained `keepPreviousData`. **Refinement (2026-06-19):** nav "All Models"→**"My Models"** (id `my-models`); **TYPE removed from the top bar** (sidebar-only); **search moved server-side**, submit-on-Enter; **colorful** per design (per-type icon tiles saffron/lotus/indigo/teal, API provider badge, active-row left-accent). **Flag NOT retired — V1 list kept** (see batches note). |
-| 3 | Models | New API Model | `/models/api/new/` (+ edit) | shell | `new-api-model` | ⬜ | Batch **3-2** (NEXT). `/new/`+`/edit/` share one design. |
+| 3 | Models | New API Model | `/models/api/new/` (+ edit) | shell | — (none) | ✅ | Batch **3-2**. V2-only, **no flag**: added always-on V2 chrome (breadcrumb `Bodhi›Models›New/Edit API Model` via `useShellChrome` + a centered `max-w-3xl` container) to both routes; **reused the production `ApiModelForm` unchanged** (shadcn `Card` + all real fields: Name·6 real formats·Base URL·API-Key·Extras·**Liberty envelope swap**·Prefix·Forward-mode·Model-selection·Test-Connection). `api_format` read-only on edit (server `ApiFormatImmutableOnEdit`). No backend change. `new-api-model` removed from `uiV2Flags.ts`. Setup wizard (`mode="setup"`) untouched. |
 | 4 | Models | New Fallback Alias | `/models/router/new/` (+ edit) | shell | `new-fallback-model` | ⬜ | Batch **3-3**. |
 | 5 | Models | New Local Model | `/models/alias/new/` (+ edit) | shell | `new-local-model` | ⬜ | Batch **3-4** (richest; after the simpler forms). |
 | 6 | MCP | All MCPs / Discover | `/mcps/` | shell | `mcp-discover` | ⬜ | Batch 4. Needs the reference-API catalog. |

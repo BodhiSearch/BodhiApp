@@ -1,4 +1,5 @@
 import EditApiModel from '@/routes/models/api/edit/index';
+import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -281,5 +282,51 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       // Form should still be visible after error
       expect(screen.getByTestId('edit-api-model-form')).toBeInTheDocument();
     });
+  });
+});
+
+// V2 shell chrome for the edit route: breadcrumb ("Edit API Model") + centered container (always-on,
+// no flag), with api_format locked on edit (unchanged behavior, re-asserted here).
+function BreadcrumbConsumer() {
+  const { breadcrumb } = useShellSlots();
+  const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
+  return <div data-testid="harness-breadcrumb">{crumbs}</div>;
+}
+
+describe('Edit API Model Page - V2 shell chrome', () => {
+  it('publishes the Edit breadcrumb, renders the container, and locks api_format', async () => {
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockGetApiModel('test-model', {
+        id: 'test-model',
+        api_format: 'openai',
+        base_url: 'https://api.openai.com/v1',
+        has_api_key: true,
+        models: [{ id: 'gpt-3.5-turbo', object: 'model', created: 0, owned_by: 'openai', provider: 'openai' }],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
+      ...mockApiFormatsDefault(),
+      ...mockTestApiModelSuccess(),
+      ...mockFetchApiModelsSuccess()
+    );
+
+    render(
+      <ShellSlotsProvider>
+        <BreadcrumbConsumer />
+        <EditApiModel />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-api-model-form')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('harness-breadcrumb')).toHaveTextContent('Bodhi / Models / Edit API Model');
+    expect(screen.getByTestId('edit-api-model-page')).toBeInTheDocument();
+    // api_format is read-only on edit (server-enforced too); the selector is disabled + shows the hint.
+    expect(screen.getByTestId('api-format-selector')).toBeDisabled();
+    expect(screen.getByTestId('api-format-selector-locked-hint')).toBeInTheDocument();
   });
 });

@@ -60,7 +60,7 @@ describe('ModelSelector', () => {
       expect(onModelsSelectAll).toHaveBeenCalledWith(['gpt-4', 'gpt-3.5-turbo']);
     });
 
-    it('filters out already selected models from available list', () => {
+    it('keeps already-selected models in the available list, rendered checked', () => {
       render(
         <ModelSelector
           {...defaultProps}
@@ -69,9 +69,33 @@ describe('ModelSelector', () => {
         />
       );
 
-      expect(screen.queryByTestId('available-model-gpt-4')).not.toBeInTheDocument();
-      expect(screen.getByTestId('available-model-gpt-3.5-turbo')).toBeInTheDocument();
-      expect(screen.getByTestId('available-model-gpt-4-turbo')).toBeInTheDocument();
+      // Selected models stay in the list (design: checked + tinted), not filtered out.
+      const selectedRow = screen.getByTestId('available-model-gpt-4');
+      expect(selectedRow).toBeInTheDocument();
+      expect(selectedRow).toHaveAttribute('aria-pressed', 'true');
+      // Unselected rows are present and not pressed.
+      expect(screen.getByTestId('available-model-gpt-3.5-turbo')).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByTestId('available-model-gpt-4-turbo')).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('clicking a selected row in the list deselects it (toggle)', async () => {
+      const user = userEvent.setup();
+      const onModelRemove = vi.fn();
+      const onModelSelect = vi.fn();
+
+      render(
+        <ModelSelector
+          {...defaultProps}
+          selectedModels={['gpt-4']}
+          availableModels={['gpt-4', 'gpt-3.5-turbo']}
+          onModelRemove={onModelRemove}
+          onModelSelect={onModelSelect}
+        />
+      );
+
+      await user.click(screen.getByTestId('available-model-gpt-4'));
+      expect(onModelRemove).toHaveBeenCalledWith('gpt-4');
+      expect(onModelSelect).not.toHaveBeenCalled();
     });
   });
 

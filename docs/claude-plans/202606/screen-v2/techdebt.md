@@ -48,6 +48,26 @@ Fails identically in `standalone` + `multi_tenant`.
   already-shipped Access Requests screen — there's no server-side role-filter query param). Accepted
   limitation; a real fix needs a backend `role` query param on `GET /bodhi/v1/users`.
 
+## Models V1-list retirement + E2E-spec migration — its own iteration (added Batch 3-2)
+The **3-1 My Models V2 list** ships behind the default-off `models` flag, and the **V1
+`ModelsPageContent` list is kept**. It can't retire yet because the existing model/api-model E2E specs
+(`model-alias`, `model-router`, `model-metadata`, `api-models/*`) drive create/edit/**delete** through
+the **V1 My-Models list↔form flow** (preview modal, row `edit-button`/`delete-button`). The V2 list
+replaces those row controls with a rail + Edit-CTA, so flipping `models` on before those specs migrate
+breaks the suite.
+
+**Note (Batch 3-2):** the **form** sub-phases are NOT flagged the way the list is. 3-2 (API Model form)
+shipped **V2-only, no flag** — its V2 chrome is purely additive over the same routes and reuses the
+production `ApiModelForm` unchanged (no separate V1 form artifact). 3-3/3-4 decide their own flag at
+plan time (3-3 adds a real info rail, so it's more than chrome). So this iteration is really about the
+**`models` list flag + the V1 list + the V1-flow E2E specs**, not the forms.
+
+**The retirement iteration** (when the Models section is accepted): flip `models` on (V2 list
+always-on), delete the V1 `ModelsPageContent` list + the `models` flag, and migrate the
+model/api-model E2E specs from the V1 list↔form delete/edit flow to the V2 list-rail (+ the already-V2
+forms) — **together, in one pass**. Tracked here so it isn't forgotten. (See `tracker.md` §"Active
+per-screen flags".)
+
 ## Migration scaffolding to REMOVE when the whole migration completes (added Batch 1)
 Temporary structures introduced to enable in-place, flag-gated coexistence. **Delete these once
 every screen is migrated** (tracked here so they don't become permanent non-obvious cruft):

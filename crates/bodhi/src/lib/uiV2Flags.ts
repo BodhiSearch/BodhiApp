@@ -11,14 +11,15 @@
  *   localStorage.setItem('bodhi.ui-v2.mcp-discover', 'true')
  *
  * (The API-Keys screens — Batch 1 — and the Settings screens — App Settings, Manage Users,
- * Batch 2 — have shipped V2-only; their flags were retired, so they're no longer listed.)
+ * Batch 2 — have shipped V2-only; their flags were retired, so they're no longer listed. The
+ * New/Edit API Model form — Batch 3-2 — also shipped V2-only: its V2 chrome is purely additive
+ * over the same routes, so it has no flag.)
  */
 
 export type UiV2Screen =
   | 'chat'
   | 'models'
   | 'new-local-model'
-  | 'new-api-model'
   | 'new-fallback-model'
   | 'mcp-discover'
   | 'new-mcp'

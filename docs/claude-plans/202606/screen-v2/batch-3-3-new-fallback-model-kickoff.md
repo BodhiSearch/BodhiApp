@@ -1,8 +1,27 @@
 # Kick-off — Batch 3-3: New Fallback Alias (form)
 
 > Load shared context via @common-prompt.md, then run the per-batch loop (@process.md). **Read
-> @batch-3-2-new-api-model-retro.md + @batch-3-1-models-retro.md first.** Reuses the `bf-*` form CSS
-> ported in 3-2. Its own sub-phase (commit + retro), after 3-2 (API Model form).
+> @batch-3-2-new-api-model-retro.md + @batch-3-1-models-retro.md first.** Its own sub-phase
+> (commit + retro), after 3-2 (API Model form).
+>
+> **⚠ Corrected by the 3-2 retro (the original framing here is stale):**
+> - **3-2 did NOT port `bf-*` CSS.** The user directed: the hi-fi prototype is *indicative, not
+>   constraining* — implement V2 UX with **what production already uses** (shadcn `Card` + existing
+>   field components), do **not** replace production styling with the prototype's `bf-*` system, do
+>   **not** restyle shared form components. **Same rule for 3-3:** the prod `ModelRouterForm` is reused
+>   as-is; the port is **V2 chrome (breadcrumb + centered container + the right info `rail`) + flag**,
+>   not a `bf-*` rebuild.
+> - **Flag is 3-3's call at plan time; do NOT delete V1 / migrate specs in this batch.** 3-2 (API form)
+>   ended up shipping **V2-only with NO flag** — the chrome was purely additive over the same routes.
+>   3-3 has a real **info rail** on top of the chrome, so re-decide at plan time: no-flag-always-on (if
+>   the rail is also purely additive) vs a `new-fallback-model` flag. Either way, do **not** delete the
+>   V1 router form or migrate the model-router E2E specs here — the **Models V1-list retirement** (the
+>   `models` list flag + V1 `ModelsPageContent` + the V1-flow delete/edit specs) is a **separate
+>   dedicated iteration**; the forms are independent of it. See @techdebt.md + tracker §"Active
+>   per-screen flags".
+> - **3-3 is heavier than 3-2:** the prototype adds a real **right-hand info rail** (ROUTING CHAIN /
+>   HOW IT WORKS / TIPS) → that's genuine new chrome (a published, memoized `rail`), unlike 3-2 which
+>   was breadcrumb + container only. The form *fields* are still reused from production.
 
 ## Scope — the New Fallback Alias form (1 screen, 2 routes share it)
 - `routes/models/router/new/` **+** `…/edit/` — one form, create vs edit mode. Flag `new-fallback-model`.
@@ -38,12 +57,15 @@ The production `ModelRouterForm` (`routes/models/router/-components/`):
    `reducedMotion:'reduce'`; target add/remove/reorder/disable; create + edit a real router.
 5. **GATE B (live)** — create + edit a fallback alias live (chain, toggles, resilience if kept);
    light + dark + responsive; console-clean. Rebuild the binary only if a backend change crept in.
-6. **All gates green** → retire `new-fallback-model` flag + delete V1 router form → migrate the
-   model-router E2E specs → commit → retro → **3-4 (New Local Model form) kickoff**.
+6. **All gates green** (RTL + targeted model-router E2E reused as-is + GATE B live) → commit (flag-or-
+   not per the plan-time decision; do **not** delete V1 or migrate the model-router specs here) → retro
+   → **3-4 (New Local Model form) kickoff**.
 
 ## Carry-forward gotchas
 - Right-rail is a published `rail` — memoize it; depends on form state, so memo on that.
-- Don't drop real fields the prototype omits (resilience).
-- Scope CSS (reuse the 3-2 `bf-*` root); strip prototype idioms; `ShellSlotsProvider` RTL harness.
+- Don't drop real fields the prototype omits (resilience — `cooldown_secs`/`max_attempts`/`honor_retry_after`).
+- **Reuse production `ModelRouterForm` unchanged** (no `bf-*`, no restyle) — the port is chrome + the
+  rail + flag. `ShellSlotsProvider` RTL harness for the published rail/breadcrumb.
 - Prefer direct nav over `navViaShell` in the page object (3-1 retro).
-- `design/` files are user-owned — exclude from commit. Migrate the V1 router specs with the form.
+- `design/` files are user-owned — exclude from commit. The model-router E2E specs stay on the V1 flow
+  and migrate in the dedicated Models-flag-retirement iteration (NOT this batch).

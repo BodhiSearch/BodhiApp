@@ -1,13 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
-import { X, Search, Loader2 } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+import './model-selector.css';
 
 interface ModelSelectorProps {
   selectedModels: string[];
@@ -43,7 +40,8 @@ interface ModelSearchProps {
 
 interface ModelListProps {
   models: string[];
-  onModelSelect: (model: string) => void;
+  selectedModels: string[];
+  onToggle: (model: string) => void;
   searchTerm: string;
   isFetchingModels: boolean;
   availableModelsCount: number;
@@ -61,54 +59,38 @@ interface AvailableModelsHeaderProps {
 
 function SelectedModels({ selectedModels, onModelRemove, onClearAll }: SelectedModelsProps) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label>Selected Models ({selectedModels.length})</Label>
+    <div className="cam-selected-area">
+      <div className="cam-selected-header">
+        <span className="cam-selected-label">Selected Models ({selectedModels.length})</span>
         {selectedModels.length > 0 && onClearAll && (
-          <Button
-            variant="link"
-            size="sm"
-            onClick={onClearAll}
-            className="h-auto p-0 text-destructive hover:text-destructive"
-            data-testid="clear-all-models"
-          >
+          <button type="button" className="cam-clear-all" onClick={onClearAll} data-testid="clear-all-models">
             Clear All
-          </Button>
+          </button>
         )}
       </div>
-      {selectedModels.length > 0 ? (
-        <div
-          className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/50 min-h-[48px]"
-          data-testid="selected-models-list"
-        >
-          {selectedModels.map((model) => (
-            <Badge
-              key={model}
-              variant="secondary"
-              className="flex items-center gap-1"
-              data-testid={`selected-model-${model}`}
-            >
+      <div className="cam-chips-row" data-testid="selected-models-list">
+        {selectedModels.length === 0 ? (
+          <span className="cam-chips-empty" data-testid="no-models-selected">
+            No models selected
+          </span>
+        ) : (
+          selectedModels.map((model) => (
+            <span key={model} className="cam-chip" data-testid={`selected-model-${model}`}>
               <span>{model}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+              <button
+                type="button"
+                className="cam-chip-x"
                 onClick={() => onModelRemove(model)}
+                title={`Remove ${model}`}
+                aria-label={`Remove ${model}`}
                 data-testid={`remove-model-${model}`}
               >
-                <X className="h-3 w-3" />
-              </Button>
-            </Badge>
-          ))}
-        </div>
-      ) : (
-        <div
-          className="p-3 border rounded-md bg-muted/50 min-h-[48px] flex items-center justify-center text-muted-foreground"
-          data-testid="no-models-selected"
-        >
-          No models selected
-        </div>
-      )}
+                ×
+              </button>
+            </span>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -118,26 +100,23 @@ function FetchModelButton({ onFetchModels, isFetchingModels, canFetch, fetchDisa
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span>
-            <Button
-              variant="link"
-              size="sm"
-              onClick={onFetchModels}
-              disabled={!canFetch || isFetchingModels}
-              className="h-auto p-0"
-              data-testid="fetch-models-button"
-              data-fetch-state={isFetchingModels ? 'loading' : 'idle'}
-            >
-              {isFetchingModels ? (
-                <>
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  Fetching...
-                </>
-              ) : (
-                'Fetch Models'
-              )}
-            </Button>
-          </span>
+          <button
+            type="button"
+            className={`cam-link-btn${isFetchingModels ? ' loading' : ''}`}
+            onClick={onFetchModels}
+            disabled={!canFetch || isFetchingModels}
+            data-testid="fetch-models-button"
+            data-fetch-state={isFetchingModels ? 'loading' : 'idle'}
+          >
+            {isFetchingModels ? (
+              <>
+                <span className="cam-fetch-spin" />
+                Fetching...
+              </>
+            ) : (
+              'Fetch Models'
+            )}
+          </button>
         </TooltipTrigger>
         {!canFetch && !isFetchingModels && (
           <TooltipContent>
@@ -151,65 +130,78 @@ function FetchModelButton({ onFetchModels, isFetchingModels, canFetch, fetchDisa
 
 function ModelSearch({ searchTerm, onSearchChange, onClearSearch, disabled = false }: ModelSearchProps) {
   return (
-    <div className="relative">
-      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-      <Input
+    <div className="cam-search-wrap">
+      <span className="cam-search-icon">
+        <Search className="h-3.5 w-3.5" />
+      </span>
+      <input
+        className="cam-search-input"
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="pl-8 pr-8"
         placeholder="Search models..."
         disabled={disabled}
         data-testid="model-search-input"
       />
       {searchTerm && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="absolute right-1 top-1 h-6 w-6 p-0"
+        <button
+          type="button"
+          className="cam-search-clear"
           onClick={onClearSearch}
+          aria-label="Clear search"
           data-testid="clear-search-button"
         >
           <X className="h-3 w-3" />
-        </Button>
+        </button>
       )}
     </div>
   );
 }
 
-function ModelList({ models, onModelSelect, searchTerm, isFetchingModels, availableModelsCount }: ModelListProps) {
+function ModelList({
+  models,
+  selectedModels,
+  onToggle,
+  searchTerm,
+  isFetchingModels,
+  availableModelsCount,
+}: ModelListProps) {
   const getEmptyStateMessage = () => {
     if (availableModelsCount === 0) {
       return isFetchingModels ? 'Loading models...' : 'No models available. Fetch models to see options.';
     }
-    return searchTerm ? 'No models match your search.' : 'All models are already selected.';
+    return searchTerm ? `No models match "${searchTerm}"` : 'No models available.';
   };
 
   return (
-    <ScrollArea
-      className="h-[120px] border rounded-md"
+    <div
+      className="cam-model-list"
       data-testid="model-list-container"
       data-models-count={models.length}
       data-fetch-state={isFetchingModels ? 'loading' : 'complete'}
     >
       {models.length === 0 ? (
-        <div className="p-4 text-center text-muted-foreground" data-testid="empty-model-list">
+        <div className="cam-no-models" data-testid="empty-model-list">
           {getEmptyStateMessage()}
         </div>
       ) : (
-        <div className="p-1">
-          {models.map((model) => (
-            <div
+        models.map((model) => {
+          const checked = selectedModels.includes(model);
+          return (
+            <button
               key={model}
-              className="flex items-center p-2 hover:bg-accent cursor-pointer rounded-sm"
-              onClick={() => onModelSelect(model)}
+              type="button"
+              className={`cam-model-item${checked ? ' checked' : ''}`}
+              onClick={() => onToggle(model)}
+              aria-pressed={checked}
               data-testid={`available-model-${model}`}
             >
-              <span className="text-sm">{model}</span>
-            </div>
-          ))}
-        </div>
+              <input type="checkbox" className="cam-model-cb" checked={checked} readOnly tabIndex={-1} />
+              <span className="cam-model-name">{model}</span>
+            </button>
+          );
+        })
       )}
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -223,9 +215,9 @@ function AvailableModelsHeader({
   fetchDisabledReason,
 }: AvailableModelsHeaderProps) {
   return (
-    <div className="flex items-center justify-between">
-      <Label>Available Models</Label>
-      <div className="flex items-center gap-2">
+    <div className="cam-available-header">
+      <span className="cam-available-label">Available Models</span>
+      <div className="cam-available-actions">
         <FetchModelButton
           onFetchModels={onFetchModels}
           isFetchingModels={isFetchingModels}
@@ -233,16 +225,15 @@ function AvailableModelsHeader({
           fetchDisabledReason={fetchDisabledReason}
         />
         {availableModelsCount > 0 && (
-          <Button
-            variant="link"
-            size="sm"
+          <button
+            type="button"
+            className="cam-link-btn"
             onClick={onSelectAll}
             disabled={filteredModelsCount === 0}
-            className="h-auto p-0"
             data-testid="select-all-models"
           >
             Select All ({filteredModelsCount})
-          </Button>
+          </button>
         )}
       </div>
     </div>
@@ -262,23 +253,28 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Filter by search only — selected models STAY in the list (rendered checked + tinted),
+  // so clicking a checked row toggles it off. Matches the design.
   const filteredModels = useMemo(() => {
     const searchLower = searchTerm.toLowerCase();
-    return availableModels.filter(
-      (model) => model.toLowerCase().includes(searchLower) && !selectedModels.includes(model)
-    );
-  }, [availableModels, searchTerm, selectedModels]);
+    return availableModels.filter((model) => model.toLowerCase().includes(searchLower));
+  }, [availableModels, searchTerm]);
+
+  const handleToggle = (model: string) => {
+    if (selectedModels.includes(model)) {
+      onModelRemove(model);
+    } else {
+      onModelSelect(model);
+    }
+  };
 
   const handleSelectAll = () => {
     const modelsToAdd = filteredModels.filter((model) => !selectedModels.includes(model));
     if (modelsToAdd.length > 0) {
       if (onModelsSelectAll) {
-        const allSelected = [...selectedModels, ...modelsToAdd];
-        onModelsSelectAll(allSelected);
+        onModelsSelectAll([...selectedModels, ...modelsToAdd]);
       } else {
-        modelsToAdd.forEach((model) => {
-          onModelSelect(model);
-        });
+        modelsToAdd.forEach((model) => onModelSelect(model));
       }
     }
   };
@@ -287,43 +283,44 @@ export function ModelSelector({
     onModelsSelectAll?.([]);
   };
 
-  const clearSearch = () => {
-    setSearchTerm('');
-  };
+  const clearSearch = () => setSearchTerm('');
 
   return (
-    <div className="space-y-4" data-testid="model-selector">
-      <SelectedModels
-        selectedModels={selectedModels}
-        onModelRemove={onModelRemove}
-        onClearAll={onModelsSelectAll ? handleClearAll : undefined}
-      />
-
-      <div className="space-y-2">
-        <AvailableModelsHeader
-          filteredModelsCount={filteredModels.length}
-          availableModelsCount={availableModels.length}
-          onSelectAll={handleSelectAll}
-          onFetchModels={onFetchModels}
-          isFetchingModels={isFetchingModels}
-          canFetch={canFetch}
-          fetchDisabledReason={fetchDisabledReason}
+    <div className="model-selector-cam" data-testid="model-selector">
+      <div className="cam-model-box">
+        <SelectedModels
+          selectedModels={selectedModels}
+          onModelRemove={onModelRemove}
+          onClearAll={onModelsSelectAll ? handleClearAll : undefined}
         />
 
-        <ModelSearch
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onClearSearch={clearSearch}
-          disabled={availableModels.length === 0}
-        />
+        <div className="cam-available-area">
+          <AvailableModelsHeader
+            filteredModelsCount={filteredModels.length}
+            availableModelsCount={availableModels.length}
+            onSelectAll={handleSelectAll}
+            onFetchModels={onFetchModels}
+            isFetchingModels={isFetchingModels}
+            canFetch={canFetch}
+            fetchDisabledReason={fetchDisabledReason}
+          />
 
-        <ModelList
-          models={filteredModels}
-          onModelSelect={onModelSelect}
-          searchTerm={searchTerm}
-          isFetchingModels={isFetchingModels}
-          availableModelsCount={availableModels.length}
-        />
+          <ModelSearch
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onClearSearch={clearSearch}
+            disabled={availableModels.length === 0}
+          />
+
+          <ModelList
+            models={filteredModels}
+            selectedModels={selectedModels}
+            onToggle={handleToggle}
+            searchTerm={searchTerm}
+            isFetchingModels={isFetchingModels}
+            availableModelsCount={availableModels.length}
+          />
+        </div>
       </div>
     </div>
   );
