@@ -6,7 +6,7 @@ include Makefile.website.mk
 
 .DEFAULT_GOAL := help
 
-.PHONY: help test test.backend test.ui test.e2e test.e2e.standalone test.e2e.multi_tenant test.e2e.local test.coverage \
+.PHONY: help test test.backend test.ui test.e2e.all test.e2e test.e2e.standalone test.e2e.multi_tenant test.e2e.local test.coverage \
 	test.deps.up test.deps.down \
 	dev.deps.up dev.deps.down dev.deps.clear \
 	build build.native build.dev-server build.ui build.ui-clean build.ui-rebuild build.ts-client \
@@ -80,8 +80,11 @@ test.ui: ## Run frontend and UI integration tests
 build.dev-server: ## Build bodhiserver_dev (no UI embed; for E2E + dev iteration)
 	$(MAKE) -C crates/lib_bodhiserver build.dev-server
 
-test.e2e: build.dev-server ## Run Playwright E2E against bodhiserver_dev + live Vite
+test.e2e.all: build.dev-server ## Run Playwright E2E against bodhiserver_dev + live Vite
 	cd crates/lib_bodhiserver && npm install && npm run test:playwright
+
+test.e2e: build.dev-server ## Run Playwright E2E against bodhiserver_dev + live Vite
+	cd crates/lib_bodhiserver && npm install && npm run test:playwright:standalone
 
 test.e2e.standalone: build.dev-server ## Run only the standalone E2E project
 	cd crates/lib_bodhiserver && npm install && npm run test:playwright:standalone
