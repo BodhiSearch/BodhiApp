@@ -27,6 +27,15 @@ export class LocalDiscoveryPage extends BasePage {
     authorInput: '[data-testid="ld-author-input"]',
     authorChip: (name) => `[data-testid="ld-author-chip-${name}"]`,
     clearAll: '[data-testid="ld-clear-all"]',
+    // Detail rail (the shell renders the published rail header + panel into the real DOM).
+    railPanel: '[data-testid^="ld-detail-"]',
+    detailClose: '[data-testid="ld-detail-close"]',
+    railTitle: '.dp-head-title',
+    tabOverview: '[data-testid="ld-tab-overview"]',
+    tabQuants: '[data-testid="ld-tab-quants"]',
+    specs: '[data-testid="ld-detail-specs"]',
+    quants: '[data-testid="ld-quants"]',
+    quantRow: '[data-testid^="ld-quant-"]:not([data-testid^="ld-quant-pull-"]):not([data-testid^="ld-quant-rec-"])',
   };
 
   async navigateToDiscovery() {
@@ -119,5 +128,15 @@ export class LocalDiscoveryPage extends BasePage {
     await this.page.locator(this.selectors.clearAll).click();
     await this.waitForSPAReady();
     await this.waitForListSettled();
+  }
+
+  /** Open the detail rail for the first row (or a given row locator). */
+  async openFirstRow() {
+    await this.page.locator(this.selectors.anyRow).first().click();
+    await this.waitForSPAReady();
+  }
+
+  async openQuantsTab() {
+    await this.page.locator(this.selectors.tabQuants).click();
   }
 }

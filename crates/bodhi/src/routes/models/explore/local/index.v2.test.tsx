@@ -6,7 +6,7 @@ import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { LocalDiscoveryScreen } from '@/routes/models/explore/local/-components/LocalDiscoveryScreen';
 import { createListModel } from '@/test-fixtures/discover-models';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
-import { mockDiscoverModels } from '@/test-utils/msw-v2/handlers/reference-models';
+import { mockDiscoverModelDetail, mockDiscoverModels } from '@/test-utils/msw-v2/handlers/reference-models';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -32,10 +32,16 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Surfaces the published sidebar slot so facet chips are in the DOM under test.
+// Surfaces the published sidebar + rail slots so facet chips and the detail rail are in the DOM.
 function SlotsConsumer() {
-  const { sidebar } = useShellSlots();
-  return <div data-testid="harness-sidebar">{sidebar}</div>;
+  const { sidebar, rail, railHeader } = useShellSlots();
+  return (
+    <>
+      <div data-testid="harness-sidebar">{sidebar}</div>
+      <div data-testid="harness-rail-header">{railHeader}</div>
+      <div data-testid="harness-rail">{rail}</div>
+    </>
+  );
 }
 
 async function renderScreen() {
@@ -271,5 +277,46 @@ describe('LocalDiscoveryScreen (Phase 2b/2c — Tag / Language / License / Publi
       expect(last.searchParams.getAll('license')).toEqual([]);
     });
     expect(screen.queryByTestId('ld-clear-all')).not.toBeInTheDocument();
+  });
+});
+
+describe('LocalDiscoveryScreen (Phase 3 — detail rail)', () => {
+  it('selecting a row opens the rail and fetches the single-model detail (Overview + quants)', async () => {
+    server.use(...mockDiscoverModels(), ...mockDiscoverModelDetail());
+    await renderScreen();
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-row-Qwen-Qwen3-Coder-32B-GGUF'));
+    });
+
+    // Rail header shows namespace/repo.
+    await waitFor(() =>
+      expect(screen.getByTestId('harness-rail-header')).toHaveTextContent('Qwen/Qwen3-Coder-32B-GGUF')
+    );
+
+    // Overview specs come from the DETAIL fetch (context/architecture are null on list rows).
+    await waitFor(() => expect(screen.getByTestId('ld-detail-specs')).toBeInTheDocument());
+    expect(screen.getByTestId('ld-detail-specs')).toHaveTextContent('131,072 tokens');
+    expect(screen.getByTestId('ld-detail-specs')).toHaveTextContent('qwen3-moe');
+
+    // Download options tab renders quants from the DTO: recommended badge + null-size "—".
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-tab-quants'));
+    });
+    await waitFor(() => expect(screen.getByTestId('ld-quants')).toBeInTheDocument());
+    expect(screen.getByTestId('ld-quant-Q4_K_M')).toBeInTheDocument();
+    expect(screen.getByTestId('ld-quant-rec-Q4_K_M')).toBeInTheDocument();
+    // Q2_K has a null size in the fixture → renders "—".
+    expect(screen.getByTestId('ld-quant-Q2_K')).toHaveTextContent('—');
+  });
+
+  it('has no README tab (not surfaced by the v1 API)', async () => {
+    server.use(...mockDiscoverModels(), ...mockDiscoverModelDetail());
+    await renderScreen();
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-row-Qwen-Qwen3-Coder-32B-GGUF'));
+    });
+    await waitFor(() => expect(screen.getByTestId('ld-tab-overview')).toBeInTheDocument());
+    expect(screen.queryByText(/README/i)).not.toBeInTheDocument();
   });
 });

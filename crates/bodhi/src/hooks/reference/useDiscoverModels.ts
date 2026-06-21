@@ -1,7 +1,7 @@
-import type { ListModelsQuery, ListModelsResponse } from '@bodhiapp/reference-api-types';
+import type { GetModelResponse, ListModelsQuery, ListModelsResponse } from '@bodhiapp/reference-api-types';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-import { REF_ENDPOINT_MODELS, referenceKeys } from './constants';
+import { REF_ENDPOINT_MODELS, refEndpointModel, referenceKeys } from './constants';
 import { useAnonymousReferenceApi } from './useReferenceApi';
 
 /**
@@ -53,5 +53,24 @@ export function useDiscoverModels(params: ListModelsQuery) {
     queryFn: () => client!.get<ListModelsResponse>(`${REF_ENDPOINT_MODELS}${query ? `?${query}` : ''}`),
     enabled: !!client,
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * `GET /api/v1/models/{source}/{namespace}/{repo}` — a single model with its `quants[]` table and
+ * the detail-only fields (context_max, architecture, sizes) that are null on list rows.
+ *
+ * Gated on a ready client and a non-null selection. No `?include=` — README is not surfaced in v1
+ * and quant sizes come back on the base detail response.
+ */
+export function useModelDetail(selected: { source: string; namespace: string; repo: string } | null) {
+  const client = useAnonymousReferenceApi();
+  return useQuery<GetModelResponse>({
+    queryKey: selected
+      ? referenceKeys.discoverDetail(selected.source, selected.namespace, selected.repo)
+      : referenceKeys.discoverDetail('', '', ''),
+    queryFn: () =>
+      client!.get<GetModelResponse>(refEndpointModel(selected!.source, selected!.namespace, selected!.repo)),
+    enabled: !!client && !!selected,
   });
 }

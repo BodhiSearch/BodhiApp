@@ -98,5 +98,27 @@ test.describe('Explore · Local Models (discovery)', () => {
       await expect(discoveryPage.page.locator(discoveryPage.selectors.clearAll)).toHaveCount(0);
       await expect(discoveryPage.page.locator(discoveryPage.selectors.anyRow).first()).toBeVisible();
     });
+
+    await test.step('Opening a model shows the detail rail with specs and download options', async () => {
+      await discoveryPage.openFirstRow();
+
+      // Rail header names the repo; Overview specs come from the single-model detail fetch.
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.railTitle)).toContainText('/');
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.specs)).toBeVisible();
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.specs)).toContainText('Context');
+
+      // Download options tab renders the quant table from the DTO.
+      await discoveryPage.openQuantsTab();
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.quants)).toBeVisible();
+      const quantCount = await discoveryPage.page.locator(discoveryPage.selectors.quantRow).count();
+      expect(quantCount).toBeGreaterThan(0);
+
+      // No README tab in v1.
+      await expect(discoveryPage.page.getByRole('button', { name: /README/i })).toHaveCount(0);
+
+      // Close the rail.
+      await discoveryPage.page.locator(discoveryPage.selectors.detailClose).click();
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.railPanel)).toHaveCount(0);
+    });
   });
 });

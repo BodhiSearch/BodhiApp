@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import type { ListModelsQuery, Model, SortKey, SortOrder } from '@bodhiapp/reference-api-types';
+import type { ListModelsQuery, Model, Quant, SortKey, SortOrder } from '@bodhiapp/reference-api-types';
 
 import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDiscoverModels } from '@/hooks/reference';
+import { useDiscoverModels, useModelDetail } from '@/hooks/reference';
+import { useViewTransition } from '@/hooks/useViewTransition';
 
+import { LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
 import { LocalDiscoverySidebar, facetsToQuery, type DiscoveryFacets } from './LocalDiscoverySidebar';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
@@ -144,10 +146,11 @@ export function LocalDiscoveryScreen() {
   const [extraPages, setExtraPages] = useState<Model[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  // Phase 1 has no detail rail yet, so selection is a plain state change (no view transition —
-  // wrapping a no-op visual change just triggers spurious "Transition aborted" console errors).
-  // The view-transition wrap returns in Phase 3 when the rail is added.
-  const select = useCallback((key: string | null) => setSelectedKey(key), []);
+  const withViewTransition = useViewTransition();
+  const select = useCallback(
+    (key: string | null) => withViewTransition(() => setSelectedKey(key)),
+    [withViewTransition]
+  );
 
   const searching = search.trim() !== '';
   const params: ListModelsQuery = useMemo(
@@ -176,6 +179,12 @@ export function LocalDiscoveryScreen() {
     }
     return out;
   }, [extraPages, data?.items]);
+
+  const selectedModel = useMemo(() => rows.find((m) => modelKey(m) === selectedKey) ?? null, [rows, selectedKey]);
+  const selectedRef = selectedModel
+    ? { source: selectedModel.source, namespace: selectedModel.namespace, repo: selectedModel.repo }
+    : null;
+  const { data: detail, isLoading: detailLoading } = useModelDetail(selectedRef);
 
   const resetPaging = useCallback(() => {
     setCursor(undefined);
@@ -249,6 +258,11 @@ export function LocalDiscoveryScreen() {
     setCursor(data.next_cursor);
   }, [data]);
 
+  const onPull = useCallback((quant: Quant) => {
+    // Pull wiring lands in Phase 4.
+    void quant;
+  }, []);
+
   const sidebar = useMemo(
     () => (
       <LocalDiscoverySidebar
@@ -262,8 +276,20 @@ export function LocalDiscoveryScreen() {
     [facets, sort, onFacetsChange, onBrowse, onClearAllFacets]
   );
 
-  // Rail comes in Phase 3; publish breadcrumb + the faceted sidebar.
-  useShellChrome({ breadcrumb: useMemo(() => BREADCRUMB, []), sidebar });
+  const railHeader = useMemo(
+    () => (selectedModel ? <LocalDiscoveryRailHeader model={selectedModel} onClose={() => select(null)} /> : null),
+    [selectedModel, select]
+  );
+
+  const rail = useMemo(
+    () =>
+      selectedModel ? (
+        <LocalDiscoveryRail model={selectedModel} detail={detail} loading={detailLoading} onPull={onPull} />
+      ) : null,
+    [selectedModel, detail, detailLoading, onPull]
+  );
+
+  useShellChrome({ breadcrumb: useMemo(() => BREADCRUMB, []), sidebar, rail, railHeader, railDefaultOpen: false });
 
   if (error) {
     return <ErrorPage message={error instanceof Error ? error.message : 'Failed to load model catalog'} />;
