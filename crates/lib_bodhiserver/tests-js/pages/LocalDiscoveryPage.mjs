@@ -19,6 +19,14 @@ export class LocalDiscoveryPage extends BasePage {
     sortDownloads: '[data-testid="ld-sort-downloads"]',
     sortLikes: '[data-testid="ld-sort-likes"]',
     loadMore: '[data-testid="ld-load-more"]',
+    facets: '[data-testid="ld-facets"]',
+    browse: (id) => `[data-testid="ld-browse-${id}"]`,
+    spec: (id) => `[data-testid="ld-spec-${id}"]`,
+    task: (id) => `[data-testid="ld-task-${id}"]`,
+    license: (id) => `[data-testid="ld-license-${id}"]`,
+    authorInput: '[data-testid="ld-author-input"]',
+    authorChip: (name) => `[data-testid="ld-author-chip-${name}"]`,
+    clearAll: '[data-testid="ld-clear-all"]',
   };
 
   async navigateToDiscovery() {
@@ -84,5 +92,32 @@ export class LocalDiscoveryPage extends BasePage {
 
   async hasLoadMore() {
     return (await this.page.locator(this.selectors.loadMore).count()) > 0;
+  }
+
+  /** Click a sidebar facet pill (selector locator) and wait for the list to re-settle. */
+  async clickFacet(locator) {
+    await this.page.locator(locator).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async expectFacetActive(locator, active = true) {
+    await expect(this.page.locator(locator)).toHaveAttribute('aria-pressed', String(active));
+  }
+
+  /** Type a publisher into the free-text Publisher input and commit (Enter → author chip). */
+  async addPublisher(name) {
+    const input = this.page.locator(this.selectors.authorInput);
+    await input.click();
+    await input.fill(name);
+    await input.press('Enter');
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clearAllFilters() {
+    await this.page.locator(this.selectors.clearAll).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
   }
 }

@@ -7,6 +7,7 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDiscoverModels } from '@/hooks/reference';
 
+import { LocalDiscoverySidebar, facetsToQuery, type DiscoveryFacets } from './LocalDiscoverySidebar';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import './local-discovery.css';
@@ -138,6 +139,7 @@ export function LocalDiscoveryScreen() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('downloads');
   const [order, setOrder] = useState<SortOrder>('desc');
+  const [facets, setFacets] = useState<DiscoveryFacets>({});
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [extraPages, setExtraPages] = useState<Model[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -153,10 +155,11 @@ export function LocalDiscoveryScreen() {
       sort,
       order,
       limit: searching ? SEARCH_PAGE_SIZE : PAGE_SIZE,
+      ...facetsToQuery(facets),
       ...(searching ? { q: search.trim() } : {}),
       ...(cursor ? { cursor } : {}),
     }),
-    [sort, order, searching, search, cursor]
+    [sort, order, searching, search, cursor, facets]
   );
 
   const { data, isLoading, error } = useDiscoverModels(params);
@@ -191,6 +194,29 @@ export function LocalDiscoveryScreen() {
     [sort, resetPaging]
   );
 
+  const onFacetsChange = useCallback(
+    (next: DiscoveryFacets) => {
+      setFacets(next);
+      resetPaging();
+    },
+    [resetPaging]
+  );
+
+  // Browse presets set the sort (Trending / New) at descending order.
+  const onBrowse = useCallback(
+    (next: SortKey) => {
+      setSort(next);
+      setOrder('desc');
+      resetPaging();
+    },
+    [resetPaging]
+  );
+
+  const onClearAllFacets = useCallback(() => {
+    setFacets({});
+    resetPaging();
+  }, [resetPaging]);
+
   const commitSearch = useCallback(
     (value: string) => {
       setSearch(value.trim());
@@ -223,8 +249,21 @@ export function LocalDiscoveryScreen() {
     setCursor(data.next_cursor);
   }, [data]);
 
-  // Phase 1: no sidebar/rail yet — publish only the breadcrumb.
-  useShellChrome({ breadcrumb: useMemo(() => BREADCRUMB, []) });
+  const sidebar = useMemo(
+    () => (
+      <LocalDiscoverySidebar
+        facets={facets}
+        sort={sort}
+        onFacetsChange={onFacetsChange}
+        onBrowse={onBrowse}
+        onClearAll={onClearAllFacets}
+      />
+    ),
+    [facets, sort, onFacetsChange, onBrowse, onClearAllFacets]
+  );
+
+  // Rail comes in Phase 3; publish breadcrumb + the faceted sidebar.
+  useShellChrome({ breadcrumb: useMemo(() => BREADCRUMB, []), sidebar });
 
   if (error) {
     return <ErrorPage message={error instanceof Error ? error.message : 'Failed to load model catalog'} />;

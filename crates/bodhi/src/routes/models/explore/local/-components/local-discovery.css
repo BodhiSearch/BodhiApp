@@ -145,6 +145,65 @@
   color: hsl(var(--muted-foreground));
 }
 
+/* Publisher free-text facet. */
+.ld-pub-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+.ld-pub-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  padding: 2px 4px 2px 8px;
+  border-radius: 6px;
+  background: var(--c-indigo-bg);
+  color: var(--c-indigo-text);
+  border: 1px solid var(--c-indigo-bd);
+}
+.ld-pub-x {
+  display: inline-flex;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+}
+.ld-pub-x:hover {
+  opacity: 1;
+}
+.ld-pub-input {
+  width: 100%;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.ld-pub-input:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+}
+
+/* Clear-all filters. */
+.ld-clear-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  margin-bottom: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: hsl(var(--primary));
+}
+
 /* Load more. */
 .ld-loadmore {
   display: flex;

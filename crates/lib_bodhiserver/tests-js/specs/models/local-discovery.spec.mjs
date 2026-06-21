@@ -67,5 +67,36 @@ test.describe('Explore · Local Models (discovery)', () => {
       await discoveryPage.sortBy('likes');
       await discoveryPage.expectSortState('likes', 'active-asc');
     });
+
+    await test.step('Faceted sidebar: Browse=Trending + Specialisation=Coding filter the catalog', async () => {
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.facets)).toBeVisible();
+
+      await discoveryPage.clickFacet(discoveryPage.selectors.browse('trending'));
+      await discoveryPage.expectFacetActive(discoveryPage.selectors.browse('trending'));
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.resultbar)).toContainText('Trending');
+
+      await discoveryPage.clickFacet(discoveryPage.selectors.spec('coding'));
+      await discoveryPage.expectFacetActive(discoveryPage.selectors.spec('coding'));
+      // Catalog still renders rows under the combined facets.
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.anyRow).first()).toBeVisible();
+    });
+
+    await test.step('Publisher free-text filters to one author; Clear all resets', async () => {
+      // Start from a clean baseline (prior steps left Trending/Coding active).
+      await discoveryPage.clearAllFilters();
+      await discoveryPage.addPublisher('bartowski');
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.authorChip('bartowski'))).toBeVisible();
+
+      // `keepPreviousData` keeps the stale list visible during the refetch — poll until the
+      // filtered result has fully landed (a bartowski row present AND zero non-bartowski rows).
+      const nonBartowski = `${discoveryPage.selectors.anyRow}:not([data-testid^="ld-row-bartowski-"])`;
+      await expect(discoveryPage.page.locator(`${discoveryPage.selectors.anyRow}[data-testid^="ld-row-bartowski-"]`).first()).toBeVisible();
+      await expect(discoveryPage.page.locator(nonBartowski)).toHaveCount(0);
+
+      // Clear all filters returns to the full catalog (no clear-all button).
+      await discoveryPage.clearAllFilters();
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.clearAll)).toHaveCount(0);
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.anyRow).first()).toBeVisible();
+    });
   });
 });
