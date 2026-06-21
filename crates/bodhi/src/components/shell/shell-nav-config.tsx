@@ -7,6 +7,8 @@ export interface ShellNavSubPage {
   icon?: string;
   href: string;
   badge?: string;
+  /** Hidden in multi-tenant deployments (e.g. local-model features that can't download there). */
+  hideInMultiTenant?: boolean;
 }
 
 export interface ShellNavItem {
@@ -33,6 +35,8 @@ export const SHELL_NAV: ShellNavItem[] = [
         label: 'Explore · Local Models',
         icon: 'compass',
         href: ROUTE_MODELS_EXPLORE_LOCAL,
+        // Catalog browse-and-pull relies on local downloads, which HubService rejects in MultiTenant.
+        hideInMultiTenant: true,
       },
       { id: 'new-local-model', label: 'New Local Model', icon: 'plus-circle', href: '/models/alias/new/' },
       { id: 'new-api-model', label: 'New API Model', icon: 'plug-zap', href: '/models/api/new/' },

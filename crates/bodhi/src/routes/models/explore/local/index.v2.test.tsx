@@ -8,10 +8,14 @@ import { createListModel } from '@/test-fixtures/discover-models';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockDiscoverModelDetail, mockDiscoverModels } from '@/test-utils/msw-v2/handlers/reference-models';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
-import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import { http, HttpResponse, server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
 vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () => void) => cb() }));
+
+const showSuccess = vi.fn();
+const showError = vi.fn();
+vi.mock('@/hooks/use-toast-messages', () => ({ useToastMessages: () => ({ showSuccess, showError }) }));
 
 setupMswV2();
 
@@ -318,5 +322,33 @@ describe('LocalDiscoveryScreen (Phase 3 — detail rail)', () => {
     });
     await waitFor(() => expect(screen.getByTestId('ld-tab-overview')).toBeInTheDocument());
     expect(screen.queryByText(/README/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('LocalDiscoveryScreen (Phase 4 — Pull wiring)', () => {
+  it('pulling a quant POSTs { repo, filename } to the BodhiApp pull endpoint', async () => {
+    let body: { repo?: string; filename?: string } | null = null;
+    server.use(
+      ...mockDiscoverModels(),
+      ...mockDiscoverModelDetail(),
+      http.post('*/bodhi/v1/models/files/pull', async ({ request }) => {
+        body = (await request.json()) as { repo: string; filename: string };
+        return HttpResponse.json({ id: '1', repo: body.repo, filename: body.filename, status: 'pending' });
+      })
+    );
+    await renderScreen();
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-row-Qwen-Qwen3-Coder-32B-GGUF'));
+    });
+    // Footer "Pull recommended" pulls the recommended quant by its real filename.
+    await waitFor(() => expect(screen.getByTestId('ld-pull-recommended')).toBeInTheDocument());
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-pull-recommended'));
+    });
+
+    await waitFor(() => expect(body).not.toBeNull());
+    expect(body).toEqual({ repo: 'Qwen/Qwen3-Coder-32B-GGUF', filename: 'Qwen3-Coder-32B-Q4_K_M.gguf' });
+    await waitFor(() => expect(showSuccess).toHaveBeenCalled());
   });
 });

@@ -62,12 +62,14 @@ interface RailProps {
   detail: GetModelResponse | undefined;
   loading: boolean;
   onPull: (quant: Quant) => void;
+  pullPending: boolean;
 }
 
-export function LocalDiscoveryRail({ model, detail, loading, onPull }: RailProps) {
+export function LocalDiscoveryRail({ model, detail, loading, onPull, pullPending }: RailProps) {
   const [tab, setTab] = useState<'overview' | 'quants'>('overview');
   const quants = detail?.quants ?? [];
   const quantCount = detail?.quant_count ?? model.quant_count ?? quants.length;
+  const recommended = quants.find((q) => q.recommended) ?? quants[0];
 
   return (
     <div className="dp-panel models-screen-rail" data-testid={`ld-detail-${model.namespace}-${model.repo}`}>
@@ -113,9 +115,23 @@ export function LocalDiscoveryRail({ model, detail, loading, onPull }: RailProps
         {tab === 'overview' ? (
           <OverviewTab model={model} detail={detail} loading={loading} />
         ) : (
-          <QuantsTab quants={quants} loading={loading} onPull={onPull} />
+          <QuantsTab quants={quants} loading={loading} onPull={onPull} pullPending={pullPending} />
         )}
       </div>
+
+      {recommended && (
+        <div className="dp-foot">
+          <button
+            className="dp-btn dp-btn-accent"
+            disabled={pullPending}
+            onClick={() => onPull(recommended)}
+            data-testid="ld-pull-recommended"
+          >
+            <ShellIcon name="download" size={14} /> Pull {recommended.name}
+            {recommended.size != null ? ` · ${fmtSize(recommended.size)}` : ''}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -163,7 +179,17 @@ function OverviewTab({
   );
 }
 
-function QuantsTab({ quants, loading, onPull }: { quants: Quant[]; loading: boolean; onPull: (q: Quant) => void }) {
+function QuantsTab({
+  quants,
+  loading,
+  onPull,
+  pullPending,
+}: {
+  quants: Quant[];
+  loading: boolean;
+  onPull: (q: Quant) => void;
+  pullPending: boolean;
+}) {
   if (loading && quants.length === 0) {
     return <Skeleton className="h-32 w-full" data-testid="ld-quants-skeleton" />;
   }
@@ -187,6 +213,7 @@ function QuantsTab({ quants, loading, onPull }: { quants: Quant[]; loading: bool
             <button
               className="ld-quant-pull"
               title={`Pull ${q.name}`}
+              disabled={pullPending}
               onClick={() => onPull(q)}
               data-testid={`ld-quant-pull-${q.name}`}
             >

@@ -36,6 +36,7 @@ export class LocalDiscoveryPage extends BasePage {
     specs: '[data-testid="ld-detail-specs"]',
     quants: '[data-testid="ld-quants"]',
     quantRow: '[data-testid^="ld-quant-"]:not([data-testid^="ld-quant-pull-"]):not([data-testid^="ld-quant-rec-"])',
+    pullRecommended: '[data-testid="ld-pull-recommended"]',
   };
 
   async navigateToDiscovery() {

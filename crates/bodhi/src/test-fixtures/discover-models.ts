@@ -46,6 +46,7 @@ export function createListModel(overrides?: Partial<Model>): Model {
 export function createQuant(overrides?: Partial<Quant>): Quant {
   return {
     name: 'Q4_K_M',
+    filename: 'Qwen3-Coder-32B-Q4_K_M.gguf',
     size: 18253611008,
     bits: 4,
     method: 'K_M',
@@ -63,9 +64,30 @@ export function createDetailModel(overrides?: Partial<Model>): Model {
     architecture: 'qwen3-moe',
     context_max: 131072,
     quants: [
-      createQuant({ name: 'Q8_0', size: 34489280512, bits: 8, method: '0', recommended: false }),
-      createQuant({ name: 'Q4_K_M', size: 18253611008, bits: 4, method: 'K_M', recommended: true }),
-      createQuant({ name: 'Q2_K', size: null, bits: 2, method: 'K', recommended: false }),
+      createQuant({
+        name: 'Q8_0',
+        filename: 'Qwen3-Coder-32B-Q8_0.gguf',
+        size: 34489280512,
+        bits: 8,
+        method: '0',
+        recommended: false,
+      }),
+      createQuant({
+        name: 'Q4_K_M',
+        filename: 'Qwen3-Coder-32B-Q4_K_M.gguf',
+        size: 18253611008,
+        bits: 4,
+        method: 'K_M',
+        recommended: true,
+      }),
+      createQuant({
+        name: 'Q2_K',
+        filename: 'Qwen3-Coder-32B-Q2_K.gguf',
+        size: null,
+        bits: 2,
+        method: 'K',
+        recommended: false,
+      }),
     ],
     ...overrides,
   };

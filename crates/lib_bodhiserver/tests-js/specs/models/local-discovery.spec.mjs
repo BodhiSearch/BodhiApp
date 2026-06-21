@@ -116,6 +116,11 @@ test.describe('Explore · Local Models (discovery)', () => {
       // No README tab in v1.
       await expect(discoveryPage.page.getByRole('button', { name: /README/i })).toHaveCount(0);
 
+      // The Pull affordance is present + enabled (real filename-backed download). We don't trigger a
+      // multi-GB download in CI — the quant→filename mapping is asserted in RTL and exercised in the
+      // GATE-B manual walk; here we just confirm the wiring renders.
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.pullRecommended)).toBeEnabled();
+
       // Close the rail.
       await discoveryPage.page.locator(discoveryPage.selectors.detailClose).click();
       await expect(discoveryPage.page.locator(discoveryPage.selectors.railPanel)).toHaveCount(0);

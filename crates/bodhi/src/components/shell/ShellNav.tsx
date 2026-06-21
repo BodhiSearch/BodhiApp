@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { Link } from '@tanstack/react-router';
+
+import { useGetAppInfo } from '@/hooks/info';
 
 import { SHELL_NAV } from './shell-nav-config';
 import { AnchoredPopover } from './ShellChrome';
@@ -18,7 +20,15 @@ export function ShellNav({ section = 'chat', subPage = null }: ShellNavProps) {
   const { collapsed, openPop, setOpenPop } = useShell();
   const open = openPop === 'nav';
   const anchorRef = useRef<HTMLButtonElement>(null);
-  const cur = SHELL_NAV.find((n) => n.id === section) || SHELL_NAV[0];
+  const { data: appInfo } = useGetAppInfo();
+  const isMultiTenant = appInfo?.deployment === 'multi_tenant';
+
+  // Drop sub-pages flagged hideInMultiTenant (e.g. local-model catalog — no downloads there).
+  const cur = useMemo(() => {
+    const base = SHELL_NAV.find((n) => n.id === section) || SHELL_NAV[0];
+    if (!isMultiTenant) return base;
+    return { ...base, subPages: base.subPages.filter((sp) => !sp.hideInMultiTenant) };
+  }, [section, isMultiTenant]);
 
   useEffect(() => {
     if (!open) return;

@@ -1,7 +1,12 @@
 import { AppShell } from '@/components/shell';
-import { render, screen } from '@testing-library/react';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
+import { render as rtlRender, screen, waitFor, type RenderOptions } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+
+setupMswV2();
 
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
@@ -14,6 +19,11 @@ vi.mock('@tanstack/react-router', async () => {
     ),
   };
 });
+
+// ShellNav reads app-info (for the multi-tenant nav filter), so every render needs a QueryClient.
+// With no app-info handler the query is idle → deployment is undefined → default (non-MT) nav.
+const render = (ui: React.ReactElement, options?: RenderOptions) =>
+  rtlRender(ui, { wrapper: createWrapper(), ...options });
 
 describe('AppShell', () => {
   it('renders the nav with the active section highlighted', async () => {
@@ -45,10 +55,25 @@ describe('AppShell', () => {
 
     expect(screen.getByTestId('shell-sub-my-models')).toBeInTheDocument();
     expect(screen.getByTestId('shell-sub-new-local-model')).toBeInTheDocument();
+    // Explore · Local Models is visible by default (standalone deployment).
+    expect(screen.getByTestId('shell-sub-explore-local')).toBeInTheDocument();
 
     const active = screen.getByTestId('shell-sub-new-api-model');
     expect(active).toBeInTheDocument();
     expect(active).toHaveClass('on');
+  });
+
+  it('hides the Explore · Local Models sub-page in multi-tenant deployments', async () => {
+    server.use(...mockAppInfo({ deployment: 'multi_tenant' }, { stub: true }));
+    render(
+      <AppShell section="models" subPage="my-models">
+        <div>page content</div>
+      </AppShell>
+    );
+    // The local-catalog feature is hidden (no downloads in multi-tenant); siblings remain.
+    await waitFor(() => expect(screen.queryByTestId('shell-sub-explore-local')).not.toBeInTheDocument());
+    expect(screen.getByTestId('shell-sub-my-models')).toBeInTheDocument();
+    expect(screen.getByTestId('shell-sub-new-api-model')).toBeInTheDocument();
   });
 
   it('does not render sub-pages from other sections', () => {

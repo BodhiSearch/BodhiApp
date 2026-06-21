@@ -5,7 +5,9 @@ import type { ListModelsQuery, Model, Quant, SortKey, SortOrder } from '@bodhiap
 import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePullModel } from '@/hooks/models';
 import { useDiscoverModels, useModelDetail } from '@/hooks/reference';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
 import { LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
@@ -258,10 +260,19 @@ export function LocalDiscoveryScreen() {
     setCursor(data.next_cursor);
   }, [data]);
 
-  const onPull = useCallback((quant: Quant) => {
-    // Pull wiring lands in Phase 4.
-    void quant;
-  }, []);
+  const { showSuccess, showError } = useToastMessages();
+  const { mutate: pullModel, isPending: pullPending } = usePullModel({
+    onSuccess: () => showSuccess('Download started', 'Track progress under Model Files.'),
+    onError: (message) => showError('Download failed', message),
+  });
+
+  const onPull = useCallback(
+    (quant: Quant) => {
+      if (!selectedModel) return;
+      pullModel({ repo: `${selectedModel.namespace}/${selectedModel.repo}`, filename: quant.filename });
+    },
+    [selectedModel, pullModel]
+  );
 
   const sidebar = useMemo(
     () => (
@@ -284,9 +295,15 @@ export function LocalDiscoveryScreen() {
   const rail = useMemo(
     () =>
       selectedModel ? (
-        <LocalDiscoveryRail model={selectedModel} detail={detail} loading={detailLoading} onPull={onPull} />
+        <LocalDiscoveryRail
+          model={selectedModel}
+          detail={detail}
+          loading={detailLoading}
+          onPull={onPull}
+          pullPending={pullPending}
+        />
       ) : null,
-    [selectedModel, detail, detailLoading, onPull]
+    [selectedModel, detail, detailLoading, onPull, pullPending]
   );
 
   useShellChrome({ breadcrumb: useMemo(() => BREADCRUMB, []), sidebar, rail, railHeader, railDefaultOpen: false });
