@@ -202,8 +202,8 @@
   transition: transform 160ms cubic-bezier(.22,.61,.36,1);
 }
 .cfm-enable-toggle input:checked ~ .cfm-enable-track {
-  background: var(--c-teal-text);
-  border-color: var(--c-teal-text);
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
 }
 .cfm-enable-toggle input:checked ~ .cfm-enable-track .cfm-enable-thumb {
   transform: translateX(13px);

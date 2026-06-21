@@ -47,49 +47,97 @@ window.MODELS_DATA = (function () {
       detail:{ note:'Prefers local inference for cost and privacy. On error, falls back to OpenAI GPT-4o mini.' } },
   ];
 
+  /* Local (HuggingFace GGUF) models.
+     Per-model editorial / catalog fields (Ⓗ HF + Ⓒ curation):
+       owner_verified, staff_pick, params, arch, domain, format, license,
+       score (Human-eval), dlNum/dlLabel (downloads), likeNum/likeLabel (likes),
+       updated (ISO → relative), ctx (context window), maxGB (largest quant).
+     quants[].rec marks the recommended default. Per-quant bit-width + host
+     fit (Ⓛ BodhiApp-local) are DERIVED in the app from the quant name + size. */
   const LOCAL_MODELS = [
     { rank:1, org:'Qwen', repo:'Qwen3-Coder-32B',
-      meta:'5 quants · up to 32.1 GB · Apache-2.0',
-      tags:['coding','tool-use','reasoning'], score:74.2, quants:5,
-      detail:{ date:'2025-09-08', dl:'4,430/mo', stars:'9.1k',
+      params:'32B', arch:'Qwen3-MoE', domain:'llm', format:'GGUF', license:'Apache-2.0',
+      owner_verified:true, staff_pick:true,
+      score:74.2, dlNum:443000, dlLabel:'443k', likeNum:9100, likeLabel:'9.1k',
+      updated:'2025-09-08', ctx:131072, maxGB:32.1,
+      meta:'32B · 5 quants · up to 32.1 GB · Apache-2.0',
+      tags:['coding','tool-use','reasoning'], quants:5,
+      detail:{
         caps:['tool-use','coding','reasoning','structured-output'],
-        specs:[{k:'Context',v:'131,072 tokens'},{k:'Architecture',v:'Qwen3-MoE'},{k:'License',v:'Apache-2.0'}],
-        quants:[{name:'Q8_0',size:'32.1 GB'},{name:'Q6_K',size:'24.6 GB'},{name:'Q4_K_M',size:'18.5 GB'},{name:'Q3_K_M',size:'14.2 GB'},{name:'Q2_K',size:'10.8 GB'}] } },
+        specs:[{k:'Context',v:'131,072 tokens'},{k:'Architecture',v:'Qwen3-MoE'},{k:'Parameters',v:'32B'},{k:'License',v:'Apache-2.0'}],
+        quants:[{name:'Q8_0',size:'32.1 GB'},{name:'Q6_K',size:'24.6 GB'},{name:'Q4_K_M',size:'18.5 GB',rec:true},{name:'Q3_K_M',size:'14.2 GB'},{name:'Q2_K',size:'10.8 GB'}],
+        moreFrom:[{repo:'Qwen3-32B',dl:'1.2M',likes:'45k'},{repo:'Qwen2.5-Coder-14B',dl:'890k',likes:'52k'},{repo:'Qwen3-14B',dl:'620k',likes:'31k'}],
+        readme:`# Qwen3-Coder-32B\n\nQwen3-Coder-32B is a **code-specialised** large language model from the Qwen team, tuned for agentic coding, tool use, and long-context repository understanding.\n\n## Highlights\n- Strong code generation, editing, and multi-file reasoning\n- Native **tool / function calling** for agentic workflows\n- **131,072-token** context for whole-repository tasks\n- Apache-2.0 licensed for commercial use\n\n## Recommended build\nPair **Q4_K_M** with a 12-16 GB GPU for the best speed/quality balance. Move up to Q6_K or Q8_0 when you have the VRAM to spare.\n\n## License\nReleased under the **Apache-2.0** license.` } },
+
     { rank:2, org:'meta-llama', repo:'Llama-3.3-70B',
-      meta:'4 quants · up to 70.3 GB · Llama',
-      tags:['reasoning','coding','chat'], score:61.4, quants:4,
-      detail:{ date:'2025-08-01', dl:'8.2k/mo', stars:'14k',
+      params:'70B', arch:'Llama 3.3', domain:'llm', format:'GGUF', license:'Llama',
+      owner_verified:true, staff_pick:false,
+      score:61.4, dlNum:820000, dlLabel:'820k', likeNum:14000, likeLabel:'14k',
+      updated:'2025-08-01', ctx:131072, maxGB:70.3,
+      meta:'70B · 4 quants · up to 70.3 GB · Llama',
+      tags:['reasoning','coding','chat'], quants:4,
+      detail:{
         caps:['reasoning','coding','chat'],
-        specs:[{k:'Context',v:'131,072 tokens'},{k:'Architecture',v:'Llama 3.3'},{k:'License',v:'Llama'}],
-        quants:[{name:'Q8_0',size:'70.3 GB'},{name:'Q4_K_M',size:'35.0 GB'},{name:'Q3_K_M',size:'28.0 GB'},{name:'Q2_K',size:'22.5 GB'}] } },
+        specs:[{k:'Context',v:'131,072 tokens'},{k:'Architecture',v:'Llama 3.3'},{k:'Parameters',v:'70B'},{k:'License',v:'Llama 3.3'}],
+        quants:[{name:'Q8_0',size:'70.3 GB'},{name:'Q4_K_M',size:'35.0 GB',rec:true},{name:'Q3_K_M',size:'28.0 GB'},{name:'Q2_K',size:'22.5 GB'}],
+        moreFrom:[{repo:'Llama-3.1-8B',dl:'2.4M',likes:'88k'},{repo:'Llama-3.2-3B',dl:'1.1M',likes:'41k'},{repo:'Llama-Guard-3-8B',dl:'180k',likes:'12k'}],
+        readme:`# Llama-3.3-70B\n\nMeta's **Llama-3.3-70B-Instruct** is a general-purpose instruction-tuned model with strong reasoning and multilingual ability, delivering near-405B quality at a fraction of the cost.\n\n## Highlights\n- Excellent reasoning, coding, and instruction following\n- **131,072-token** context window\n- Multilingual across 8 core languages\n\n## Memory notes\nThe full 70B is heavy. On a 12 GB GPU you will need **partial CPU offload** even at Q3_K_M. For full-GPU use, prefer a smaller sibling model.\n\n## License\nGoverned by the **Llama 3.3 Community License**.` } },
+
     { rank:3, org:'deepseek-ai', repo:'DeepSeek-V3',
-      meta:'3 quants · up to 120 GB · DeepSeek',
-      tags:['coding','reasoning'], score:62.7, quants:3,
-      detail:{ date:'2025-07-20', dl:'3.1k/mo', stars:'22k',
+      params:'671B', arch:'DeepSeek-V3 MoE', domain:'llm', format:'GGUF', license:'DeepSeek',
+      owner_verified:true, staff_pick:false,
+      score:62.7, dlNum:310000, dlLabel:'310k', likeNum:22000, likeLabel:'22k',
+      updated:'2025-07-20', ctx:65536, maxGB:120,
+      meta:'671B · 3 quants · up to 120 GB · DeepSeek',
+      tags:['coding','reasoning'], quants:3,
+      detail:{
         caps:['coding','reasoning'],
-        specs:[{k:'Context',v:'65,536 tokens'},{k:'Architecture',v:'DeepSeek-V3 MoE'},{k:'License',v:'DeepSeek'}],
-        quants:[{name:'Q8_0',size:'120 GB'},{name:'Q4_K_M',size:'60.0 GB'},{name:'Q2_K',size:'35.0 GB'}] } },
+        specs:[{k:'Context',v:'65,536 tokens'},{k:'Architecture',v:'DeepSeek-V3 MoE'},{k:'Parameters',v:'671B (MoE)'},{k:'License',v:'DeepSeek'}],
+        quants:[{name:'Q8_0',size:'120 GB'},{name:'Q4_K_M',size:'60.0 GB',rec:true},{name:'Q2_K',size:'35.0 GB'}],
+        moreFrom:[{repo:'DeepSeek-R1',dl:'3.1M',likes:'140k'},{repo:'DeepSeek-Coder-V2',dl:'480k',likes:'56k'}],
+        readme:`# DeepSeek-V3\n\n**DeepSeek-V3** is a 671B-parameter Mixture-of-Experts model (37B active per token) with leading performance on coding and reasoning benchmarks.\n\n## Highlights\n- Sparse **MoE** architecture — 671B total, 37B active\n- Strong code and math reasoning\n- **65,536-token** context window\n\n## Memory notes\nEven the **Q2_K** build is 35 GB and will **not** fit a 12 GB GPU. This model is intended for high-memory workstations or servers.\n\n## License\nReleased under the **DeepSeek Model License**.` } },
+
     { rank:4, org:'google', repo:'gemma-2-9b-it',
-      meta:'4 quants · up to 9.4 GB · Gemma',
-      tags:['general','chat'], score:58.2, quants:4,
-      detail:{ date:'2025-06-15', dl:'12k/mo', stars:'18k',
+      params:'9B', arch:'Gemma 2', domain:'llm', format:'GGUF', license:'Gemma',
+      owner_verified:true, staff_pick:true,
+      score:58.2, dlNum:1200000, dlLabel:'1.2M', likeNum:18000, likeLabel:'18k',
+      updated:'2025-06-15', ctx:8192, maxGB:9.4,
+      meta:'9B · 4 quants · up to 9.4 GB · Gemma',
+      tags:['general','chat'], quants:4,
+      detail:{
         caps:['general','chat'],
-        specs:[{k:'Context',v:'8,192 tokens'},{k:'Architecture',v:'Gemma 2'},{k:'License',v:'Gemma'}],
-        quants:[{name:'Q8_0',size:'9.4 GB'},{name:'Q6_K',size:'7.8 GB'},{name:'Q4_K_M',size:'5.8 GB'},{name:'Q2_K',size:'3.8 GB'}] } },
+        specs:[{k:'Context',v:'8,192 tokens'},{k:'Architecture',v:'Gemma 2'},{k:'Parameters',v:'9B'},{k:'License',v:'Gemma'}],
+        quants:[{name:'Q8_0',size:'9.4 GB'},{name:'Q6_K',size:'7.8 GB'},{name:'Q4_K_M',size:'5.8 GB',rec:true},{name:'Q2_K',size:'3.8 GB'}],
+        moreFrom:[{repo:'gemma-2-27b-it',dl:'620k',likes:'38k'},{repo:'gemma-2-2b-it',dl:'1.4M',likes:'44k'},{repo:'codegemma-7b',dl:'190k',likes:'9k'}],
+        readme:`# gemma-2-9b-it\n\nGoogle's **Gemma 2 9B Instruct** is a compact, high-quality open model that punches well above its size class for chat and general tasks.\n\n## Highlights\n- Great quality-per-GB; fully GPU-resident on consumer cards\n- Solid general chat and summarisation\n- **8,192-token** context window\n\n## Recommended build\n**Q4_K_M** (5.8 GB) runs fully on a 12 GB GPU with room for a long context. Q6_K/Q8_0 also fit comfortably.\n\n## License\nGoverned by the **Gemma Terms of Use**.` } },
+
     { rank:5, org:'microsoft', repo:'Phi-4',
-      meta:'3 quants · up to 8.9 GB · MIT',
-      tags:['reasoning','coding'], score:55.1, quants:3,
-      detail:{ date:'2025-05-10', dl:'6.4k/mo', stars:'8.2k',
+      params:'14B', arch:'Phi-4', domain:'llm', format:'GGUF', license:'MIT',
+      owner_verified:true, staff_pick:true,
+      score:55.1, dlNum:640000, dlLabel:'640k', likeNum:8200, likeLabel:'8.2k',
+      updated:'2025-05-10', ctx:16384, maxGB:8.9,
+      meta:'14B · 3 quants · up to 8.9 GB · MIT',
+      tags:['reasoning','coding'], quants:3,
+      detail:{
         caps:['reasoning','coding'],
-        specs:[{k:'Context',v:'16,384 tokens'},{k:'Architecture',v:'Phi-4'},{k:'License',v:'MIT'}],
-        quants:[{name:'Q8_0',size:'8.9 GB'},{name:'Q4_K_M',size:'5.1 GB'},{name:'Q2_K',size:'3.2 GB'}] } },
+        specs:[{k:'Context',v:'16,384 tokens'},{k:'Architecture',v:'Phi-4'},{k:'Parameters',v:'14B'},{k:'License',v:'MIT'}],
+        quants:[{name:'Q8_0',size:'8.9 GB'},{name:'Q4_K_M',size:'5.1 GB',rec:true},{name:'Q2_K',size:'3.2 GB'}],
+        moreFrom:[{repo:'Phi-3.5-mini-instruct',dl:'940k',likes:'33k'},{repo:'Phi-3-medium-128k',dl:'210k',likes:'15k'}],
+        readme:`# Phi-4\n\nMicrosoft's **Phi-4** is a 14B model trained heavily on synthetic and curated data, with reasoning and math quality rivalling much larger models.\n\n## Highlights\n- Strong reasoning and math for its size\n- **MIT** licensed — permissive commercial use\n- **16,384-token** context window\n\n## Recommended build\n**Q4_K_M** (5.1 GB) is fully GPU-resident on a 12 GB card.\n\n## License\nReleased under the **MIT** license.` } },
+
     { rank:6, org:'mistralai', repo:'Mistral-7B-Instruct-v0.3',
-      meta:'4 quants · up to 7.7 GB · Apache-2.0',
-      tags:['chat','multilingual'], score:49.3, quants:4,
-      detail:{ date:'2025-03-12', dl:'25k/mo', stars:'31k',
+      params:'7B', arch:'Mistral', domain:'llm', format:'GGUF', license:'Apache-2.0',
+      owner_verified:true, staff_pick:false,
+      score:49.3, dlNum:2500000, dlLabel:'2.5M', likeNum:31000, likeLabel:'31k',
+      updated:'2025-03-12', ctx:32768, maxGB:7.7,
+      meta:'7B · 4 quants · up to 7.7 GB · Apache-2.0',
+      tags:['chat','multilingual'], quants:4,
+      detail:{
         caps:['chat','multilingual'],
-        specs:[{k:'Context',v:'32,768 tokens'},{k:'Architecture',v:'Mistral'},{k:'License',v:'Apache-2.0'}],
-        quants:[{name:'Q8_0',size:'7.7 GB'},{name:'Q6_K',size:'6.4 GB'},{name:'Q4_K_M',size:'4.8 GB'},{name:'Q2_K',size:'3.1 GB'}] } },
+        specs:[{k:'Context',v:'32,768 tokens'},{k:'Architecture',v:'Mistral'},{k:'Parameters',v:'7B'},{k:'License',v:'Apache-2.0'}],
+        quants:[{name:'Q8_0',size:'7.7 GB'},{name:'Q6_K',size:'6.4 GB'},{name:'Q4_K_M',size:'4.8 GB',rec:true},{name:'Q2_K',size:'3.1 GB'}],
+        moreFrom:[{repo:'Mistral-Nemo-Instruct-2407',dl:'1.1M',likes:'47k'},{repo:'Mixtral-8x7B-Instruct',dl:'860k',likes:'72k'},{repo:'Codestral-22B',dl:'290k',likes:'28k'}],
+        readme:`# Mistral-7B-Instruct-v0.3\n\n**Mistral-7B-Instruct v0.3** is a fast, popular open model with an updated tokenizer and function-calling support — a dependable everyday workhorse.\n\n## Highlights\n- Very fast; fully GPU-resident on modest hardware\n- Function calling + extended vocabulary\n- **32,768-token** context window\n\n## Recommended build\n**Q4_K_M** (4.8 GB) leaves ample VRAM for long context on a 12 GB GPU.\n\n## License\nReleased under the **Apache-2.0** license.` } },
   ];
 
   const API_PROVIDERS = [
@@ -141,5 +189,17 @@ window.MODELS_DATA = (function () {
     'groq':'#f55036','nvidia-nim':'#76b900','together':'#0f62fe',
   };
 
-  return { MY_MODELS, LOCAL_MODELS, API_PROVIDERS, TAG_MAP, STATUS_CFG, PROV_COLORS };
+  /* Ⓛ BodhiApp-local host profile — drives the per-quant fit pill + the
+     header "Will it run?" badge. Computed by BodhiApp's backend from the
+     real machine; mocked here as a mid-range GPU box. */
+  const HOST = { vramGB:12, ramGB:32, label:'NVIDIA RTX 4070 · 12 GB VRAM · 32 GB RAM' };
+
+  /* Publisher autocomplete suggestions (Ⓗ — would come from GET /api/v1/orgs?q=).
+     The filter input also accepts free text for orgs not listed here. */
+  const ORG_SUGGESTIONS = [
+    'Qwen','meta-llama','deepseek-ai','google','microsoft','mistralai',
+    'NVIDIA','BAAI','01-ai','bartowski','unsloth','TheBloke','lmstudio-community',
+  ];
+
+  return { MY_MODELS, LOCAL_MODELS, API_PROVIDERS, TAG_MAP, STATUS_CFG, PROV_COLORS, HOST, ORG_SUGGESTIONS };
 })();

@@ -100,26 +100,6 @@ function Icon({ name, size = 13, style = {} }) {
   );
 }
 
-/* ── Inline validation message ─────────── */
-function AliasValidation({ value }) {
-  if (!value) return (
-    <div className="nm-validation nm-validation-hint">
-      <Icon name="info" size={12} /> Lowercase, digits, and dashes only.
-    </div>
-  );
-  const valid = /^[a-z0-9-]+$/.test(value);
-  if (valid) return (
-    <div className="nm-validation nm-validation-ok">
-      <Icon name="check-circle" size={12} /> Looks good.
-    </div>
-  );
-  return (
-    <div className="nm-validation nm-validation-err">
-      <Icon name="alert-circle" size={12} /> Only lowercase letters, digits, and dashes allowed.
-    </div>
-  );
-}
-
 /* ── Combobox — typeable input with suggestion dropdown ─────────
    Behaves like a select (click chevron / arrow keys / highlight)
    but never enforces selection: any typed value is accepted.
@@ -356,13 +336,7 @@ function LocalModelApp() {
                         value={aliasName}
                         onChange={(e) => setAliasName(e.target.value)}
                         placeholder="e.g. qwen-api" />
-                      <div className="nm-tag-chips">
-                        {['text', 'inst ver', 'I18n'].map((t, i) =>
-                          <span key={i} className="nm-chip">{t}</span>
-                        )}
-                      </div>
                     </div>
-                    <AliasValidation value={aliasName} />
                   </div>
                 </div>
 
