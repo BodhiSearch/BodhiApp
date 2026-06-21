@@ -27,6 +27,10 @@ export const ROUTE_UNAUTHORIZED = '/unauthorized/';
 export const ROUTE_SETUP_TENANTS = '/setup/tenants/';
 export const ROUTE_DASHBOARD_CALLBACK = '/auth/dashboard/callback/';
 
+// Models routes
+export const ROUTE_MODELS = '/models/';
+export const ROUTE_MODELS_EXPLORE_LOCAL = '/models/explore/local/';
+
 // MCP routes
 export const ROUTE_MCPS = '/mcps/';
 export const ROUTE_MCP_SERVERS = '/mcps/servers/';

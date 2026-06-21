@@ -1,4 +1,4 @@
-import { ROUTE_CHAT, ROUTE_MCPS, ROUTE_USERS } from '@/lib/constants';
+import { ROUTE_CHAT, ROUTE_MCPS, ROUTE_MODELS_EXPLORE_LOCAL, ROUTE_USERS } from '@/lib/constants';
 
 export interface ShellNavSubPage {
   id: string;
@@ -28,6 +28,12 @@ export const SHELL_NAV: ShellNavItem[] = [
     href: '/models/',
     subPages: [
       { id: 'my-models', label: 'My Models', icon: 'globe-2', href: '/models/' },
+      {
+        id: 'explore-local',
+        label: 'Explore · Local Models',
+        icon: 'compass',
+        href: ROUTE_MODELS_EXPLORE_LOCAL,
+      },
       { id: 'new-local-model', label: 'New Local Model', icon: 'plus-circle', href: '/models/alias/new/' },
       { id: 'new-api-model', label: 'New API Model', icon: 'plug-zap', href: '/models/api/new/' },
       { id: 'new-fallback-model', label: 'New Model Router', icon: 'route', href: '/models/router/new/' },

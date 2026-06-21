@@ -12,7 +12,7 @@ use lib_bodhiserver::{
   build_app_service, services::new_ulid, setup_app_dirs, setup_bootstrap_service, AppCommand,
   AppOptionsBuilder, AppService, AppStatus, BootstrapError, BootstrapService, ServeCommand, Tenant,
   BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_DEPLOYMENT, BODHI_ENV_TYPE, BODHI_HOST,
-  BODHI_PORT, BODHI_VERSION, DEFAULT_HOST, DEFAULT_PORT,
+  BODHI_PORT, BODHI_REFERENCE_API_URL, BODHI_VERSION, DEFAULT_HOST, DEFAULT_PORT,
 };
 use tokio::signal;
 use tracing::level_filters::LevelFilter;
@@ -42,7 +42,12 @@ const SYSTEM_SETTING_KEYS: &[&str] = &[
 ];
 
 // App settings propagated from process env when present.
-const APP_SETTING_KEYS: &[&str] = &[BODHI_EXEC_LOOKUP_PATH, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT];
+const APP_SETTING_KEYS: &[&str] = &[
+  BODHI_EXEC_LOOKUP_PATH,
+  BODHI_LOG_LEVEL,
+  BODHI_LOG_STDOUT,
+  BODHI_REFERENCE_API_URL,
+];
 
 fn main() -> ExitCode {
   match run() {

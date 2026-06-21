@@ -26,3 +26,20 @@ export function useReferenceApi(): ReferenceApiClient | null {
     return createReferenceApiClient(baseUrl, idToken);
   }, [baseUrl, idToken]);
 }
+
+/**
+ * Like {@link useReferenceApi} but WITHOUT the `id_token` — an anonymous reference client.
+ *
+ * The model catalog is **publicly readable** (no token required), and a present-but-invalid token
+ * (e.g. one from a Keycloak environment the API doesn't trust) is rejected with 401. Sending no
+ * token is therefore the robust read path across desktop/dev/web. Per-user attribution on the
+ * catalog is deferred until the auth environments are aligned.
+ */
+export function useAnonymousReferenceApi(): ReferenceApiClient | null {
+  const { data: appInfo } = useGetAppInfo();
+  const baseUrl = appInfo?.reference_api_url;
+  return React.useMemo(() => {
+    if (!baseUrl) return null;
+    return createReferenceApiClient(baseUrl, undefined);
+  }, [baseUrl]);
+}

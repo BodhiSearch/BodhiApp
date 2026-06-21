@@ -1,0 +1,166 @@
+/* Explore · Local Models — discovery list (screen-v2).
+   Layered on shell list.css + models.css; only the catalog-specific bits live here. */
+
+.ld-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Result bar — "Showing N · sorted by …". No total count (API gives none). */
+.ld-resultbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+.ld-count {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* List header row — aligns to the row grid below. */
+.ld-listhead {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+}
+.ld-lh-stats {
+  display: flex;
+  gap: 18px;
+}
+.ld-sort-h {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+}
+.ld-sort-h.on {
+  color: hsl(var(--primary));
+}
+
+/* Row. */
+.ld-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.ld-num {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  font-variant-numeric: tabular-nums;
+}
+.ld-body {
+  min-width: 0;
+}
+.ld-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.ld-org {
+  color: hsl(var(--muted-foreground));
+}
+.ld-sep {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.5;
+}
+.ld-repo {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.ld-verified {
+  color: var(--c-indigo-text);
+  display: inline-flex;
+}
+.ld-modality {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--c-lotus-bg);
+  color: var(--c-lotus-text);
+  border: 1px solid var(--c-lotus-bd);
+}
+.ld-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+.ld-tag,
+.ld-meta-chip {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.ld-meta-chip {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stats columns. */
+.ld-stats {
+  display: flex;
+  gap: 18px;
+}
+.ld-stat {
+  text-align: right;
+  min-width: 52px;
+}
+.ld-stat-num {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground));
+}
+.ld-stat.sorted .ld-stat-num {
+  color: hsl(var(--primary));
+}
+.ld-stat-lbl {
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Load more. */
+.ld-loadmore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  margin-top: 4px;
+  background: none;
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+  cursor: pointer;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+}
+.ld-loadmore:hover {
+  color: hsl(var(--foreground));
+}

@@ -1,0 +1,308 @@
+import { useCallback, useMemo, useState } from 'react';
+
+import type { ListModelsQuery, Model, SortKey, SortOrder } from '@bodhiapp/reference-api-types';
+
+import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
+import { ErrorPage } from '@/components/ui/ErrorPage';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDiscoverModels } from '@/hooks/reference';
+
+import '@/components/shell/list.css';
+import '@/routes/models/-components/models.css';
+import './local-discovery.css';
+
+const BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'Models', href: '/models/' },
+  { label: 'Explore · Local Models', current: true },
+];
+
+/** Page size; raised when searching (search disables cursor pagination server-side). */
+const PAGE_SIZE = 30;
+const SEARCH_PAGE_SIZE = 100;
+
+const SORT_LABELS: Record<SortKey, string> = {
+  downloads: 'Downloads',
+  likes: 'Likes',
+  last_modified: 'Updated',
+  created_at: 'Newest',
+  trending: 'Trending',
+};
+
+/** Compact count: 1234 → 1.2k, 1_200_000 → 1.2M. */
+function compact(n: number | null | undefined): string {
+  if (n == null) return '—';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(n);
+}
+
+function modelKey(m: Model): string {
+  return `${m.namespace}/${m.repo}`;
+}
+
+interface SortHeaderProps {
+  label: string;
+  col: SortKey;
+  sort: SortKey;
+  order: SortOrder;
+  onSort: (col: SortKey) => void;
+}
+
+function SortHeader({ label, col, sort, order, onSort }: SortHeaderProps) {
+  const active = sort === col;
+  return (
+    <button
+      type="button"
+      className={`ld-sort-h${active ? ' on' : ''}`}
+      onClick={() => onSort(col)}
+      data-testid={`ld-sort-${col}`}
+      data-test-state={active ? `active-${order}` : 'idle'}
+    >
+      {label}
+      <ShellIcon name={active ? (order === 'asc' ? 'arrow-up' : 'arrow-down') : 'chevrons-up-down'} size={10} />
+    </button>
+  );
+}
+
+interface LocalRowProps {
+  model: Model;
+  idx: number;
+  sort: SortKey;
+  active: boolean;
+  onSelect: () => void;
+}
+
+function LocalRow({ model, idx, sort, active, onSelect }: LocalRowProps) {
+  const tags = model.tags ?? model.specialisation ?? [];
+  const isMultimodal = model.pipeline_tag === 'image-text-to-text';
+  return (
+    <div
+      className={`l-listrow ld-row${active ? ' active' : ''}`}
+      onClick={onSelect}
+      role="option"
+      aria-selected={active}
+      data-testid={`ld-row-${model.namespace}-${model.repo}`}
+    >
+      <LinkRow onActivate={onSelect} label={`Open ${model.namespace}/${model.repo}`} />
+      <div className="ld-num">#{idx}</div>
+      <div className="ld-body">
+        <div className="ld-name">
+          <span className="ld-org">{model.namespace}</span>
+          <span className="ld-sep">/</span>
+          <span className="ld-repo">{model.repo}</span>
+          {model.owner_verified && (
+            <span className="ld-verified" title="Verified publisher">
+              <ShellIcon name="badge-check" size={13} />
+            </span>
+          )}
+          {isMultimodal && (
+            <span className="ld-modality" title="Image-Text-to-Text (multimodal)">
+              <ShellIcon name="image" size={10} />
+              multimodal
+            </span>
+          )}
+        </div>
+        <div className="ld-tags">
+          {tags.slice(0, 4).map((t) => (
+            <span className="ld-tag" key={t}>
+              {t}
+            </span>
+          ))}
+          {model.quant_count != null && (
+            <span className="ld-meta-chip" title={`${model.quant_count} quantizations`}>
+              {model.quant_count} quants
+            </span>
+          )}
+          {model.license && <span className="ld-meta-chip">{model.license}</span>}
+        </div>
+      </div>
+      <div className="ld-stats">
+        <div className={`ld-stat${sort === 'downloads' ? ' sorted' : ''}`}>
+          <div className="ld-stat-num">{compact(model.downloads)}</div>
+          <div className="ld-stat-lbl">DOWNLOADS</div>
+        </div>
+        <div className={`ld-stat${sort === 'likes' ? ' sorted' : ''}`}>
+          <div className="ld-stat-num">{compact(model.likes)}</div>
+          <div className="ld-stat-lbl">LIKES</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function LocalDiscoveryScreen() {
+  useListKeyNav();
+
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortKey>('downloads');
+  const [order, setOrder] = useState<SortOrder>('desc');
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [extraPages, setExtraPages] = useState<Model[]>([]);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  // Phase 1 has no detail rail yet, so selection is a plain state change (no view transition —
+  // wrapping a no-op visual change just triggers spurious "Transition aborted" console errors).
+  // The view-transition wrap returns in Phase 3 when the rail is added.
+  const select = useCallback((key: string | null) => setSelectedKey(key), []);
+
+  const searching = search.trim() !== '';
+  const params: ListModelsQuery = useMemo(
+    () => ({
+      sort,
+      order,
+      limit: searching ? SEARCH_PAGE_SIZE : PAGE_SIZE,
+      ...(searching ? { q: search.trim() } : {}),
+      ...(cursor ? { cursor } : {}),
+    }),
+    [sort, order, searching, search, cursor]
+  );
+
+  const { data, isLoading, error } = useDiscoverModels(params);
+
+  // Append accumulated "Load more" pages ahead of the current page, dedup by namespace/repo.
+  const rows = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Model[] = [];
+    for (const m of [...extraPages, ...(data?.items ?? [])]) {
+      const k = modelKey(m);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(m);
+    }
+    return out;
+  }, [extraPages, data?.items]);
+
+  const resetPaging = useCallback(() => {
+    setCursor(undefined);
+    setExtraPages([]);
+  }, []);
+
+  const onSort = useCallback(
+    (col: SortKey) => {
+      if (col === sort) setOrder((o) => (o === 'desc' ? 'asc' : 'desc'));
+      else {
+        setSort(col);
+        setOrder('desc');
+      }
+      resetPaging();
+    },
+    [sort, resetPaging]
+  );
+
+  const commitSearch = useCallback(
+    (value: string) => {
+      setSearch(value.trim());
+      resetPaging();
+    },
+    [resetPaging]
+  );
+
+  const onSearchChange = useCallback(
+    (value: string) => {
+      setSearchInput(value);
+      if (value.trim() === '') commitSearch('');
+    },
+    [commitSearch]
+  );
+
+  const onSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') commitSearch(searchInput);
+    },
+    [commitSearch, searchInput]
+  );
+
+  const loadMore = useCallback(() => {
+    if (!data?.next_cursor) return;
+    setExtraPages((prev) => {
+      const seen = new Set(prev.map(modelKey));
+      return [...prev, ...(data.items ?? []).filter((m) => !seen.has(modelKey(m)))];
+    });
+    setCursor(data.next_cursor);
+  }, [data]);
+
+  // Phase 1: no sidebar/rail yet — publish only the breadcrumb.
+  useShellChrome({ breadcrumb: useMemo(() => BREADCRUMB, []) });
+
+  if (error) {
+    return <ErrorPage message={error instanceof Error ? error.message : 'Failed to load model catalog'} />;
+  }
+
+  const showLoadMore = !searching && !!data?.next_cursor && rows.length > 0;
+
+  return (
+    <div
+      className="ld-screen l-page"
+      data-testid="local-discovery-content"
+      data-pagestatus={isLoading ? 'loading' : 'ready'}
+    >
+      <div className="l-controls">
+        <div className="m-toolbar">
+          <div className="m-search" data-testid="ld-search">
+            <ShellSearch
+              value={searchInput}
+              onChange={onSearchChange}
+              onKeyDown={onSearchKeyDown}
+              placeholder="Search HuggingFace repos"
+              kbd="⌘K"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="ld-resultbar" data-testid="ld-resultbar">
+        <span className="ld-count">Showing {rows.length}</span>
+        <span className="ld-sortlabel">
+          sorted by <strong>{SORT_LABELS[sort]}</strong> · {order === 'asc' ? 'ascending' : 'descending'}
+        </span>
+      </div>
+
+      <div className="ld-listhead">
+        <div className="ld-lh-num">#</div>
+        <div className="ld-lh-repo">REPOSITORY</div>
+        <div className="ld-lh-stats">
+          <SortHeader label="Downloads" col="downloads" sort={sort} order={order} onSort={onSort} />
+          <SortHeader label="Likes" col="likes" sort={sort} order={order} onSort={onSort} />
+        </div>
+      </div>
+
+      <div className="l-scroll" data-testid="ld-list">
+        {isLoading && rows.length === 0 ? (
+          <div style={{ padding: 16 }} data-testid="ld-skeleton-container">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full mb-3" data-testid="ld-skeleton" />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="empty-state" data-testid="ld-empty">
+            <div className="empty-icon">
+              <ShellIcon name="search-x" size={28} />
+            </div>
+            <div className="empty-title">No repositories match</div>
+            <div className="empty-sub">Try a different search term.</div>
+          </div>
+        ) : (
+          <div className="l-listview">
+            {rows.map((m, i) => (
+              <LocalRow
+                key={modelKey(m)}
+                model={m}
+                idx={i + 1}
+                sort={sort}
+                active={modelKey(m) === selectedKey}
+                onSelect={() => select(modelKey(m))}
+              />
+            ))}
+            {showLoadMore && (
+              <button type="button" className="ld-loadmore" onClick={loadMore} data-testid="ld-load-more">
+                <ShellIcon name="chevrons-down" size={14} /> Load more
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

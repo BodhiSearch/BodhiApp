@@ -68,6 +68,9 @@ export function buildEnvFromConfig(options = {}) {
     deployment = 'standalone',
     encryptionKey = 'dummy-key',
     appStatus = 'ready',
+    // The model-catalog Reference API the UI reads (Explore · Local Models). Point E2E at the
+    // deployed dev API (prod api.getbodhi.app is not yet live), so the discovery list renders.
+    referenceApiUrl = 'https://dev-api.getbodhi.app',
     clientId = null,
     clientSecret = null,
     createdBy = null,
@@ -94,6 +97,7 @@ export function buildEnvFromConfig(options = {}) {
     BODHI_DEPLOYMENT: deployment,
     BODHI_ENCRYPTION_KEY: encryptionKey,
     BODHI_APP_STATUS: appStatus,
+    BODHI_REFERENCE_API_URL: referenceApiUrl,
     ...systemSettings,
   };
 
