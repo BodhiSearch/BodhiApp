@@ -6,7 +6,11 @@ import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { LocalDiscoveryScreen } from '@/routes/models/explore/local/-components/LocalDiscoveryScreen';
 import { createListModel } from '@/test-fixtures/discover-models';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
-import { mockDiscoverModelDetail, mockDiscoverModels } from '@/test-utils/msw-v2/handlers/reference-models';
+import {
+  mockDiscoverModelDetail,
+  mockDiscoverModels,
+  mockDiscoverModelsError,
+} from '@/test-utils/msw-v2/handlers/reference-models';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { http, HttpResponse, server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -350,5 +354,28 @@ describe('LocalDiscoveryScreen (Phase 4 — Pull wiring)', () => {
     await waitFor(() => expect(body).not.toBeNull());
     expect(body).toEqual({ repo: 'Qwen/Qwen3-Coder-32B-GGUF', filename: 'Qwen3-Coder-32B-Q4_K_M.gguf' });
     await waitFor(() => expect(showSuccess).toHaveBeenCalled());
+  });
+});
+
+describe('LocalDiscoveryScreen (Phase 5 — error + empty states)', () => {
+  it('renders an error page when the catalog request fails', async () => {
+    server.use(...mockDiscoverModelsError({ status: 500, error: 'internal' }));
+    await act(async () => {
+      render(
+        <ShellSlotsProvider>
+          <SlotsConsumer />
+          <LocalDiscoveryScreen />
+        </ShellSlotsProvider>,
+        { wrapper: Wrapper }
+      );
+    });
+    await waitFor(() => expect(screen.getByText(/Reference API error 500/i)).toBeInTheDocument());
+  });
+
+  it('renders the empty state when the catalog returns no matches', async () => {
+    server.use(...mockDiscoverModels({ items: [] }));
+    await renderScreen();
+    await waitFor(() => expect(screen.getByTestId('ld-empty')).toBeInTheDocument());
+    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent('Showing 0');
   });
 });

@@ -21,9 +21,9 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 3-1 | **My Models** list + faceted sidebar + detail rail (first **full-stack** batch: backend `size`/capability/**search** + server-side filters) | 🟩 done-behind-flag |
 | 3-2 | **New API Model** form (`api/new`+`edit`) — V2-only, **no flag** | ✅ done |
 | 3-3 | **New Model Router** form (`router/new`+`edit`) — V2-only, **no flag** | ✅ done |
-| 3-4 | **New Local Model** form (`alias/new`+`edit`) — richest; sequenced after the simpler forms | ⬜ not started |
+| 3-6 | **Local Models** discovery — Explore·Local Models view wired to the live reference API (search, faceted sidebar, detail rail + quants, Pull, MultiTenant-hidden). Reference API shipped on Cloudflare; quants carry real `filename`, no split files. Plan: `../distributed-sprouting-clover.md` | ✅ done (P1–5; no flag) |
+| 3-4 | **New Local Model** form (`alias/new`+`edit`) — richest; consumes the 3-6 `quants[]` contract | ⬜ not started |
 | 3-5 | files / pull consolidation (fold download + quant table into the local-model form) | ⬜ not started |
-| 3-6 | **Local Models** discovery sub-view (reference API) | ⬜ not started |
 | 3-7 | **API Models** discovery sub-view (reference API) | ⬜ not started |
 | 4 | MCP (3 screens) | ⬜ not started |
 | 5 | Chat (1 screen, highest risk, last) | ⬜ not started |
@@ -33,6 +33,14 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 > Fallback (3-3) → Local (3-4); then files/pull consolidation (3-5); then the reference-API discovery
 > views, split Local (3-6) and API (3-7). Kick-offs: `batch-3-2…3-7-*-kickoff.md`. Rationale +
 > decisions: `batch-3-1-models-retro.md`.
+>
+> **3-6 pulled ahead of 3-4 (2026-06-20):** Local discovery defines the reference-API "which quants
+> exist for a repo + sizes" contract that 3-4's quant-file picker needs, so it goes first. The
+> reference API is a **new Cloudflare repo** (Workers + D1/FTS5 + KV + Workflows/Crons);
+> `…/BodhiSearch/spike-api-getbodhi-app` is a **spike** to mine, not the target. Phase-1 deliverables (this
+> repo's side): `batch-3-6-local-discovery-plan.md` (two-phase plan), `models-local-discovery-
+> reference-api.md` (the contract), `batch-3-6-cloudflare-reference-api-kickoff.md` (new-repo
+> bootstrap). Phase 2 = the BodhiApp discovery UI against an MSW stub of the contract.
 >
 > **3-1 is `done-behind-flag`, not `done`:** V2 shipped behind the default-off `models` flag and the V1
 > `ModelsPageContent` list is **kept**, because the existing model/api-model E2E specs drive
