@@ -167,7 +167,7 @@ function ColumnsMenu({ cols, onToggle, compact }) {
     const h = (e) => {if (ref.current && !ref.current.contains(e.target)) setOpen(false);};
     document.addEventListener('mousedown', h);return () => document.removeEventListener('mousedown', h);
   }, [open]);
-  const ITEMS = [{ k: 'human', label: 'Human evals' }, { k: 'downloads', label: 'Downloads' }, { k: 'likes', label: 'Likes' }];
+  const ITEMS = [{ k: 'downloads', label: 'Downloads' }, { k: 'likes', label: 'Likes' }];
   return (
     <div className="col-menu-wrap" ref={ref}>
       <button className={(compact ? 'col-head-btn' : 'l-iconbtn') + (open ? ' on' : '')} title="Show / hide columns" onClick={() => setOpen((v) => !v)} style={{ lineHeight: "1.4", fontSize: "13px", width: "24px" }}>
@@ -210,18 +210,19 @@ function CollapsedRailBtn({ icon, label, on, badge, onClick }) {
 
 }
 
-/* Browse → Trending / New (visual) + a real "Recommended" preset. */
-function BrowseGroup({ staffOnly, onToggleStaff }) {
+/* Browse → Trending (sort=trending) / New (sort=created_at). Drives the
+   real list sort. "Recommended" (curated) is not a catalog-wide filter in
+   v1, so it is not offered here — staff picks still show as a row badge. */
+function BrowseGroup({ sort, onBrowse }) {
   const { collapsed } = window.useShell();
-  const [browse, setBrowse] = React.useState('trending');
-  if (collapsed) return <CollapsedRailBtn icon="compass" label="Browse" on={staffOnly} onClick={onToggleStaff} />;
+  const active = sort && sort.key === 'trending' ? 'trending' : sort && sort.key === 'created' ? 'new' : null;
+  if (collapsed) return <CollapsedRailBtn icon="compass" label="Browse" on={active === 'new'} onClick={() => onBrowse(active === 'new' ? 'trending' : 'created')} />;
   return (
     <div className="shell-filtergroup">
       <div className="shell-fg-label"><span className="fg-ico"><LIc name="compass" size={13} /></span><span className="fg-name">Browse</span></div>
       <div className="shell-fc-row">
-        <button className={'shell-fc fc-neutral' + (browse === 'trending' ? ' on' : '')} onClick={() => setBrowse('trending')}>↗ Trending</button>
-        <button className={'shell-fc fc-neutral' + (browse === 'new' ? ' on' : '')} onClick={() => setBrowse('new')}>✦ New</button>
-        <button className={'shell-fc fc-saffron rec-fc' + (staffOnly ? ' on' : '')} onClick={onToggleStaff}><LIc name="thumbs-up" size={11} />Recommended</button>
+        <button className={'shell-fc fc-neutral' + (active === 'trending' ? ' on' : '')} onClick={() => onBrowse('trending')}>↗ Trending</button>
+        <button className={'shell-fc fc-neutral' + (active === 'new' ? ' on' : '')} onClick={() => onBrowse('created')}>✦ New</button>
       </div>
     </div>);
 

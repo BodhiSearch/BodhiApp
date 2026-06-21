@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bodhi · New Model Router</title>
-  <link rel="stylesheet" href="colors_and_type.css">
-  <script src="bodhi-theme.js"></script>
-  <link rel="stylesheet" href="bodhi-app-shell.css">
-  <link rel="stylesheet" href="bodhi-form.css">
-  <link rel="stylesheet" href="create-fallback-model.css">
+  <link rel="stylesheet" href="shared/colors_and_type.css">
+  <script src="shared/bodhi-theme.js"></script>
+  <link rel="stylesheet" href="shared/bodhi-app-shell.css">
+  <link rel="stylesheet" href="shared/bodhi-form.css">
+  <link rel="stylesheet" href="models/create-fallback-model.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
@@ -17,9 +17,15 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" src="tweaks-panel.jsx"></script>
-  <script type="text/babel" src="bodhi-app-shell.jsx"></script>
-  <script type="text/babel" src="create-fallback-model-app.jsx"></script>
-  <script src="bodhi-select.js"></script>
+  <script type="text/babel" src="shared/tweaks-panel.jsx"></script>
+  <script type="text/babel" src="shared/shell-core.jsx"></script>
+<script type="text/babel" src="shared/shell-chrome.jsx"></script>
+<script type="text/babel" src="shared/shell-user.jsx"></script>
+<script type="text/babel" src="shared/shell-app.jsx"></script>
+  <script type="text/babel" src="models/create-fallback-data.jsx"></script>
+<script type="text/babel" src="models/create-fallback-fields.jsx"></script>
+<script type="text/babel" src="models/create-fallback-steps.jsx"></script>
+<script type="text/babel" src="models/create-fallback-model-app.jsx"></script>
+  <script src="shared/bodhi-select.js"></script>
 </body>
 </html>

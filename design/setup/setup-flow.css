@@ -1,0 +1,13 @@
+/* ═══════════════════════════════════════════════════
+   Bodhi Setup Flow — shared onboarding chrome (barrel)
+   setup-flow.css   ·   load AFTER colors_and_type.css
+
+   Tiny barrel: @imports the setup partials in order. Edit the
+   partials in setup/setup-css/ — each is scoped to one concern:
+     setup-stepper.css   reset, page wash, top stepper
+     setup-content.css   section heads, model cards, specs, meters
+     setup-controls.css  browser select, model selection (step 4)
+═══════════════════════════════════════════════════ */
+@import url("setup-css/setup-stepper.css");
+@import url("setup-css/setup-content.css");
+@import url("setup-css/setup-controls.css");

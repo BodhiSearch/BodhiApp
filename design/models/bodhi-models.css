@@ -369,6 +369,15 @@
 .staff-badge svg { width: 11px; height: 11px; }
 .staff-badge.sm { padding: 0; width: 18px; height: 18px; justify-content: center; gap: 0; border-radius: 5px; }
 
+/* ── Row: trending flame · multimodal · architecture chip ── */
+.m-flame { display: inline-flex; align-items: center; color: var(--c-saffron-text); flex: none; }
+.m-flame svg { width: 12px; height: 12px; }
+.m-modality { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 1px 6px 1px 5px; border-radius: 99px; background: var(--c-lotus-bg); color: var(--c-lotus-text); border: 1px solid var(--c-lotus-bd); white-space: nowrap; }
+.m-modality svg { width: 10px; height: 10px; }
+.m-arch-chip { font-family: var(--font-mono); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 5px; color: hsl(var(--muted-foreground)); border: 1px solid hsl(var(--border)); background: hsl(var(--muted)); white-space: nowrap; }
+.mb-flame { color: var(--c-saffron-text); }
+.mb-flame svg { color: var(--c-saffron-text); }
+
 /* ── Sidebar filter header (Clear all) ── */
 .rec-fc { display: inline-flex; align-items: center; gap: 4px; }
 .rec-fc svg { width: 11px; height: 11px; }

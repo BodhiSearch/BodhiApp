@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi App Shell — semantic color tokens + global reset
+   shared/shell-css/shell-tokens.css
+   (partial — imported by shared/bodhi-app-shell.css; do not link directly)
+═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi App Shell — canonical layout system
+   bodhi-app-shell.css   (load AFTER colors_and_type.css)
+
+   ONE layout for every page. A CSS grid of up to three columns:
+
+        ┌─ sidebar ─┬──────── main ────────┬─ rail ─┐
+        │  BRAND    │       HEADER         │ R.HEAD │  ← shared header gridline (--shell-header-h)
+        ├───────────┼──────────────────────┼────────┤
+        │  (band)   │      TOOLBAR         │ (band) │  ← optional toolbar band (--shell-band-h)
+        ├───────────┼──────────────────────┼────────┤
+        │   nav     │       content        │  rail  │
+        │  footer   │      (scroll)        │(scroll)│
+        └───────────┴──────────────────────┴────────┘
+
+   Capabilities layered on the grid:
+     • Left sidebar + right rail are drag-resizable (widths persist).
+       Resize grips are invisible until you hover the divider.
+     • Left sidebar collapses to a 60px ICON RAIL (logo · section icon ·
+       sub-page icons · page controls · avatar). Collapse state is NOT
+       persisted (resets each load) — it's an ephemeral working mode.
+     • Responsive:
+         ≥ 768px  → sidebar + main + rail all inline (tablet keeps both
+                    panels; main column simply gets narrower).
+         < 768px  → BOTH panels become overlay drawers over the scrim;
+                    the sidebar always opens FULL (never the icon rail).
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Semantic color helpers (shared by every page) ── */
+:root {
+  --c-indigo-bg:   rgba(62,74,168,.10);   --c-indigo-bd:  rgba(62,74,168,.22);   --c-indigo-text: #3E4AA8;
+  --c-lotus-bg:    rgba(255,164,184,.14); --c-lotus-bd:   rgba(255,164,184,.35); --c-lotus-text:  #B02A52;
+  --c-saffron-bg:  rgba(250,138,46,.12);  --c-saffron-bd: rgba(250,138,46,.28);  --c-saffron-text:#B4500A;
+  --c-leaf-bg:     rgba(91,178,59,.12);   --c-leaf-bd:    rgba(91,178,59,.28);    --c-leaf-text:   #2F7D1F;
+  --c-teal-bg:     rgba(30,157,143,.10);  --c-teal-bd:    rgba(30,157,143,.25);   --c-teal-text:   #0F6F67;
+  --c-warning-bg:  rgba(250,138,46,.10);  --c-warning-bd: rgba(250,138,46,.30);   --c-warning-text:#8C3A00;
+}
+[data-theme="dark"] {
+  --c-indigo-bg:  rgba(110,123,204,.18); --c-indigo-bd:  rgba(110,123,204,.30); --c-indigo-text: #A5AEE6;
+  --c-lotus-bg:   rgba(255,164,184,.15); --c-lotus-bd:   rgba(255,164,184,.28); --c-lotus-text:  #FFA4B8;
+  --c-saffron-bg: rgba(250,138,46,.18);  --c-saffron-bd: rgba(250,138,46,.30);  --c-saffron-text:#FFAB5C;
+  --c-leaf-bg:    rgba(139,217,99,.16);  --c-leaf-bd:    rgba(139,217,99,.28);   --c-leaf-text:   #8BD963;
+  --c-teal-bg:    rgba(30,200,180,.12);  --c-teal-bd:    rgba(30,200,180,.22);   --c-teal-text:   #1CCFBC;
+  --c-warning-bg: rgba(250,138,46,.14);  --c-warning-bd: rgba(250,138,46,.28);   --c-warning-text:#FFAB5C;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: var(--font-sans);
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button, input, select, textarea { font-family: inherit; color: inherit; }
+button { cursor: pointer; }
+a { text-decoration: none; color: inherit; }

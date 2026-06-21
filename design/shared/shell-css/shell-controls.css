@@ -1,0 +1,210 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi App Shell — sidebar nav, sub-pages, icon rail, tooltip, popover, mode switch, filter group, range slider
+   shared/shell-css/shell-controls.css
+   (partial — imported by shared/bodhi-app-shell.css; do not link directly)
+═══════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════
+   SIDEBAR — primary section nav (EXPANDED dropdown)
+════════════════════════════════════════════════════════════ */
+.shell-nav { position: relative; }
+.shell-nav-trigger {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; border-radius: 10px;
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+  font-size: 13px; font-weight: 600; color: hsl(var(--foreground));
+  transition: border-color 140ms;
+}
+.shell-nav-trigger:hover { border-color: hsl(var(--ring)); }
+.shell-nav-trigger .lead { display: flex; color: #DB456C; flex: none; }
+.shell-nav-trigger .lead svg { width: 15px; height: 15px; }
+.shell-nav-trigger .lbl { flex: 1; text-align: left; }
+.shell-nav-trigger .chev { display: flex; color: hsl(var(--muted-foreground)); flex: none; transition: transform 160ms; }
+.shell-nav-trigger .chev svg { width: 14px; height: 14px; }
+.shell-nav.open .shell-nav-trigger .chev { transform: rotate(180deg); }
+
+.shell-nav-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: hsl(var(--popover)); border: 1px solid hsl(var(--border));
+  border-radius: 10px; padding: 4px; box-shadow: var(--shadow-lg); z-index: 300;
+}
+.shell-nav-item {
+  display: flex; align-items: center; gap: 9px; padding: 8px 10px;
+  border-radius: 7px; font-size: 13px; color: hsl(var(--muted-foreground));
+  width: 100%; text-align: left; border: none; background: none;
+}
+.shell-nav-item svg { width: 14px; height: 14px; flex: none; }
+.shell-nav-item:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.shell-nav-item.on { background: var(--c-lotus-bg); color: var(--c-lotus-text); font-weight: 600; }
+.shell-nav-item.on svg { color: #DB456C; }
+.shell-nav-badge, .shell-sub-badge {
+  margin-left: auto; font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 99px;
+  background: var(--c-lotus-bg); color: var(--c-lotus-text);
+}
+
+/* ── Sub-pages (EXPANDED) ── */
+.shell-sub { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; }
+.shell-sub-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 11px;
+  border-radius: 8px; font-size: 13px; font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  width: 100%; text-align: left; border: none; background: none;
+  transition: background 100ms, color 100ms;
+}
+.shell-sub-item svg { width: 13px; height: 13px; flex: none; }
+.shell-sub-item:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.shell-sub-item.on { background: var(--c-lotus-bg); color: var(--c-lotus-text); font-weight: 600; }
+.shell-sub-item.on svg { color: #DB456C; }
+
+/* ════════════════════════════════════════════════════════════
+   SIDEBAR — COLLAPSED icon rail
+════════════════════════════════════════════════════════════ */
+.shell-iconrail {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  padding: 10px 0 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.shell-iconrail::-webkit-scrollbar { width: 0; }
+.shell-iconrail-div { width: 28px; height: 1px; background: hsl(var(--border)); margin: 7px 0; flex: none; }
+
+.shell-railbtn {
+  position: relative;
+  width: 40px; height: 40px; border-radius: 11px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent;
+  color: hsl(var(--muted-foreground)); transition: background 120ms, color 120ms;
+}
+.shell-railbtn svg { width: 18px; height: 18px; }
+.shell-railbtn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.shell-railbtn.on { background: var(--c-lotus-bg); color: var(--c-lotus-text); }
+.shell-railbtn.on svg { color: #DB456C; }
+/* a tiny corner dot to mark "has active selection" (filter groups) */
+.shell-railbtn .dot {
+  position: absolute; top: 6px; right: 6px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--c-lotus-text);
+  border: 1.5px solid hsl(var(--card));
+}
+/* count badge variant */
+.shell-railbtn .rb-badge {
+  position: absolute; top: 2px; right: 2px;
+  min-width: 15px; height: 15px; padding: 0 3px; border-radius: 99px;
+  background: var(--c-lotus-text); color: #fff;
+  font-size: 9px; font-weight: 700; line-height: 15px; text-align: center;
+  border: 1.5px solid hsl(var(--card));
+}
+
+/* ── Floating tooltip (rendered fixed by GlobalTooltip, escapes overflow) ── */
+.shell-tooltip {
+  position: fixed; z-index: 700; transform: translateY(-50%);
+  background: hsl(var(--popover)); color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  padding: 5px 9px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  white-space: nowrap; box-shadow: var(--shadow-md); pointer-events: none;
+  max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ANCHORED POPOVER (collapsed nav dropdown · collapsed filter chips)
+   Rendered fixed-position (JS-measured) so the icon rail's overflow
+   never clips it.
+════════════════════════════════════════════════════════════ */
+.shell-pop {
+  position: fixed; z-index: 600;
+  background: hsl(var(--popover)); border: 1px solid hsl(var(--border));
+  border-radius: 12px; box-shadow: var(--shadow-lg);
+  padding: 6px; min-width: 200px; max-width: 280px;
+}
+.shell-pop-title {
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+  color: hsl(var(--muted-foreground)); padding: 5px 8px 7px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.shell-pop-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 6px 6px; }
+
+/* ════════════════════════════════════════════════════════════
+   MODE SWITCH (page control — e.g. My / Local / API Models)
+════════════════════════════════════════════════════════════ */
+.shell-modeswitch { display: flex; flex-direction: column; gap: 7px; padding: 2px 4px 6px; }
+.shell-mode-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 11px; border-radius: 9px;
+  border: 1px solid hsl(var(--border)); background: transparent;
+  width: 100%; text-align: left; transition: all 100ms;
+}
+.shell-mode-card:hover { background: hsl(var(--muted)); }
+.shell-mode-card.on { background: var(--c-lotus-bg); border-color: var(--c-lotus-bd); }
+.shell-mode-ico { flex: none; margin-top: 1px; color: hsl(var(--muted-foreground)); display: flex; }
+.shell-mode-ico svg { width: 16px; height: 16px; }
+.shell-mode-card.on .shell-mode-ico { color: var(--c-lotus-text); }
+.shell-mode-label { font-size: 13px; font-weight: 600; color: hsl(var(--foreground)); line-height: 1.2; }
+.shell-mode-card.on .shell-mode-label { color: var(--c-lotus-text); }
+.shell-mode-sub { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 1px; }
+
+/* ════════════════════════════════════════════════════════════
+   FILTER GROUP (page control) — inline chips + leading icon
+════════════════════════════════════════════════════════════ */
+.shell-filtergroup { padding: 0 4px; }
+.shell-fg-label {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em;
+  color: hsl(var(--muted-foreground)); font-weight: 700;
+  padding: 16px 8px 7px; display: flex; align-items: center; gap: 7px;
+}
+.shell-fg-label .fg-ico { display: flex; color: hsl(var(--muted-foreground)); }
+.shell-fg-label .fg-ico svg { width: 13px; height: 13px; }
+.shell-fg-label .fg-name { flex: 1; }
+.shell-fg-label .fg-note { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 9px; opacity: .8; }
+.shell-fg-label .fg-clear {
+  font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0;
+  color: var(--c-lotus-text); background: none; border: none; padding: 0;
+}
+.shell-fg-label .fg-clear:hover { text-decoration: underline; }
+
+.shell-fc-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 8px 2px; }
+.shell-fc {
+  font-size: 11.5px; font-weight: 500; padding: 4px 10px; border-radius: 99px;
+  border: 1px solid hsl(var(--border)); background: transparent;
+  color: hsl(var(--muted-foreground)); transition: all 100ms;
+}
+.shell-fc:hover { border-color: hsl(var(--ring)); color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+.shell-fc.fc-indigo.on  { background: var(--c-indigo-bg);  border-color: var(--c-indigo-bd);  color: var(--c-indigo-text); }
+.shell-fc.fc-lotus.on   { background: var(--c-lotus-bg);   border-color: var(--c-lotus-bd);   color: var(--c-lotus-text); }
+.shell-fc.fc-saffron.on { background: var(--c-saffron-bg); border-color: var(--c-saffron-bd); color: var(--c-saffron-text); }
+.shell-fc.fc-leaf.on    { background: var(--c-leaf-bg);    border-color: var(--c-leaf-bd);    color: var(--c-leaf-text); }
+.shell-fc.fc-teal.on    { background: var(--c-teal-bg);    border-color: var(--c-teal-bd);    color: var(--c-teal-text); }
+.shell-fc.fc-neutral.on { background: hsl(var(--muted));   border-color: hsl(var(--border));  color: hsl(var(--foreground)); font-weight: 600; }
+
+/* Dual-handle range slider (filter group) */
+.shell-range { padding: 4px 10px 6px; }
+.shell-range-vals {
+  display: flex; justify-content: space-between;
+  font-size: 11px; font-weight: 600; color: hsl(var(--foreground));
+  font-variant-numeric: tabular-nums; margin-bottom: 9px;
+}
+.shell-range-track { position: relative; height: 16px; }
+.shell-range-rail {
+  position: absolute; top: 50%; left: 0; right: 0; height: 4px;
+  transform: translateY(-50%); border-radius: 99px; background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+}
+.shell-range-fill {
+  position: absolute; top: 50%; height: 4px; transform: translateY(-50%);
+  border-radius: 99px; background: var(--c-lotus-text);
+}
+.shell-range-input {
+  position: absolute; top: 0; left: 0; width: 100%; height: 16px;
+  margin: 0; background: none; pointer-events: none;
+  -webkit-appearance: none; appearance: none;
+}
+.shell-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; pointer-events: auto;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: hsl(var(--background)); border: 2px solid var(--c-lotus-text);
+  cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.15);
+}
+.shell-range-input::-webkit-slider-thumb:active { cursor: grabbing; }
+.shell-range-input::-moz-range-thumb {
+  pointer-events: auto; width: 14px; height: 14px; border-radius: 50%;
+  background: hsl(var(--background)); border: 2px solid var(--c-lotus-text);
+  cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.15);
+}

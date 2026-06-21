@@ -1,0 +1,76 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi App Shell — 3-column grid, columns, shared band rows, scroll body
+   shared/shell-css/shell-grid.css
+   (partial — imported by shared/bodhi-app-shell.css; do not link directly)
+═══════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════
+   GRID
+════════════════════════════════════════════════════════════ */
+.shell {
+  /* user-resized widths (set inline by the resize hook) default to the cfg props */
+  --shell-sb-w-user:   var(--sb-w-cfg, 240px);
+  --shell-rail-w-user: var(--rail-w-cfg, 340px);
+  --shell-collapsed-w: 60px;
+
+  /* derived track widths — collapse classes override these (stylesheet, not inline) */
+  --shell-sb-w:   var(--shell-sb-w-user);
+  --shell-rail-w: var(--shell-rail-w-user);
+  /* actual grid tracks: panels are capped to a share of the viewport so the
+     main column can never be starved to 0 on narrow screens (no-op at default
+     widths; only bites when a resized panel would crowd out the content) */
+  --shell-sb-track:   min(var(--shell-sb-w), 32vw);
+  --shell-rail-track: min(var(--shell-rail-w), 44vw);
+  --shell-header-h: var(--header-h-cfg, 56px);
+  --shell-band-h:   var(--band-h-cfg, 52px);
+
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--shell-sb-track) minmax(0, 1fr) var(--shell-rail-track);
+  height: 100vh; height: 100dvh;
+  overflow: hidden;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.shell.no-rail        { --shell-rail-w: 0px; }
+.shell.sb-collapsed   { --shell-sb-w: var(--shell-collapsed-w); }
+.shell.rail-collapsed { --shell-rail-w: 0px; }
+/* NB: grid-template-columns is intentionally NOT transitioned — browsers
+   fail to interpolate var()/minmax track lists and the track can stick at
+   its old width. Collapse is instant; sidebar contents cross-fade instead. */
+
+.shell-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+
+.shell-sidebar {
+  grid-column: 1;
+  background: hsl(var(--card));
+  border-right: 1px solid hsl(var(--border));
+  z-index: 2; overflow: hidden;
+}
+.shell-main { grid-column: 2; background: hsl(var(--background)); }
+.shell-rail {
+  grid-column: 3;
+  background: hsl(var(--card));
+  border-left: 1px solid hsl(var(--border));
+  z-index: 2; overflow: hidden;
+}
+
+/* ── Shared band rows — the alignment guarantee ── */
+.shell-headrow {
+  height: var(--shell-header-h); flex: 0 0 var(--shell-header-h);
+  display: flex; align-items: center;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+}
+.shell-bandrow {
+  height: var(--shell-band-h); flex: 0 0 var(--shell-band-h);
+  display: flex; align-items: center;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+}
+
+.shell-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.shell-body.is-fill { overflow: hidden; display: flex; flex-direction: column; }
+.shell-body::-webkit-scrollbar { width: 8px; height: 8px; }
+.shell-body::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
+.shell-body::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / .4); }

@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bodhi · Explore Local Models</title>
-<link rel="stylesheet" href="colors_and_type.css">
-  <script src="bodhi-theme.js"></script>
-<link rel="stylesheet" href="bodhi-app-shell.css">
-<link rel="stylesheet" href="bodhi-list.css">
-<link rel="stylesheet" href="bodhi-models.css">
+<link rel="stylesheet" href="shared/colors_and_type.css">
+  <script src="shared/bodhi-theme.js"></script>
+<link rel="stylesheet" href="shared/bodhi-app-shell.css">
+<link rel="stylesheet" href="shared/bodhi-list.css">
+<link rel="stylesheet" href="models/bodhi-models.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -17,12 +17,21 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<script src="bodhi-models-data.js"></script>
+<script src="models/bodhi-models-data.js"></script>
 <script>window.MODELS_MODE = 'local';</script>
-<script type="text/babel" src="bodhi-app-shell.jsx"></script>
-<script type="text/babel" src="bodhi-list.jsx"></script>
-<script type="text/babel" src="bodhi-models-local.jsx"></script>
-<script type="text/babel" src="bodhi-models-app.jsx"></script>
-  <script src="bodhi-select.js"></script>
+<script type="text/babel" src="shared/shell-core.jsx"></script>
+<script type="text/babel" src="shared/shell-chrome.jsx"></script>
+<script type="text/babel" src="shared/shell-user.jsx"></script>
+<script type="text/babel" src="shared/shell-app.jsx"></script>
+<script type="text/babel" src="shared/bodhi-list.jsx"></script>
+<script type="text/babel" src="models/bodhi-models-local.jsx"></script>
+<script type="text/babel" src="models/models-base.jsx"></script>
+<script type="text/babel" src="models/models-downloads.jsx"></script>
+<script type="text/babel" src="models/models-filters.jsx"></script>
+<script type="text/babel" src="models/models-rows.jsx"></script>
+<script type="text/babel" src="models/models-detail.jsx"></script>
+<script type="text/babel" src="models/models-main.jsx"></script>
+<script type="text/babel" src="models/bodhi-models-app.jsx"></script>
+  <script src="shared/bodhi-select.js"></script>
 </body>
 </html>

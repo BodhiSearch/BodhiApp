@@ -1,0 +1,18 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi App Shell — canonical layout system (barrel)
+   shared/bodhi-app-shell.css   (load AFTER colors_and_type.css)
+
+   This file is intentionally tiny: it just @imports the shell partials
+   in order. Edit the partials in shared/shell-css/ — each is scoped to
+   one concern and mirrors a shell-*.jsx module:
+     shell-tokens.css    color tokens + reset
+     shell-grid.css      the 3-column grid frame
+     shell-controls.css  nav + sidebar controls   (↔ shell-chrome.jsx)
+     shell-sidebar.css   footer / user menu       (↔ shell-user.jsx)
+     shell-main.css      main chrome + responsive (↔ shell-app.jsx)
+═══════════════════════════════════════════════════════════════ */
+@import url("shell-css/shell-tokens.css");
+@import url("shell-css/shell-grid.css");
+@import url("shell-css/shell-controls.css");
+@import url("shell-css/shell-sidebar.css");
+@import url("shell-css/shell-main.css");

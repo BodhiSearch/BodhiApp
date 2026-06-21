@@ -1,0 +1,266 @@
+/* ═══════════════════════════════════════════════════
+   Bodhi Setup Flow — reset, root vars, page wash, top stepper + connector
+   setup/setup-css/setup-stepper.css
+   (partial — imported by setup/setup-flow.css; do not link directly)
+═══════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════
+   Bodhi Setup Flow — shared onboarding chrome
+   setup-flow.css   ·   load AFTER colors_and_type.css
+
+   A calm, meditative 6-step wizard: centered column,
+   top stepper, generous whitespace, soft motion.
+   Prefix: .su-
+═══════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+}
+
+/* Subtle "morning light on water" wash behind the flow. */
+.su-page {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background:
+    radial-gradient(120% 60% at 50% -8%, hsl(var(--primary) / .10), transparent 60%),
+    radial-gradient(90% 50% at 92% 8%, hsl(var(--accent) / .06), transparent 55%);
+}
+
+.su-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 48px 24px 88px;
+}
+.su-wrap.is-wide { max-width: 1040px; }
+
+/* ── Top-right theme toggle ────────────────────── */
+.su-theme-toggle {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 50;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.su-theme-toggle:hover {
+  border-color: hsl(var(--primary) / .5);
+  color: hsl(var(--primary-hover));
+  transform: translateY(-1px);
+}
+.su-theme-toggle svg { width: 18px; height: 18px; }
+
+/* ── Logo ──────────────────────────────────────── */
+.su-logo {
+  display: block;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 26px;
+  filter: drop-shadow(0 6px 18px hsl(var(--primary) / .28));
+  animation: su-breathe 6s var(--ease-lotus) infinite;
+}
+@keyframes su-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-3px) scale(1.025); }
+}
+
+/* ── Stepper ───────────────────────────────────── */
+.su-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 38px;
+}
+.su-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  width: 86px;
+  text-align: center;
+  text-decoration: none;
+}
+.su-step-node {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: hsl(var(--surface-3));
+  color: hsl(var(--muted-foreground));
+  border: 1.5px solid hsl(var(--border));
+  transition: background var(--dur-base) var(--ease-out),
+              color var(--dur-base) var(--ease-out),
+              border-color var(--dur-base) var(--ease-out);
+}
+.su-step-node svg { width: 16px; height: 16px; }
+
+.su-step.is-done .su-step-node {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.su-step.is-current .su-step-node {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+/* breathing halo on the active node */
+.su-step.is-current .su-step-node::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--primary) / .5);
+  animation: su-halo 2.6s var(--ease-lotus) infinite;
+}
+@keyframes su-halo {
+  0%   { transform: scale(.9);  opacity: .8; }
+  70%  { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+.su-step-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: hsl(var(--muted-foreground));
+  letter-spacing: -.005em;
+}
+.su-step.is-current .su-step-label {
+  color: hsl(var(--primary-hover));
+  font-weight: 600;
+}
+.su-step.is-done .su-step-label { color: hsl(var(--foreground)); }
+
+/* connector between nodes — sits level with node centers */
+.su-conn {
+  flex: 1 1 auto;
+  height: 2px;
+  margin-top: 16px;
+  min-width: 12px;
+  max-width: 52px;
+  border-radius: 2px;
+  background: hsl(var(--border));
+  overflow: hidden;
+}
+.su-conn.is-filled { background: hsl(var(--primary)); }
+
+.su-counter {
+  text-align: center;
+  font-size: 12.5px;
+  color: hsl(var(--muted-foreground));
+  margin: 4px 0 34px;
+  letter-spacing: .01em;
+}
+
+/* ── Entrance motion ───────────────────────────────────────────────
+   Capture-safe: resting state is fully visible (opacity:1). We animate
+   transform only, so html-to-image / PDF / no-JS always show content
+   even if they snapshot frame 0 of the animation. */
+.su-rise { animation: su-rise-in var(--dur-slow) var(--ease-out) both; }
+@keyframes su-rise-in {
+  from { transform: translateY(12px); }
+  to   { transform: translateY(0); }
+}
+.su-stagger > * { animation: su-stagger-in var(--dur-slow) var(--ease-out) both; }
+@keyframes su-stagger-in {
+  from { transform: translateY(12px); }
+  to   { transform: translateY(0); }
+}
+.su-stagger > *:nth-child(1) { animation-delay: .04s; }
+.su-stagger > *:nth-child(2) { animation-delay: .10s; }
+.su-stagger > *:nth-child(3) { animation-delay: .16s; }
+.su-stagger > *:nth-child(4) { animation-delay: .22s; }
+.su-stagger > *:nth-child(5) { animation-delay: .28s; }
+.su-stagger > *:nth-child(6) { animation-delay: .34s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .su-logo, .su-step.is-current .su-step-node::after { animation: none; }
+  .su-rise, .su-stagger > * { animation: none; }
+}
+
+/* ── Hero ──────────────────────────────────────── */
+.su-hero { text-align: center; margin-bottom: 38px; }
+.su-hero-title {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 44px;
+  line-height: 1.08;
+  letter-spacing: -.015em;
+  margin: 0 0 14px;
+}
+.su-sanskrit {
+  font-family: var(--font-devanagari);
+  color: hsl(var(--primary-hover));
+  font-weight: 500;
+}
+.su-lead {
+  font-size: 17px;
+  line-height: 1.55;
+  color: hsl(var(--muted-foreground));
+  margin: 0 auto;
+  max-width: 46ch;
+  text-wrap: pretty;
+}
+.su-note {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+  margin: 12px auto 0;
+  max-width: 52ch;
+  text-wrap: pretty;
+}
+
+/* ── Card ──────────────────────────────────────── */
+.su-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.su-card-pad { padding: 34px 36px; }
+.su-card + .su-card { margin-top: 22px; }
+
+.su-card-head { text-align: center; margin-bottom: 26px; }
+.su-card-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin: 0 0 8px;
+}
+.su-card-sub {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+  margin: 0 auto;
+  max-width: 50ch;
+  text-wrap: pretty;
+}

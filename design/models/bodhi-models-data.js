@@ -57,6 +57,7 @@ window.MODELS_DATA = (function () {
   const LOCAL_MODELS = [
     { rank:1, org:'Qwen', repo:'Qwen3-Coder-32B',
       params:'32B', arch:'Qwen3-MoE', domain:'llm', format:'GGUF', license:'Apache-2.0',
+      task:'text-generation', created:'2025-08-20', trending:96, langs:['en','zh'],
       owner_verified:true, staff_pick:true,
       score:74.2, dlNum:443000, dlLabel:'443k', likeNum:9100, likeLabel:'9.1k',
       updated:'2025-09-08', ctx:131072, maxGB:32.1,
@@ -71,6 +72,7 @@ window.MODELS_DATA = (function () {
 
     { rank:2, org:'meta-llama', repo:'Llama-3.3-70B',
       params:'70B', arch:'Llama 3.3', domain:'llm', format:'GGUF', license:'Llama',
+      task:'text-generation', created:'2025-07-15', trending:71, langs:['en','de','fr','es','it','pt'],
       owner_verified:true, staff_pick:false,
       score:61.4, dlNum:820000, dlLabel:'820k', likeNum:14000, likeLabel:'14k',
       updated:'2025-08-01', ctx:131072, maxGB:70.3,
@@ -85,6 +87,7 @@ window.MODELS_DATA = (function () {
 
     { rank:3, org:'deepseek-ai', repo:'DeepSeek-V3',
       params:'671B', arch:'DeepSeek-V3 MoE', domain:'llm', format:'GGUF', license:'DeepSeek',
+      task:'text-generation', created:'2025-06-28', trending:64, langs:['en','zh'],
       owner_verified:true, staff_pick:false,
       score:62.7, dlNum:310000, dlLabel:'310k', likeNum:22000, likeLabel:'22k',
       updated:'2025-07-20', ctx:65536, maxGB:120,
@@ -99,6 +102,7 @@ window.MODELS_DATA = (function () {
 
     { rank:4, org:'google', repo:'gemma-2-9b-it',
       params:'9B', arch:'Gemma 2', domain:'llm', format:'GGUF', license:'Gemma',
+      task:'text-generation', created:'2025-05-20', trending:48, langs:['en'],
       owner_verified:true, staff_pick:true,
       score:58.2, dlNum:1200000, dlLabel:'1.2M', likeNum:18000, likeLabel:'18k',
       updated:'2025-06-15', ctx:8192, maxGB:9.4,
@@ -113,6 +117,7 @@ window.MODELS_DATA = (function () {
 
     { rank:5, org:'microsoft', repo:'Phi-4',
       params:'14B', arch:'Phi-4', domain:'llm', format:'GGUF', license:'MIT',
+      task:'text-generation', created:'2025-04-22', trending:42, langs:['en'],
       owner_verified:true, staff_pick:true,
       score:55.1, dlNum:640000, dlLabel:'640k', likeNum:8200, likeLabel:'8.2k',
       updated:'2025-05-10', ctx:16384, maxGB:8.9,
@@ -127,6 +132,7 @@ window.MODELS_DATA = (function () {
 
     { rank:6, org:'mistralai', repo:'Mistral-7B-Instruct-v0.3',
       params:'7B', arch:'Mistral', domain:'llm', format:'GGUF', license:'Apache-2.0',
+      task:'text-generation', created:'2025-02-10', trending:30, langs:['en','fr','de','es','it'],
       owner_verified:true, staff_pick:false,
       score:49.3, dlNum:2500000, dlLabel:'2.5M', likeNum:31000, likeLabel:'31k',
       updated:'2025-03-12', ctx:32768, maxGB:7.7,
@@ -138,6 +144,36 @@ window.MODELS_DATA = (function () {
         quants:[{name:'Q8_0',size:'7.7 GB'},{name:'Q6_K',size:'6.4 GB'},{name:'Q4_K_M',size:'4.8 GB',rec:true},{name:'Q2_K',size:'3.1 GB'}],
         moreFrom:[{repo:'Mistral-Nemo-Instruct-2407',dl:'1.1M',likes:'47k'},{repo:'Mixtral-8x7B-Instruct',dl:'860k',likes:'72k'},{repo:'Codestral-22B',dl:'290k',likes:'28k'}],
         readme:`# Mistral-7B-Instruct-v0.3\n\n**Mistral-7B-Instruct v0.3** is a fast, popular open model with an updated tokenizer and function-calling support — a dependable everyday workhorse.\n\n## Highlights\n- Very fast; fully GPU-resident on modest hardware\n- Function calling + extended vocabulary\n- **32,768-token** context window\n\n## Recommended build\n**Q4_K_M** (4.8 GB) leaves ample VRAM for long context on a 12 GB GPU.\n\n## License\nReleased under the **Apache-2.0** license.` } },
+
+    { rank:7, org:'Qwen', repo:'Qwen2.5-VL-7B-Instruct',
+      params:'7B', arch:'Qwen2.5-VL', domain:'vlm', format:'GGUF', license:'Apache-2.0',
+      task:'image-text-to-text', created:'2025-09-01', trending:88, langs:['en','zh'],
+      owner_verified:true, staff_pick:true,
+      score:0, dlNum:380000, dlLabel:'380k', likeNum:7500, likeLabel:'7.5k',
+      updated:'2025-09-25', ctx:128000, maxGB:8.1,
+      meta:'7B · 4 quants · up to 8.1 GB · Apache-2.0',
+      tags:['vision','tool-use','chat'], quants:4,
+      detail:{
+        caps:['vision','tool-use','chat','structured-output'],
+        specs:[{k:'Context',v:'128,000 tokens'},{k:'Architecture',v:'Qwen2.5-VL'},{k:'Parameters',v:'7B'},{k:'Modality',v:'Image + Text → Text'},{k:'License',v:'Apache-2.0'}],
+        quants:[{name:'Q8_0',size:'8.1 GB'},{name:'Q6_K',size:'6.6 GB'},{name:'Q4_K_M',size:'4.9 GB',rec:true},{name:'Q3_K_M',size:'3.9 GB'}],
+        moreFrom:[{repo:'Qwen3-Coder-32B',dl:'443k',likes:'9.1k'},{repo:'Qwen2.5-VL-3B-Instruct',dl:'210k',likes:'4.2k'},{repo:'Qwen2-VL-7B',dl:'520k',likes:'18k'}],
+        readme:`# Qwen2.5-VL-7B-Instruct\n\n**Qwen2.5-VL** is a multimodal model that accepts **images and text** and returns text — covering document understanding, chart/diagram reasoning, OCR, and visual grounding. Runs locally as GGUF in BodhiApp.\n\n## Highlights\n- **Image-Text-to-Text**: vision question answering, OCR, screenshots, charts\n- Native **tool / function calling** for agentic visual workflows\n- **128,000-token** context for long multimodal documents\n- Apache-2.0 licensed for commercial use\n\n## Recommended build\n**Q4_K_M** (4.9 GB) fits fully on a 12 GB GPU including the vision encoder.\n\n## License\nReleased under the **Apache-2.0** license.` } },
+
+    { rank:8, org:'unsloth', repo:'gemma-3-12b-it',
+      params:'12B', arch:'Gemma 3', domain:'vlm', format:'GGUF', license:'Gemma',
+      task:'image-text-to-text', created:'2025-09-10', trending:79, langs:['en','es','fr','de','ja','ko'],
+      owner_verified:true, staff_pick:false,
+      score:0, dlNum:510000, dlLabel:'510k', likeNum:6100, likeLabel:'6.1k',
+      updated:'2025-10-02', ctx:131072, maxGB:12.5,
+      meta:'12B · 4 quants · up to 12.5 GB · Gemma',
+      tags:['vision','chat','multilingual'], quants:4,
+      detail:{
+        caps:['vision','chat','multilingual'],
+        specs:[{k:'Context',v:'131,072 tokens'},{k:'Architecture',v:'Gemma 3'},{k:'Parameters',v:'12B'},{k:'Modality',v:'Image + Text → Text'},{k:'License',v:'Gemma'}],
+        quants:[{name:'Q8_0',size:'12.5 GB'},{name:'Q6_K',size:'10.1 GB'},{name:'Q4_K_M',size:'7.3 GB',rec:true},{name:'Q3_K_M',size:'5.9 GB'}],
+        moreFrom:[{repo:'gemma-3-4b-it',dl:'880k',likes:'21k'},{repo:'gemma-3-27b-it',dl:'340k',likes:'15k'},{repo:'gemma-2-9b-it',dl:'1.2M',likes:'18k'}],
+        readme:`# gemma-3-12b-it\n\n**Gemma 3 12B** is Google's open multimodal model, accepting **interleaved images and text**. This GGUF build (by unsloth) runs locally in BodhiApp.\n\n## Highlights\n- **Image-Text-to-Text** vision understanding across 35+ languages\n- **131,072-token** context window\n- Strong everyday chat and summarisation quality-per-GB\n\n## Memory notes\n**Q4_K_M** (7.3 GB) runs fully on a 12 GB GPU. The vision tower adds a little overhead — leave ~1 GB headroom.\n\n## License\nGoverned by the **Gemma Terms of Use**.` } },
   ];
 
   const API_PROVIDERS = [

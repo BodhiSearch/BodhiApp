@@ -1,0 +1,192 @@
+/* ═══════════════════════════════════════════════════════════════
+   Bodhi App Shell — main chrome, resize handles, scrim, responsive, banner, search, dark refinements
+   shared/shell-css/shell-main.css
+   (partial — imported by shared/bodhi-app-shell.css; do not link directly)
+═══════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════
+   MAIN chrome — header / breadcrumb
+════════════════════════════════════════════════════════════ */
+.shell-header { padding: 0 clamp(12px, 2vw, 20px); gap: 10px; }
+.shell-bc { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: hsl(var(--muted-foreground)); min-width: 0; overflow: hidden; }
+.shell-bc svg { width: 11px; height: 11px; opacity: .5; flex: none; }
+.shell-bc-seg { white-space: nowrap; cursor: pointer; transition: color 100ms; }
+.shell-bc-seg:hover { color: hsl(var(--foreground)); }
+.shell-bc-current { font-weight: 700; color: var(--c-lotus-text); white-space: nowrap; }
+.shell-head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+
+/* the collapse toggle that opens EVERY breadcrumb */
+.shell-icon-btn {
+  width: 32px; height: 32px; border-radius: 8px;
+  border: 1px solid hsl(var(--border)); background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  color: hsl(var(--muted-foreground)); flex: none; transition: background 120ms, color 120ms;
+}
+.shell-icon-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.shell-icon-btn svg { width: 16px; height: 16px; transition: transform 200ms var(--ease-lotus, ease); }
+.shell-sb-toggle { margin-right: 2px; }
+.shell.sb-collapsed .shell-sb-toggle svg { transform: scaleX(-1); }
+.shell.rail-collapsed .shell-rail-toggle svg { transform: scaleX(-1); }
+
+.shell-toolbar { padding: 0 clamp(12px, 2vw, 20px); gap: 10px; }
+.shell-sb-band { padding: 0 12px; }
+.shell-mainband { flex: none; }
+
+/* content wrapper inside main body */
+.shell-content { padding: 14px clamp(16px, 4vw, 40px) 64px; }
+.shell-content.flush { padding: 0; height: 100%; display: flex; flex-direction: column; }
+.shell-content.narrow { max-width: 920px; margin-inline: auto; }
+.shell-content.wide   { max-width: 1280px; margin-inline: auto; }
+
+.shell-page-head { margin-bottom: 24px; }
+.shell-page-head .title { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; color: hsl(var(--foreground)); }
+.shell-page-head .sub { font-size: 13.5px; color: hsl(var(--muted-foreground)); line-height: 1.55; margin-top: 5px; max-width: 760px; text-wrap: pretty; }
+
+/* ════════════════════════════════════════════════════════════
+   RESIZE HANDLES — invisible until the divider is hovered
+════════════════════════════════════════════════════════════ */
+.shell-resize {
+  position: absolute; top: 0; bottom: 0; width: 16px; z-index: 40;
+  cursor: col-resize; touch-action: none;
+}
+.shell-resize.left  { /* positioned at sidebar's right edge via inline left */ }
+.shell-resize.right { /* positioned at rail's left edge via inline left */ }
+.shell-resize::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+  transform: translateX(-50%); background: transparent; transition: background 130ms ease;
+}
+.shell-resize:hover::before, .shell-resize.is-active::before { background: hsl(var(--ring)); }
+.shell-resize-grip {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 12px; height: 46px; border-radius: 7px;
+  background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-sm);
+  display: flex; align-items: center; justify-content: center; gap: 2.5px;
+  opacity: 0; transition: opacity 130ms ease, border-color 130ms ease, box-shadow 130ms ease;
+}
+.shell-resize:hover .shell-resize-grip, .shell-resize.is-active .shell-resize-grip { opacity: 1; }
+.shell-resize-grip::before, .shell-resize-grip::after {
+  content: ''; width: 1.5px; height: 16px; border-radius: 1px;
+  background: hsl(var(--muted-foreground)); opacity: .55;
+}
+.shell-resize.is-active .shell-resize-grip { border-color: hsl(var(--ring)); box-shadow: var(--shadow-md); }
+.shell.is-dragging, .shell.is-dragging * { cursor: col-resize !important; user-select: none !important; }
+
+/* user menu open → resize handles must not intercept the popup/flyout */
+body.shell-menu-open .shell-resize { pointer-events: none; }
+body.shell-menu-open .shell-resize-grip { opacity: 0 !important; }
+body.shell-menu-open .shell-resize::before { background: transparent !important; }
+
+/* hide handles when that column is collapsed / hidden */
+.shell.sb-collapsed   .shell-resize.left,
+.shell.rail-collapsed .shell-resize.right,
+.shell.no-rail        .shell-resize.right { display: none; }
+
+/* ════════════════════════════════════════════════════════════
+   DRAWER SCRIM (mobile overlays)
+════════════════════════════════════════════════════════════ */
+.shell-scrim {
+  position: fixed; inset: 0; background: rgba(12,12,18,.42);
+  z-index: 55; opacity: 0; pointer-events: none; transition: opacity .26s ease;
+}
+/* the scrim only ever shows behind the MOBILE drawers (see media query below) */
+
+/* ════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ≥ 768px → all three columns inline (tablet keeps both panels).
+   < 768px → both panels overlay; sidebar opens FULL (not icon rail).
+════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+    transition: none;
+    /* mobile sidebar always opens at its full configured width, never collapsed */
+    --shell-sb-w: var(--shell-sb-w-user);
+  }
+  /* sidebar + rail leave the grid (position:fixed); main must fill the lone track */
+  .shell-main { grid-column: 1 / -1 !important; }
+  .shell-resize { display: none !important; }
+
+  .shell-sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: min(var(--shell-sb-w-user), 86vw);
+    transform: translateX(-100%);
+    transition: transform .26s var(--ease-lotus, cubic-bezier(.22,.61,.36,1));
+    box-shadow: var(--shadow-lg); z-index: 70;
+  }
+  .shell.sb-open .shell-sidebar { transform: translateX(0); }
+  /* force expanded content in the mobile drawer even if collapse flag is on */
+  .shell.sb-collapsed .shell-sidebar { width: min(var(--shell-sb-w-user), 86vw); }
+
+  .shell-rail {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(var(--shell-rail-w-user), 90vw);
+    transform: translateX(100%);
+    transition: transform .26s var(--ease-lotus, cubic-bezier(.22,.61,.36,1));
+    box-shadow: var(--shadow-lg); z-index: 60;
+  }
+  .shell.rail-open .shell-rail { transform: translateX(0); }
+
+  /* drawers dim the page only at mobile widths */
+  .shell.sb-open .shell-scrim, .shell.rail-open .shell-scrim { opacity: 1; pointer-events: auto; }
+
+  .shell-content { padding-left: clamp(14px, 5vw, 20px); padding-right: clamp(14px, 5vw, 20px); }
+}
+
+/* ── Reusable content primitives (shared house style) ── */
+.shell-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px clamp(16px, 4vw, 24px);
+  background: var(--c-warning-bg); border-bottom: 1px solid var(--c-warning-bd);
+  flex: none;
+}
+.shell-banner.leaf { background: var(--c-leaf-bg); border-bottom-color: var(--c-leaf-bd); }
+.shell-banner svg.lead { width: 16px; height: 16px; color: var(--c-warning-text); flex: none; }
+.shell-banner .txt { flex: 1; font-size: 12.5px; color: var(--c-warning-text); font-weight: 500; }
+.shell-banner .txt strong { font-weight: 700; }
+
+/* ── Reusable search input (ShellSearch) ── */
+.shell-search { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; }
+.shell-search .ss-ico {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; color: hsl(var(--muted-foreground)); pointer-events: none;
+}
+.shell-search input {
+  width: 100%; height: 34px; padding: 0 12px 0 34px;
+  border: 1px solid hsl(var(--border)); border-radius: 8px;
+  font-size: 13px; font-family: inherit;
+  background: hsl(var(--card)); color: hsl(var(--foreground));
+  outline: none; transition: border-color 130ms, box-shadow 130ms;
+}
+.shell-search input::placeholder { color: hsl(var(--muted-foreground)); }
+.shell-search input:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px rgba(255,164,184,.15); }
+.shell-search.has-kbd input { padding-right: 46px; }
+.shell-search .ss-kbd {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  font-family: var(--font-mono); font-size: 11px; color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+  border-radius: 5px; padding: 1px 6px; pointer-events: none;
+}
+.shell-search.sm input { height: 30px; padding-left: 30px; font-size: 12.5px; }
+.shell-search.sm .ss-ico { left: 9px; }
+
+/* ════════════════════════════════════════════════════════════
+   DARK THEME — elevation refinements
+   Floating UI to the top surface layer; inputs as sunken wells.
+════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .shell-usermenu,
+[data-theme="dark"] .shell-um-flyout,
+[data-theme="dark"] .shell-nav-menu,
+[data-theme="dark"] .shell-pop,
+[data-theme="dark"] .shell-tooltip {
+  background: hsl(var(--surface-4));
+  border-color: hsl(var(--border-strong));
+}
+[data-theme="dark"] .shell-theme-thumb {
+  background: hsl(var(--surface-3));
+  border-color: hsl(var(--border-strong));
+}
+[data-theme="dark"] .shell-search input {
+  background: hsl(var(--surface-1));
+  border-color: hsl(var(--border-strong));
+}
