@@ -38,9 +38,9 @@ const LICENSE_FACETS: { id: string; label: string }[] = [
 ];
 
 /** Browse presets map to a sort key (Trending / New). */
-const BROWSE: { id: SortKey; label: string; icon: string }[] = [
-  { id: 'trending', label: 'Trending', icon: 'trending-up' },
-  { id: 'created_at', label: 'New', icon: 'sparkles' },
+const BROWSE: { id: SortKey; label: string }[] = [
+  { id: 'trending', label: 'Trending' },
+  { id: 'created_at', label: 'New' },
 ];
 
 function toggle<T>(list: T[] | undefined, value: T): T[] | undefined {
@@ -91,7 +91,7 @@ export function LocalDiscoverySidebar({ facets, sort, onFacetsChange, onBrowse, 
       )}
 
       <FacetGroup icon="compass" title="Browse">
-        <div className="m-facet-pills nowrap">
+        <div className="m-facet-pills">
           {BROWSE.map((b) => (
             <button
               key={b.id}
@@ -101,7 +101,7 @@ export function LocalDiscoverySidebar({ facets, sort, onFacetsChange, onBrowse, 
               onClick={() => onBrowse(b.id)}
               data-testid={`ld-browse-${b.id}`}
             >
-              <ShellIcon name={b.icon} size={11} /> {b.label}
+              {b.label}
             </button>
           ))}
         </div>

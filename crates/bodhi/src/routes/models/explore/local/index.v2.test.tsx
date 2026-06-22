@@ -160,6 +160,36 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
     expect(screen.getByTestId('ld-sort-likes')).toHaveAttribute('data-test-state', 'active');
   });
 
+  it('renders an Updated column and the Updated header sorts by last_modified', async () => {
+    const seen: URL[] = [];
+    server.use(
+      ...mockDiscoverModels({
+        items: [createListModel({ namespace: 'a', repo: 'dated', last_modified: '2025-09-08T00:00:00.000Z' })],
+        onRequest: ({ url }) => seen.push(url),
+      })
+    );
+    await renderScreen();
+
+    // The list row surfaces the formatted last_modified date.
+    await waitFor(() => expect(screen.getByTestId('ld-row-a-dated')).toHaveTextContent('8 Sep 2025'));
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-sort-last_modified'));
+    });
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('sort')).toBe('last_modified'));
+    expect(screen.getByTestId('ld-sort-last_modified')).toHaveAttribute('data-test-state', 'active');
+    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent('Updated');
+  });
+
+  it('renders "—" in the Updated column when last_modified is null', async () => {
+    server.use(
+      ...mockDiscoverModels({ items: [createListModel({ namespace: 'a', repo: 'undated', last_modified: null })] })
+    );
+    await renderScreen();
+    await waitFor(() => expect(screen.getByTestId('ld-row-a-undated')).toBeInTheDocument());
+    expect(screen.getByTestId('ld-row-a-undated')).toHaveTextContent('—');
+  });
+
   it('Load more appends the cursor page', async () => {
     server.use(
       ...mockDiscoverModels({
@@ -313,13 +343,14 @@ describe('LocalDiscoveryScreen (Phase 3 — detail rail)', () => {
     expect(screen.getByTestId('ld-detail-specs')).toHaveTextContent('131,072 tokens');
     expect(screen.getByTestId('ld-detail-specs')).toHaveTextContent('qwen3-moe');
 
-    // Download options tab renders quants from the DTO: recommended badge + null-size "—".
+    // Download options tab renders quants from the DTO with null-size "—". The "Recommended"
+    // feature is intentionally not surfaced — no badge is rendered.
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-tab-quants'));
     });
     await waitFor(() => expect(screen.getByTestId('ld-quants')).toBeInTheDocument());
     expect(screen.getByTestId('ld-quant-Q4_K_M')).toBeInTheDocument();
-    expect(screen.getByTestId('ld-quant-rec-Q4_K_M')).toBeInTheDocument();
+    expect(screen.queryByTestId('ld-quant-rec-Q4_K_M')).not.toBeInTheDocument();
     // Q2_K has a null size in the fixture → renders "—".
     expect(screen.getByTestId('ld-quant-Q2_K')).toHaveTextContent('—');
   });
@@ -351,17 +382,15 @@ describe('LocalDiscoveryScreen (Phase 4 — Pull wiring)', () => {
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-row-Qwen-Qwen3-Coder-32B-GGUF'));
     });
-    // The footer "Pull recommended" CTA lives on the Download options tab (it picks the
-    // marked quant from that list). The detail rail opens on Overview by default — switch tabs
-    // before clicking. The Overview tab intentionally omits the footer button.
+    // Quants (with their per-row download buttons) live on the Download options tab. The detail
+    // rail opens on Overview by default — switch tabs, then download the chosen quant directly.
     await waitFor(() => expect(screen.getByTestId('ld-tab-quants')).toBeInTheDocument());
-    expect(screen.queryByTestId('ld-pull-recommended')).not.toBeInTheDocument();
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-tab-quants'));
     });
-    await waitFor(() => expect(screen.getByTestId('ld-pull-recommended')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('ld-quant-pull-Q4_K_M')).toBeInTheDocument());
     await act(async () => {
-      await userEvent.click(screen.getByTestId('ld-pull-recommended'));
+      await userEvent.click(screen.getByTestId('ld-quant-pull-Q4_K_M'));
     });
 
     await waitFor(() => expect(body).not.toBeNull());

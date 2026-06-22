@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function fmtDate(iso?: string | null): string {
+export function fmtDate(iso?: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
@@ -101,7 +101,6 @@ export function LocalDiscoveryRail({ model, detail, loading, onPull, pullPending
   const [tab, setTab] = useState<'overview' | 'quants'>('overview');
   const quants = detail?.quants ?? [];
   const quantCount = detail?.quant_count ?? model.quant_count ?? quants.length;
-  const recommended = quants.find((q) => q.recommended) ?? quants[0];
 
   return (
     <div className="dp-panel models-screen-rail" data-testid={`ld-detail-${model.namespace}-${model.repo}`}>
@@ -150,31 +149,6 @@ export function LocalDiscoveryRail({ model, detail, loading, onPull, pullPending
           <QuantsTab quants={quants} loading={loading} onPull={onPull} pullPending={pullPending} />
         )}
       </div>
-
-      {/* The "Pull recommended" CTA belongs to the Download options tab — it picks the marked
-          quant from that list. Hide it on Overview, which is informational. */}
-      {tab === 'quants' && recommended && (
-        <div className="dp-foot">
-          <button
-            className="dp-btn dp-btn-accent"
-            disabled={pullPending}
-            onClick={() => onPull(recommended)}
-            data-testid="ld-pull-recommended"
-            title={
-              recommended.size != null
-                ? `Pull ${recommended.name} · ${fmtSize(recommended.size)}`
-                : `Pull ${recommended.name}`
-            }
-          >
-            <ShellIcon name="download" size={14} />
-            <span className="ld-pull-label">
-              <span className="ld-pull-verb">Pull</span>
-              <MidEllipsis className="ld-pull-name" text={recommended.name} tailLen={8} title={recommended.name} />
-              {recommended.size != null && <span className="ld-pull-size">· {fmtSize(recommended.size)}</span>}
-            </span>
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -242,14 +216,9 @@ function QuantsTab({
   return (
     <div className="ld-quants" data-testid="ld-quants">
       {quants.map((q) => (
-        <div className={`ld-quant-row${q.recommended ? ' rec' : ''}`} key={q.name} data-testid={`ld-quant-${q.name}`}>
+        <div className="ld-quant-row" key={q.name} data-testid={`ld-quant-${q.name}`}>
           <div className="ld-quant-main">
             <MidEllipsis className="ld-quant-name mono" text={q.name} tailLen={10} />
-            {q.recommended && (
-              <span className="ld-rec-badge" data-testid={`ld-quant-rec-${q.name}`}>
-                <ShellIcon name="thumbs-up" size={10} /> Recommended
-              </span>
-            )}
           </div>
           <div className="ld-quant-side">
             <span className="ld-quant-size">{fmtSize(q.size)}</span>

@@ -18,6 +18,7 @@ export class LocalDiscoveryPage extends BasePage {
     search: '[data-testid="ld-search"] input',
     sortDownloads: '[data-testid="ld-sort-downloads"]',
     sortLikes: '[data-testid="ld-sort-likes"]',
+    sortUpdated: '[data-testid="ld-sort-last_modified"]',
     loadMore: '[data-testid="ld-load-more"]',
     facets: '[data-testid="ld-facets"]',
     browse: (id) => `[data-testid="ld-browse-${id}"]`,
@@ -35,8 +36,8 @@ export class LocalDiscoveryPage extends BasePage {
     tabQuants: '[data-testid="ld-tab-quants"]',
     specs: '[data-testid="ld-detail-specs"]',
     quants: '[data-testid="ld-quants"]',
-    quantRow: '[data-testid^="ld-quant-"]:not([data-testid^="ld-quant-pull-"]):not([data-testid^="ld-quant-rec-"])',
-    pullRecommended: '[data-testid="ld-pull-recommended"]',
+    quantRow: '[data-testid^="ld-quant-"]:not([data-testid^="ld-quant-pull-"])',
+    quantPull: '[data-testid^="ld-quant-pull-"]',
     // Downloads panel (header action → right rail).
     downloadsButton: '[data-testid="ld-downloads-button"]',
     downloadsBadge: '[data-testid="ld-downloads-badge"]',
@@ -86,17 +87,22 @@ export class LocalDiscoveryPage extends BasePage {
     await this.waitForListSettled();
   }
 
+  /** Maps a column id to its sort-header selector. */
+  sortSelector(column) {
+    if (column === 'likes') return this.selectors.sortLikes;
+    if (column === 'last_modified') return this.selectors.sortUpdated;
+    return this.selectors.sortDownloads;
+  }
+
   /** Click a sortable column header; waits for the list to re-settle. */
   async sortBy(column) {
-    const sel = column === 'likes' ? this.selectors.sortLikes : this.selectors.sortDownloads;
-    await this.page.locator(sel).click();
+    await this.page.locator(this.sortSelector(column)).click();
     await this.waitForSPAReady();
     await this.waitForListSettled();
   }
 
   async expectSortState(column, state) {
-    const sel = column === 'likes' ? this.selectors.sortLikes : this.selectors.sortDownloads;
-    await expect(this.page.locator(sel)).toHaveAttribute('data-test-state', state);
+    await expect(this.page.locator(this.sortSelector(column))).toHaveAttribute('data-test-state', state);
   }
 
   async loadMore() {

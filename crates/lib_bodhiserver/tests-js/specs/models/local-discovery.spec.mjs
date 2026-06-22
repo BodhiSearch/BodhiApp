@@ -68,6 +68,13 @@ test.describe('Explore · Local Models (discovery)', () => {
       await discoveryPage.expectSortState('likes', 'active');
     });
 
+    await test.step('Sorting by Updated re-queries by last_modified and marks the active column', async () => {
+      await discoveryPage.sortBy('last_modified');
+      await discoveryPage.expectSortState('last_modified', 'active');
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.resultbar)).toContainText('Updated');
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.anyRow).first()).toBeVisible();
+    });
+
     await test.step('Faceted sidebar: Browse=Trending + Specialisation=Coding filter the catalog', async () => {
       await expect(discoveryPage.page.locator(discoveryPage.selectors.facets)).toBeVisible();
 
@@ -116,10 +123,10 @@ test.describe('Explore · Local Models (discovery)', () => {
       // No README tab in v1.
       await expect(discoveryPage.page.getByRole('button', { name: /README/i })).toHaveCount(0);
 
-      // The Pull affordance is present + enabled (real filename-backed download). We don't trigger a
-      // multi-GB download in CI — the quant→filename mapping is asserted in RTL and exercised in the
-      // GATE-B manual walk; here we just confirm the wiring renders.
-      await expect(discoveryPage.page.locator(discoveryPage.selectors.pullRecommended)).toBeEnabled();
+      // Each quant row carries its own download button (real filename-backed download). We don't
+      // trigger a multi-GB download in CI — the quant→filename mapping is asserted in RTL and
+      // exercised in the GATE-B manual walk; here we just confirm the per-quant wiring renders.
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.quantPull).first()).toBeEnabled();
 
       // Close the rail.
       await discoveryPage.page.locator(discoveryPage.selectors.detailClose).click();

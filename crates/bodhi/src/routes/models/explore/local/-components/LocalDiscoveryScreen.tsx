@@ -17,7 +17,7 @@ import { useDiscoverModels, useModelDetail } from '@/hooks/reference';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
-import { LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
+import { fmtDate, LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
 import { LocalDiscoverySidebar, facetsToQuery, type DiscoveryFacets } from './LocalDiscoverySidebar';
 import '@/components/downloads-panel/downloads-panel.css';
 import '@/components/shell/list.css';
@@ -139,6 +139,10 @@ function LocalRow({ model, idx, sort, active, onSelect }: LocalRowProps) {
         <div className={`ld-stat${sort === 'likes' ? ' sorted' : ''}`}>
           <div className="ld-stat-num">{compact(model.likes)}</div>
           <div className="ld-stat-lbl">LIKES</div>
+        </div>
+        <div className={`ld-stat${sort === 'last_modified' ? ' sorted' : ''}`}>
+          <div className="ld-stat-num ld-stat-date">{fmtDate(model.last_modified)}</div>
+          <div className="ld-stat-lbl">UPDATED</div>
         </div>
       </div>
     </div>
@@ -443,6 +447,7 @@ export function LocalDiscoveryScreen() {
         <div className="ld-lh-stats">
           <SortHeader label="Downloads" col="downloads" sort={sort} onSort={onSort} />
           <SortHeader label="Likes" col="likes" sort={sort} onSort={onSort} />
+          <SortHeader label="Updated" col="last_modified" sort={sort} onSort={onSort} />
         </div>
       </div>
 
