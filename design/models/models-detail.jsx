@@ -32,8 +32,7 @@ function DetailHeader({ sel, onDeselect, onPickOrg }) {
       </span>);
     extra = <button className="panel-copy" title="Copy repo id"><Ic name="copy" size={13} /></button>;
   } else {
-    const color = DETAIL_PROV_COLORS[item.slug] || '#888';
-    badge = <span className="prov-avatar" style={{ width: 26, height: 26, borderRadius: 7, fontSize: 11, marginRight: 0, background: color + '1a', color, border: '1.5px solid ' + color + '40' }}>{item.provider.slice(0, 2).toUpperCase()}</span>;
+    badge = <ProviderLogo slug={item.slug} provider={item.provider} size={26} radius={7} />;
     title = item.provider;
   }
   return (
@@ -194,29 +193,54 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
   }
 
   /* API provider */
-  const d = item.detail,sc = DETAIL_STATUS_CFG[item.status] || DETAIL_STATUS_CFG.available;
   const suffix = item.models >= 100 ? '+' : '';
+  const fmtPrice = (m) => m.in === 0 && m.out === 0 ? 'Free' : '$' + m.in + ' / $' + m.out;
   return <>
-    <div className="panel-tabs">
-      <button className={'ptab' + (tab === 'overview' ? ' on' : '')} onClick={() => setTab('overview')}>Overview</button>
-      <button className={'ptab' + (tab === 'models' ? ' on' : '')} onClick={() => setTab('models')}>Models ({item.models}{suffix})</button>
-    </div>
     <div className="panel-body">
-      {tab === 'overview' ? <>
-        <div className="panel-lead" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span className={'status-badge ' + sc.cls}><Ic name={sc.icon} size={9} />{sc.lbl}</span>
-          <span className="panel-stat"><Ic name="layers" size={10} />{item.models}{suffix} models</span>
-        </div>
-        <div className="p-section"><div className="p-sec-lbl">Capabilities</div><div className="cap-chips">{d.caps.map((c) => <Tag key={c} t={c} big />)}</div></div>
-        <div className="p-section"><div className="p-sec-lbl">Provider Info</div><SpecTable rows={d.specs} /></div>
-      </> :
-      <div className="p-section"><div className="p-sec-lbl">Available Models</div>
-          <div className="model-item-list">{d.modelList.map((m) => <div className="model-item" key={m}><span className="model-item-name">{m}</span></div>)}</div>
-        </div>
-      }
+      <div className="panel-lead" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {item.connected ?
+        <span className="status-badge status-connected"><Ic name="check-circle" size={9} />Connected</span> :
+        <span className="status-badge status-available"><Ic name="circle" size={9} />Not connected</span>}
+        <span className="prov-format-chip"><Ic name="plug" size={10} />{item.format}</span>
+      </div>
+
+      <div className="p-sec-lbl prov-mt-head">
+        <span>Models ({item.models}{suffix})</span>
+        <span className="prov-mt-price-lbl">Price /M · in / out</span>
+      </div>
+      <div className="prov-mtable">
+        {item.modelRows.map((m) =>
+        <div className="prov-mrow" key={m.name}>
+            <div className="prov-mrow-top">
+              <span className="prov-mname">{m.name}</span>
+              <span className={'prov-mprice' + (m.in === 0 && m.out === 0 ? ' free' : '')}>{fmtPrice(m)}</span>
+            </div>
+            <div className="prov-mrow-bot">
+              <div className="prov-mcaps">{m.caps.map((c) => <Tag key={c} t={c} />)}</div>
+              <span className="prov-mctx" title="Context window"><Ic name="align-left" size={10} />{m.ctx}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-sec-lbl" style={{ marginTop: 18 }}>API models using this provider</div>
+      {item.apiModels.length ?
+      <div className="prov-linklist">
+          {item.apiModels.map((m) =>
+        <a className="prov-linkrow" key={m.id} href={'Bodhi Models.html?select=' + m.id}>
+              <span className="my-icon-box my-icon-api-model" style={{ width: 26, height: 26, borderRadius: 7, flex: 'none' }}><Ic name="at-sign" size={13} /></span>
+              <span className="prov-linkname">{m.name}</span>
+              {m.keyStatus === 'connected' ?
+          <span className="my-key-ok"><Ic name="check-circle" size={10} />connected</span> :
+          <span className="my-key-no"><Ic name="key" size={10} />no key</span>}
+              <Ic name="chevron-right" size={14} />
+            </a>
+        )}
+        </div> :
+      <div className="prov-empty">No API models created from this provider yet.</div>}
     </div>
     <div className="panel-foot">
-      {item.status === 'connected' || item.status === 'api-key' ?
+      {item.connected ?
       <button className="btn-add" style={{ background: 'hsl(var(--foreground))', color: 'hsl(var(--background))' }}><Ic name="settings-2" size={14} /> Manage Connection</button> :
       <button className="btn-add"><Ic name="plug-zap" size={14} /> Connect Provider</button>}
     </div>

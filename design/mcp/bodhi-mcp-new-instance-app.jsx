@@ -276,8 +276,8 @@ function NewInstanceApp() {
       section="mcp" subPage="new-mcp" resizeKey="mcp"
       breadcrumb={[
         { label: 'Bodhi', href: 'Bodhi Chat.html' },
-        { label: 'MCP', href: 'Bodhi MCP Discover v2.html' },
-        { label: 'Discover', href: 'Bodhi MCP Discover v2.html' },
+        { label: 'MCP', href: 'Bodhi MCP My MCPs.html' },
+        { label: 'Explore', href: 'Bodhi MCP Discover v2.html' },
         { label: 'New Instance', current: true },
       ]}
       contentClass="flush" mainScroll={false}

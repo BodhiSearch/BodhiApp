@@ -11,8 +11,10 @@
      mcp-discover-config · bodhi-mcp-discover-app
 ═══════════════════════════════════════════════════ */
 const { useState, useEffect } = React;
+const MCP_MODE = window.MCP_MODE || 'explore';
 
 function DiscoverApp() {
+  const mode = MCP_MODE;
   const [servers, setServers] = useState(INITIAL_SERVERS);
   const [view, setView] = useState('list');
   const [stab, setStab] = useState('all');
@@ -23,7 +25,9 @@ function DiscoverApp() {
   const [configState, setConfigState] = useState(null);
 
   useEffect(() => {
-    if (!window.matchMedia('(max-width:767px)').matches) setActiveId(INITIAL_SERVERS[0].id);
+    if (window.matchMedia('(max-width:767px)').matches) return;
+    const base = mode === 'my-mcps' ? servers.filter(s => s.userInstances.length > 0) : servers;
+    if (base[0]) setActiveId(base[0].id);
   }, []);
 
   const activeServer = servers.find(s => s.id === activeId) || null;
@@ -40,29 +44,25 @@ function DiscoverApp() {
     toggleApproved: id => updateServer(id, s => ({ ...s, adminApproved: !s.adminApproved })),
   };
 
-  const matchesFilter = s => {
-    if (stab === 'mine' && s.userInstances.length === 0) return false;
-    if (stab === 'connected' && s.userInstances.every(i => i.status !== 'connected')) return false;
-    if (stab === 'approved' && !s.adminApproved) return false;
-    if (stab === 'pending' && s.userInstances.every(i => i.status !== 'pending')) return false;
-    if (stab === 'not' && s.userInstances.some(i => i.status === 'connected' || i.status === 'pending')) return false;
-    if (stab === 'approval_req' && !s.approvalRequests.length) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      if (!s.name.toLowerCase().includes(q) && !s.publisher.toLowerCase().includes(q) && !s.category.toLowerCase().includes(q)) return false;
-    }
+  const matchesSearch = s => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return s.name.toLowerCase().includes(q) || s.publisher.toLowerCase().includes(q) || s.category.toLowerCase().includes(q);
+  };
+  const matchesStab = s => {
+    if (stab === 'all') return true;
+    if (mode === 'explore') return s.category === stab;        // category tabs
+    if (stab === 'connected') return s.userInstances.some(i => i.status === 'connected');
+    if (stab === 'pending') return s.userInstances.some(i => i.status === 'pending');
+    if (stab === 'disabled') return s.disabled;
     return true;
   };
-  const visible = servers.filter(matchesFilter);
-
-  const STABS = [
-    { id: 'all', label: 'Explore' },
-    { id: 'mine', label: 'My Instances', catCls: 'c-leaf' },
-    { id: 'approved', label: 'Admin-approved', catCls: 'c-indigo' },
-    { id: 'connected', label: 'Connected', catCls: 'c-leaf' },
-    { id: 'not', label: 'Not connected' },
-    { id: 'pending', label: 'Pending', catCls: 'c-saffron' },
-  ];
+  // My MCPs is scoped to servers the user has added an instance for; the admin
+  // Approval Requests tab reaches across the full catalog regardless of mode.
+  const baseList = stab === 'approval_req'
+    ? servers.filter(s => s.approvalRequests.length > 0)
+    : (mode === 'my-mcps' ? servers.filter(s => s.userInstances.length > 0) : servers).filter(matchesStab);
+  const visible = baseList.filter(matchesSearch);
 
   const headerActions = (
     <div className="role-badge" onClick={() => setRole(r => r === 'user' ? 'admin' : 'user')} title="Click to switch role">
@@ -73,11 +73,11 @@ function DiscoverApp() {
   return (
     <>
       <AppShell
-        section="mcp" subPage="discover" resizeKey="mcp"
+        section="mcp" subPage={mode === 'my-mcps' ? 'my-mcps' : 'explore'} resizeKey="mcp"
         railWidth={380} railMin={320} railMax={540}
-        breadcrumb={[{ label: 'Bodhi', href: 'Bodhi Chat.html' }, { label: 'MCP', href: 'Bodhi MCP Discover v2.html' }, { label: 'All MCPs', current: true }]}
+        breadcrumb={[{ label: 'Bodhi', href: 'Bodhi Chat.html' }, { label: 'MCP', href: 'Bodhi MCP My MCPs.html' }, { label: mode === 'my-mcps' ? 'My MCPs' : 'Explore', current: true }]}
         headerActions={headerActions}
-        sidebar={<DiscoverSidebar />}
+        sidebar={<DiscoverSidebar mode={mode} stab={stab} setStab={setStab} role={role} totalApprovals={totalApprovals} />}
         contentClass="flush" mainScroll={false} railScroll={false}
         railHeader={activeServer ? <DiscoverRailHeader s={activeServer} setActiveId={setActiveId} /> : undefined}
         rail={activeServer ? <DetailPanel s={activeServer} role={role} tab={tab} setTab={setTab}
@@ -85,7 +85,7 @@ function DiscoverApp() {
       >
         <MainArea
           visible={visible} view={view} setView={setView} stab={stab} setStab={setStab} search={search} setSearch={setSearch}
-          role={role} activeId={activeId} STABS={STABS} totalApprovals={totalApprovals}
+          role={role} activeId={activeId} totalApprovals={totalApprovals} mode={mode}
           onOpen={(id, t) => { setActiveId(id); setTab(t || 'about'); }} />
       </AppShell>
 
@@ -108,16 +108,11 @@ function DiscoverApp() {
    Built on the shared list-page primitives: <ListToolbar> (category pills left +
    collapsible search) over a single .l-scroll region holding the card grid or the
    edge-to-edge <ListView>. */
-function MainArea({ visible, view, setView, stab, setStab, search, setSearch, role, activeId, STABS, totalApprovals, onOpen }) {
+function MainArea({ visible, view, setView, stab, setStab, search, setSearch, role, activeId, totalApprovals, mode, onOpen }) {
   const { openRail } = useShell();
   useListKeyNav();
   const open = (id, t) => { onOpen(id, t); openRail(); };
   const pg = usePagination(visible, 10, stab + '|' + search);
-
-  const cats = STABS.map(t => ({ id: t.id, label: t.label, cls: t.catCls }));
-  if (role === 'admin' && totalApprovals > 0) {
-    cats.push({ id: 'approval_req', label: 'Approval Requests', cls: 'c-saffron', badge: totalApprovals });
-  }
 
   const listHead = (
     <>
@@ -134,21 +129,12 @@ function MainArea({ visible, view, setView, stab, setStab, search, setSearch, ro
   return (
     <div className="l-page">
       <ListToolbar
-        categories={cats} category={stab} onCategory={setStab}
+        searchMode="inline" searchKbd="⌘K"
         search={search} onSearch={setSearch}
-        searchPlaceholder="Search MCP servers by name, publisher, or tag…"
-        actions={
-          <button className={'l-iconbtn' + (view === 'cards' ? ' on' : '')}
-                  title={view === 'cards' ? 'Switch to list view' : 'Switch to card view'}
-                  onClick={() => setView(v => v === 'cards' ? 'list' : 'cards')}>
-            <Ic name={view === 'cards' ? 'list' : 'layout-grid'} size={15} />
-          </button>
-        } />
+        searchPlaceholder={mode === 'my-mcps' ? 'Search your MCPs by name or publisher…' : 'Search MCP servers by name, publisher, or tag…'} />
       <div className="l-scroll">
         {visible.length === 0 ? (
-          <div className="l-empty"><Ic name="search-x" size={30} /><div className="l-empty-t">No servers match</div><div className="l-empty-s">Try adjusting filters or search</div></div>
-        ) : view === 'cards' ? (
-          <div className="l-cardgrid">{pg.slice.map(s => <McpCard key={s.id} s={s} role={role} active={activeId === s.id} onOpen={open} />)}</div>
+          <div className="l-empty"><Ic name="search-x" size={30} /><div className="l-empty-t">{mode === 'my-mcps' ? 'No MCPs added yet' : 'No servers match'}</div><div className="l-empty-s">{mode === 'my-mcps' ? 'Head to Explore to connect a server' : 'Try adjusting filters or search'}</div></div>
         ) : (
           <ListView head={listHead}>
             {pg.slice.map(s => <McpRow key={s.id} s={s} role={role} active={activeId === s.id} onOpen={open} />)}

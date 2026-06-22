@@ -11,6 +11,24 @@
 ═══════════════════════════════════════════════════════════════ */
 const { STATUS_CFG, PROV_COLORS } = window.MODELS_DATA;
 
+/* Provider logo — real brand glyph from the Simple Icons CDN, tinted to the
+   provider's brand color on a soft tile. Only slugs actually published on the
+   CDN are listed; the rest (e.g. OpenAI / Groq / Together, removed for
+   trademark) render a tasteful 2-letter brand monogram instead. */
+const PROV_ICON_SLUG = { anthropic:'anthropic', openrouter:'openrouter', 'nvidia-nim':'nvidia' };
+function ProviderLogo({ slug, provider, size = 36, radius = 9 }) {
+  const [err, setErr] = React.useState(false);
+  const color = PROV_COLORS[slug] || '#888';
+  const si = PROV_ICON_SLUG[slug];
+  const glyph = Math.round(size * 0.52);
+  return (
+    <div className="prov-avatar" style={{ width: size, height: size, borderRadius: radius, background: color + '1a', border: '1.5px solid ' + color + '40', flex: 'none' }}>
+      {si && !err ?
+        <img src={'https://cdn.simpleicons.org/' + si + '/' + color.replace('#', '')} width={glyph} height={glyph} alt={provider + ' logo'} onError={() => setErr(true)} style={{ display: 'block' }} /> :
+        <span style={{ color, fontSize: Math.round(size * 0.32), fontWeight: 700 }}>{provider.slice(0, 2).toUpperCase()}</span>}
+    </div>);
+}
+
 function MyRow({ item, active, onClick }) {
   let body;
   if (item.type === 'local-file' || item.type === 'model-alias') {
@@ -94,20 +112,18 @@ function LocalRow({ m, active, onClick, cols, sortKey, onPickOrg, idx }) {
 }
 
 function ApiRow({ p, active, onClick }) {
-  const sc = STATUS_CFG[p.status] || STATUS_CFG.available;
-  const color = PROV_COLORS[p.slug] || '#888';
   const suffix = p.models >= 100 ? '+' : '';
   return (
     <div className={'m-row' + (active ? ' active' : '')} onClick={onClick}>
       <RowLink onActivate={onClick} label={'Open ' + p.provider} />
       <div className="m-num">#{p.rank}</div>
-      <div className="prov-avatar" style={{ background: color + '1a', color, border: '1.5px solid ' + color + '40' }}>{p.provider.slice(0, 2).toUpperCase()}</div>
+      <ProviderLogo slug={p.slug} provider={p.provider} />
       <div className="m-body">
         <div className="m-name" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {p.provider}
-          <span className={'status-badge ' + sc.cls}><Ic name={sc.icon} size={9} />{sc.lbl}</span>
+          {p.connected && <span className="status-badge status-connected"><Ic name="check-circle" size={9} />Connected</span>}
         </div>
-        <div className="m-meta">{p.meta}</div>
+        <div className="m-meta">{p.models}{suffix} models · {p.format}</div>
         <div className="m-tags">{p.tags.map((t) => <Tag key={t} t={t} />)}</div>
       </div>
       <div className="m-right">
@@ -115,12 +131,9 @@ function ApiRow({ p, active, onClick }) {
           <div className="m-score-num" style={{ fontSize: 16 }}>{p.models}{suffix}</div>
           <div className="m-score-lbl">MODELS</div>
         </div>
-        {p.status === 'connected' || p.status === 'api-key' ?
-        <button className="act act-use" onClick={(e) => e.stopPropagation()}><Ic name="settings-2" size={11} /> Manage</button> :
-        <button className="act act-connect" onClick={(e) => e.stopPropagation()}><Ic name="plug-zap" size={11} /> Connect</button>}
       </div>
     </div>);
 
 }
 
-Object.assign(window, { MyRow, LocalRow, ApiRow });
+Object.assign(window, { MyRow, LocalRow, ApiRow, ProviderLogo });

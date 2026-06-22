@@ -173,6 +173,7 @@
 .shell-fc.fc-leaf.on    { background: var(--c-leaf-bg);    border-color: var(--c-leaf-bd);    color: var(--c-leaf-text); }
 .shell-fc.fc-teal.on    { background: var(--c-teal-bg);    border-color: var(--c-teal-bd);    color: var(--c-teal-text); }
 .shell-fc.fc-neutral.on { background: hsl(var(--muted));   border-color: hsl(var(--border));  color: hsl(var(--foreground)); font-weight: 600; }
+.shell-fc-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; margin-left: 5px; padding: 0 4px; border-radius: 99px; font-size: 10px; font-weight: 700; background: var(--c-saffron-bd); color: var(--c-saffron-text); }
 
 /* Dual-handle range slider (filter group) */
 .shell-range { padding: 4px 10px 6px; }

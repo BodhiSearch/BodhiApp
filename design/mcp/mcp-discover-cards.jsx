@@ -66,19 +66,50 @@ function McpRow({ s, role, active, onOpen }) {
   );
 }
 
-/* ══ Sidebar filters (decorative + collapse-aware) ══ */
-function DiscoverSidebar() {
+/* ══ Sidebar filters (decorative + collapse-aware) ══
+   My MCPs → narrow your own added servers (status / category / auth / transport).
+   Explore → discovery filters (category / auth / publisher / availability). */
+const CategoryFilter = () => (
+  <ShellFilterGroup icon="shapes" label="Category" clearable chips={[
+    { label: 'All', defaultOn: true }, { label: 'Productivity', color: 'lotus' }, { label: 'Dev Tools', color: 'indigo' },
+    { label: 'Search & Web', color: 'saffron' }, { label: 'Browser', color: 'teal' }, { label: 'Data', color: 'leaf' },
+    { label: 'AI & Content', color: 'teal' }, { label: 'Memory' }, { label: 'Comms', color: 'indigo' }]} />
+);
+const AuthFilter = () => (
+  <ShellFilterGroup icon="key-round" label="Auth Type" chips={[
+    { label: 'Any', defaultOn: true }, { label: 'OAuth', color: 'indigo' }, { label: 'API Key', color: 'saffron' }, { label: 'No auth' }]} />
+);
+
+function DiscoverSidebar({ mode = 'explore', stab = 'all', setStab, role = 'user', totalApprovals = 0 }) {
+  if (mode === 'my-mcps') {
+    const statusChips = [
+      { id: 'all', label: 'All' }, { id: 'connected', label: 'Connected', color: 'leaf' },
+      { id: 'pending', label: 'Pending', color: 'saffron' }, { id: 'disabled', label: 'Disabled' },
+    ];
+    if (role === 'admin' && totalApprovals > 0)
+      statusChips.push({ id: 'approval_req', label: 'Approval Requests', color: 'saffron', badge: totalApprovals });
+    return (
+      <>
+        <ShellFilterGroup icon="activity" label="Status" single value={stab} onSelect={setStab} chips={statusChips} />
+        <CategoryFilter />
+        <AuthFilter />
+        <ShellFilterGroup icon="cable" label="Transport" chips={[
+          { label: 'Any', defaultOn: true }, { label: 'streamable-http', color: 'indigo' }, { label: 'stdio', color: 'saffron' }]} />
+      </>
+    );
+  }
+  const catChips = [
+    { id: 'all', label: 'All' }, { id: 'Productivity', label: 'Productivity', color: 'lotus' },
+    { id: 'Dev Tools', label: 'Dev Tools', color: 'indigo' }, { id: 'Search & Web', label: 'Search & Web', color: 'saffron' },
+    { id: 'Browser', label: 'Browser', color: 'teal' }, { id: 'Data', label: 'Data', color: 'leaf' },
+    { id: 'Comms', label: 'Comms', color: 'indigo' }, { id: 'Memory', label: 'Memory' },
+  ];
   return (
     <>
-      <ShellFilterGroup icon="shapes" label="Category" clearable chips={[
-        { label: 'All', defaultOn: true }, { label: 'Productivity', color: 'lotus' }, { label: 'Dev Tools', color: 'indigo' },
-        { label: 'Search & Web', color: 'saffron' }, { label: 'Browser' }, { label: 'Data', color: 'leaf' },
-        { label: 'AI & Content', color: 'teal' }, { label: 'Memory' }, { label: 'Comms' }]} />
-      <ShellFilterGroup icon="key-round" label="Auth Type" chips={[
-        { label: 'Any', defaultOn: true }, { label: 'OAuth', color: 'indigo' }, { label: 'API Key', color: 'saffron' }, { label: 'No auth' }]} />
-      <ShellFilterGroup icon="activity" label="My Status" chips={[
-        { label: 'All', defaultOn: true }, { label: 'Connected', color: 'leaf' }, { label: 'Approved', color: 'indigo' },
-        { label: 'Pending', color: 'saffron' }, { label: 'Not added' }]} />
+      <ShellFilterGroup icon="shapes" label="Category" single value={stab} onSelect={setStab} chips={catChips} />
+      <AuthFilter />
+      <ShellFilterGroup icon="shield-check" label="Availability" chips={[
+        { label: 'All', defaultOn: true }, { label: 'Admin-approved', color: 'indigo' }, { label: 'Available' }]} />
       <ShellFilterGroup icon="badge-check" label="Publisher" chips={[
         { label: 'Verified ✓' }, { label: 'Official' }, { label: 'Community' }]} />
     </>

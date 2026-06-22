@@ -286,10 +286,10 @@ function PlaygroundApp() {
   return (
     <>
       <AppShell
-        section="mcp" subPage="my-instances" resizeKey="mcp"
+        section="mcp" subPage="my-mcps" resizeKey="mcp"
         breadcrumb={[
-          { label: 'MCP', href: 'Bodhi MCP Discover v2.html' },
-          { label: 'My Instances', href: 'Bodhi MCP Discover v2.html' },
+          { label: 'MCP', href: 'Bodhi MCP My MCPs.html' },
+          { label: 'My MCPs', href: 'Bodhi MCP My MCPs.html' },
           { label: 'Playground', current: true },
         ]}
         headerActions={headerActions}

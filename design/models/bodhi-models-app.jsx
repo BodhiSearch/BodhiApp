@@ -20,6 +20,12 @@ function ModelsApp() {
   const cfg = MODE_CFG[mode];
   const [sel, setSel] = useState(null);
   const [tab, setTab] = useState('overview');
+  const [apiConnectedOnly, setApiConnectedOnly] = useState(false);
+  const initialMyIdx = React.useMemo(() => {
+    if (mode !== 'my-models') return -1;
+    const id = new URLSearchParams(window.location.search).get('select');
+    return id ? MY_MODELS.findIndex((m) => m.id === id) : -1;
+  }, []);
   const [starred, setStarred] = useState(() => new Set());
   const [showDownloads, setShowDownloads] = useState(false);
   const [dl, setDl] = useState(DOWNLOADS_INIT);
@@ -44,7 +50,7 @@ function ModelsApp() {
     if (window.matchMedia('(max-width:767px)').matches) return;
     if (mode === 'local') setSel({ kind: 'local', item: LOCAL_MODELS[0], idx: 0 });
     else if (mode === 'api') setSel({ kind: 'api', item: API_PROVIDERS[0], idx: 0 });
-    else setSel({ kind: 'my', item: MY_MODELS[0], idx: 0 });
+    else {const i = initialMyIdx >= 0 ? initialMyIdx : 0;setSel({ kind: 'my', item: MY_MODELS[i], idx: i });}
   }, []);
 
   /* live progress — ticks active pulls while the panel is open */
@@ -99,7 +105,7 @@ function ModelsApp() {
       section="models" subPage={cfg.subPage}
       resizeKey="models"
       breadcrumb={[{ label: 'Bodhi', href: 'Bodhi Chat.html' }, { label: 'Models', href: 'Bodhi Models.html' }, { label: cfg.label, current: true }]}
-      sidebar={<ModelsSidebar mode={mode} orgFilters={orgFilters} onPickOrg={onPickOrg} onRemoveOrg={onRemoveOrg} onClearOrgs={onClearOrgs} sort={sort} onBrowse={onBrowse} />}
+      sidebar={<ModelsSidebar mode={mode} orgFilters={orgFilters} onPickOrg={onPickOrg} onRemoveOrg={onRemoveOrg} onClearOrgs={onClearOrgs} sort={sort} onBrowse={onBrowse} apiConnectedOnly={apiConnectedOnly} onToggleApiConnected={() => setApiConnectedOnly((v) => !v)} />}
       contentClass="flush" mainScroll={false} railScroll={false}
       rail={railContent}
       railHeader={railHead}>
@@ -107,6 +113,7 @@ function ModelsApp() {
       <ModelsMain mode={mode} sel={sel} onSelect={onSelect} density={density} showTags={showTags} showScore={showScore}
         onShowDownloads={openDownloads} downloadsOpen={showDownloads} dlCount={dl.active.length + dl.queued.length}
         sort={sort} onSort={onSort} cols={cols} onToggleCol={onToggleCol}
+        apiConnectedOnly={apiConnectedOnly} initialMyIdx={initialMyIdx}
         orgFilters={orgFilters} onPickOrg={onPickOrg} onRemoveOrg={onRemoveOrg} onClearOrgs={onClearOrgs} />
     </AppShell>
   </>;

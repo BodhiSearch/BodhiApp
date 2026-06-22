@@ -112,11 +112,11 @@ function ShellModeSwitch({ value, onChange, options = [], label }) {
 }
 
 /* ── Dual-handle range slider ───────────────────────────────── */
-function ShellRangeSlider({ min = 0, max = 100, step = 1, unit = '', defaultMin, defaultMax }) {
+function ShellRangeSlider({ min = 0, max = 100, step = 1, unit = '', prefix = '', defaultMin, defaultMax }) {
   const [lo, setLo] = React.useState(defaultMin != null ? defaultMin : min);
   const [hi, setHi] = React.useState(defaultMax != null ? defaultMax : max);
   const pct = v => ((v - min) / (max - min)) * 100;
-  const fmt = v => v + (v >= max ? '+' : '') + unit;
+  const fmt = v => prefix + v + (v >= max ? '+' : '') + unit;
 
   const onLo = e => setLo(Math.min(Number(e.target.value), hi - step));
   const onHi = e => setHi(Math.max(Number(e.target.value), lo + step));
@@ -140,7 +140,7 @@ function ShellRangeSlider({ min = 0, max = 100, step = 1, unit = '', defaultMin,
 }
 
 /* ── Filter group (page control) ────────────────────────────── */
-function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable, range }) {
+function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable, range, value, onSelect, single }) {
   const { collapsed, openPop, setOpenPop } = useShell();
   const popId = 'fg:' + label;
   const open = openPop === popId;
@@ -154,24 +154,29 @@ function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable,
   });
   const clear = () => setSel(new Set());
 
+  const chipId = c => c.id != null ? c.id : c.label;
+  const isOn = c => single ? value === chipId(c) : sel.has(c.label);
+  const handle = c => single ? (onSelect && onSelect(chipId(c))) : toggle(c.label);
+  const activeCount = single ? (value && value !== 'all' ? 1 : 0) : sel.size;
+
   const chipEls = chips.map(c => (
-    <button key={c.label} data-tip={c.label}
-            className={'shell-fc fc-' + (c.color || 'neutral') + (sel.has(c.label) ? ' on' : '')}
-            onClick={() => toggle(c.label)}>{c.label}</button>
+    <button key={chipId(c)} data-tip={c.label}
+            className={'shell-fc fc-' + (c.color || 'neutral') + (isOn(c) ? ' on' : '')}
+            onClick={() => handle(c)}>{c.label}{c.badge != null && <span className="shell-fc-badge">{c.badge}</span>}</button>
   ));
 
   if (collapsed) {
     return (
       <>
-        <button ref={anchorRef} className={'shell-railbtn shell-tip' + (sel.size ? ' on' : '')} data-tip={label}
+        <button ref={anchorRef} className={'shell-railbtn shell-tip' + (activeCount ? ' on' : '')} data-tip={label}
                 onClick={e => { e.stopPropagation(); setOpenPop(open ? null : popId); }}>
           <ShellIcon name={icon} size={17} />
-          {sel.size > 0 && <span className="rb-badge">{sel.size}</span>}
+          {activeCount > 0 && <span className="rb-badge">{activeCount}</span>}
         </button>
         <AnchoredPopover open={open} anchorRef={anchorRef} onClose={() => setOpenPop(null)}>
           <div className="shell-pop-title">
             <span>{label}</span>
-            {clearable && sel.size > 0 && <button className="fg-clear" onClick={clear}>Clear</button>}
+            {clearable && (single ? value && value !== 'all' : sel.size > 0) && <button className="fg-clear" onClick={() => single ? onSelect && onSelect('all') : clear()}>Clear</button>}
           </div>
           {range ? <div className="shell-pop-chips"><ShellRangeSlider {...range} /></div>
                  : <div className="shell-pop-chips">{chipEls}</div>}

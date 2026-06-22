@@ -21,16 +21,17 @@ const SHELL_NAV = (typeof window !== 'undefined' && window.BSB_NAV) || [
     subPages: [
       { id: 'my-models',          label: 'My Models',            icon: 'layers',      href: 'Bodhi Models.html' },
       { id: 'explore-local',      label: 'Explore · Local Models', icon: 'hard-drive', href: 'Bodhi Models Local.html' },
-      { id: 'explore-api',        label: 'Explore · API Models',   icon: 'at-sign',    href: 'Bodhi Models API.html' },
+      { id: 'explore-api',        label: 'Explore · API Providers', icon: 'at-sign',    href: 'Bodhi Models API.html' },
       { id: 'new-local-model',    label: 'New Local Model',    icon: 'plus-circle', href: 'Create New Local Model v4.html' },
       { id: 'new-api-model',      label: 'New API Model',      icon: 'plug-zap',    href: 'Create API Model.html' },
       { id: 'new-fallback-model', label: 'New Model Router', icon: 'route',       href: 'Create Fallback Model.html' },
     ],
   },
   {
-    id: 'mcp', label: 'MCP', icon: 'plug', href: 'Bodhi MCP Discover v2.html',
+    id: 'mcp', label: 'MCP', icon: 'plug', href: 'Bodhi MCP My MCPs.html',
     subPages: [
-      { id: 'discover',     label: 'All MCPs',     icon: 'compass',     href: 'Bodhi MCP Discover v2.html' },
+      { id: 'my-mcps',      label: 'My MCPs',      icon: 'layers',      href: 'Bodhi MCP My MCPs.html' },
+      { id: 'explore',      label: 'Explore',      icon: 'compass',     href: 'Bodhi MCP Discover v2.html' },
       { id: 'new-mcp',      label: 'New Instance', icon: 'plus-circle', href: 'Bodhi MCP New Instance.html' },
     ],
   },

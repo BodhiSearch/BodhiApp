@@ -12,7 +12,7 @@ const { useState: useMainState } = React;
 const { MY_MODELS: MAIN_MY, LOCAL_MODELS: MAIN_LOCAL, API_PROVIDERS: MAIN_API } = window.MODELS_DATA;
 
 function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowDownloads, downloadsOpen, dlCount,
-  sort, onSort, cols, onToggleCol, orgFilters, onPickOrg, onRemoveOrg, onClearOrgs }) {
+  sort, onSort, cols, onToggleCol, orgFilters, onPickOrg, onRemoveOrg, onClearOrgs, apiConnectedOnly, initialMyIdx }) {
   const { openRail } = useShell();
   useListKeyNav({ rootSelector: '.model-list', rowSelector: '.m-row, .my-card' });
   const [q, setQ] = useMainState('');
@@ -21,6 +21,15 @@ function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowD
   /* My Models is a finite, client-side list → real page jumping. (Local / API
      are search-API results that only support cursor "Load more".) */
   const myPg = usePagination(MAIN_MY, 5);
+
+  /* API providers: finite, backend-controlled → real pagination too. */
+  const apiRows = mode === 'api' && apiConnectedOnly ? MAIN_API.filter((p) => p.connected) : MAIN_API;
+  const apiPg = usePagination(apiRows, 5, apiConnectedOnly);
+
+  /* Deep-link (Bodhi Models.html?select=<id>): jump to the page holding it. */
+  React.useEffect(() => {
+    if (mode === 'my-models' && initialMyIdx >= 0) myPg.setPage(Math.floor(initialMyIdx / myPg.pageSize) + 1);
+  }, [initialMyIdx]);
 
   const listClass = ['model-list',
   mode === 'my-models' ? 'my-mode' : '',
@@ -42,10 +51,12 @@ function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowD
     <div className="models-main">
       <div className="toolbar" style={{ padding: "12px 16px" }}>
         <ShellSearch value={q} onChange={setQ} placeholder={PLACEHOLDER[mode]} kbd="⌘K" />
+        {mode !== 'api' &&
         <button className={'l-iconbtn' + (downloadsOpen ? ' on' : '')} title="Downloads" onClick={onShowDownloads}>
           <Ic name="arrow-down-to-line" size={15} />
           {dlCount > 0 && <span className="dl-badge">{dlCount}</span>}
         </button>
+        }
       </div>
 
       {mode === 'local' &&
@@ -70,8 +81,7 @@ function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowD
       <div className="list-head">
           <div className="lh-num lh-label">#</div>
           <div className="lh-model lh-label" style={{ paddingLeft: 56 }}>Provider</div>
-          <div className="lh-score" style={{ minWidth: 68 }}>Models</div>
-          <div className="lh-action" />
+          <div className="lh-score" style={{ minWidth: 44, justifyContent: 'flex-end' }}>Models</div>
         </div>
       }
 
@@ -90,15 +100,20 @@ function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowD
           {localRows.length > 0 && <button className="load-more"><Ic name="chevrons-down" size={14} /> Load more</button>}
         </>}
         {mode === 'api' && <>
-          {MAIN_API.map((p, i) =>
-          <ApiRow key={p.slug} p={p} active={sel && sel.kind === 'api' && sel.idx === i} onClick={() => pick('api', p, i)} />)}
-          <button className="load-more"><Ic name="chevrons-down" size={14} /> Load more</button>
+          {apiPg.slice.map((p) => {
+          const i = MAIN_API.indexOf(p);
+          return <ApiRow key={p.slug} p={p} active={sel && sel.kind === 'api' && sel.idx === i} onClick={() => pick('api', p, i)} />;
+        })}
         </>}
       </div>
 
       {mode === 'my-models' &&
       <Pagination total={myPg.total} page={myPg.page} onPage={myPg.setPage}
         pageSize={myPg.pageSize} unit="models" minimal />
+      }
+      {mode === 'api' &&
+      <Pagination total={apiPg.total} page={apiPg.page} onPage={apiPg.setPage}
+        pageSize={apiPg.pageSize} unit="providers" minimal />
       }
     </div>);
 

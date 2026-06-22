@@ -176,38 +176,76 @@ window.MODELS_DATA = (function () {
         readme:`# gemma-3-12b-it\n\n**Gemma 3 12B** is Google's open multimodal model, accepting **interleaved images and text**. This GGUF build (by unsloth) runs locally in BodhiApp.\n\n## Highlights\n- **Image-Text-to-Text** vision understanding across 35+ languages\n- **131,072-token** context window\n- Strong everyday chat and summarisation quality-per-GB\n\n## Memory notes\n**Q4_K_M** (7.3 GB) runs fully on a 12 GB GPU. The vision tower adds a little overhead — leave ~1 GB headroom.\n\n## License\nGoverned by the **Gemma Terms of Use**.` } },
   ];
 
+  /* API providers. Per-model rows carry caps / context / pricing ($ per
+     1M tokens, input / output) shown in the detail rail's model table.
+     `connected` + `apiModels` are DERIVED below from MY_MODELS — a provider
+     reads as Connected only when an API model of its type exists. */
   const API_PROVIDERS = [
-    { rank:1, provider:'Anthropic', slug:'anthropic', meta:'8 models · connected',
-      tags:['tool-use','reasoning','vision'], status:'connected', models:8,
-      detail:{ caps:['tool-use','reasoning','vision','structured-output'],
-        specs:[{k:'API format',v:'Anthropic native'},{k:'Models',v:'8 available'},{k:'Pricing from',v:'$0.25/M tokens'},{k:'Context max',v:'200,000 tokens'}],
-        modelList:['claude-sonnet-4-5','claude-opus-4','claude-haiku-3-5','claude-3-5-sonnet','claude-3-5-haiku','claude-3-opus','claude-3-sonnet','claude-3-haiku'] } },
-    { rank:2, provider:'OpenAI', slug:'openai', meta:'12 models · api-key set',
-      tags:['tool-use','vision','reasoning'], status:'api-key', models:12,
-      detail:{ caps:['tool-use','vision','reasoning','function-calling'],
-        specs:[{k:'API format',v:'OpenAI native'},{k:'Models',v:'12 available'},{k:'Pricing from',v:'$0.15/M tokens'},{k:'Context max',v:'128,000 tokens'}],
-        modelList:['gpt-5','gpt-4o','gpt-4o-mini','gpt-4-turbo','o3','o3-mini','o4-mini'] } },
-    { rank:3, provider:'OpenRouter', slug:'openrouter', meta:'200+ models · api-key set',
-      tags:['tool-use','reasoning','vision'], status:'api-key', models:200,
-      detail:{ caps:['tool-use','reasoning','vision'],
-        specs:[{k:'API format',v:'OpenAI-compatible'},{k:'Models',v:'200+ available'},{k:'Pricing from',v:'Free'},{k:'Context max',v:'Varies by model'}],
-        modelList:['meta-llama/llama-3.3-70b','google/gemini-2.0-flash','anthropic/claude-sonnet-4-5','deepseek/deepseek-v3'] } },
-    { rank:4, provider:'Groq', slug:'groq', meta:'15 models · not connected',
-      tags:['reasoning','multilingual'], status:'available', models:15,
-      detail:{ caps:['reasoning','multilingual','chat'],
-        specs:[{k:'API format',v:'OpenAI-compatible'},{k:'Models',v:'15 available'},{k:'Pricing from',v:'Free tier'},{k:'Context max',v:'128,000 tokens'}],
-        modelList:['llama-3.3-70b-versatile','mixtral-8x7b-32768','gemma2-9b-it','llama-3.1-8b-instant'] } },
-    { rank:5, provider:'NVIDIA NIM', slug:'nvidia-nim', meta:'50+ models · not connected',
-      tags:['reasoning','vision','coding'], status:'available', models:50,
-      detail:{ caps:['reasoning','vision','coding','tool-use'],
-        specs:[{k:'API format',v:'OpenAI-compatible'},{k:'Models',v:'50+ available'},{k:'Pricing from',v:'Free trial'},{k:'Context max',v:'Varies by model'}],
-        modelList:['meta/llama-3.3-70b-instruct','nvidia/llama-3.1-nemotron-70b','microsoft/phi-4'] } },
-    { rank:6, provider:'Together AI', slug:'together', meta:'100+ models · not connected',
-      tags:['reasoning','coding','vision'], status:'available', models:100,
-      detail:{ caps:['reasoning','coding','vision'],
-        specs:[{k:'API format',v:'OpenAI-compatible'},{k:'Models',v:'100+ available'},{k:'Pricing from',v:'$0.10/M tokens'},{k:'Context max',v:'128,000 tokens'}],
-        modelList:['meta-llama/Llama-3.3-70B-Instruct-Turbo','deepseek-ai/DeepSeek-V3','Qwen/Qwen3-235B-A22B'] } },
+    { rank:1, provider:'Anthropic', slug:'anthropic', format:'Anthropic',
+      tags:['tool-use','reasoning','vision'], models:8,
+      modelRows:[
+        { name:'claude-sonnet-4-5', caps:['tool-use','reasoning','vision'], ctx:'200K', in:3,    out:15 },
+        { name:'claude-opus-4',     caps:['tool-use','reasoning','vision'], ctx:'200K', in:15,   out:75 },
+        { name:'claude-haiku-3-5',  caps:['tool-use','vision'],             ctx:'200K', in:0.80, out:4 },
+        { name:'claude-3-5-sonnet', caps:['tool-use','reasoning','vision'], ctx:'200K', in:3,    out:15 },
+        { name:'claude-3-5-haiku',  caps:['tool-use'],                      ctx:'200K', in:0.80, out:4 },
+        { name:'claude-3-opus',     caps:['reasoning','vision'],            ctx:'200K', in:15,   out:75 },
+        { name:'claude-3-sonnet',   caps:['vision'],                        ctx:'200K', in:3,    out:15 },
+        { name:'claude-3-haiku',    caps:['chat'],                          ctx:'200K', in:0.25, out:1.25 },
+      ] },
+    { rank:2, provider:'OpenAI', slug:'openai', format:'OpenAI',
+      tags:['tool-use','vision','reasoning'], models:12,
+      modelRows:[
+        { name:'gpt-5',       caps:['tool-use','reasoning','vision'], ctx:'256K', in:1.25, out:10 },
+        { name:'gpt-4o',      caps:['tool-use','vision'],             ctx:'128K', in:2.50, out:10 },
+        { name:'gpt-4o-mini', caps:['tool-use','vision'],             ctx:'128K', in:0.15, out:0.60 },
+        { name:'gpt-4-turbo', caps:['tool-use','vision'],             ctx:'128K', in:10,   out:30 },
+        { name:'o3',          caps:['reasoning','tool-use'],          ctx:'200K', in:10,   out:40 },
+        { name:'o3-mini',     caps:['reasoning'],                     ctx:'200K', in:1.10, out:4.40 },
+        { name:'o4-mini',     caps:['reasoning','vision'],            ctx:'200K', in:1.10, out:4.40 },
+      ] },
+    { rank:3, provider:'OpenRouter', slug:'openrouter', format:'OpenAI',
+      tags:['tool-use','reasoning','vision'], models:200,
+      modelRows:[
+        { name:'meta-llama/llama-3.3-70b',      caps:['tool-use','reasoning'],        ctx:'131K', in:0.12, out:0.30 },
+        { name:'google/gemini-2.0-flash',       caps:['tool-use','vision'],           ctx:'1M',   in:0.10, out:0.40 },
+        { name:'anthropic/claude-sonnet-4-5',   caps:['tool-use','reasoning','vision'],ctx:'200K', in:3,    out:15 },
+        { name:'deepseek/deepseek-v3',          caps:['reasoning','coding'],          ctx:'64K',  in:0.27, out:1.10 },
+      ] },
+    { rank:4, provider:'Groq', slug:'groq', format:'OpenAI',
+      tags:['reasoning','multilingual'], models:15,
+      modelRows:[
+        { name:'llama-3.3-70b-versatile', caps:['tool-use','reasoning'], ctx:'128K', in:0.59, out:0.79 },
+        { name:'mixtral-8x7b-32768',      caps:['chat'],                 ctx:'32K',  in:0.24, out:0.24 },
+        { name:'gemma2-9b-it',            caps:['chat'],                 ctx:'8K',   in:0.20, out:0.20 },
+        { name:'llama-3.1-8b-instant',    caps:['chat'],                 ctx:'128K', in:0.05, out:0.08 },
+      ] },
+    { rank:5, provider:'NVIDIA NIM', slug:'nvidia-nim', format:'OpenAI',
+      tags:['reasoning','vision','coding'], models:50,
+      modelRows:[
+        { name:'meta/llama-3.3-70b-instruct',     caps:['tool-use','reasoning'], ctx:'128K', in:0, out:0 },
+        { name:'nvidia/llama-3.1-nemotron-70b',   caps:['reasoning'],            ctx:'128K', in:0, out:0 },
+        { name:'microsoft/phi-4',                 caps:['reasoning','coding'],   ctx:'16K',  in:0, out:0 },
+      ] },
+    { rank:6, provider:'Together AI', slug:'together', format:'OpenAI',
+      tags:['reasoning','coding','vision'], models:100,
+      modelRows:[
+        { name:'meta-llama/Llama-3.3-70B-Instruct-Turbo', caps:['tool-use','reasoning'], ctx:'131K', in:0.88, out:0.88 },
+        { name:'deepseek-ai/DeepSeek-V3',                 caps:['reasoning','coding'],   ctx:'64K',  in:1.25, out:1.25 },
+        { name:'Qwen/Qwen3-235B-A22B',                    caps:['reasoning','coding'],   ctx:'128K', in:0.20, out:0.60 },
+      ] },
   ];
+
+  /* Derive connection state from My Models: a provider is "Connected" when at
+     least one api-model of its type exists. Also collect those models so the
+     detail rail can deep-link back to them in My Models. */
+  const PROVIDER_OF = { ANTHROPIC:'anthropic', ANTHROPIC_OAUTH:'anthropic', OPENAI:'openai',
+    OPENROUTER:'openrouter', GROQ:'groq', NVIDIA:'nvidia-nim', TOGETHER:'together' };
+  API_PROVIDERS.forEach((p) => {
+    p.apiModels = MY_MODELS.filter((m) => m.type === 'api-model' && PROVIDER_OF[m.provider] === p.slug)
+      .map((m) => ({ id: m.id, name: m.name, keyStatus: m.keyStatus }));
+    p.connected = p.apiModels.length > 0;
+  });
 
   const TAG_MAP = {
     'tool-use':'tag-indigo','reasoning':'tag-indigo','coding':'tag-leaf',

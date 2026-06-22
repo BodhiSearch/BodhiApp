@@ -15,7 +15,7 @@ const { LOCAL_MODELS } = window.MODELS_DATA;
 const MODE_CFG = {
   'my-models': { subPage: 'my-models',     label: 'My Models' },
   'local':     { subPage: 'explore-local', label: 'Explore · Local Models' },
-  'api':       { subPage: 'explore-api',   label: 'Explore · API Models' }
+  'api':       { subPage: 'explore-api',   label: 'Explore · API Providers' }
 };
 
 /* ── Search placeholders (per mode) ───────────────────────────── */
@@ -49,23 +49,25 @@ const FILTERS = {
     { label: 'Apache-2', color: 'indigo', defaultOn: true }, { label: 'MIT' }, { label: 'Llama' }, { label: 'Gemma' }, { label: 'DeepSeek' }] }],
 
   'api': [
-  { icon: 'activity', label: 'Status', chips: [
-    { label: 'Connected', color: 'leaf', defaultOn: true }, { label: 'API key', color: 'saffron' }, { label: 'Available' }] },
+  { icon: 'activity', label: 'Status', single: true, chips: [
+    { label: 'Connected', color: 'leaf' }] },
   { icon: 'sparkles', label: 'Capability', chips: [
     { label: 'tool-use', color: 'indigo' }, { label: 'vision' }, { label: 'reasoning' }, { label: 'structured' }] },
-  { icon: 'dollar-sign', label: 'Pricing', chips: [
-    { label: 'Free', color: 'leaf' }, { label: '<$1/M' }, { label: '$1–5' }, { label: '$5+' }] },
+  { icon: 'dollar-sign', label: 'Pricing', note: '($/Mtok)', range: { min: 0, max: 20, step: 0.5, unit: '/M', prefix: '$', defaultMin: 0, defaultMax: 20 } },
   { icon: 'plug', label: 'API Format', chips: [
-    { label: 'OpenAI-compat', color: 'indigo' }, { label: 'Native API' }] }]
+    { label: 'OpenAI', color: 'indigo' }, { label: 'Responses' }, { label: 'Anthropic' }, { label: 'Gemini' }, { label: 'Other' }] }]
 
 };
 
-function ModelsSidebar({ mode, orgFilters, onPickOrg, onRemoveOrg, onClearOrgs, sort, onBrowse }) {
+function ModelsSidebar({ mode, orgFilters, onPickOrg, onRemoveOrg, onClearOrgs, sort, onBrowse, apiConnectedOnly, onToggleApiConnected }) {
   const { collapsed } = useShell();
   if (mode !== 'local') {
     return (
       <>
         {FILTERS[mode].map((g) =>
+        g.label === 'Status' && g.single ?
+        <ShellFilterGroup key={mode + '-' + g.label} icon={g.icon} label={g.label} chips={g.chips} single clearable
+          value={apiConnectedOnly ? 'Connected' : null} onSelect={() => onToggleApiConnected && onToggleApiConnected()} /> :
         <ShellFilterGroup key={mode + '-' + g.label} icon={g.icon} label={g.label}
         note={g.note} clearable={g.clearable} chips={g.chips} range={g.range} />
         )}
