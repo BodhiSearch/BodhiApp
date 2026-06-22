@@ -1,0 +1,518 @@
+openapi: 3.0.3
+info:
+  title: Portkey Models API
+  description: |
+    Comprehensive pricing and configuration data for 1000+ LLMs across 35+ providers.
+
+    ## Pricing Unit
+
+    > ⚠️ **Prices are in cents per token, not dollars.**
+
+    | JSON | Per 1K | Per 1M |
+    |------|--------|--------|
+    | `0.003` | $0.03 | $30 |
+    | `0.00025` | $0.0025 | $2.50 |
+    | `1` | $10 | $10,000 |
+
+    **Cost Calculation:**
+    ```javascript
+    const costDollars = (tokens * price) / 100;
+    ```
+
+    ## Resources
+
+    - [UI Explorer](https://portkey.ai/models)
+    - [GitHub Repository](https://github.com/Portkey-AI/models)
+    - [Portkey AI Gateway](https://github.com/Portkey-AI/gateway)
+
+  version: 1.0.0
+  contact:
+    name: Portkey Support
+    url: https://portkey.ai
+    email: support@portkey.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.portkey.ai
+    description: Production API
+
+tags:
+  - name: Pricing
+    description: Model pricing configurations
+  - name: Configuration
+    description: Model capabilities and parameters
+
+paths:
+  /model-configs/pricing/{provider}/{model}:
+    get:
+      summary: Get Model Pricing
+      description: |
+        Returns pricing configuration for a specific model.
+
+        **Note:** Prices are in USD cents per token.
+
+        ## Supported Providers
+
+        openai, anthropic, google, azure-openai, bedrock, mistral-ai, cohere, 
+        together-ai, groq, deepseek, fireworks-ai, perplexity-ai, anyscale, 
+        deepinfra, cerebras, x-ai, and 25+ more.
+
+        ## Example Response Fields
+
+        | Field | Description | Unit |
+        |-------|-------------|------|
+        | `request_token.price` | Input token cost | cents/token |
+        | `response_token.price` | Output token cost | cents/token |
+        | `cache_write_input_token.price` | Cache write cost | cents/token |
+        | `cache_read_input_token.price` | Cache read cost | cents/token |
+        | `additional_units.*` | Provider-specific features | cents/unit |
+
+      operationId: getModelPricing
+      tags:
+        - Pricing
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: |
+            Provider identifier. Use lowercase with hyphens.
+
+            Examples: `openai`, `anthropic`, `google`, `azure-openai`, `bedrock`, `x-ai`
+          schema:
+            type: string
+            example: openai
+        - name: model
+          in: path
+          required: true
+          description: |
+            Model identifier. Use the exact model name as specified by the provider.
+
+            Examples: `gpt-4`, `gpt-4o`, `claude-3-5-sonnet-20241022`, `gemini-2.0-flash-001`
+          schema:
+            type: string
+            example: gpt-4
+      responses:
+        '200':
+          description: Pricing configuration for the specified model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingConfig'
+              examples:
+                openai-gpt4:
+                  summary: OpenAI GPT-4
+                  value:
+                    pay_as_you_go:
+                      request_token:
+                        price: 0.003
+                      response_token:
+                        price: 0.006
+                    calculate:
+                      request:
+                        operation: sum
+                        operands:
+                          - operation: multiply
+                            operands:
+                              - value: input_tokens
+                              - value: rates.request_token
+                          - operation: multiply
+                            operands:
+                              - value: cache_write_tokens
+                              - value: rates.cache_write_input_token
+                          - operation: multiply
+                            operands:
+                              - value: cache_read_tokens
+                              - value: rates.cache_read_input_token
+                      response:
+                        operation: multiply
+                        operands:
+                          - value: output_tokens
+                          - value: rates.response_token
+                    currency: USD
+                openai-gpt4o-with-tools:
+                  summary: OpenAI GPT-4o (with additional units)
+                  value:
+                    pay_as_you_go:
+                      request_token:
+                        price: 0.00025
+                      response_token:
+                        price: 0.001
+                      cache_write_input_token:
+                        price: 0
+                      cache_read_input_token:
+                        price: 0.000125
+                      additional_units:
+                        web_search:
+                          price: 1
+                        file_search:
+                          price: 0.25
+                    calculate:
+                      request:
+                        operation: sum
+                        operands:
+                          - operation: multiply
+                            operands:
+                              - value: input_tokens
+                              - value: rates.request_token
+                      response:
+                        operation: multiply
+                        operands:
+                          - value: output_tokens
+                          - value: rates.response_token
+                    currency: USD
+                anthropic-claude:
+                  summary: Anthropic Claude 3.5 Sonnet
+                  value:
+                    pay_as_you_go:
+                      request_token:
+                        price: 0.0003
+                      response_token:
+                        price: 0.0015
+                      cache_read_input_token:
+                        price: 0.00003
+                      cache_write_input_token:
+                        price: 0.000375
+                    currency: USD
+                google-gemini:
+                  summary: Google Gemini 2.5 Pro (with thinking tokens)
+                  value:
+                    pay_as_you_go:
+                      request_token:
+                        price: 0.000125
+                      response_token:
+                        price: 0.001
+                      additional_units:
+                        thinking_token:
+                          price: 0.001
+                        web_search:
+                          price: 3.5
+                        search:
+                          price: 3.5
+                    currency: USD
+        '404':
+          description: Model or provider not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Model not found
+
+  /model-configs/general/{provider}/{model}:
+    get:
+      summary: Get Model Configuration
+      description: |
+        Returns general configuration and capabilities for a specific model.
+
+        ## Configuration Fields
+
+        | Field | Description |
+        |-------|-------------|
+        | `params` | Parameter limits and defaults |
+        | `type.primary` | Model type (chat, text, embedding, etc.) |
+        | `type.supported` | Supported features (tools, image, etc.) |
+        | `messages.options` | Supported message roles |
+
+      operationId: getModelConfig
+      tags:
+        - Configuration
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: Provider identifier (e.g., openai, anthropic, google)
+          schema:
+            type: string
+            example: openai
+        - name: model
+          in: path
+          required: true
+          description: Model identifier
+          schema:
+            type: string
+            example: gpt-4o
+      responses:
+        '200':
+          description: Model configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralConfig'
+              examples:
+                openai-gpt4o:
+                  summary: OpenAI GPT-4o
+                  value:
+                    params:
+                      - key: max_tokens
+                        maxValue: 16384
+                      - key: response_format
+                        defaultValue: null
+                        options:
+                          - value: null
+                            name: Text
+                          - value: json_object
+                            name: JSON Object
+                          - value: json_schema
+                            name: JSON Schema
+                        type: string
+                    type:
+                      primary: chat
+                      supported:
+                        - tools
+                        - image
+                anthropic-claude:
+                  summary: Anthropic Claude 3 Opus
+                  value:
+                    params:
+                      - key: max_tokens
+                        maxValue: 4096
+                    type:
+                      primary: chat
+                      supported:
+                        - tools
+                        - image
+                        - cache_control
+                    messages:
+                      options:
+                        - system
+                        - user
+                        - assistant
+        '404':
+          description: Model or provider not found
+
+components:
+  schemas:
+    PricingConfig:
+      type: object
+      description: Complete pricing configuration for a model
+      properties:
+        pay_as_you_go:
+          $ref: '#/components/schemas/PayAsYouGo'
+        batch_config:
+          $ref: '#/components/schemas/BatchConfig'
+        calculate:
+          $ref: '#/components/schemas/CalculateConfig'
+        currency:
+          type: string
+          enum: [USD]
+          description: Currency code (always USD)
+        finetune_config:
+          $ref: '#/components/schemas/FinetuneConfig'
+
+    PayAsYouGo:
+      type: object
+      description: Token-based pricing (all prices in USD cents)
+      properties:
+        request_token:
+          $ref: '#/components/schemas/TokenPrice'
+        response_token:
+          $ref: '#/components/schemas/TokenPrice'
+        cache_write_input_token:
+          $ref: '#/components/schemas/TokenPrice'
+        cache_read_input_token:
+          $ref: '#/components/schemas/TokenPrice'
+        request_audio_token:
+          $ref: '#/components/schemas/TokenPrice'
+        response_audio_token:
+          $ref: '#/components/schemas/TokenPrice'
+        cache_read_audio_input_token:
+          $ref: '#/components/schemas/TokenPrice'
+        additional_units:
+          type: object
+          description: |
+            Provider-specific additional pricing units.
+
+            Common additional units:
+            - `web_search`: Web search tool usage
+            - `file_search`: File search tool usage
+            - `thinking_token`: Chain-of-thought reasoning tokens (Google)
+            - `image_token`: Image generation tokens
+            - `video_duration_seconds_*`: Video generation (OpenAI Sora)
+          additionalProperties:
+            $ref: '#/components/schemas/TokenPrice'
+        image:
+          $ref: '#/components/schemas/ImagePricing'
+
+    TokenPrice:
+      type: object
+      description: Price object (value is in USD cents)
+      properties:
+        price:
+          type: number
+          description: |
+            Price in USD cents per token/unit.
+
+            Example: `0.003` = 0.003 cents/token = $0.03 per 1K tokens
+
+    BatchConfig:
+      type: object
+      description: |
+        Batch API pricing configuration.
+        Prices are specified as exact values matching the provider's published batch pricing.
+      properties:
+        request_token:
+          $ref: '#/components/schemas/TokenPrice'
+        response_token:
+          $ref: '#/components/schemas/TokenPrice'
+        cache_read_input_token:
+          $ref: '#/components/schemas/TokenPrice'
+      example:
+        request_token:
+          price: 0.000125
+        response_token:
+          price: 0.0005
+
+    ImagePricing:
+      type: object
+      description: Image generation pricing by quality and size
+      additionalProperties:
+        type: object
+        additionalProperties:
+          $ref: '#/components/schemas/TokenPrice'
+      example:
+        standard:
+          1024x1024:
+            price: 4
+          1024x1792:
+            price: 8
+        hd:
+          1024x1024:
+            price: 8
+          1024x1792:
+            price: 12
+
+    CalculateConfig:
+      type: object
+      description: Cost calculation formulas
+      properties:
+        request:
+          $ref: '#/components/schemas/CalculateOperation'
+        response:
+          $ref: '#/components/schemas/CalculateOperation'
+
+    CalculateOperation:
+      type: object
+      description: Mathematical operation for cost calculation
+      properties:
+        operation:
+          type: string
+          enum: [sum, multiply]
+          description: Operation type
+        operands:
+          type: array
+          description: Operands for the operation
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/CalculateOperation'
+              - $ref: '#/components/schemas/ValueReference'
+
+    ValueReference:
+      type: object
+      properties:
+        value:
+          type: string
+          description: |
+            Reference to a value or rate.
+
+            Examples:
+            - `input_tokens`: Number of input tokens
+            - `output_tokens`: Number of output tokens
+            - `rates.request_token`: Request token rate
+            - `rates.response_token`: Response token rate
+
+    FinetuneConfig:
+      type: object
+      description: Fine-tuning pricing configuration
+      properties:
+        pay_per_token:
+          $ref: '#/components/schemas/TokenPrice'
+        pay_per_hour:
+          $ref: '#/components/schemas/TokenPrice'
+
+    GeneralConfig:
+      type: object
+      description: General model configuration and capabilities
+      properties:
+        params:
+          type: array
+          description: Model parameters with their constraints
+          items:
+            $ref: '#/components/schemas/ParamConfig'
+        type:
+          $ref: '#/components/schemas/ModelType'
+        messages:
+          $ref: '#/components/schemas/MessagesConfig'
+        removeParams:
+          type: array
+          description: Parameters to remove for this model
+          items:
+            type: string
+        disablePlayground:
+          type: boolean
+          description: If true, model is not available in Portkey playground
+        isDefault:
+          type: boolean
+          description: If true, this is the default model for the provider
+
+    ParamConfig:
+      type: object
+      description: Parameter configuration
+      properties:
+        key:
+          type: string
+          description: Parameter name
+        defaultValue:
+          description: Default value for the parameter
+          oneOf:
+            - type: number
+            - type: boolean
+            - type: string
+            - type: 'null'
+        minValue:
+          type: number
+          description: Minimum allowed value
+        maxValue:
+          type: number
+          description: Maximum allowed value
+        type:
+          type: string
+          description: Parameter type (e.g., boolean, string, array-of-strings)
+        options:
+          type: array
+          description: Available options for enum-type parameters
+          items:
+            type: object
+        skipValues:
+          type: array
+          description: Values to skip/ignore
+          items: {}
+
+    ModelType:
+      type: object
+      description: Model type classification
+      properties:
+        primary:
+          type: string
+          enum: [chat, text, embedding, image, audio, moderation]
+          description: Primary model type
+        supported:
+          type: array
+          description: Supported features
+          items:
+            type: string
+            enum: [tools, image, cache_control]
+
+    MessagesConfig:
+      type: object
+      description: Message configuration
+      properties:
+        options:
+          type: array
+          description: Supported message roles
+          items:
+            type: string
+            enum: [system, user, assistant, developer]

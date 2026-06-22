@@ -1,0 +1,99 @@
+{
+  "name": "ai21",
+  "description": "ai21 labs",
+  "default": {
+    "params": [
+      { "key": "max_tokens", "defaultValue": 256, "minValue": 1, "maxValue": 8192 },
+      { "key": "temperature", "defaultValue": 0.7, "minValue": 0, "maxValue": 1 },
+      { "key": "stop", "defaultValue": null, "type": "array-of-strings", "skipValues": [null, []] },
+      { "key": "top_p", "defaultValue": 1, "minValue": 0, "maxValue": 1 },
+      { "key": "top_k", "defaultValue": 1, "minValue": 0, "maxValue": 1 },
+      { "key": "n", "defaultValue": 1, "minValue": 1, "maxValue": 10 },
+      { "key": "frequency_penalty", "defaultValue": 0, "minValue": 0, "maxValue": 500 },
+      { "key": "presence_penalty", "defaultValue": 0, "minValue": 0, "maxValue": 5 },
+      { "key": "stream", "defaultValue": true, "type": "boolean" }
+    ],
+    "messages": { "options": ["system", "user", "assistant"] },
+    "type": { "primary": "chat", "supported": [] }
+  },
+
+  "j2-ultra": {
+    "type": { "primary": "chat" },
+    "removeParams": ["stream"]
+  },
+  "j2-mid": {
+    "type": { "primary": "chat" },
+    "removeParams": ["stream"]
+  },
+  "j2-light": {
+    "type": { "primary": "chat" },
+    "removeParams": ["stream"]
+  },
+  "jamba-1.5-large": {
+    "type": {
+      "primary": "chat"
+    },
+    "disablePlayground": true
+  },
+  "jamba-1.5-mini": {
+    "type": {
+      "primary": "chat"
+    },
+    "disablePlayground": true
+  },
+  "jamba-mini": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-mini-2": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-mini-2-2026-01": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-mini-1.7-2025-08": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-mini-1.6-2025-03": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-mini-1.5-2024-08": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-large": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-large-1.7": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-large-1.7-2025-07": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-large-1.6-2025-03": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "jamba-large-1.5-2024-08": {
+    "type": {
+      "primary": "chat"
+    }
+  }
+}

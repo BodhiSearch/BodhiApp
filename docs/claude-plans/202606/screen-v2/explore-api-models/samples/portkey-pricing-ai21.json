@@ -1,0 +1,195 @@
+{
+  "default": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0
+        },
+        "response_token": {
+          "price": 0
+        }
+      },
+      "calculate": {
+        "request": {
+          "operation": "multiply",
+          "operands": [
+            {
+              "value": "input_tokens"
+            },
+            {
+              "value": "rates.request_token"
+            }
+          ]
+        },
+        "response": {
+          "operation": "multiply",
+          "operands": [
+            {
+              "value": "output_tokens"
+            },
+            {
+              "value": "rates.response_token"
+            }
+          ]
+        }
+      },
+      "currency": "USD"
+    }
+  },
+  "jamba-1.5-mini": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.00002
+        },
+        "response_token": {
+          "price": 0.00004
+        }
+      }
+    }
+  },
+  "jamba-1.5-large": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.0002
+        },
+        "response_token": {
+          "price": 0.0008
+        }
+      }
+    }
+  },
+  "jamba-mini": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.00002
+        },
+        "response_token": {
+          "price": 0.00004
+        }
+      }
+    }
+  },
+  "jamba-mini-2": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.00002
+        },
+        "response_token": {
+          "price": 0.00004
+        }
+      }
+    }
+  },
+  "jamba-mini-2-2026-01": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.00002
+        },
+        "response_token": {
+          "price": 0.00004
+        }
+      }
+    }
+  },
+  "jamba-mini-1.7-2025-08": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.00002
+        },
+        "response_token": {
+          "price": 0.00004
+        }
+      }
+    }
+  },
+  "jamba-mini-1.6-2025-03": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.00002
+        },
+        "response_token": {
+          "price": 0.00004
+        }
+      }
+    }
+  },
+  "jamba-mini-1.5-2024-08": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.00002
+        },
+        "response_token": {
+          "price": 0.00004
+        }
+      }
+    }
+  },
+  "jamba-large": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.0002
+        },
+        "response_token": {
+          "price": 0.0008
+        }
+      }
+    }
+  },
+  "jamba-large-1.7": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.0002
+        },
+        "response_token": {
+          "price": 0.0008
+        }
+      }
+    }
+  },
+  "jamba-large-1.7-2025-07": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.0002
+        },
+        "response_token": {
+          "price": 0.0008
+        }
+      }
+    }
+  },
+  "jamba-large-1.6-2025-03": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.0002
+        },
+        "response_token": {
+          "price": 0.0008
+        }
+      }
+    }
+  },
+  "jamba-large-1.5-2024-08": {
+    "pricing_config": {
+      "pay_as_you_go": {
+        "request_token": {
+          "price": 0.0002
+        },
+        "response_token": {
+          "price": 0.0008
+        }
+      }
+    }
+  }
+}
