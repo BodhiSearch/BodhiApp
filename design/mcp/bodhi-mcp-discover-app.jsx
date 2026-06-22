@@ -112,6 +112,7 @@ function MainArea({ visible, view, setView, stab, setStab, search, setSearch, ro
   const { openRail } = useShell();
   useListKeyNav();
   const open = (id, t) => { onOpen(id, t); openRail(); };
+  const pg = usePagination(visible, 10, stab + '|' + search);
 
   const cats = STABS.map(t => ({ id: t.id, label: t.label, cls: t.catCls }));
   if (role === 'admin' && totalApprovals > 0) {
@@ -147,13 +148,18 @@ function MainArea({ visible, view, setView, stab, setStab, search, setSearch, ro
         {visible.length === 0 ? (
           <div className="l-empty"><Ic name="search-x" size={30} /><div className="l-empty-t">No servers match</div><div className="l-empty-s">Try adjusting filters or search</div></div>
         ) : view === 'cards' ? (
-          <div className="l-cardgrid">{visible.map(s => <McpCard key={s.id} s={s} role={role} active={activeId === s.id} onOpen={open} />)}</div>
+          <div className="l-cardgrid">{pg.slice.map(s => <McpCard key={s.id} s={s} role={role} active={activeId === s.id} onOpen={open} />)}</div>
         ) : (
           <ListView head={listHead}>
-            {visible.map(s => <McpRow key={s.id} s={s} role={role} active={activeId === s.id} onOpen={open} />)}
+            {pg.slice.map(s => <McpRow key={s.id} s={s} role={role} active={activeId === s.id} onOpen={open} />)}
           </ListView>
         )}
       </div>
+      {visible.length > 0 &&
+        <Pagination total={pg.total} page={pg.page} onPage={pg.setPage}
+          pageSize={pg.pageSize} onPageSize={pg.setPageSize}
+          pageSizeOptions={[10, 25, 50]} unit="servers" />
+      }
     </div>
   );
 }

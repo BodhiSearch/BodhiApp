@@ -179,6 +179,43 @@
 .dp-btn-danger { background: transparent; border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
 .dp-btn-danger:hover { border-color: hsl(var(--destructive)); background: rgba(220,38,38,.05); color: hsl(var(--destructive)); }
 
+/* ═══════════════════════════════════════════════════
+   PAGINATION (.l-pagination) — shared footer pager
+   A flex:none band placed BELOW .l-scroll (sibling inside .l-page, or as
+   the last child of a self-managed list column). Numbered pages + prev/next
+   on the right, a result count + rows-per-page selector on the left.
+═══════════════════════════════════════════════════ */
+.l-pagination { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 9px 16px; min-height: 52px; border-top: 1px solid hsl(var(--border)); background: hsl(var(--background)); }
+.l-pag-side { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.l-pag-left { justify-self: start; }
+.l-pag-right { justify-self: end; }
+/* minimal: centered page nav only (no count / rows selector) */
+.l-pagination.minimal { display: flex; justify-content: center; flex-wrap: wrap; }
+.l-pag-info { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.l-pag-count { font-size: 12px; color: hsl(var(--muted-foreground)); white-space: nowrap; }
+.l-pag-count strong { color: hsl(var(--foreground)); font-weight: 600; font-variant-numeric: tabular-nums; }
+.l-pag-size { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: hsl(var(--muted-foreground)); white-space: nowrap; }
+.l-pag-select { position: relative; display: inline-flex; align-items: center; }
+.l-pag-select select { appearance: none; -webkit-appearance: none; height: 30px; padding: 0 27px 0 10px; border-radius: 8px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); font-family: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background 120ms, border-color 120ms; }
+.l-pag-select select:hover { background: hsl(var(--muted)); }
+.l-pag-select select:focus-visible { outline: none; border-color: hsl(var(--ring)); box-shadow: var(--shadow-glow); }
+.l-pag-select > span[class] { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); pointer-events: none; color: hsl(var(--muted-foreground)); }
+
+.l-pag-nav { display: flex; align-items: center; gap: 4px; }
+.l-pag-btn { min-width: 32px; height: 32px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); font-family: inherit; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; transition: background 120ms, color 120ms, border-color 120ms; }
+.l-pag-btn:hover:not(:disabled) { background: hsl(var(--muted)); }
+.l-pag-btn:focus-visible { outline: none; border-color: hsl(var(--ring)); box-shadow: var(--shadow-glow); }
+.l-pag-btn.on { background: hsl(var(--foreground)); color: hsl(var(--background)); border-color: transparent; cursor: default; }
+.l-pag-btn:disabled { opacity: .42; cursor: not-allowed; }
+.l-pag-arrow { color: hsl(var(--muted-foreground)); }
+.l-pag-arrow:hover:not(:disabled) { color: hsl(var(--foreground)); }
+.l-pag-gap { min-width: 22px; height: 32px; display: inline-flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; color: hsl(var(--faint-foreground)); font-size: 12.5px; user-select: none; }
+
+@media (max-width: 640px) {
+  .l-pagination { justify-content: center; }
+  .l-pag-size { display: none; }
+}
+
 /* ── CARD GRID + CARD FRAME (optional layout) ── */
 .l-cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 14px 16px 24px; }
 .l-card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 12px; cursor: pointer; position: relative; transition: border-color 140ms, box-shadow 140ms, background 80ms; }

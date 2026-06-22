@@ -182,6 +182,129 @@ function useListKeyNav(opts = {}) {
   }, [rowSelector, rootSelector]);
 }
 
+/* ── Pagination ──────────────────────────────────────
+   Theme-aligned pager for any list page. Numbered pages with ellipses +
+   prev / next, an optional rows-per-page selector, and a result count.
+   Sits as a flex:none FOOTER band below the scroll region (a sibling of
+   .l-scroll inside .l-page) so it stays put while the list scrolls.
+
+   CONTROLLED — the parent owns `page` (1-based) and `pageSize`:
+     <Pagination
+       total={rows.length}                 // total rows across all pages
+       page={page} onPage={setPage}        // 1-based current page
+       pageSize={size} onPageSize={setSize} // omit onPageSize → hide the selector
+       pageSizeOptions={[10, 25, 50, 100]}
+       unit="models"                        // noun in the count label
+       showCount siblingCount={1}
+       minimal />                           // minimal → centered page nav only
+                                            //   (no count, no rows selector)
+
+   Or let the usePagination hook own the state + slice the data:
+     const pg = usePagination(rows, 25, filterKey);
+     …pg.slice.map(…)…
+     <Pagination total={pg.total} page={pg.page} onPage={pg.setPage}
+                 pageSize={pg.pageSize} onPageSize={pg.setPageSize} unit="models" />
+─────────────────────────────────────────────────────── */
+function paginationRange(page, pageCount, sibling) {
+  if (pageCount <= 1) return [1];
+  const range = [1];
+  const left  = Math.max(2, page - sibling);
+  const right = Math.min(pageCount - 1, page + sibling);
+  if (left > 2) range.push('gap-l');
+  for (let i = left; i <= right; i++) range.push(i);
+  if (right < pageCount - 1) range.push('gap-r');
+  range.push(pageCount);
+  return range;
+}
+
+function Pagination({
+  total = 0, page = 1, onPage,
+  pageSize = 10, onPageSize, pageSizeOptions = [10, 25, 50, 100],
+  showCount = true, siblingCount = 1, unit = 'items', className = '',
+  minimal = false,
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const cur = Math.min(Math.max(1, page), pageCount);
+  const go = p => { const n = Math.min(Math.max(1, p), pageCount); if (n !== cur && onPage) onPage(n); };
+  const from = total === 0 ? 0 : (cur - 1) * pageSize + 1;
+  const to   = Math.min(total, cur * pageSize);
+  const pages = paginationRange(cur, pageCount, siblingCount);
+  const fmt = n => n.toLocaleString();
+
+  const nav = (
+    <div className="l-pag-nav" role="navigation" aria-label="Pagination">
+      <button className="l-pag-btn l-pag-arrow" disabled={cur <= 1}
+              onClick={() => go(cur - 1)} aria-label="Previous page" title="Previous page">
+        <ShellIcon name="chevron-left" size={15} />
+      </button>
+      {pages.map((p, i) =>
+        typeof p === 'number'
+          ? <button key={'p' + p} className={'l-pag-btn' + (p === cur ? ' on' : '')}
+                    aria-current={p === cur ? 'page' : undefined} onClick={() => go(p)}>{p}</button>
+          : <span key={p + i} className="l-pag-gap" aria-hidden="true">…</span>
+      )}
+      <button className="l-pag-btn l-pag-arrow" disabled={cur >= pageCount}
+              onClick={() => go(cur + 1)} aria-label="Next page" title="Next page">
+        <ShellIcon name="chevron-right" size={15} />
+      </button>
+    </div>
+  );
+
+  /* minimal = centered page nav only (no count, no rows selector) */
+  if (minimal) {
+    return <div className={'l-pagination minimal' + (className ? ' ' + className : '')}>{nav}</div>;
+  }
+
+  /* full = three zones: count (left) · nav (centered) · rows selector (right) */
+  return (
+    <div className={'l-pagination' + (className ? ' ' + className : '')}>
+      <div className="l-pag-side l-pag-left">
+        {showCount && (
+          total === 0
+            ? <span className="l-pag-count">No {unit}</span>
+            : <span className="l-pag-count"><strong>{fmt(from)}–{fmt(to)}</strong> of <strong>{fmt(total)}</strong> {unit}</span>
+        )}
+      </div>
+      {nav}
+      <div className="l-pag-side l-pag-right">
+        {onPageSize && (
+          <label className="l-pag-size">
+            <span>Rows</span>
+            <span className="l-pag-select">
+              <select value={pageSize} aria-label="Rows per page"
+                      onChange={e => onPageSize(Number(e.target.value))}>
+                {pageSizeOptions.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <ShellIcon name="chevron-down" size={13} />
+            </span>
+          </label>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* Owns page + pageSize state, clamps the page when the row count shrinks,
+   resets to page 1 when `resetKey` changes (e.g. a filter/search string),
+   keeps the first visible row anchored across page-size changes, and returns
+   the current page's slice. */
+function usePagination(items, initialSize = 10, resetKey) {
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(initialSize);
+  const total = (items && items.length) || 0;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  React.useEffect(() => { setPage(1); }, [resetKey]);
+  React.useEffect(() => { if (page > pageCount) setPage(pageCount); }, [pageCount, page]);
+  const cur = Math.min(page, pageCount);
+  const slice = (items || []).slice((cur - 1) * pageSize, cur * pageSize);
+  const changeSize = n => {
+    const firstIdx = (cur - 1) * pageSize;   // keep the top row in view
+    setPageSize(n);
+    setPage(Math.floor(firstIdx / n) + 1);
+  };
+  return { page: cur, setPage, pageSize, setPageSize: changeSize, slice, total, pageCount };
+}
+
 function ListView({ head, columns, children, className = '' }) {
   const headNode = head || (columns && columns.map((c, i) => (
     <div key={i} className={'l-lh ' + (c.cls || '')} style={c.style}>{c.label}</div>
@@ -204,4 +327,4 @@ function ListPage({ toolbar, children, scrollClass = '' }) {
   );
 }
 
-Object.assign(window, { ListToolbar, ListView, ListPage, RowLink, ListRow, useListKeyNav });
+Object.assign(window, { ListToolbar, ListView, ListPage, RowLink, ListRow, useListKeyNav, Pagination, usePagination });

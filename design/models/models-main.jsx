@@ -18,6 +18,10 @@ function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowD
   const [q, setQ] = useMainState('');
   const pick = (kind, item, idx) => {onSelect({ kind, item, idx });openRail();};
 
+  /* My Models is a finite, client-side list → real page jumping. (Local / API
+     are search-API results that only support cursor "Load more".) */
+  const myPg = usePagination(MAIN_MY, 5);
+
   const listClass = ['model-list',
   mode === 'my-models' ? 'my-mode' : '',
   density === 'compact' ? 'compact' : '',
@@ -72,8 +76,10 @@ function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowD
       }
 
       <div className={listClass}>
-        {mode === 'my-models' && MAIN_MY.map((item, i) =>
-        <MyRow key={item.id} item={item} active={sel && sel.kind === 'my' && sel.idx === i} onClick={() => pick('my', item, i)} />)}
+        {mode === 'my-models' && myPg.slice.map((item, i) => {
+          const gi = (myPg.page - 1) * myPg.pageSize + i;
+          return <MyRow key={item.id} item={item} active={sel && sel.kind === 'my' && sel.idx === gi} onClick={() => pick('my', item, gi)} />;
+        })}
         {mode === 'local' && <>
           {localRows.map((m, i) =>
           <LocalRow key={m.org + m.repo} m={m} idx={i + 1} cols={cols} sortKey={sort.key}
@@ -89,6 +95,11 @@ function ModelsMain({ mode, sel, onSelect, density, showTags, showScore, onShowD
           <button className="load-more"><Ic name="chevrons-down" size={14} /> Load more</button>
         </>}
       </div>
+
+      {mode === 'my-models' &&
+      <Pagination total={myPg.total} page={myPg.page} onPage={myPg.setPage}
+        pageSize={myPg.pageSize} unit="models" minimal />
+      }
     </div>);
 
 }
