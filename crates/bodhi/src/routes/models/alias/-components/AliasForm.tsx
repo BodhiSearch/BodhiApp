@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { AliasResponse } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { ALIAS_FORM_TOOLTIPS } from '../../-components/tooltips';
-import { ComboBoxResponsive } from '@/components/Combobox';
+import { QuantSelector } from './QuantSelector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useCreateModel, useListModelFiles, useUpdateModel } from '@/hooks/models';
+import { useCreateModel, useUpdateModel } from '@/hooks/models';
 import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
 import {
   AliasFormData,
@@ -76,62 +76,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   );
   const formTestId = isEditMode ? 'form-edit-alias' : 'form-create-alias';
 
-  const { data: modelsData } = useListModelFiles(1, 100, 'alias', 'asc');
-
-  const [currentRepo, setCurrentRepo] = useState(
-    initialData && hasLocalFileProperties(initialData) ? initialData.repo : ''
-  );
-
-  const [currentFilename, setCurrentFilename] = useState(
-    initialData && hasLocalFileProperties(initialData) ? initialData.filename : ''
-  );
-
-  const repoOptions = useMemo(() => {
-    if (!modelsData) return [];
-    const repoSet = new Set(modelsData.data.map((model) => model.repo));
-    return Array.from(repoSet)
-      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
-      .map((repo) => ({
-        value: repo,
-        label: repo,
-      }));
-  }, [modelsData]);
-
-  const filenameOptions = useMemo(() => {
-    if (!modelsData || !currentRepo) return [];
-    const filenameSet = new Set(
-      modelsData.data.filter((model) => model.repo === currentRepo).map((model) => model.filename)
-    );
-    return Array.from(filenameSet)
-      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
-      .map((filename) => ({
-        value: filename,
-        label: filename,
-      }));
-  }, [modelsData, currentRepo]);
-
-  const snapshotOptions = useMemo(() => {
-    if (!modelsData || !currentRepo || !currentFilename) return [];
-
-    const snapshots = modelsData.data
-      .filter((model) => model.repo === currentRepo && model.filename === currentFilename)
-      .map((model) => model.snapshot);
-
-    const uniqueSnapshots = Array.from(new Set(snapshots));
-
-    // Sort with 'main' first, then alphabetically
-    return uniqueSnapshots
-      .sort((a, b) => {
-        if (a === 'main') return -1;
-        if (b === 'main') return 1;
-        return a.localeCompare(b);
-      })
-      .map((snapshot) => ({
-        value: snapshot,
-        label: snapshot,
-      }));
-  }, [modelsData, currentRepo, currentFilename]);
-
   const form = useForm<AliasFormData>({
     resolver: zodResolver(createAliasFormSchema),
     mode: 'onSubmit',
@@ -178,27 +122,15 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     },
   });
 
+  // Changing the repo invalidates the previously-selected quant (different repo, different files).
   useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
+    const subscription = form.watch((_value, { name }) => {
       if (name === 'repo') {
-        setCurrentRepo(value.repo || '');
         form.setValue('filename', '');
-        form.setValue('snapshot', '');
-        setCurrentFilename('');
-      }
-      if (name === 'filename') {
-        setCurrentFilename(value.filename || '');
-        form.setValue('snapshot', '');
       }
     });
     return () => subscription.unsubscribe();
   }, [form]);
-
-  useEffect(() => {
-    if (snapshotOptions.length > 0 && !form.getValues('snapshot')) {
-      form.setValue('snapshot', snapshotOptions[0].value);
-    }
-  }, [snapshotOptions, form]);
 
   const onSubmit = (data: AliasFormData) => {
     if (isEditMode) {
@@ -322,15 +254,14 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               name="repo"
               render={({ field }) => (
                 <FormItem>
-                  <FormFieldWithTooltip label="Repo" tooltip={ALIAS_FORM_TOOLTIPS.repo} htmlFor="repo-select">
+                  <FormFieldWithTooltip label="Repo" tooltip={ALIAS_FORM_TOOLTIPS.repo} htmlFor="repo-input">
                     <FormControl>
-                      <ComboBoxResponsive
-                        selectedStatus={field.value ? { value: field.value, label: field.value } : null}
-                        setSelectedStatus={(selected) => field.onChange(selected?.value || '')}
-                        statuses={repoOptions}
-                        placeholder="Select repo"
-                        id="repo-select"
-                        data-testid="repo-select"
+                      <Input
+                        {...field}
+                        id="repo-input"
+                        data-testid="repo-input"
+                        placeholder="org/repo"
+                        className="font-mono"
                       />
                     </FormControl>
                   </FormFieldWithTooltip>
@@ -345,19 +276,12 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormFieldWithTooltip
-                    label="Filename"
+                    label="Quantisation"
                     tooltip={ALIAS_FORM_TOOLTIPS.filename}
-                    htmlFor="filename-select"
+                    htmlFor="quant-selector"
                   >
                     <FormControl>
-                      <ComboBoxResponsive
-                        selectedStatus={field.value ? { value: field.value, label: field.value } : null}
-                        setSelectedStatus={(selected) => field.onChange(selected?.value || '')}
-                        statuses={filenameOptions}
-                        placeholder="Select filename"
-                        id="filename-select"
-                        data-testid="filename-select"
-                      />
+                      <QuantSelector repo={form.watch('repo')} value={field.value} onSelect={field.onChange} />
                     </FormControl>
                   </FormFieldWithTooltip>
                   <FormMessage />
@@ -372,18 +296,17 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                 <FormItem>
                   <FormFieldWithTooltip
                     label="Snapshot"
-                    tooltip="Git reference or commit SHA for the model version"
-                    htmlFor="snapshot-select"
+                    tooltip="Git reference or commit SHA for the model version (defaults to main)"
+                    htmlFor="snapshot-input"
                   >
                     <FormControl>
-                      <ComboBoxResponsive
-                        selectedStatus={field.value ? { value: field.value, label: field.value } : null}
-                        setSelectedStatus={(selected) => field.onChange(selected?.value || '')}
-                        statuses={snapshotOptions}
-                        placeholder={snapshotOptions.length > 0 ? 'Select snapshot' : 'Select repo and filename first'}
-                        id="snapshot-select"
-                        data-testid="snapshot-select"
-                        disabled={snapshotOptions.length === 0}
+                      <Input
+                        {...field}
+                        id="snapshot-input"
+                        data-testid="snapshot-input"
+                        value={field.value || ''}
+                        placeholder="main"
+                        className="font-mono"
                       />
                     </FormControl>
                   </FormFieldWithTooltip>

@@ -52,16 +52,37 @@ test.describe('Local GGUF Models - Standalone Smoke Test', () => {
       await chatPage.verifyMessageInHistory('assistant', '4');
     });
 
-    await test.step('Create local model alias', async () => {
+    await test.step('Create local model alias via the catalog quant selector', async () => {
       const aliasName = `local-smoke-${Date.now()}`;
 
       await modelsPage.navigateToModels();
       await modelsPage.clickNewModelAlias();
       await formPage.waitForFormReady();
+      // Type the repo, then pick the GGUF from the reference-catalog quant table (downloaded already).
       await formPage.fillBasicInfo(aliasName, QWEN_MODEL.repo, QWEN_MODEL.filename);
       await formPage.createAlias();
 
       await modelsPage.verifyLocalModelInList(aliasName, QWEN_MODEL.repo, QWEN_MODEL.filename, 'user');
+    });
+
+    await test.step('Create alias for a not-yet-downloaded quant kicks off a download', async () => {
+      const aliasName = `local-undl-${Date.now()}`;
+
+      await modelsPage.navigateToModels();
+      await modelsPage.clickNewModelAlias();
+      await formPage.waitForFormReady();
+      await formPage.fillTestId('alias-input', aliasName);
+      await formPage.page.fill(formPage.selectors.repoInput, QWEN_MODEL.repo);
+
+      // Pick a quant that isn't on disk: its row shows "Not downloaded" + the download-on-save note.
+      const quantName = await formPage.selectFirstRemoteQuant();
+      if (quantName) {
+        await formPage.page.locator(formPage.selectors.quantDownloadNote).waitFor();
+        await formPage.createAlias();
+        // Backend creates the alias and enqueues the file; under test-mode the download lands
+        // completed without a real fetch. The alias appears in the list.
+        await modelsPage.expectModelInList(aliasName);
+      }
     });
   });
 });

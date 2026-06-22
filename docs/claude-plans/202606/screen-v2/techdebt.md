@@ -47,6 +47,13 @@ Fails identically in `standalone` + `multi_tenant`.
   server-paginated; the role filter tabs + their counts filter only the **current page** (mirrors the
   already-shipped Access Requests screen — there's no server-side role-filter query param). Accepted
   limitation; a real fix needs a backend `role` query param on `GET /bodhi/v1/users`.
+- **New Local Model form: repo is free-text (no `<org>/<repo>` autocomplete)** (Batch 3-4 Phase 2).
+  The `QuantSelector` fetches quants once a full `org/repo` is typed (via `useModelDetail`); the repo
+  input itself has no live catalog autocomplete. A follow-up could query `useDiscoverModels(q)` as the
+  user types and offer suggestions (still accepting free text for private/unlisted repos). Deferred.
+- **New Local Model form: runtime-flag presets not ported** (Batch 3-4). The v4 design mock shows
+  preset pills (Default / Coding / RAG / …) that template the context-params textarea. They have no
+  backing data and were dropped; revisit as a client-only convenience if desired.
 
 ## Models V1-list retirement + E2E-spec migration — DONE (Batch 3-1 flag removed)
 The `models` flag and the V1 `ModelsPageContent` list have been **removed**; the V2 My-Models list is

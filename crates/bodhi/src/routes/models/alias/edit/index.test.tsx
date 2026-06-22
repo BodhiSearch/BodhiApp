@@ -4,7 +4,7 @@ import { ENDPOINT_MODEL_FILES, ENDPOINT_MODELS } from '@/hooks/models';
 import { ENDPOINT_USER_INFO } from '@/hooks/users';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
@@ -15,7 +15,9 @@ import {
   mockGetModelInternalError,
   mockUpdateModel,
 } from '@/test-utils/msw-v2/handlers/models';
-import { mockModelFiles } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { mockModelFiles, mockModelPullDownloadsEmpty } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { mockDiscoverModelDetail } from '@/test-utils/msw-v2/handlers/reference-models';
+import { createDetailModel, createQuant } from '@/test-fixtures/discover-models';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/hooks/use-media-query', () => ({
@@ -124,6 +126,18 @@ describe('EditAliasPage', () => {
           { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main', size: 1000000, model_params: {} },
         ],
       }),
+      ...mockModelPullDownloadsEmpty(),
+      // Reference catalog detail for the edited repo: its quants preselect the current filename.
+      ...mockDiscoverModelDetail({
+        model: createDetailModel({
+          namespace: 'owner1',
+          repo: 'repo1',
+          quants: [
+            createQuant({ name: 'file1', filename: 'file1.gguf', size: 1000000, recommended: false }),
+            createQuant({ name: 'file2', filename: 'file2.gguf', size: 1000000, recommended: false }),
+          ],
+        }),
+      }),
       ...mockUpdateModel('test-uuid-1', {
         alias: 'test-alias',
         repo: 'owner1/repo1',
@@ -142,21 +156,20 @@ describe('EditAliasPage', () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/repo/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
+    expect(screen.getByTestId('alias-input')).toBeInTheDocument();
+    expect(screen.getByTestId('repo-input')).toBeInTheDocument();
     expect(screen.getByLabelText(/context parameters/i)).toBeInTheDocument();
-
-    expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /context parameters/i })).toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: /update model alias/i })).toBeInTheDocument();
 
-    // Check pre-filled values
-    expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
-    expect(screen.getByRole('combobox', { name: /repo/i })).toHaveTextContent('owner1/repo1');
-    expect(screen.getByRole('combobox', { name: /filename/i })).toHaveTextContent('file1.gguf');
+    // Check pre-filled values: alias locked, repo populated, current quant preselected.
+    expect(screen.getByTestId('alias-input')).toHaveValue('test-alias');
+    expect(screen.getByTestId('alias-input')).toBeDisabled();
+    expect(screen.getByTestId('repo-input')).toHaveValue('owner1/repo1');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('quant-row-file1')).toHaveAttribute('data-test-state', 'selected');
+    });
 
     // Check context parameters are pre-filled
     const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
@@ -166,34 +179,19 @@ describe('EditAliasPage', () => {
     expect(screen.getByText('Request Parameters')).toBeInTheDocument();
   });
 
-  it('submits the form with updated data', async () => {
+  it('submits the form after changing the selected quant', async () => {
     const user = userEvent.setup();
 
     await act(async () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
+    expect(screen.getByTestId('alias-input')).toBeInTheDocument();
 
-    // Open repo combobox
-    await user.click(screen.getByRole('combobox', { name: /repo/i }));
-    const repoPopover = screen.getByRole('dialog');
-    const repoItems = within(repoPopover).getAllByRole('option');
-    const owner2Repo2Option = repoItems.find((item) => item.textContent?.includes('owner2/repo2'));
-    if (!owner2Repo2Option) {
-      throw new Error('Could not find owner2/repo2 option');
-    }
-    await user.click(owner2Repo2Option);
-
-    // Open filename combobox
-    await user.click(screen.getByRole('combobox', { name: /filename/i }));
-    const filenamePopover = screen.getByRole('dialog');
-    const filenameItems = within(filenamePopover).getAllByRole('option');
-    const file3Option = filenameItems.find((item) => item.textContent?.includes('file3.gguf'));
-    if (!file3Option) {
-      throw new Error('Could not find file3.gguf option');
-    }
-    await user.click(file3Option);
+    // Switch from the current quant to a different one in the same repo.
+    const file2Row = await screen.findByTestId('quant-row-file2');
+    await user.click(file2Row);
+    await waitFor(() => expect(file2Row).toHaveAttribute('data-test-state', 'selected'));
 
     await user.click(screen.getByRole('button', { name: /update model alias/i }));
 

@@ -347,37 +347,33 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
   Ok(())
 }
 
-// Update still requires the file on disk (create-then-download relaxation is create-only for now).
+// Updating an alias to point at a not-yet-downloaded file now SUCCEEDS: the alias is updated and the
+// download enqueued (recorded completed under test-mode). Snapshot falls back to `main`.
 #[rstest]
-#[case(serde_json::json!({
-  "alias": "tinyllama:instruct",
-  "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
-  "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
-
-  "family": "tinyllama",
-  "request_params": {
-    "temperature": 0.8,
-    "max_tokens": 2000
-  },
-  "context_params": [
-    "--ctx-size 4096"
-  ]
-}), Method::PUT, "/api/models/test-tinyllama-instruct", "hub_service_error-file_not_found")]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_update_alias_repo_not_downloaded_error(
-  #[future] app: Router,
-  #[case] payload: Value,
-  #[case] method: Method,
-  #[case] url: String,
-  #[case] expected_error_code: &str,
-) -> anyhow::Result<()> {
+async fn test_update_alias_undownloaded_file(#[future] app: Router) -> anyhow::Result<()> {
+  let payload = serde_json::json!({
+    "alias": "tinyllama:instruct",
+    "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
+    "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
+
+    "family": "tinyllama",
+    "request_params": {
+      "temperature": 0.8,
+      "max_tokens": 2000
+    },
+    "context_params": [
+      "--ctx-size 4096"
+    ]
+  });
+
   let response = app
     .oneshot(
       Request::builder()
-        .method(method)
-        .uri(url)
+        .method(Method::PUT)
+        .uri("/api/models/test-tinyllama-instruct")
         .json(&payload)?
         .with_auth_context(AuthContext::test_session(
           "test-user",
@@ -387,11 +383,9 @@ async fn test_update_alias_repo_not_downloaded_error(
     )
     .await?;
 
-  assert_eq!(StatusCode::NOT_FOUND, response.status());
-  let response = response.json::<Value>().await?;
-  assert_eq!(
-    expected_error_code,
-    response["error"]["code"].as_str().unwrap()
-  );
+  assert_eq!(StatusCode::OK, response.status());
+  let alias = response.json::<UserAliasResponse>().await?;
+  assert_eq!("tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf", alias.filename);
+  assert_eq!("main", alias.snapshot);
   Ok(())
 }

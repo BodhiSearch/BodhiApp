@@ -5,13 +5,15 @@ import { ENDPOINT_USER_INFO } from '@/hooks/users';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfo, mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { mockModels, mockCreateModel } from '@/test-utils/msw-v2/handlers/models';
-import { mockModelFiles } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { mockModelFiles, mockModelPullDownloadsEmpty } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { mockDiscoverModelDetail, mockDiscoverModelsError } from '@/test-utils/msw-v2/handlers/reference-models';
+import { createDetailModel } from '@/test-fixtures/discover-models';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/hooks/use-media-query', () => ({
@@ -63,14 +65,6 @@ vi.mock('@/components/ui/toaster', () => ({
   Toaster: () => null,
 }));
 
-const mockModelsResponse = {
-  data: [
-    { repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' },
-    { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' },
-    { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main' },
-  ],
-};
-
 beforeAll(() => {
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.setPointerCapture = vi.fn();
@@ -85,26 +79,6 @@ afterEach(() => {
 beforeEach(() => {
   navigateMock.mockClear();
 });
-
-// Helper function to select an option from a ComboBoxResponsive component
-const selectFromComboBox = async (
-  user: ReturnType<typeof userEvent.setup>,
-  comboboxName: RegExp,
-  optionText: string
-) => {
-  await user.click(screen.getByRole('combobox', { name: comboboxName }));
-
-  // Find the dialog (mobile view) and select the option
-  const dialog = screen.getByRole('dialog');
-  const options = within(dialog).getAllByRole('option');
-  const targetOption = options.find((option) => option.textContent?.includes(optionText));
-
-  if (!targetOption) {
-    throw new Error(`Option "${optionText}" not found in combobox`);
-  }
-
-  await user.click(targetOption);
-};
 
 describe('CreateAliasPage', () => {
   beforeEach(() => {
@@ -154,6 +128,9 @@ describe('CreateAliasPage', () => {
         page: 1,
         page_size: 30,
       }),
+      ...mockModelPullDownloadsEmpty(),
+      // Reference catalog detail for the repo the tests type into the form (quant table source).
+      ...mockDiscoverModelDetail({ model: createDetailModel({ namespace: 'Qwen', repo: 'Qwen3-Coder-32B-GGUF' }) }),
       ...mockCreateModel({
         alias: 'test-alias',
         repo: 'test-repo',
@@ -172,45 +149,70 @@ describe('CreateAliasPage', () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/repo/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/snapshot/i)).toBeInTheDocument();
+    expect(screen.getByTestId('alias-input')).toBeInTheDocument();
+    expect(screen.getByTestId('repo-input')).toBeInTheDocument();
+    expect(screen.getByTestId('snapshot-input')).toBeInTheDocument();
     expect(screen.getByLabelText(/context parameters/i)).toBeInTheDocument();
-
-    expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /snapshot/i })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /context parameters/i })).toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: /create model alias/i })).toBeInTheDocument();
   });
 
-  it('submits the form with correct data and auto-selects first snapshot', async () => {
+  it('fetches quants for the typed repo and submits the selected quant', async () => {
     const user = userEvent.setup();
 
     await act(async () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
+    await user.type(screen.getByTestId('alias-input'), 'test-alias');
+    await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
 
-    await user.type(screen.getByLabelText(/alias/i), 'test-alias');
-
-    await selectFromComboBox(user, /repo/i, 'owner1/repo1');
-    await selectFromComboBox(user, /filename/i, 'file1.gguf');
-
-    // Verify that snapshot is auto-selected to 'main' (first option)
-    await waitFor(() => {
-      const snapshotCombobox = screen.getByRole('combobox', { name: /snapshot/i });
-      expect(snapshotCombobox).toHaveTextContent('main');
-    });
+    // The quant table loads from the reference catalog; pick a quant to set the filename.
+    const quantRow = await screen.findByTestId('quant-row-Q4_K_M');
+    await user.click(quantRow);
+    await waitFor(() => expect(quantRow).toHaveAttribute('data-test-state', 'selected'));
 
     await user.click(screen.getByRole('button', { name: /create model alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully created'));
     });
+  });
+
+  it('shows per-quant download status and a download-on-save note for remote quants', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
+    });
+
+    await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
+
+    // None of the catalog quants match a downloaded file → all "Not downloaded".
+    const status = await screen.findByTestId('quant-status-Q4_K_M');
+    expect(status).toHaveTextContent(/not downloaded/i);
+
+    await user.click(screen.getByTestId('quant-row-Q4_K_M'));
+    await waitFor(() => {
+      expect(screen.getByTestId('quant-download-note')).toHaveTextContent(/download automatically after save/i);
+    });
+  });
+
+  it('falls back to a manual filename input when the repo has no catalog quants', async () => {
+    const user = userEvent.setup();
+    server.use(...mockDiscoverModelsError({ status: 404, error: 'not_found' }, {}));
+    // The detail endpoint also 404s for an unknown repo.
+    server.use(...mockDiscoverModelDetail({ model: createDetailModel({ quants: [] }) }));
+
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
+    });
+
+    await user.type(screen.getByTestId('repo-input'), 'private/unlisted-GGUF');
+
+    const filenameInput = await screen.findByTestId('filename-input');
+    await user.type(filenameInput, 'custom-model.gguf');
+    expect(filenameInput).toHaveValue('custom-model.gguf');
   });
 
   it('handles context parameters input correctly', async () => {
@@ -223,15 +225,13 @@ describe('CreateAliasPage', () => {
     const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
     expect(contextParamsTextarea).toBeInTheDocument();
 
-    // Test context parameters input
     await user.type(contextParamsTextarea, '--ctx-size 2048\n--parallel 4\n--threads 8');
     expect(contextParamsTextarea).toHaveValue('--ctx-size 2048\n--parallel 4\n--threads 8');
 
-    // Fill required fields
-    await user.type(screen.getByLabelText(/alias/i), 'test-context-alias');
-
-    await selectFromComboBox(user, /repo/i, 'owner1/repo1');
-    await selectFromComboBox(user, /filename/i, 'file1.gguf');
+    // The mockCreateModel response fixes the alias name, so the success toast reads 'test-alias'.
+    await user.type(screen.getByTestId('alias-input'), 'test-alias');
+    await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
+    await user.click(await screen.findByTestId('quant-row-Q4_K_M'));
 
     await user.click(screen.getByRole('button', { name: /create model alias/i }));
 

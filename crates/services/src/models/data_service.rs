@@ -328,26 +328,23 @@ impl DataService for LocalDataService {
 
     let repo = Repo::try_from(form.repo)?;
 
+    // Like create: a not-yet-downloaded file is allowed (the route handler enqueues the download).
+    // Resolve the real snapshot from disk when present; otherwise fall back to the requested one.
     let file_exists =
       self
         .hub_service
         .local_file_exists(&repo, &form.filename, form.snapshot.clone())?;
-    if !file_exists {
-      return Err(DataServiceError::HubService(
-        HubServiceError::FileNotFound {
-          filename: form.filename.clone(),
-          repo: repo.to_string(),
-          snapshot: form
-            .snapshot
-            .clone()
-            .unwrap_or_else(|| SNAPSHOT_MAIN.to_string()),
-        },
-      ));
-    }
-    let local_model_file =
+    let snapshot = if file_exists {
       self
         .hub_service
-        .find_local_file(&repo, &form.filename, form.snapshot)?;
+        .find_local_file(&repo, &form.filename, form.snapshot.clone())?
+        .snapshot
+    } else {
+      form
+        .snapshot
+        .clone()
+        .unwrap_or_else(|| SNAPSHOT_MAIN.to_string())
+    };
 
     let now = self.db_service.now();
     let updated_alias = UserAlias {
@@ -355,7 +352,7 @@ impl DataService for LocalDataService {
       alias: form.alias,
       repo,
       filename: form.filename,
-      snapshot: local_model_file.snapshot,
+      snapshot,
       request_params: form.request_params.unwrap_or_default(),
       context_params: form.context_params.unwrap_or_default().into(),
       created_at: existing.created_at,

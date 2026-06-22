@@ -4,9 +4,14 @@ import { expect } from '@playwright/test';
 export class LocalModelFormPage extends BasePage {
   selectors = {
     aliasInput: '[data-testid="alias-input"]',
-    repoSelect: '[data-testid="repo-select"]',
-    filenameSelect: '[data-testid="filename-select"]',
-    snapshotSelect: '[data-testid="snapshot-select"]',
+    repoInput: '[data-testid="repo-input"]',
+    snapshotInput: '[data-testid="snapshot-input"]',
+    quantTable: '[data-testid="quant-table"]',
+    quantManual: '[data-testid="quant-manual"]',
+    filenameInput: '[data-testid="filename-input"]',
+    quantRow: (name) => `[data-testid="quant-row-${name}"]`,
+    quantStatus: (name) => `[data-testid="quant-status-${name}"]`,
+    quantDownloadNote: '[data-testid="quant-download-note"]',
     contextParamsTextarea: '[data-testid="context-params"]',
     requestParamsToggle: '[data-testid="request-params-toggle"]',
     submitButton: '[data-testid="submit-alias-form"]',
@@ -19,9 +24,6 @@ export class LocalModelFormPage extends BasePage {
     frequencyPenaltyInput: '[data-testid="request-param-frequency_penalty"]',
     presencePenaltyInput: '[data-testid="request-param-presence_penalty"]',
     userInput: '[data-testid="request-param-user"]',
-    // ComboBox selectors
-    comboboxTrigger: (testId) => `[data-testid="${testId}"]`,
-    comboboxOption: (value) => `[data-testid="combobox-option-${value}"]`,
   };
 
   async waitForFormReady() {
@@ -30,28 +32,82 @@ export class LocalModelFormPage extends BasePage {
   }
 
   async fillBasicInfo(alias, repo, filename, snapshot = null) {
-    // Fill alias
     await this.fillTestId('alias-input', alias);
 
-    // Select repo from combobox
     if (repo) {
-      await this.selectFromCombobox('repo-select', repo);
+      await this.page.fill(this.selectors.repoInput, repo);
     }
 
-    // Select filename from combobox
     if (filename) {
-      await this.selectFromCombobox('filename-select', filename);
+      await this.selectQuantOrType(filename);
     }
 
-    // Wait for snapshot options to load after repo and filename selection
-    if (repo && filename) {
-      await this.waitForSnapshotToLoad();
+    if (snapshot) {
+      await this.page.fill(this.selectors.snapshotInput, snapshot);
+    }
+  }
 
-      // Select specific snapshot if provided, otherwise auto-selected snapshot will be used
-      if (snapshot) {
-        await this.selectFromCombobox('snapshot-select', snapshot);
+  /**
+   * Choose the GGUF file. Prefers the catalog quant row matching `filename`; if the repo has no
+   * catalog quants (fallback manual input), types the filename directly.
+   */
+  async selectQuantOrType(filename) {
+    const manual = this.page.locator(this.selectors.quantManual);
+    const table = this.page.locator(this.selectors.quantTable);
+    // Wait until either the quant table or the manual input has resolved.
+    await expect(manual.or(table)).toBeVisible();
+
+    if (await manual.isVisible()) {
+      await this.page.fill(this.selectors.filenameInput, filename);
+      return;
+    }
+    // Quant rows are keyed by quant name; match the row whose filename equals `filename`.
+    const quantName = this.quantNameForFilename(filename);
+    const row = this.page.locator(this.selectors.quantRow(quantName));
+    await expect(row).toBeVisible();
+    await row.click();
+    await expect(row).toHaveAttribute('data-test-state', 'selected');
+  }
+
+  /** Best-effort quant-name from a GGUF filename (e.g. ...-Q4_K_M.gguf → Q4_K_M). */
+  quantNameForFilename(filename) {
+    const m = filename.match(/-([A-Za-z0-9_]+)\.gguf$/);
+    return m ? m[1] : filename;
+  }
+
+  async selectQuantRow(quantName) {
+    const row = this.page.locator(this.selectors.quantRow(quantName));
+    await expect(row).toBeVisible();
+    await row.click();
+    await expect(row).toHaveAttribute('data-test-state', 'selected');
+  }
+
+  async getQuantStatus(quantName) {
+    return (await this.page.locator(this.selectors.quantStatus(quantName)).textContent())?.trim();
+  }
+
+  /**
+   * Select the first quant whose status reads "Not downloaded" and return its quant name. Returns
+   * null when the catalog has no remote quant for the repo (every variant already on disk / no table)
+   * — the caller skips the download assertion in that case.
+   */
+  async selectFirstRemoteQuant() {
+    const table = this.page.locator(this.selectors.quantTable);
+    if (!(await table.isVisible().catch(() => false))) return null;
+    const rows = this.page.locator('[data-testid^="quant-row-"]');
+    const count = await rows.count();
+    for (let i = 0; i < count; i++) {
+      const row = rows.nth(i);
+      const testId = await row.getAttribute('data-testid');
+      const quantName = testId.replace('quant-row-', '');
+      const status = await this.getQuantStatus(quantName);
+      if (status && /not downloaded/i.test(status)) {
+        await row.click();
+        await expect(row).toHaveAttribute('data-test-state', 'selected');
+        return quantName;
       }
     }
+    return null;
   }
 
   async fillContextParams(contextParams) {
@@ -106,39 +162,6 @@ export class LocalModelFormPage extends BasePage {
     }
   }
 
-  async selectFromCombobox(testId, value) {
-    // Click the combobox trigger to open it
-    const trigger = this.page.locator(this.selectors.comboboxTrigger(testId));
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-
-    // Wait for options to appear and select the specific option
-    const option = this.page.locator(this.selectors.comboboxOption(value));
-    await expect(option).toBeVisible();
-    await option.click();
-  }
-
-  async waitForSnapshotToLoad() {
-    // Wait for snapshot combobox to become enabled
-    const snapshotSelect = this.page.locator(this.selectors.snapshotSelect);
-    await expect(snapshotSelect).toBeVisible();
-
-    // Wait for it to not be disabled (snapshot options should load after repo/filename selection)
-    await this.page.waitForFunction(() => {
-      const snapshotElement = document.querySelector('[data-testid="snapshot-select"]');
-      return snapshotElement && !snapshotElement.disabled;
-    });
-
-    // Small delay to ensure snapshot options are fully loaded
-    await this.page.waitForTimeout(500);
-  }
-
-  async getSelectedSnapshot() {
-    const snapshotSelect = this.page.locator(this.selectors.snapshotSelect);
-    const snapshotValue = await snapshotSelect.textContent();
-    return snapshotValue && !snapshotValue.includes('Select') ? snapshotValue.trim() : '';
-  }
-
   async createAlias() {
     const submitBtn = this.page.locator(this.selectors.submitButton);
     await expect(submitBtn).toBeVisible();
@@ -170,21 +193,10 @@ export class LocalModelFormPage extends BasePage {
 
   async getFormData() {
     const alias = await this.page.locator(this.selectors.aliasInput).inputValue();
-    const contextParams = await this.page
-      .locator(this.selectors.contextParamsTextarea)
-      .inputValue();
+    const contextParams = await this.page.locator(this.selectors.contextParamsTextarea).inputValue();
+    const repo = await this.page.locator(this.selectors.repoInput).inputValue();
+    const snapshot = await this.page.locator(this.selectors.snapshotInput).inputValue();
 
-    // Get selected values from comboboxes - the selectors themselves are the buttons
-    const repoValue = await this.page.locator(this.selectors.repoSelect).textContent();
-    const filenameValue = await this.page.locator(this.selectors.filenameSelect).textContent();
-    const snapshotValue = await this.getSelectedSnapshot();
-
-    return {
-      alias,
-      repo: repoValue && repoValue !== 'Select repo' ? repoValue.trim() : '',
-      filename: filenameValue && filenameValue !== 'Select filename' ? filenameValue.trim() : '',
-      snapshot: snapshotValue,
-      contextParams,
-    };
+    return { alias, repo, snapshot, contextParams };
   }
 }

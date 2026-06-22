@@ -57,6 +57,9 @@ pub async fn models_update(
   ValidatedJson(form): ValidatedJson<services::UserAliasRequest>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), BodhiErrorResponse> {
   let updated_alias = auth_scope.data().update_alias_from_form(&id, form).await?;
+  // The quant (filename) may have changed to a not-yet-downloaded file — enqueue it if absent.
+  let repo = services::Repo::try_from(updated_alias.repo.to_string())?;
+  crate::models::enqueue_download_if_absent(&auth_scope, &repo, &updated_alias.filename).await?;
   Ok((StatusCode::OK, Json(UserAliasResponse::from(updated_alias))))
 }
 
