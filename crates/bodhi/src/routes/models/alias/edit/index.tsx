@@ -1,22 +1,33 @@
+import { useMemo } from 'react';
+
 import { AliasResponse } from '@bodhiapp/ts-client';
 import { createFileRoute } from '@tanstack/react-router';
 import { useSearch } from '@tanstack/react-router';
 import { z } from 'zod';
 
-import AliasForm from '../-components/AliasForm';
 import AppInitializer from '@/components/AppInitializer';
+import { useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Loading } from '@/components/ui/Loading';
 import { useGetModel } from '@/hooks/models';
+
+import AliasForm from '../-components/AliasForm';
 
 export const Route = createFileRoute('/models/alias/edit/')({
   validateSearch: z.object({ id: z.string().optional() }),
   component: EditAliasPage,
 });
 
+const EDIT_LOCAL_MODEL_BREADCRUMB = [
+  { label: 'Bodhi' },
+  { label: 'Models', href: '/models/' },
+  { label: 'Edit Local Model', current: true },
+];
+
 function EditAliasContent() {
   const search = useSearch({ from: '/models/alias/edit/' });
   const id = search.id;
+  useShellChrome({ breadcrumb: useMemo(() => EDIT_LOCAL_MODEL_BREADCRUMB, []) });
 
   const { data: modelData, isLoading, error } = useGetModel(id ?? '');
 
@@ -33,7 +44,7 @@ function EditAliasContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="edit-local-model-page">
       <AliasForm isEditMode={true} initialData={modelData as AliasResponse} />
     </div>
   );

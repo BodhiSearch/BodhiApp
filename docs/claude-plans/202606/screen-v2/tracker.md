@@ -22,8 +22,8 @@ review = **14 screens** (see @screen-coverage.md). Verified against the code, no
 | 3-2 | **New API Model** form (`api/new`+`edit`) — V2-only, **no flag** | ✅ done |
 | 3-3 | **New Model Router** form (`router/new`+`edit`) — V2-only, **no flag** | ✅ done |
 | 3-6 | **Local Models** discovery — Explore·Local Models view wired to the live reference API (search, faceted sidebar, detail rail + quants, Pull, MultiTenant-hidden). Reference API shipped on Cloudflare; quants carry real `filename`, no split files. Plan: `../distributed-sprouting-clover.md` | ✅ done (P1–5; no flag) |
-| 3-4 | **New Local Model** form (`alias/new`+`edit`) — richest; consumes the 3-6 `quants[]` contract | ⬜ not started |
-| 3-5 | files / pull consolidation (fold download + quant table into the local-model form) | ⬜ not started |
+| 3-4 | **New Local Model** form (`alias/new`+`edit`) — richest; consumes the 3-6 `quants[]` contract. Evolved in-place over 5 phases (create-then-download backend + `BODHI_TEST_MODE`; quant selector w/ local status; context-flag catalog; request-params editor + `system_prompt`; V2 chrome). V2-only, `new-local-model` flag retired. Plan: `../we-deferred-the-new-spicy-peach.md` | ✅ done (no flag) |
+| 3-5 | files / pull consolidation (fold download + quant table into the local-model form) — **largely absorbed by 3-4** (create-then-download + quant table landed there); remaining `/models/files*` retirement decision | ⬜ not started |
 | 3-7 | **API Models** discovery sub-view (reference API) | ⬜ not started |
 | 4 | MCP (3 screens) | ⬜ not started |
 | 5 | Chat (1 screen, highest risk, last) | ⬜ not started |
@@ -59,7 +59,6 @@ tracked as a dedicated iteration in @techdebt.md.
 |---|---|---|---|---|
 | `chat` | Chat V2 (Batch 5) | off | not built | Batch 5 (Chat) lands |
 | `models` | My Models V2 list (3-1) | off | shipped 🟩 | Models section flips (with V1-list↔form E2E migration) |
-| `new-local-model` | New/Edit Local model V2 (3-4) | off | not built | 3-4 decides at plan time |
 | `mcp-discover` | All MCPs / Discover V2 (Batch 4) | off | not built | Batch 4 (MCP) lands |
 | `new-mcp` | New MCP instance V2 (Batch 4) | off | not built | Batch 4 (MCP) lands |
 | `mcp-playground` | MCP Playground V2 (Batch 4) | off | not built | Batch 4 (MCP) lands |
@@ -75,7 +74,8 @@ tracked as a dedicated iteration in @techdebt.md.
 > Router".)
 >
 > **Retired (deleted) flags** (V2-only, old code removed): `app-settings`, `manage-users`, the Batch-1
-> token/user flags. Not listed above — they no longer exist in `uiV2Flags.ts`.
+> token/user flags, and **`new-local-model`** (Batch 3-4 shipped V2-only in-place; the form never
+> actually gated on it). Not listed above — they no longer exist in `uiV2Flags.ts`.
 
 ## Screen-by-screen
 
@@ -85,7 +85,7 @@ tracked as a dedicated iteration in @techdebt.md.
 | 2 | Models | **My Models** (was "All Models") | `/models/` | shell | `models` (default-off) | 🟩 | **Batch 3-1** (+ design refinement). V2 shell list + published **faceted `sidebar`** (TYPE / CAPABILITY vision·tool-use·reasoning / SIZE dual-slider / API-FORMAT incl. **Liberty**) + **always-visible search** + selectable rows (`LinkRow`) + **read-only detail rail, 4 variants** (Local File / Model Alias / API Model w/ models list / Fallback w/ routing chain), Edit CTA → V1 form routes. **First full-stack batch:** added `size`+capability+**`search`** + **server-side facet filters** (`type`/`api_format`/`size_*`/`capability`/`search`) to `GET /bodhi/v1/models` + regen; `useListModels` gained `keepPreviousData`. **Refinement (2026-06-19):** nav "All Models"→**"My Models"** (id `my-models`); **TYPE removed from the top bar** (sidebar-only); **search moved server-side**, submit-on-Enter; **colorful** per design (per-type icon tiles saffron/lotus/indigo/teal, API provider badge, active-row left-accent). **Flag NOT retired — V1 list kept** (see batches note). |
 | 3 | Models | New API Model | `/models/api/new/` (+ edit) | shell | — (none) | ✅ | Batch **3-2**. V2-only, **no flag**: added always-on V2 chrome (breadcrumb `Bodhi›Models›New/Edit API Model` via `useShellChrome` + a centered `max-w-3xl` container) to both routes; **reused the production `ApiModelForm` unchanged** (shadcn `Card` + all real fields: Name·6 real formats·Base URL·API-Key·Extras·**Liberty envelope swap**·Prefix·Forward-mode·Model-selection·Test-Connection). `api_format` read-only on edit (server `ApiFormatImmutableOnEdit`). No backend change. `new-api-model` removed from `uiV2Flags.ts`. Setup wizard (`mode="setup"`) untouched. |
 | 4 | Models | **New Model Router** (was "New Fallback Alias") | `/models/router/new/` (+ edit) | shell | — (none) | ✅ | Batch **3-3**. V2-only, **no flag** — a **form-body rebuild** (heavier than 3-2). Decomposed the prod `ModelRouterForm` into `-components/` (StepCard · cmdk **AliasCombobox** w/ type+provider badges · RouteToModelField · StepConnector · shared **`RoutingChainPreview`** also consumed by the My-Models detail rail) + a published **"Routing & help" rail** (live ROUTING CHAIN + How-it-works + Tips, `railDefaultOpen`). Sections IDENTITY (Name + disabled Strategy=Fallback) · RESILIENCE (cooldown/max-attempts/honor-retry-after) · TARGETS (arrow ▲/▼ reorder, no DnD). **Kept production submit-gating only** (`submitting‖resilienceInvalid`); the prototype's name-regex/≥2-steps/per-step gates are display-only. **Reused the real `useCreate/UpdateModelRouter` mutations**; no backend change. Renamed screen "Fallback Alias"→"Model Router" (nav label too; nav id `new-fallback-model` kept). `new-fallback-model` removed from `uiV2Flags.ts`. |
-| 5 | Models | New Local Model | `/models/alias/new/` (+ edit) | shell | `new-local-model` | ⬜ | Batch **3-4** (richest; after the simpler forms). |
+| 5 | Models | New Local Model | `/models/alias/new/` (+ edit) | shell | — (retired) | ✅ | Batch **3-4**, evolved **in-place** (kept the existing component + E2E coverage) over 5 committed phases: (1) backend `create_alias_from_form`/`update_alias_from_form` accept a not-yet-downloaded file + enqueue the download via the shared pull path; dev/E2E `BODHI_TEST_MODE` records downloads completed without fetching; (2) **QuantSelector** — free-text repo + reference-catalog quant table with per-quant local status (Downloaded/Downloading/Not-downloaded), manual-filename fallback on catalog miss; (3) context-params textarea + click-to-add llama-flag catalog (presets dropped → techdebt); (4) request-params `key=value` textarea + catalog + **System Prompt** (new `OAIRequestParams.system_prompt`, injected as a leading system message in `apply_to_value`); (5) V2 chrome (breadcrumb via `useShellChrome` + centered `max-w-3xl` container). **V2-only, `new-local-model` removed from `uiV2Flags.ts`** (nav sub-page id kept). |
 | 6 | MCP | All MCPs / Discover | `/mcps/` | shell | `mcp-discover` | ⬜ | Batch 4. Needs the reference-API catalog. |
 | 7 | MCP | New Instance | `/mcps/new/` (+ edit) | shell | `new-mcp` | ⬜ | Batch 4. |
 | 8 | MCP | Playground | `/mcps/playground/` | shell | `mcp-playground` | ⬜ | Batch 4. |

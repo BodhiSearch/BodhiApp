@@ -153,7 +153,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit} className="space-y-8 mx-4 my-6" data-testid={formTestId}>
+      <form onSubmit={handleSubmit} className="space-y-8" data-testid={formTestId}>
         <Card>
           <CardHeader>
             <CardTitle>{isEditMode ? 'Edit' : 'New'} Model Alias</CardTitle>

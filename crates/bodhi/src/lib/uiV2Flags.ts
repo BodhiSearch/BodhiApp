@@ -17,7 +17,7 @@
  * route, the forms' V2 chrome/rail is additive over the same routes, so none have a flag.)
  */
 
-export type UiV2Screen = 'chat' | 'new-local-model' | 'mcp-discover' | 'new-mcp' | 'mcp-playground';
+export type UiV2Screen = 'chat' | 'mcp-discover' | 'new-mcp' | 'mcp-playground';
 
 export const UI_V2_FLAG_PREFIX = 'bodhi.ui-v2.';
 
