@@ -116,6 +116,11 @@ export class LocalModelFormPage extends BasePage {
     }
   }
 
+  /** Append a llama-server flag via the click-to-add catalog (e.g. '--flash-attn'). */
+  async addContextFlag(flagKey) {
+    await this.page.locator(`[data-testid="context-flag-add-${flagKey}"]`).click();
+  }
+
   async expandRequestParams() {
     const toggle = this.page.locator(this.selectors.requestParamsToggle);
     // Check if request params section is collapsed

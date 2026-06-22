@@ -228,6 +228,12 @@ describe('CreateAliasPage', () => {
     await user.type(contextParamsTextarea, '--ctx-size 2048\n--parallel 4\n--threads 8');
     expect(contextParamsTextarea).toHaveValue('--ctx-size 2048\n--parallel 4\n--threads 8');
 
+    // Click-to-add a flag from the catalog appends it to the textarea.
+    await user.click(screen.getByTestId('context-flag-add---flash-attn'));
+    await waitFor(() => expect((contextParamsTextarea as HTMLTextAreaElement).value).toContain('--flash-attn'));
+    // Re-adding the same flag is blocked (the catalog entry is now disabled).
+    expect(screen.getByTestId('context-flag-add---flash-attn')).toBeDisabled();
+
     // The mockCreateModel response fixes the alias name, so the success toast reads 'test-alias'.
     await user.type(screen.getByTestId('alias-input'), 'test-alias');
     await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');

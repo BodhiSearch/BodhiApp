@@ -2,21 +2,19 @@ import React, { useEffect, useState } from 'react';
 
 import { AliasResponse } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
+import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { ALIAS_FORM_TOOLTIPS } from '../../-components/tooltips';
-import { QuantSelector } from './QuantSelector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useCreateModel, useUpdateModel } from '@/hooks/models';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
 import {
   AliasFormData,
@@ -26,6 +24,12 @@ import {
   convertFormToUpdateApi,
   convertApiToForm,
 } from '@/schemas/alias';
+
+import { ALIAS_FORM_TOOLTIPS } from '../../-components/tooltips';
+
+import { ParamCatalog } from './ParamCatalog';
+import { RUNTIME_FLAGS, appendFlagLine, flagKeysInText } from './paramCatalogs';
+import { QuantSelector } from './QuantSelector';
 
 interface AliasFormProps {
   isEditMode: boolean;
@@ -326,16 +330,30 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                     htmlFor="context_params"
                   >
                     <FormControl>
-                      <Textarea
-                        {...field}
-                        id="context_params"
-                        data-testid="context-params"
-                        value={field.value || ''}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        placeholder="Enter llama-server parameters, one per line:&#10;--ctx-size 2048&#10;--parallel 4"
-                        rows={4}
-                        className="font-mono text-sm"
-                      />
+                      <div className="grid gap-3 md:grid-cols-[1fr_18rem]">
+                        <div>
+                          <Textarea
+                            {...field}
+                            id="context_params"
+                            data-testid="context-params"
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            placeholder="Enter llama-server parameters, one per line:&#10;--ctx-size 2048&#10;--parallel 4"
+                            rows={8}
+                            className="font-mono text-sm h-full"
+                          />
+                          <p className="text-sm text-muted-foreground mt-1.5">
+                            One flag per line. Click a flag on the right to append it.
+                          </p>
+                        </div>
+                        <ParamCatalog
+                          label="Available flags — click to add"
+                          catalog={RUNTIME_FLAGS}
+                          addedKeys={flagKeysInText(field.value || '')}
+                          onAdd={(entry) => field.onChange(appendFlagLine(field.value || '', entry))}
+                          testIdPrefix="context-flag"
+                        />
+                      </div>
                     </FormControl>
                   </FormFieldWithTooltip>
                   <FormMessage />
