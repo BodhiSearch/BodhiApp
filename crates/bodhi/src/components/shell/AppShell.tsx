@@ -28,6 +28,10 @@ export interface AppShellProps {
   section?: string;
   subPage?: string | null;
   user?: ShellFooterUser;
+  /** invoked when the user clicks "Log out" in the footer chip */
+  onLogout?: () => void;
+  /** disables the footer logout button while logout is in flight */
+  logoutPending?: boolean;
   /** localStorage namespace for column widths */
   resizeKey?: string;
 
@@ -75,6 +79,8 @@ export function AppShell({
   section = 'chat',
   subPage = null,
   user = {},
+  onLogout,
+  logoutPending,
   resizeKey,
   sidebarWidth = 240,
   railWidth = 340,
@@ -255,7 +261,11 @@ export function AppShell({
               )}
             </div>
           )}
-          <div className="shell-foot">{footer || <ShellFooter user={user} collapsed={effCollapsed} />}</div>
+          <div className="shell-foot">
+            {footer || (
+              <ShellFooter user={user} collapsed={effCollapsed} onLogout={onLogout} logoutPending={logoutPending} />
+            )}
+          </div>
         </aside>
 
         {/* ══ MAIN ══ */}

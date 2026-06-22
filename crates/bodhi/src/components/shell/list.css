@@ -310,6 +310,42 @@
   font-size: 12.5px;
 }
 
+/* Shared "empty-state" idiom used by V2 list screens (models, users, tokens, downloads, …).
+   A centered card with an icon tile, a title, and a sub-text — same vertical rhythm as `.l-empty`
+   but with an emphasized icon. Pages compose `<div class="empty-state">` with `empty-icon` /
+   `empty-title` / `empty-sub` children and don't restyle them per screen. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 56px 24px;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+.empty-state .empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 4px;
+}
+.empty-state .empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.empty-state .empty-sub {
+  font-size: 12.5px;
+  color: hsl(var(--muted-foreground));
+  max-width: 320px;
+}
+
 /* ── SECTION HEADER (labeled zones within a scroll region) ── */
 .l-sectionhead {
   display: flex;

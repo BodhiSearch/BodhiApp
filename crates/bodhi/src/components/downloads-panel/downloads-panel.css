@@ -35,16 +35,6 @@
   overflow-y: auto;
   outline: none;
 }
-.ld-dl-panel.ld-dl-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 48px 16px;
-  text-align: center;
-  color: hsl(var(--muted-foreground));
-}
 .ld-dl-group {
   margin-bottom: 14px;
 }

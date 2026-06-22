@@ -79,13 +79,39 @@
   background: var(--c-leaf-bg);
 }
 .ld-quant-main {
+  /* min-width: 0 lets the inner middle-ellipsis row shrink instead of pushing the side column. */
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .ld-quant-name {
   font-size: 13px;
   font-weight: 600;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* CSS-only middle ellipsis (see <MidEllipsis/>): the head flexes + ellipsizes, the tail (last few
+   chars) stays pinned. Keeps long quant filenames + repo names readable in narrow side columns. */
+.ld-mid-ellipsis {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+.ld-mid-head {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-mid-tail {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .ld-rec-badge {
   display: inline-flex;
@@ -119,6 +145,34 @@
 }
 .ld-quant-pull:hover {
   background: hsl(var(--muted));
+}
+
+/* Footer "Pull <name> · size" button — keeps the verb + size visible while the quant name
+   middle-ellipses inside the row. The button itself owns the flex container; the label is a
+   nested inline-flex so MidEllipsis can shrink to the available space. */
+.dp-foot .dp-btn {
+  /* Allow the inner label to shrink instead of overflowing the button. */
+  overflow: hidden;
+  padding: 0 12px;
+}
+.ld-pull-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.ld-pull-verb,
+.ld-pull-size {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.ld-pull-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
 
 /* Result bar — "Showing N · sorted by …". No total count (API gives none). */

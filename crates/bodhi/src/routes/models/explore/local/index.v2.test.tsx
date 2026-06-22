@@ -351,7 +351,14 @@ describe('LocalDiscoveryScreen (Phase 4 — Pull wiring)', () => {
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-row-Qwen-Qwen3-Coder-32B-GGUF'));
     });
-    // Footer "Pull recommended" pulls the recommended quant by its real filename.
+    // The footer "Pull recommended" CTA lives on the Download options tab (it picks the
+    // marked quant from that list). The detail rail opens on Overview by default — switch tabs
+    // before clicking. The Overview tab intentionally omits the footer button.
+    await waitFor(() => expect(screen.getByTestId('ld-tab-quants')).toBeInTheDocument());
+    expect(screen.queryByTestId('ld-pull-recommended')).not.toBeInTheDocument();
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-tab-quants'));
+    });
     await waitFor(() => expect(screen.getByTestId('ld-pull-recommended')).toBeInTheDocument());
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-pull-recommended'));

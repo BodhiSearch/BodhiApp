@@ -91,7 +91,7 @@ export function LocalDiscoverySidebar({ facets, sort, onFacetsChange, onBrowse, 
       )}
 
       <FacetGroup icon="compass" title="Browse">
-        <div className="m-facet-pills">
+        <div className="m-facet-pills nowrap">
           {BROWSE.map((b) => (
             <button
               key={b.id}
@@ -150,6 +150,14 @@ export function LocalDiscoverySidebar({ facets, sort, onFacetsChange, onBrowse, 
         </div>
       </FacetGroup>
 
+      <PublisherGroup
+        authors={facets.author ?? []}
+        onAdd={(name) => onFacetsChange({ ...facets, author: toggle(facets.author, name) })}
+        onRemove={(name) =>
+          onFacetsChange({ ...facets, author: (facets.author ?? []).filter((a) => a !== name) || undefined })
+        }
+      />
+
       <ChipFacetGroup
         icon="hash"
         title="Tag"
@@ -179,14 +187,6 @@ export function LocalDiscoverySidebar({ facets, sort, onFacetsChange, onBrowse, 
         testIdPrefix="ld-license"
         onToggle={(id) => onFacetsChange({ ...facets, license: toggle(facets.license, id) })}
         onClear={() => onFacetsChange({ ...facets, license: undefined })}
-      />
-
-      <PublisherGroup
-        authors={facets.author ?? []}
-        onAdd={(name) => onFacetsChange({ ...facets, author: toggle(facets.author, name) })}
-        onRemove={(name) =>
-          onFacetsChange({ ...facets, author: (facets.author ?? []).filter((a) => a !== name) || undefined })
-        }
       />
     </div>
   );

@@ -153,8 +153,9 @@ export function ShellBrand({ collapsed }: ShellBrandProps) {
 }
 
 /* ── User footer chip ──────────────────────
-   TODO(batch0): wire real user + logout — the parent passes a static `user`
-   prop (initials/name/role) for now; real `useGetUser`/logout wiring lands later. */
+   The parent (RootShell in `__root.tsx`) wires the real `user` via `useGetUser` and the
+   `onLogout` handler via `useLogoutHandler`. The fallback placeholder values are kept only as
+   a safety net so the chip still renders if a screen mounts ShellFooter without props. */
 export interface ShellFooterUser {
   initials?: string;
   name?: string;
@@ -165,14 +166,16 @@ export interface ShellFooterUser {
 export interface ShellFooterProps {
   user: ShellFooterUser;
   collapsed?: boolean;
+  onLogout?: () => void;
+  logoutPending?: boolean;
 }
 
-export function ShellFooter({ user, collapsed }: ShellFooterProps) {
+export function ShellFooter({ user, collapsed, onLogout, logoutPending }: ShellFooterProps) {
   const u = {
-    initials: user.initials || 'YO',
-    name: user.name || 'Yogesh',
-    email: user.email || 'yogesh@email.com',
-    role: user.role || 'Admin',
+    initials: user.initials || '?',
+    name: user.name || 'Guest',
+    email: user.email || '',
+    role: user.role || '',
   };
 
   const [open, setOpen] = useState(false);
@@ -186,8 +189,8 @@ export function ShellFooter({ user, collapsed }: ShellFooterProps) {
   }, [open]);
 
   function logout() {
-    // TODO(batch0): wire real logout
     setOpen(false);
+    onLogout?.();
   }
 
   const toggle = (e: React.MouseEvent) => {
@@ -231,9 +234,14 @@ export function ShellFooter({ user, collapsed }: ShellFooterProps) {
           </span>
         </div>
         <div className="shell-um-items">
-          <button className="shell-um-item shell-um-logout" onClick={logout}>
+          <button
+            className="shell-um-item shell-um-logout"
+            onClick={logout}
+            disabled={logoutPending}
+            data-testid="shell-footer-logout"
+          >
             <ShellIcon name="log-out" size={14} />
-            <span className="shell-um-label">Log out</span>
+            <span className="shell-um-label">{logoutPending ? 'Logging out…' : 'Log out'}</span>
           </button>
         </div>
       </UserMenuPop>
@@ -366,6 +374,18 @@ export interface ShellBreadcrumbProps {
   items?: ShellBreadcrumbItem[] | ReactNode;
 }
 
+/** Resolve a breadcrumb href so it works under the SPA's `/ui` basepath. Callers pass clean
+ *  route paths (e.g. `/models/`); we prepend BASE_PATH for absolute paths and leave hashes,
+ *  protocol-relative URLs, and externals untouched. */
+function resolveBreadcrumbHref(href?: string): string {
+  if (!href) return '#';
+  if (href.startsWith('#')) return href;
+  if (href.startsWith(BASE_PATH + '/') || href === BASE_PATH) return href;
+  if (/^([a-z]+:)?\/\//i.test(href)) return href;
+  if (href.startsWith('/')) return BASE_PATH + href;
+  return href;
+}
+
 export function ShellBreadcrumb({ items }: ShellBreadcrumbProps) {
   if (!items) return null;
   if (!Array.isArray(items)) return <div className="shell-bc">{items}</div>;
@@ -377,7 +397,7 @@ export function ShellBreadcrumb({ items }: ShellBreadcrumbProps) {
           {it.current ? (
             <span className="shell-bc-current">{it.label}</span>
           ) : (
-            <a className="shell-bc-seg" href={it.href || '#'}>
+            <a className="shell-bc-seg" href={resolveBreadcrumbHref(it.href)}>
               {it.label}
             </a>
           )}

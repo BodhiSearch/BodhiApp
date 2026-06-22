@@ -20,6 +20,38 @@ function fmtSize(bytes?: number | null): string {
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / 1_000_000).toFixed(0)} MB`;
 }
 
+/** CSS-only middle ellipsis: the head shrinks + ellipsizes, the tail (last `tailLen` chars) always
+ *  stays pinned so the suffix — which often carries the variant (e.g. `imatrix-fixed`) — is visible
+ *  no matter how narrow the column is. */
+function MidEllipsis({
+  text,
+  tailLen = 10,
+  className,
+  title,
+}: {
+  text: string;
+  tailLen?: number;
+  className?: string;
+  title?: string;
+}) {
+  const len = text.length;
+  if (len <= tailLen + 4) {
+    return (
+      <span className={className} title={title ?? text}>
+        {text}
+      </span>
+    );
+  }
+  const head = text.slice(0, len - tailLen);
+  const tail = text.slice(len - tailLen);
+  return (
+    <span className={`ld-mid-ellipsis${className ? ' ' + className : ''}`} title={title ?? text}>
+      <span className="ld-mid-head">{head}</span>
+      <span className="ld-mid-tail">{tail}</span>
+    </span>
+  );
+}
+
 function fmtCount(n?: number | null): string {
   if (n == null) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
@@ -119,16 +151,27 @@ export function LocalDiscoveryRail({ model, detail, loading, onPull, pullPending
         )}
       </div>
 
-      {recommended && (
+      {/* The "Pull recommended" CTA belongs to the Download options tab — it picks the marked
+          quant from that list. Hide it on Overview, which is informational. */}
+      {tab === 'quants' && recommended && (
         <div className="dp-foot">
           <button
             className="dp-btn dp-btn-accent"
             disabled={pullPending}
             onClick={() => onPull(recommended)}
             data-testid="ld-pull-recommended"
+            title={
+              recommended.size != null
+                ? `Pull ${recommended.name} · ${fmtSize(recommended.size)}`
+                : `Pull ${recommended.name}`
+            }
           >
-            <ShellIcon name="download" size={14} /> Pull {recommended.name}
-            {recommended.size != null ? ` · ${fmtSize(recommended.size)}` : ''}
+            <ShellIcon name="download" size={14} />
+            <span className="ld-pull-label">
+              <span className="ld-pull-verb">Pull</span>
+              <MidEllipsis className="ld-pull-name" text={recommended.name} tailLen={8} title={recommended.name} />
+              {recommended.size != null && <span className="ld-pull-size">· {fmtSize(recommended.size)}</span>}
+            </span>
           </button>
         </div>
       )}
@@ -201,7 +244,7 @@ function QuantsTab({
       {quants.map((q) => (
         <div className={`ld-quant-row${q.recommended ? ' rec' : ''}`} key={q.name} data-testid={`ld-quant-${q.name}`}>
           <div className="ld-quant-main">
-            <span className="ld-quant-name mono">{q.name}</span>
+            <MidEllipsis className="ld-quant-name mono" text={q.name} tailLen={10} />
             {q.recommended && (
               <span className="ld-rec-badge" data-testid={`ld-quant-rec-${q.name}`}>
                 <ShellIcon name="thumbs-up" size={10} /> Recommended

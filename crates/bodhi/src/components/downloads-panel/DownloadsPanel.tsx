@@ -175,12 +175,14 @@ export function DownloadsPanel({ items, loading, onArchive, onRetry, busy, onJum
 
   if (items.length === 0) {
     return (
-      <div className="ld-dl-panel ld-dl-empty" data-testid="ld-downloads-panel" data-pagestatus="ready">
-        <div className="empty-icon">
-          <ShellIcon name="download" size={26} />
+      <div className="ld-dl-panel" data-testid="ld-downloads-panel" data-pagestatus="ready">
+        <div className="empty-state" data-testid="ld-downloads-empty">
+          <div className="empty-icon">
+            <ShellIcon name="download" size={22} />
+          </div>
+          <div className="empty-title">No downloads yet</div>
+          <div className="empty-sub">Pull a model from the catalog to see it here.</div>
         </div>
-        <div className="empty-title">No downloads yet</div>
-        <div className="empty-sub">Pull a model from the catalog to see it here.</div>
       </div>
     );
   }
