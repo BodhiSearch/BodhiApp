@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import type { ListModelsQuery, Model, Quant, SortKey, SortOrder } from '@bodhiapp/reference-api-types';
+import type { ListModelsQuery, Model, Quant, SortKey } from '@bodhiapp/reference-api-types';
 
 import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -50,11 +50,12 @@ interface SortHeaderProps {
   label: string;
   col: SortKey;
   sort: SortKey;
-  order: SortOrder;
   onSort: (col: SortKey) => void;
 }
 
-function SortHeader({ label, col, sort, order, onSort }: SortHeaderProps) {
+// Descending-only: the catalog API (and HuggingFace upstream) reject ascending order,
+// so headers pick the sort key but never flip direction.
+function SortHeader({ label, col, sort, onSort }: SortHeaderProps) {
   const active = sort === col;
   return (
     <button
@@ -62,10 +63,10 @@ function SortHeader({ label, col, sort, order, onSort }: SortHeaderProps) {
       className={`ld-sort-h${active ? ' on' : ''}`}
       onClick={() => onSort(col)}
       data-testid={`ld-sort-${col}`}
-      data-test-state={active ? `active-${order}` : 'idle'}
+      data-test-state={active ? 'active' : 'idle'}
     >
       {label}
-      <ShellIcon name={active ? (order === 'asc' ? 'arrow-up' : 'arrow-down') : 'chevrons-up-down'} size={10} />
+      <ShellIcon name={active ? 'arrow-down' : 'chevrons-up-down'} size={10} />
     </button>
   );
 }
@@ -142,7 +143,6 @@ export function LocalDiscoveryScreen() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('downloads');
-  const [order, setOrder] = useState<SortOrder>('desc');
   const [facets, setFacets] = useState<DiscoveryFacets>({});
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [extraPages, setExtraPages] = useState<Model[]>([]);
@@ -158,13 +158,12 @@ export function LocalDiscoveryScreen() {
   const params: ListModelsQuery = useMemo(
     () => ({
       sort,
-      order,
       limit: searching ? SEARCH_PAGE_SIZE : PAGE_SIZE,
       ...facetsToQuery(facets),
       ...(searching ? { q: search.trim() } : {}),
       ...(cursor ? { cursor } : {}),
     }),
-    [sort, order, searching, search, cursor, facets]
+    [sort, searching, search, cursor, facets]
   );
 
   const { data, isLoading, error } = useDiscoverModels(params);
@@ -195,14 +194,10 @@ export function LocalDiscoveryScreen() {
 
   const onSort = useCallback(
     (col: SortKey) => {
-      if (col === sort) setOrder((o) => (o === 'desc' ? 'asc' : 'desc'));
-      else {
-        setSort(col);
-        setOrder('desc');
-      }
+      setSort(col);
       resetPaging();
     },
-    [sort, resetPaging]
+    [resetPaging]
   );
 
   const onFacetsChange = useCallback(
@@ -213,11 +208,10 @@ export function LocalDiscoveryScreen() {
     [resetPaging]
   );
 
-  // Browse presets set the sort (Trending / New) at descending order.
+  // Browse presets set the sort key (Trending / New); order is always descending.
   const onBrowse = useCallback(
     (next: SortKey) => {
       setSort(next);
-      setOrder('desc');
       resetPaging();
     },
     [resetPaging]
@@ -337,7 +331,7 @@ export function LocalDiscoveryScreen() {
       <div className="ld-resultbar" data-testid="ld-resultbar">
         <span className="ld-count">Showing {rows.length}</span>
         <span className="ld-sortlabel">
-          sorted by <strong>{SORT_LABELS[sort]}</strong> · {order === 'asc' ? 'ascending' : 'descending'}
+          sorted by <strong>{SORT_LABELS[sort]}</strong>
         </span>
       </div>
 
@@ -345,8 +339,8 @@ export function LocalDiscoveryScreen() {
         <div className="ld-lh-num">#</div>
         <div className="ld-lh-repo">REPOSITORY</div>
         <div className="ld-lh-stats">
-          <SortHeader label="Downloads" col="downloads" sort={sort} order={order} onSort={onSort} />
-          <SortHeader label="Likes" col="likes" sort={sort} order={order} onSort={onSort} />
+          <SortHeader label="Downloads" col="downloads" sort={sort} onSort={onSort} />
+          <SortHeader label="Likes" col="likes" sort={sort} onSort={onSort} />
         </div>
       </div>
 

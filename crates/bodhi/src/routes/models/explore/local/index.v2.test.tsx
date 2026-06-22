@@ -75,8 +75,8 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
     const list = screen.getByTestId('ld-list');
     expect(within(list).getAllByRole('option').length).toBe(3);
     expect(screen.getByTestId('ld-resultbar')).toHaveTextContent('Showing 3');
-    // Default sort is Downloads desc.
-    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent(/sorted by\s*Downloads\s*·\s*descending/);
+    // Default sort is Downloads (descending-only).
+    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent(/sorted by\s*Downloads/);
     expect(screen.getByTestId('ld-row-Qwen-Qwen3-Coder-32B-GGUF')).toBeInTheDocument();
   });
 
@@ -129,7 +129,7 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
     });
   });
 
-  it('toggling a sort header sends sort + order', async () => {
+  it('a sort header picks the sort key (descending-only, never sends order=asc)', async () => {
     const seen: URL[] = [];
     server.use(...mockDiscoverModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
@@ -140,18 +140,20 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
     await waitFor(() => {
       const last = seen[seen.length - 1];
       expect(last.searchParams.get('sort')).toBe('likes');
-      expect(last.searchParams.get('order')).toBe('desc');
+      // Ascending is unsupported upstream (500s); the UI never sends an order param.
+      expect(last.searchParams.get('order')).toBeNull();
     });
 
-    // Clicking the active column flips the order.
+    // Re-clicking the active column does not flip to ascending.
     await act(async () => {
       await userEvent.click(screen.getByTestId('ld-sort-likes'));
     });
     await waitFor(() => {
       const last = seen[seen.length - 1];
       expect(last.searchParams.get('sort')).toBe('likes');
-      expect(last.searchParams.get('order')).toBe('asc');
+      expect(last.searchParams.get('order')).toBeNull();
     });
+    expect(screen.getByTestId('ld-sort-likes')).toHaveAttribute('data-test-state', 'active');
   });
 
   it('Load more appends the cursor page', async () => {

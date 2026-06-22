@@ -7,7 +7,7 @@ use super::{
   BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_MULTITENANT_CLIENT_ID, BODHI_MULTITENANT_CLIENT_SECRET,
   BODHI_ON_RUNPOD, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME,
   BODHI_REFERENCE_API_URL, BODHI_SCHEME, BODHI_SESSION_DB_URL, BODHI_VERSION,
-  DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT, DEFAULT_REFERENCE_API_URL, HF_HOME,
+  DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT, DEFAULT_REFERENCE_API_URL_PROD, HF_HOME,
   LOGIN_CALLBACK_PATH, LOGIN_DASHBOARD_CALLBACK_PATH, PROD_DB, RUNPOD_POD_ID,
 };
 use serde_yaml::Value;
@@ -148,10 +148,12 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
   }
 
   async fn reference_api_url(&self) -> String {
+    // The env-aware default is registered at bootstrap (see build_all_defaults); the prod URL is a
+    // belt-and-suspenders fallback for the unexpected case where no value resolves.
     self
       .get_setting(BODHI_REFERENCE_API_URL)
       .await
-      .unwrap_or_else(|| DEFAULT_REFERENCE_API_URL.to_string())
+      .unwrap_or_else(|| DEFAULT_REFERENCE_API_URL_PROD.to_string())
   }
 
   async fn auth_url(&self) -> String {

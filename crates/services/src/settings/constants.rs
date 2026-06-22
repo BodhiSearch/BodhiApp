@@ -36,7 +36,10 @@ pub const DEFAULT_LOG_LEVEL: &str = "warn";
 pub const DEFAULT_LOG_STDOUT: bool = false;
 pub const DEFAULT_KEEP_ALIVE_SECS: i64 = 300;
 pub const DEFAULT_CANONICAL_REDIRECT: bool = true;
-pub const DEFAULT_REFERENCE_API_URL: &str = "https://api.getbodhi.app/";
+/// Reference API (model catalog) defaults, resolved by environment at bootstrap. An explicit
+/// `BODHI_REFERENCE_API_URL` (env / settings / db) overrides these.
+pub const DEFAULT_REFERENCE_API_URL_PROD: &str = "https://api.getbodhi.app";
+pub const DEFAULT_REFERENCE_API_URL_DEV: &str = "https://dev-api.getbodhi.app";
 
 pub const SETTINGS_YAML: &str = "settings.yaml";
 

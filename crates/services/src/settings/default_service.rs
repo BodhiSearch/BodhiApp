@@ -1,13 +1,14 @@
-use super::{AppCommand, Setting, SettingInfo, SettingMetadata, SettingSource};
+use super::{AppCommand, EnvType, Setting, SettingInfo, SettingMetadata, SettingSource};
 use super::{
   BootstrapParts, Result, SettingService, SettingServiceError, SettingsChangeListener,
-  BODHI_APP_DB_URL, BODHI_CANONICAL_REDIRECT, BODHI_DEPLOYMENT, BODHI_EXEC_NAME, BODHI_EXEC_TARGET,
-  BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS,
-  BODHI_LLAMACPP_ARGS, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT,
-  BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_REFERENCE_API_URL, BODHI_SCHEME,
-  BODHI_SESSION_DB_URL, DEFAULT_CANONICAL_REDIRECT, DEFAULT_HOST, DEFAULT_KEEP_ALIVE_SECS,
-  DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_REFERENCE_API_URL, DEFAULT_SCHEME,
-  HF_HOME, LOGS_DIR, PROD_DB, SESSION_DB, SETTING_VARS,
+  BODHI_APP_DB_URL, BODHI_CANONICAL_REDIRECT, BODHI_DEPLOYMENT, BODHI_ENV_TYPE, BODHI_EXEC_NAME,
+  BODHI_EXEC_TARGET, BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST,
+  BODHI_KEEP_ALIVE_SECS, BODHI_LLAMACPP_ARGS, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT,
+  BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_REFERENCE_API_URL,
+  BODHI_SCHEME, BODHI_SESSION_DB_URL, DEFAULT_CANONICAL_REDIRECT, DEFAULT_HOST,
+  DEFAULT_KEEP_ALIVE_SECS, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT,
+  DEFAULT_REFERENCE_API_URL_DEV, DEFAULT_REFERENCE_API_URL_PROD, DEFAULT_SCHEME, HF_HOME, LOGS_DIR,
+  PROD_DB, SESSION_DB, SETTING_VARS,
 };
 use super::{DbSetting, SettingsRepository};
 use crate::{asref_impl, EnvWrapper};
@@ -89,7 +90,16 @@ impl DefaultSettingService {
       }
     }
 
+    // BODHI_ENV_TYPE is a System setting; fall back to the EnvType default (Development) if absent.
+    let env_type = parts
+      .system_settings
+      .iter()
+      .find(|s| s.key == BODHI_ENV_TYPE)
+      .and_then(|s| s.value.as_str().and_then(|v| v.parse::<EnvType>().ok()))
+      .unwrap_or_default();
+
     let defaults = build_all_defaults(
+      &env_type,
       parts.env_wrapper.as_ref(),
       &parts.file_defaults,
       &parts.bodhi_home,
@@ -171,6 +181,7 @@ fn load_settings_yaml(path: &PathBuf) -> HashMap<String, Value> {
 }
 
 fn build_all_defaults(
+  env_type: &EnvType,
   env_wrapper: &dyn EnvWrapper,
   file_defaults: &HashMap<String, Value>,
   bodhi_home: &Path,
@@ -251,9 +262,16 @@ fn build_all_defaults(
     Value::String(format!("sqlite:{}", bodhi_home.join(PROD_DB).display()))
   );
   ensure_default!(BODHI_DEPLOYMENT, Value::String("standalone".to_string()));
+  // Env-aware reference-API (model catalog) default. An explicit BODHI_REFERENCE_API_URL
+  // (env / settings / db) takes precedence over this Default-source value.
+  let reference_api_url = if env_type.is_production() {
+    DEFAULT_REFERENCE_API_URL_PROD
+  } else {
+    DEFAULT_REFERENCE_API_URL_DEV
+  };
   ensure_default!(
     BODHI_REFERENCE_API_URL,
-    Value::String(DEFAULT_REFERENCE_API_URL.to_string())
+    Value::String(reference_api_url.to_string())
   );
 
   defaults

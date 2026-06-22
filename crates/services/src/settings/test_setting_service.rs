@@ -1039,6 +1039,66 @@ async fn test_runpod_feature_individual_methods(temp_dir: TempDir) -> anyhow::Re
   Ok(())
 }
 
+fn env_type_system_setting(value: &str) -> Setting {
+  Setting {
+    key: crate::BODHI_ENV_TYPE.to_string(),
+    value: Value::String(value.to_string()),
+    source: SettingSource::System,
+    metadata: SettingMetadata::String,
+  }
+}
+
+#[rstest]
+#[case::development_defaults_to_dev_api("development", "https://dev-api.getbodhi.app")]
+#[case::production_defaults_to_prod_api("production", "https://api.getbodhi.app")]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_reference_api_url_default_is_env_aware(
+  temp_dir: TempDir,
+  #[case] env_type: &str,
+  #[case] expected: &str,
+) -> anyhow::Result<()> {
+  let path = temp_dir.path().join("settings.yaml");
+  let env_stub = EnvWrapperStub::new(HashMap::new());
+  let service = make_simple_service(
+    Arc::new(env_stub),
+    path,
+    vec![env_type_system_setting(env_type)],
+    noop_settings_repo(),
+  );
+  assert_eq!(expected, service.reference_api_url().await);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_reference_api_url_explicit_overrides_env_default(
+  temp_dir: TempDir,
+) -> anyhow::Result<()> {
+  // An explicit value (here at the Database source) wins over the env-aware Default.
+  let path = temp_dir.path().join("settings.yaml");
+  let env_stub = EnvWrapperStub::new(HashMap::new());
+  let service = make_simple_service(
+    Arc::new(env_stub),
+    path,
+    vec![env_type_system_setting("development")],
+    noop_settings_repo(),
+  );
+  service
+    .set_setting_with_source(
+      crate::BODHI_REFERENCE_API_URL,
+      &Value::String("https://custom.example.com".to_string()),
+      SettingSource::Database,
+    )
+    .await?;
+  assert_eq!(
+    "https://custom.example.com",
+    service.reference_api_url().await
+  );
+  Ok(())
+}
+
 mod helpers {
   use crate::{SettingService, SettingSource};
   use pretty_assertions::assert_eq;

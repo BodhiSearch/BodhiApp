@@ -4,8 +4,8 @@ use crate::{
   BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_CANONICAL_REDIRECT, BODHI_COMMIT_SHA, BODHI_DEPLOYMENT,
   BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME, BODHI_EXEC_TARGET,
   BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS,
-  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME, BODHI_SESSION_DB_URL,
-  BODHI_VERSION, HF_HOME,
+  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_REFERENCE_API_URL, BODHI_SCHEME,
+  BODHI_SESSION_DB_URL, BODHI_VERSION, DEFAULT_REFERENCE_API_URL_DEV, HF_HOME,
 };
 use crate::{Setting, SettingInfo, SettingMetadata, SettingSource};
 use llama_server_proc::{BUILD_TARGET, BUILD_VARIANTS, DEFAULT_VARIANT, EXEC_NAME};
@@ -176,6 +176,11 @@ impl SettingServiceStub {
         format!("sqlite:{}", bodhi.join("session.sqlite").display()),
       ),
       (BODHI_DEPLOYMENT.to_string(), "standalone".to_string()),
+      // env_type is development here → the dev reference API (mirrors build_all_defaults).
+      (
+        BODHI_REFERENCE_API_URL.to_string(),
+        DEFAULT_REFERENCE_API_URL_DEV.to_string(),
+      ),
     ]);
     settings
   }
