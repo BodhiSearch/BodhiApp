@@ -4,15 +4,26 @@ import { AliasResponse, ApiAliasResponse } from '@bodhiapp/ts-client';
 import { useNavigate } from '@tanstack/react-router';
 
 import { Pagination } from '@/components/DataTable';
-import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
+import { DownloadsPanel, DownloadsPanelHeader, isActive } from '@/components/downloads-panel/DownloadsPanel';
+import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ModelsFilter, ModelTypeFacet, useListModels } from '@/hooks/models';
+import {
+  ModelsFilter,
+  ModelTypeFacet,
+  useArchiveDownload,
+  useDownloadsRefresh,
+  useListDownloads,
+  useListModels,
+  useRetryDownload,
+} from '@/hooks/models';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
 
 import { ModelDetailRail, ModelRailHeader } from './ModelDetailRail';
 import { ModelSidebarFacets } from './ModelSidebarFacets';
+import '@/components/downloads-panel/downloads-panel.css';
 import '@/components/shell/api-keys.css';
 import '@/components/shell/list.css';
 import './models.css';
@@ -162,6 +173,7 @@ function highlight(text: string, query: string) {
 export function ModelsScreenV2() {
   useListKeyNav();
   const navigate = useNavigate();
+  const { openRail } = useShell();
 
   const [filter, setFilter] = useState<ModelsFilter>({});
   // `searchInput` is the live text box; it's committed to `filter.search` (the backend param) on
@@ -169,9 +181,18 @@ export function ModelsScreenV2() {
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Right-rail content: 'model' = selected-alias detail, 'downloads' = Downloads panel.
+  const [railMode, setRailMode] = useState<'model' | 'downloads' | null>(null);
 
   const withViewTransition = useViewTransition();
-  const select = useCallback((id: string | null) => withViewTransition(() => setSelectedId(id)), [withViewTransition]);
+  const select = useCallback(
+    (id: string | null) =>
+      withViewTransition(() => {
+        setSelectedId(id);
+        setRailMode(id ? 'model' : null);
+      }),
+    [withViewTransition]
+  );
 
   const { data, isLoading, error } = useListModels(page, PAGE_SIZE, 'alias', 'asc', filter);
 
@@ -231,20 +252,80 @@ export function ModelsScreenV2() {
     [navigate]
   );
 
+  // ── Downloads panel ──────────────────────────────────────────────
+  const { showSuccess, showError } = useToastMessages();
+  const { data: downloadsData, isLoading: downloadsLoading } = useListDownloads(1, 100, {
+    enablePolling: railMode === 'downloads',
+  });
+  const downloads = useMemo(() => downloadsData?.data ?? [], [downloadsData?.data]);
+  const activeCount = useMemo(() => downloads.filter(isActive).length, [downloads]);
+
+  const refreshDownloads = useDownloadsRefresh();
+  const { mutate: archiveDownload, isPending: archivePending } = useArchiveDownload({
+    onError: (message) => showError('Could not dismiss download', message),
+  });
+  const { mutate: retryDownload, isPending: retryPending } = useRetryDownload({
+    onSuccess: () => showSuccess('Retrying download', 'Resuming from where it stopped.'),
+    onError: (message) => showError('Retry failed', message),
+  });
+  const downloadsBusy = archivePending || retryPending;
+
+  // Toggle: clicking while the Downloads panel is shown closes the rail; otherwise it shows
+  // Downloads (swapping out the model-detail rail if that was open). Nulling the rail content
+  // closes the column; `openRail` un-collapses it if the user had manually collapsed the rail.
+  const toggleDownloads = useCallback(() => {
+    setRailMode((mode) => {
+      if (mode === 'downloads') return null;
+      refreshDownloads();
+      openRail();
+      return 'downloads';
+    });
+  }, [openRail, refreshDownloads]);
+  const closeRail = useCallback(() => setRailMode(null), []);
+  const onArchiveDownload = useCallback((id: string) => archiveDownload({ id }), [archiveDownload]);
+  const onRetryDownload = useCallback((id: string) => retryDownload({ id }), [retryDownload]);
+
+  const jumpToList = useCallback(() => {
+    const target = document.querySelector<HTMLElement>('.l-listrow.active .l-rowlink, .l-listrow .l-rowlink');
+    target?.focus();
+  }, []);
+
   const sidebar = useMemo(
     () => <ModelSidebarFacets filter={filter} onChange={onFilterChange} />,
     [filter, onFilterChange]
   );
 
-  const railHeader = useMemo(
-    () => (selected ? <ModelRailHeader alias={selected} onClose={() => select(null)} /> : null),
-    [selected, select]
-  );
+  const railHeader = useMemo(() => {
+    if (railMode === 'downloads') return <DownloadsPanelHeader onClose={closeRail} />;
+    if (railMode === 'model' && selected) return <ModelRailHeader alias={selected} onClose={() => select(null)} />;
+    return null;
+  }, [railMode, selected, select, closeRail]);
 
-  const rail = useMemo(
-    () => (selected ? <ModelDetailRail alias={selected} onEdit={() => onEdit(selected)} /> : null),
-    [selected, onEdit]
-  );
+  const rail = useMemo(() => {
+    if (railMode === 'downloads')
+      return (
+        <DownloadsPanel
+          items={downloads}
+          loading={downloadsLoading}
+          onArchive={onArchiveDownload}
+          onRetry={onRetryDownload}
+          busy={downloadsBusy}
+          onJumpToList={jumpToList}
+        />
+      );
+    if (railMode === 'model' && selected) return <ModelDetailRail alias={selected} onEdit={() => onEdit(selected)} />;
+    return null;
+  }, [
+    railMode,
+    downloads,
+    downloadsLoading,
+    onArchiveDownload,
+    onRetryDownload,
+    downloadsBusy,
+    jumpToList,
+    selected,
+    onEdit,
+  ]);
 
   useShellChrome({ breadcrumb: MODELS_BREADCRUMB, sidebar, rail, railHeader, railDefaultOpen: false });
 
@@ -275,13 +356,18 @@ export function ModelsScreenV2() {
           </div>
           <button
             type="button"
-            className="l-iconbtn"
-            title="Import / download model"
-            aria-label="Import or download model"
-            data-testid="models-download"
-            onClick={() => navigate({ to: '/models/alias/new/' })}
+            className={`l-iconbtn ld-dl-iconbtn${railMode === 'downloads' ? ' on' : ''}`}
+            onClick={toggleDownloads}
+            data-testid="models-downloads-button"
+            title="Open Downloads"
+            aria-label="Open Downloads"
           >
-            <ShellIcon name="arrow-down-to-line" size={15} />
+            <ShellIcon name="download" size={15} />
+            {activeCount > 0 && (
+              <span className="ld-dl-badge" data-testid="models-downloads-badge">
+                {activeCount}
+              </span>
+            )}
           </button>
         </div>
       </div>

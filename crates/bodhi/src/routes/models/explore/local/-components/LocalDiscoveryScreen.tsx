@@ -2,16 +2,24 @@ import { useCallback, useMemo, useState } from 'react';
 
 import type { ListModelsQuery, Model, Quant, SortKey } from '@bodhiapp/reference-api-types';
 
-import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
+import { DownloadsPanel, DownloadsPanelHeader, isActive } from '@/components/downloads-panel/DownloadsPanel';
+import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { usePullModel } from '@/hooks/models';
+import {
+  useArchiveDownload,
+  useDownloadsRefresh,
+  useListDownloads,
+  usePullModel,
+  useRetryDownload,
+} from '@/hooks/models';
 import { useDiscoverModels, useModelDetail } from '@/hooks/reference';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
 import { LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
 import { LocalDiscoverySidebar, facetsToQuery, type DiscoveryFacets } from './LocalDiscoverySidebar';
+import '@/components/downloads-panel/downloads-panel.css';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import './local-discovery.css';
@@ -139,6 +147,7 @@ function LocalRow({ model, idx, sort, active, onSelect }: LocalRowProps) {
 
 export function LocalDiscoveryScreen() {
   useListKeyNav();
+  const { openRail } = useShell();
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -147,10 +156,16 @@ export function LocalDiscoveryScreen() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [extraPages, setExtraPages] = useState<Model[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // Which content the right rail shows. 'model' = selected-model detail, 'downloads' = Downloads panel.
+  const [railMode, setRailMode] = useState<'model' | 'downloads' | null>(null);
 
   const withViewTransition = useViewTransition();
   const select = useCallback(
-    (key: string | null) => withViewTransition(() => setSelectedKey(key)),
+    (key: string | null) =>
+      withViewTransition(() => {
+        setSelectedKey(key);
+        setRailMode(key ? 'model' : null);
+      }),
     [withViewTransition]
   );
 
@@ -256,7 +271,7 @@ export function LocalDiscoveryScreen() {
 
   const { showSuccess, showError } = useToastMessages();
   const { mutate: pullModel, isPending: pullPending } = usePullModel({
-    onSuccess: () => showSuccess('Download started', 'Track progress under Model Files.'),
+    onSuccess: () => showSuccess('Download started', 'Track progress in the Downloads panel.'),
     onError: (message) => showError('Download failed', message),
   });
 
@@ -267,6 +282,46 @@ export function LocalDiscoveryScreen() {
     },
     [selectedModel, pullModel]
   );
+
+  // ── Downloads panel ──────────────────────────────────────────────
+  const { data: downloadsData, isLoading: downloadsLoading } = useListDownloads(1, 100, {
+    enablePolling: railMode === 'downloads',
+  });
+  const downloads = useMemo(() => downloadsData?.data ?? [], [downloadsData?.data]);
+  const activeCount = useMemo(() => downloads.filter(isActive).length, [downloads]);
+
+  const refreshDownloads = useDownloadsRefresh();
+  const { mutate: archiveDownload, isPending: archivePending } = useArchiveDownload({
+    onError: (message) => showError('Could not dismiss download', message),
+  });
+  const { mutate: retryDownload, isPending: retryPending } = useRetryDownload({
+    onSuccess: () => showSuccess('Retrying download', 'Resuming from where it stopped.'),
+    onError: (message) => showError('Retry failed', message),
+  });
+  const downloadsBusy = archivePending || retryPending;
+
+  // Toggle: clicking while the Downloads panel is shown closes the rail; otherwise it shows
+  // Downloads (swapping out the model-detail rail if that was open). Nulling the rail content
+  // closes the column; `openRail` un-collapses it if the user had manually collapsed the rail.
+  const toggleDownloads = useCallback(() => {
+    setRailMode((mode) => {
+      if (mode === 'downloads') return null;
+      refreshDownloads();
+      openRail();
+      return 'downloads';
+    });
+  }, [openRail, refreshDownloads]);
+
+  const closeRail = useCallback(() => setRailMode(null), []);
+
+  const onArchiveDownload = useCallback((id: string) => archiveDownload({ id }), [archiveDownload]);
+  const onRetryDownload = useCallback((id: string) => retryDownload({ id }), [retryDownload]);
+
+  // Down-arrow from the Downloads rail hands focus to the main list (up-arrow does not return).
+  const jumpToList = useCallback(() => {
+    const target = document.querySelector<HTMLElement>('.l-listrow.active .l-rowlink, .l-listrow .l-rowlink');
+    target?.focus();
+  }, []);
 
   const sidebar = useMemo(
     () => (
@@ -281,14 +336,27 @@ export function LocalDiscoveryScreen() {
     [facets, sort, onFacetsChange, onBrowse, onClearAllFacets]
   );
 
-  const railHeader = useMemo(
-    () => (selectedModel ? <LocalDiscoveryRailHeader model={selectedModel} onClose={() => select(null)} /> : null),
-    [selectedModel, select]
-  );
+  const railHeader = useMemo(() => {
+    if (railMode === 'downloads') return <DownloadsPanelHeader onClose={closeRail} />;
+    if (railMode === 'model' && selectedModel)
+      return <LocalDiscoveryRailHeader model={selectedModel} onClose={() => select(null)} />;
+    return null;
+  }, [railMode, selectedModel, select, closeRail]);
 
-  const rail = useMemo(
-    () =>
-      selectedModel ? (
+  const rail = useMemo(() => {
+    if (railMode === 'downloads')
+      return (
+        <DownloadsPanel
+          items={downloads}
+          loading={downloadsLoading}
+          onArchive={onArchiveDownload}
+          onRetry={onRetryDownload}
+          busy={downloadsBusy}
+          onJumpToList={jumpToList}
+        />
+      );
+    if (railMode === 'model' && selectedModel)
+      return (
         <LocalDiscoveryRail
           model={selectedModel}
           detail={detail}
@@ -296,11 +364,30 @@ export function LocalDiscoveryScreen() {
           onPull={onPull}
           pullPending={pullPending}
         />
-      ) : null,
-    [selectedModel, detail, detailLoading, onPull, pullPending]
-  );
+      );
+    return null;
+  }, [
+    railMode,
+    downloads,
+    downloadsLoading,
+    onArchiveDownload,
+    onRetryDownload,
+    downloadsBusy,
+    jumpToList,
+    selectedModel,
+    detail,
+    detailLoading,
+    onPull,
+    pullPending,
+  ]);
 
-  useShellChrome({ breadcrumb: useMemo(() => BREADCRUMB, []), sidebar, rail, railHeader, railDefaultOpen: false });
+  useShellChrome({
+    breadcrumb: useMemo(() => BREADCRUMB, []),
+    sidebar,
+    rail,
+    railHeader,
+    railDefaultOpen: false,
+  });
 
   if (error) {
     return <ErrorPage message={error instanceof Error ? error.message : 'Failed to load model catalog'} />;
@@ -325,6 +412,21 @@ export function LocalDiscoveryScreen() {
               kbd="⌘K"
             />
           </div>
+          <button
+            type="button"
+            className={`l-iconbtn ld-dl-iconbtn${railMode === 'downloads' ? ' on' : ''}`}
+            onClick={toggleDownloads}
+            data-testid="ld-downloads-button"
+            title="Open Downloads"
+            aria-label="Open Downloads"
+          >
+            <ShellIcon name="download" size={15} />
+            {activeCount > 0 && (
+              <span className="ld-dl-badge" data-testid="ld-downloads-badge">
+                {activeCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 

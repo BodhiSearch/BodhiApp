@@ -135,15 +135,31 @@ pub async fn models_pull_create(
 
   let download_request = auth_scope.downloads().create(&payload).await?;
 
-  let app_service = auth_scope.app_service().clone();
-  let request_id = download_request.id.clone();
-  let tenant_id = download_request.tenant_id.clone();
+  spawn_pull(
+    auth_scope.app_service().clone(),
+    repo,
+    payload.filename,
+    download_request.id.clone(),
+    download_request.tenant_id.clone(),
+  );
 
+  Ok((StatusCode::CREATED, Json(download_request.into())))
+}
+
+/// Spawns the background pull task (download + status update). Shared by create and retry.
+/// On retry, hf-hub resumes from the surviving `.sync.part` partial.
+fn spawn_pull(
+  app_service: Arc<dyn AppService>,
+  repo: Repo,
+  filename: String,
+  request_id: String,
+  tenant_id: String,
+) {
   spawn(async move {
     let result = execute_pull_by_repo_file(
       app_service.as_ref(),
       repo,
-      payload.filename,
+      filename,
       None,
       Some(Progress::Database(DatabaseProgress::new(
         app_service.db_service().clone(),
@@ -154,8 +170,6 @@ pub async fn models_pull_create(
     .await;
     update_download_status(app_service, tenant_id, request_id, result).await;
   });
-
-  Ok((StatusCode::CREATED, Json(download_request.into())))
 }
 
 /// Get the status of a specific download request
@@ -203,6 +217,76 @@ pub async fn models_pull_show(
 ) -> Result<Json<DownloadRequest>, BodhiErrorResponse> {
   let download_request = auth_scope.downloads().get(&id).await?;
   Ok(Json(download_request.into()))
+}
+
+/// Archive a download request (hide it from the list and the API)
+#[utoipa::path(
+    post,
+    path = ENDPOINT_MODELS_FILES_PULL.to_owned() + "/{id}/archive",
+    tag = API_TAG_MODELS_FILES,
+    operation_id = "archiveDownload",
+    summary = "Archive Download Request",
+    description = "Archives a completed, failed, or queued download request so it no longer appears in the downloads list or the list API response. Actively-downloading requests cannot be archived.",
+    params(
+        ("id" = String, Path, description = "Unique identifier of the download request")
+    ),
+    responses(
+        (status = 200, description = "Download request archived", body = DownloadRequest),
+        (status = 400, description = "Download is actively downloading and cannot be archived", body = BodhiErrorResponse),
+        (status = 404, description = "Download request not found", body = BodhiErrorResponse),
+    ),
+    security(
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
+    ),
+)]
+pub async fn models_pull_archive(
+  auth_scope: AuthScope,
+  Path(id): Path<String>,
+) -> Result<Json<DownloadRequest>, BodhiErrorResponse> {
+  let archived = auth_scope.downloads().archive(&id).await?;
+  Ok(Json(archived.into()))
+}
+
+/// Retry a failed download request
+#[utoipa::path(
+    post,
+    path = ENDPOINT_MODELS_FILES_PULL.to_owned() + "/{id}/retry",
+    tag = API_TAG_MODELS_FILES,
+    operation_id = "retryDownload",
+    summary = "Retry Failed Download Request",
+    description = "Resets a failed download request to pending and re-runs it. The download resumes from the partially-downloaded file when present. Only failed requests can be retried.",
+    params(
+        ("id" = String, Path, description = "Unique identifier of the download request")
+    ),
+    responses(
+        (status = 200, description = "Download request reset and re-started", body = DownloadRequest),
+        (status = 400, description = "Download is not in a failed state", body = BodhiErrorResponse),
+        (status = 404, description = "Download request not found", body = BodhiErrorResponse),
+    ),
+    security(
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
+    ),
+)]
+pub async fn models_pull_retry(
+  auth_scope: AuthScope,
+  Path(id): Path<String>,
+) -> Result<Json<DownloadRequest>, BodhiErrorResponse> {
+  let request = auth_scope.downloads().reset_for_retry(&id).await?;
+  let repo = Repo::try_from(request.repo.clone())?;
+
+  spawn_pull(
+    auth_scope.app_service().clone(),
+    repo,
+    request.filename.clone(),
+    request.id.clone(),
+    request.tenant_id.clone(),
+  );
+
+  Ok(Json(request.into()))
 }
 
 async fn update_download_status(

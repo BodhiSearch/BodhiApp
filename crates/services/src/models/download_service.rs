@@ -42,6 +42,8 @@ pub struct DownloadRequest {
   pub downloaded_bytes: i64,
   #[schema(value_type = Option<String>, format = "date-time")]
   pub started_at: Option<DateTime<Utc>>,
+  #[schema(value_type = Option<String>, format = "date-time")]
+  pub archived_at: Option<DateTime<Utc>>,
   #[schema(value_type = String, format = "date-time")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time")]
@@ -71,6 +73,14 @@ pub enum DownloadServiceError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication, code = "download_service_error-auth")]
   Auth(#[from] crate::auth::AuthContextError),
+
+  #[error("cannot archive a download that is actively downloading")]
+  #[error_meta(error_type = ErrorType::BadRequest, code = "download_service_error-cannot_archive_active")]
+  CannotArchiveActive,
+
+  #[error("only failed downloads can be retried")]
+  #[error_meta(error_type = ErrorType::BadRequest, code = "download_service_error-not_retryable")]
+  NotRetryable,
 }
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
@@ -110,6 +120,22 @@ pub trait DownloadService: Send + Sync + std::fmt::Debug {
     status: DownloadStatus,
     error: Option<String>,
   ) -> Result<(), DownloadServiceError>;
+
+  /// Archive a download so it leaves the list. Rejects actively-downloading rows
+  /// (Pending with `started_at` set) with `CannotArchiveActive`.
+  async fn archive(
+    &self,
+    tenant_id: &str,
+    id: &str,
+  ) -> Result<DownloadRequestEntity, DownloadServiceError>;
+
+  /// Reset a failed download to Pending so the route can re-spawn it (hf-hub resumes
+  /// from the surviving `.sync.part`). Rejects non-failed rows with `NotRetryable`.
+  async fn reset_for_retry(
+    &self,
+    tenant_id: &str,
+    id: &str,
+  ) -> Result<DownloadRequestEntity, DownloadServiceError>;
 }
 
 #[derive(Debug, derive_new::new)]
@@ -140,6 +166,7 @@ impl DownloadService for DefaultDownloadService {
       total_bytes: None,
       downloaded_bytes: 0,
       started_at: None,
+      archived_at: None,
     };
 
     self.db_service.create_download_request(&model).await?;
@@ -225,5 +252,44 @@ impl DownloadService for DefaultDownloadService {
 
     self.db_service.update_download_request(&request).await?;
     Ok(())
+  }
+
+  async fn archive(
+    &self,
+    tenant_id: &str,
+    id: &str,
+  ) -> Result<DownloadRequestEntity, DownloadServiceError> {
+    let mut request = self.get(tenant_id, id).await?;
+
+    if request.status == DownloadStatus::Pending && request.started_at.is_some() {
+      return Err(DownloadServiceError::CannotArchiveActive);
+    }
+
+    let now = self.time_service.utc_now();
+    request.archived_at = Some(now);
+    request.updated_at = now;
+
+    self.db_service.update_download_request(&request).await?;
+    Ok(request)
+  }
+
+  async fn reset_for_retry(
+    &self,
+    tenant_id: &str,
+    id: &str,
+  ) -> Result<DownloadRequestEntity, DownloadServiceError> {
+    let mut request = self.get(tenant_id, id).await?;
+
+    if request.status != DownloadStatus::Error {
+      return Err(DownloadServiceError::NotRetryable);
+    }
+
+    request.status = DownloadStatus::Pending;
+    request.error = None;
+    request.started_at = None;
+    request.updated_at = self.time_service.utc_now();
+
+    self.db_service.update_download_request(&request).await?;
+    Ok(request)
   }
 }

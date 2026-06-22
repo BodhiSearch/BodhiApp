@@ -50,6 +50,7 @@ impl DownloadRepository for DefaultDbService {
             total_bytes: Set(request.total_bytes),
             downloaded_bytes: Set(request.downloaded_bytes),
             started_at: Set(request.started_at),
+            archived_at: Set(request.archived_at),
             created_at: Set(request.created_at),
             updated_at: Set(request.updated_at),
           };
@@ -102,6 +103,7 @@ impl DownloadRepository for DefaultDbService {
             total_bytes: Set(request.total_bytes),
             downloaded_bytes: Set(request.downloaded_bytes),
             started_at: Set(request.started_at),
+            archived_at: Set(request.archived_at),
             created_at: NotSet,
             updated_at: Set(request.updated_at),
           };
@@ -130,12 +132,14 @@ impl DownloadRepository for DefaultDbService {
         Box::pin(async move {
           let total = download_request::Entity::find()
             .filter(download_request::Column::TenantId.eq(&tenant_id_owned))
+            .filter(download_request::Column::ArchivedAt.is_null())
             .count(txn)
             .await
             .map_err(DbError::from)? as usize;
 
           let results = download_request::Entity::find()
             .filter(download_request::Column::TenantId.eq(&tenant_id_owned))
+            .filter(download_request::Column::ArchivedAt.is_null())
             .order_by_desc(download_request::Column::UpdatedAt)
             .offset(((page - 1) * page_size) as u64)
             .limit(page_size as u64)

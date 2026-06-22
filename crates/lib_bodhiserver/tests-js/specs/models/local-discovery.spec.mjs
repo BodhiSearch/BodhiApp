@@ -59,13 +59,13 @@ test.describe('Explore · Local Models (discovery)', () => {
       await expect(discoveryPage.page.locator(discoveryPage.selectors.anyRow).first()).toBeVisible();
     });
 
-    await test.step('Sorting by Likes re-queries and marks the active column', async () => {
+    await test.step('Sorting by Likes re-queries and marks the active column (descending-only)', async () => {
       await discoveryPage.sortBy('likes');
-      await discoveryPage.expectSortState('likes', 'active-desc');
+      await discoveryPage.expectSortState('likes', 'active');
       await expect(discoveryPage.page.locator(discoveryPage.selectors.resultbar)).toContainText('Likes');
-      // Toggling the active column flips the order.
+      // Re-clicking the active column does not flip to ascending (HF/catalog reject asc).
       await discoveryPage.sortBy('likes');
-      await discoveryPage.expectSortState('likes', 'active-asc');
+      await discoveryPage.expectSortState('likes', 'active');
     });
 
     await test.step('Faceted sidebar: Browse=Trending + Specialisation=Coding filter the catalog', async () => {
@@ -124,6 +124,21 @@ test.describe('Explore · Local Models (discovery)', () => {
       // Close the rail.
       await discoveryPage.page.locator(discoveryPage.selectors.detailClose).click();
       await expect(discoveryPage.page.locator(discoveryPage.selectors.railPanel)).toHaveCount(0);
+    });
+
+    await test.step('Downloads button opens the Downloads panel in the rail', async () => {
+      // Fresh DB (auto-reset) → no downloads yet; the panel renders its empty state. We assert the
+      // header action → rail wiring (the four-section grouping + archive/retry are covered in RTL +
+      // routes_app; a real multi-GB pull is out of scope for CI).
+      await discoveryPage.openDownloads();
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.downloadsPanel)).toBeVisible();
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.downloadsPanel)).toContainText(
+        'No downloads yet'
+      );
+
+      // Closing the rail removes the panel.
+      await discoveryPage.closeDownloads();
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.downloadsPanel)).toHaveCount(0);
     });
   });
 });

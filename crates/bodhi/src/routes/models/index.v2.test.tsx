@@ -3,6 +3,7 @@ import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { mockModels, mockModelsWithCapture } from '@/test-utils/msw-v2/handlers/models';
+import { mockModelPullDownloads, mockModelPullDownloadsAllSections } from '@/test-utils/msw-v2/handlers/modelfiles';
 import {
   createMockApiAlias,
   createMockModelAlias,
@@ -30,10 +31,11 @@ setupMswV2();
 const ModelsPage = ModelsRoute.options.component as React.ComponentType;
 
 function SlotsConsumer() {
-  const { sidebar, rail, railHeader, breadcrumb } = useShellSlots();
+  const { sidebar, rail, railHeader, breadcrumb, headerActions } = useShellSlots();
   const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
   return (
     <>
+      <div data-testid="harness-header-actions">{headerActions}</div>
       <div data-testid="harness-sidebar">{sidebar}</div>
       <div data-testid="harness-rail-header">{railHeader}</div>
       <div data-testid="harness-rail">{rail}</div>
@@ -72,7 +74,12 @@ const MIXED_ROWS: components['schemas']['AliasResponse'][] = [
 
 beforeEach(() => {
   localStorage.setItem('bodhi.ui-v2.models', 'true'); // opt into the V2 screen
-  server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin' }));
+  server.use(
+    ...mockAppInfoReady(),
+    ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin' }),
+    // Default: empty downloads (stub survives polling). Tests override as needed.
+    ...mockModelPullDownloads({ data: [], total: 0 }, { stub: true })
+  );
   mockNavigate.mockReset();
 });
 
@@ -251,5 +258,23 @@ describe('ModelsScreen V2', () => {
     // V1 renders the legacy table testid; V2 sidebar facets are absent.
     await waitFor(() => expect(screen.getByTestId('models-content')).toBeInTheDocument());
     expect(screen.queryByTestId('models-facets')).not.toBeInTheDocument();
+  });
+
+  it('Downloads button opens the Downloads panel with all sections + active badge', async () => {
+    server.use(
+      ...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }),
+      ...mockModelPullDownloadsAllSections()
+    );
+    await renderReady();
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('models-downloads-button'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('ld-downloads-panel')).toBeInTheDocument());
+    expect(screen.getByTestId('ld-dl-group-downloading')).toBeInTheDocument();
+    expect(screen.getByTestId('ld-dl-group-failed')).toBeInTheDocument();
+    // Active badge counts downloading + queued (2).
+    expect(screen.getByTestId('models-downloads-badge')).toHaveTextContent('2');
   });
 });

@@ -1,14 +1,13 @@
 import { ReactNode, createContext, useContext, useEffect, useMemo } from 'react';
 
+import { useLocation } from '@tanstack/react-router';
 import {
   BookOpen,
   BookText,
   Cog,
   Database,
-  Download,
   FileJson,
   FilePlus2,
-  Files,
   Key,
   MessageSquare,
   Plug,
@@ -17,7 +16,6 @@ import {
   Users,
   Play,
 } from 'lucide-react';
-import { useLocation } from '@tanstack/react-router';
 
 import { NavigationItem } from '@/types/navigation';
 
@@ -67,18 +65,6 @@ export const defaultNavigationItems: NavigationItem[] = [
             skip: true,
           },
         ],
-      },
-      {
-        title: 'Model Files',
-        href: '/models/files/',
-        description: 'Browse and manage model files',
-        icon: Files,
-      },
-      {
-        title: 'Model Downloads',
-        href: '/models/files/pull/',
-        description: 'Download new models',
-        icon: Download,
       },
     ],
   },

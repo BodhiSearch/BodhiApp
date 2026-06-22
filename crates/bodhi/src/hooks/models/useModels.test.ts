@@ -18,6 +18,8 @@ import {
   useUpdateModel,
   useListDownloads,
   usePullModel,
+  useArchiveDownload,
+  useRetryDownload,
 } from '@/hooks/models';
 import {
   mockModelFiles,
@@ -660,6 +662,136 @@ describe('Model Hooks', () => {
       });
 
       expect(onError).toHaveBeenCalledWith('Pull failed', 'model_route_error-file_already_exists');
+    });
+  });
+
+  describe('useArchiveDownload', () => {
+    it('POSTs to the archive endpoint and calls onSuccess', async () => {
+      let archivedId: string | null = null;
+      server.use(
+        http.post('*/bodhi/v1/models/files/pull/:id/archive', ({ params }) => {
+          archivedId = String(params.id);
+          return HttpResponse.json({
+            id: String(params.id),
+            repo: 'test/repo',
+            filename: 'model.gguf',
+            status: 'completed',
+            error: null,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            total_bytes: 1000000,
+            downloaded_bytes: 1000000,
+            started_at: '2024-01-01T00:00:00Z',
+            archived_at: '2024-01-02T00:00:00Z',
+          });
+        })
+      );
+      const onSuccess = vi.fn();
+      const { result } = renderHook(() => useArchiveDownload({ onSuccess }), { wrapper: createWrapper() });
+
+      await act(async () => {
+        await result.current.mutateAsync({ id: 'dl-1' });
+      });
+
+      expect(archivedId).toBe('dl-1');
+      expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ archived_at: '2024-01-02T00:00:00Z' }));
+    });
+
+    it('calls onError when the download is actively downloading', async () => {
+      server.use(
+        http.post('*/bodhi/v1/models/files/pull/:id/archive', () =>
+          HttpResponse.json(
+            {
+              error: {
+                code: 'download_service_error-cannot_archive_active',
+                message: 'cannot archive a download that is actively downloading',
+                type: 'invalid_request_error',
+              },
+            },
+            { status: 400 }
+          )
+        )
+      );
+      const onError = vi.fn();
+      const { result } = renderHook(() => useArchiveDownload({ onError }), { wrapper: createWrapper() });
+
+      await act(async () => {
+        try {
+          await result.current.mutateAsync({ id: 'dl-active' });
+        } catch {
+          // expected
+        }
+      });
+
+      expect(onError).toHaveBeenCalledWith(
+        'cannot archive a download that is actively downloading',
+        'download_service_error-cannot_archive_active'
+      );
+    });
+  });
+
+  describe('useRetryDownload', () => {
+    it('POSTs to the retry endpoint and calls onSuccess', async () => {
+      let retriedId: string | null = null;
+      server.use(
+        http.post('*/bodhi/v1/models/files/pull/:id/retry', ({ params }) => {
+          retriedId = String(params.id);
+          return HttpResponse.json({
+            id: String(params.id),
+            repo: 'test/repo',
+            filename: 'model.gguf',
+            status: 'pending',
+            error: null,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-03T00:00:00Z',
+            total_bytes: 1000000,
+            downloaded_bytes: 0,
+            started_at: null,
+            archived_at: null,
+          });
+        })
+      );
+      const onSuccess = vi.fn();
+      const { result } = renderHook(() => useRetryDownload({ onSuccess }), { wrapper: createWrapper() });
+
+      await act(async () => {
+        await result.current.mutateAsync({ id: 'dl-failed' });
+      });
+
+      expect(retriedId).toBe('dl-failed');
+      expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending', error: null }));
+    });
+
+    it('calls onError when the download is not failed', async () => {
+      server.use(
+        http.post('*/bodhi/v1/models/files/pull/:id/retry', () =>
+          HttpResponse.json(
+            {
+              error: {
+                code: 'download_service_error-not_retryable',
+                message: 'only failed downloads can be retried',
+                type: 'invalid_request_error',
+              },
+            },
+            { status: 400 }
+          )
+        )
+      );
+      const onError = vi.fn();
+      const { result } = renderHook(() => useRetryDownload({ onError }), { wrapper: createWrapper() });
+
+      await act(async () => {
+        try {
+          await result.current.mutateAsync({ id: 'dl-completed' });
+        } catch {
+          // expected
+        }
+      });
+
+      expect(onError).toHaveBeenCalledWith(
+        'only failed downloads can be retried',
+        'download_service_error-not_retryable'
+      );
     });
   });
 });

@@ -5064,6 +5064,206 @@
         ]
       }
     },
+    "/bodhi/v1/models/files/pull/{id}/archive": {
+      "post": {
+        "tags": [
+          "models-files"
+        ],
+        "summary": "Archive Download Request",
+        "description": "Archives a completed, failed, or queued download request so it no longer appears in the downloads list or the list API response. Actively-downloading requests cannot be archived.",
+        "operationId": "archiveDownload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique identifier of the download request",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download request archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Download request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/files/pull/{id}/retry": {
+      "post": {
+        "tags": [
+          "models-files"
+        ],
+        "summary": "Retry Failed Download Request",
+        "description": "Resets a failed download request to pending and re-runs it. The download resumes from the partially-downloaded file when present. Only failed requests can be retried.",
+        "operationId": "retryDownload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique identifier of the download request",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download request reset and re-started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Download request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodhiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
     "/bodhi/v1/models/refresh": {
       "post": {
         "tags": [
@@ -8180,14 +8380,14 @@
           "reference_api_url": {
             "type": "string",
             "description": "Base URL of the external reference API the frontend calls directly (configurable via\n`BODHI_REFERENCE_API_URL`, env-overridable for tests)",
-            "example": "https://api.getbodhi.app/"
+            "example": "https://api.getbodhi.app"
           }
         },
         "example": {
           "client_id": "my-client-id",
           "commit_sha": "abc1234",
           "deployment": "standalone",
-          "reference_api_url": "https://api.getbodhi.app/",
+          "reference_api_url": "https://api.getbodhi.app",
           "status": "ready",
           "url": "https://example.com",
           "version": "0.1.0"
@@ -8973,6 +9173,13 @@
             "format": "int64"
           },
           "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "archived_at": {
             "type": [
               "string",
               "null"

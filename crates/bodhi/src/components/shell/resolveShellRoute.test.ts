@@ -53,7 +53,7 @@ describe('resolveShellRoute', () => {
   });
 
   it('falls back to the section landing for an app route not in the nav', () => {
-    // /models/files/ has no nav entry; it matches the models section (my-models shares the /models/ href).
-    expect(resolveShellRoute('/models/files/')).toEqual({ section: 'models', subPage: 'my-models' });
+    // An unknown sub-path under /models/ matches the models section (my-models shares the /models/ href).
+    expect(resolveShellRoute('/models/unknown-subpage/')).toEqual({ section: 'models', subPage: 'my-models' });
   });
 });

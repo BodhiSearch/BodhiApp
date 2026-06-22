@@ -2228,6 +2228,7 @@ impl From<super::DownloadRequestEntity> for super::DownloadRequest {
       total_bytes: e.total_bytes,
       downloaded_bytes: e.downloaded_bytes,
       started_at: e.started_at,
+      archived_at: e.archived_at,
       created_at: e.created_at,
       updated_at: e.updated_at,
     }

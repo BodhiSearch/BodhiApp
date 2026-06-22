@@ -210,65 +210,9 @@ test.describe('Model Metadata Refresh and Preview', () => {
     await modelsPage.closePreviewModal();
   });
 
-  test('modal refresh auto-updates metadata from modelfiles page', async ({ page }) => {
-    // Login and navigate to modelfiles page
-    await loginPage.performOAuthLogin();
-    await page.goto(`${baseUrl}/ui/models/files/`);
-    await page.waitForSelector('[data-testid="modelfiles-content"]');
-
-    // Use a model that hasn't been processed yet
-    const modelData = MODEL_CAPABILITIES['phi-tools'];
-    const refreshKey = `${modelData.repo}-${modelData.filename}`;
-
-    // Open preview modal from modelfiles page
-    // There are 2 buttons due to responsive design: mobile (sm:hidden) and desktop (hidden sm:table-cell)
-    // Use last() to get the desktop version which is visible at default viewport
-    const previewButton = page
-      .locator(`[data-testid="modelfiles-preview-button-${refreshKey}"]`)
-      .last();
-    await previewButton.click();
-    await expect(page.locator('[data-testid="model-preview-modal"]')).toBeVisible();
-
-    // Modal should show "No metadata available" initially
-    const noMetadataMessage = page.locator('text=No metadata available for this model.');
-    await expect(noMetadataMessage).toBeVisible();
-
-    // Click the inline refresh button in the modal (body button since no metadata)
-    const refreshButton = page.locator('[data-testid="preview-modal-refresh-button-body"]');
-    await expect(refreshButton).toBeVisible();
-    await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
-    await refreshButton.click();
-
-    // Wait for ready state (metadata refresh completed)
-    await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
-
-    // Modal should automatically update to show metadata (without reopening)
-    await expect(noMetadataMessage).not.toBeVisible();
-
-    // Verify metadata is now displayed with correct values
-    await modelsPage.verifyPreviewBasicInfo({
-      alias: `${modelData.repo}/${modelData.filename}`,
-      repo: modelData.repo,
-      filename: modelData.filename,
-      snapshot: modelData.snapshot,
-      source: 'MODEL',
-    });
-
-    // Verify detailed capability values
-    await modelsPage.verifyPreviewCapability('vision', modelData.capabilities.vision);
-    await modelsPage.verifyPreviewCapability('audio', modelData.capabilities.audio);
-    await modelsPage.verifyPreviewCapability('thinking', modelData.capabilities.thinking);
-    await modelsPage.verifyPreviewCapability(
-      'function_calling',
-      modelData.capabilities.function_calling
-    );
-    await modelsPage.verifyPreviewCapability(
-      'structured_output',
-      modelData.capabilities.structured_output
-    );
-
-    await modelsPage.closePreviewModal();
-  });
+  // NOTE: The former "modal refresh from modelfiles page" test was removed with the legacy
+  // /ui/models/files/ page. Its coverage is preserved by the "from models page" test above —
+  // both drive the same ModelPreviewModal + metadata-refresh flow on the unified /models page.
 
   test('complete flow: login → refresh models → verify metadata → per-row refresh', async ({
     page,

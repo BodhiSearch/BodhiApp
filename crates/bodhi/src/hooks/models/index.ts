@@ -24,7 +24,13 @@ export {
 export { useListModels, useGetModel, useCreateModel, useUpdateModel, buildModelsFilterParams } from './useModels';
 export type { ModelsFilter, ModelTypeFacet, ApiFormatFacet, CapabilityFacet } from './useModels';
 export { useListModelFiles } from './useModelFiles';
-export { useListDownloads, usePullModel } from './useDownloads';
+export {
+  useListDownloads,
+  usePullModel,
+  useArchiveDownload,
+  useRetryDownload,
+  useDownloadsRefresh,
+} from './useDownloads';
 export {
   useGetApiModel,
   useCreateApiModel,

@@ -1,0 +1,159 @@
+/* Downloads panel — shared by Explore·Local Models and the unified Models screen.
+   `ld-dl-*` (Local Discovery — Downloads) is kept as the class prefix for continuity. */
+
+/* ── Downloads toggle (icon-only toolbar button) ────────────────── */
+/* Layered on `.l-iconbtn`; adds the active (open) state + the active-count badge. */
+.ld-dl-iconbtn {
+  position: relative;
+}
+.ld-dl-iconbtn.on {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--ring));
+  color: hsl(var(--foreground));
+}
+.ld-dl-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--c-saffron-text, hsl(var(--primary)));
+  color: var(--c-saffron-bg, hsl(var(--primary-foreground)));
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ── Downloads panel (right rail) ───────────────────────────────── */
+.ld-dl-panel {
+  padding: 12px;
+  overflow-y: auto;
+  outline: none;
+}
+.ld-dl-panel.ld-dl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 48px 16px;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+.ld-dl-group {
+  margin-bottom: 14px;
+}
+.ld-dl-group-head {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 6px;
+}
+.ld-dl-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 0 4px;
+  margin-left: 4px;
+  border-radius: 8px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+}
+.ld-dl-item {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: hsl(var(--card));
+}
+.ld-dl-downloading,
+.ld-dl-item.ld-dl-failed {
+  background: hsl(var(--muted) / 0.4);
+}
+.ld-dl-item-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ld-dl-repo {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-dl-org {
+  color: hsl(var(--muted-foreground));
+}
+.ld-dl-name {
+  font-weight: 600;
+}
+.ld-dl-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+.ld-dl-act:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+.ld-dl-act:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ld-dl-file {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  margin: 2px 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-dl-progress {
+  height: 5px;
+  border-radius: 3px;
+  background: hsl(var(--muted));
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.ld-dl-progress-bar {
+  height: 100%;
+  background: var(--c-saffron-text, hsl(var(--primary)));
+  transition: width 0.3s ease;
+}
+.ld-dl-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+.ld-dl-error span:first-child {
+  color: hsl(var(--destructive));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-dl-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: hsl(142 70% 38%);
+}

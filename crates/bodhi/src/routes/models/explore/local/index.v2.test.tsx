@@ -12,6 +12,7 @@ import {
   mockDiscoverModelsError,
 } from '@/test-utils/msw-v2/handlers/reference-models';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
+import { mockModelPullDownloads, mockModelPullDownloadsAllSections } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { http, HttpResponse, server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
 
@@ -32,7 +33,9 @@ beforeEach(() => {
   Wrapper = createWrapper();
   server.use(
     ...mockAppInfoReady(),
-    ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin', id_token: ID_TOKEN })
+    ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin', id_token: ID_TOKEN }),
+    // Default: empty downloads (stub so it survives polling). Tests override as needed.
+    ...mockModelPullDownloads({ data: [], total: 0 }, { stub: true })
   );
 });
 
@@ -42,9 +45,10 @@ afterEach(() => {
 
 // Surfaces the published sidebar + rail slots so facet chips and the detail rail are in the DOM.
 function SlotsConsumer() {
-  const { sidebar, rail, railHeader } = useShellSlots();
+  const { sidebar, rail, railHeader, headerActions } = useShellSlots();
   return (
     <>
+      <div data-testid="harness-header-actions">{headerActions}</div>
       <div data-testid="harness-sidebar">{sidebar}</div>
       <div data-testid="harness-rail-header">{railHeader}</div>
       <div data-testid="harness-rail">{rail}</div>
@@ -379,5 +383,139 @@ describe('LocalDiscoveryScreen (Phase 5 — error + empty states)', () => {
     await renderScreen();
     await waitFor(() => expect(screen.getByTestId('ld-empty')).toBeInTheDocument());
     expect(screen.getByTestId('ld-resultbar')).toHaveTextContent('Showing 0');
+  });
+});
+
+describe('LocalDiscoveryScreen (Phase 6 — Downloads panel)', () => {
+  it('opens the Downloads panel and renders all four derived sections', async () => {
+    server.use(...mockDiscoverModels(), ...mockModelPullDownloadsAllSections());
+    await renderScreen();
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-downloads-button'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('ld-downloads-panel')).toBeInTheDocument());
+    expect(screen.getByTestId('ld-dl-group-downloading')).toBeInTheDocument();
+    expect(screen.getByTestId('ld-dl-group-queued')).toBeInTheDocument();
+    expect(screen.getByTestId('ld-dl-group-failed')).toBeInTheDocument();
+    expect(screen.getByTestId('ld-dl-group-completed')).toBeInTheDocument();
+
+    // Active badge counts downloading + queued only (2), not failed/completed.
+    expect(screen.getByTestId('ld-downloads-badge')).toHaveTextContent('2');
+  });
+
+  it('toggles the Downloads panel closed on a second click', async () => {
+    server.use(...mockDiscoverModels(), ...mockModelPullDownloadsAllSections());
+    await renderScreen();
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-downloads-button'));
+    });
+    await waitFor(() => expect(screen.getByTestId('ld-downloads-panel')).toBeInTheDocument());
+
+    // Second click collapses the rail → panel removed.
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-downloads-button'));
+    });
+    await waitFor(() => expect(screen.queryByTestId('ld-downloads-panel')).not.toBeInTheDocument());
+  });
+
+  it('cache-busts the downloads query when the button is clicked', async () => {
+    let getCount = 0;
+    server.use(
+      ...mockDiscoverModels(),
+      http.get('*/bodhi/v1/models/files/pull', () => {
+        getCount += 1;
+        return HttpResponse.json({ data: [], total: 0, page: 1, page_size: 100 });
+      })
+    );
+    await renderScreen();
+    const initial = getCount;
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-downloads-button'));
+    });
+    await waitFor(() => expect(getCount).toBeGreaterThan(initial));
+  });
+
+  it('archives a download — calls the archive endpoint and refetches', async () => {
+    let archiveCalled = false;
+    server.use(
+      ...mockDiscoverModels(),
+      ...mockModelPullDownloadsAllSections(),
+      http.post('*/bodhi/v1/models/files/pull/:id/archive', ({ params }) => {
+        archiveCalled = true;
+        return HttpResponse.json({
+          id: String(params.id),
+          repo: 'microsoft/Phi-4',
+          filename: 'phi4.Q4_K_M.gguf',
+          status: 'completed',
+          error: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+          total_bytes: 5_100_000_000,
+          downloaded_bytes: 5_100_000_000,
+          started_at: '2024-01-01T00:00:00Z',
+          archived_at: '2024-01-02T00:00:00Z',
+        });
+      })
+    );
+    await renderScreen();
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-downloads-button'));
+    });
+    await waitFor(() => expect(screen.getByTestId('ld-dl-archive-dl-completed')).toBeInTheDocument());
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-dl-archive-dl-completed'));
+    });
+    await waitFor(() => expect(archiveCalled).toBe(true));
+  });
+
+  it('retries a failed download — calls the retry endpoint', async () => {
+    let retryCalled = false;
+    server.use(
+      ...mockDiscoverModels(),
+      ...mockModelPullDownloadsAllSections(),
+      http.post('*/bodhi/v1/models/files/pull/:id/retry', ({ params }) => {
+        retryCalled = true;
+        return HttpResponse.json({
+          id: String(params.id),
+          repo: 'deepseek-ai/DeepSeek-V3',
+          filename: 'deepseek.Q2_K.gguf',
+          status: 'pending',
+          error: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-03T00:00:00Z',
+          total_bytes: 35_000_000_000,
+          downloaded_bytes: 0,
+          started_at: null,
+          archived_at: null,
+        });
+      })
+    );
+    await renderScreen();
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-downloads-button'));
+    });
+    await waitFor(() => expect(screen.getByTestId('ld-dl-retry-dl-failed')).toBeInTheDocument());
+
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-dl-retry-dl-failed'));
+    });
+    await waitFor(() => expect(retryCalled).toBe(true));
+  });
+
+  it('shows no dismiss (×) button for an actively downloading item', async () => {
+    server.use(...mockDiscoverModels(), ...mockModelPullDownloadsAllSections());
+    await renderScreen();
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-downloads-button'));
+    });
+    await waitFor(() => expect(screen.getByTestId('ld-dl-item-dl-downloading')).toBeInTheDocument());
+    // Downloading items expose neither archive nor retry.
+    expect(screen.queryByTestId('ld-dl-archive-dl-downloading')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ld-dl-retry-dl-downloading')).not.toBeInTheDocument();
   });
 });

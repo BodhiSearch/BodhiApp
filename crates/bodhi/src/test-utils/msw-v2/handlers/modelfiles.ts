@@ -1,6 +1,6 @@
 import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/models';
 
-import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
+import { typedHttp, http, HttpResponse, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
 export function mockModelFiles(
   {
@@ -298,4 +298,133 @@ export function mockModelPullInternalError() {
     type: 'internal_server_error',
     status: 500,
   });
+}
+
+/** POST /models/files/pull/:id/archive — echoes the archived row. */
+export function mockModelPullArchive(overrides: Partial<components['schemas']['DownloadRequest']> = {}) {
+  return [
+    http.post(`${ENDPOINT_MODEL_FILES_PULL}/:id/archive`, ({ params }) => {
+      const body: components['schemas']['DownloadRequest'] = {
+        id: String(params.id),
+        repo: 'test/repo',
+        filename: 'model.gguf',
+        status: 'completed',
+        error: null,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        total_bytes: 1000000,
+        downloaded_bytes: 1000000,
+        started_at: '2024-01-01T00:00:00Z',
+        archived_at: '2024-01-02T00:00:00Z',
+        ...overrides,
+      };
+      return HttpResponse.json(body, { status: 200 });
+    }),
+  ];
+}
+
+/** POST /models/files/pull/:id/retry — echoes the reset (pending) row. */
+export function mockModelPullRetry(overrides: Partial<components['schemas']['DownloadRequest']> = {}) {
+  return [
+    http.post(`${ENDPOINT_MODEL_FILES_PULL}/:id/retry`, ({ params }) => {
+      const body: components['schemas']['DownloadRequest'] = {
+        id: String(params.id),
+        repo: 'test/repo',
+        filename: 'model.gguf',
+        status: 'pending',
+        error: null,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-03T00:00:00Z',
+        total_bytes: 1000000,
+        downloaded_bytes: 0,
+        started_at: null,
+        archived_at: null,
+        ...overrides,
+      };
+      return HttpResponse.json(body, { status: 200 });
+    }),
+  ];
+}
+
+export function mockModelPullArchiveActiveError() {
+  return [
+    http.post(`${ENDPOINT_MODEL_FILES_PULL}/:id/archive`, () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: 'download_service_error-cannot_archive_active',
+            message: 'cannot archive a download that is actively downloading',
+            type: 'invalid_request_error',
+          },
+        },
+        { status: 400 }
+      )
+    ),
+  ];
+}
+
+/** Downloads with one row per derived section (downloading / queued / failed / completed). */
+export function mockModelPullDownloadsAllSections() {
+  return mockModelPullDownloads(
+    {
+      data: [
+        {
+          id: 'dl-downloading',
+          repo: 'Qwen/Qwen3-Coder-32B',
+          filename: 'qwen3.Q4_K_M.gguf',
+          status: 'pending',
+          error: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+          total_bytes: 18_500_000_000,
+          downloaded_bytes: 8_760_000_000,
+          started_at: '2024-01-01T00:00:00Z',
+          archived_at: null,
+        },
+        {
+          id: 'dl-queued',
+          repo: 'meta-llama/Llama-3.3-70B',
+          filename: 'llama33.Q4_K_M.gguf',
+          status: 'pending',
+          error: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+          total_bytes: 35_000_000_000,
+          downloaded_bytes: 0,
+          started_at: null,
+          archived_at: null,
+        },
+        {
+          id: 'dl-failed',
+          repo: 'deepseek-ai/DeepSeek-V3',
+          filename: 'deepseek.Q2_K.gguf',
+          status: 'error',
+          error: 'Not enough disk space',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+          total_bytes: 35_000_000_000,
+          downloaded_bytes: 1_000_000_000,
+          started_at: '2024-01-01T00:00:00Z',
+          archived_at: null,
+        },
+        {
+          id: 'dl-completed',
+          repo: 'microsoft/Phi-4',
+          filename: 'phi4.Q4_K_M.gguf',
+          status: 'completed',
+          error: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+          total_bytes: 5_100_000_000,
+          downloaded_bytes: 5_100_000_000,
+          started_at: '2024-01-01T00:00:00Z',
+          archived_at: null,
+        },
+      ],
+      total: 4,
+      page: 1,
+      page_size: 100,
+    },
+    { stub: true }
+  );
 }

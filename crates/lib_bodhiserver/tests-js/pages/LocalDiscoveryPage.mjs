@@ -37,6 +37,11 @@ export class LocalDiscoveryPage extends BasePage {
     quants: '[data-testid="ld-quants"]',
     quantRow: '[data-testid^="ld-quant-"]:not([data-testid^="ld-quant-pull-"]):not([data-testid^="ld-quant-rec-"])',
     pullRecommended: '[data-testid="ld-pull-recommended"]',
+    // Downloads panel (header action → right rail).
+    downloadsButton: '[data-testid="ld-downloads-button"]',
+    downloadsBadge: '[data-testid="ld-downloads-badge"]',
+    downloadsPanel: '[data-testid="ld-downloads-panel"]',
+    downloadsClose: '[data-testid="ld-downloads-close"]',
   };
 
   async navigateToDiscovery() {
@@ -139,5 +144,16 @@ export class LocalDiscoveryPage extends BasePage {
 
   async openQuantsTab() {
     await this.page.locator(this.selectors.tabQuants).click();
+  }
+
+  /** Open the Downloads panel via the header action; waits for the rail panel to render. */
+  async openDownloads() {
+    await this.page.locator(this.selectors.downloadsButton).click();
+    await this.waitForSPAReady();
+    await this.page.locator(this.selectors.downloadsPanel).waitFor({ state: 'visible' });
+  }
+
+  async closeDownloads() {
+    await this.page.locator(this.selectors.downloadsClose).click();
   }
 }

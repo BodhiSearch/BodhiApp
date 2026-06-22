@@ -28,7 +28,7 @@ type ListOptions = {
   onRequest?: (info: { url: URL; authorization: string | null }) => void;
 };
 
-/** Stub `GET /api/v1/models`. Honors q (filters items), sort/order, cursor, limit. */
+/** Stub `GET /api/v1/models`. Honors q (filters items), sort, cursor, limit. */
 export function mockDiscoverModels(opts: ListOptions = {}) {
   const base = opts.base ?? DEFAULT_BASE;
   const items = opts.items ?? createDefaultCatalog();
@@ -41,7 +41,6 @@ export function mockDiscoverModels(opts: ListOptions = {}) {
       const q = url.searchParams.get('q');
       const cursor = url.searchParams.get('cursor');
       const sort = url.searchParams.get('sort') ?? 'downloads';
-      const order = url.searchParams.get('order') ?? 'desc';
 
       // Cursor page (the "Load more" follow-up).
       if (cursor) {
@@ -55,10 +54,10 @@ export function mockDiscoverModels(opts: ListOptions = {}) {
         result = items.filter((m) => `${m.namespace}/${m.repo}`.toLowerCase().includes(needle));
       }
 
-      // Sort by the requested numeric column (downloads/likes/trending).
+      // Sort by the requested numeric column (downloads/likes/trending). Descending-only.
       const col = (m: Model): number =>
         sort === 'likes' ? (m.likes ?? 0) : sort === 'trending' ? (m.trending_score ?? 0) : (m.downloads ?? 0);
-      result = [...result].sort((a, b) => (order === 'asc' ? col(a) - col(b) : col(b) - col(a)));
+      result = [...result].sort((a, b) => col(b) - col(a));
 
       const nextCursor = q ? null : (opts.nextCursor ?? null);
       return HttpResponse.json<ListModelsResponse>(createListResponse(result, nextCursor));

@@ -20,7 +20,8 @@ use crate::{
   dev_db_reset_handler, dev_secrets_handler, dev_tenants_cleanup_handler, envs_handler,
   health_handler, model_router_create, model_router_destroy, model_router_show,
   model_router_update, modelfiles_index, models_copy, models_create, models_destroy, models_index,
-  models_pull_create, models_pull_index, models_pull_show, models_show, models_update,
+  models_pull_archive, models_pull_create, models_pull_index, models_pull_retry, models_pull_show,
+  models_show, models_update,
   ping_handler, queue_status_handler, refresh_metadata_handler, tenants_activate, tenants_create,
   tenants_index, tokens_create, tokens_index, tokens_update, users_access_request_approve,
   users_access_request_reject, users_access_requests_index, users_access_requests_pending,
@@ -452,6 +453,14 @@ pub async fn build_routes(
     .route(
       &format!("{ENDPOINT_MODELS_FILES_PULL}/{{id}}"),
       get(models_pull_show),
+    )
+    .route(
+      &format!("{ENDPOINT_MODELS_FILES_PULL}/{{id}}/archive"),
+      post(models_pull_archive),
+    )
+    .route(
+      &format!("{ENDPOINT_MODELS_FILES_PULL}/{{id}}/retry"),
+      post(models_pull_retry),
     )
     .route_layer(from_fn_with_state(
       state.clone(),

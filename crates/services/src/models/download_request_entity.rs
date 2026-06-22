@@ -27,6 +27,8 @@ pub struct Model {
   pub downloaded_bytes: i64,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub started_at: Option<DateTime<Utc>>,
+  #[schema(value_type = Option<String>, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub archived_at: Option<DateTime<Utc>>,
 }
 
 pub type DownloadRequestEntity = Model;
@@ -50,6 +52,7 @@ impl Model {
       total_bytes: None,
       downloaded_bytes: 0,
       started_at: None,
+      archived_at: None,
     }
   }
 }

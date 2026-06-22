@@ -74,4 +74,25 @@ impl AuthScopedDownloadService {
       .update_status(tenant_id, id, status, error)
       .await
   }
+
+  pub async fn archive(&self, id: &str) -> Result<DownloadRequestEntity, DownloadServiceError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
+    self
+      .app_service
+      .download_service()
+      .archive(tenant_id, id)
+      .await
+  }
+
+  pub async fn reset_for_retry(
+    &self,
+    id: &str,
+  ) -> Result<DownloadRequestEntity, DownloadServiceError> {
+    let tenant_id = self.auth_context.require_tenant_id()?;
+    self
+      .app_service
+      .download_service()
+      .reset_for_retry(tenant_id, id)
+      .await
+  }
 }

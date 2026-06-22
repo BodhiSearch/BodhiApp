@@ -260,6 +260,7 @@ mod tests {
       total_bytes: None,
       downloaded_bytes: 0,
       started_at: None,
+      archived_at: None,
     };
     db_service.create_download_request(&download_req).await?;
 

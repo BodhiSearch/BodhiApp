@@ -1,5 +1,8 @@
 use crate::test_utils::RequestAuthContextExt;
-use crate::{models_pull_create, models_pull_index, models_pull_show, wait_for_event};
+use crate::{
+  models_pull_archive, models_pull_create, models_pull_index, models_pull_retry, models_pull_show,
+  wait_for_event,
+};
 use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
@@ -30,7 +33,13 @@ fn test_router(service: Arc<dyn AppService>) -> Router {
     .route("/modelfiles/pull", post(models_pull_create))
     .route("/modelfiles/pull/status/{id}", get(models_pull_show))
     .route("/modelfiles/pull/downloads", get(models_pull_index))
+    .route("/modelfiles/pull/{id}/archive", post(models_pull_archive))
+    .route("/modelfiles/pull/{id}/retry", post(models_pull_retry))
     .with_state(service)
+}
+
+fn power_user() -> AuthContext {
+  AuthContext::test_session("test-user", "testuser", ResourceRole::PowerUser)
 }
 
 #[rstest]
@@ -356,6 +365,204 @@ async fn test_list_downloads(
   assert_eq!(downloads[0].status, DownloadStatus::Pending);
   assert_eq!(downloads[0].error, None);
 
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_archive_completed_excludes_from_list(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
+) -> anyhow::Result<()> {
+  let mut completed =
+    DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "done.gguf", db_service.now());
+  completed.status = DownloadStatus::Completed;
+  let db_service = Arc::new(db_service);
+  db_service.create_download_request(&completed).await?;
+  let app_service = app_service_stub_builder
+    .db_service(db_service)
+    .build()
+    .await?;
+  let router = test_router(Arc::new(app_service));
+
+  let response = router
+    .clone()
+    .oneshot(
+      Request::post(format!("/modelfiles/pull/{}/archive", completed.id))
+        .body(Body::empty())?
+        .with_auth_context(power_user()),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let archived = response.json::<DownloadRequest>().await?;
+  assert!(archived.archived_at.is_some());
+
+  // List must no longer include the archived row.
+  let list = router
+    .oneshot(
+      Request::get("/modelfiles/pull/downloads?page=1&page_size=10")
+        .body(Body::empty())?
+        .with_auth_context(power_user()),
+    )
+    .await?;
+  let body = list.json::<PaginatedDownloadResponse>().await?;
+  assert_eq!(0, body.total);
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_archive_active_download_rejected(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
+) -> anyhow::Result<()> {
+  let mut active = DownloadRequestEntity::new_pending(
+    TEST_TENANT_ID,
+    "test/repo",
+    "active.gguf",
+    db_service.now(),
+  );
+  active.started_at = Some(db_service.now());
+  let db_service = Arc::new(db_service);
+  db_service.create_download_request(&active).await?;
+  let app_service = app_service_stub_builder
+    .db_service(db_service)
+    .build()
+    .await?;
+  let router = test_router(Arc::new(app_service));
+
+  let response = router
+    .oneshot(
+      Request::post(format!("/modelfiles/pull/{}/archive", active.id))
+        .body(Body::empty())?
+        .with_auth_context(power_user()),
+    )
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "download_service_error-cannot_archive_active",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_retry_failed_resets_and_respawns(
+  mut test_hf_service: TestHfService,
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
+) -> anyhow::Result<()> {
+  // Retry re-spawns the pull; stub the download so the re-run completes.
+  test_hf_service
+    .inner_mock
+    .expect_download()
+    .with(
+      eq(Repo::testalias()),
+      eq(Repo::testalias_model_q4()),
+      eq(None),
+      always(),
+    )
+    .times(1)
+    .return_once(|_, _, _, _| Ok(HubFile::testalias()));
+
+  let mut failed = DownloadRequestEntity::new_pending(
+    TEST_TENANT_ID,
+    &Repo::testalias().to_string(),
+    &Repo::testalias_model_q4(),
+    db_service.now(),
+  );
+  failed.status = DownloadStatus::Error;
+  failed.error = Some("boom".to_string());
+  let mut rx = db_service.subscribe();
+  let db_service = Arc::new(db_service);
+  db_service.create_download_request(&failed).await?;
+  let app_service = app_service_stub_builder
+    .db_service(db_service.clone())
+    .hub_service(Arc::new(test_hf_service))
+    .build()
+    .await?;
+  let router = test_router(Arc::new(app_service));
+
+  let response = router
+    .oneshot(
+      Request::post(format!("/modelfiles/pull/{}/retry", failed.id))
+        .body(Body::empty())?
+        .with_auth_context(power_user()),
+    )
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+  let reset = response.json::<DownloadRequest>().await?;
+  assert_eq!(DownloadStatus::Pending, reset.status);
+  assert_eq!(None, reset.error);
+
+  // Retry emits two update events: the synchronous reset→Pending and the spawned
+  // task's terminal update. Poll until the row reaches Completed (the re-spawn ran).
+  let mut completed = false;
+  for _ in 0..20 {
+    let _ = wait_for_event!(rx, "update_download_request", Duration::from_millis(200));
+    if db_service
+      .get_download_request(TEST_TENANT_ID, &failed.id)
+      .await?
+      .unwrap()
+      .status
+      == DownloadStatus::Completed
+    {
+      completed = true;
+      break;
+    }
+  }
+  assert!(completed, "retry should re-spawn the download and complete it");
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_retry_non_failed_rejected(
+  #[future]
+  #[from(test_db_service)]
+  db_service: TestDbService,
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
+) -> anyhow::Result<()> {
+  let mut completed =
+    DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "done.gguf", db_service.now());
+  completed.status = DownloadStatus::Completed;
+  let db_service = Arc::new(db_service);
+  db_service.create_download_request(&completed).await?;
+  let app_service = app_service_stub_builder
+    .db_service(db_service)
+    .build()
+    .await?;
+  let router = test_router(Arc::new(app_service));
+
+  let response = router
+    .oneshot(
+      Request::post(format!("/modelfiles/pull/{}/retry", completed.id))
+        .body(Body::empty())?
+        .with_auth_context(power_user()),
+    )
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "download_service_error-not_retryable",
+    body["error"]["code"].as_str().unwrap()
+  );
   Ok(())
 }
 

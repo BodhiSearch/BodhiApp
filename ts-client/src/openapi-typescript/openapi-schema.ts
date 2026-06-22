@@ -803,6 +803,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/models/files/pull/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive Download Request
+         * @description Archives a completed, failed, or queued download request so it no longer appears in the downloads list or the list API response. Actively-downloading requests cannot be archived.
+         */
+        post: operations["archiveDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/files/pull/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Failed Download Request
+         * @description Resets a failed download request to pending and re-runs it. The download resumes from the partially-downloaded file when present. Only failed requests can be retried.
+         */
+        post: operations["retryDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/models/refresh": {
         parameters: {
             query?: never;
@@ -1484,7 +1524,7 @@ export interface components {
          *       "client_id": "my-client-id",
          *       "commit_sha": "abc1234",
          *       "deployment": "standalone",
-         *       "reference_api_url": "https://api.getbodhi.app/",
+         *       "reference_api_url": "https://api.getbodhi.app",
          *       "status": "ready",
          *       "url": "https://example.com",
          *       "version": "0.1.0"
@@ -1518,7 +1558,7 @@ export interface components {
             /**
              * @description Base URL of the external reference API the frontend calls directly (configurable via
              *     `BODHI_REFERENCE_API_URL`, env-overridable for tests)
-             * @example https://api.getbodhi.app/
+             * @example https://api.getbodhi.app
              */
             reference_api_url: string;
         };
@@ -1842,6 +1882,8 @@ export interface components {
             downloaded_bytes: number;
             /** Format: date-time */
             started_at?: string | null;
+            /** Format: date-time */
+            archived_at?: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -6733,6 +6775,142 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of the download request */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Download request archived */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadRequest"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Download request not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+        };
+    };
+    retryDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Unique identifier of the download request */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Download request reset and re-started */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadRequest"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodhiErrorResponse"];
+                };
+            };
+            /** @description Download request not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["BodhiErrorResponse"];
                 };
             };

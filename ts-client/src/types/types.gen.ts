@@ -605,6 +605,7 @@ export type DownloadRequest = {
     total_bytes?: number | null;
     downloaded_bytes: number;
     started_at?: string | null;
+    archived_at?: string | null;
     created_at: string;
     updated_at: string;
 };
@@ -4200,6 +4201,98 @@ export type GetDownloadStatusResponses = {
 };
 
 export type GetDownloadStatusResponse = GetDownloadStatusResponses[keyof GetDownloadStatusResponses];
+
+export type ArchiveDownloadData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier of the download request
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/files/pull/{id}/archive';
+};
+
+export type ArchiveDownloadErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Download request not found
+     */
+    404: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type ArchiveDownloadError = ArchiveDownloadErrors[keyof ArchiveDownloadErrors];
+
+export type ArchiveDownloadResponses = {
+    /**
+     * Download request archived
+     */
+    200: DownloadRequest;
+};
+
+export type ArchiveDownloadResponse = ArchiveDownloadResponses[keyof ArchiveDownloadResponses];
+
+export type RetryDownloadData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier of the download request
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/files/pull/{id}/retry';
+};
+
+export type RetryDownloadErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: BodhiErrorResponse;
+    /**
+     * Not authenticated
+     */
+    401: BodhiErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: BodhiErrorResponse;
+    /**
+     * Download request not found
+     */
+    404: BodhiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: BodhiErrorResponse;
+};
+
+export type RetryDownloadError = RetryDownloadErrors[keyof RetryDownloadErrors];
+
+export type RetryDownloadResponses = {
+    /**
+     * Download request reset and re-started
+     */
+    200: DownloadRequest;
+};
+
+export type RetryDownloadResponse = RetryDownloadResponses[keyof RetryDownloadResponses];
 
 export type RefreshModelMetadataData = {
     /**
