@@ -146,6 +146,53 @@ pub async fn models_pull_create(
   Ok((StatusCode::CREATED, Json(download_request.into())))
 }
 
+/// Enqueue a download for `repo`/`filename` unless the file is already local or a request for it
+/// already exists. Shared by the pull route and the local-alias create flow so there is one download
+/// code path. In dev/E2E **test mode** the row is recorded `Completed` immediately (no real fetch);
+/// otherwise the background pull is spawned. Returns the (existing or new) request, or `None` when
+/// the file is already present locally.
+pub async fn enqueue_download_if_absent(
+  auth_scope: &AuthScope,
+  repo: &Repo,
+  filename: &str,
+) -> Result<Option<DownloadRequest>, BodhiErrorResponse> {
+  if let Ok(true) = auth_scope.hub().local_file_exists(repo, filename, None) {
+    return Ok(None);
+  }
+
+  if let Some(existing) = auth_scope
+    .downloads()
+    .find_by_repo_filename(&repo.to_string(), filename)
+    .await?
+  {
+    return Ok(Some(existing.into()));
+  }
+
+  let new_request = NewDownloadRequest {
+    repo: repo.to_string(),
+    filename: filename.to_string(),
+  };
+  let download_request = auth_scope.downloads().create(&new_request).await?;
+
+  if auth_scope.setting_service().is_test_mode().await {
+    auth_scope
+      .downloads()
+      .update_status(&download_request.id, DownloadStatus::Completed, None)
+      .await?;
+    let completed = auth_scope.downloads().get(&download_request.id).await?;
+    return Ok(Some(completed.into()));
+  }
+
+  spawn_pull(
+    auth_scope.app_service().clone(),
+    repo.clone(),
+    filename.to_string(),
+    download_request.id.clone(),
+    download_request.tenant_id.clone(),
+  );
+  Ok(Some(download_request.into()))
+}
+
 /// Spawns the background pull task (download + status update). Shared by create and retry.
 /// On retry, hf-hub resumes from the surviving `.sync.part` partial.
 fn spawn_pull(

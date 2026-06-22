@@ -135,11 +135,9 @@ async fn test_list_excludes_archived(
   let svc = download_service(&ctx);
 
   // Two completed downloads; archive one — list must show only the other.
-  let mut a =
-    DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "a.gguf", ctx.now);
+  let mut a = DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "a.gguf", ctx.now);
   a.status = DownloadStatus::Completed;
-  let mut b =
-    DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "b.gguf", ctx.now);
+  let mut b = DownloadRequestEntity::new_pending(TEST_TENANT_ID, "test/repo", "b.gguf", ctx.now);
   b.status = DownloadStatus::Completed;
   ctx.service.create_download_request(&a).await?;
   ctx.service.create_download_request(&b).await?;

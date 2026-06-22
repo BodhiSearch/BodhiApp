@@ -55,6 +55,10 @@ pub const LOGS_DIR: &str = "logs";
 pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
 pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
 pub const BODHI_DEV_PROXY_UI_PORT: &str = "BODHI_DEV_PROXY_UI_PORT";
+/// Dev/E2E-only: when `true`, downloads are not actually fetched — they are recorded as completed
+/// immediately so the suite never pulls real GGUF files. Read via `get_dev_env`, so it is inert in
+/// release builds (`debug_assertions` off).
+pub const BODHI_TEST_MODE: &str = "BODHI_TEST_MODE";
 
 pub const BODHI_SESSION_DB_URL: &str = "BODHI_SESSION_DB_URL";
 pub const BODHI_APP_DB_URL: &str = "BODHI_APP_DB_URL";

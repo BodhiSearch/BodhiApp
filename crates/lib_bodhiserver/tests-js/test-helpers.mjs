@@ -75,6 +75,10 @@ export function buildEnvFromConfig(options = {}) {
     clientSecret = null,
     createdBy = null,
     tenantName = null,
+    // E2E never fetches real GGUF files: test-mode records model downloads as completed immediately.
+    // Read by the backend via `get_dev_env(BODHI_TEST_MODE)` (debug builds only). Set false to
+    // exercise a real download.
+    testMode = true,
     envVars = {},
     systemSettings = {},
   } = options;
@@ -98,6 +102,7 @@ export function buildEnvFromConfig(options = {}) {
     BODHI_ENCRYPTION_KEY: encryptionKey,
     BODHI_APP_STATUS: appStatus,
     BODHI_REFERENCE_API_URL: referenceApiUrl,
+    ...(testMode ? { BODHI_TEST_MODE: 'true' } : {}),
     ...systemSettings,
   };
 

@@ -6,7 +6,7 @@ use super::{
   BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS, BODHI_LLAMACPP_ARGS,
   BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_MULTITENANT_CLIENT_ID, BODHI_MULTITENANT_CLIENT_SECRET,
   BODHI_ON_RUNPOD, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME,
-  BODHI_REFERENCE_API_URL, BODHI_SCHEME, BODHI_SESSION_DB_URL, BODHI_VERSION,
+  BODHI_REFERENCE_API_URL, BODHI_SCHEME, BODHI_SESSION_DB_URL, BODHI_TEST_MODE, BODHI_VERSION,
   DEFAULT_CANONICAL_REDIRECT, DEFAULT_PORT, DEFAULT_REFERENCE_API_URL_PROD, HF_HOME,
   LOGIN_CALLBACK_PATH, LOGIN_DASHBOARD_CALLBACK_PATH, PROD_DB, RUNPOD_POD_ID,
 };
@@ -174,6 +174,16 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   async fn is_production(&self) -> bool {
     self.env_type().await.is_production()
+  }
+
+  /// Dev/E2E-only escape hatch (see `BODHI_TEST_MODE`). Read through `get_dev_env`, so it always
+  /// returns `false` in release builds regardless of the env var.
+  async fn is_test_mode(&self) -> bool {
+    self
+      .get_dev_env(BODHI_TEST_MODE)
+      .await
+      .map(|v| v == "true")
+      .unwrap_or(false)
   }
 
   async fn is_native(&self) -> bool {

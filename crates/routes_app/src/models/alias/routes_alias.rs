@@ -25,6 +25,10 @@ pub async fn models_create(
   ValidatedJson(form): ValidatedJson<services::UserAliasRequest>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), BodhiErrorResponse> {
   let alias = auth_scope.data().create_alias_from_form(form).await?;
+  // Materialise the model file if it isn't on disk yet — the alias can be created against a
+  // not-yet-downloaded GGUF, so kick off (or no-op) the download via the shared pull path.
+  let repo = services::Repo::try_from(alias.repo.to_string())?;
+  crate::models::enqueue_download_if_absent(&auth_scope, &repo, &alias.filename).await?;
   Ok((StatusCode::CREATED, Json(UserAliasResponse::from(alias))))
 }
 

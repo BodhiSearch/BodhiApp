@@ -268,33 +268,31 @@ impl DataService for LocalDataService {
       return Err(DataServiceError::AliasExists(alias_name));
     }
 
+    // A not-yet-downloaded file is allowed: the alias is created and the route handler enqueues the
+    // download. Resolve the real snapshot from disk when the file is present; otherwise fall back to
+    // the requested snapshot (default `main`) — the pull will materialise it.
     let file_exists =
       self
         .hub_service
         .local_file_exists(&repo, &form.filename, form.snapshot.clone())?;
-    if !file_exists {
-      return Err(DataServiceError::HubService(
-        HubServiceError::FileNotFound {
-          filename: form.filename.clone(),
-          repo: repo.to_string(),
-          snapshot: form
-            .snapshot
-            .clone()
-            .unwrap_or_else(|| SNAPSHOT_MAIN.to_string()),
-        },
-      ));
-    }
-    let local_model_file =
+    let snapshot = if file_exists {
       self
         .hub_service
-        .find_local_file(&repo, &form.filename, form.snapshot)?;
+        .find_local_file(&repo, &form.filename, form.snapshot.clone())?
+        .snapshot
+    } else {
+      form
+        .snapshot
+        .clone()
+        .unwrap_or_else(|| SNAPSHOT_MAIN.to_string())
+    };
 
     let now = self.db_service.now();
     let user_alias = crate::models::UserAliasBuilder::default()
       .alias(alias_name)
       .repo(repo)
       .filename(form.filename)
-      .snapshot(local_model_file.snapshot)
+      .snapshot(snapshot)
       .request_params(form.request_params.unwrap_or_default())
       .context_params(form.context_params.unwrap_or_default())
       .build_with_time(now)?;

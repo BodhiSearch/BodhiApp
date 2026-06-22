@@ -16,12 +16,12 @@ use crate::{
   __path_modelfiles_index, __path_models_copy, __path_models_create, __path_models_destroy,
   __path_models_index, __path_models_pull_archive, __path_models_pull_create,
   __path_models_pull_index, __path_models_pull_retry, __path_models_pull_show, __path_models_show,
-  __path_models_update, __path_ping_handler,
-  __path_queue_status_handler, __path_refresh_metadata_handler, __path_tokens_create,
-  __path_tokens_index, __path_tokens_update, __path_users_access_request_approve,
-  __path_users_access_request_reject, __path_users_access_requests_index,
-  __path_users_access_requests_pending, __path_users_change_role, __path_users_destroy,
-  __path_users_index, __path_users_info, __path_users_request_access, __path_users_request_status,
+  __path_models_update, __path_ping_handler, __path_queue_status_handler,
+  __path_refresh_metadata_handler, __path_tokens_create, __path_tokens_index, __path_tokens_update,
+  __path_users_access_request_approve, __path_users_access_request_reject,
+  __path_users_access_requests_index, __path_users_access_requests_pending,
+  __path_users_change_role, __path_users_destroy, __path_users_index, __path_users_info,
+  __path_users_request_access, __path_users_request_status,
 };
 // MCP DTOs and handlers
 use crate::{

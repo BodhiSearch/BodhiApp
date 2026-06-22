@@ -525,7 +525,10 @@ async fn test_retry_failed_resets_and_respawns(
       break;
     }
   }
-  assert!(completed, "retry should re-spawn the download and complete it");
+  assert!(
+    completed,
+    "retry should re-spawn the download and complete it"
+  );
   Ok(())
 }
 

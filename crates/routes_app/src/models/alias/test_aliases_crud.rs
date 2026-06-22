@@ -13,7 +13,7 @@ use serde_json::Value;
 use server_core::test_utils::{router_state_stub, RequestTestExt, ResponseTestExt};
 use services::UserAliasResponse;
 use services::{
-  test_utils::{app_service_stub, AppServiceStub},
+  test_utils::{app_service_stub_builder, AppServiceStubBuilder, SettingServiceStub},
   AuthContext, OAIRequestParamsBuilder, ResourceRole,
 };
 use std::sync::Arc;
@@ -83,10 +83,18 @@ async fn test_get_alias_handler_non_existent(
   Ok(())
 }
 
+// Build with test-mode on so creating an alias for a not-yet-downloaded file records the download as
+// completed instead of spawning a real (panicking) offline-hub fetch.
 #[fixture]
 #[awt]
-async fn app(#[future] app_service_stub: AppServiceStub) -> Router {
-  let app_service: Arc<dyn services::AppService> = Arc::new(app_service_stub);
+async fn app(#[future] mut app_service_stub_builder: AppServiceStubBuilder) -> Router {
+  let app_service: Arc<dyn services::AppService> = Arc::new(
+    app_service_stub_builder
+      .setting_service(Arc::new(SettingServiceStub::with_test_mode()))
+      .build()
+      .await
+      .unwrap(),
+  );
   Router::new()
     .route("/api/models", post(models_create))
     .route(
@@ -175,11 +183,13 @@ async fn test_create_alias_handler(
   Ok(())
 }
 
+// Creating an alias for a not-yet-downloaded file now SUCCEEDS: the alias is created and the
+// download is enqueued (recorded completed under test-mode). The snapshot falls back to `main`.
 #[rstest]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> anyhow::Result<()> {
+async fn test_create_alias_handler_undownloaded_file(#[future] app: Router) -> anyhow::Result<()> {
   let payload = serde_json::json!({
     "alias": "test:newalias",
     "repo": "FakeFactory/not-exists",
@@ -205,12 +215,41 @@ async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> a
         )),
     )
     .await?;
-  assert_eq!(StatusCode::NOT_FOUND, response.status());
-  let response = response.json::<Value>().await?;
-  assert_eq!(
-    "hub_service_error-file_not_found",
-    response["error"]["code"].as_str().unwrap()
-  );
+  assert_eq!(StatusCode::CREATED, response.status());
+  let alias = response.json::<UserAliasResponse>().await?;
+  assert_eq!("test:newalias", alias.alias);
+  assert_eq!("FakeFactory/not-exists", alias.repo);
+  assert_eq!("fakemodel.Q4_0.gguf", alias.filename);
+  assert_eq!("main", alias.snapshot);
+  Ok(())
+}
+
+// An invalid repo string (not `org/repo`) is still rejected before any alias/download is created.
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_alias_handler_invalid_repo(#[future] app: Router) -> anyhow::Result<()> {
+  let payload = serde_json::json!({
+    "alias": "test:badrepo",
+    "repo": "not-a-valid-repo",
+    "filename": "fakemodel.Q4_0.gguf",
+    "request_params": {},
+    "context_params": []
+  });
+
+  let response = app
+    .oneshot(
+      Request::post("/api/models")
+        .json(&payload)?
+        .with_auth_context(AuthContext::test_session(
+          "test-user",
+          "testuser",
+          ResourceRole::PowerUser,
+        )),
+    )
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
   Ok(())
 }
 
@@ -308,21 +347,8 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
   Ok(())
 }
 
+// Update still requires the file on disk (create-then-download relaxation is create-only for now).
 #[rstest]
-#[case(serde_json::json!({
-  "alias": "tinyllama:new",
-  "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
-  "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
-
-  "family": "tinyllama",
-  "request_params": {
-    "temperature": 0.8,
-    "max_tokens": 2000
-  },
-  "context_params": [
-    "--ctx-size 4096"
-  ]
-}), Method::POST, "/api/models", "hub_service_error-file_not_found")]
 #[case(serde_json::json!({
   "alias": "tinyllama:instruct",
   "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
@@ -340,7 +366,7 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_create_alias_repo_not_downloaded_error(
+async fn test_update_alias_repo_not_downloaded_error(
   #[future] app: Router,
   #[case] payload: Value,
   #[case] method: Method,

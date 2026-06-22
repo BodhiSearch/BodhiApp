@@ -99,6 +99,20 @@ impl SettingServiceStub {
     }
   }
 
+  /// Default settings + `BODHI_TEST_MODE=true` so `is_test_mode()` returns true (downloads are
+  /// recorded completed without fetching). Mirrors how the E2E harness sets the env var.
+  pub fn with_test_mode() -> Self {
+    let temp_dir = temp_dir();
+    let settings = Self::setup(temp_dir.path());
+    let envs = HashMap::from([(crate::BODHI_TEST_MODE.to_string(), "true".to_string())]);
+    Self::new(envs, HashMap::new(), temp_dir).replace_settings(settings)
+  }
+
+  fn replace_settings(self, settings: HashMap<String, String>) -> Self {
+    *self.settings.write().unwrap() = Self::to_settings_value(settings);
+    self
+  }
+
   pub async fn append_settings(self, settings: HashMap<String, String>) -> Self {
     let settings = Self::to_settings_value(settings);
     for (key, value) in settings {
