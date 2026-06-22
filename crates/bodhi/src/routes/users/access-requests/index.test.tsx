@@ -40,15 +40,6 @@ vi.mock('@tanstack/react-router', async () => {
   };
 });
 
-// The V2 list renders its own rows; only Pagination is still consumed from this module.
-vi.mock('@/components/DataTable', () => ({
-  Pagination: ({ page, totalPages }: any) => (
-    <div data-testid="pagination">
-      Page {page} of {totalPages}
-    </div>
-  ),
-}));
-
 vi.mock('@/hooks/use-toast-messages', () => ({
   useToastMessages: () => ({
     showSuccess: vi.fn(),
@@ -218,9 +209,14 @@ describe('AllRequestsPage Data Display', () => {
 
     await renderPage();
 
+    // total 25 / pageSize 10 → 3 pages: ShellPagination renders numbered pills + prev/next.
     await waitFor(() => {
-      expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('pagination-page-1')).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByTestId('pagination-page-3')).toBeInTheDocument();
+    expect(screen.getByTestId('pagination-next')).toBeEnabled();
+    expect(screen.getByTestId('pagination-prev')).toBeDisabled();
   });
 
   it('shows decided rows without a role dropdown or action buttons', async () => {

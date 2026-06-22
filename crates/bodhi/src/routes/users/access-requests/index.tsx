@@ -4,11 +4,11 @@ import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
-import { Pagination } from '@/components/DataTable';
 import {
   LinkRow,
   ShellFilterTabs,
   ShellIcon,
+  ShellPagination,
   useCollapsibleSearch,
   useListKeyNav,
   useShellChrome,
@@ -248,11 +248,7 @@ function AccessRequestsContent() {
             ))}
           </div>
         )}
-        {total > pageSize && (
-          <div style={{ padding: '14px 16px' }} data-testid="pagination">
-            <Pagination page={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
-          </div>
-        )}
+        {total > pageSize && <ShellPagination minimal total={total} page={page} onPage={setPage} pageSize={pageSize} />}
       </div>
     </div>
   );

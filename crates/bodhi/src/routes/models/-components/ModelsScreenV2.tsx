@@ -3,9 +3,16 @@ import { useCallback, useMemo, useState } from 'react';
 import { AliasResponse, ApiAliasResponse } from '@bodhiapp/ts-client';
 import { useNavigate } from '@tanstack/react-router';
 
-import { Pagination } from '@/components/DataTable';
 import { DownloadsPanel, DownloadsPanelHeader, isActive } from '@/components/downloads-panel/DownloadsPanel';
-import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
+import {
+  LinkRow,
+  ShellIcon,
+  ShellPagination,
+  ShellSearch,
+  useListKeyNav,
+  useShell,
+  useShellChrome,
+} from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -406,11 +413,7 @@ export function ModelsScreenV2() {
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="m-pagination">
-          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-        </div>
-      )}
+      {totalPages > 1 && <ShellPagination minimal total={total} page={page} onPage={setPage} pageSize={PAGE_SIZE} />}
     </div>
   );
 }

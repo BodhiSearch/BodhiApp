@@ -26,3 +26,4 @@ export { useShell, ShellContext, type ShellContextValue } from './ShellContext';
 export { SHELL_NAV, type ShellNavItem, type ShellNavSubPage } from './shell-nav-config';
 export { BareLayout, type BareLayoutProps } from './BareLayout';
 export { ShellSlotsProvider, useShellSlots, useShellChrome, type ShellSlots } from './ShellSlotsContext';
+export { ShellPagination, type ShellPaginationProps } from './ShellPagination';

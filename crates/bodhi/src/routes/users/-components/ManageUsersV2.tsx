@@ -2,11 +2,11 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { UserInfo } from '@bodhiapp/ts-client';
 
-import { Pagination } from '@/components/DataTable';
 import {
   LinkRow,
   ShellFilterTabs,
   ShellIcon,
+  ShellPagination,
   useCollapsibleSearch,
   useListKeyNav,
   useShellChrome,
@@ -441,11 +441,7 @@ function ManageUsersContent() {
             ))}
           </div>
         )}
-        {total > pageSize && (
-          <div style={{ padding: '14px 16px' }} data-testid="pagination">
-            <Pagination page={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
-          </div>
-        )}
+        {total > pageSize && <ShellPagination minimal total={total} page={page} onPage={setPage} pageSize={pageSize} />}
       </div>
     </div>
   );
