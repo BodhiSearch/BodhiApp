@@ -13,17 +13,9 @@ export class LocalModelFormPage extends BasePage {
     quantStatus: (name) => `[data-testid="quant-status-${name}"]`,
     quantDownloadNote: '[data-testid="quant-download-note"]',
     contextParamsTextarea: '[data-testid="context-params"]',
-    requestParamsToggle: '[data-testid="request-params-toggle"]',
+    systemPromptTextarea: '[data-testid="system-prompt"]',
+    requestParamsTextarea: '[data-testid="request-params"]',
     submitButton: '[data-testid="submit-alias-form"]',
-    // Request parameter fields
-    temperatureInput: '[data-testid="request-param-temperature"]',
-    maxTokensInput: '[data-testid="request-param-max_tokens"]',
-    topPInput: '[data-testid="request-param-top_p"]',
-    seedInput: '[data-testid="request-param-seed"]',
-    stopInput: '[data-testid="request-param-stop"]',
-    frequencyPenaltyInput: '[data-testid="request-param-frequency_penalty"]',
-    presencePenaltyInput: '[data-testid="request-param-presence_penalty"]',
-    userInput: '[data-testid="request-param-user"]',
   };
 
   async waitForFormReady() {
@@ -121,50 +113,19 @@ export class LocalModelFormPage extends BasePage {
     await this.page.locator(`[data-testid="context-flag-add-${flagKey}"]`).click();
   }
 
-  async expandRequestParams() {
-    const toggle = this.page.locator(this.selectors.requestParamsToggle);
-    // Check if request params section is collapsed
-    const isExpanded = await toggle.getAttribute('aria-expanded');
-    if (isExpanded !== 'true') {
-      await toggle.click();
-      // Wait for section to expand
-      await this.page.waitForTimeout(500);
-    }
+  async fillSystemPrompt(prompt) {
+    if (prompt) await this.page.fill(this.selectors.systemPromptTextarea, prompt);
   }
 
+  /** Fill the request-params textarea from a {key: value} map as `key=value` lines. */
   async fillRequestParams(params = {}) {
-    // Expand request params section if needed
-    await this.expandRequestParams();
+    const lines = Object.entries(params).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(',') : v}`);
+    if (lines.length) await this.page.fill(this.selectors.requestParamsTextarea, lines.join('\n'));
+  }
 
-    // Fill individual parameter fields
-    if (params.temperature !== undefined) {
-      await this.page.fill(this.selectors.temperatureInput, params.temperature.toString());
-    }
-    if (params.max_tokens !== undefined) {
-      await this.page.fill(this.selectors.maxTokensInput, params.max_tokens.toString());
-    }
-    if (params.top_p !== undefined) {
-      await this.page.fill(this.selectors.topPInput, params.top_p.toString());
-    }
-    if (params.seed !== undefined) {
-      await this.page.fill(this.selectors.seedInput, params.seed.toString());
-    }
-    if (params.stop !== undefined) {
-      const stopValue = Array.isArray(params.stop) ? params.stop.join(',') : params.stop;
-      await this.page.fill(this.selectors.stopInput, stopValue);
-    }
-    if (params.frequency_penalty !== undefined) {
-      await this.page.fill(
-        this.selectors.frequencyPenaltyInput,
-        params.frequency_penalty.toString()
-      );
-    }
-    if (params.presence_penalty !== undefined) {
-      await this.page.fill(this.selectors.presencePenaltyInput, params.presence_penalty.toString());
-    }
-    if (params.user !== undefined) {
-      await this.page.fill(this.selectors.userInput, params.user);
-    }
+  /** Append a request param via the click-to-add catalog (e.g. 'top_p'). */
+  async addRequestParam(paramKey) {
+    await this.page.locator(`[data-testid="request-param-add-${paramKey}"]`).click();
   }
 
   async createAlias() {

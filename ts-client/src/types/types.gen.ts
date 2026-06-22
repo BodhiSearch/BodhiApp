@@ -1188,6 +1188,7 @@ export type OaiRequestParams = {
     temperature?: number | null;
     top_p?: number | null;
     user?: string | null;
+    system_prompt?: string | null;
 };
 
 export type OAuthDiscoverAsRequest = {

@@ -78,3 +78,35 @@ export function flagKeysInText(text: string): Set<string> {
   });
   return keys;
 }
+
+/**
+ * OpenAI-compatible request params → `request_params` (one `key=value` per line). Only the 8 params
+ * the backend actually stores are listed (system_prompt has its own textarea, not the catalog).
+ */
+export const REQUEST_PARAMS: CatalogEntry[] = [
+  { key: 'temperature', type: 'float', range: '0.0 – 2.0', desc: 'Sampling temperature. Lower = more deterministic.' },
+  { key: 'top_p', type: 'float', range: '0.0 – 1.0', desc: 'Nucleus sampling probability mass.' },
+  { key: 'max_tokens', type: 'int', range: '1 – ctx-size', desc: 'Maximum tokens in the completion.' },
+  { key: 'seed', type: 'int', range: '-1 | int', desc: 'Reproducibility seed.' },
+  { key: 'frequency_penalty', type: 'float', range: '-2.0 – 2.0', desc: 'Penalise tokens by frequency so far.' },
+  { key: 'presence_penalty', type: 'float', range: '-2.0 – 2.0', desc: 'Penalise tokens that appeared at all.' },
+  { key: 'stop', type: 'string', range: 'comma-separated', desc: 'Stop sequences — halt generation on match.' },
+  { key: 'user', type: 'string', range: '<string>', desc: 'End-user ID for abuse tracking.' },
+];
+
+/** Append `key=value\n` to a request-params textarea. */
+export function appendParamLine(current: string, entry: CatalogEntry): string {
+  const base = current.endsWith('\n') || current === '' ? current : `${current}\n`;
+  const value = entry.type === 'int' ? '0' : entry.type === 'float' ? '0.0' : '';
+  return `${base}${entry.key}=${value}\n`;
+}
+
+/** Param keys already present in a `key=value` textarea. */
+export function paramKeysInText(text: string): Set<string> {
+  const keys = new Set<string>();
+  text.split('\n').forEach((line) => {
+    const m = line.trim().match(/^([\w_]+)=/);
+    if (m) keys.add(m[1]);
+  });
+  return keys;
+}

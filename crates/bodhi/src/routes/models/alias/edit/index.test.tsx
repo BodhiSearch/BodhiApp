@@ -242,15 +242,16 @@ describe('EditAliasPage', () => {
     });
   });
 
-  it('expands request parameters when there are existing values', async () => {
+  it('prefills the request-params textarea from existing values', async () => {
     await act(async () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
 
-    // Request parameters should be expanded since mockModelData has request_params
+    // request_params { temperature: 0.7, max_tokens: 1000 } render as key=value lines.
     await waitFor(() => {
-      expect(screen.getByLabelText(/temperature/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/max_tokens/i)).toBeInTheDocument();
+      const rp = screen.getByTestId('request-params') as HTMLTextAreaElement;
+      expect(rp.value).toContain('temperature=0.7');
+      expect(rp.value).toContain('max_tokens=1000');
     });
   });
 

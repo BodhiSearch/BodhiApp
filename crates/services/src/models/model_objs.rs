@@ -456,6 +456,13 @@ default: 1.0 (disabled)"#)]
   )]
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub user: Option<String>,
+
+  #[arg(
+    long,
+    help = r#"A system prompt prepended to every chat request for this alias (as a leading system message). Skipped when the request already supplies a leading system message."#
+  )]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub system_prompt: Option<String>,
 }
 
 fn validate_range_neg_to_pos_2(s: &str) -> Result<f32, String> {
@@ -533,6 +540,27 @@ impl OAIRequestParams {
       }
       if !self.stop.is_empty() && !obj.contains_key("stop") {
         obj.insert("stop".to_string(), serde_json::json!(self.stop));
+      }
+      // Prepend the alias system prompt as a leading system message — unless the request already
+      // opens with one (the caller's system message wins). `system_prompt` is a stored alias param,
+      // not an OpenAI request field, so it never leaks into the wire body as a top-level key.
+      if let Some(prompt) = &self.system_prompt {
+        if !prompt.is_empty() {
+          if let Some(serde_json::Value::Array(messages)) = obj.get_mut("messages") {
+            let already_system = messages
+              .first()
+              .and_then(|m| m.get("role"))
+              .and_then(|r| r.as_str())
+              .map(|r| r == "system")
+              .unwrap_or(false);
+            if !already_system {
+              messages.insert(
+                0,
+                serde_json::json!({ "role": "system", "content": prompt }),
+              );
+            }
+          }
+        }
       }
     }
   }

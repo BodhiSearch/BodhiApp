@@ -10894,6 +10894,12 @@
               "string",
               "null"
             ]
+          },
+          "system_prompt": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

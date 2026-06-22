@@ -2405,6 +2405,7 @@ export interface components {
             /** Format: float */
             top_p?: number | null;
             user?: string | null;
+            system_prompt?: string | null;
         };
         OAuthDiscoverAsRequest: {
             url: string;

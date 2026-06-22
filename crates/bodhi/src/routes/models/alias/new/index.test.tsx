@@ -246,41 +246,44 @@ describe('CreateAliasPage', () => {
     });
   });
 
-  it('expands and collapses request parameters section', async () => {
+  it('edits request params via the textarea + catalog and a system prompt', async () => {
     const user = userEvent.setup();
 
     await act(async () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
-    const requestParamsHeader = screen.getByText('Request Parameters');
-    expect(requestParamsHeader).toBeInTheDocument();
+    // System prompt has its own textarea.
+    const systemPrompt = screen.getByTestId('system-prompt');
+    await user.type(systemPrompt, 'You are concise.');
+    expect(systemPrompt).toHaveValue('You are concise.');
 
-    // Wait for initial render to complete
-    await waitFor(() => {
-      // Initially collapsed, so request param fields should not be visible
-      // Check if the content is hidden via CSS (max-height: 0)
-      const cardContent = requestParamsHeader.closest('.rounded-lg')?.querySelector('.overflow-hidden');
-      expect(cardContent).toHaveClass('max-h-0');
+    // Request params are key=value lines; the catalog appends an entry.
+    const requestParams = screen.getByTestId('request-params') as HTMLTextAreaElement;
+    await user.type(requestParams, 'temperature=0.7');
+    await user.click(screen.getByTestId('request-param-add-top_p'));
+    await waitFor(() => expect(requestParams.value).toContain('top_p='));
+    // Re-adding a present param is blocked.
+    expect(screen.getByTestId('request-param-add-top_p')).toBeDisabled();
+  });
+
+  it('submits with a system prompt + request params set', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
-    // Click to expand
-    await user.click(requestParamsHeader);
+    await user.type(screen.getByTestId('alias-input'), 'test-alias');
+    await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
+    await user.click(await screen.findByTestId('quant-row-Q4_K_M'));
+    await user.type(screen.getByTestId('system-prompt'), 'Be terse.');
+    await user.type(screen.getByTestId('request-params'), 'temperature=0.5');
 
-    // Now request param fields should be visible
+    await user.click(screen.getByRole('button', { name: /create model alias/i }));
+
     await waitFor(() => {
-      const cardContent = requestParamsHeader.closest('.rounded-lg')?.querySelector('.overflow-hidden');
-      expect(cardContent).toHaveClass('max-h-[1000px]');
-      expect(screen.getByLabelText(/temperature/i)).toBeInTheDocument();
-    });
-
-    // Click to collapse
-    await user.click(requestParamsHeader);
-
-    // Fields should be hidden again
-    await waitFor(() => {
-      const cardContent = requestParamsHeader.closest('.rounded-lg')?.querySelector('.overflow-hidden');
-      expect(cardContent).toHaveClass('max-h-0');
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully created'));
     });
   });
 });

@@ -119,6 +119,52 @@ fn test_oai_request_params_apply_to_value_does_not_override_existing() {
 }
 
 #[rstest]
+fn test_oai_request_params_apply_to_value_prepends_system_prompt() {
+  let params = OAIRequestParams {
+    system_prompt: Some("You are a helpful assistant.".to_string()),
+    ..Default::default()
+  };
+  let mut value = json!({
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Hello"}]
+  });
+  params.apply_to_value(&mut value);
+  assert_eq!(
+    json!([
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Hello"}
+    ]),
+    value["messages"]
+  );
+  // system_prompt is never emitted as a top-level wire field.
+  assert!(value.get("system_prompt").is_none());
+}
+
+#[rstest]
+fn test_oai_request_params_apply_to_value_keeps_caller_system_message() {
+  let params = OAIRequestParams {
+    system_prompt: Some("Alias prompt".to_string()),
+    ..Default::default()
+  };
+  let mut value = json!({
+    "model": "gpt-4",
+    "messages": [
+      {"role": "system", "content": "Caller prompt"},
+      {"role": "user", "content": "Hello"}
+    ]
+  });
+  params.apply_to_value(&mut value);
+  // The caller's leading system message wins — the alias prompt is not prepended.
+  assert_eq!(
+    json!([
+      {"role": "system", "content": "Caller prompt"},
+      {"role": "user", "content": "Hello"}
+    ]),
+    value["messages"]
+  );
+}
+
+#[rstest]
 #[case::no_prefix_unchanged(
   "gpt-4",
   None,

@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 
 import { AliasResponse } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from '@tanstack/react-router';
-import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +18,6 @@ import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
 import {
   AliasFormData,
   createAliasFormSchema,
-  requestParamsSchema,
   convertFormToApi,
   convertFormToUpdateApi,
   convertApiToForm,
@@ -28,7 +26,14 @@ import {
 import { ALIAS_FORM_TOOLTIPS } from '../../-components/tooltips';
 
 import { ParamCatalog } from './ParamCatalog';
-import { RUNTIME_FLAGS, appendFlagLine, flagKeysInText } from './paramCatalogs';
+import {
+  RUNTIME_FLAGS,
+  REQUEST_PARAMS,
+  appendFlagLine,
+  appendParamLine,
+  flagKeysInText,
+  paramKeysInText,
+} from './paramCatalogs';
 import { QuantSelector } from './QuantSelector';
 
 interface AliasFormProps {
@@ -75,9 +80,6 @@ function FormFieldWithTooltip({
 const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useToastMessages();
-  const [isRequestExpanded, setIsRequestExpanded] = useState(
-    isEditMode && initialData && isUserAlias(initialData) && Object.keys(initialData.request_params || {}).length > 0
-  );
   const formTestId = isEditMode ? 'form-edit-alias' : 'form-create-alias';
 
   const form = useForm<AliasFormData>({
@@ -91,7 +93,8 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
             repo: '',
             filename: '',
             snapshot: '',
-            request_params: {},
+            request_params_text: '',
+            system_prompt: '',
             context_params: '',
           },
   });
@@ -146,89 +149,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     }
   };
 
-  const handleSubmit = form.handleSubmit(
-    (data) => {
-      const requestErrors = form.formState.errors.request_params;
-      if (requestErrors) setIsRequestExpanded(true);
-
-      if (!requestErrors) {
-        onSubmit(data);
-      }
-    },
-    (errors) => {
-      if (errors.request_params) setIsRequestExpanded(true);
-    }
-  );
-
-  const renderParamFields = (paramType: 'request_params') => {
-    const schema = requestParamsSchema;
-    return Object.entries(schema.shape).map(([key, field]) => {
-      const fieldId = `${paramType}-${key}`;
-      return (
-        <FormField
-          key={key}
-          control={form.control}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          name={`${paramType}.${key}` as any}
-          render={({ field: formField }) => (
-            <FormItem className="space-y-2 mb-4">
-              <FormFieldWithTooltip
-                label={key}
-                tooltip={ALIAS_FORM_TOOLTIPS[key as keyof typeof ALIAS_FORM_TOOLTIPS]}
-                htmlFor={fieldId}
-              >
-                <FormControl>
-                  {Array.isArray(field) ? (
-                    <Input
-                      {...formField}
-                      id={fieldId}
-                      data-testid={`request-param-${key}`}
-                      value={
-                        formField.value
-                          ? Array.isArray(formField.value)
-                            ? formField.value.join(',')
-                            : formField.value
-                          : ''
-                      }
-                      onChange={(e) =>
-                        formField.onChange(
-                          e.target.value ? e.target.value.split(',').map((item) => item.trim()) : undefined
-                        )
-                      }
-                      placeholder="Comma-separated values"
-                    />
-                  ) : (
-                    <Input
-                      {...formField}
-                      id={fieldId}
-                      data-testid={`request-param-${key}`}
-                      type={field instanceof z.ZodNumber ? 'number' : 'text'}
-                      min={field instanceof z.ZodNumber ? (field.minValue ?? undefined) : undefined}
-                      max={field instanceof z.ZodNumber ? (field.maxValue ?? undefined) : undefined}
-                      step={field instanceof z.ZodNumber && !field.isInt ? 0.1 : undefined}
-                      value={formField.value ?? ''}
-                      onChange={(e) => {
-                        const inputValue = e.target.value;
-                        if (inputValue === '') {
-                          formField.onChange(undefined);
-                        } else if (field instanceof z.ZodNumber) {
-                          const numValue = field.isInt ? parseInt(inputValue, 10) : parseFloat(inputValue);
-                          formField.onChange(isNaN(numValue) ? undefined : numValue);
-                        } else {
-                          formField.onChange(inputValue);
-                        }
-                      }}
-                    />
-                  )}
-                </FormControl>
-              </FormFieldWithTooltip>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      );
-    });
-  };
+  const handleSubmit = form.handleSubmit((data) => onSubmit(data));
 
   return (
     <Form {...form}>
@@ -363,19 +284,80 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
           </CardContent>
         </Card>
 
-        <Card className="h-auto">
-          <CardHeader
-            className="cursor-pointer flex flex-row items-center justify-between"
-            onClick={() => setIsRequestExpanded(!isRequestExpanded)}
-            data-testid="request-params-toggle"
-          >
-            <CardTitle>Request Parameters</CardTitle>
-            {isRequestExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        <Card>
+          <CardHeader>
+            <CardTitle>Request Defaults</CardTitle>
           </CardHeader>
-          <CardContent
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${isRequestExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
-          >
-            {renderParamFields('request_params')}
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="system_prompt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormFieldWithTooltip
+                    label="System Prompt"
+                    tooltip="Prepended to every chat request for this alias (as a leading system message), unless the request already supplies one."
+                    htmlFor="system_prompt"
+                  >
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        id="system_prompt"
+                        data-testid="system-prompt"
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="You are a helpful assistant."
+                        rows={3}
+                      />
+                    </FormControl>
+                  </FormFieldWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="request_params_text"
+              render={({ field }) => (
+                <FormItem>
+                  <FormFieldWithTooltip
+                    label="Request Parameters"
+                    tooltip="OpenAI-compatible request defaults, one key=value per line: temperature=0.7"
+                    htmlFor="request_params_text"
+                  >
+                    <FormControl>
+                      <div className="grid gap-3 md:grid-cols-[1fr_18rem]">
+                        <div>
+                          <Textarea
+                            {...field}
+                            id="request_params_text"
+                            data-testid="request-params"
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            placeholder="temperature=0.7&#10;top_p=1.0"
+                            rows={8}
+                            className="font-mono text-sm h-full"
+                          />
+                          <p className="text-sm text-muted-foreground mt-1.5">
+                            Format: <span className="font-mono">key=value</span>. Click a param on the right to append
+                            it.
+                          </p>
+                        </div>
+                        <ParamCatalog
+                          label="Available parameters — click to add"
+                          catalog={REQUEST_PARAMS}
+                          addedKeys={paramKeysInText(field.value || '')}
+                          onAdd={(entry) => field.onChange(appendParamLine(field.value || '', entry))}
+                          testIdPrefix="request-param"
+                        />
+                      </div>
+                    </FormControl>
+                  </FormFieldWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
