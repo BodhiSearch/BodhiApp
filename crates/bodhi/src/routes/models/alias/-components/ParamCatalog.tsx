@@ -14,8 +14,8 @@ interface ParamCatalogProps {
 export function ParamCatalog({ label, catalog, addedKeys, onAdd, testIdPrefix }: ParamCatalogProps) {
   return (
     <div data-testid={`${testIdPrefix}-catalog`}>
-      <div className="text-xs font-medium text-muted-foreground mb-2">{label}</div>
-      <div className="max-h-64 overflow-y-auto rounded-md border divide-y">
+      <div className="lf-split-label">{label}</div>
+      <div className="lf-flag-list">
         {catalog.map((entry) => {
           const added = addedKeys.has(entry.key);
           return (
@@ -26,16 +26,14 @@ export function ParamCatalog({ label, catalog, addedKeys, onAdd, testIdPrefix }:
               onClick={() => onAdd(entry)}
               data-testid={`${testIdPrefix}-add-${entry.key}`}
               title={added ? 'Already added' : `Add ${entry.key}`}
-              className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm transition-colors ${
-                added ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50'
-              }`}
+              className={`lf-flag-item${added ? ' lf-flag-added' : ''}`}
             >
-              <span className="flex w-full items-center gap-2">
-                <span className="font-mono text-xs">{entry.key}</span>
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{entry.type}</span>
-                {added && <span className="ml-auto text-[10px] text-muted-foreground">added</span>}
-              </span>
-              <span className="text-xs text-muted-foreground">{entry.desc}</span>
+              <div className="lf-flag-row">
+                <span className="lf-flag-name">{entry.key}</span>
+                <span className="lf-flag-type">{entry.type}</span>
+                {added && <span className="lf-flag-added-badge">added</span>}
+              </div>
+              <div className="lf-flag-desc">{entry.desc}</div>
             </button>
           );
         })}

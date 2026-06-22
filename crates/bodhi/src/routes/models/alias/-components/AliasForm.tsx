@@ -7,10 +7,8 @@ import { HelpCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useCreateModel, useUpdateModel } from '@/hooks/models';
 import { useToastMessages } from '@/hooks/use-toast-messages';
@@ -36,44 +34,42 @@ import {
 } from './paramCatalogs';
 import { QuantSelector } from './QuantSelector';
 
+import './local-form.css';
+
 interface AliasFormProps {
   isEditMode: boolean;
   initialData?: AliasResponse;
 }
 
-function FormFieldWithTooltip({
+/** Field label with an optional help tooltip + a required marker. */
+function LfLabel({
   label,
   tooltip,
-  children,
   htmlFor,
+  required,
 }: {
   label: string;
-  tooltip: string;
-  children: React.ReactNode;
-  htmlFor: string;
+  tooltip?: string;
+  htmlFor?: string;
+  required?: boolean;
 }) {
   return (
-    <>
-      <div className="flex items-center gap-2 mb-2">
-        <FormLabel
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          htmlFor={htmlFor}
-        >
-          {label}
-        </FormLabel>
+    <label className="lf-label" htmlFor={htmlFor}>
+      <span>{label}</span>
+      {required && <span className="lf-req">*</span>}
+      {tooltip && (
         <TooltipProvider>
           <Tooltip delayDuration={300}>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
             </TooltipTrigger>
             <TooltipContent sideOffset={8}>
               <p className="max-w-xs text-sm">{tooltip}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      </div>
-      {children}
-    </>
+      )}
+    </label>
   );
 }
 
@@ -141,11 +137,9 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
 
   const onSubmit = (data: AliasFormData) => {
     if (isEditMode) {
-      const updateApiData = convertFormToUpdateApi(data);
-      updateModel.mutate(updateApiData);
+      updateModel.mutate(convertFormToUpdateApi(data));
     } else {
-      const createApiData = convertFormToApi(data);
-      createModel.mutate(createApiData);
+      createModel.mutate(convertFormToApi(data));
     }
   };
 
@@ -153,218 +147,236 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit} className="space-y-8" data-testid={formTestId}>
-        <Card>
-          <CardHeader>
-            <CardTitle>{isEditMode ? 'Edit' : 'New'} Model Alias</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="alias"
-              render={({ field }) => (
-                <FormItem>
-                  <FormFieldWithTooltip label="Alias" tooltip={ALIAS_FORM_TOOLTIPS.alias} htmlFor="alias">
-                    <FormControl>
-                      <Input {...field} id="alias" data-testid="alias-input" disabled={isEditMode} />
-                    </FormControl>
-                  </FormFieldWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <form onSubmit={handleSubmit} data-testid={formTestId}>
+        <div className="lf-card">
+          <div className="lf-card-head">
+            <h1 className="lf-card-title">{isEditMode ? 'Edit Local Model' : 'Create New Local Model'}</h1>
+            <p className="lf-card-sub">
+              Set up a named alias for a local GGUF model, with runtime flags and request defaults.
+            </p>
+          </div>
 
-            <FormField
-              control={form.control}
-              name="repo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormFieldWithTooltip label="Repo" tooltip={ALIAS_FORM_TOOLTIPS.repo} htmlFor="repo-input">
+          <div className="lf-card-body">
+            {/* ── Identity ── */}
+            <section className="lf-section">
+              <div className="lf-section-title">Identity</div>
+              <FormField
+                control={form.control}
+                name="alias"
+                render={({ field }) => (
+                  <FormItem className="lf-field">
+                    <LfLabel label="Alias name" tooltip={ALIAS_FORM_TOOLTIPS.alias} htmlFor="alias" required />
                     <FormControl>
                       <Input
                         {...field}
-                        id="repo-input"
-                        data-testid="repo-input"
-                        placeholder="org/repo"
-                        className="font-mono"
+                        id="alias"
+                        data-testid="alias-input"
+                        placeholder="e.g. qwen-api"
+                        disabled={isEditMode}
                       />
                     </FormControl>
-                  </FormFieldWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </section>
 
-            <FormField
-              control={form.control}
-              name="filename"
-              render={({ field }) => (
-                <FormItem>
-                  <FormFieldWithTooltip
-                    label="Quantisation"
-                    tooltip={ALIAS_FORM_TOOLTIPS.filename}
-                    htmlFor="quant-selector"
-                  >
+            <div className="lf-divider" />
+
+            {/* ── Model file ── */}
+            <section className="lf-section">
+              <div className="lf-section-title">Model file</div>
+              <div className="lf-field-row">
+                <FormField
+                  control={form.control}
+                  name="repo"
+                  render={({ field }) => (
+                    <FormItem className="lf-field">
+                      <LfLabel label="Repo" tooltip={ALIAS_FORM_TOOLTIPS.repo} htmlFor="repo-input" />
+                      <FormControl>
+                        <Input
+                          {...field}
+                          id="repo-input"
+                          data-testid="repo-input"
+                          placeholder="org/repo"
+                          className="font-mono"
+                        />
+                      </FormControl>
+                      <p className="lf-hint">
+                        Suggestions shown — or type any <span className="lf-code">&lt;org&gt;/&lt;repo&gt;</span> to
+                        download.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="snapshot"
+                  render={({ field }) => (
+                    <FormItem className="lf-field">
+                      <LfLabel
+                        label="Snapshot"
+                        tooltip="Git reference or commit SHA (defaults to main)"
+                        htmlFor="snapshot-input"
+                      />
+                      <FormControl>
+                        <Input
+                          {...field}
+                          id="snapshot-input"
+                          data-testid="snapshot-input"
+                          value={field.value || ''}
+                          placeholder="main"
+                          className="font-mono"
+                        />
+                      </FormControl>
+                      <p className="lf-hint">
+                        Defaults to <span className="lf-code">main</span> — or paste a commit SHA / branch.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="filename"
+                render={({ field }) => (
+                  <FormItem className="lf-field">
+                    <LfLabel label="Quantisation — selects file" tooltip={ALIAS_FORM_TOOLTIPS.filename} />
                     <FormControl>
                       <QuantSelector repo={form.watch('repo')} value={field.value} onSelect={field.onChange} />
                     </FormControl>
-                  </FormFieldWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </section>
 
-            <FormField
-              control={form.control}
-              name="snapshot"
-              render={({ field }) => (
-                <FormItem>
-                  <FormFieldWithTooltip
-                    label="Snapshot"
-                    tooltip="Git reference or commit SHA for the model version (defaults to main)"
-                    htmlFor="snapshot-input"
-                  >
-                    <FormControl>
-                      <Input
-                        {...field}
-                        id="snapshot-input"
-                        data-testid="snapshot-input"
-                        value={field.value || ''}
-                        placeholder="main"
-                        className="font-mono"
-                      />
-                    </FormControl>
-                  </FormFieldWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="lf-divider" />
 
-            <FormField
-              control={form.control}
-              name="context_params"
-              render={({ field }) => (
-                <FormItem>
-                  <FormFieldWithTooltip
-                    label="Context Parameters"
-                    tooltip="Enter llama-server parameters, one per line: --ctx-size 2048, --parallel 4"
-                    htmlFor="context_params"
-                  >
-                    <FormControl>
-                      <div className="grid gap-3 md:grid-cols-[1fr_18rem]">
-                        <div>
-                          <Textarea
+            {/* ── Runtime flags ── */}
+            <section className="lf-section">
+              <div className="lf-section-title">Runtime flags</div>
+              <FormField
+                control={form.control}
+                name="context_params"
+                render={({ field }) => (
+                  <FormItem className="lf-field">
+                    <div className="lf-split">
+                      <div>
+                        <div className="lf-split-label">Active runtime flags</div>
+                        <FormControl>
+                          <textarea
                             {...field}
                             id="context_params"
                             data-testid="context-params"
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value)}
-                            placeholder="Enter llama-server parameters, one per line:&#10;--ctx-size 2048&#10;--parallel 4"
-                            rows={8}
-                            className="font-mono text-sm h-full"
+                            placeholder={'Enter llama-server parameters, one per line:\n--ctx-size 2048\n--parallel 4'}
+                            className="lf-textarea"
                           />
-                          <p className="text-sm text-muted-foreground mt-1.5">
-                            One flag per line. Click a flag on the right to append it.
-                          </p>
-                        </div>
-                        <ParamCatalog
-                          label="Available flags — click to add"
-                          catalog={RUNTIME_FLAGS}
-                          addedKeys={flagKeysInText(field.value || '')}
-                          onAdd={(entry) => field.onChange(appendFlagLine(field.value || '', entry))}
-                          testIdPrefix="context-flag"
-                        />
+                        </FormControl>
+                        <p className="lf-hint mt-1.5">One flag per line. Click a flag on the right to append it.</p>
                       </div>
-                    </FormControl>
-                  </FormFieldWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+                      <ParamCatalog
+                        label="Available flags — click to add"
+                        catalog={RUNTIME_FLAGS}
+                        addedKeys={flagKeysInText(field.value || '')}
+                        onAdd={(entry) => field.onChange(appendFlagLine(field.value || '', entry))}
+                        testIdPrefix="context-flag"
+                      />
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Request Defaults</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="system_prompt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormFieldWithTooltip
-                    label="System Prompt"
-                    tooltip="Prepended to every chat request for this alias (as a leading system message), unless the request already supplies one."
-                    htmlFor="system_prompt"
-                  >
+            <div className="lf-divider" />
+
+            {/* ── Request defaults ── */}
+            <section className="lf-section">
+              <div className="lf-section-title">Request defaults</div>
+              <FormField
+                control={form.control}
+                name="system_prompt"
+                render={({ field }) => (
+                  <FormItem className="lf-field">
+                    <LfLabel
+                      label="System prompt"
+                      tooltip="Prepended to every chat request for this alias (as a leading system message), unless the request already supplies one."
+                      htmlFor="system_prompt"
+                    />
                     <FormControl>
-                      <Textarea
+                      <textarea
                         {...field}
                         id="system_prompt"
                         data-testid="system-prompt"
                         value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value)}
                         placeholder="You are a helpful assistant."
-                        rows={3}
+                        className="lf-textarea"
+                        style={{ minHeight: 72 }}
                       />
                     </FormControl>
-                  </FormFieldWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="request_params_text"
-              render={({ field }) => (
-                <FormItem>
-                  <FormFieldWithTooltip
-                    label="Request Parameters"
-                    tooltip="OpenAI-compatible request defaults, one key=value per line: temperature=0.7"
-                    htmlFor="request_params_text"
-                  >
-                    <FormControl>
-                      <div className="grid gap-3 md:grid-cols-[1fr_18rem]">
-                        <div>
-                          <Textarea
+              <FormField
+                control={form.control}
+                name="request_params_text"
+                render={({ field }) => (
+                  <FormItem className="lf-field">
+                    <LfLabel
+                      label="Request parameters"
+                      tooltip="OpenAI-compatible request defaults, one key=value per line: temperature=0.7"
+                    />
+                    <div className="lf-split">
+                      <div>
+                        <div className="lf-split-label">Active parameters</div>
+                        <FormControl>
+                          <textarea
                             {...field}
                             id="request_params_text"
                             data-testid="request-params"
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value)}
-                            placeholder="temperature=0.7&#10;top_p=1.0"
-                            rows={8}
-                            className="font-mono text-sm h-full"
+                            placeholder={'temperature=0.7\ntop_p=1.0'}
+                            className="lf-textarea"
                           />
-                          <p className="text-sm text-muted-foreground mt-1.5">
-                            Format: <span className="font-mono">key=value</span>. Click a param on the right to append
-                            it.
-                          </p>
-                        </div>
-                        <ParamCatalog
-                          label="Available parameters — click to add"
-                          catalog={REQUEST_PARAMS}
-                          addedKeys={paramKeysInText(field.value || '')}
-                          onAdd={(entry) => field.onChange(appendParamLine(field.value || '', entry))}
-                          testIdPrefix="request-param"
-                        />
+                        </FormControl>
+                        <p className="lf-hint mt-1.5">
+                          Format: <span className="lf-code">key=value</span>. Click a param on the right to append it.
+                        </p>
                       </div>
-                    </FormControl>
-                  </FormFieldWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+                      <ParamCatalog
+                        label="Available parameters — click to add"
+                        catalog={REQUEST_PARAMS}
+                        addedKeys={paramKeysInText(field.value || '')}
+                        onAdd={(entry) => field.onChange(appendParamLine(field.value || '', entry))}
+                        testIdPrefix="request-param"
+                      />
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </section>
+          </div>
 
-        <div className="flex justify-center mt-8">
-          <Button type="submit" data-testid="submit-alias-form">
-            {isEditMode ? 'Update' : 'Create'} Model Alias
-          </Button>
+          {/* ── Footer ── */}
+          <div className="lf-footer">
+            <Button type="button" variant="ghost" onClick={() => navigate({ to: '/models/' })}>
+              Cancel
+            </Button>
+            <Button type="submit" data-testid="submit-alias-form">
+              {isEditMode ? 'Update alias' : 'Create alias'}
+            </Button>
+          </div>
         </div>
       </form>
     </Form>

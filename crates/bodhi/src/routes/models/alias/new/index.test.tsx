@@ -152,9 +152,9 @@ describe('CreateAliasPage', () => {
     expect(screen.getByTestId('alias-input')).toBeInTheDocument();
     expect(screen.getByTestId('repo-input')).toBeInTheDocument();
     expect(screen.getByTestId('snapshot-input')).toBeInTheDocument();
-    expect(screen.getByLabelText(/context parameters/i)).toBeInTheDocument();
+    expect(screen.getByTestId('context-params')).toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: /create model alias/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create alias/i })).toBeInTheDocument();
   });
 
   it('fetches quants for the typed repo and submits the selected quant', async () => {
@@ -172,7 +172,7 @@ describe('CreateAliasPage', () => {
     await user.click(quantRow);
     await waitFor(() => expect(quantRow).toHaveAttribute('data-test-state', 'selected'));
 
-    await user.click(screen.getByRole('button', { name: /create model alias/i }));
+    await user.click(screen.getByRole('button', { name: /create alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully created'));
@@ -222,7 +222,7 @@ describe('CreateAliasPage', () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
-    const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
+    const contextParamsTextarea = screen.getByTestId('context-params');
     expect(contextParamsTextarea).toBeInTheDocument();
 
     await user.type(contextParamsTextarea, '--ctx-size 2048\n--parallel 4\n--threads 8');
@@ -239,7 +239,7 @@ describe('CreateAliasPage', () => {
     await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
     await user.click(await screen.findByTestId('quant-row-Q4_K_M'));
 
-    await user.click(screen.getByRole('button', { name: /create model alias/i }));
+    await user.click(screen.getByRole('button', { name: /create alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully created'));
@@ -280,7 +280,7 @@ describe('CreateAliasPage', () => {
     await user.type(screen.getByTestId('system-prompt'), 'Be terse.');
     await user.type(screen.getByTestId('request-params'), 'temperature=0.5');
 
-    await user.click(screen.getByRole('button', { name: /create model alias/i }));
+    await user.click(screen.getByRole('button', { name: /create alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully created'));

@@ -158,9 +158,9 @@ describe('EditAliasPage', () => {
 
     expect(screen.getByTestId('alias-input')).toBeInTheDocument();
     expect(screen.getByTestId('repo-input')).toBeInTheDocument();
-    expect(screen.getByLabelText(/context parameters/i)).toBeInTheDocument();
+    expect(screen.getByTestId('context-params')).toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: /update model alias/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /update alias/i })).toBeInTheDocument();
 
     // Check pre-filled values: alias locked, repo populated, current quant preselected.
     expect(screen.getByTestId('alias-input')).toHaveValue('test-alias');
@@ -172,11 +172,11 @@ describe('EditAliasPage', () => {
     });
 
     // Check context parameters are pre-filled
-    const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
+    const contextParamsTextarea = screen.getByTestId('context-params');
     expect(contextParamsTextarea).toHaveValue('--ctx-size 2048\n--parallel 4');
 
     // Request parameters should be expanded since there are existing values
-    expect(screen.getByText('Request Parameters')).toBeInTheDocument();
+    expect(screen.getByText('Request defaults')).toBeInTheDocument();
   });
 
   it('submits the form after changing the selected quant', async () => {
@@ -193,7 +193,7 @@ describe('EditAliasPage', () => {
     await user.click(file2Row);
     await waitFor(() => expect(file2Row).toHaveAttribute('data-test-state', 'selected'));
 
-    await user.click(screen.getByRole('button', { name: /update model alias/i }));
+    await user.click(screen.getByRole('button', { name: /update alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully updated'));
@@ -207,7 +207,7 @@ describe('EditAliasPage', () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
 
-    const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
+    const contextParamsTextarea = screen.getByTestId('context-params');
 
     // Clear existing content and add new context parameters
     await user.clear(contextParamsTextarea);
@@ -215,7 +215,7 @@ describe('EditAliasPage', () => {
 
     expect(contextParamsTextarea).toHaveValue('--ctx-size 4096\n--threads 16\n--batch-size 512');
 
-    await user.click(screen.getByRole('button', { name: /update model alias/i }));
+    await user.click(screen.getByRole('button', { name: /update alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully updated'));
@@ -229,13 +229,13 @@ describe('EditAliasPage', () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
 
-    const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
+    const contextParamsTextarea = screen.getByTestId('context-params');
 
     // Clear all context parameters
     await user.clear(contextParamsTextarea);
     expect(contextParamsTextarea).toHaveValue('');
 
-    await user.click(screen.getByRole('button', { name: /update model alias/i }));
+    await user.click(screen.getByRole('button', { name: /update alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully updated'));

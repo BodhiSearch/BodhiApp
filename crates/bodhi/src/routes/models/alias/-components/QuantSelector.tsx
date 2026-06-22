@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Check, Loader2 } from 'lucide-react';
+import { CheckCircle, Info, Loader2 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { useListDownloads, useListModelFiles } from '@/hooks/models';
@@ -77,9 +77,9 @@ export function QuantSelector({ repo, value, onSelect }: QuantSelectorProps) {
 
   if (parsed && isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-3" data-testid="quant-loading">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Fetching quantisations for <span className="font-mono">{repo.trim()}</span>…
+      <div className="lf-quant-note" data-testid="quant-loading">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Fetching quantisations for <span className="lf-mono">{repo.trim()}</span>…
       </div>
     );
   }
@@ -95,7 +95,7 @@ export function QuantSelector({ repo, value, onSelect }: QuantSelectorProps) {
           data-testid="filename-input"
           className="font-mono"
         />
-        <p className="text-sm text-muted-foreground mt-1.5">
+        <p className="lf-hint mt-1.5">
           {parsed
             ? 'No catalog quantisations found — enter the GGUF filename to download.'
             : 'Enter an <org>/<repo> above to list quantisations, or type the GGUF filename here.'}
@@ -104,39 +104,69 @@ export function QuantSelector({ repo, value, onSelect }: QuantSelectorProps) {
     );
   }
 
+  const selectedStatus = value ? statusOf(value) : null;
+
   return (
     <div data-testid="quant-table">
-      <div className="rounded-md border divide-y">
-        {quants.map((q) => {
-          const status = statusOf(q.filename);
-          const isSelected = value === q.filename;
-          return (
-            <button
-              type="button"
-              key={q.filename}
-              onClick={() => onSelect(q.filename)}
-              data-testid={`quant-row-${q.name}`}
-              data-test-state={isSelected ? 'selected' : 'idle'}
-              className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
-                isSelected ? 'bg-muted' : ''
-              }`}
-            >
-              <span className="flex h-4 w-4 items-center justify-center">
-                {isSelected && <Check className="h-4 w-4 text-primary" />}
-              </span>
-              <span className={`font-mono ${isSelected ? 'font-semibold' : ''}`}>{q.name}</span>
-              <span className="font-mono text-muted-foreground">{fmtSize(q.size)}</span>
-              <span className="ml-auto text-xs text-muted-foreground" data-testid={`quant-status-${q.name}`}>
-                {STATUS_LABEL[status]}
-              </span>
-            </button>
-          );
-        })}
+      <div className="lf-table-scroll">
+        <div className="lf-table-wrap">
+          <table className="lf-table">
+            <thead>
+              <tr>
+                <th className="lf-th" style={{ width: 28 }} />
+                <th className="lf-th">Quant</th>
+                <th className="lf-th">Size</th>
+                <th className="lf-th">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quants.map((q) => {
+                const status = statusOf(q.filename);
+                const isSelected = value === q.filename;
+                return (
+                  <tr
+                    key={q.filename}
+                    className={`lf-tr${isSelected ? ' lf-tr-sel' : ''}`}
+                    onClick={() => onSelect(q.filename)}
+                    data-testid={`quant-row-${q.name}`}
+                    data-test-state={isSelected ? 'selected' : 'idle'}
+                  >
+                    <td className="lf-td">
+                      <span className={`lf-qradio${isSelected ? ' lf-qradio-on' : ''}`}>
+                        {isSelected && <span className="lf-qradio-dot" />}
+                      </span>
+                    </td>
+                    <td className="lf-td lf-mono" style={{ fontWeight: isSelected ? 600 : 400 }}>
+                      {q.name}
+                    </td>
+                    <td className="lf-td lf-mono">{fmtSize(q.size)}</td>
+                    <td className="lf-td">
+                      <span className={`lf-status lf-status-${status}`} data-testid={`quant-status-${q.name}`}>
+                        {STATUS_LABEL[status]}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
-      {value && statusOf(value) === 'remote' && (
-        <p className="text-sm text-muted-foreground mt-1.5" data-testid="quant-download-note">
-          {value} is not downloaded yet — it will download automatically after save.
-        </p>
+
+      {value && selectedStatus !== 'downloaded' && (
+        <div className="lf-quant-note mt-2.5" data-testid="quant-download-note">
+          <Info className="h-3.5 w-3.5" />
+          <span>
+            {value} is {selectedStatus === 'downloading' ? 'downloading' : 'not downloaded yet'} — it will download
+            automatically after save.
+          </span>
+        </div>
+      )}
+      {value && selectedStatus === 'downloaded' && (
+        <div className="lf-quant-note lf-quant-note-ok mt-2.5" data-testid="quant-downloaded-note">
+          <CheckCircle className="h-3.5 w-3.5" />
+          <span>{value} is already downloaded locally.</span>
+        </div>
       )}
     </div>
   );

@@ -1,0 +1,312 @@
+/* ============================================================================
+   New / Edit Local Model form (V2) — page-specific CSS, ported from the design
+   prototype's bf-*/
+nm-* system to lf-* and scoped under the form card. Reuses the
+   semantic tokens already in the app (--card/--border/--foreground/--muted*,
+   --c-lotus/leaf/saffron-*, --radius-*, --shadow-sm, --font-mono, --surface-2),
+   mirroring how router-form.css was authored. Nothing leaks globally.
+   ============================================================================ */
+
+/* ── Card shell ── */
+.lf-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.lf-card-head {
+  padding: 20px 22px 0;
+}
+.lf-card-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+.lf-card-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+}
+.lf-card-body {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.lf-divider {
+  height: 1px;
+  background: hsl(var(--border));
+}
+
+/* ── Sections / fields ── */
+.lf-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lf-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: hsl(var(--muted-foreground));
+}
+.lf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lf-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.lf-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+.lf-req {
+  color: var(--c-lotus-text);
+}
+.lf-hint {
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+}
+.lf-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: hsl(var(--muted));
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.lf-mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Quant table ── */
+.lf-table-scroll {
+  overflow-x: auto;
+}
+.lf-table-wrap {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  min-width: 360px;
+}
+.lf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.lf-th {
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--surface-2));
+  border-bottom: 1px solid hsl(var(--border));
+}
+.lf-td {
+  padding: 7px 10px;
+  border-bottom: 1px solid hsl(var(--border));
+  vertical-align: middle;
+}
+.lf-table tbody tr:last-child .lf-td {
+  border-bottom: none;
+}
+.lf-tr {
+  cursor: pointer;
+}
+.lf-tr-sel {
+  background: var(--c-lotus-bg);
+}
+.lf-qradio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--border));
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.lf-qradio-on {
+  border-color: var(--c-lotus-text);
+}
+.lf-qradio-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-lotus-text);
+}
+
+/* ── Per-quant status dot ── */
+.lf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lf-status::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.lf-status-downloaded {
+  color: var(--c-leaf-text);
+}
+.lf-status-downloaded::before {
+  background: var(--c-leaf-text);
+}
+.lf-status-downloading {
+  color: var(--c-saffron-text);
+}
+.lf-status-downloading::before {
+  background: var(--c-saffron-text);
+}
+.lf-status-remote {
+  color: hsl(var(--muted-foreground));
+}
+.lf-status-remote::before {
+  background: hsl(var(--muted-foreground));
+}
+
+.lf-quant-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border-radius: var(--radius-md);
+  background: hsl(var(--surface-2));
+  border: 1px solid hsl(var(--border));
+  font-size: 11.5px;
+  color: hsl(var(--muted-foreground));
+}
+.lf-quant-note-ok {
+  color: var(--c-leaf-text);
+}
+
+/* ── Split panel (textarea + click-to-add catalog) ── */
+.lf-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.lf-split-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 6px;
+}
+.lf-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 9px 11px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+.lf-textarea:focus-visible {
+  outline: none;
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+/* ── Click-to-add catalog ── */
+.lf-flag-list {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  overflow-y: auto;
+  max-height: 240px;
+}
+.lf-flag-item {
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: transparent;
+  cursor: pointer;
+  transition: background 80ms;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.lf-flag-item:last-child {
+  border-bottom: none;
+}
+.lf-flag-item:hover:not(.lf-flag-added) {
+  background: hsl(var(--muted));
+}
+.lf-flag-added {
+  opacity: 0.45;
+  cursor: default;
+}
+.lf-flag-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.lf-flag-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.lf-flag-type {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+}
+.lf-flag-added-badge {
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  margin-left: auto;
+  flex-shrink: 0;
+  background: var(--c-leaf-bg);
+  color: var(--c-leaf-text);
+  border: 1px solid var(--c-leaf-bd);
+  font-weight: 600;
+}
+.lf-flag-desc {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Footer ── */
+.lf-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+@media (max-width: 640px) {
+  .lf-split,
+  .lf-field-row {
+    grid-template-columns: 1fr;
+  }
+}
