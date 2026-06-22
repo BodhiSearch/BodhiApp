@@ -184,3 +184,14 @@
 [data-theme="dark"] .cam-model-item.checked { background: hsl(var(--primary) / .10); }
 [data-theme="dark"] .amf-cmd { background: hsl(var(--surface-1)); border-color: hsl(var(--border-strong)); }
 [data-theme="dark"] .amf-cmd-copy:hover { background: hsl(var(--surface-2)); }
+
+/* ── Catalog "Configure in Bodhi" prefill banner ── */
+.amf-prefill {
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px 13px; margin-bottom: 20px;
+  border: 1px solid var(--c-lotus-bd); border-radius: var(--radius-md);
+  background: var(--c-lotus-bg); color: var(--c-lotus-text);
+}
+.amf-prefill svg { width: 15px; height: 15px; flex: none; }
+.amf-prefill-txt { font-size: 12.5px; line-height: 1.5; }
+.amf-prefill-txt strong { font-family: var(--font-mono); font-weight: 700; }

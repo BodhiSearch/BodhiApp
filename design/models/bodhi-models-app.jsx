@@ -13,7 +13,9 @@
      on the Local page only)
 ═══════════════════════════════════════════════════════════════ */
 const { useState, useEffect } = React;
-const { MY_MODELS, LOCAL_MODELS, API_PROVIDERS } = window.MODELS_DATA;
+const { MY_MODELS, LOCAL_MODELS, API_PROVIDERS, API_CATALOG_MODELS } = window.MODELS_DATA;
+
+const CAT_SLUG_LABEL = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', groq: 'Groq', deepseek: 'DeepSeek', meta: 'Meta' };
 
 function ModelsApp() {
   const mode = window.MODELS_MODE || 'my-models';
@@ -26,6 +28,25 @@ function ModelsApp() {
     const id = new URLSearchParams(window.location.search).get('select');
     return id ? MY_MODELS.findIndex((m) => m.id === id) : -1;
   }, []);
+
+  /* api-catalog facet state + ?provider deep-link (from page B cross-link) */
+  const catProvParam = React.useMemo(() => new URLSearchParams(window.location.search).get('provider'), []);
+  const [catProv, setCatProv] = useState(() => catProvParam ? [catProvParam] : []);
+  const [catCap, setCatCap] = useState([]);
+  const catProviderSlug = null;
+  const toggleIn = (setter) => (label) => setter((prev) => prev.includes(label) ? prev.filter((x) => x !== label) : [...prev, label]);
+  const onToggleCatProv = toggleIn(setCatProv);
+  const onToggleCatCap = toggleIn(setCatCap);
+  const onClearCatProv = () => setCatProv([]);
+  const onClearCatCap = () => setCatCap([]);
+  const onClearCatFilters = () => { setCatProv([]); setCatCap([]); };
+
+  /* ?select for api mode = provider slug (from a model's "Served by" row) */
+  const initialApiIdx = React.useMemo(() => {
+    if (mode !== 'api') return -1;
+    const slug = new URLSearchParams(window.location.search).get('select');
+    return slug ? API_PROVIDERS.findIndex((p) => p.slug === slug) : -1;
+  }, []);
   const [starred, setStarred] = useState(() => new Set());
   const [showDownloads, setShowDownloads] = useState(false);
   const [dl, setDl] = useState(DOWNLOADS_INIT);
@@ -35,7 +56,7 @@ function ModelsApp() {
 
   /* local explore: sort (maps to backend sort + sort_order), visible stat
      columns, and the publisher / staff-pick presets */
-  const [sort, setSort] = useState({ key: 'trending', order: 'desc' });
+  const [sort, setSort] = useState(mode === 'api-catalog' ? { key: 'providers', order: 'desc' } : { key: 'trending', order: 'desc' });
   const [cols, setCols] = useState({ downloads: true, likes: true });
   const [orgFilters, setOrgFilters] = useState([]);
   const onSort = (k) => setSort((s) => s.key === k ? { key: k, order: s.order === 'desc' ? 'asc' : 'desc' } : { key: k, order: 'desc' });
@@ -49,7 +70,8 @@ function ModelsApp() {
   useEffect(() => {
     if (window.matchMedia('(max-width:767px)').matches) return;
     if (mode === 'local') setSel({ kind: 'local', item: LOCAL_MODELS[0], idx: 0 });
-    else if (mode === 'api') setSel({ kind: 'api', item: API_PROVIDERS[0], idx: 0 });
+    else if (mode === 'api') { const i = initialApiIdx >= 0 ? initialApiIdx : 0; setSel({ kind: 'api', item: API_PROVIDERS[i], idx: i }); }
+    else if (mode === 'api-catalog') setSel({ kind: 'api-catalog', item: API_CATALOG_MODELS[0], idx: 0 });
     else {const i = initialMyIdx >= 0 ? initialMyIdx : 0;setSel({ kind: 'my', item: MY_MODELS[i], idx: i });}
   }, []);
 
@@ -95,7 +117,8 @@ function ModelsApp() {
 
   const railContent = showDownloads ?
     <DownloadsRail dl={dl} dispatch={dlDispatch} /> :
-    sel ? <DetailBody sel={sel} tab={tab} setTab={setTab} starred={starred} toggleStar={toggleStar} onPickOrg={onPickOrg} /> : null;
+    sel ? <DetailBody sel={sel} tab={tab} setTab={setTab} starred={starred} toggleStar={toggleStar} onPickOrg={onPickOrg} /> :
+    null;
   const railHead = showDownloads ?
     <DownloadsHead onClose={() => setShowDownloads(false)} /> :
     sel ? <DetailHeader sel={sel} onDeselect={() => setSel(null)} onPickOrg={onPickOrg} /> : undefined;
@@ -105,7 +128,8 @@ function ModelsApp() {
       section="models" subPage={cfg.subPage}
       resizeKey="models"
       breadcrumb={[{ label: 'Bodhi', href: 'Bodhi Chat.html' }, { label: 'Models', href: 'Bodhi Models.html' }, { label: cfg.label, current: true }]}
-      sidebar={<ModelsSidebar mode={mode} orgFilters={orgFilters} onPickOrg={onPickOrg} onRemoveOrg={onRemoveOrg} onClearOrgs={onClearOrgs} sort={sort} onBrowse={onBrowse} apiConnectedOnly={apiConnectedOnly} onToggleApiConnected={() => setApiConnectedOnly((v) => !v)} />}
+      sidebar={<ModelsSidebar mode={mode} orgFilters={orgFilters} onPickOrg={onPickOrg} onRemoveOrg={onRemoveOrg} onClearOrgs={onClearOrgs} sort={sort} onBrowse={onBrowse} apiConnectedOnly={apiConnectedOnly} onToggleApiConnected={() => setApiConnectedOnly((v) => !v)}
+        catProv={catProv} onToggleCatProv={onToggleCatProv} onClearCatProv={onClearCatProv} catCap={catCap} onToggleCatCap={onToggleCatCap} onClearCatCap={onClearCatCap} />}
       contentClass="flush" mainScroll={false} railScroll={false}
       rail={railContent}
       railHeader={railHead}>
@@ -114,6 +138,7 @@ function ModelsApp() {
         onShowDownloads={openDownloads} downloadsOpen={showDownloads} dlCount={dl.active.length + dl.queued.length}
         sort={sort} onSort={onSort} cols={cols} onToggleCol={onToggleCol}
         apiConnectedOnly={apiConnectedOnly} initialMyIdx={initialMyIdx}
+        catProv={catProv} catCap={catCap} catProviderSlug={catProviderSlug} onClearCatFilters={onClearCatFilters}
         orgFilters={orgFilters} onPickOrg={onPickOrg} onRemoveOrg={onRemoveOrg} onClearOrgs={onClearOrgs} />
     </AppShell>
   </>;

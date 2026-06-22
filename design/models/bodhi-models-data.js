@@ -182,6 +182,7 @@ window.MODELS_DATA = (function () {
      reads as Connected only when an API model of its type exists. */
   const API_PROVIDERS = [
     { rank:1, provider:'Anthropic', slug:'anthropic', format:'Anthropic',
+      env:['ANTHROPIC_API_KEY'], npm:'@ai-sdk/anthropic', doc:'https://docs.anthropic.com/en/docs/about-claude/models', api:'https://api.anthropic.com/v1',
       tags:['tool-use','reasoning','vision'], models:8,
       modelRows:[
         { name:'claude-sonnet-4-5', caps:['tool-use','reasoning','vision'], ctx:'200K', in:3,    out:15 },
@@ -194,6 +195,7 @@ window.MODELS_DATA = (function () {
         { name:'claude-3-haiku',    caps:['chat'],                          ctx:'200K', in:0.25, out:1.25 },
       ] },
     { rank:2, provider:'OpenAI', slug:'openai', format:'OpenAI',
+      env:['OPENAI_API_KEY'], npm:'@ai-sdk/openai', doc:'https://platform.openai.com/docs/models', api:'https://api.openai.com/v1',
       tags:['tool-use','vision','reasoning'], models:12,
       modelRows:[
         { name:'gpt-5',       caps:['tool-use','reasoning','vision'], ctx:'256K', in:1.25, out:10 },
@@ -205,6 +207,7 @@ window.MODELS_DATA = (function () {
         { name:'o4-mini',     caps:['reasoning','vision'],            ctx:'200K', in:1.10, out:4.40 },
       ] },
     { rank:3, provider:'OpenRouter', slug:'openrouter', format:'OpenAI',
+      env:['OPENROUTER_API_KEY'], npm:'@openrouter/ai-sdk-provider', doc:'https://openrouter.ai/docs', api:'https://openrouter.ai/api/v1',
       tags:['tool-use','reasoning','vision'], models:200,
       modelRows:[
         { name:'meta-llama/llama-3.3-70b',      caps:['tool-use','reasoning'],        ctx:'131K', in:0.12, out:0.30 },
@@ -213,6 +216,7 @@ window.MODELS_DATA = (function () {
         { name:'deepseek/deepseek-v3',          caps:['reasoning','coding'],          ctx:'64K',  in:0.27, out:1.10 },
       ] },
     { rank:4, provider:'Groq', slug:'groq', format:'OpenAI',
+      env:['GROQ_API_KEY'], npm:'@ai-sdk/groq', doc:'https://console.groq.com/docs', api:'https://api.groq.com/openai/v1',
       tags:['reasoning','multilingual'], models:15,
       modelRows:[
         { name:'llama-3.3-70b-versatile', caps:['tool-use','reasoning'], ctx:'128K', in:0.59, out:0.79 },
@@ -221,6 +225,7 @@ window.MODELS_DATA = (function () {
         { name:'llama-3.1-8b-instant',    caps:['chat'],                 ctx:'128K', in:0.05, out:0.08 },
       ] },
     { rank:5, provider:'NVIDIA NIM', slug:'nvidia-nim', format:'OpenAI',
+      env:['NVIDIA_API_KEY'], npm:'@ai-sdk/openai-compatible', doc:'https://docs.nvidia.com/nim', api:'https://integrate.api.nvidia.com/v1',
       tags:['reasoning','vision','coding'], models:50,
       modelRows:[
         { name:'meta/llama-3.3-70b-instruct',     caps:['tool-use','reasoning'], ctx:'128K', in:0, out:0 },
@@ -228,6 +233,7 @@ window.MODELS_DATA = (function () {
         { name:'microsoft/phi-4',                 caps:['reasoning','coding'],   ctx:'16K',  in:0, out:0 },
       ] },
     { rank:6, provider:'Together AI', slug:'together', format:'OpenAI',
+      env:['TOGETHER_API_KEY'], npm:'together-ai', doc:'https://docs.together.ai', api:'https://api.together.xyz/v1',
       tags:['reasoning','coding','vision'], models:100,
       modelRows:[
         { name:'meta-llama/Llama-3.3-70B-Instruct-Turbo', caps:['tool-use','reasoning'], ctx:'131K', in:0.88, out:0.88 },
@@ -247,6 +253,128 @@ window.MODELS_DATA = (function () {
     p.connected = p.apiModels.length > 0;
   });
 
+  /* ── API catalog (models.dev shape) — page A primary list ────────
+     One logical model per row. Field names mirror models.dev catalog.json:
+     cost ($/Mtok), limit{context,output}, modalities{input,output}, the
+     capability booleans, optional status (alpha|beta|deprecated; absent =
+     stable), open_weights, dates, and the providers[] that serve it (each
+     with that provider's own per-model price). Optional fields (family,
+     status, knowledge, temperature, structured_output, reasoning_options)
+     are deliberately sparse so the rail's omit-if-absent logic is exercised. */
+  const SRV = {
+    anthropic:'Anthropic', openrouter:'OpenRouter', openai:'OpenAI', google:'Google',
+    deepseek:'DeepSeek', groq:'Groq', azure:'Azure OpenAI', 'together-ai':'Together AI',
+    'fireworks-ai':'Fireworks AI', deepinfra:'DeepInfra', novita:'Novita',
+    'amazon-bedrock':'Amazon Bedrock', 'google-vertex-anthropic':'Google Vertex',
+  };
+  const srv = (slug, base_url, i, o) => ({ slug, name: SRV[slug] || slug, base_url, in: i, out: o });
+
+  const API_CATALOG_MODELS = [
+    { id:'claude-sonnet-4-5', name:'Claude Sonnet 4.5', family:'Claude',
+      cost:{ input:3, output:15, cache_read:0.3, cache_write:3.75 }, limit:{ context:200000, output:64000 },
+      modalities:{ input:['text','image','pdf'], output:['text'] },
+      reasoning:true, reasoning_options:{ budget_tokens:{ min:1024 } }, tool_call:true, structured_output:true, attachment:true, temperature:true,
+      open_weights:false, release_date:'2025-09-29', last_updated:'2025-10-15', knowledge:'2025-03',
+      providers:[ srv('anthropic','https://api.anthropic.com/v1',3,15), srv('openrouter','https://openrouter.ai/api/v1',3,15), srv('google-vertex-anthropic','https://aiplatform.googleapis.com/v1',3,15), srv('amazon-bedrock','https://bedrock-runtime.{AWS_REGION}.amazonaws.com',3,15) ] },
+
+    { id:'claude-opus-4-1', name:'Claude Opus 4.1', family:'Claude',
+      cost:{ input:15, output:75, cache_read:1.5, cache_write:18.75 }, limit:{ context:200000, output:32000 },
+      modalities:{ input:['text','image','pdf'], output:['text'] },
+      reasoning:true, tool_call:true, structured_output:true, attachment:true, temperature:true,
+      open_weights:false, release_date:'2025-08-05', last_updated:'2025-08-05', knowledge:'2025-03',
+      providers:[ srv('anthropic','https://api.anthropic.com/v1',15,75), srv('openrouter','https://openrouter.ai/api/v1',15,75), srv('amazon-bedrock','https://bedrock-runtime.{AWS_REGION}.amazonaws.com',15,75) ] },
+
+    { id:'claude-3-5-haiku-20241022', name:'Claude Haiku 3.5', family:'Claude',
+      cost:{ input:0.8, output:4, cache_read:0.08, cache_write:1 }, limit:{ context:200000, output:8192 },
+      modalities:{ input:['text','image','pdf'], output:['text'] },
+      tool_call:true, attachment:true,
+      open_weights:false, status:'deprecated', release_date:'2024-10-22', last_updated:'2024-10-22',
+      providers:[ srv('anthropic','https://api.anthropic.com/v1',0.8,4), srv('openrouter','https://openrouter.ai/api/v1',0.8,4) ] },
+
+    { id:'gpt-5', name:'GPT-5', family:'gpt-5',
+      cost:{ input:1.25, output:10, cache_read:0.125 }, limit:{ context:400000, output:128000 },
+      modalities:{ input:['text','image','pdf'], output:['text'] },
+      reasoning:true, reasoning_options:{ effort:['minimal','low','medium','high'] }, tool_call:true, structured_output:true, attachment:true, temperature:true,
+      open_weights:false, release_date:'2025-08-07', last_updated:'2025-08-07', knowledge:'2024-10',
+      providers:[ srv('openai','https://api.openai.com/v1',1.25,10), srv('openrouter','https://openrouter.ai/api/v1',1.3,10.5), srv('azure','https://{RESOURCE}.openai.azure.com',1.25,10) ] },
+
+    { id:'gpt-4o', name:'GPT-4o', family:'gpt-4o',
+      cost:{ input:2.5, output:10, cache_read:1.25 }, limit:{ context:128000, output:16384 },
+      modalities:{ input:['text','image'], output:['text'] },
+      tool_call:true, structured_output:true, attachment:true, temperature:true,
+      open_weights:false, release_date:'2024-08-06', last_updated:'2024-11-20', knowledge:'2023-10',
+      providers:[ srv('openai','https://api.openai.com/v1',2.5,10), srv('openrouter','https://openrouter.ai/api/v1',2.5,10), srv('azure','https://{RESOURCE}.openai.azure.com',2.5,10) ] },
+
+    { id:'gpt-4o-mini', name:'GPT-4o mini', family:'gpt-4o',
+      cost:{ input:0.15, output:0.6, cache_read:0.075 }, limit:{ context:128000, output:16384 },
+      modalities:{ input:['text','image'], output:['text'] },
+      tool_call:true, structured_output:true, attachment:true,
+      open_weights:false, release_date:'2024-07-18', last_updated:'2024-07-18',
+      providers:[ srv('openai','https://api.openai.com/v1',0.15,0.6), srv('openrouter','https://openrouter.ai/api/v1',0.15,0.6) ] },
+
+    { id:'o3-mini', name:'o3-mini', family:'o3',
+      cost:{ input:1.1, output:4.4, cache_read:0.55 }, limit:{ context:200000, output:100000 },
+      modalities:{ input:['text'], output:['text'] },
+      reasoning:true, reasoning_options:{ effort:['low','medium','high'] }, tool_call:true, structured_output:true,
+      open_weights:false, status:'beta', release_date:'2025-01-31', last_updated:'2025-01-31',
+      providers:[ srv('openai','https://api.openai.com/v1',1.1,4.4) ] },
+
+    { id:'o4-mini', name:'o4-mini', family:'o4',
+      cost:{ input:1.1, output:4.4, cache_read:0.275 }, limit:{ context:200000, output:100000 },
+      modalities:{ input:['text','image'], output:['text'] },
+      reasoning:true, tool_call:true, structured_output:true, attachment:true,
+      open_weights:false, status:'alpha', release_date:'2025-04-16', last_updated:'2025-04-16',
+      providers:[ srv('openai','https://api.openai.com/v1',1.1,4.4) ] },
+
+    { id:'gemini-2.5-pro', name:'Gemini 2.5 Pro', family:'gemini',
+      cost:{ input:1.25, output:10, cache_read:0.31 }, limit:{ context:1048576, output:65536 },
+      modalities:{ input:['text','image','pdf','audio','video'], output:['text'] },
+      reasoning:true, tool_call:true, structured_output:true, attachment:true, temperature:true,
+      open_weights:false, release_date:'2025-06-17', last_updated:'2025-06-17', knowledge:'2025-01',
+      providers:[ srv('google','https://generativelanguage.googleapis.com/v1beta',1.25,10), srv('openrouter','https://openrouter.ai/api/v1',1.25,10) ] },
+
+    { id:'gemini-2.0-flash', name:'Gemini 2.0 Flash', family:'gemini',
+      cost:{ input:0.1, output:0.4, cache_read:0.025 }, limit:{ context:1048576, output:8192 },
+      modalities:{ input:['text','image','audio','video'], output:['text'] },
+      tool_call:true, structured_output:true, attachment:true,
+      open_weights:false, release_date:'2025-02-05', last_updated:'2025-02-05',
+      providers:[ srv('google','https://generativelanguage.googleapis.com/v1beta',0.1,0.4), srv('openrouter','https://openrouter.ai/api/v1',0.1,0.4) ] },
+
+    { id:'deepseek-v3', name:'DeepSeek V3', family:'deepseek',
+      cost:{ input:0.27, output:1.1, cache_read:0.07 }, limit:{ context:65536, output:8192 },
+      modalities:{ input:['text'], output:['text'] },
+      tool_call:true, open_weights:true, release_date:'2024-12-26', last_updated:'2025-03-24',
+      providers:[ srv('deepseek','https://api.deepseek.com/v1',0.27,1.1), srv('openrouter','https://openrouter.ai/api/v1',0.28,1.14), srv('together-ai','https://api.together.xyz/v1',1.25,1.25), srv('fireworks-ai','https://api.fireworks.ai/inference/v1',0.9,0.9), srv('deepinfra','https://api.deepinfra.com/v1/openai',0.49,0.89), srv('novita','https://api.novita.ai/v3/openai',0.4,1.3) ] },
+
+    { id:'deepseek-r1', name:'DeepSeek R1', family:'deepseek',
+      cost:{ input:0.55, output:2.19, cache_read:0.14 }, limit:{ context:65536, output:8192 },
+      modalities:{ input:['text'], output:['text'] },
+      reasoning:true, tool_call:true, open_weights:true, release_date:'2025-01-20', last_updated:'2025-05-28', knowledge:'2024-07',
+      providers:[ srv('deepseek','https://api.deepseek.com/v1',0.55,2.19), srv('openrouter','https://openrouter.ai/api/v1',0.55,2.19), srv('together-ai','https://api.together.xyz/v1',3,7), srv('fireworks-ai','https://api.fireworks.ai/inference/v1',3,8), srv('deepinfra','https://api.deepinfra.com/v1/openai',0.5,2.18), srv('groq','https://api.groq.com/openai/v1',0.75,0.99) ] },
+
+    { id:'llama-3.3-70b-versatile', name:'Llama 3.3 70B', family:'llama',
+      cost:{ input:0.59, output:0.79 }, limit:{ context:131072, output:32768 },
+      modalities:{ input:['text'], output:['text'] },
+      tool_call:true, temperature:true, open_weights:true, release_date:'2024-12-06', last_updated:'2024-12-06',
+      providers:[ srv('groq','https://api.groq.com/openai/v1',0.59,0.79), srv('together-ai','https://api.together.xyz/v1',0.88,0.88), srv('fireworks-ai','https://api.fireworks.ai/inference/v1',0.9,0.9), srv('deepinfra','https://api.deepinfra.com/v1/openai',0.23,0.4), srv('openrouter','https://openrouter.ai/api/v1',0.12,0.3) ] },
+
+    { id:'llama-3.1-8b-instant', name:'Llama 3.1 8B', family:'llama',
+      cost:{ input:0.05, output:0.08 }, limit:{ context:131072, output:32768 },
+      modalities:{ input:['text'], output:['text'] },
+      tool_call:true, open_weights:true, release_date:'2024-07-23', last_updated:'2024-07-23',
+      providers:[ srv('groq','https://api.groq.com/openai/v1',0.05,0.08), srv('together-ai','https://api.together.xyz/v1',0.18,0.18), srv('deepinfra','https://api.deepinfra.com/v1/openai',0.03,0.05), srv('openrouter','https://openrouter.ai/api/v1',0.02,0.05) ] },
+
+    { id:'mixtral-8x7b-32768', name:'Mixtral 8x7B',
+      cost:{ input:0.24, output:0.24 }, limit:{ context:32768, output:8192 },
+      modalities:{ input:['text'], output:['text'] },
+      tool_call:true, open_weights:true, release_date:'2023-12-11', last_updated:'2023-12-11',
+      providers:[ srv('groq','https://api.groq.com/openai/v1',0.24,0.24), srv('together-ai','https://api.together.xyz/v1',0.6,0.6), srv('fireworks-ai','https://api.fireworks.ai/inference/v1',0.5,0.5) ] },
+  ];
+
+  /* Family → brand-slug for the detail tile tint (logos use brand hexes,
+     not UI tokens — consistent with the row ProviderLogo). */
+  const FAMILY_SLUG = { Claude:'anthropic', 'gpt-5':'openai', 'gpt-4o':'openai', o3:'openai', o4:'openai', gemini:'google', deepseek:'deepseek', llama:'meta' };
+
   const TAG_MAP = {
     'tool-use':'tag-indigo','reasoning':'tag-indigo','coding':'tag-leaf',
     'vision':'tag-indigo','structured':'tag-muted','structured-output':'tag-muted',
@@ -261,6 +389,9 @@ window.MODELS_DATA = (function () {
   const PROV_COLORS = {
     'anthropic':'#D97757','openai':'#10a37f','openrouter':'#7c5cfc',
     'groq':'#f55036','nvidia-nim':'#76b900','together':'#0f62fe',
+    'google':'#4285F4','deepseek':'#4D6BFE','meta':'#0866FF',
+    'together-ai':'#0f62fe','amazon-bedrock':'#FF9900','fireworks-ai':'#5019C5',
+    'deepinfra':'#5A67D8','google-vertex-anthropic':'#4285F4','azure':'#0078D4','novita':'#10b981',
   };
 
   /* Ⓛ BodhiApp-local host profile — drives the per-quant fit pill + the
@@ -275,5 +406,5 @@ window.MODELS_DATA = (function () {
     'NVIDIA','BAAI','01-ai','bartowski','unsloth','TheBloke','lmstudio-community',
   ];
 
-  return { MY_MODELS, LOCAL_MODELS, API_PROVIDERS, TAG_MAP, STATUS_CFG, PROV_COLORS, HOST, ORG_SUGGESTIONS };
+  return { MY_MODELS, LOCAL_MODELS, API_PROVIDERS, API_CATALOG_MODELS, FAMILY_SLUG, TAG_MAP, STATUS_CFG, PROV_COLORS, HOST, ORG_SUGGESTIONS };
 })();

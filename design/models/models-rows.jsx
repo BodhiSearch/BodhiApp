@@ -9,7 +9,18 @@
 
    Exports: MyRow, LocalRow, ApiRow
 ═══════════════════════════════════════════════════════════════ */
-const { STATUS_CFG, PROV_COLORS } = window.MODELS_DATA;
+const { STATUS_CFG, PROV_COLORS, FAMILY_SLUG } = window.MODELS_DATA;
+
+/* catalog formatters (mirror models.dev / fmtPrice) */
+const fmtCtx = (n) => !n ? '—' : n >= 1000000 ? (n % 1000000 === 0 ? n / 1000000 + 'M' : (n / 1000000).toFixed(1) + 'M') : Math.round(n / 1000) + 'K';
+const catCaps = (m) => {
+  const c = [];
+  if (m.reasoning) c.push('reasoning');
+  if (m.tool_call) c.push('tool-use');
+  if (m.modalities && m.modalities.input && m.modalities.input.includes('image')) c.push('vision');
+  if (m.structured_output) c.push('structured');
+  return c;
+};
 
 /* Provider logo — real brand glyph from the Simple Icons CDN, tinted to the
    provider's brand color on a soft tile. Only slugs actually published on the
@@ -136,4 +147,36 @@ function ApiRow({ p, active, onClick }) {
 
 }
 
-Object.assign(window, { MyRow, LocalRow, ApiRow, ProviderLogo });
+/* Model monogram tile — family-tinted, mirrors ProviderLogo styling but keyed
+   off the model family (logos use brand hexes, not UI tokens). */
+function ModelLogo({ family, name, size = 36, radius = 9 }) {
+  const color = PROV_COLORS[FAMILY_SLUG[family]] || '#888';
+  const mono = String(family || name || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();
+  return (
+    <div className="prov-avatar" style={{ width: size, height: size, borderRadius: radius, background: color + '1a', border: '1.5px solid ' + color + '40', flex: 'none' }}>
+      <span style={{ color, fontSize: Math.round(size * 0.34), fontWeight: 700 }}>{mono}</span>
+    </div>);
+}
+
+function ApiModelRow({ m, idx, active, onClick, sortKey }) {
+  const free = (m.cost.input || 0) === 0 && (m.cost.output || 0) === 0;
+  const caps = catCaps(m);
+  return (
+    <div className={'m-row m-row-cat' + (active ? ' active' : '')} onClick={onClick}>
+      <RowLink onActivate={onClick} label={'Open ' + m.name} />
+      <div className="cat-num">#{idx}</div>
+      <div className="cat-model">
+        <div className="cat-name">{m.name}</div>
+        {m.family && <div className="cat-fam">{m.family}</div>}
+      </div>
+      <div className={'cat-cell cat-ctx' + (sortKey === 'context' ? ' sorted' : '')}>{fmtCtx(m.limit.context)}</div>
+      <div className={'cat-cell cat-price' + (sortKey === 'input' ? ' sorted' : '')}>{free ? <span className="cat-free">Free</span> : <>${m.cost.input}<span className="cat-unit">/M</span></>}</div>
+      <div className={'cat-cell cat-price' + (sortKey === 'output' ? ' sorted' : '')}>{free ? <span className="cat-free">Free</span> : <>${m.cost.output}<span className="cat-unit">/M</span></>}</div>
+      <div className="cat-caps">{caps.length ? caps.map((c) => <Tag key={c} t={c} />) : <span className="cat-caps-none">—</span>}</div>
+      <div className={'cat-prov' + (sortKey === 'providers' ? ' sorted' : '')}>
+        <div className="cat-prov-num">{m.providers.length}</div>
+      </div>
+    </div>);
+}
+
+Object.assign(window, { MyRow, LocalRow, ApiRow, ApiModelRow, ProviderLogo, ModelLogo, fmtCtx, catCaps });

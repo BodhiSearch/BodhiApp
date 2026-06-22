@@ -10,7 +10,21 @@
 
    Exports: DetailHeader, SpecTable, DetailBody
 ═══════════════════════════════════════════════════════════════ */
-const { STATUS_CFG: DETAIL_STATUS_CFG, PROV_COLORS: DETAIL_PROV_COLORS } = window.MODELS_DATA;
+const { STATUS_CFG: DETAIL_STATUS_CFG, PROV_COLORS: DETAIL_PROV_COLORS, MY_MODELS: DETAIL_MY_MODELS } = window.MODELS_DATA;
+
+/* Configured API models (from My Models) that expose a given catalog model id. */
+function apiModelsForCatalog(id) {
+  return (DETAIL_MY_MODELS || []).filter((m) => m.type === 'api-model' && m.detail && (m.detail.models || []).includes(id));
+}
+
+/* Catalog status → display label + token-based badge class (status absent = Stable) */
+function catStatusBadge(s) {
+  if (s === 'deprecated') return { lbl: 'Deprecated', cls: 'status-available' };
+  if (s === 'beta') return { lbl: 'Beta', cls: 'status-apikey' };
+  if (s === 'alpha') return { lbl: 'Alpha', cls: 'status-apikey' };
+  return { lbl: 'Stable', cls: 'status-connected' };
+}
+const catMoney = (v) => v === 0 ? '$0' : '$' + v;
 
 function DetailHeader({ sel, onDeselect, onPickOrg }) {
   if (!sel) return null;
@@ -31,9 +45,13 @@ function DetailHeader({ sel, onDeselect, onPickOrg }) {
         {item.owner_verified && <VerifiedBadge />}
       </span>);
     extra = <button className="panel-copy" title="Copy repo id"><Ic name="copy" size={13} /></button>;
-  } else {
+  } else if (kind === 'api') {
     badge = <ProviderLogo slug={item.slug} provider={item.provider} size={26} radius={7} />;
     title = item.provider;
+  } else {
+    /* api-catalog */
+    badge = <ModelLogo family={item.family} name={item.name} size={26} radius={7} />;
+    title = item.name;
   }
   return (
     <div className="panel-head-rail">
@@ -192,6 +210,107 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
     </>;
   }
 
+  /* API catalog (page A) — per-model spec rail */
+  if (kind === 'api-catalog') {
+    const m = item;
+    const st = catStatusBadge(m.status);
+    const caps = [];
+    if (m.reasoning) caps.push('reasoning');
+    if (m.tool_call) caps.push('tool-use');
+    if (m.structured_output) caps.push('structured');
+    if (m.attachment) caps.push('attachment');
+    if (m.modalities.input.includes('image')) caps.push('vision');
+    const pricing = [
+      { k: 'Input', v: catMoney(m.cost.input) },
+      { k: 'Output', v: catMoney(m.cost.output) }];
+    if (m.cost.cache_read != null) pricing.push({ k: 'Cache read', v: catMoney(m.cost.cache_read) });
+    if (m.cost.cache_write != null) pricing.push({ k: 'Cache write', v: catMoney(m.cost.cache_write) });
+    const meta = [];
+    if (m.family) meta.push({ k: 'Family', v: m.family });
+    meta.push({ k: 'Open weights', v: m.open_weights ? 'Yes' : 'No' });
+    meta.push({ k: 'Status', v: m.status || 'stable' });
+    if (m.release_date) meta.push({ k: 'Released', v: m.release_date });
+    if (m.last_updated) meta.push({ k: 'Updated', v: m.last_updated });
+    if (m.knowledge) meta.push({ k: 'Knowledge cutoff', v: m.knowledge });
+    if (m.temperature != null) meta.push({ k: 'Temperature', v: m.temperature ? 'Yes' : 'No' });
+    const ro = m.reasoning_options ? Object.keys(m.reasoning_options).join(' · ') : null;
+    const primary = m.providers[0];
+    const usedBy = apiModelsForCatalog(m.id);
+    return <>
+      <div className="detail-metabar">
+        <div className="metabar-row">
+          <div className="cat-rail-fam">{m.family || m.id}</div>
+          <div className="metabar-stats" style={{ gap: 6 }}>
+            <span className={'status-badge ' + st.cls}><Ic name={m.status === 'deprecated' ? 'circle-slash' : 'activity'} size={9} />{st.lbl}</span>
+            <span className={'ow-chip' + (m.open_weights ? ' open' : '')}><Ic name={m.open_weights ? 'unlock' : 'lock'} size={9} />{m.open_weights ? 'Open' : 'Closed'}</span>
+          </div>
+        </div>
+      </div>
+      <div className="panel-body">
+        <div className="p-section">
+          <div className="p-sec-lbl">Cost · $/Mtok</div>
+          <SpecTable rows={pricing} />
+        </div>
+        <div className="p-section">
+          <div className="p-sec-lbl">Limits</div>
+          <SpecTable rows={[{ k: 'Context', v: fmtCtx(m.limit.context) }, { k: 'Max output', v: m.limit.output ? fmtCtx(m.limit.output) : '—' }]} />
+        </div>
+        <div className="p-section">
+          <div className="p-sec-lbl">Modalities</div>
+          <SpecTable rows={[{ k: 'Input', v: m.modalities.input.join(', ') }, { k: 'Output', v: m.modalities.output.join(', ') }]} />
+        </div>
+        <div className="p-section">
+          <div className="p-sec-lbl">Capabilities</div>
+          <div className="cap-chips">{caps.length ? caps.map((c) => <Tag key={c} t={c} big />) : <span className="prov-empty">No special capabilities listed.</span>}</div>
+          {ro && <div className="cat-ro-note"><Ic name="brain" size={11} />Reasoning controls: <span className="mono">{ro}</span></div>}
+        </div>
+        <div className="p-section">
+          <div className="p-sec-lbl">Meta</div>
+          <SpecTable rows={meta} />
+        </div>
+        <div className="p-section">
+          <div className="p-sec-lbl">Served by ({m.providers.length})</div>
+          <div className="served-list">
+            {m.providers.map((p) =>
+            <a className="served-row" key={p.slug} href={'Bodhi Models API.html?select=' + p.slug} title={'Open ' + p.name + ' in API Providers'}>
+                <ProviderLogo slug={p.slug} provider={p.name} size={26} radius={7} />
+                <div className="served-meta">
+                  <div className="served-name">{p.name}</div>
+                  <div className="served-url">{p.base_url}</div>
+                </div>
+                <div className="served-price">${p.in}<span className="served-sep"> / </span>${p.out}</div>
+              </a>
+            )}
+          </div>
+        </div>
+        <div className="p-section">
+          <div className="p-sec-lbl">Configured in your API models{usedBy.length ? ' (' + usedBy.length + ')' : ''}</div>
+          {usedBy.length ?
+          <div className="prov-linklist">
+            {usedBy.map((am) =>
+            <a className="prov-linkrow" key={am.id} href={'Bodhi Models.html?select=' + am.id} title={'Open ' + am.name + ' in My Models'}>
+                <span className="my-icon-box my-icon-api-model" style={{ width: 26, height: 26, borderRadius: 7, flex: 'none' }}><Ic name="at-sign" size={13} /></span>
+                <span className="prov-linkname">{am.name}</span>
+                {am.keyStatus === 'connected' ?
+                <span className="my-key-ok"><Ic name="check-circle" size={10} />connected</span> :
+                <span className="my-key-no"><Ic name="key" size={10} />no key</span>}
+                <Ic name="chevron-right" size={14} />
+              </a>
+            )}
+          </div> :
+          <a className="prov-crosslink" href={'Create API Model.html?provider=' + primary.slug + '&model=' + m.id}>
+            <Ic name="plus" size={14} />
+            <span className="prov-crosslink-txt">Add an API model for {m.name}</span>
+            <Ic name="arrow-right" size={14} />
+          </a>}
+        </div>
+      </div>
+      <div className="panel-foot">
+        <a className="btn-add" href={'Create API Model.html?provider=' + primary.slug + '&model=' + m.id}><Ic name="plug-zap" size={14} /> Configure in Bodhi</a>
+      </div>
+    </>;
+  }
+
   /* API provider */
   const suffix = item.models >= 100 ? '+' : '';
   const fmtPrice = (m) => m.in === 0 && m.out === 0 ? 'Free' : '$' + m.in + ' / $' + m.out;
@@ -203,6 +322,34 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
         <span className="status-badge status-available"><Ic name="circle" size={9} />Not connected</span>}
         <span className="prov-format-chip"><Ic name="plug" size={10} />{item.format}</span>
       </div>
+
+      <div className="p-sec-lbl">Connection</div>
+      <div className="prov-meta">
+        {item.api &&
+        <div className="prov-meta-row"><span className="prov-meta-k">Base URL</span><span className="prov-meta-v mono">{item.api}</span></div>}
+        {item.env && item.env.length > 0 &&
+        <div className="prov-meta-row"><span className="prov-meta-k">Env var</span><span className="prov-meta-envs">{item.env.map((e) => <code className="env-chip" key={e}>{e}</code>)}</span></div>}
+        {item.npm &&
+        <div className="prov-meta-row"><span className="prov-meta-k">SDK</span><span className="prov-meta-v mono">{item.npm}</span></div>}
+        {item.doc &&
+        <div className="prov-meta-row"><span className="prov-meta-k">Docs</span><a className="prov-doc-link" href={item.doc} target="_blank" rel="noopener"><Ic name="external-link" size={11} />Reference</a></div>}
+      </div>
+
+      <div className="p-sec-lbl">API models using this provider</div>
+      {item.apiModels.length ?
+      <div className="prov-linklist" style={{ marginBottom: 18 }}>
+          {item.apiModels.map((m) =>
+        <a className="prov-linkrow" key={m.id} href={'Bodhi Models.html?select=' + m.id}>
+              <span className="my-icon-box my-icon-api-model" style={{ width: 26, height: 26, borderRadius: 7, flex: 'none' }}><Ic name="at-sign" size={13} /></span>
+              <span className="prov-linkname">{m.name}</span>
+              {m.keyStatus === 'connected' ?
+          <span className="my-key-ok"><Ic name="check-circle" size={10} />connected</span> :
+          <span className="my-key-no"><Ic name="key" size={10} />no key</span>}
+              <Ic name="chevron-right" size={14} />
+            </a>
+        )}
+        </div> :
+      <div className="prov-empty" style={{ marginBottom: 18 }}>No API models created from this provider yet.</div>}
 
       <div className="p-sec-lbl prov-mt-head">
         <span>Models ({item.models}{suffix})</span>
@@ -223,21 +370,11 @@ function DetailBody({ sel, tab, setTab, starred, toggleStar, onPickOrg }) {
         )}
       </div>
 
-      <div className="p-sec-lbl" style={{ marginTop: 18 }}>API models using this provider</div>
-      {item.apiModels.length ?
-      <div className="prov-linklist">
-          {item.apiModels.map((m) =>
-        <a className="prov-linkrow" key={m.id} href={'Bodhi Models.html?select=' + m.id}>
-              <span className="my-icon-box my-icon-api-model" style={{ width: 26, height: 26, borderRadius: 7, flex: 'none' }}><Ic name="at-sign" size={13} /></span>
-              <span className="prov-linkname">{m.name}</span>
-              {m.keyStatus === 'connected' ?
-          <span className="my-key-ok"><Ic name="check-circle" size={10} />connected</span> :
-          <span className="my-key-no"><Ic name="key" size={10} />no key</span>}
-              <Ic name="chevron-right" size={14} />
-            </a>
-        )}
-        </div> :
-      <div className="prov-empty">No API models created from this provider yet.</div>}
+      <a className="prov-crosslink" href={'Bodhi Models API Catalog.html?provider=' + item.slug}>
+        <Ic name="sparkles" size={14} />
+        <span className="prov-crosslink-txt">View all models from {item.provider}</span>
+        <Ic name="arrow-right" size={14} />
+      </a>
     </div>
     <div className="panel-foot">
       {item.connected ?

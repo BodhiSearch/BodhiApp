@@ -31,6 +31,24 @@ const AMF_FORMATS = [
 ];
 const AMF_FORMAT_MAP = Object.fromEntries(AMF_FORMATS.map((f) => [f.value, f]));
 
+/* Provider → bridge preset (api_format + base_url), per the catalog "Configure
+   in Bodhi" contract. OpenAI-compatible providers map to the openai format at
+   their own base_url; native providers use their dedicated format. */
+const AMF_PROVIDER_PRESETS = {
+  anthropic:     { format: 'anthropic', base: 'https://api.anthropic.com/v1' },
+  openai:        { format: 'openai',    base: 'https://api.openai.com/v1' },
+  google:        { format: 'gemini',    base: 'https://generativelanguage.googleapis.com/v1beta' },
+  groq:          { format: 'openai',    base: 'https://api.groq.com/openai/v1' },
+  openrouter:    { format: 'openai',    base: 'https://openrouter.ai/api/v1' },
+  deepseek:      { format: 'openai',    base: 'https://api.deepseek.com/v1' },
+  together:      { format: 'openai',    base: 'https://api.together.xyz/v1' },
+  'together-ai': { format: 'openai',    base: 'https://api.together.xyz/v1' },
+};
+const AMF_PROVIDER_LABEL = {
+  anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', groq: 'Groq',
+  openrouter: 'OpenRouter', deepseek: 'DeepSeek', together: 'Together AI', 'together-ai': 'Together AI',
+};
+
 /* Default JSON shown for the Anthropic Setup Token extras (indicative). */
 const AMF_DEFAULT_EXTRA_HEADERS = `{
   "anthropic-version": "2023-06-01",
@@ -160,12 +178,20 @@ function AmfModelSelection({ selectedModels, onToggle, onClearAll, onSelectAll }
 
 /* ── The form card (sections + footer) ── */
 function ApiModelForm({ showCancel = true, title, subtitle }) {
+  /* Catalog "Configure in Bodhi" prefill: ?provider=<slug>&model=<id> */
+  const amfParams = React.useMemo(() => new URLSearchParams(window.location.search), []);
+  const amfProvider = amfParams.get('provider');
+  const amfModel = amfParams.get('model');
+  const amfPreset = amfProvider ? AMF_PROVIDER_PRESETS[amfProvider] : null;
+  const amfPrefilled = !!(amfPreset && amfModel);
+
   /* Provider Connection */
-  const [name, setName] = React.useState('');
-  const [apiFormat, setApiFormat] = React.useState('openai');
-  const [baseUrl, setBaseUrl] = React.useState('https://api.openai.com/v1');
+  const [name, setName] = React.useState(amfProvider ? amfProvider + '-api' : '');
+  const [apiFormat, setApiFormat] = React.useState(amfPreset ? amfPreset.format : 'openai');
+  const [baseUrl, setBaseUrl] = React.useState(amfPreset ? amfPreset.base : 'https://api.openai.com/v1');
   const [useApiKey, setUseApiKey] = React.useState(true);
-  const [apiKey, setApiKey] = React.useState('sk-proj-••••••••••••••••••••••••••••••••••••••••••••••••••••');
+  /* API Key left EMPTY when prefilled — the user always supplies their own. */
+  const [apiKey, setApiKey] = React.useState(amfPrefilled ? '' : 'sk-proj-••••••••••••••••••••••••••••••••••••••••••••••••••••');
   const [showKey, setShowKey] = React.useState(false);
 
   /* Anthropic Setup Token extras */
@@ -200,7 +226,7 @@ function ApiModelForm({ showCancel = true, title, subtitle }) {
   const [fwdMode, setFwdMode] = React.useState('selected');
 
   /* Model Selection */
-  const [selectedModels, setSelectedModels] = React.useState(['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5.1-codex-mini']);
+  const [selectedModels, setSelectedModels] = React.useState(amfModel ? [amfModel] : ['gpt-5-mini', 'gpt-5.4-mini', 'gpt-5.1-codex-mini']);
 
   const toggleModel = (m) => setSelectedModels((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]);
   const selectAll = (models) => setSelectedModels((prev) => {
@@ -220,6 +246,15 @@ function ApiModelForm({ showCancel = true, title, subtitle }) {
         </div>
       )}
       <div className="bf-card-body">
+
+        {amfPrefilled && (
+          <div className="amf-prefill">
+            <AmfIcon name="sparkles" size={15} />
+            <div className="amf-prefill-txt">
+              Prefilled from <strong>{amfModel}</strong> · {AMF_PROVIDER_LABEL[amfProvider] || amfProvider}. Add your API key to finish.
+            </div>
+          </div>
+        )}
 
         {/* ══ PROVIDER CONNECTION ══ */}
         <div className="bf-section">

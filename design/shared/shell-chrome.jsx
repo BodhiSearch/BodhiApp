@@ -140,19 +140,24 @@ function ShellRangeSlider({ min = 0, max = 100, step = 1, unit = '', prefix = ''
 }
 
 /* ── Filter group (page control) ────────────────────────────── */
-function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable, range, value, onSelect, single }) {
+function ShellFilterGroup({ icon = 'filter', label, chips = [], note, clearable, range, value, onSelect, single, values, onToggle, onClear }) {
+  const controlled = Array.isArray(values) && typeof onToggle === 'function';
   const { collapsed, openPop, setOpenPop } = useShell();
   const popId = 'fg:' + label;
   const open = openPop === popId;
-  const [sel, setSel] = React.useState(() => new Set(chips.filter(c => c.defaultOn).map(c => c.label)));
+  const [selInternal, setSel] = React.useState(() => new Set(chips.filter(c => c.defaultOn).map(c => c.label)));
+  const sel = controlled ? new Set(values) : selInternal;
   const anchorRef = React.useRef(null);
 
-  const toggle = lbl => setSel(prev => {
-    const next = new Set(prev);
-    next.has(lbl) ? next.delete(lbl) : next.add(lbl);
-    return next;
-  });
-  const clear = () => setSel(new Set());
+  const toggle = lbl => {
+    if (controlled) { onToggle(lbl); return; }
+    setSel(prev => {
+      const next = new Set(prev);
+      next.has(lbl) ? next.delete(lbl) : next.add(lbl);
+      return next;
+    });
+  };
+  const clear = () => { if (controlled) { onClear && onClear(); return; } setSel(new Set()); };
 
   const chipId = c => c.id != null ? c.id : c.label;
   const isOn = c => single ? value === chipId(c) : sel.has(c.label);
