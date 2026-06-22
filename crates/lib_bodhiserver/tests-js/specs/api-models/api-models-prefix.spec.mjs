@@ -2,12 +2,12 @@ import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 
 // Prefix feature tests — all using OpenAI (prefix behavior is provider-agnostic).
-// Each test is self-contained: creates and deletes its own models.
+// Each test creates its own model; the DB auto-resets between tests (autoResetDb).
 
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
@@ -29,7 +29,7 @@ test.describe('API Models Prefix Functionality', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     formPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
   });
@@ -46,11 +46,9 @@ test.describe('API Models Prefix Functionality', () => {
     const modelId = await formPage.createModelAndCaptureId();
 
     await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'Test API Model');
-    await modelsPage.clickChatWithModel(ApiModelFixtures.OPENAI_MODEL);
+    await chatPage.navigateToChat();
+    await chatPage.selectModel(ApiModelFixtures.OPENAI_MODEL);
     await chatPage.expectChatPageWithModel(ApiModelFixtures.OPENAI_MODEL);
-
-    await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelId);
   });
 
   test('create model with prefix: prefixed model visible in list and chat', async ({ page }) => {
@@ -66,11 +64,9 @@ test.describe('API Models Prefix Functionality', () => {
 
     const prefixedModel = `test/${ApiModelFixtures.OPENAI_MODEL}`;
     await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'Test API Model');
-    await modelsPage.clickChatWithModel(prefixedModel);
+    await chatPage.navigateToChat();
+    await chatPage.selectModel(prefixedModel);
     await chatPage.expectChatPageWithModel(prefixedModel);
-
-    await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelId);
   });
 
   test('edit model to add prefix: chat model name updates', async ({ page }) => {
@@ -94,11 +90,9 @@ test.describe('API Models Prefix Functionality', () => {
 
     // Chat now uses prefixed model name
     const prefixedModel = `openai:${ApiModelFixtures.OPENAI_MODEL}`;
-    await modelsPage.clickChatWithModel(prefixedModel);
+    await chatPage.navigateToChat();
+    await chatPage.selectModel(prefixedModel);
     await chatPage.expectChatPageWithModel(prefixedModel);
-
-    await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelId);
   });
 
   test('edit model to remove prefix: chat reverts to bare model name', async ({ page }) => {
@@ -120,11 +114,9 @@ test.describe('API Models Prefix Functionality', () => {
     await formPage.updateModel();
 
     // Model appears without prefix in chat
-    await modelsPage.clickChatWithModel(ApiModelFixtures.OPENAI_MODEL);
+    await chatPage.navigateToChat();
+    await chatPage.selectModel(ApiModelFixtures.OPENAI_MODEL);
     await chatPage.expectChatPageWithModel(ApiModelFixtures.OPENAI_MODEL);
-
-    await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelId);
   });
 
   test('prefix UI behavior: checkbox enable/disable and input state', async ({ page }) => {
@@ -172,9 +164,6 @@ test.describe('API Models Prefix Functionality', () => {
     await modelsPage.editModel(modelId);
     await formPage.form.waitForFormReady();
     await formPage.form.verifyFormPreFilledWithPrefix('openai', OPENAI_BASE_URL, 'updated/');
-
-    await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelId);
   });
 
   test('name persists across edit: rename updates list display', async ({ page }) => {
@@ -201,9 +190,6 @@ test.describe('API Models Prefix Functionality', () => {
 
     // List now shows the new name.
     await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'My Renamed Model');
-
-    await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelId);
   });
 
   test('empty prefix acts like no prefix', async ({ page }) => {
@@ -220,11 +206,9 @@ test.describe('API Models Prefix Functionality', () => {
 
     await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'Test API Model');
     // Model appears with bare name (no prefix)
-    await modelsPage.clickChatWithModel(ApiModelFixtures.OPENAI_MODEL);
+    await chatPage.navigateToChat();
+    await chatPage.selectModel(ApiModelFixtures.OPENAI_MODEL);
     await chatPage.expectChatPageWithModel(ApiModelFixtures.OPENAI_MODEL);
-
-    await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelId);
   });
 
   test('base URL with trailing slash is normalized', async ({ page }) => {
@@ -240,8 +224,5 @@ test.describe('API Models Prefix Functionality', () => {
 
     // Stored URL should have trailing slash stripped
     await modelsPage.verifyApiModelInList(modelId, 'openai', OPENAI_BASE_URL, 'Test API Model');
-
-    await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelId);
   });
 });

@@ -19,16 +19,12 @@ import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 import { mintApiToken } from '@/utils/api-model-helpers.mjs';
-import {
-  getAuthServerConfig,
-  getPreConfiguredAppClient,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getPreConfiguredAppClient, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { buildSdkAdapter } from '@/utils/sdk-adapters.mjs';
 
 const SDK_FORMATS = ['openai', 'openai_responses', 'anthropic', 'gemini'];
@@ -79,14 +75,11 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
     }
   });
 
-  test('[setup] login, provision aliases, mint API + OAuth app tokens', async ({
-    page,
-    sharedServerUrl,
-  }) => {
+  test('[setup] login, provision aliases, mint API + OAuth app tokens', async ({ page, sharedServerUrl }) => {
     const authServerConfig = getAuthServerConfig();
     const testCredentials = getTestCredentials();
     const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    const modelsPage = new ModelsListPage(page, sharedServerUrl);
+    const modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     const formPage = new ApiModelFormPage(page, sharedServerUrl);
     const tokensPage = new TokensPage(page, sharedServerUrl);
 
@@ -118,18 +111,11 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
         effectiveModel: prefix ? `${prefix}${cfg.model}` : cfg.model,
       };
       if (cfg.embeddingModel) {
-        state.embeddingAliases[formatKey] = prefix
-          ? `${prefix}${cfg.embeddingModel}`
-          : cfg.embeddingModel;
+        state.embeddingAliases[formatKey] = prefix ? `${prefix}${cfg.embeddingModel}` : cfg.embeddingModel;
       }
     }
 
-    state.apiToken = await mintApiToken(
-      tokensPage,
-      page,
-      'sdk-compat-api-token',
-      'scope_token_user'
-    );
+    state.apiToken = await mintApiToken(tokensPage, page, 'sdk-compat-api-token', 'scope_token_user');
     expect(state.apiToken).toMatch(/^bodhiapp_/);
 
     // OAuth app token via full PKCE flow (same pattern as api-live-upstream.spec.mjs).
@@ -168,7 +154,7 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
     for (const auth of AUTH_METHODS) {
       test.describe(`${format} × ${auth}`, () => {
         const tokenFor = () => (auth === 'apiToken' ? state.apiToken : state.appToken);
-        const adapterFor = (serverUrl) => buildSdkAdapter(format, serverUrl, tokenFor(), state);
+        const adapterFor = serverUrl => buildSdkAdapter(format, serverUrl, tokenFor(), state);
 
         test('non-streaming chat', async ({ sharedServerUrl }) => {
           const out = await adapterFor(sharedServerUrl).chat({ stream: false });
@@ -192,7 +178,7 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
           const effective = state.models[format].effectiveModel;
           // Providers return models as "models/<id>" (Gemini) or "<id>" (OpenAI/Anthropic).
           // Accept either form so the assertion stays SDK-agnostic.
-          expect(ids.some((id) => id === effective || id.endsWith(`/${effective}`))).toBe(true);
+          expect(ids.some(id => id === effective || id.endsWith(`/${effective}`))).toBe(true);
         });
 
         if (EMBED_SUPPORTED.has(format)) {
@@ -207,19 +193,4 @@ test.describe('SDK compatibility — provider endpoints × auth tokens', () => {
       });
     }
   }
-
-  test('[teardown] delete provisioned aliases', async ({ page, sharedServerUrl }) => {
-    // Each test gets a fresh browser context → session cookies from [setup]
-    // are gone. Log in again before touching the admin UI.
-    const authServerConfig = getAuthServerConfig();
-    const testCredentials = getTestCredentials();
-    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    await loginPage.performOAuthLogin();
-
-    const modelsPage = new ModelsListPage(page, sharedServerUrl);
-    await modelsPage.navigateToModels();
-    for (const { modelId } of Object.values(state.models)) {
-      await modelsPage.deleteModel(modelId);
-    }
-  });
 });

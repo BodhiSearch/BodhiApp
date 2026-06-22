@@ -9,7 +9,7 @@ import { ChatHistoryPage } from '@/pages/ChatHistoryPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 
 test.describe('Chat Interface - Core Functionality', () => {
@@ -35,7 +35,7 @@ test.describe('Chat Interface - Core Functionality', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
     chatHistoryPage = new ChatHistoryPage(page, sharedServerUrl);

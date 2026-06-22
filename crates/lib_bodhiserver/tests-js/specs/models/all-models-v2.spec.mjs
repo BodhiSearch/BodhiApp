@@ -3,10 +3,9 @@ import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 
-// Black-box E2E for the All Models V2 list: faceted sidebar (TYPE / API-FORMAT incl. Liberty),
+// Black-box E2E for the All Models list: faceted sidebar (TYPE / API-FORMAT incl. Liberty),
 // server-side filtering, and the read-only detail rail with its Edit CTA. Uses only the local
 // auto-discovered GGUF models the dev-server always has — no external API keys required.
-// The `models` V2 flag is enabled via an init script (default off).
 
 test.describe('All Models V2', () => {
   let authServerConfig;
@@ -23,7 +22,6 @@ test.describe('All Models V2', () => {
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
     modelsPage = new ModelsListPageV2(page, sharedServerUrl);
-    await modelsPage.enableV2Flag();
   });
 
   test('renders the V2 list with the faceted sidebar, filters by type, and opens a detail rail', async () => {
@@ -44,7 +42,7 @@ test.describe('All Models V2', () => {
     const localCount = await modelsPage.getRowCount();
     expect(localCount).toBeGreaterThan(0);
     const types = await modelsPage.page.locator('[data-testid^="model-type-"]').allInnerTexts();
-    expect(types.every((t) => t.trim() === 'Local File')).toBe(true);
+    expect(types.every(t => t.trim() === 'Local File')).toBe(true);
 
     // Open the first row's detail rail and confirm the Edit CTA is present.
     await modelsPage.openRow();

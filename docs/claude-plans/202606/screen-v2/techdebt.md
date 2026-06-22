@@ -48,25 +48,46 @@ Fails identically in `standalone` + `multi_tenant`.
   already-shipped Access Requests screen — there's no server-side role-filter query param). Accepted
   limitation; a real fix needs a backend `role` query param on `GET /bodhi/v1/users`.
 
-## Models V1-list retirement + E2E-spec migration — its own iteration (added Batch 3-2)
-The **3-1 My Models V2 list** ships behind the default-off `models` flag, and the **V1
-`ModelsPageContent` list is kept**. It can't retire yet because the existing model/api-model E2E specs
-(`model-alias`, `model-router`, `model-metadata`, `api-models/*`) drive create/edit/**delete** through
-the **V1 My-Models list↔form flow** (preview modal, row `edit-button`/`delete-button`). The V2 list
-replaces those row controls with a rail + Edit-CTA, so flipping `models` on before those specs migrate
-breaks the suite.
+## Models V1-list retirement + E2E-spec migration — DONE (Batch 3-1 flag removed)
+The `models` flag and the V1 `ModelsPageContent` list have been **removed**; the V2 My-Models list is
+now the only Models screen. `routes/models/index.tsx` renders `ModelsScreenV2` directly; the
+legacy-only components (`ModelTableRow`, `ModelPreviewModal`, `ModelActions`, `SourceBadge`) and the
+legacy component test were deleted; `index.v2.test.tsx` became `index.test.tsx` (no flag opt-in). The
+E2E suite migrated off the legacy `ModelsListPage.mjs` (deleted) onto the extended
+`ModelsListPageV2.mjs`. See the feature-parity gaps below for what the V2 list does NOT yet do.
 
-**Note (Batch 3-2):** the **form** sub-phases are NOT flagged the way the list is. 3-2 (API Model form)
-shipped **V2-only, no flag** — its V2 chrome is purely additive over the same routes and reuses the
-production `ApiModelForm` unchanged (no separate V1 form artifact). 3-3/3-4 decide their own flag at
-plan time (3-3 adds a real info rail, so it's more than chrome). So this iteration is really about the
-**`models` list flag + the V1 list + the V1-flow E2E specs**, not the forms.
-
-**The retirement iteration** (when the Models section is accepted): flip `models` on (V2 list
-always-on), delete the V1 `ModelsPageContent` list + the `models` flag, and migrate the
-model/api-model E2E specs from the V1 list↔form delete/edit flow to the V2 list-rail (+ the already-V2
-forms) — **together, in one pass**. Tracked here so it isn't forgotten. (See `tracker.md` §"Active
-per-screen flags".)
+### Batch 3-1 Models V2 — feature parity deferred (flag removed)
+The legacy `/ui/models/` table had inline affordances the V2 master-detail screen does not yet
+reproduce. When the `models` flag was removed (V1 list deleted), the E2E coverage that depended on
+those affordances was deleted with it. Each should come back as a V2 feature, then have black-box E2E
+re-added:
+- **Delete from the list** — the V2 rail is read-only (Edit CTA only); there is no delete on the
+  Models screen. All `deleteModel`/`deleteLocalModel` E2E steps (~18 call-sites across api-models /
+  chat / oauth / tokens / model-router specs) were removed. Backend delete is still covered at the
+  `routes_app` / `server_app` layers; only the UI delete path is now uncovered by E2E.
+- **Chat-from-list** — the per-row "chat with model" button is gone. Specs that drove chat from the
+  list now select the model on the chat screen (`chatPage.navigateToChat()` + `selectModel`). Re-add a
+  list→chat shortcut if the product wants it back.
+- **Metadata preview + refresh** — V2 has no preview modal or refresh-metadata button. The V2 Local
+  rail shows capability chips but does not verify or refresh metadata. `specs/models/model-metadata.spec.mjs`
+  (per-GGUF-fixture capability verification + modal/per-row refresh) was **deleted** — no V2 home.
+- **Local-alias lifecycle list affordances** — `specs/models/model-alias.spec.mjs` leaned on inline
+  delete, chat-from-list, external-link, and source badges; it was **deleted**. Local-alias
+  create/edit smoke coverage remains via `all-models.spec` (rail + Edit CTA) and the alias form's own
+  component tests.
+- **Deleted specs:** `specs/models/model-alias.spec.mjs`, `specs/models/model-metadata.spec.mjs`.
+  **Trimmed:** delete + chat-from-list + legacy `getModelRow` cell-assertions removed from the
+  migrated api-models / chat / oauth / tokens / model-router specs. Specifics worth re-adding when
+  delete returns to the UI:
+  - `api-models-forward-all` lost the "prefixed models disappear from chat after deletion"
+    assertion (it depended on deleting the alias from the list). The `getModelRow` `{prefix,
+    forward_all, …}` list-cell snapshot it also had was re-expressed as a row-presence check plus the
+    existing edit-form verification (`verifyForwardAllModeSelected` + `verifyPrefixValue`).
+  - `api-sdk-compat` lost its dedicated `[teardown] delete provisioned aliases` test (delete-only).
+  - `api-live-upstream` lost the `deleteAllModels` teardown for both the API-token and
+    OAuth-app-token paths.
+  - All removed cleanup relied on `autoResetDb` resetting the DB between tests, so dropping it does
+    not cross-contaminate the suite.
 
 ## Migration scaffolding to REMOVE when the whole migration completes (added Batch 1)
 Temporary structures introduced to enable in-place, flag-gated coexistence. **Delete these once

@@ -4,7 +4,7 @@ import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
@@ -24,7 +24,7 @@ test.describe('API Tokens - Complete Integration', () => {
 
   test('Token Lifecycle, Scopes, and Chat @integration', async ({ page, sharedServerUrl }) => {
     const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    const modelsPage = new ModelsListPage(page, sharedServerUrl);
+    const modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     const apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
     const tokensPage = new TokensPage(page, sharedServerUrl);
     const chatPage = new ChatPage(page, sharedServerUrl);
@@ -141,14 +141,8 @@ test.describe('API Tokens - Complete Integration', () => {
     });
   });
 
-  test('Multi-User Isolation and Error Recovery @integration', async ({
-    browser,
-    sharedServerUrl,
-  }, testInfo) => {
-    test.skip(
-      testInfo.project.name === 'multi_tenant',
-      'Multi-user test requires same-tenant membership setup'
-    );
+  test('Multi-User Isolation and Error Recovery @integration', async ({ browser, sharedServerUrl }, testInfo) => {
+    test.skip(testInfo.project.name === 'multi_tenant', 'Multi-user test requires same-tenant membership setup');
 
     let adminContext;
     let managerContext;
@@ -161,13 +155,8 @@ test.describe('API Tokens - Complete Integration', () => {
       await test.step('Admin: login, register model, create tokens', async () => {
         adminContext = await browser.newContext();
         const adminPage = await adminContext.newPage();
-        const adminLogin = new LoginPage(
-          adminPage,
-          sharedServerUrl,
-          authServerConfig,
-          testCredentials
-        );
-        const adminModelsPage = new ModelsListPage(adminPage, sharedServerUrl);
+        const adminLogin = new LoginPage(adminPage, sharedServerUrl, authServerConfig, testCredentials);
+        const adminModelsPage = new ModelsListPageV2(adminPage, sharedServerUrl);
         const adminFormPage = new ApiModelFormPage(adminPage, sharedServerUrl);
         const adminTokensPage = new TokensPage(adminPage, sharedServerUrl);
 
@@ -200,13 +189,8 @@ test.describe('API Tokens - Complete Integration', () => {
 
         managerContext = await browser.newContext();
         const managerPage = await managerContext.newPage();
-        const managerLogin = new LoginPage(
-          managerPage,
-          sharedServerUrl,
-          authServerConfig,
-          managerCredentials
-        );
-        const managerModelsPage = new ModelsListPage(managerPage, sharedServerUrl);
+        const managerLogin = new LoginPage(managerPage, sharedServerUrl, authServerConfig, managerCredentials);
+        const managerModelsPage = new ModelsListPageV2(managerPage, sharedServerUrl);
         const managerFormPage = new ApiModelFormPage(managerPage, sharedServerUrl);
         const managerTokensPage = new TokensPage(managerPage, sharedServerUrl);
 

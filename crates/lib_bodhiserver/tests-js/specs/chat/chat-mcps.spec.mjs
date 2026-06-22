@@ -8,7 +8,7 @@ import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { registerApiModelViaUI } from '@/utils/api-model-helpers.mjs';
 
 /**
@@ -44,7 +44,7 @@ test.describe('Chat Interface - MCP Integration', () => {
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
     mcpsPage = new McpsPage(page, sharedServerUrl);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
     chatSettingsPage = new ChatSettingsPage(page, sharedServerUrl);
@@ -72,12 +72,7 @@ test.describe('Chat Interface - MCP Integration', () => {
     });
 
     await test.step('Create Everything MCP instance', async () => {
-      await mcpsPage.createMcpInstance(
-        serverData.name,
-        instanceData.name,
-        instanceData.slug,
-        instanceData.description
-      );
+      await mcpsPage.createMcpInstance(serverData.name, instanceData.name, instanceData.slug, instanceData.description);
       await mcpsPage.expectMcpsListPage();
       const row = await mcpsPage.getMcpRowByName(instanceData.name);
       await expect(row).toBeVisible();

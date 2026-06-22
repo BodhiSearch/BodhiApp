@@ -26,7 +26,7 @@ import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -57,9 +57,7 @@ function loadEnvelope() {
     );
   }
   if (parsed.provider !== 'anthropic') {
-    throw new Error(
-      `[llm-liberty/anthropic] anthropic.json provider="${parsed.provider}", expected "anthropic".`
-    );
+    throw new Error(`[llm-liberty/anthropic] anthropic.json provider="${parsed.provider}", expected "anthropic".`);
   }
   if (!parsed.access_token || !parsed.refresh_token) {
     throw new Error(
@@ -69,9 +67,7 @@ function loadEnvelope() {
 
   const expiresAt = Number(parsed.expires_at);
   if (!Number.isFinite(expiresAt)) {
-    throw new Error(
-      `[llm-liberty/anthropic] anthropic.json expires_at="${parsed.expires_at}" is not a number.`
-    );
+    throw new Error(`[llm-liberty/anthropic] anthropic.json expires_at="${parsed.expires_at}" is not a number.`);
   }
   const nowSec = Math.floor(Date.now() / 1000);
   if (expiresAt <= nowSec) {
@@ -113,7 +109,7 @@ test.describe('LLM Liberty OAuth - Anthropic end-to-end (local only)', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
     chatSettingsPage = new ChatSettingsPage(page, sharedServerUrl);

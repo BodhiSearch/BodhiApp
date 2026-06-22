@@ -3,7 +3,7 @@ import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 
@@ -43,14 +43,12 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
       async handleRequest(req, res, pathname) {
         if (pathname === '/models' && req.method === 'GET') {
           const isAnthropic = !!req.headers['anthropic-version'];
-          const data = MOCK_MODELS.map((id) =>
+          const data = MOCK_MODELS.map(id =>
             isAnthropic
               ? { id, display_name: id, created_at: '2024-01-01T00:00:00Z', type: 'model' }
               : { id, object: 'model', created: 0, owned_by: 'mock' }
           );
-          const body = JSON.stringify(
-            isAnthropic ? { data, has_more: false } : { object: 'list', data }
-          );
+          const body = JSON.stringify(isAnthropic ? { data, has_more: false } : { object: 'list', data });
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(body);
           return true;
@@ -63,7 +61,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
       async handleRequest(req, res, pathname) {
         // GET /models -> Gemini models list
         if (pathname === '/models' && req.method === 'GET') {
-          const models = MOCK_GEMINI_MODELS.map((id) => ({
+          const models = MOCK_GEMINI_MODELS.map(id => ({
             name: `models/${id}`,
             version: '001',
             displayName: id,
@@ -130,7 +128,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
 
       test.beforeEach(async ({ page, sharedServerUrl }) => {
         loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-        modelsPage = new ModelsListPage(page, sharedServerUrl);
+        modelsPage = new ModelsListPageV2(page, sharedServerUrl);
         formPage = new ApiModelFormPage(page, sharedServerUrl);
         chatPage = new ChatPage(page, sharedServerUrl);
       });
@@ -216,9 +214,6 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         await chatPage.sendMessage('No key test');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
-
-        await modelsPage.navigateToModels();
-        await modelsPage.deleteModel(modelId);
       });
 
       test('api key lifecycle - starting without key', async ({ page }) => {
@@ -301,9 +296,6 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
         await chatPage.sendMessage('Back to no key');
         await chatPage.waitForResponseComplete();
         expect(await chatPage.getLastAssistantMessage()).toContain(MOCK_RESPONSE);
-
-        await modelsPage.navigateToModels();
-        await modelsPage.deleteModel(modelId);
       });
     });
   }

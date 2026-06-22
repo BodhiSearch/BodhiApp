@@ -2,6 +2,7 @@ import { AliasResponse, ApiAliasResponse, ModelRouterResponse } from '@bodhiapp/
 
 import { ShellIcon } from '@/components/shell';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
+
 import { RoutingChainPreview } from './RoutingChainPreview';
 
 /** Bytes per GB (binary) — re-exported so the screen can share one constant. */

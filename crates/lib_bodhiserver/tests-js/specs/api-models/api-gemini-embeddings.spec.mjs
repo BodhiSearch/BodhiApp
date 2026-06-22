@@ -1,7 +1,7 @@
 import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { fetchWithBearer, mintApiToken } from '@/utils/api-model-helpers.mjs';
@@ -28,9 +28,7 @@ test.describe('API Models - Gemini Embeddings', () => {
     testCredentials = getTestCredentials();
     geminiApiKey = process.env[GEMINI_FORMAT.envKey];
     if (!geminiApiKey) {
-      throw new Error(
-        `${GEMINI_FORMAT.envKey} missing in .env.test — required for api-gemini-embeddings spec`
-      );
+      throw new Error(`${GEMINI_FORMAT.envKey} missing in .env.test — required for api-gemini-embeddings spec`);
     }
   });
 
@@ -41,15 +39,12 @@ test.describe('API Models - Gemini Embeddings', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     formPage = new ApiModelFormPage(page, sharedServerUrl);
     tokensPage = new TokensPage(page, sharedServerUrl);
   });
 
-  test('create Gemini embedding alias and call embedContent via app API token', async ({
-    page,
-    sharedServerUrl,
-  }) => {
+  test('create Gemini embedding alias and call embedContent via app API token', async ({ page, sharedServerUrl }) => {
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
     await modelsPage.clickNewApiModel();
@@ -60,28 +55,13 @@ test.describe('API Models - Gemini Embeddings', () => {
     await formPage.form.fetchAndSelectModels([EMBED_MODEL]);
     // Skip testConnection — the UI probes via :generateContent which embed-only
     // models (gemini-embedding-001) do not support.
-    const modelId = await formPage.createModelAndCaptureId();
+    await formPage.createModelAndCaptureId();
 
-    try {
-      const apiToken = await mintApiToken(
-        tokensPage,
-        page,
-        'gemini-embed-test',
-        'scope_token_user'
-      );
+    const apiToken = await mintApiToken(tokensPage, page, 'gemini-embed-test', 'scope_token_user');
 
-      const { resp, data } = await fetchWithBearer(
-        sharedServerUrl,
-        apiToken,
-        EMBED_ENDPOINT,
-        EMBED_BODY
-      );
-      expect(resp.ok).toBe(true);
-      expect(Array.isArray(data.embedding?.values)).toBe(true);
-      expect(data.embedding.values.length).toBeGreaterThan(0);
-    } finally {
-      await modelsPage.navigateToModels();
-      await modelsPage.deleteModel(modelId);
-    }
+    const { resp, data } = await fetchWithBearer(sharedServerUrl, apiToken, EMBED_ENDPOINT, EMBED_BODY);
+    expect(resp.ok).toBe(true);
+    expect(Array.isArray(data.embedding?.values)).toBe(true);
+    expect(data.embedding.values.length).toBeGreaterThan(0);
   });
 });

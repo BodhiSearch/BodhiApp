@@ -5,7 +5,7 @@ import { TokenFixtures } from '@/fixtures/tokenFixtures.mjs';
  * Register an API model via the UI form.
  * After calling, the browser is on the models list page.
  *
- * @param {ModelsListPage} modelsPage
+ * @param {ModelsListPageV2} modelsPage
  * @param {ApiModelFormPage} formPage
  * @param {string} apiKey
  * @param {object} [formatConfig] - Format config from ApiModelFixtures.API_FORMATS (defaults to openai)
@@ -14,9 +14,7 @@ import { TokenFixtures } from '@/fixtures/tokenFixtures.mjs';
 export async function registerApiModelViaUI(modelsPage, formPage, apiKey, formatConfig = null) {
   const config = formatConfig || ApiModelFixtures.API_FORMATS.openai;
   const modelData = ApiModelFixtures.createModelDataForFormat(
-    Object.keys(ApiModelFixtures.API_FORMATS).find(
-      (k) => ApiModelFixtures.API_FORMATS[k] === config
-    ) || 'openai'
+    Object.keys(ApiModelFixtures.API_FORMATS).find(k => ApiModelFixtures.API_FORMATS[k] === config) || 'openai'
   );
   await modelsPage.navigateToModels();
   await modelsPage.clickNewApiModel();

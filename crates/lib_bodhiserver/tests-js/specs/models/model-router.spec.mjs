@@ -3,7 +3,7 @@ import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelRouterFormPage } from '@/pages/ModelRouterFormPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 
@@ -41,7 +41,7 @@ test.describe('Model Router - pass-through', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     apiFormPage = new ApiModelFormPage(page, sharedServerUrl);
     routerFormPage = new ModelRouterFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
@@ -117,7 +117,7 @@ test.describe('Model Router - in-request fallback', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     apiFormPage = new ApiModelFormPage(page, sharedServerUrl);
     routerFormPage = new ModelRouterFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
@@ -201,7 +201,7 @@ test.describe('Model Router - health-aware skipping', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     apiFormPage = new ApiModelFormPage(page, sharedServerUrl);
     routerFormPage = new ModelRouterFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);

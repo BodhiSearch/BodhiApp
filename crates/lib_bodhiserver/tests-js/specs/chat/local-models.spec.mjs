@@ -3,7 +3,7 @@ import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LocalModelFormPage } from '@/pages/LocalModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 
@@ -31,7 +31,7 @@ test.describe('Local GGUF Models - Standalone Smoke Test', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     formPage = new LocalModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
     chatSettingsPage = new ChatSettingsPage(page, sharedServerUrl);
@@ -61,12 +61,7 @@ test.describe('Local GGUF Models - Standalone Smoke Test', () => {
       await formPage.fillBasicInfo(aliasName, QWEN_MODEL.repo, QWEN_MODEL.filename);
       await formPage.createAlias();
 
-      await modelsPage.verifyLocalModelInList(
-        aliasName,
-        QWEN_MODEL.repo,
-        QWEN_MODEL.filename,
-        'user'
-      );
+      await modelsPage.verifyLocalModelInList(aliasName, QWEN_MODEL.repo, QWEN_MODEL.filename, 'user');
     });
   });
 });

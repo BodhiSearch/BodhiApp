@@ -12,11 +12,12 @@
  *
  * (The API-Keys screens — Batch 1 — and the Settings screens — App Settings, Manage Users,
  * Batch 2 — have shipped V2-only; their flags were retired, so they're no longer listed. The
- * New/Edit API Model form — Batch 3-2 — and the New/Edit Model Router form — Batch 3-3 — also
- * shipped V2-only: their V2 chrome/rail is additive over the same routes, so they have no flag.)
+ * My Models list — Batch 3-1 — and the New/Edit API Model form — Batch 3-2 — and the New/Edit Model
+ * Router form — Batch 3-3 — also shipped V2-only: the list replaced the legacy table at the same
+ * route, the forms' V2 chrome/rail is additive over the same routes, so none have a flag.)
  */
 
-export type UiV2Screen = 'chat' | 'models' | 'new-local-model' | 'mcp-discover' | 'new-mcp' | 'mcp-playground';
+export type UiV2Screen = 'chat' | 'new-local-model' | 'mcp-discover' | 'new-mcp' | 'mcp-playground';
 
 export const UI_V2_FLAG_PREFIX = 'bodhi.ui-v2.';
 

@@ -2,7 +2,7 @@ import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 
@@ -24,9 +24,7 @@ test.describe('Chat UI - Gemini format', () => {
     testCredentials = getTestCredentials();
     geminiApiKey = process.env[GEMINI_FORMAT.envKey];
     if (!geminiApiKey) {
-      throw new Error(
-        `${GEMINI_FORMAT.envKey} missing in .env.test — required for chat-gemini spec`
-      );
+      throw new Error(`${GEMINI_FORMAT.envKey} missing in .env.test — required for chat-gemini spec`);
     }
   });
 
@@ -37,7 +35,7 @@ test.describe('Chat UI - Gemini format', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     formPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
   });
@@ -52,20 +50,15 @@ test.describe('Chat UI - Gemini format', () => {
     await formPage.form.fillBasicInfo(geminiApiKey, GEMINI_FORMAT.baseUrl);
     await formPage.form.fetchAndSelectModels([GEMINI_FORMAT.model]);
     await formPage.form.testConnection();
-    const modelId = await formPage.createModelAndCaptureId();
+    await formPage.createModelAndCaptureId();
 
-    try {
-      await chatPage.navigateToChat();
-      await chatPage.selectModel(GEMINI_FORMAT.model);
-      await chatPage.waitForModelSelected();
-      await chatPage.sendMessage(GEMINI_FORMAT.chatQuestion, { maxTokens: true });
-      await chatPage.waitForResponseComplete();
+    await chatPage.navigateToChat();
+    await chatPage.selectModel(GEMINI_FORMAT.model);
+    await chatPage.waitForModelSelected();
+    await chatPage.sendMessage(GEMINI_FORMAT.chatQuestion, { maxTokens: true });
+    await chatPage.waitForResponseComplete();
 
-      const reply = await chatPage.getLastAssistantMessage();
-      expect(reply.toLowerCase()).toContain(GEMINI_FORMAT.chatExpected);
-    } finally {
-      await modelsPage.navigateToModels();
-      await modelsPage.deleteModel(modelId);
-    }
+    const reply = await chatPage.getLastAssistantMessage();
+    expect(reply.toLowerCase()).toContain(GEMINI_FORMAT.chatExpected);
   });
 });

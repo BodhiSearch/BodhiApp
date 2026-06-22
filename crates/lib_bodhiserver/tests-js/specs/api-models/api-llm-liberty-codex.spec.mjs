@@ -25,7 +25,7 @@ import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -107,7 +107,7 @@ test.describe('LLM Liberty OAuth - openai-codex end-to-end (local only)', () => 
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
     chatPage = new ChatPage(page, sharedServerUrl);
     chatSettingsPage = new ChatSettingsPage(page, sharedServerUrl);
@@ -149,8 +149,6 @@ test.describe('LLM Liberty OAuth - openai-codex end-to-end (local only)', () => 
     await chatPage.waitForResponseComplete();
 
     const reply = await chatPage.getLastAssistantMessage();
-    expect(reply, 'assistant reply must contain "hello bodhi" (case-insensitive)').toMatch(
-      /hello bodhi/i
-    );
+    expect(reply, 'assistant reply must contain "hello bodhi" (case-insensitive)').toMatch(/hello bodhi/i);
   });
 });

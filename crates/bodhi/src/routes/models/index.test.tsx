@@ -1,476 +1,262 @@
-import ModelsPage from '@/routes/models/index';
-import { mockAppInfo, mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { Route as ModelsRoute } from '@/routes/models/index';
+import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
+import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
+import { mockModels, mockModelsWithCapture } from '@/test-utils/msw-v2/handlers/models';
+import { mockModelPullDownloads, mockModelPullDownloadsAllSections } from '@/test-utils/msw-v2/handlers/modelfiles';
 import {
-  mockModelsDefault,
-  mockModelsInternalError,
-  mockModelsWithApiModel,
-  mockModelsWithSourceModel,
-  mockRefreshSingleMetadata,
-} from '@/test-utils/msw-v2/handlers/models';
-import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+  createMockApiAlias,
+  createMockModelAlias,
+  createMockOpenAIModel,
+  createMockUserAlias,
+} from '@/test-fixtures/models';
+import { server, setupMswV2, type components } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/components/DataTable', () => ({
-  DataTable: ({ data, renderRow }: any) => (
-    <table>
-      <tbody>
-        {data.map((item: any, index: number) => (
-          <tr key={index}>{renderRow(item)}</tr>
-        ))}
-      </tbody>
-    </table>
-  ),
-  Pagination: () => <div data-testid="pagination">Mocked Pagination</div>,
-}));
-
-const navigateMock = vi.fn();
+const mockNavigate = vi.fn();
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual('@tanstack/react-router');
   return {
     ...actual,
-    Link: ({ to, search, children, ...rest }: any) => {
-      const searchStr = search ? '?' + new URLSearchParams(search).toString() : '';
-      return (
-        <a href={`${to}${searchStr}`} {...rest}>
-          {children}
-        </a>
-      );
-    },
-    useNavigate: () => navigateMock,
+    useNavigate: () => mockNavigate,
+    useLocation: () => ({ pathname: '/models' }),
   };
 });
 
-const mockModelsResponse = {
-  data: [
-    {
-      source: 'user' as const,
-      alias: 'test-model',
-      repo: 'test-repo',
-      filename: 'test-file.bin',
-      snapshot: 'abc123',
-      request_params: {},
-      context_params: {},
-    },
-  ],
-  total: 1,
-  page: 1,
-  page_size: 30,
-};
+setupMswV2();
 
-const server = setupServer();
+const ModelsPage = ModelsRoute.options.component as React.ComponentType;
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
-afterEach(() => server.resetHandlers());
-beforeEach(() => {
-  vi.resetAllMocks();
-  navigateMock.mockClear();
-});
-
-function mockMatchMedia(matches: boolean) {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }));
+function SlotsConsumer() {
+  const { sidebar, rail, railHeader, breadcrumb, headerActions } = useShellSlots();
+  const crumbs = Array.isArray(breadcrumb) ? breadcrumb.map((b) => b.label).join(' / ') : '';
+  return (
+    <>
+      <div data-testid="harness-header-actions">{headerActions}</div>
+      <div data-testid="harness-sidebar">{sidebar}</div>
+      <div data-testid="harness-rail-header">{railHeader}</div>
+      <div data-testid="harness-rail">{rail}</div>
+      <div data-testid="harness-breadcrumb">{crumbs}</div>
+    </>
+  );
 }
 
-describe('ModelsPage', () => {
-  beforeEach(() => {
-    server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }), ...mockModelsDefault());
-  });
-
-  it('renders responsive layouts correctly', async () => {
-    // Test mobile view (< sm)
-    mockMatchMedia(false);
-
-    const { unmount } = render(<ModelsPage />, { wrapper: createWrapper() });
-
-    await screen.findByTestId('combined-cell-test-model');
-
-    expect(screen.getByTestId('combined-cell-test-model')).toBeVisible();
-
-    unmount();
-
-    // Add fresh mocks for second render
-    server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }), ...mockModelsDefault());
-
-    // Test tablet view (sm to lg)
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: query.includes('sm') && !query.includes('lg'),
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-
-    const { unmount: unmountTablet } = render(<ModelsPage />, { wrapper: createWrapper() });
-    await screen.findByTestId('name-source-cell-test-model');
-
-    expect(screen.getByTestId('name-source-cell-test-model')).toBeVisible();
-    expect(screen.getByTestId('repo-filename-cell-test-model')).toBeVisible();
-
-    unmountTablet();
-
-    // Add fresh mocks for third render
-    server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }), ...mockModelsDefault());
-
-    // Test desktop view (>= lg)
-    mockMatchMedia(true);
-
-    render(<ModelsPage />, { wrapper: createWrapper() });
-    await screen.findByTestId('alias-cell-test-model');
-
-    expect(screen.getByTestId('alias-cell-test-model')).toBeVisible();
-    expect(screen.getByTestId('repo-cell-test-model')).toBeVisible();
-    expect(screen.getByTestId('filename-cell-test-model')).toBeVisible();
-    expect(screen.getByTestId('source-cell-test-model')).toBeVisible();
-  });
-
-  it('handles API error', async () => {
-    server.use(...mockModelsInternalError());
-    await act(async () => {
-      render(<ModelsPage />, { wrapper: createWrapper() });
-    });
-
-    expect(screen.getByText('Internal server error')).toBeInTheDocument();
-  });
-
-  describe('action buttons', () => {
-    it('shows FilePlus2 button for model source type', async () => {
-      server.use(...mockModelsWithSourceModel());
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      const newButton = screen.getAllByTitle('Create new model alias using this modelfile')[0];
-      expect(newButton).toBeInTheDocument();
-
-      await act(async () => {
-        newButton.click();
-      });
-
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: '/models/alias/new/',
-        search: { repo: 'test-repo', filename: 'test-file.bin', snapshot: 'abc123' },
-      });
-    });
-
-    it('shows edit button for non-model source type', async () => {
-      server.use(...mockModelsDefault());
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      const editButton = screen.getAllByTitle('Edit test-model')[0];
-      expect(editButton).toBeInTheDocument();
-
-      await act(async () => {
-        editButton.click();
-      });
-
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/alias/edit/', search: { id: 'test-uuid-1' } });
-    });
-
-    it('shows chat and huggingface buttons for all models', async () => {
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      const chatButton = screen.getAllByTitle('Chat with the model in playground')[0];
-      expect(chatButton).toBeInTheDocument();
-
-      const hfButton = screen.getAllByTitle('Open in HuggingFace')[0];
-      expect(hfButton).toBeInTheDocument();
-
-      await act(async () => {
-        chatButton.click();
-      });
-
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'test-model' } });
-    });
-
-    it('opens huggingface link in new tab', async () => {
-      const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      const hfButton = screen.getAllByTitle('Open in HuggingFace')[0];
-      await act(async () => {
-        hfButton.click();
-      });
-
-      expect(windowOpenSpy).toHaveBeenCalledWith('https://huggingface.co/test-repo/blob/main/test-file.bin', '_blank');
-
-      windowOpenSpy.mockRestore();
-    });
-    it('shows new API model button and handles navigation', async () => {
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      const newApiModelButton = screen.getByText('New API Model');
-      expect(newApiModelButton).toBeInTheDocument();
-
-      await act(async () => {
-        newApiModelButton.click();
-      });
-
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/new/' });
-    });
-  });
-
-  describe('API model display and actions', () => {
-    it('displays API models with correct information', async () => {
-      server.use(...mockModelsWithApiModel());
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      // getAllByText because the same value renders in multiple responsive layouts.
-      expect(screen.getAllByText('test-api-model')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('openai')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('https://api.openai.com/v1')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('gpt-4, gpt-3.5-turbo')[0]).toBeInTheDocument();
-    });
-
-    it('shows edit and delete buttons for API models', async () => {
-      server.use(...mockModelsWithApiModel());
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      const editButton = screen.getAllByTitle('Edit API model test-api-model')[0];
-      expect(editButton).toBeInTheDocument();
-
-      await act(async () => {
-        editButton.click();
-      });
-
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit/', search: { id: 'test-api-model' } });
-    });
-
-    it('shows chat button for API models with model identifier', async () => {
-      server.use(...mockModelsWithApiModel());
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      const apiModelRow = screen.getByTestId('actions-cell-test-api-model');
-      const chatButton = apiModelRow.querySelector('[data-testid="model-chat-button-gpt-4"]');
-      expect(chatButton).toBeInTheDocument();
-      expect(chatButton).toHaveAttribute('title', 'Chat with gpt-4');
-
-      await act(async () => {
-        fireEvent.click(chatButton!);
-      });
-
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'gpt-4' } });
-    });
-
-    it('does not show HuggingFace button for API models', async () => {
-      server.use(...mockModelsWithApiModel());
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      const hfButtons = screen.queryAllByTitle('Open in HuggingFace');
-      expect(hfButtons).toHaveLength(0);
-    });
-
-    it('navigates to edit page when edit button is clicked for API model', async () => {
-      server.use(...mockModelsWithApiModel());
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      await screen.findAllByText('test-api-model');
-      expect(screen.getAllByText('openai')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('https://api.openai.com/v1')[0]).toBeInTheDocument();
-
-      // Model list can render across responsive layouts, so match on combined content.
-      const modelsText = screen.getAllByText((content, element) => {
-        return content.includes('gpt-4') && content.includes('gpt-3.5-turbo');
-      });
-      expect(modelsText.length).toBeGreaterThan(0);
-
-      const editButton = screen.getAllByTitle('Edit API model test-api-model')[0];
-      expect(editButton).toBeInTheDocument();
-
-      await act(async () => {
-        editButton.click();
-      });
-
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/models/api/edit/', search: { id: 'test-api-model' } });
-    });
-
-    it('navigates to chat page when clicking on API model for chat', async () => {
-      server.use(...mockModelsWithApiModel());
-
-      await act(async () => {
-        render(<ModelsPage />, { wrapper: createWrapper() });
-      });
-
-      await screen.findAllByText('test-api-model');
-
-      const apiModelRow = screen.getByTestId('actions-cell-test-api-model');
-      const chatButton = apiModelRow.querySelector('[data-testid="chat-button-test-api-model"]');
-      expect(chatButton).not.toBeInTheDocument();
-      const modelChatButton = apiModelRow.querySelector('[data-testid="model-chat-button-gpt-4"]');
-      expect(modelChatButton).toBeInTheDocument();
-      expect(modelChatButton).toHaveAttribute('title', 'Chat with gpt-4');
-
-      await act(async () => {
-        fireEvent.click(modelChatButton!);
-      });
-
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/', search: { model: 'gpt-4' } });
-    });
-  });
-
-  it('displays error message when API call fails', async () => {
-    server.use(...mockModelsInternalError());
-
-    await act(async () => {
-      render(<ModelsPage />, { wrapper: createWrapper() });
-    });
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Internal server error');
-  });
+function makeRouterAlias(): components['schemas']['ModelRouterResponse'] {
+  return {
+    source: 'model_router',
+    id: 'router-1',
+    alias: 'smart-fallback',
+    targets: [
+      { alias: 'openai-main', model: 'gpt-4o', enabled: true },
+      { alias: 'anthropic-main', model: 'claude-sonnet-4-5', enabled: false },
+      { alias: 'local-coder', model: 'qwen', enabled: true },
+    ],
+    strategy: { strategy: 'fallback', cooldown_secs: 30, max_attempts: 0, honor_retry_after: true },
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  };
+}
+
+const MIXED_ROWS: components['schemas']['AliasResponse'][] = [
+  createMockModelAlias({
+    alias: 'org/local-gguf:Q4',
+    repo: 'org/local-gguf',
+    filename: 'local.gguf',
+    size: 5 * 1024 ** 3,
+  }),
+  createMockUserAlias({ id: 'u1', alias: 'my-coder', repo: 'org/coder', filename: 'coder.gguf' }),
+  createMockApiAlias({ id: 'openai-main', name: 'openai-main', api_format: 'openai', has_api_key: true }),
+  makeRouterAlias(),
+];
+
+beforeEach(() => {
+  server.use(
+    ...mockAppInfoReady(),
+    ...mockUserLoggedIn({ username: 'admin@example.com', role: 'resource_admin' }),
+    // Default: empty downloads (stub survives polling). Tests override as needed.
+    ...mockModelPullDownloads({ data: [], total: 0 }, { stub: true })
+  );
+  mockNavigate.mockReset();
 });
 
-describe('ModelsPage access control', () => {
-  it('should redirect to /setup if status is setup', async () => {
-    server.use(...mockAppInfo({ status: 'setup' }), ...mockUserLoggedIn());
-
-    await act(async () => {
-      render(<ModelsPage />, { wrapper: createWrapper() });
-    });
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/setup/' });
-  });
-
-  it('should redirect to /login if user is not logged in', async () => {
-    server.use(...mockAppInfoReady(), ...mockUserLoggedOut());
-    await act(async () => {
-      render(<ModelsPage />, { wrapper: createWrapper() });
-    });
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/login/' });
-  });
+afterEach(() => {
+  localStorage.clear();
+  vi.clearAllMocks();
 });
 
-describe('Model Metadata Refresh', () => {
-  beforeEach(() => {
-    server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }), ...mockModelsDefault());
-  });
-
-  it('per-model refresh button in modal triggers sync refresh with query params', async () => {
-    server.use(
-      ...mockRefreshSingleMetadata({
-        repo: 'test-repo',
-        filename: 'test-file.bin',
-        snapshot: 'abc123',
-        alias: 'test-model',
-        metadata: {
-          capabilities: { vision: false, audio: false, thinking: false, tools: {} },
-          context: {},
-          architecture: { format: 'gguf' },
-        },
-      })
+async function renderReady() {
+  await act(async () => {
+    render(
+      <ShellSlotsProvider>
+        <SlotsConsumer />
+        <ModelsPage />
+      </ShellSlotsProvider>,
+      { wrapper: createWrapper() }
     );
-
-    render(<ModelsPage />, { wrapper: createWrapper() });
-
-    await screen.findByTestId('preview-button-test-model');
-    const previewButton = screen.getByTestId('preview-button-test-model');
-
-    await act(async () => {
-      fireEvent.click(previewButton);
-    });
-
-    // The model has no initial metadata, so the body refresh button is shown.
-    await waitFor(() => {
-      expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
-    });
-
-    const refreshButton = screen.getByTestId('preview-modal-refresh-button-body');
-    expect(refreshButton).toBeEnabled();
-
-    await act(async () => {
-      fireEvent.click(refreshButton);
-    });
-
-    await waitFor(() => {
-      expect(refreshButton).toBeInTheDocument();
-    });
   });
-});
+  await waitFor(() => {
+    expect(screen.getByTestId('models-content')).toHaveAttribute('data-pagestatus', 'ready');
+  });
+}
 
-describe('Model Preview Modal', () => {
-  beforeEach(() => {
-    server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }), ...mockModelsDefault());
+describe('ModelsScreen V2', () => {
+  it('renders the four row types with their badges and the breadcrumb', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderReady();
+
+    expect(screen.getByTestId('harness-breadcrumb')).toHaveTextContent('Bodhi / Models / My Models');
+    expect(within(screen.getByTestId('model-type-org/local-gguf:Q4')).getByText('Local File')).toBeInTheDocument();
+    expect(within(screen.getByTestId('model-type-my-coder')).getByText('Model Alias')).toBeInTheDocument();
+    // API rows show the provider (api_format) as the badge, not a generic "API Model".
+    expect(within(screen.getByTestId('model-type-openai-main')).getByText('OPENAI')).toBeInTheDocument();
+    expect(within(screen.getByTestId('model-type-router-1')).getByText('Router')).toBeInTheDocument();
   });
 
-  it('opens preview modal when preview button clicked', async () => {
-    render(<ModelsPage />, { wrapper: createWrapper() });
-
-    await screen.findByTestId('preview-button-test-model');
-
-    const previewButton = screen.getByTestId('preview-button-test-model');
-
-    await act(async () => {
-      fireEvent.click(previewButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('preview-basic-alias')).toHaveTextContent('test-model');
-    expect(screen.getByTestId('preview-basic-repo')).toHaveTextContent('test-repo');
-    expect(screen.getByTestId('preview-basic-filename')).toHaveTextContent('test-file.bin');
+  it('has no TYPE filter tabs in the top toolbar (facets live only in the sidebar)', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderReady();
+    // The always-visible search is present; the old top-bar TYPE quick-tabs are gone.
+    expect(screen.getByTestId('models-search')).toBeInTheDocument();
+    expect(screen.queryByTestId('models-type-all')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('models-type-api_model')).not.toBeInTheDocument();
   });
 
-  it('closes preview modal on escape key', async () => {
-    render(<ModelsPage />, { wrapper: createWrapper() });
+  it('submits search to the backend `search` param on Enter', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    await renderReady();
 
-    await screen.findByTestId('preview-button-test-model');
+    const input = within(screen.getByTestId('models-search')).getByRole('textbox');
+    await userEvent.type(input, 'llama');
+    // No request fired yet for the typed text — search is submit-on-Enter, not per-keystroke.
+    expect(capture.last?.get('search')).toBeNull();
+    await userEvent.type(input, '{Enter}');
+    await waitFor(() => expect(capture.last?.get('search')).toBe('llama'));
+  });
 
-    const previewButton = screen.getByTestId('preview-button-test-model');
+  it('clearing the search box resets the backend `search` param', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    await renderReady();
+
+    const input = within(screen.getByTestId('models-search')).getByRole('textbox');
+    await userEvent.type(input, 'llama{Enter}');
+    await waitFor(() => expect(capture.last?.get('search')).toBe('llama'));
+    await userEvent.clear(input);
+    await waitFor(() => expect(capture.last?.get('search')).toBeNull());
+  });
+
+  it('publishes the faceted sidebar (type / capability / size / api-format incl. Liberty)', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderReady();
+
+    const sidebar = screen.getByTestId('harness-sidebar');
+    expect(within(sidebar).getByTestId('models-facet-type-local_file')).toBeInTheDocument();
+    expect(within(sidebar).getByTestId('models-facet-capability-vision')).toBeInTheDocument();
+    expect(within(sidebar).getByTestId('models-facet-size')).toBeInTheDocument();
+    // API-FORMAT incl. the newly-added Liberty bucket.
+    expect(within(sidebar).getByTestId('models-facet-format-openai')).toBeInTheDocument();
+    expect(within(sidebar).getByTestId('models-facet-format-liberty')).toBeInTheDocument();
+  });
+
+  it('sends the TYPE facet as a server-side `type` query param', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    await renderReady();
+
+    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-type-api_model'));
+    await waitFor(() => expect(capture.last?.get('type')).toBe('api_model'));
+  });
+
+  it('sends the API-FORMAT Liberty facet as `api_format=liberty`', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    await renderReady();
+
+    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-format-liberty'));
+    await waitFor(() => expect(capture.last?.get('api_format')).toBe('liberty'));
+  });
+
+  it('sends the CAPABILITY facet as `capability=vision`', async () => {
+    const { handlers, capture } = mockModelsWithCapture({ data: MIXED_ROWS, total: MIXED_ROWS.length });
+    server.use(...handlers);
+    await renderReady();
+
+    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('models-facet-capability-vision'));
+    await waitFor(() => expect(capture.last?.get('capability')).toBe('vision'));
+  });
+
+  it('opens the Local File rail on row click and shows repo/filename/snapshot/size', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderReady();
+
+    await userEvent.click(screen.getByTestId('model-row-org/local-gguf:Q4'));
+    const rail = await screen.findByTestId('model-detail-org/local-gguf:Q4');
+    expect(within(rail).getByText('org/local-gguf')).toBeInTheDocument();
+    expect(within(rail).getByText('local.gguf')).toBeInTheDocument();
+    expect(within(rail).getByText('5.00 GB')).toBeInTheDocument();
+  });
+
+  it('opens the API rail with connection + models', async () => {
+    const api = createMockApiAlias({
+      id: 'openai-main',
+      name: 'openai-main',
+      models: [createMockOpenAIModel('gpt-4o'), createMockOpenAIModel('gpt-4o-mini')],
+    });
+    server.use(...mockModels({ data: [api], total: 1 }, { stub: true }));
+    await renderReady();
+
+    await userEvent.click(screen.getByTestId('model-row-openai-main'));
+    const rail = await screen.findByTestId('model-detail-openai-main');
+    expect(within(rail).getByText('https://api.openai.com/v1')).toBeInTheDocument();
+    expect(within(within(rail).getByTestId('model-detail-models')).getByText('gpt-4o')).toBeInTheDocument();
+  });
+
+  it('opens the Fallback rail with the routing chain (disabled step marked)', async () => {
+    server.use(...mockModels({ data: [makeRouterAlias()], total: 1 }, { stub: true }));
+    await renderReady();
+
+    await userEvent.click(screen.getByTestId('model-row-router-1'));
+    const rail = await screen.findByTestId('model-detail-router-1');
+    const chain = within(rail).getByTestId('model-detail-chain');
+    expect(within(chain).getByText('openai-main')).toBeInTheDocument();
+    expect(within(chain).getByText('disabled')).toBeInTheDocument();
+  });
+
+  it('Edit CTA on the API rail navigates to the API edit route', async () => {
+    const api = createMockApiAlias({ id: 'openai-main', name: 'openai-main' });
+    server.use(...mockModels({ data: [api], total: 1 }, { stub: true }));
+    await renderReady();
+
+    await userEvent.click(screen.getByTestId('model-row-openai-main'));
+    await userEvent.click(await screen.findByTestId('model-detail-edit'));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/models/api/edit/', search: { id: 'openai-main' } });
+  });
+
+  it('shows an empty state when no models match', async () => {
+    server.use(...mockModels({ data: [], total: 0 }, { stub: true }));
+    await renderReady();
+    expect(screen.getByTestId('no-models')).toBeInTheDocument();
+  });
+
+  it('Downloads button opens the Downloads panel with all sections + active badge', async () => {
+    server.use(
+      ...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }),
+      ...mockModelPullDownloadsAllSections()
+    );
+    await renderReady();
 
     await act(async () => {
-      fireEvent.click(previewButton);
+      await userEvent.click(screen.getByTestId('models-downloads-button'));
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.keyDown(document, { key: 'Escape' });
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('model-preview-modal')).not.toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByTestId('ld-downloads-panel')).toBeInTheDocument());
+    expect(screen.getByTestId('ld-dl-group-downloading')).toBeInTheDocument();
+    expect(screen.getByTestId('ld-dl-group-failed')).toBeInTheDocument();
+    // Active badge counts downloading + queued (2).
+    expect(screen.getByTestId('models-downloads-badge')).toHaveTextContent('2');
   });
 });

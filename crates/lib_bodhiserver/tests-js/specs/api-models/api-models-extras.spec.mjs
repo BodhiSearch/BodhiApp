@@ -1,7 +1,7 @@
 import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ModelsListPageV2 } from '@/pages/ModelsListPageV2.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 
@@ -23,9 +23,7 @@ test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {
     testCredentials = getTestCredentials();
     anthropicOAuthToken = process.env[ANTHROPIC_OAUTH_FORMAT.envKey];
     if (!anthropicOAuthToken) {
-      throw new Error(
-        `${ANTHROPIC_OAUTH_FORMAT.envKey} missing in .env.test — required for api-models-extras spec`
-      );
+      throw new Error(`${ANTHROPIC_OAUTH_FORMAT.envKey} missing in .env.test — required for api-models-extras spec`);
     }
   });
 
@@ -35,7 +33,7 @@ test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {
 
   test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    modelsPage = new ModelsListPageV2(page, sharedServerUrl);
     formPage = new ApiModelFormPage(page, sharedServerUrl);
   });
 
@@ -64,9 +62,7 @@ test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {
     });
   });
 
-  test('malformed JSON in extra_headers shows validation error after submit attempt', async ({
-    page,
-  }) => {
+  test('malformed JSON in extra_headers shows validation error after submit attempt', async ({ page }) => {
     await test.step('Phase 1: login and navigate to new API model form', async () => {
       await loginPage.performOAuthLogin();
       await modelsPage.navigateToModels();
@@ -93,9 +89,7 @@ test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {
     });
   });
 
-  test('malformed JSON in extra_body shows validation error after submit attempt', async ({
-    page,
-  }) => {
+  test('malformed JSON in extra_body shows validation error after submit attempt', async ({ page }) => {
     await test.step('Phase 1: login and navigate to new API model form', async () => {
       await loginPage.performOAuthLogin();
       await modelsPage.navigateToModels();
@@ -148,12 +142,7 @@ test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {
     await test.step('Phase 3: create model and verify it appears in list', async () => {
       modelId = await formPage.createModelAndCaptureId();
       await modelsPage.navigateToModels();
-      await modelsPage.verifyApiModelInList(
-        modelId,
-        'anthropic_oauth',
-        ANTHROPIC_BASE_URL,
-        'Extras Round-Trip'
-      );
+      await modelsPage.verifyApiModelInList(modelId, 'anthropic_oauth', ANTHROPIC_BASE_URL, 'Extras Round-Trip');
     });
 
     await test.step('Phase 4: edit model and verify extras are still pre-filled', async () => {
@@ -161,11 +150,6 @@ test.describe('API Models - Extras Editor (extra_headers / extra_body)', () => {
       await formPage.form.waitForFormReady();
       await formPage.form.expectExtrasVisible(true);
       await formPage.form.expectExtrasPrefilledFor(ANTHROPIC_OAUTH_FORMAT);
-    });
-
-    await test.step('Phase 5: cleanup - delete model', async () => {
-      await modelsPage.navigateToModels();
-      await modelsPage.deleteModel(modelId);
     });
   });
 });
