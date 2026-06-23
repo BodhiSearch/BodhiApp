@@ -1,20 +1,22 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
-import { z } from 'zod';
 
-import { AxiosResponse } from 'axios';
 import { AppStatus, RedirectResponse, TenantListItem } from '@bodhiapp/ts-client';
+import { createFileRoute } from '@tanstack/react-router';
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import { AxiosResponse } from 'axios';
+import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
-import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useLogoutHandler, useOAuthInitiate, useDashboardOAuthInitiate } from '@/hooks/auth';
+import { useOAuthInitiate, useDashboardOAuthInitiate } from '@/hooks/auth';
 import { useGetAppInfo } from '@/hooks/info';
 import { useListTenants, useTenantActivate } from '@/hooks/tenants';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useGetUser } from '@/hooks/users';
-import { ROUTE_DEFAULT, ROUTE_LOGIN, ROUTE_REQUEST_ACCESS, ROUTE_SETUP_TENANTS } from '@/lib/constants';
+import { ROUTE_DEFAULT, ROUTE_REQUEST_ACCESS, ROUTE_SETUP_TENANTS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
+
+import { useLogoutWithCleanup } from './-shared';
 
 export const Route = createFileRoute('/login/')({
   validateSearch: z.object({
@@ -27,7 +29,7 @@ export const Route = createFileRoute('/login/')({
 function MultiTenantLoginContent() {
   const { data: appInfo } = useGetAppInfo();
   const { data: userInfo, isLoading: userLoading } = useGetUser();
-  const { showError, showSuccess } = useToastMessages();
+  const { showSuccess } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
@@ -108,23 +110,7 @@ function MultiTenantLoginContent() {
   });
 
   // Logout
-  const { logout, isLoading: isLoggingOut } = useLogoutHandler({
-    onSuccess: (response) => {
-      const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-      handleSmartRedirect(redirectUrl, navigate);
-    },
-    onError: (message) => {
-      localStorage.clear();
-      sessionStorage.clear();
-      document.cookie.split(';').forEach((c) => {
-        const eqPos = c.indexOf('=');
-        const name = eqPos > -1 ? c.slice(0, eqPos) : c;
-        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
-      });
-      showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
-      handleSmartRedirect(ROUTE_LOGIN, navigate);
-    },
-  });
+  const { logout, isLoading: isLoggingOut } = useLogoutWithCleanup();
 
   // Process invite flow (takes priority over auto-login)
   const hasInviteFlowTriggered = useRef(false);
@@ -353,28 +339,11 @@ function MultiTenantLoginContent() {
 export function LoginContent() {
   const { data: appInfo } = useGetAppInfo();
   const { data: userInfo, isLoading: userLoading } = useGetUser();
-  const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const navigate = useNavigate();
 
-  const { logout, isLoading: isLoggingOut } = useLogoutHandler({
-    onSuccess: (response) => {
-      const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-      handleSmartRedirect(redirectUrl, navigate);
-    },
-    onError: (message) => {
-      localStorage.clear();
-      sessionStorage.clear();
-      document.cookie.split(';').forEach((c) => {
-        const eqPos = c.indexOf('=');
-        const name = eqPos > -1 ? c.slice(0, eqPos) : c;
-        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
-      });
-      showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
-      handleSmartRedirect(ROUTE_LOGIN, navigate);
-    },
-  });
+  const { logout, isLoading: isLoggingOut } = useLogoutWithCleanup();
 
   const { mutate: initiateOAuth, isPending: isLoading } = useOAuthInitiate({
     onSuccess: (response) => {

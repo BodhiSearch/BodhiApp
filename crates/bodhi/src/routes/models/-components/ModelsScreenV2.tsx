@@ -17,7 +17,6 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ModelsFilter,
-  ModelTypeFacet,
   useArchiveDownload,
   useDownloadsRefresh,
   useListDownloads,
@@ -29,6 +28,7 @@ import { useViewTransition } from '@/hooks/useViewTransition';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
 
+import { getAliasId, getAliasTitle, getAliasTypeMeta } from './aliasFormatters';
 import { ModelDetailRail, ModelRailHeader } from './ModelDetailRail';
 import { ModelSidebarFacets } from './ModelSidebarFacets';
 import '@/components/downloads-panel/downloads-panel.css';
@@ -39,56 +39,6 @@ import './models.css';
 const MODELS_BREADCRUMB = [{ label: 'Bodhi' }, { label: 'Models' }, { label: 'My Models', current: true }];
 
 const PAGE_SIZE = 30;
-
-/** A stable identity for any alias row (api/router use id, local aliases use the alias name). */
-function aliasId(alias: AliasResponse): string {
-  if (isApiAlias(alias) || isModelRouterAlias(alias)) return alias.id;
-  return alias.alias;
-}
-
-/** TYPE-facet token + display label + badge + icon-tile classes (color-coded per type). */
-function typeMeta(alias: AliasResponse): {
-  token: ModelTypeFacet;
-  label: string;
-  badgeCls: string;
-  iconCls: string;
-  icon: string;
-} {
-  switch (alias.source) {
-    case 'model':
-      return {
-        token: 'local_file',
-        label: 'Local File',
-        badgeCls: 'm-badge-local',
-        iconCls: 'm-icon-local',
-        icon: 'hard-drive',
-      };
-    case 'user':
-      return {
-        token: 'model_alias',
-        label: 'Model Alias',
-        badgeCls: 'm-badge-alias',
-        iconCls: 'm-icon-alias',
-        icon: 'tag',
-      };
-    case 'api':
-      return {
-        token: 'api_model',
-        label: 'API Model',
-        badgeCls: 'm-badge-api',
-        iconCls: 'm-icon-api',
-        icon: 'at-sign',
-      };
-    default:
-      return {
-        token: 'fallback',
-        label: 'Router',
-        badgeCls: 'm-badge-fallback',
-        iconCls: 'm-icon-fallback',
-        icon: 'route',
-      };
-  }
-}
 
 /** Secondary line under a row's title — repo/file, API base+model-count, or the fallback chain. */
 function rowSubtitle(alias: AliasResponse): string {
@@ -104,11 +54,6 @@ function rowSubtitle(alias: AliasResponse): string {
   return alias.filename;
 }
 
-function rowTitle(alias: AliasResponse): string {
-  if (isApiAlias(alias)) return alias.name || alias.id;
-  return alias.alias;
-}
-
 interface ModelRowProps {
   alias: AliasResponse;
   active: boolean;
@@ -117,11 +62,11 @@ interface ModelRowProps {
 }
 
 function ModelRow({ alias, active, query, onSelect }: ModelRowProps) {
-  const meta = typeMeta(alias);
-  const title = rowTitle(alias);
+  const meta = getAliasTypeMeta(alias);
+  const title = getAliasTitle(alias);
   const subtitle = rowSubtitle(alias);
 
-  const id = aliasId(alias);
+  const id = getAliasId(alias);
   // API rows show the provider (api_format) as a green badge + a connection status, mirroring the
   // design; other rows show the type badge. The model-type testid is preserved on both.
   const api = isApiAlias(alias) ? (alias as ApiAliasResponse) : null;
@@ -209,7 +154,7 @@ export function ModelsScreenV2() {
   const rows = useMemo(() => {
     const seen = new Set<string>();
     return (data?.data ?? []).filter((a) => {
-      const id = aliasId(a);
+      const id = getAliasId(a);
       if (seen.has(id)) return false;
       seen.add(id);
       return true;
@@ -219,7 +164,7 @@ export function ModelsScreenV2() {
   // Highlight matches the committed server query (lowercased), not the in-progress text box.
   const q = (filter.search ?? '').trim().toLowerCase();
 
-  const selected = useMemo(() => rows.find((a) => aliasId(a) === selectedId) ?? null, [rows, selectedId]);
+  const selected = useMemo(() => rows.find((a) => getAliasId(a) === selectedId) ?? null, [rows, selectedId]);
 
   const onFilterChange = useCallback((next: ModelsFilter) => {
     setFilter(next);
@@ -403,11 +348,11 @@ export function ModelsScreenV2() {
           <div className="l-listview">
             {rows.map((alias) => (
               <ModelRow
-                key={aliasId(alias)}
+                key={getAliasId(alias)}
                 alias={alias}
-                active={aliasId(alias) === selectedId}
+                active={getAliasId(alias) === selectedId}
                 query={q}
-                onSelect={() => select(aliasId(alias))}
+                onSelect={() => select(getAliasId(alias))}
               />
             ))}
           </div>

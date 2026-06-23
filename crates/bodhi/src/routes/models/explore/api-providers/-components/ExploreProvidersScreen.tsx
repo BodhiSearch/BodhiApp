@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
+import { exploreBreadcrumb } from '../../-shared/breadcrumbs';
 import { CAP_LABELS, CAP_TONE, fmtPrice, isFree, monogram, tintIndex } from '../../-shared/catalog-format';
 
 import { ExploreProvidersRail, ExploreProvidersRailHeader } from './ExploreProvidersRail';
@@ -17,11 +18,7 @@ import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '../../-shared/catalog.css';
 
-const BREADCRUMB = [
-  { label: 'Bodhi' },
-  { label: 'Models', href: '/models/' },
-  { label: 'Explore · API Providers', current: true },
-];
+const BREADCRUMB = exploreBreadcrumb('Explore · API Providers');
 
 const PAGE_SIZE = 30;
 

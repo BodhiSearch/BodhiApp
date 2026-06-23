@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogModelDetail, useCatalogModels } from '@/hooks/reference';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
+import { exploreBreadcrumb } from '../../-shared/breadcrumbs';
 import { CAP_LABELS, CAP_TONE, fmtContext, fmtPrice, isFree, statusLabel } from '../../-shared/catalog-format';
 
 import { ExploreApiRail, ExploreApiRailHeader } from './ExploreApiRail';
@@ -16,11 +17,7 @@ import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '../../-shared/catalog.css';
 
-const BREADCRUMB = [
-  { label: 'Bodhi' },
-  { label: 'Models', href: '/models/' },
-  { label: 'Explore · API Models', current: true },
-];
+const BREADCRUMB = exploreBreadcrumb('Explore · API Models');
 
 const PAGE_SIZE = 30;
 

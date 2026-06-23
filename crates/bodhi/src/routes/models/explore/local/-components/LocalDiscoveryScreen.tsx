@@ -17,6 +17,8 @@ import { useDiscoverModels, useModelDetail } from '@/hooks/reference';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
+import { exploreBreadcrumb } from '../../-shared/breadcrumbs';
+
 import { fmtDate, LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
 import { LocalDiscoverySidebar, facetsToQuery, type DiscoveryFacets } from './LocalDiscoverySidebar';
 import '@/components/downloads-panel/downloads-panel.css';
@@ -24,11 +26,7 @@ import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import './local-discovery.css';
 
-const BREADCRUMB = [
-  { label: 'Bodhi' },
-  { label: 'Models', href: '/models/' },
-  { label: 'Explore · Local Models', current: true },
-];
+const BREADCRUMB = exploreBreadcrumb('Explore · Local Models');
 
 /** Page size; raised when searching (search disables cursor pagination server-side). */
 const PAGE_SIZE = 30;
