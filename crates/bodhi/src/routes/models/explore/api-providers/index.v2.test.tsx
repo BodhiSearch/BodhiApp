@@ -18,6 +18,14 @@ import { createWrapper } from '@/tests/wrapper';
 
 vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () => void) => cb() }));
 
+// The screen reads ?select via useSearch (cross-link entry from the API Models page). No router in
+// the RTL wrapper → mock it to "no select param" (the deep-link path is covered in the A-page tests
+// + E2E). Keep the rest of the module intact.
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-router')>('@tanstack/react-router');
+  return { ...actual, useSearch: () => undefined };
+});
+
 setupMswV2();
 
 let Wrapper: ReturnType<typeof createWrapper>;

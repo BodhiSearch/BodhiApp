@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { useSearch } from '@tanstack/react-router';
-
 import type { ListProvidersQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
+import { useSearch } from '@tanstack/react-router';
 
 import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -11,6 +10,7 @@ import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders
 import { useViewTransition } from '@/hooks/useViewTransition';
 
 import { CAP_LABELS, CAP_TONE, fmtPrice, isFree, monogram, tintIndex } from '../../-shared/catalog-format';
+
 import { ExploreProvidersRail, ExploreProvidersRailHeader } from './ExploreProvidersRail';
 import { ExploreProvidersSidebar, type ProviderFacets } from './ExploreProvidersSidebar';
 import '@/components/shell/list.css';
