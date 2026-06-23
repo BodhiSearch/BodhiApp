@@ -5,6 +5,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 import apiClient from '@/lib/apiClient';
+
+import { mapSdkToolsToClient } from './toolMapping';
 import type { McpConnectionStatus, McpClientTool, McpToolCallResult } from './useMcpClient';
 
 export interface McpClientState {
@@ -140,11 +142,7 @@ export function useMcpClients(): UseMcpClientsReturn {
         await client.connect(transport);
 
         const toolsResult = await client.listTools();
-        const mappedTools: McpClientTool[] = (toolsResult.tools || []).map((t) => ({
-          name: t.name,
-          description: t.description,
-          inputSchema: (t.inputSchema ?? {}) as Record<string, unknown>,
-        }));
+        const mappedTools = mapSdkToolsToClient(toolsResult.tools);
 
         return { mcpId: mcp.id, client, transport, tools: mappedTools };
       })

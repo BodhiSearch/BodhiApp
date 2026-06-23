@@ -1,3 +1,4 @@
+import { EnableableInputWrapper } from '@/components/api-models/form/EnableableInputWrapper';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -30,18 +31,12 @@ export function PrefixInput({
     <div className="space-y-2">
       <Label htmlFor={testId}>{label}</Label>
 
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id={`${testId}-enabled`}
-          checked={enabled}
-          onChange={(e) => onEnabledChange(e.target.checked)}
-          data-testid={`${testId}-checkbox`}
-          className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
-        />
-        <Label htmlFor={`${testId}-enabled`} className="text-sm text-muted-foreground cursor-pointer flex-shrink-0">
-          {enabledLabel}
-        </Label>
+      <EnableableInputWrapper
+        testId={testId}
+        enabled={enabled}
+        onEnabledChange={onEnabledChange}
+        enabledLabel={enabledLabel}
+      >
         <Input
           id={testId}
           data-testid={testId}
@@ -51,7 +46,7 @@ export function PrefixInput({
           disabled={!enabled}
           className="flex-1"
         />
-      </div>
+      </EnableableInputWrapper>
 
       {error && (
         <p className="text-sm text-destructive" data-testid={`${testId}-error`}>

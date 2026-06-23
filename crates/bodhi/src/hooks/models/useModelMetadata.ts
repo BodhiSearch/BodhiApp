@@ -38,12 +38,9 @@ export function useRefreshSingleMetadata(options?: {
     'post',
     {
       onSuccess: (response) => {
+        queryClient.invalidateQueries({ queryKey: modelKeys.all });
+        queryClient.invalidateQueries({ queryKey: modelFileKeys.all });
         options?.onSuccess?.(response.data);
-        // Delay invalidation so mutation state updates settle first.
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: modelKeys.all });
-          queryClient.invalidateQueries({ queryKey: modelFileKeys.all });
-        }, 100);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
         const message = extractErrorMessage(error, 'Failed to refresh metadata');

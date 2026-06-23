@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 
 import { ModelSelector } from '@/components/ModelSelector';
 
@@ -40,7 +40,7 @@ export function ModelSelectionSection({
   'data-testid': testId = 'model-selection-section',
 }: ModelSelectionSectionProps) {
   // Auto-select common models when they become available
-  useState(() => {
+  useEffect(() => {
     if (autoSelectCommon && provider?.commonModels.length && availableModels.length) {
       const commonModelsAvailable = provider.commonModels.filter(
         (model) => availableModels.includes(model) && !selectedModels.includes(model)
@@ -50,7 +50,7 @@ export function ModelSelectionSection({
         onModelsSelectAll(newSelection);
       }
     }
-  });
+  }, [autoSelectCommon, provider, availableModels, selectedModels, onModelsSelectAll]);
 
   return (
     <div

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -27,6 +27,39 @@ interface ComboBoxResponsiveProps extends Omit<React.ButtonHTMLAttributes<HTMLBu
   loading?: boolean;
 }
 
+const ComboBoxTriggerButton = React.forwardRef<
+  HTMLButtonElement,
+  {
+    testId: string;
+    open: boolean;
+    id?: string;
+    loading: boolean;
+    selectedStatus: Status | null;
+    placeholder: string;
+    buttonProps: Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'id'>;
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ testId, open, id, loading, selectedStatus, placeholder, buttonProps, ...injectedProps }, ref) => {
+  return (
+    <Button
+      ref={ref}
+      variant="outline"
+      className="w-full justify-start truncate"
+      role="combobox"
+      id={id}
+      aria-expanded={open}
+      aria-haspopup="listbox"
+      type="button"
+      disabled={loading}
+      data-testid={testId}
+      {...buttonProps}
+      {...injectedProps}
+    >
+      <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
+    </Button>
+  );
+});
+ComboBoxTriggerButton.displayName = 'ComboBoxTriggerButton';
+
 export function ComboBoxResponsive({
   selectedStatus,
   setSelectedStatus,
@@ -44,20 +77,15 @@ export function ComboBoxResponsive({
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-full justify-start truncate"
-            role="combobox"
+          <ComboBoxTriggerButton
+            testId="combobox-trigger"
+            open={open}
             id={id}
-            aria-expanded={open}
-            aria-haspopup="listbox"
-            type="button"
-            disabled={loading}
-            data-testid="combobox-trigger"
-            {...buttonProps}
-          >
-            <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
-          </Button>
+            loading={loading}
+            selectedStatus={selectedStatus}
+            placeholder={placeholder}
+            buttonProps={buttonProps}
+          />
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
           <StatusList setOpen={setOpen} setSelectedStatus={setSelectedStatus} statuses={statuses} />
@@ -72,20 +100,15 @@ export function ComboBoxResponsive({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-full justify-start truncate"
-          role="combobox"
+        <ComboBoxTriggerButton
+          testId={testId}
+          open={open}
           id={id}
-          aria-expanded={open}
-          aria-haspopup="listbox"
-          type="button"
-          disabled={loading}
-          data-testid={testId}
-          {...buttonProps}
-        >
-          <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
-        </Button>
+          loading={loading}
+          selectedStatus={selectedStatus}
+          placeholder={placeholder}
+          buttonProps={buttonProps}
+        />
       </DrawerTrigger>
       <DrawerContent>
         <div className="mx-4 mt-4">

@@ -5,6 +5,8 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 
 import apiClient from '@/lib/apiClient';
 
+import { mapSdkToolsToClient } from './toolMapping';
+
 export type McpConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'refreshing' | 'error';
 
 export interface McpClientTool {
@@ -78,12 +80,7 @@ export function useMcpClient(endpoint: string | null): UseMcpClientReturn {
       transportRef.current = transport;
 
       const result = await client.listTools();
-      const mappedTools: McpClientTool[] = (result.tools || []).map((t) => ({
-        name: t.name,
-        description: t.description,
-        inputSchema: (t.inputSchema ?? {}) as Record<string, unknown>,
-      }));
-      setTools(mappedTools);
+      setTools(mapSdkToolsToClient(result.tools));
       setStatus('connected');
     } catch (err) {
       setStatus('error');
@@ -115,12 +112,7 @@ export function useMcpClient(endpoint: string | null): UseMcpClientReturn {
     setStatus('refreshing');
     try {
       const result = await clientRef.current.listTools();
-      const mappedTools: McpClientTool[] = (result.tools || []).map((t) => ({
-        name: t.name,
-        description: t.description,
-        inputSchema: (t.inputSchema ?? {}) as Record<string, unknown>,
-      }));
-      setTools(mappedTools);
+      setTools(mapSdkToolsToClient(result.tools));
       setStatus('connected');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh tools');

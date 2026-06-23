@@ -2,6 +2,7 @@ import { forwardRef, useState } from 'react';
 
 import { Eye, EyeOff, ExternalLink } from 'lucide-react';
 
+import { EnableableInputWrapper } from '@/components/api-models/form/EnableableInputWrapper';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -83,18 +84,12 @@ export const ApiKeyInput = forwardRef<HTMLInputElement, ApiKeyInputProps>(
           )}
         </div>
 
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id={`${testId}-enabled`}
-            checked={enabled}
-            onChange={(e) => onEnabledChange(e.target.checked)}
-            data-testid={`${testId}-checkbox`}
-            className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
-          />
-          <Label htmlFor={`${testId}-enabled`} className="text-sm text-muted-foreground cursor-pointer flex-shrink-0">
-            {enabledLabel}
-          </Label>
+        <EnableableInputWrapper
+          testId={testId}
+          enabled={enabled}
+          onEnabledChange={onEnabledChange}
+          enabledLabel={enabledLabel}
+        >
           <div className="relative flex-1">
             <Input
               {...props}
@@ -121,7 +116,7 @@ export const ApiKeyInput = forwardRef<HTMLInputElement, ApiKeyInputProps>(
               <span className="sr-only">{showApiKey ? 'Hide API key' : 'Show API key'}</span>
             </Button>
           </div>
-        </div>
+        </EnableableInputWrapper>
 
         {error && (
           <p className="text-sm text-destructive" data-testid={`${testId}-error`}>
