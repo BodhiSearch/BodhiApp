@@ -2,7 +2,6 @@
 // Used where the framework does NOT auto-apply the base path (e.g., window.location stripping).
 export const BASE_PATH = '/ui';
 
-export const CURRENT_CHAT_KEY = 'current-chat';
 export const ROUTE_CHAT = '/chat/';
 export const ROUTE_LOGIN = '/login/';
 

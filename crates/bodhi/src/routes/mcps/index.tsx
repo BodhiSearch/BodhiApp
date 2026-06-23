@@ -34,7 +34,6 @@ import { useDeleteMcp, useListMcps, type Mcp } from '@/hooks/mcps';
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
   { id: 'url', name: 'URL', sorted: false, className: 'hidden md:table-cell' },
-  { id: 'tools', name: 'Tools', sorted: false, className: 'hidden lg:table-cell' },
   { id: 'status', name: 'Status', sorted: false },
   { id: 'actions', name: '', sorted: false },
 ];
@@ -96,9 +95,6 @@ function McpsPageContent() {
         <span className="text-muted-foreground text-sm font-mono truncate max-w-[300px] inline-block">
           {mcp.mcp_server.url}
         </span>
-      </TableCell>,
-      <TableCell key="tools" className="hidden lg:table-cell" data-testid={`mcp-tools-${mcp.id}`}>
-        <span className="text-muted-foreground">--</span>
       </TableCell>,
       <TableCell key="status" data-testid={`mcp-status-${mcp.id}`}>
         <McpStatus mcp={mcp} />
