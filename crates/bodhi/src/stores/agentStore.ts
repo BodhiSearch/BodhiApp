@@ -1,16 +1,16 @@
-import { create } from 'zustand';
-
-import { streamSimple } from '@mariozechner/pi-ai';
-import type { Model } from '@mariozechner/pi-ai';
+import type { ApiFormat } from '@bodhiapp/ts-client';
 import { Agent } from '@mariozechner/pi-agent-core';
 import type { AgentEvent, AgentMessage, AgentTool, StreamFn } from '@mariozechner/pi-agent-core';
+import { streamSimple } from '@mariozechner/pi-ai';
+import type { Model } from '@mariozechner/pi-ai';
+import { create } from 'zustand';
 
-import type { ApiFormat } from '@bodhiapp/ts-client';
-
-import { useChatStore } from './chatStore';
-import { useChatSettingsStore } from './chatSettingsStore';
 import { nanoid } from '@/lib/utils';
 import { extractTextFromAgentMessage } from '@/types/chat';
+
+import { getCurrentChat, getDefaultAgentMessageUsage } from './agentStoreUtils';
+import { useChatSettingsStore } from './chatSettingsStore';
+import { useChatStore } from './chatStore';
 
 // Sentinel key for pi-ai SDK: real auth uses session cookies or BodhiApp API token; middleware strips this.
 export const SENTINEL_API_KEY = 'bodhiapp_sentinel_api_key_ignored';
@@ -174,9 +174,7 @@ const isAgentMessage = (x: unknown): x is AgentMessage =>
 async function restoreMessagesForChat(): Promise<void> {
   const chatStore = useChatStore.getState();
   const settingsStore = useChatSettingsStore.getState();
-  const currentChat = chatStore.currentChatId
-    ? (chatStore.chats.find((c) => c.id === chatStore.currentChatId) ?? null)
-    : null;
+  const currentChat = getCurrentChat(chatStore);
 
   if (!currentChat || currentChat.messageCount === 0) {
     useAgentStore.setState({ messages: [] });
@@ -219,14 +217,7 @@ async function restoreMessagesForChat(): Promise<void> {
           api: apiFormatToPiApi(apiFormat, llmLibertyProvider),
           provider: apiFormatToProvider(apiFormat, llmLibertyProvider),
           model: modelId,
-          usage: {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-          },
+          usage: getDefaultAgentMessageUsage(),
           stopReason: 'stop' as const,
           timestamp: Date.now(),
         },
@@ -273,9 +264,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
       settingsStore.systemPrompt_enabled && settingsStore.systemPrompt ? settingsStore.systemPrompt : '';
 
     if (!get().chatIdRef) {
-      const currentChat = chatStore.currentChatId
-        ? (chatStore.chats.find((c) => c.id === chatStore.currentChatId) ?? null)
-        : null;
+      const currentChat = getCurrentChat(chatStore);
       set({
         chatIdRef: {
           id: currentChat?.id ?? nanoid(),
@@ -285,9 +274,7 @@ export const useAgentStore = create<AgentStoreState>((set, get) => ({
     }
 
     // Restore messages if switching to existing chat and agent is empty
-    const currentChat = chatStore.currentChatId
-      ? (chatStore.chats.find((c) => c.id === chatStore.currentChatId) ?? null)
-      : null;
+    const currentChat = getCurrentChat(chatStore);
     if (currentChat && currentChat.messageCount > 0 && agent.state.messages.length === 0) {
       await restoreMessagesForChat();
     }

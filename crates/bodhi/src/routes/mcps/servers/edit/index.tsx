@@ -34,6 +34,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { extractErrorMessage } from '@/lib/errorUtils';
+import { validateMcpServerForm } from '@/lib/mcpFormValidation';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 
 export const Route = createFileRoute('/mcps/servers/edit/')({
@@ -91,17 +92,7 @@ function EditMcpServerContent() {
   }, [server]);
 
   const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'Name is required';
-    if (name.length > 100) newErrors.name = 'Name cannot exceed 100 characters';
-    if (!url.trim()) newErrors.url = 'URL is required';
-    if (url.length > 2048) newErrors.url = 'URL cannot exceed 2048 characters';
-    try {
-      if (url.trim()) new URL(url.trim());
-    } catch {
-      newErrors.url = 'URL is not valid';
-    }
-    if (description.length > 255) newErrors.description = 'Description cannot exceed 255 characters';
+    const newErrors = validateMcpServerForm(name, url, description);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
