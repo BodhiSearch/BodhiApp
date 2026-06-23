@@ -1,0 +1,173 @@
+/* Explore · API catalog (Models + Providers) — shared screen styling.
+   Layered on shell list.css + models.css; only catalog-specific bits live here. */
+
+.cat-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Result bar — "Showing X of TOTAL · sorted by …". */
+.cat-resultbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+.cat-count {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* Monogram logo tile (provider logos 404 upstream → fall back to initials). */
+.cat-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.cat-tint-0 {
+  background: var(--c-lotus-bg);
+  color: var(--c-lotus-text);
+}
+.cat-tint-1 {
+  background: var(--c-leaf-bg);
+  color: var(--c-leaf-text);
+}
+.cat-tint-2 {
+  background: var(--c-indigo-bg);
+  color: var(--c-indigo-text);
+}
+.cat-tint-3 {
+  background: var(--c-saffron-bg);
+  color: var(--c-saffron-text);
+}
+.cat-tint-4 {
+  background: var(--c-leaf-bg);
+  color: var(--c-leaf-text);
+}
+.cat-tint-5 {
+  background: var(--c-indigo-bg);
+  color: var(--c-indigo-text);
+}
+
+/* Capability chips. */
+.cat-caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.cap-chip {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 6px;
+}
+.cap-indigo {
+  background: var(--c-indigo-bg);
+  color: var(--c-indigo-text);
+  border: 1px solid var(--c-indigo-bd);
+}
+.cap-muted {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+/* List header row. */
+.cat-listhead {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Provider row grid: # · logo · body · model-count. */
+.cat-prov-grid {
+  grid-template-columns: 36px 30px 1fr auto;
+}
+.cat-row {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.cat-num {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  font-variant-numeric: tabular-nums;
+}
+.cat-body {
+  min-width: 0;
+}
+.cat-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cat-sub {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+}
+.cat-shape {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.cat-rowmeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+.cat-score {
+  text-align: right;
+  min-width: 64px;
+}
+.cat-score-num {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground));
+}
+.cat-score-lbl {
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Load more. */
+.cat-loadmore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  margin-top: 4px;
+  background: none;
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+  cursor: pointer;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+}
+.cat-loadmore:hover {
+  color: hsl(var(--foreground));
+}

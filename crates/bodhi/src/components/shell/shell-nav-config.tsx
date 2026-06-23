@@ -1,4 +1,11 @@
-import { ROUTE_CHAT, ROUTE_MCPS, ROUTE_MODELS_EXPLORE_LOCAL, ROUTE_USERS } from '@/lib/constants';
+import {
+  ROUTE_CHAT,
+  ROUTE_MCPS,
+  ROUTE_MODELS_EXPLORE_API,
+  ROUTE_MODELS_EXPLORE_API_PROVIDERS,
+  ROUTE_MODELS_EXPLORE_LOCAL,
+  ROUTE_USERS,
+} from '@/lib/constants';
 
 export interface ShellNavSubPage {
   id: string;
@@ -36,6 +43,13 @@ export const SHELL_NAV: ShellNavItem[] = [
         icon: 'compass',
         href: ROUTE_MODELS_EXPLORE_LOCAL,
         // Catalog browse-and-pull relies on local downloads, which HubService rejects in MultiTenant.
+        hideInMultiTenant: true,
+      },
+      {
+        id: 'explore-api-providers',
+        label: 'Explore · API Providers',
+        icon: 'at-sign',
+        href: ROUTE_MODELS_EXPLORE_API_PROVIDERS,
         hideInMultiTenant: true,
       },
       { id: 'new-local-model', label: 'New Local Model', icon: 'plus-circle', href: '/models/alias/new/' },
