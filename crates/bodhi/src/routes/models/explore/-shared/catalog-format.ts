@@ -2,7 +2,7 @@
  * Shared formatting + display helpers for the two Explore · API catalog pages (Models + Providers).
  * Pure functions, no React — safe to unit-test directly.
  */
-import type { Capability } from '@bodhiapp/reference-api-types';
+import type { Capability, ModelStatus } from '@bodhiapp/reference-api-types';
 
 /** Context window → compact "200K" / "1M"; "—" when null. */
 export function fmtContext(tokens: number | null | undefined): string {
@@ -48,6 +48,12 @@ export const CAP_LABELS: Record<Capability, string> = {
   attachment: 'Attachment',
   vision: 'Vision',
 };
+
+/** Model status → display label. `null` (status absent) is synthesized as "Stable". */
+export function statusLabel(status: ModelStatus | null): string {
+  if (status == null) return 'Stable';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
 /** Capability → tone (drives the `cap-chip cap-<tone>` class; styled off the lotus palette tokens). */
 export const CAP_TONE: Record<Capability, 'indigo' | 'muted'> = {

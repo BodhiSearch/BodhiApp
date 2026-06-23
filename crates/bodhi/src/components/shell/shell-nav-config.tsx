@@ -46,6 +46,13 @@ export const SHELL_NAV: ShellNavItem[] = [
         hideInMultiTenant: true,
       },
       {
+        id: 'explore-api',
+        label: 'Explore · API Models',
+        icon: 'sparkles',
+        href: ROUTE_MODELS_EXPLORE_API,
+        hideInMultiTenant: true,
+      },
+      {
         id: 'explore-api-providers',
         label: 'Explore · API Providers',
         icon: 'at-sign',

@@ -124,6 +124,53 @@
 .cat-prov-grid {
   grid-template-columns: 36px 30px 1fr auto;
 }
+
+/* Model row grid: # · name+family · context · in$ · out$ · caps · providers. */
+.cat-model-grid {
+  grid-template-columns: 36px 1.6fr 70px 64px 64px 1.4fr 70px;
+}
+.cat-model-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cat-model-family {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  margin-top: 2px;
+}
+.cat-num-cell {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.cat-num-cell.free {
+  color: var(--c-leaf-text);
+  font-weight: 600;
+}
+.cat-status {
+  display: inline-block;
+  font-size: 10px;
+  padding: 0 6px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.cat-status-beta {
+  background: var(--c-saffron-bg);
+  color: var(--c-saffron-text);
+}
+.cat-status-alpha {
+  background: var(--c-saffron-bg);
+  color: var(--c-saffron-text);
+}
+.cat-status-deprecated {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
 .cat-row {
   display: grid;
   align-items: center;
