@@ -10,6 +10,7 @@ import { useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Loading } from '@/components/ui/Loading';
 import { useGetApiModel } from '@/hooks/models';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 export const Route = createFileRoute('/models/api/edit/')({
   validateSearch: z.object({ id: z.string().optional() }),
@@ -46,7 +47,7 @@ function EditApiModelContent() {
   }
 
   if (error) {
-    const errorMessage = error.response?.data?.error?.message || error.message || 'An unexpected error occurred';
+    const errorMessage = extractErrorMessage(error, 'An unexpected error occurred');
     return <ErrorPage message={errorMessage} />;
   }
 

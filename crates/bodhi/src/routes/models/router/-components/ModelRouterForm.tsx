@@ -1,20 +1,23 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { AliasResponse, ModelRouterRequest, ModelRouterResponse } from '@bodhiapp/ts-client';
 
+import { AliasResponse, ModelRouterRequest, ModelRouterResponse } from '@bodhiapp/ts-client';
+import { useNavigate } from '@tanstack/react-router';
+
+import { ShellIcon, useShellChrome, type ShellSlots } from '@/components/shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ShellIcon, useShellChrome, type ShellSlots } from '@/components/shell';
 import { useCreateModelRouter, useListModels, useUpdateModelRouter } from '@/hooks/models';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { isApiAlias } from '@/lib/utils';
 import { ChainItem } from '@/routes/models/-components/RoutingChainPreview';
-import { aliasIdentity, aliasLabel, AliasCombobox } from './AliasCombobox';
-import { apiMatchableModels } from './RouteToModelField';
+
+import { aliasIdentity, aliasLabel } from './AliasCombobox';
 import { RouterInfoRail, RouterRailHeader, type RailStatus } from './RouterInfoRail';
+import { apiMatchableModels } from './RouteToModelField';
 import { StepCard, type TargetRow } from './StepCard';
 import { StepConnector } from './StepConnector';
 import './router-form.css';
@@ -334,6 +337,5 @@ export default function ModelRouterForm({ mode, initialData, breadcrumb }: Model
 }
 
 function errorMessage(error: unknown): string {
-  const e = error as { response?: { data?: { error?: { message?: string } } }; message?: string };
-  return e?.response?.data?.error?.message || e?.message || 'An unexpected error occurred';
+  return extractErrorMessage(error, 'An unexpected error occurred');
 }

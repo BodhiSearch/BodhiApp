@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 import { useCreateApiModel, useUpdateApiModel, useListApiFormats } from '@/hooks/models';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import {
   getApiModelId,
   ApiModelFormData,
@@ -15,20 +16,22 @@ import {
   convertFormToUpdateRequest,
   parseJsonField,
   serializeJsonField,
-  API_FORMAT_PRESETS,
 } from '@/schemas/apiModel';
 
 import { ApiProvider, API_PROVIDERS, DEFAULT_TEST_PROMPT } from '../providers/constants';
+import type { ApiModelPrefill } from '../types';
+import {
+  computeCanFetch,
+  computeCanTest,
+  computeShowExtras,
+  llmLibertyFetchDisabledReason,
+  llmLibertyTestDisabledReason,
+  presetBaseUrl,
+  presetExtras,
+} from '../validation';
 
 import { useFetchModels } from './useFetchModels';
 import { useTestConnection } from './useTestConnection';
-
-/** Seed values for create mode (e.g. the Explore catalog "Configure in Bodhi" bridge). */
-interface ApiModelPrefill {
-  api_format?: string;
-  base_url?: string;
-  model?: string;
-}
 
 interface UseApiModelFormProps {
   mode: 'create' | 'edit' | 'setup';
@@ -122,9 +125,8 @@ export function useApiModelForm({
       }
     },
     onError: (error) => {
-      const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to create API model';
       if (onError) {
-        onError(errorMessage);
+        onError(extractErrorMessage(error, 'Failed to create API model'));
       }
     },
   });
@@ -136,9 +138,8 @@ export function useApiModelForm({
       }
     },
     onError: (error) => {
-      const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to update API model';
       if (onError) {
-        onError(errorMessage);
+        onError(extractErrorMessage(error, 'Failed to update API model'));
       }
     },
   });
@@ -166,20 +167,14 @@ export function useApiModelForm({
 
   // Format change is destructive: reset all fields to the new preset's defaults; stored values are not recoverable without cancel/refresh.
   const handleApiFormatChange = (apiFormat: string) => {
-    const preset = API_FORMAT_PRESETS[apiFormat as keyof typeof API_FORMAT_PRESETS];
-    const presetHeaders =
-      preset && 'defaultHeaders' in preset && preset.defaultHeaders
-        ? JSON.stringify(preset.defaultHeaders, null, 2)
-        : '';
-    const presetBody =
-      preset && 'defaultBody' in preset && preset.defaultBody ? JSON.stringify(preset.defaultBody, null, 2) : '';
+    const { headers: presetHeaders, body: presetBody } = presetExtras(apiFormat);
     setValue('api_format', apiFormat);
     setValue('models', []);
     setValue('prefix', '');
     setValue('usePrefix', false);
     setValue('useApiKey', false);
     setValue('api_key', '');
-    setValue('base_url', preset?.baseUrl ?? '');
+    setValue('base_url', presetBaseUrl(apiFormat));
     setValue('extra_headers', presetHeaders);
     setValue('extra_body', presetBody);
     setValue('llm_liberty_envelope', '');
@@ -317,22 +312,9 @@ export function useApiModelForm({
     }
   };
 
-  const isLlmLibertyCreate = watchedValues.api_format === 'llm_liberty_oauth' && !isEditMode;
-  const hasEnvelope = Boolean(watchedValues.llm_liberty_envelope?.trim());
-
-  const canTest = isLlmLibertyCreate
-    ? hasEnvelope && Boolean(watchedValues.models?.[0])
-    : Boolean(watchedValues.base_url);
-
-  const canFetch = isLlmLibertyCreate ? hasEnvelope : Boolean(watchedValues.base_url);
-
-  // Show extras section when the preset declares defaults for either field.
-  const showExtras = Boolean(
-    watchedValues.api_format &&
-      API_FORMAT_PRESETS[watchedValues.api_format as keyof typeof API_FORMAT_PRESETS] &&
-      ('defaultHeaders' in API_FORMAT_PRESETS[watchedValues.api_format as keyof typeof API_FORMAT_PRESETS] ||
-        'defaultBody' in API_FORMAT_PRESETS[watchedValues.api_format as keyof typeof API_FORMAT_PRESETS])
-  );
+  const canTest = computeCanTest(watchedValues, isEditMode);
+  const canFetch = computeCanFetch(watchedValues, isEditMode);
+  const showExtras = computeShowExtras(watchedValues.api_format);
 
   return {
     form,
@@ -359,16 +341,12 @@ export function useApiModelForm({
       canTest,
       isLoading: testConnection.isLoading,
       status: testConnection.status,
-      disabledReason: isLlmLibertyCreate
-        ? !hasEnvelope
-          ? 'Paste the LLM Liberty envelope to test connection'
-          : !watchedValues.models?.[0]
-            ? 'You need to add at least one model to test connection'
-            : ''
-        : testConnection.getMissingRequirements({
-            base_url: watchedValues.base_url || '',
-            model: watchedValues.models?.[0] || '',
-          }),
+      disabledReason:
+        llmLibertyTestDisabledReason(watchedValues, isEditMode) ??
+        testConnection.getMissingRequirements({
+          base_url: watchedValues.base_url || '',
+          model: watchedValues.models?.[0] || '',
+        }),
     },
 
     fetchModels: {
@@ -377,15 +355,13 @@ export function useApiModelForm({
       isLoading: fetchModels.isLoading,
       status: fetchModels.status,
       availableModels: fetchModels.availableModels,
-      disabledReason: isLlmLibertyCreate
-        ? hasEnvelope
-          ? ''
-          : 'Paste the LLM Liberty envelope to fetch models'
-        : fetchModels.getFetchDisabledReason({
-            apiKey: watchedValues.api_key,
-            baseUrl: watchedValues.base_url || '',
-            apiFormat: watchedValues.api_format as ApiFormat,
-          }),
+      disabledReason:
+        llmLibertyFetchDisabledReason(watchedValues, isEditMode) ??
+        fetchModels.getFetchDisabledReason({
+          apiKey: watchedValues.api_key,
+          baseUrl: watchedValues.base_url || '',
+          apiFormat: watchedValues.api_format as ApiFormat,
+        }),
     },
 
     handleCancel,

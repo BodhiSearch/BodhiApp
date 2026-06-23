@@ -3,6 +3,7 @@ import { keepPreviousData } from '@tanstack/react-query';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { modelKeys, ENDPOINT_MODELS, ENDPOINT_ALIAS } from './constants';
 
@@ -79,7 +80,7 @@ export function useCreateModel(options?: {
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to create model';
+      const message = extractErrorMessage(error, 'Failed to create model');
       options?.onError?.(message);
     },
   });
@@ -100,7 +101,7 @@ export function useUpdateModel(
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to update model';
+      const message = extractErrorMessage(error, 'Failed to update model');
       options?.onError?.(message);
     },
   });

@@ -6,8 +6,8 @@ export const Route = createFileRoute('/mcps/')({
 
 import { useState } from 'react';
 
-import { Pencil, Play, Plug, Plus, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { Pencil, Play, Plug, Plus, Trash2 } from 'lucide-react';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable } from '@/components/DataTable';
@@ -28,8 +28,9 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { toast } from '@/hooks/use-toast';
 import { useDeleteMcp, useListMcps, type Mcp } from '@/hooks/mcps';
+import { toast } from '@/hooks/use-toast';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
@@ -139,7 +140,7 @@ function McpsPageContent() {
   };
 
   if (error) {
-    const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to load MCPs';
+    const errorMessage = extractErrorMessage(error, 'Failed to load MCPs');
     return <ErrorPage message={errorMessage} />;
   }
 

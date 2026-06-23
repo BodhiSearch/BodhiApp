@@ -10,15 +10,9 @@ export const Route = createFileRoute('/mcps/new/')({
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { safeNavigate } from '@/lib/safeNavigate';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, Loader2, Unplug } from 'lucide-react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useForm } from 'react-hook-form';
 import * as zod from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -27,6 +21,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { safeNavigate } from '@/lib/safeNavigate';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { KeyRound } from 'lucide-react';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useForm } from 'react-hook-form';
+
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -37,23 +37,21 @@ import {
   useListMcpServers,
   useOAuthLogin,
   useUpdateMcp,
-  type McpAuthConfigResponse,
   type McpServerResponse,
 } from '@/hooks/mcps';
 import { useGetUser } from '@/hooks/users';
 import { isAdminRole } from '@/lib/roles';
 import { authConfigTypeLabel } from '@/lib/mcpUtils';
-import McpServerSelector from './-components/McpServerSelector';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { useMcpFormStore } from '@/stores/mcpFormStore';
-import type { McpAuthParamInput, McpAuthType } from '@bodhiapp/ts-client';
 
-const safeOrigin = (urlStr: string): string => {
-  try {
-    return new URL(urlStr).origin;
-  } catch {
-    return urlStr;
-  }
-};
+import { type AuthConfigOption } from './-components/authUtils';
+import HeaderCredentialsFields from './-components/HeaderCredentialsFields';
+import McpServerSelector from './-components/McpServerSelector';
+import OAuthConnectedCard from './-components/OAuthConnectedCard';
+import OAuthConnectPanel from './-components/OAuthConnectPanel';
+
+import type { McpAuthParamInput, McpAuthType } from '@bodhiapp/ts-client';
 
 const createMcpSchema = zod.object({
   mcp_server_id: zod.string().min(1, 'Please select an MCP server'),
@@ -82,69 +80,6 @@ const extractSlugFromUrl = (url: string): string => {
     return '';
   }
 };
-
-type AuthConfigOption = {
-  id: string;
-  name: string;
-  type: 'header' | 'oauth';
-  config: McpAuthConfigResponse;
-};
-
-function OAuthConnectedCard({
-  config,
-  onDisconnect,
-  isDisconnecting,
-}: {
-  config: McpAuthConfigResponse | null;
-  onDisconnect: () => void;
-  isDisconnecting: boolean;
-}) {
-  return (
-    <div
-      className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-4 space-y-3"
-      data-testid="oauth-connected-card"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <Badge
-            variant="outline"
-            className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700"
-            data-testid="oauth-connected-badge"
-          >
-            Connected
-          </Badge>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onDisconnect}
-          disabled={isDisconnecting}
-          data-testid="oauth-disconnect-button"
-        >
-          {isDisconnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Unplug className="mr-2 h-4 w-4" />}
-          Disconnect
-        </Button>
-      </div>
-      {config && config.type !== 'header' && (
-        <div className="text-sm text-muted-foreground space-y-1" data-testid="oauth-connected-info">
-          <p>
-            <span className="font-medium">Client ID:</span> {config.client_id}
-          </p>
-          <p>
-            <span className="font-medium">Auth Server:</span> {safeOrigin(config.authorization_endpoint)}
-          </p>
-          {config.scopes && (
-            <p>
-              <span className="font-medium">Scopes:</span> {config.scopes}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function NewMcpPageContent() {
   const navigate = useNavigate();
@@ -484,7 +419,7 @@ function NewMcpPageContent() {
   const dropdownValue = showNewAuthRedirect ? '__new__' : store.selectedAuthConfigId || '__public__';
 
   if (editId && existingError) {
-    const errorMessage = existingError.response?.data?.error?.message || existingError.message || 'Failed to load MCP';
+    const errorMessage = extractErrorMessage(existingError, 'Failed to load MCP');
     return <ErrorPage message={errorMessage} />;
   }
 
@@ -644,60 +579,22 @@ function NewMcpPageContent() {
                 {store.selectedAuthConfigType === 'header' &&
                   selectedAuthOption &&
                   selectedAuthOption.config.type === 'header' && (
-                    <div
-                      className="rounded-lg border p-3 text-sm space-y-3 bg-muted/50"
-                      data-testid="auth-config-header-credentials"
-                    >
-                      <p>
-                        <span className="font-medium">Config:</span> {selectedAuthOption.name}
-                      </p>
-                      {selectedAuthOption.config.entries.length > 0 ? (
-                        selectedAuthOption.config.entries.map((entry) => {
-                          const isVisible = visibleCredentials.has(entry.param_key);
-                          return (
-                            <div
-                              key={entry.param_key}
-                              className="space-y-1"
-                              data-testid={`credential-field-${entry.param_key}`}
-                            >
-                              <label className="text-xs font-medium text-muted-foreground">
-                                {entry.param_key} <span className="text-xs opacity-60">({entry.param_type})</span>
-                              </label>
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  type={isVisible ? 'text' : 'password'}
-                                  placeholder={`Enter ${entry.param_key} value`}
-                                  value={store.credentialValues[entry.param_key] || ''}
-                                  onChange={(e) => store.setCredentialValue(entry.param_key, e.target.value)}
-                                  disabled={isSubmitting}
-                                  data-testid={`credential-input-${entry.param_key}`}
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-9 w-9 shrink-0"
-                                  onClick={() => {
-                                    setVisibleCredentials((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(entry.param_key)) next.delete(entry.param_key);
-                                      else next.add(entry.param_key);
-                                      return next;
-                                    });
-                                  }}
-                                  data-testid={`credential-toggle-${entry.param_key}`}
-                                >
-                                  {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <p className="text-muted-foreground">No credential keys defined for this config.</p>
-                      )}
-                    </div>
+                    <HeaderCredentialsFields
+                      configName={selectedAuthOption.name}
+                      config={selectedAuthOption.config}
+                      credentialValues={store.credentialValues}
+                      onCredentialChange={store.setCredentialValue}
+                      visibleCredentials={visibleCredentials}
+                      onToggleVisibility={(key) => {
+                        setVisibleCredentials((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(key)) next.delete(key);
+                          else next.add(key);
+                          return next;
+                        });
+                      }}
+                      isSubmitting={isSubmitting}
+                    />
                   )}
 
                 {store.selectedAuthConfigType === 'oauth' && store.isConnected && (
@@ -709,37 +606,11 @@ function NewMcpPageContent() {
                 )}
 
                 {store.selectedAuthConfigType === 'oauth' && !store.isConnected && selectedAuthOption && (
-                  <div className="space-y-3">
-                    <div className="rounded-lg border p-3 text-sm space-y-1 bg-muted/50">
-                      <p>
-                        <span className="font-medium">Config:</span> {selectedAuthOption.name}
-                      </p>
-                      <p>
-                        <span className="font-medium">Type:</span>{' '}
-                        <Badge variant="secondary">{authConfigTypeLabel(selectedAuthOption.type)}</Badge>
-                      </p>
-                      <p>
-                        <span className="font-medium">Auth Server:</span>{' '}
-                        {selectedAuthOption.config.type !== 'header' &&
-                          safeOrigin(selectedAuthOption.config.authorization_endpoint)}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOAuthConnect}
-                      disabled={oauthLoginMutation.isPending}
-                      data-testid="auth-config-oauth-connect"
-                    >
-                      {oauthLoginMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                      )}
-                      Connect
-                    </Button>
-                  </div>
+                  <OAuthConnectPanel
+                    option={selectedAuthOption}
+                    onConnect={handleOAuthConnect}
+                    isConnecting={oauthLoginMutation.isPending}
+                  />
                 )}
 
                 {showNewAuthRedirect && selectedServer && (

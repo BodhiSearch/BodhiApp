@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react';
 
 import { AliasResponse } from '@bodhiapp/ts-client';
-import { HelpCircle, RefreshCw } from 'lucide-react';
+import type { ApiFormat } from '@bodhiapp/ts-client';
+import { RefreshCw } from 'lucide-react';
 
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { CopyButton } from '@/components/CopyButton';
@@ -10,10 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { modelKeys } from '@/hooks/models/constants';
 import { useQueryClient } from '@/hooks/useQuery';
-import type { ApiFormat } from '@bodhiapp/ts-client';
 import { isApiAlias } from '@/lib/utils';
 import { formatPrefixedModel, getApiModelId } from '@/schemas/apiModel';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
+
+import { HelpTooltip } from './HelpTooltip';
 
 interface AliasSelectorProps {
   models: AliasResponse[];
@@ -87,16 +89,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
         <div className="flex items-center justify-between group">
           <div className="flex items-center gap-2">
             <Label>Alias/Model</Label>
-            <TooltipProvider>
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent sideOffset={8} className="data-[side=bottom]:slide-in-from-top-2">
-                  <p className="max-w-xs text-sm">{tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <HelpTooltip text={tooltip} sideOffset={8} className="data-[side=bottom]:slide-in-from-top-2" />
           </div>
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
             <TooltipProvider>

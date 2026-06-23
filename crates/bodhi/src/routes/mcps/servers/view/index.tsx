@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
 import { createFileRoute, Link, useSearch } from '@tanstack/react-router';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
@@ -20,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/hooks/use-toast';
 import {
   useCreateAuthConfig,
   useDeleteAuthConfig,
@@ -29,10 +29,12 @@ import {
   useStandaloneDynamicRegister,
   type McpAuthConfigResponse,
 } from '@/hooks/mcps';
+import { toast } from '@/hooks/use-toast';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
+
 import { AuthConfigForm } from '../-components/AuthConfigForm';
-import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
 
 export const Route = createFileRoute('/mcps/servers/view/')({
   validateSearch: z.object({ id: z.string().optional() }),
@@ -171,7 +173,7 @@ function ServerViewContent() {
   }
 
   if (serverError) {
-    const errorMessage = serverError.response?.data?.error?.message || 'Failed to load MCP server';
+    const errorMessage = extractErrorMessage(serverError, 'Failed to load MCP server');
     return <ErrorPage message={errorMessage} />;
   }
 

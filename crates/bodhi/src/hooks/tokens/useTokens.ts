@@ -10,6 +10,7 @@ import { AxiosResponse, AxiosError } from 'axios';
 
 import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { tokenKeys, API_TOKENS_ENDPOINT } from './constants';
 
@@ -34,8 +35,7 @@ export function useCreateToken(options?: {
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to generate token';
-      options?.onError?.(message);
+      options?.onError?.(extractErrorMessage(error, 'Failed to generate token'));
     },
   });
 }
@@ -59,8 +59,7 @@ export function useUpdateToken(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to update token';
-        options?.onError?.(message);
+        options?.onError?.(extractErrorMessage(error, 'Failed to update token'));
       },
     },
     {

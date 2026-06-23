@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { BASE_PATH } from '@/lib/constants';
+import { safeGetSessionStorage, safeRemoveSessionStorage, safeSetSessionStorage } from '@/lib/storage-utils';
 
 interface McpFormState {
   selectedAuthConfigId: string | null;
@@ -72,26 +73,26 @@ export const useMcpFormStore = create<McpFormState>((set, get) => ({
             })()
           : undefined,
     };
-    sessionStorage.setItem(OAUTH_FORM_STORAGE_KEY, JSON.stringify(data));
+    safeSetSessionStorage(OAUTH_FORM_STORAGE_KEY, JSON.stringify(data));
   },
 
   restoreFromSession: () => {
-    const saved = sessionStorage.getItem(OAUTH_FORM_STORAGE_KEY);
+    const saved = safeGetSessionStorage(OAUTH_FORM_STORAGE_KEY);
     if (!saved) return null;
     try {
       const parsed = JSON.parse(saved);
-      sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY);
+      safeRemoveSessionStorage(OAUTH_FORM_STORAGE_KEY);
       return parsed;
     } catch {
-      sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY);
+      safeRemoveSessionStorage(OAUTH_FORM_STORAGE_KEY);
       return null;
     }
   },
 
-  clearSession: () => sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY),
+  clearSession: () => safeRemoveSessionStorage(OAUTH_FORM_STORAGE_KEY),
 
   reset: () => {
-    sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY);
+    safeRemoveSessionStorage(OAUTH_FORM_STORAGE_KEY);
     set({
       selectedAuthConfigId: null,
       selectedAuthConfigType: null,

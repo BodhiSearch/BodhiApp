@@ -1,10 +1,9 @@
-import { HelpCircle } from 'lucide-react';
-
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
+
+import { HelpTooltip } from './HelpTooltip';
 
 interface SystemPromptProps {
   isLoading?: boolean;
@@ -24,18 +23,7 @@ export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Label htmlFor="system-prompt">System Prompt</Label>
-          {tooltip && (
-            <TooltipProvider>
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent sideOffset={8}>
-                  <p className="max-w-xs text-sm">{tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          {tooltip && <HelpTooltip text={tooltip} sideOffset={8} />}
         </div>
         <Switch
           id="system-prompt-toggle"

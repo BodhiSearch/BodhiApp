@@ -18,6 +18,7 @@ import type { AccessRequestActionResponse, ApproveAccessRequest } from '@/hooks/
 import { toast } from '@/hooks/use-toast';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useGetUser } from '@/hooks/users';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { safeNavigate } from '@/lib/safeNavigate';
 
 import McpServerCard from './-components/McpServerCard';
@@ -224,7 +225,7 @@ const ReviewContent = () => {
   if (error || !reviewData) {
     return (
       <div data-testid="review-access-error">
-        <ErrorPage message={error?.response?.data?.error?.message || 'Failed to load access request'} />
+        <ErrorPage message={extractErrorMessage(error, 'Failed to load access request')} />
       </div>
     );
   }

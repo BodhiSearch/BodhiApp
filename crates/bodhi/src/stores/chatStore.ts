@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { chatDb, ChatRecord, MessageRecord, PersistedChatSettings } from '@/lib/chatDb';
+import { safeGetLocalStorage, safeRemoveLocalStorage, safeSetLocalStorage } from '@/lib/storage-utils';
 import { nanoid } from '@/lib/utils';
 import { Chat, Message } from '@/types/chat';
 
@@ -43,23 +44,22 @@ function messagesToRecords(chatId: string, messages: Message[]): MessageRecord[]
 }
 
 function loadCurrentChatId(userId: string): string | null {
-  if (typeof window === 'undefined') return null;
   const key = `${CURRENT_CHAT_ID_KEY}:${userId}`;
+  const saved = safeGetLocalStorage(key);
+  if (!saved) return null;
   try {
-    const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : null;
+    return JSON.parse(saved);
   } catch {
     return null;
   }
 }
 
 function persistCurrentChatId(userId: string, id: string | null): void {
-  if (typeof window === 'undefined') return;
   const key = `${CURRENT_CHAT_ID_KEY}:${userId}`;
   if (id === null) {
-    localStorage.removeItem(key);
+    safeRemoveLocalStorage(key);
   } else {
-    localStorage.setItem(key, JSON.stringify(id));
+    safeSetLocalStorage(key, JSON.stringify(id));
   }
 }
 

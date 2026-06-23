@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import { Trash2 } from 'lucide-react';
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
+import { Trash2 } from 'lucide-react';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
@@ -24,7 +24,6 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
 import {
   useGetMcpServer,
   useUpdateMcpServer,
@@ -32,7 +31,9 @@ import {
   useDeleteAuthConfig,
   type McpAuthConfigResponse,
 } from '@/hooks/mcps';
+import { toast } from '@/hooks/use-toast';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 
 export const Route = createFileRoute('/mcps/servers/edit/')({
@@ -138,7 +139,7 @@ function EditMcpServerContent() {
   }
 
   if (error) {
-    const errorMessage = error.response?.data?.error?.message || 'Failed to load MCP server';
+    const errorMessage = extractErrorMessage(error, 'Failed to load MCP server');
     return <ErrorPage message={errorMessage} />;
   }
 

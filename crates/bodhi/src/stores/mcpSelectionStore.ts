@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { safeGetLocalStorage, safeSetLocalStorage } from '@/lib/storage-utils';
+
 import { useChatStore } from './chatStore';
 
 const LOCAL_STORAGE_KEY = 'bodhi-last-mcp-selection';
@@ -7,9 +9,8 @@ const LOCAL_STORAGE_KEY = 'bodhi-last-mcp-selection';
 type EnabledMcpTools = Record<string, string[]>;
 
 function getLastMcpSelection(): EnabledMcpTools {
-  if (typeof window === 'undefined') return {};
   try {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const stored = safeGetLocalStorage(LOCAL_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -23,12 +24,7 @@ function getLastMcpSelection(): EnabledMcpTools {
 }
 
 function saveLastMcpSelection(tools: EnabledMcpTools): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tools));
-  } catch {
-    // Ignore storage errors
-  }
+  safeSetLocalStorage(LOCAL_STORAGE_KEY, JSON.stringify(tools));
 }
 
 export type CheckboxState = 'checked' | 'unchecked' | 'indeterminate';

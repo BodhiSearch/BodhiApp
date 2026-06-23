@@ -4,6 +4,7 @@ import { TestPromptRequest } from '@bodhiapp/ts-client';
 
 import { useTestApiModel } from '@/hooks/models';
 import { useToast } from '@/hooks/use-toast';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 interface UseTestConnectionProps {
   mode?: 'create' | 'edit' | 'setup';
@@ -55,11 +56,7 @@ export function useTestConnection({ mode: _mode = 'create', initialData: _initia
       }
     } catch (error: unknown) {
       setStatus('error');
-      const errorMessage =
-        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
-          ?.message ||
-        (error as { message?: string }).message ||
-        'Failed to test connection';
+      const errorMessage = extractErrorMessage(error, 'Failed to test connection');
       toast({
         title: 'Connection Test Failed',
         description: errorMessage,

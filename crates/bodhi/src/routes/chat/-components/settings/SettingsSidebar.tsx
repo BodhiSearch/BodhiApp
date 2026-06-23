@@ -1,19 +1,18 @@
-import { HelpCircle } from 'lucide-react';
-
-import { AliasSelector } from './AliasSelector';
-import { SettingSlider } from './SettingSlider';
-import { StopWords } from './StopWords';
-import { SystemPrompt } from './SystemPrompt';
-import { SETTINGS_TOOLTIPS } from './tooltips';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarHeader } from '@/components/ui/sidebar';
 import { Switch } from '@/components/ui/switch';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useListModels } from '@/hooks/models';
 import { API_FORMAT_PRESETS } from '@/schemas/apiModel';
 import { useChatSettingsStore } from '@/stores/chatSettingsStore';
+
+import { AliasSelector } from './AliasSelector';
+import { HelpTooltip } from './HelpTooltip';
+import { SettingSlider } from './SettingSlider';
+import { StopWords } from './StopWords';
+import { SystemPrompt } from './SystemPrompt';
+import { SETTINGS_TOOLTIPS } from './tooltips';
 
 interface SettingRowProps {
   label: string;
@@ -27,16 +26,7 @@ function SettingRow({ label, tooltip, htmlFor, children }: SettingRowProps) {
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-2">
         <Label htmlFor={htmlFor}>{label}</Label>
-        <TooltipProvider>
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs text-sm">{tooltip}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <HelpTooltip text={tooltip} />
       </div>
       {children}
     </div>

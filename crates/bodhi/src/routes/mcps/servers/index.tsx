@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import { Eye, Pencil, Plus } from 'lucide-react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { Eye, Pencil, Plus } from 'lucide-react';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable } from '@/components/DataTable';
@@ -22,18 +22,13 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
+import { useListAuthConfigs, useListMcpServers, useUpdateMcpServer, type McpServerResponse } from '@/hooks/mcps';
 import { toast } from '@/hooks/use-toast';
-import {
-  useListAuthConfigs,
-  useListMcpServers,
-  useUpdateMcpServer,
-  type McpAuthConfigResponse,
-  type McpServerResponse,
-} from '@/hooks/mcps';
 import { useGetUser } from '@/hooks/users';
-import { isAdminRole } from '@/lib/roles';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { authConfigTypeBadge } from '@/lib/mcpUtils';
+import { isAdminRole } from '@/lib/roles';
 
 export const Route = createFileRoute('/mcps/servers/')({
   component: McpServersPage,
@@ -170,7 +165,7 @@ function McpServersPageContent() {
   };
 
   if (error) {
-    const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to load MCP servers';
+    const errorMessage = extractErrorMessage(error, 'Failed to load MCP servers');
     return <ErrorPage message={errorMessage} />;
   }
 

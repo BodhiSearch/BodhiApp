@@ -9,6 +9,7 @@ import {
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
+import { extractErrorMessage, extractErrorCode } from '@/lib/errorUtils';
 
 import {
   downloadKeys,
@@ -52,8 +53,8 @@ export function usePullModel(options?: {
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to pull model';
-      const code = error?.response?.data?.error?.code ?? undefined;
+      const message = extractErrorMessage(error, 'Failed to pull model');
+      const code = extractErrorCode(error);
       options?.onError?.(message, code);
     },
   });
@@ -74,8 +75,8 @@ export function useArchiveDownload(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to archive download';
-        const code = error?.response?.data?.error?.code ?? undefined;
+        const message = extractErrorMessage(error, 'Failed to archive download');
+        const code = extractErrorCode(error);
         options?.onError?.(message, code);
       },
     },
@@ -98,8 +99,8 @@ export function useRetryDownload(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to retry download';
-        const code = error?.response?.data?.error?.code ?? undefined;
+        const message = extractErrorMessage(error, 'Failed to retry download');
+        const code = extractErrorCode(error);
         options?.onError?.(message, code);
       },
     },

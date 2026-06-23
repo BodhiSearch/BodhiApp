@@ -8,6 +8,7 @@ import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOAuthTokenExchange } from '@/hooks/mcps';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { OAUTH_FORM_STORAGE_KEY } from '@/stores/mcpFormStore';
 
 export const Route = createFileRoute('/mcps/oauth/callback/')({
@@ -100,7 +101,7 @@ function OAuthCallbackContent() {
       .catch((err) => {
         sessionStorage.removeItem(OAUTH_FORM_STORAGE_KEY);
         setStatus('error');
-        setErrorMessage(err?.response?.data?.error?.message || 'Failed to exchange authorization code');
+        setErrorMessage(extractErrorMessage(err, 'Failed to exchange authorization code'));
       });
   }, [code, state, error, errorDescription, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 

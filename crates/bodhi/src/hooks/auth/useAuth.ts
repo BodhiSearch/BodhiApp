@@ -4,11 +4,10 @@ import { AuthCallbackRequest, AuthInitiateRequest, RedirectResponse, BodhiErrorR
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseMutationResult } from '@/hooks/useQuery';
-
 import { useMutationQuery, useQueryClient } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import {
-  ENDPOINT_UI_LOGIN,
   ENDPOINT_AUTH_INITIATE,
   ENDPOINT_AUTH_CALLBACK,
   ENDPOINT_DASHBOARD_AUTH_INITIATE,
@@ -33,8 +32,7 @@ export function useOAuthInitiate(
 
   const handleError = useCallback(
     (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to initiate OAuth authentication';
-      options?.onError?.(message);
+      options?.onError?.(extractErrorMessage(error, 'Failed to initiate OAuth authentication'));
     },
     [options]
   );
@@ -87,8 +85,7 @@ export function useOAuthCallback(
 
   const handleError = useCallback(
     (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to complete OAuth authentication';
-      options?.onError?.(message);
+      options?.onError?.(extractErrorMessage(error, 'Failed to complete OAuth authentication'));
     },
     [options]
   );
@@ -145,8 +142,7 @@ export function useDashboardOAuthInitiate(
 
   const handleError = useCallback(
     (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to initiate dashboard authentication';
-      options?.onError?.(message);
+      options?.onError?.(extractErrorMessage(error, 'Failed to initiate dashboard authentication'));
     },
     [options]
   );
@@ -183,8 +179,7 @@ export function useDashboardOAuthCallback(
 
   const handleError = useCallback(
     (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to complete dashboard authentication';
-      options?.onError?.(message);
+      options?.onError?.(extractErrorMessage(error, 'Failed to complete dashboard authentication'));
     },
     [options]
   );
@@ -216,9 +211,7 @@ export function useLogoutHandler(options?: UseLogoutHandlerOptions) {
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
       console.error('Logout failed:', error);
-      const errorMessage =
-        error.response?.data?.error?.message || error.message || 'An unexpected error occurred. Please try again.';
-      options?.onError?.(errorMessage);
+      options?.onError?.(extractErrorMessage(error, 'An unexpected error occurred. Please try again.'));
     },
   });
 

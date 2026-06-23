@@ -26,6 +26,7 @@ import {
 } from '@/hooks/models';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
 
 import { ModelDetailRail, ModelRailHeader } from './ModelDetailRail';
@@ -337,7 +338,7 @@ export function ModelsScreenV2() {
   useShellChrome({ breadcrumb: MODELS_BREADCRUMB, sidebar, rail, railHeader, railDefaultOpen: false });
 
   if (error) {
-    const message = error.response?.data?.error?.message || error.message;
+    const message = extractErrorMessage(error, 'An unexpected error occurred');
     return <ErrorPage message={message} />;
   }
 

@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDeleteSetting, useListSettings, useUpdateSetting } from '@/hooks/settings';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import { parseSettingValue, SettingValueInput, settingValueHint } from '@/routes/settings/-shared/settingInput';
 
 /** Backend `EDIT_SETTINGS_ALLOWED` (routes_settings.rs) — the only editable settings. */
@@ -516,7 +517,7 @@ export function SettingsPageV2({ config: staticConfig }: { config: SettingsConfi
   useShellChrome({ breadcrumb: SETTINGS_BREADCRUMB, sidebar, rail, railHeader, railDefaultOpen: false });
 
   if (error) {
-    const message = error.response?.data?.error?.message || error.message;
+    const message = extractErrorMessage(error, 'An unexpected error occurred');
     return <ErrorPage message={message} />;
   }
 

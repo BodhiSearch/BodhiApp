@@ -4,6 +4,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { appInfoKeys } from '@/hooks/info/constants';
 import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import { userKeys } from '@/hooks/users/constants';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { tenantKeys, ENDPOINT_TENANTS } from './constants';
 
@@ -25,8 +26,7 @@ export function useCreateTenant(options?: {
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to create tenant';
-      options?.onError?.(message);
+      options?.onError?.(extractErrorMessage(error, 'Failed to create tenant'));
     },
   });
 }
@@ -48,8 +48,7 @@ export function useTenantActivate(options?: {
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to activate tenant';
-        options?.onError?.(message);
+        options?.onError?.(extractErrorMessage(error, 'Failed to activate tenant'));
       },
     },
     {

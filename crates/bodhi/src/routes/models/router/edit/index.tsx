@@ -8,6 +8,7 @@ import { useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Loading } from '@/components/ui/Loading';
 import { useGetModelRouter } from '@/hooks/models';
+import { extractErrorMessage } from '@/lib/errorUtils';
 import ModelRouterForm from '@/routes/models/router/-components/ModelRouterForm';
 
 export const Route = createFileRoute('/models/router/edit/')({
@@ -48,7 +49,7 @@ function EditModelRouterContent() {
     );
   }
   if (error) {
-    const errorMessage = error.response?.data?.error?.message || error.message || 'An unexpected error occurred';
+    const errorMessage = extractErrorMessage(error, 'An unexpected error occurred');
     return (
       <BreadcrumbOnly>
         <ErrorPage message={errorMessage} />

@@ -4,6 +4,7 @@ import { ApiFormat, ApiKey, FetchModelsRequest, LlmLibertyEnvelope, TestCreds } 
 
 import { useFetchApiModels } from '@/hooks/models';
 import { useToast } from '@/hooks/use-toast';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { ApiProvider } from '../providers/constants';
 
@@ -113,11 +114,7 @@ export function useFetchModels({
       });
     } catch (error: unknown) {
       setStatus('error');
-      const errorMessage =
-        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
-          ?.message ||
-        (error as { message?: string }).message ||
-        'Failed to fetch models';
+      const errorMessage = extractErrorMessage(error, 'Failed to fetch models');
       toast({
         title: 'Failed to Fetch Models',
         description: errorMessage,

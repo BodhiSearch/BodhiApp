@@ -18,12 +18,9 @@ import { useApiModelForm } from '@/components/api-models/hooks/useApiModelForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
-/** Seed values for create mode, e.g. from the Explore catalog "Configure in Bodhi" bridge. */
-export interface ApiModelPrefill {
-  api_format?: string;
-  base_url?: string;
-  model?: string;
-}
+import type { ApiModelPrefill } from './types';
+
+export type { ApiModelPrefill };
 
 interface ApiModelFormProps {
   mode: 'create' | 'edit' | 'setup';

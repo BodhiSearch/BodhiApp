@@ -11,6 +11,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 
 import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import {
   authConfigKeys,
@@ -68,7 +69,7 @@ export function useCreateAuthConfig(options?: {
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to create auth config';
+      const message = extractErrorMessage(error, 'Failed to create auth config');
       options?.onError?.(message);
     },
   });
@@ -90,7 +91,7 @@ export function useDeleteAuthConfig(options?: {
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to delete auth config';
+        const message = extractErrorMessage(error, 'Failed to delete auth config');
         options?.onError?.(message);
       },
     },
@@ -113,7 +114,7 @@ export function useDeleteOAuthToken(options?: {
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to delete OAuth token';
+        const message = extractErrorMessage(error, 'Failed to delete OAuth token');
         options?.onError?.(message);
       },
     },

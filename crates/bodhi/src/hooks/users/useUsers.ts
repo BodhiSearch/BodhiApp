@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 
-import { UserInfo, UserInfoEnvelope, UserResponse, UserListResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
-import { AxiosError, AxiosResponse } from 'axios';
+import { UserInfo, UserInfoEnvelope, UserListResponse, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { useNavigate } from '@tanstack/react-router';
+import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseQueryResult, UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import { ROUTE_LOGIN } from '@/lib/constants';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { userKeys, ENDPOINT_USER_INFO, ENDPOINT_USERS } from './constants';
 
@@ -67,8 +68,7 @@ export function useChangeUserRole(options?: {
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to change user role';
-        options?.onError?.(message);
+        options?.onError?.(extractErrorMessage(error, 'Failed to change user role'));
       },
     },
     {
@@ -92,8 +92,7 @@ export function useRemoveUser(options?: {
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to remove user';
-        options?.onError?.(message);
+        options?.onError?.(extractErrorMessage(error, 'Failed to remove user'));
       },
     },
     {

@@ -1,8 +1,10 @@
-import { create } from 'zustand';
 import type { ApiFormat } from '@bodhiapp/ts-client';
+import { create } from 'zustand';
+
+import type { PersistedChatSettings } from '@/lib/chatDb';
+import { safeGetSessionStorage, safeRemoveSessionStorage, safeSetSessionStorage } from '@/lib/storage-utils';
 
 import { useChatStore } from './chatStore';
-import type { PersistedChatSettings } from '@/lib/chatDb';
 
 export type ChatSettings = PersistedChatSettings;
 
@@ -16,38 +18,23 @@ const SESSION_TOKEN_KEY = 'bodhi:api_token';
 const SESSION_TOKEN_ENABLED_KEY = 'bodhi:api_token_enabled';
 
 function loadSessionToken(): Partial<SessionOnlySettings> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const token = sessionStorage.getItem(SESSION_TOKEN_KEY) ?? undefined;
-    const enabled = sessionStorage.getItem(SESSION_TOKEN_ENABLED_KEY) === 'true';
-    return { api_token: token, api_token_enabled: enabled };
-  } catch {
-    return {};
-  }
+  const token = safeGetSessionStorage(SESSION_TOKEN_KEY) ?? undefined;
+  const enabled = safeGetSessionStorage(SESSION_TOKEN_ENABLED_KEY) === 'true';
+  return { api_token: token, api_token_enabled: enabled };
 }
 
 function persistSessionToken(token: string | undefined, enabled: boolean): void {
-  if (typeof window === 'undefined') return;
-  try {
-    if (token !== undefined) {
-      sessionStorage.setItem(SESSION_TOKEN_KEY, token);
-    } else {
-      sessionStorage.removeItem(SESSION_TOKEN_KEY);
-    }
-    sessionStorage.setItem(SESSION_TOKEN_ENABLED_KEY, String(enabled));
-  } catch {
-    // sessionStorage unavailable
+  if (token !== undefined) {
+    safeSetSessionStorage(SESSION_TOKEN_KEY, token);
+  } else {
+    safeRemoveSessionStorage(SESSION_TOKEN_KEY);
   }
+  safeSetSessionStorage(SESSION_TOKEN_ENABLED_KEY, String(enabled));
 }
 
 function clearSessionToken(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    sessionStorage.removeItem(SESSION_TOKEN_KEY);
-    sessionStorage.removeItem(SESSION_TOKEN_ENABLED_KEY);
-  } catch {
-    // sessionStorage unavailable
-  }
+  safeRemoveSessionStorage(SESSION_TOKEN_KEY);
+  safeRemoveSessionStorage(SESSION_TOKEN_ENABLED_KEY);
 }
 
 const defaultSessionSettings: SessionOnlySettings = {

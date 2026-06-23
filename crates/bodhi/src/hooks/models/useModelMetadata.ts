@@ -2,6 +2,7 @@ import { BodhiErrorResponse, AliasResponse, RefreshResponse } from '@bodhiapp/ts
 import { AxiosError } from 'axios';
 
 import { useMutationQuery, useQueryClient } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { modelKeys, modelFileKeys, ENDPOINT_MODELS_REFRESH } from './constants';
 
@@ -19,7 +20,7 @@ export function useRefreshAllMetadata(options?: {
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to refresh metadata';
+      const message = extractErrorMessage(error, 'Failed to refresh metadata');
       options?.onError?.(message);
     },
   });
@@ -45,7 +46,7 @@ export function useRefreshSingleMetadata(options?: {
         }, 100);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to refresh metadata';
+        const message = extractErrorMessage(error, 'Failed to refresh metadata');
         options?.onError?.(message);
       },
     }

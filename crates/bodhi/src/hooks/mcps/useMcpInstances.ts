@@ -3,6 +3,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 
 import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { mcpKeys, MCPS_ENDPOINT } from './constants';
 
@@ -31,7 +32,7 @@ export function useCreateMcp(options?: {
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to create MCP';
+      const message = extractErrorMessage(error, 'Failed to create MCP');
       options?.onError?.(message);
     },
   });
@@ -52,7 +53,7 @@ export function useUpdateMcp(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to update MCP';
+        const message = extractErrorMessage(error, 'Failed to update MCP');
         options?.onError?.(message);
       },
     },
@@ -75,7 +76,7 @@ export function useDeleteMcp(options?: {
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to delete MCP';
+        const message = extractErrorMessage(error, 'Failed to delete MCP');
         options?.onError?.(message);
       },
     },

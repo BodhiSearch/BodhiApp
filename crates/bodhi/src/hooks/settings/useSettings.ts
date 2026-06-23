@@ -2,6 +2,7 @@ import { SettingInfo, BodhiErrorResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { UseMutationResult, UseQueryResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { settingKeys, ENDPOINT_SETTINGS } from './constants';
 
@@ -27,8 +28,7 @@ export function useUpdateSetting(options?: {
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to update setting';
-        options?.onError?.(message);
+        options?.onError?.(extractErrorMessage(error, 'Failed to update setting'));
       },
     }
   );
@@ -45,8 +45,7 @@ export function useDeleteSetting(options?: {
       options?.onSuccess?.();
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to delete setting';
-      options?.onError?.(message);
+      options?.onError?.(extractErrorMessage(error, 'Failed to delete setting'));
     },
   });
 }

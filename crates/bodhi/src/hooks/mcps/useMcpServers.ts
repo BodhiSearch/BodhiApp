@@ -9,6 +9,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 
 import { useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
+import { extractErrorMessage } from '@/lib/errorUtils';
 
 import { mcpServerKeys, MCP_SERVERS_ENDPOINT } from './constants';
 
@@ -41,7 +42,7 @@ export function useCreateMcpServer(options?: {
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<BodhiErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to create MCP server';
+      const message = extractErrorMessage(error, 'Failed to create MCP server');
       options?.onError?.(message);
     },
   });
@@ -66,7 +67,7 @@ export function useUpdateMcpServer(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<BodhiErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to update MCP server';
+        const message = extractErrorMessage(error, 'Failed to update MCP server');
         options?.onError?.(message);
       },
     },
