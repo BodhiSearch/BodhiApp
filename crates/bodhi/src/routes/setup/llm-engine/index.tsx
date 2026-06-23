@@ -1,14 +1,13 @@
 import { useState } from 'react';
 
+import { createFileRoute } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, CheckCircle2, XCircle, Download } from 'lucide-react';
 
-import { createFileRoute } from '@tanstack/react-router';
-
-import { SetupProgress } from '../-components/SetupProgress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { SetupProgress } from '@/routes/setup/-components/SetupProgress';
 
 export const Route = createFileRoute('/setup/llm-engine/')({
   component: LLMEnginePage,

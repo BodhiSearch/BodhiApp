@@ -2,8 +2,7 @@ import { delay } from 'msw';
 
 import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/tokens';
 import { createMockToken, createMockTokenCreated } from '@/test-fixtures/tokens';
-
-import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '@/test-utils/msw-v2/setup';
 
 export function mockTokens(
   {

@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useCreateModel, useUpdateModel } from '@/hooks/models';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
+import { ALIAS_FORM_TOOLTIPS } from '@/routes/models/-components/tooltips';
 import {
   AliasFormData,
   createAliasFormSchema,
@@ -20,8 +21,6 @@ import {
   convertFormToUpdateApi,
   convertApiToForm,
 } from '@/schemas/alias';
-
-import { ALIAS_FORM_TOOLTIPS } from '../../-components/tooltips';
 
 import { ParamCatalog } from './ParamCatalog';
 import {

@@ -9,9 +9,8 @@ import { useChatModelsCatalog, useEmbeddingModelsCatalog, useListDownloads, useP
 import { ModelInfo, ModelCatalog } from '@/hooks/models/model-catalog-types';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_SETUP_API_MODELS } from '@/lib/constants';
-
-import { SetupContainer, SetupFooter } from '../-components';
-import { itemVariants } from '../-shared/types';
+import { SetupContainer, SetupFooter } from '@/routes/setup/-components';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 import { ModelCard } from './-components/ModelCard';
 

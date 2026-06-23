@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
@@ -11,12 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
 import { useCreateMcpServer, useStandaloneDynamicRegister, type CreateMcpAuthConfigRequest } from '@/hooks/mcps';
+import { toast } from '@/hooks/use-toast';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { extractSecondLevelDomain } from '@/lib/urlUtils';
-import { AuthConfigForm } from '../-components/AuthConfigForm';
-import type { McpAuthConfigParamInput } from '@bodhiapp/ts-client';
+import { AuthConfigForm } from '@/routes/mcps/servers/-components/AuthConfigForm';
 
 export const Route = createFileRoute('/mcps/servers/new/')({
   component: NewMcpServerPage,

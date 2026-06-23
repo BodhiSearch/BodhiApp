@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 
 import { motion } from 'framer-motion';
 
-import { itemVariants } from '../-shared/types';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 interface SetupCardProps {
   title?: string | ReactNode;

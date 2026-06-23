@@ -1,6 +1,5 @@
 import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/models';
-
-import { typedHttp, http, HttpResponse, type components, INTERNAL_SERVER_ERROR } from '../setup';
+import { typedHttp, http, HttpResponse, type components, INTERNAL_SERVER_ERROR } from '@/test-utils/msw-v2/setup';
 
 export function mockModelFiles(
   {

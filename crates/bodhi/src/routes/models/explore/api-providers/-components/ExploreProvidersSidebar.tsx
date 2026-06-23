@@ -1,8 +1,7 @@
 import type { ApiFormatHint, Capability, FacetBucket } from '@bodhiapp/reference-api-types';
 
 import { ShellIcon } from '@/components/shell';
-
-import { CAP_LABELS } from '../../-shared/catalog-format';
+import { CAP_LABELS } from '@/routes/models/explore/-shared/catalog-format';
 import '@/routes/models/-components/models.css';
 
 /**

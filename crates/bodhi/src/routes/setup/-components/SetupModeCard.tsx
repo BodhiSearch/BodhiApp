@@ -3,8 +3,7 @@ import { Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-import { itemVariants } from '../-shared/types';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 type SetupModeCardProps = {
   onSetup: () => void;

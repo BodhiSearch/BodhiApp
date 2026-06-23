@@ -4,8 +4,7 @@ import {
   ENDPOINT_ACCESS_REQUESTS_REVIEW,
 } from '@/hooks/apps';
 import type { AccessRequestReviewResponse } from '@/hooks/apps';
-
-import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
+import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '@/test-utils/msw-v2/setup';
 
 export function mockAppAccessRequestReview(reviewData: AccessRequestReviewResponse, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;

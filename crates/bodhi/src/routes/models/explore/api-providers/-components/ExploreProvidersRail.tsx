@@ -2,8 +2,15 @@ import type { ProviderDetailResponse, ProviderModelRow, ProviderSummary } from '
 
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
-
-import { CAP_LABELS, CAP_TONE, fmtContext, fmtPrice, isFree, monogram, tintIndex } from '../../-shared/catalog-format';
+import {
+  CAP_LABELS,
+  CAP_TONE,
+  fmtContext,
+  fmtPrice,
+  isFree,
+  monogram,
+  tintIndex,
+} from '@/routes/models/explore/-shared/catalog-format';
 
 export function ExploreProvidersRailHeader({ provider, onClose }: { provider: ProviderSummary; onClose: () => void }) {
   return (

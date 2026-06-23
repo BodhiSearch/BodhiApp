@@ -15,7 +15,7 @@
  *
  * Example usage in handlers:
  * ```typescript
- * import { typedHttp, http, type components } from '../setup';
+ * import { typedHttp, http, type components } from '@/test-utils/msw-v2/setup';
  *
  * // OpenAPI typed handler (preferred)
  * export function createTypedHandlers() {

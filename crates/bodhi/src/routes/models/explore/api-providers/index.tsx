@@ -2,8 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
-
-import { MultiTenantGuard } from '../-shared/MultiTenantGuard';
+import { MultiTenantGuard } from '@/routes/models/explore/-shared/MultiTenantGuard';
 
 import { ExploreProvidersScreen } from './-components/ExploreProvidersScreen';
 

@@ -10,9 +10,8 @@ import { useBrowserDetection } from '@/hooks/use-browser-detection';
 import { useExtensionDetection } from '@/hooks/use-extension-detection';
 import type { BrowserInfo } from '@/lib/browser-utils';
 import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
-
-import { SetupContainer, SetupFooter } from '../-components';
-import { itemVariants } from '../-shared/types';
+import { SetupContainer, SetupFooter } from '@/routes/setup/-components';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 export const Route = createFileRoute('/setup/browser-extension/')({
   component: BrowserExtensionSetupPage,

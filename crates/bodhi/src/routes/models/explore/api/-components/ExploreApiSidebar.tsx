@@ -4,8 +4,7 @@ import type { Capability, Modality, ModelFacets } from '@bodhiapp/reference-api-
 
 import { ShellIcon } from '@/components/shell';
 import { Slider } from '@/components/ui/slider';
-
-import { CAP_LABELS } from '../../-shared/catalog-format';
+import { CAP_LABELS } from '@/routes/models/explore/-shared/catalog-format';
 import '@/routes/models/-components/models.css';
 
 /**

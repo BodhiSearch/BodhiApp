@@ -10,8 +10,7 @@ import { useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Loading } from '@/components/ui/Loading';
 import { useGetModel } from '@/hooks/models';
-
-import AliasForm from '../-components/AliasForm';
+import AliasForm from '@/routes/models/alias/-components/AliasForm';
 
 export const Route = createFileRoute('/models/alias/edit/')({
   validateSearch: z.object({ id: z.string().optional() }),

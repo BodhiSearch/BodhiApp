@@ -1,6 +1,5 @@
 import { ENDPOINT_MODEL_ROUTERS, ENDPOINT_MODEL_ROUTER_ID } from '@/hooks/models';
-
-import { typedHttp, type components } from '../setup';
+import { typedHttp, type components } from '@/test-utils/msw-v2/setup';
 
 export function mockCreateModelRouter(
   {

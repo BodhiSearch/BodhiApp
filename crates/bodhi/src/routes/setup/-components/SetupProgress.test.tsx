@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import { SETUP_STEP_LABELS } from '@/routes/setup/-shared/constants';
+
 import { SetupProgress } from './SetupProgress';
-import { SETUP_STEP_LABELS } from '../-shared/constants';
 
 describe('SetupProgress', () => {
   describe('backward compatibility with 4 steps', () => {

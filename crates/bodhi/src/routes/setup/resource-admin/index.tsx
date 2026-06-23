@@ -11,9 +11,8 @@ import { useOAuthInitiate } from '@/hooks/auth';
 import { useGetAppInfo } from '@/hooks/info';
 import { ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
-
-import { SetupContainer, SetupCard, SetupCardIcon } from '../-components';
-import { itemVariants } from '../-shared/types';
+import { SetupContainer, SetupCard, SetupCardIcon } from '@/routes/setup/-components';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 export const Route = createFileRoute('/setup/resource-admin/')({
   component: ResourceAdminPage,

@@ -2,11 +2,10 @@ import { useState } from 'react';
 
 import { ApiFormat, ApiKey, FetchModelsRequest, LlmLibertyEnvelope, TestCreds } from '@bodhiapp/ts-client';
 
+import { ApiProvider } from '@/components/api-models/providers/constants';
 import { useFetchApiModels } from '@/hooks/models';
 import { useToast } from '@/hooks/use-toast';
 import { extractErrorMessage } from '@/lib/errorUtils';
-
-import { ApiProvider } from '../providers/constants';
 
 interface UseFetchModelsProps {
   mode?: 'create' | 'edit' | 'setup';

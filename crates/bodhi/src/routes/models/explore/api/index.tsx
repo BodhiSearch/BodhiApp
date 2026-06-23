@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 import AppInitializer from '@/components/AppInitializer';
-
-import { MultiTenantGuard } from '../-shared/MultiTenantGuard';
+import { MultiTenantGuard } from '@/routes/models/explore/-shared/MultiTenantGuard';
 
 import { ExploreApiScreen } from './-components/ExploreApiScreen';
 

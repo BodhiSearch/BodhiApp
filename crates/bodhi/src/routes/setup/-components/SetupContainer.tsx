@@ -2,10 +2,10 @@ import { ReactNode } from 'react';
 
 import { motion } from 'framer-motion';
 
-import './setup-wizard.css';
-import { SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '../-shared/constants';
-import { containerVariants } from '../-shared/types';
+import { SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '@/routes/setup/-shared/constants';
+import { containerVariants } from '@/routes/setup/-shared/types';
 
+import './setup-wizard.css';
 import { BodhiLogo } from './BodhiLogo';
 import { SetupProgress } from './SetupProgress';
 import { useSetupContext } from './SetupProvider';

@@ -7,8 +7,7 @@ import { z } from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
 import { useShellChrome } from '@/components/shell';
-
-import AliasForm from '../-components/AliasForm';
+import AliasForm from '@/routes/models/alias/-components/AliasForm';
 
 export const Route = createFileRoute('/models/alias/new/')({
   validateSearch: z.object({

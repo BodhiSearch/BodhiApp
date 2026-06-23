@@ -7,9 +7,8 @@ import { motion } from 'framer-motion';
 import ApiModelForm from '@/components/api-models/ApiModelForm';
 import AppInitializer from '@/components/AppInitializer';
 import { ROUTE_SETUP_BROWSER_EXTENSION } from '@/lib/constants';
-
-import { SetupContainer, SetupFooter } from '../-components';
-import { itemVariants } from '../-shared/types';
+import { SetupContainer, SetupFooter } from '@/routes/setup/-components';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 export const Route = createFileRoute('/setup/api-models/')({
   component: ApiModelsSetupPage,

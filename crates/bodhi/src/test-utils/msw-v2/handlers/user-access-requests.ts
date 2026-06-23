@@ -11,8 +11,7 @@ import {
   ENDPOINT_USER_REQUEST_ACCESS,
   ENDPOINT_USER_REQUEST_STATUS,
 } from '@/hooks/users';
-
-import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
+import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '@/test-utils/msw-v2/setup';
 
 export function mockAccessRequests(
   {

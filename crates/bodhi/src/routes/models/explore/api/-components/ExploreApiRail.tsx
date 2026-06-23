@@ -4,7 +4,6 @@ import { Link } from '@tanstack/react-router';
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTE_MODELS_EXPLORE_API_PROVIDERS } from '@/lib/constants';
-
 import {
   CAP_LABELS,
   CAP_TONE,
@@ -14,7 +13,7 @@ import {
   monogram,
   statusLabel,
   tintIndex,
-} from '../../-shared/catalog-format';
+} from '@/routes/models/explore/-shared/catalog-format';
 
 export function ExploreApiRailHeader({ model, onClose }: { model: ModelLite; onClose: () => void }) {
   return (

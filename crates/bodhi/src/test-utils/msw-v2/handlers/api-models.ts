@@ -5,8 +5,7 @@ import {
   ENDPOINT_API_MODELS_TEST,
   ENDPOINT_API_MODEL_ID,
 } from '@/hooks/models';
-
-import { INTERNAL_SERVER_ERROR, typedHttp, http, HttpResponse, type components } from '../setup';
+import { INTERNAL_SERVER_ERROR, typedHttp, http, HttpResponse, type components } from '@/test-utils/msw-v2/setup';
 
 /**
  * The GET list endpoint for API models was removed; use mockModels from

@@ -1,8 +1,7 @@
 import { delay } from 'msw';
 
 import { ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/auth';
-
-import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '@/test-utils/msw-v2/setup';
 
 export function mockAuthInitiate(
   {

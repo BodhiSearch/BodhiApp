@@ -2,8 +2,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-
-import { itemVariants } from '../-shared/types';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 interface SetupFooterProps {
   clarificationText: string;

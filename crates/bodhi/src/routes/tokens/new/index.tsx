@@ -6,9 +6,8 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import AppInitializer from '@/components/AppInitializer';
 import { useShellChrome } from '@/components/shell';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
-import { TokenDialog } from '../-components/TokenDialog';
-import { TokenForm } from '../-components/TokenForm';
+import { TokenDialog } from '@/routes/tokens/-components/TokenDialog';
+import { TokenForm } from '@/routes/tokens/-components/TokenForm';
 import '@/components/shell/api-keys.css';
 
 export const Route = createFileRoute('/tokens/new/')({

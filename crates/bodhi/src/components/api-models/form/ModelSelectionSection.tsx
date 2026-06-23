@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 
+import { ApiProvider } from '@/components/api-models/providers/constants';
 import { ModelSelector } from '@/components/ModelSelector';
-
-import { ApiProvider } from '../providers/constants';
 
 interface ModelSelectionSectionProps {
   selectedModels: string[];

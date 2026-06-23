@@ -4,6 +4,17 @@ import { ApiAliasResponse, ApiFormat, ApiKey, LlmLibertyEnvelope, TestCreds } fr
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
+import { ApiProvider, API_PROVIDERS, DEFAULT_TEST_PROMPT } from '@/components/api-models/providers/constants';
+import type { ApiModelPrefill } from '@/components/api-models/types';
+import {
+  computeCanFetch,
+  computeCanTest,
+  computeShowExtras,
+  llmLibertyFetchDisabledReason,
+  llmLibertyTestDisabledReason,
+  presetBaseUrl,
+  presetExtras,
+} from '@/components/api-models/validation';
 import { useCreateApiModel, useUpdateApiModel, useListApiFormats } from '@/hooks/models';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import {
@@ -17,18 +28,6 @@ import {
   parseJsonField,
   serializeJsonField,
 } from '@/schemas/apiModel';
-
-import { ApiProvider, API_PROVIDERS, DEFAULT_TEST_PROMPT } from '../providers/constants';
-import type { ApiModelPrefill } from '../types';
-import {
-  computeCanFetch,
-  computeCanTest,
-  computeShowExtras,
-  llmLibertyFetchDisabledReason,
-  llmLibertyTestDisabledReason,
-  presetBaseUrl,
-  presetExtras,
-} from '../validation';
 
 import { useFetchModels } from './useFetchModels';
 import { useTestConnection } from './useTestConnection';

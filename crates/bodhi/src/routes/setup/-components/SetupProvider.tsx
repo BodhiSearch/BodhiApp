@@ -2,7 +2,7 @@ import { createContext, useContext, ReactNode } from 'react';
 
 import { useLocation } from '@tanstack/react-router';
 
-import { SETUP_STEPS } from '../-shared/constants';
+import { SETUP_STEPS } from '@/routes/setup/-shared/constants';
 
 interface SetupContextType {
   currentStep: number;

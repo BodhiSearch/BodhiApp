@@ -7,8 +7,7 @@ import {
   mockMultipleManagersResponse,
   mockEmptyUsersResponse,
 } from '@/test-fixtures/users';
-
-import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '@/test-utils/msw-v2/setup';
 
 export function mockUserLoggedOut({
   stub,

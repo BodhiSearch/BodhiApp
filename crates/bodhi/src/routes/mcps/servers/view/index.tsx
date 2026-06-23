@@ -33,8 +33,7 @@ import { toast } from '@/hooks/use-toast';
 import { ROUTE_MCP_SERVERS } from '@/lib/constants';
 import { extractErrorMessage } from '@/lib/errorUtils';
 import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
-
-import { AuthConfigForm } from '../-components/AuthConfigForm';
+import { AuthConfigForm } from '@/routes/mcps/servers/-components/AuthConfigForm';
 
 export const Route = createFileRoute('/mcps/servers/view/')({
   validateSearch: z.object({ id: z.string().optional() }),

@@ -23,8 +23,7 @@ import {
   createProviderListResponse,
   createProviderModelsResponse,
 } from '@/test-fixtures/catalog-providers';
-
-import { http, HttpResponse } from '../setup';
+import { http, HttpResponse } from '@/test-utils/msw-v2/setup';
 
 const DEFAULT_BASE = 'https://api.getbodhi.app';
 

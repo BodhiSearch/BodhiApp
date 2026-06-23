@@ -11,8 +11,7 @@
 import type { ListModelsResponse, Model } from '@bodhiapp/reference-api-types';
 
 import { createDefaultCatalog, createDetailModel, createListResponse } from '@/test-fixtures/discover-models';
-
-import { http, HttpResponse } from '../setup';
+import { http, HttpResponse } from '@/test-utils/msw-v2/setup';
 
 const DEFAULT_BASE = 'https://api.getbodhi.app';
 

@@ -8,15 +8,21 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
 import { useViewTransition } from '@/hooks/useViewTransition';
-
-import { exploreBreadcrumb } from '../../-shared/breadcrumbs';
-import { CAP_LABELS, CAP_TONE, fmtPrice, isFree, monogram, tintIndex } from '../../-shared/catalog-format';
+import { exploreBreadcrumb } from '@/routes/models/explore/-shared/breadcrumbs';
+import {
+  CAP_LABELS,
+  CAP_TONE,
+  fmtPrice,
+  isFree,
+  monogram,
+  tintIndex,
+} from '@/routes/models/explore/-shared/catalog-format';
 
 import { ExploreProvidersRail, ExploreProvidersRailHeader } from './ExploreProvidersRail';
 import { ExploreProvidersSidebar, type ProviderFacets } from './ExploreProvidersSidebar';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
-import '../../-shared/catalog.css';
+import '@/routes/models/explore/-shared/catalog.css';
 
 const BREADCRUMB = exploreBreadcrumb('Explore · API Providers');
 

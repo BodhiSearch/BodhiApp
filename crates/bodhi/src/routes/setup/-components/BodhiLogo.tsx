@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-import { itemVariants } from '../-shared/types';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 export const BodhiLogoImage = () => (
   <img

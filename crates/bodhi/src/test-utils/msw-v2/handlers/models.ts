@@ -7,8 +7,7 @@ import {
   ENDPOINT_ALIAS_ID,
 } from '@/hooks/models';
 import { createMockUserAlias, createMockApiAlias, createMockModelAlias } from '@/test-fixtures/models';
-
-import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '@/test-utils/msw-v2/setup';
 
 export function mockModels(
   {

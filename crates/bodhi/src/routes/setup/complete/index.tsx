@@ -9,9 +9,8 @@ import { siDiscord, siGithub, siX, siYoutube } from 'simple-icons';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { ROUTE_CHAT } from '@/lib/constants';
-
-import { SetupContainer, SetupCard } from '../-components';
-import { itemVariants } from '../-shared/types';
+import { SetupContainer, SetupCard } from '@/routes/setup/-components';
+import { itemVariants } from '@/routes/setup/-shared/types';
 
 export const Route = createFileRoute('/setup/complete/')({
   component: SetupCompletePage,

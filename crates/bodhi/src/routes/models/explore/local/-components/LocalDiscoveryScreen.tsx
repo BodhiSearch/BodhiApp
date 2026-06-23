@@ -16,8 +16,7 @@ import {
 import { useDiscoverModels, useModelDetail } from '@/hooks/reference';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
-
-import { exploreBreadcrumb } from '../../-shared/breadcrumbs';
+import { exploreBreadcrumb } from '@/routes/models/explore/-shared/breadcrumbs';
 
 import { fmtDate, LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
 import { LocalDiscoverySidebar, facetsToQuery, type DiscoveryFacets } from './LocalDiscoverySidebar';

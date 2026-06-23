@@ -1,8 +1,8 @@
-import { ModelSelectionSection } from '@/components/api-models/form/ModelSelectionSection';
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { API_PROVIDERS } from '../providers/constants';
+import { ModelSelectionSection } from '@/components/api-models/form/ModelSelectionSection';
+import { API_PROVIDERS } from '@/components/api-models/providers/constants';
 
 const openai = API_PROVIDERS.find((p) => p.id === 'openai')!;
 
