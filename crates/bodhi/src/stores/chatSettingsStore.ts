@@ -6,7 +6,7 @@ import type { PersistedChatSettings } from '@/lib/chatDb';
 
 export type ChatSettings = PersistedChatSettings;
 
-// Session-only fields (persisted to sessionStorage, not IndexedDB)
+// Token lives in sessionStorage (cleared on tab close), not IndexedDB, so credentials don't outlive the session.
 interface SessionOnlySettings {
   api_token?: string;
   api_token_enabled: boolean;

@@ -347,7 +347,8 @@ export function ChatUI() {
     return () => {
       mcpClients.disconnectAll();
     };
-  }, [mcps]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on mcps; mcpClients.connectAll/disconnectAll are stable and intentionally excluded
+  }, [mcps]);
 
   const mcpSlugs = useMemo(() => {
     const map = new Map<string, string>();

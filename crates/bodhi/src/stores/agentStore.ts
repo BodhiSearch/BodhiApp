@@ -95,7 +95,6 @@ export interface AgentStoreState {
   streamingMessage: AgentMessage | undefined;
   pendingToolCalls: ReadonlySet<string>;
   errorMessage: string | undefined;
-  /** Tracks the chat record the current agent session is writing to. */
   chatIdRef: { id: string; createdAt: number } | null;
 
   setInput: (input: string) => void;

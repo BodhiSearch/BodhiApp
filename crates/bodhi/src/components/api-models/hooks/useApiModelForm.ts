@@ -90,8 +90,7 @@ export function useApiModelForm({
           }
         : {
             name: '',
-            // Prefill (from the Explore catalog bridge) overrides the hardcoded OpenAI defaults when
-            // present. base_url is omitted when the bridge gives null → keep the preset default.
+            // Prefill (Explore catalog bridge) overrides OpenAI defaults; null base_url keeps the preset.
             api_format: prefill?.api_format || 'openai',
             base_url: prefill?.base_url || 'https://api.openai.com/v1',
             api_key: '', // never prefilled — the user always supplies their own key
@@ -165,9 +164,7 @@ export function useApiModelForm({
     }
   }, [watchedValues.api_format, mode, selectedProvider]);
 
-  // API format change handler: treat format change as dirty — reset to preset
-  // defaults (or empty when no preset). No revert-to-initial tracking; user
-  // must cancel or refresh to restore stored values.
+  // Format change is destructive: reset all fields to the new preset's defaults; stored values are not recoverable without cancel/refresh.
   const handleApiFormatChange = (apiFormat: string) => {
     const preset = API_FORMAT_PRESETS[apiFormat as keyof typeof API_FORMAT_PRESETS];
     const presetHeaders =

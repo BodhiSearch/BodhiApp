@@ -157,7 +157,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
           </div>
 
           <div className="lf-card-body">
-            {/* ── Identity ── */}
             <section className="lf-section">
               <div className="lf-section-title">Identity</div>
               <FormField
@@ -183,7 +182,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
 
             <div className="lf-divider" />
 
-            {/* ── Model file ── */}
             <section className="lf-section">
               <div className="lf-section-title">Model file</div>
               <div className="lf-field-row">
@@ -256,7 +254,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
 
             <div className="lf-divider" />
 
-            {/* ── Runtime flags ── */}
             <section className="lf-section">
               <div className="lf-section-title">Runtime flags</div>
               <FormField
@@ -296,7 +293,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
 
             <div className="lf-divider" />
 
-            {/* ── Request defaults ── */}
             <section className="lf-section">
               <div className="lf-section-title">Request defaults</div>
               <FormField
@@ -368,7 +364,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
             </section>
           </div>
 
-          {/* ── Footer ── */}
           <div className="lf-footer">
             <Button type="button" variant="ghost" onClick={() => navigate({ to: '/models/' })}>
               Cancel

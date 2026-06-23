@@ -93,7 +93,7 @@ export function TokenPageContent() {
   const total = tokensData?.total ?? 0;
   const effPageSize = tokensData?.page_size ?? pageSize;
 
-  // Counts derived during render from the fetched page (no extra fetch / state).
+  // Counts reflect only the current page; counting from fetched rows avoids fetching all tokens.
   const counts = useMemo(() => {
     let active = 0;
     let inactive = 0;

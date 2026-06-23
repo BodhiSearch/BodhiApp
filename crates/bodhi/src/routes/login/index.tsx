@@ -35,7 +35,8 @@ function MultiTenantLoginContent() {
   const navigate = useNavigate();
   const search = useSearch({ from: '/login/' });
 
-  // 5a. Read invite parameter on mount and store in sessionStorage
+  // Stash the ?invite client_id in sessionStorage so it survives the OAuth redirect round-trip,
+  // then strip it from the URL.
   const hasInviteProcessed = useRef(false);
   useEffect(() => {
     if (hasInviteProcessed.current) return;
@@ -117,7 +118,7 @@ function MultiTenantLoginContent() {
       sessionStorage.clear();
       document.cookie.split(';').forEach((c) => {
         const eqPos = c.indexOf('=');
-        const name = eqPos > -1 ? c.substr(0, eqPos) : c;
+        const name = eqPos > -1 ? c.slice(0, eqPos) : c;
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
@@ -125,7 +126,7 @@ function MultiTenantLoginContent() {
     },
   });
 
-  // 5b/5c. Process invite flow (takes priority over auto-login)
+  // Process invite flow (takes priority over auto-login)
   const hasInviteFlowTriggered = useRef(false);
   useEffect(() => {
     if (hasInviteFlowTriggered.current) return;
@@ -202,7 +203,7 @@ function MultiTenantLoginContent() {
     return null;
   }
 
-  // 5d. Role: None/Guest/Anonymous guard — redirect to request-access if logged in without an assignable role
+  // Logged in but without an assignable role (none/guest/anonymous) — send to request-access
   if (
     userInfo?.auth_status === 'logged_in' &&
     appInfo?.client_id &&
@@ -367,7 +368,7 @@ export function LoginContent() {
       sessionStorage.clear();
       document.cookie.split(';').forEach((c) => {
         const eqPos = c.indexOf('=');
-        const name = eqPos > -1 ? c.substr(0, eqPos) : c;
+        const name = eqPos > -1 ? c.slice(0, eqPos) : c;
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);

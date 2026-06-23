@@ -327,6 +327,7 @@ function ExecutionArea({
     setJsonError(null);
     setResult(null);
     setResultTab('response');
+    // Reset form only when switching tools; schema is derived from tool.name and would loop if listed.
   }, [tool.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentParams = useCallback((): Record<string, unknown> => {
@@ -471,6 +472,7 @@ function McpPlaygroundContent() {
     return () => {
       mcpClient.disconnect();
     };
+    // Connect/disconnect keyed on path only; mcpClient is recreated each render and would reconnect in a loop if listed.
   }, [mcp?.path]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tools = mcpClient.tools;

@@ -111,7 +111,6 @@ function NewMcpServerContent() {
     if (!validate()) return;
 
     if (showAuthConfig && authConfigType === 'oauth' && oauthRegistrationType === 'dynamic_registration') {
-      // Step 1: Call standalone DCR to get client credentials
       if (!registrationEndpoint) {
         toast({ title: 'Registration endpoint is required for dynamic registration', variant: 'destructive' });
         return;
@@ -125,7 +124,6 @@ function NewMcpServerContent() {
         });
         const dcrResult = dcrResponse.data;
 
-        // Step 2: Create server with OAuth auth config containing DCR results
         createMutation.mutate({
           url: url.trim(),
           name: name.trim(),
@@ -152,7 +150,6 @@ function NewMcpServerContent() {
       return;
     }
 
-    // Non-DCR path: directly create server with optional auth config
     createMutation.mutate({
       url: url.trim(),
       name: name.trim(),

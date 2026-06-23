@@ -94,6 +94,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
     } else if (props.type === 'oauth' && (!props.name || props.name === 'header-default')) {
       props.onNameChange('oauth-default');
     }
+    // Fire only on type change; props.name/onNameChange are read fresh and would loop if listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.type]);
 
@@ -105,6 +106,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
       setIsDiscovering(true);
       discoverMcp.mutate({ mcp_server_url: props.serverUrl });
     }
+    // Auto-DCR is a one-shot guarded by hasAttemptedAutoDcr; discoverMcp/props callbacks would retrigger it if listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.type, hasAttemptedAutoDcr, props.serverUrl]);
 
@@ -120,6 +122,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
       setDiscoverError('');
       discoverMcp.mutate({ mcp_server_url: props.serverUrl });
     }
+    // Retry keyed on registrationType/autoDcrFailed transitions; discoverMcp would retrigger the mutation if listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.registrationType, props.type, autoDcrFailed, props.serverUrl]);
 

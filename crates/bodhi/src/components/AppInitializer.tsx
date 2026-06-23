@@ -76,7 +76,6 @@ export default function AppInitializer({
     if (appLoading || userLoading || appError || userError) return;
 
     if (authenticated && userInfo?.auth_status !== 'logged_in') {
-      // Store current URL so we can return after login
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('bodhi-return-url', window.location.href);
       }
@@ -85,7 +84,6 @@ export default function AppInitializer({
     }
 
     if (authenticated && userInfo?.auth_status === 'logged_in') {
-      // resource_guest / resource_anonymous have no assignable role -> request access
       if (!userInfo.role || userInfo.role === 'resource_guest' || userInfo.role === 'resource_anonymous') {
         navigate({ to: ROUTE_REQUEST_ACCESS });
         return;

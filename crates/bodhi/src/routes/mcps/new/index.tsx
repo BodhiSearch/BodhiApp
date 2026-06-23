@@ -296,12 +296,14 @@ function NewMcpPageContent() {
         store.completeOAuthFlow(existingMcp.auth_config_id);
       }
     }
+    // Run only on edit-record load; store/form helpers are stable and would loop if listed.
   }, [existingMcp, editId, form]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (editId && existingMcp && existingMcp.auth_type === 'oauth' && existingMcp.auth_config_id) {
       store.setSelectedAuthConfig(existingMcp.auth_config_id, existingMcp.auth_type);
     }
+    // store action is stable; depending on it would re-fire this OAuth sync needlessly.
   }, [editId, existingMcp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-select first auth config when configs load for a newly selected server (create mode only)
@@ -317,6 +319,7 @@ function NewMcpPageContent() {
       store.setSelectedAuthConfig(first.id, first.type);
       form.setValue('auth_type', first.type as McpAuthType);
     }
+    // store/form are stable refs; including them would retrigger auto-select on every render.
   }, [authConfigOptions, selectedServer, editId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleServerSelect = useCallback(

@@ -121,7 +121,6 @@ export default function ApiModelForm({ mode, initialData, prefill, onSuccessRout
                   error={formLogic.errors.api_key?.message}
                 />
 
-                {/* Extra Headers and Body (conditionally shown for formats with defaults) */}
                 {formLogic.showExtras && (
                   <ExtrasSection
                     extraHeaders={formLogic.watchedValues.extra_headers || ''}
