@@ -51,5 +51,20 @@ test.describe('Explore · API Providers', () => {
       // Last page consumed → Load more gone.
       expect(await providersPage.hasLoadMore()).toBe(false);
     });
+
+    await test.step('Opening a provider shows the rail with connection meta + models', async () => {
+      await providersPage.openProvider('prov-0');
+      const meta = providersPage.page.locator(providersPage.selectors.detailMeta);
+      await expect(meta).toBeVisible();
+      // Connection meta from the (stubbed) provider-detail fetch.
+      await expect(meta).toContainText('PROV_0_API_KEY');
+      await expect(meta).toContainText('prov-0.example.com');
+      await expect(providersPage.page.locator(providersPage.selectors.docLink)).toBeVisible();
+      // The provider's models render from the provider-models fetch.
+      await expect(providersPage.page.locator(providersPage.selectors.detailModels)).toContainText('Model A');
+
+      await providersPage.closeRail();
+      await expect(providersPage.page.locator(providersPage.selectors.railPanel)).toHaveCount(0);
+    });
   });
 });

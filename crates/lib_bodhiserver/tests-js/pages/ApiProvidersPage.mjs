@@ -21,6 +21,13 @@ export class ApiProvidersPage extends BasePage {
     row: (slug) => `[data-testid="cat-prov-row-${slug}"]`,
     empty: '[data-testid="cat-prov-empty"]',
     loadMore: '[data-testid="cat-prov-load-more"]',
+    // Detail rail. railPanel keys off the meta block (unique) to avoid matching the close button /
+    // skeleton, which also share the `cat-prov-detail-` prefix.
+    railPanel: '[data-testid="cat-prov-detail-meta"]',
+    detailMeta: '[data-testid="cat-prov-detail-meta"]',
+    detailModels: '[data-testid="cat-prov-models"]',
+    docLink: '[data-testid="cat-prov-doc-link"]',
+    detailClose: '[data-testid="cat-prov-detail-close"]',
   };
 
   /** Build N deterministic provider summaries (rank desc by model_count). */
@@ -44,23 +51,77 @@ export class ApiProvidersPage extends BasePage {
    * Load-more. Serves the page/page_size slice + total, mirroring the real API.
    */
   async stubCatalog({ providers = ApiProvidersPage.makeProviders(31) } = {}) {
-    await this.page.route('**/api/v1/catalog/providers*', (route) => {
-      const url = new URL(route.request().url());
-      const page = Number(url.searchParams.get('page') ?? '1');
-      const pageSize = Number(url.searchParams.get('page_size') ?? '30');
-      const start = (page - 1) * pageSize;
-      const slice = providers.slice(start, start + pageSize);
+    const json = (route, body) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         headers: { 'access-control-allow-origin': '*' },
-        body: JSON.stringify({
+        body: JSON.stringify(body),
+      });
+
+    // Single route keyed off the catalog path; dispatch by URL shape so glob overlap can't
+    // mis-route (Playwright's `?` matches any char, so a `providers?*` glob would also swallow
+    // `/providers/{slug}/models`). One matcher, explicit branching = no ordering hazard.
+    await this.page.route(/\/api\/v1\/catalog\/providers/, (route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname;
+      const segments = path.split('/').filter(Boolean); // [..., providers, {slug?}, {models?}]
+      const providersIdx = segments.indexOf('providers');
+      const slug = segments[providersIdx + 1];
+      const isModels = segments[providersIdx + 2] === 'models';
+
+      // Provider list: /providers (no slug segment).
+      if (!slug) {
+        const page = Number(url.searchParams.get('page') ?? '1');
+        const pageSize = Number(url.searchParams.get('page_size') ?? '30');
+        const start = (page - 1) * pageSize;
+        const slice = providers.slice(start, start + pageSize);
+        return json(route, {
           items: slice,
           page,
           page_size: pageSize,
           total: providers.length,
           facets: { capability: { reasoning: providers.length }, api_format: { openai: providers.length } },
-        }),
+        });
+      }
+
+      // Provider models: /providers/{slug}/models
+      if (isModels) {
+        const src = providers.find((p) => p.slug === slug) ?? providers[0];
+        return json(route, {
+          items: [
+            {
+              model_id: `${src.slug}/model-a`,
+              name: 'Model A',
+              caps: ['reasoning', 'tool_call'],
+              context_limit: 200000,
+              output_limit: 64000,
+              pricing: { input_per_m: 3, output_per_m: 15, cache_read_per_m: null, cache_write_per_m: null },
+              status: null,
+              modalities_in: ['text'],
+              modalities_out: ['text'],
+            },
+          ],
+          total: 1,
+        });
+      }
+      const src = providers.find((p) => p.slug === slug) ?? providers[0];
+      return json(route, {
+        slug: src.slug,
+        name: src.name,
+        logo_url: src.logo_url,
+        model_count: src.model_count,
+        env: [`${src.slug.toUpperCase().replace(/-/g, '_')}_API_KEY`],
+        npm: '@ai-sdk/openai-compatible',
+        doc_url: `https://docs.${src.slug}.example.com`,
+        api_base_url: src.api_base_url,
+        provider_shape: src.provider_shape,
+        bridge: {
+          api_format: 'openai',
+          base_url: src.api_base_url,
+          base_url_source: 'modelsdev_api',
+          base_url_requires_substitution: false,
+        },
       });
     });
   }
@@ -93,5 +154,16 @@ export class ApiProvidersPage extends BasePage {
 
   async hasLoadMore() {
     return (await this.page.locator(this.selectors.loadMore).count()) > 0;
+  }
+
+  /** Open the detail rail for a provider row; waits for the rail panel to render. */
+  async openProvider(slug) {
+    await this.page.locator(this.selectors.row(slug)).click();
+    await this.waitForSPAReady();
+    await this.page.locator(this.selectors.railPanel).waitFor({ state: 'visible' });
+  }
+
+  async closeRail() {
+    await this.page.locator(this.selectors.detailClose).click();
   }
 }

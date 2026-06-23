@@ -2,12 +2,14 @@ import { useCallback, useMemo, useState } from 'react';
 
 import type { ListProvidersQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
 
-import { LinkRow, ShellIcon, useListKeyNav, useShellChrome } from '@/components/shell';
+import { LinkRow, ShellIcon, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCatalogProviders } from '@/hooks/reference';
+import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
+import { useViewTransition } from '@/hooks/useViewTransition';
 
 import { CAP_LABELS, CAP_TONE, fmtPrice, isFree, monogram, tintIndex } from '../../-shared/catalog-format';
+import { ExploreProvidersRail, ExploreProvidersRailHeader } from './ExploreProvidersRail';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '../../-shared/catalog.css';
@@ -104,10 +106,45 @@ export function ExploreProvidersScreen() {
     setPage((p) => p + 1);
   }, [data?.items]);
 
-  const select = useCallback((slug: string | null) => setSelectedSlug(slug), []);
+  const { openRail } = useShell();
+  const withViewTransition = useViewTransition();
+  const select = useCallback(
+    (slug: string | null) =>
+      withViewTransition(() => {
+        setSelectedSlug(slug);
+        if (slug) openRail();
+      }),
+    [withViewTransition, openRail]
+  );
+
+  const selectedProvider = useMemo(() => rows.find((p) => p.slug === selectedSlug) ?? null, [rows, selectedSlug]);
+  const { data: detail, isLoading: detailLoading } = useCatalogProviderDetail(selectedSlug);
+  const { data: providerModels, isLoading: modelsLoading } = useCatalogProviderModels(selectedSlug);
+
+  const railHeader = useMemo(
+    () =>
+      selectedProvider ? <ExploreProvidersRailHeader provider={selectedProvider} onClose={() => select(null)} /> : null,
+    [selectedProvider, select]
+  );
+
+  const rail = useMemo(
+    () =>
+      selectedProvider ? (
+        <ExploreProvidersRail
+          provider={selectedProvider}
+          detail={detail}
+          detailLoading={detailLoading}
+          models={providerModels?.items ?? []}
+          modelsLoading={modelsLoading}
+        />
+      ) : null,
+    [selectedProvider, detail, detailLoading, providerModels?.items, modelsLoading]
+  );
 
   useShellChrome({
     breadcrumb: useMemo(() => BREADCRUMB, []),
+    rail,
+    railHeader,
     railDefaultOpen: false,
   });
 
