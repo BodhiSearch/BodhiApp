@@ -2,12 +2,14 @@ import { useCallback, useMemo, useState } from 'react';
 
 import type { ListCatalogModelsQuery, ModelLite } from '@bodhiapp/reference-api-types';
 
-import { LinkRow, ShellIcon, useListKeyNav, useShellChrome } from '@/components/shell';
+import { LinkRow, ShellIcon, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCatalogModels } from '@/hooks/reference';
+import { useCatalogModelDetail, useCatalogModels } from '@/hooks/reference';
+import { useViewTransition } from '@/hooks/useViewTransition';
 
 import { CAP_LABELS, CAP_TONE, fmtContext, fmtPrice, isFree, statusLabel } from '../../-shared/catalog-format';
+import { ExploreApiRail, ExploreApiRailHeader } from './ExploreApiRail';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '../../-shared/catalog.css';
@@ -106,10 +108,34 @@ export function ExploreApiScreen() {
     setPage((p) => p + 1);
   }, [data?.items]);
 
-  const select = useCallback((key: string | null) => setSelectedKey(key), []);
+  const { openRail } = useShell();
+  const withViewTransition = useViewTransition();
+  const select = useCallback(
+    (key: string | null) =>
+      withViewTransition(() => {
+        setSelectedKey(key);
+        if (key) openRail();
+      }),
+    [withViewTransition, openRail]
+  );
+
+  const selectedModel = useMemo(() => rows.find((m) => modelKey(m) === selectedKey) ?? null, [rows, selectedKey]);
+  const selectedRef = selectedModel ? { slug: selectedModel.slug, modelId: selectedModel.model_id } : null;
+  const { data: detail, isLoading: detailLoading } = useCatalogModelDetail(selectedRef);
+
+  const railHeader = useMemo(
+    () => (selectedModel ? <ExploreApiRailHeader model={selectedModel} onClose={() => select(null)} /> : null),
+    [selectedModel, select]
+  );
+  const rail = useMemo(
+    () => (selectedModel ? <ExploreApiRail model={selectedModel} detail={detail} loading={detailLoading} /> : null),
+    [selectedModel, detail, detailLoading]
+  );
 
   useShellChrome({
     breadcrumb: useMemo(() => BREADCRUMB, []),
+    rail,
+    railHeader,
     railDefaultOpen: false,
   });
 

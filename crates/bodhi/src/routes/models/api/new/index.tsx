@@ -1,12 +1,22 @@
 import { useMemo } from 'react';
 
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useSearch } from '@tanstack/react-router';
+import { z } from 'zod';
 
-import ApiModelForm from '@/components/api-models/ApiModelForm';
+import ApiModelForm, { type ApiModelPrefill } from '@/components/api-models/ApiModelForm';
 import AppInitializer from '@/components/AppInitializer';
 import { useShellChrome } from '@/components/shell';
 
+// Prefill params for the Explore catalog "Configure in Bodhi" bridge. All optional — a bare
+// /models/api/new still renders the empty create form.
+const newApiModelSearchSchema = z.object({
+  api_format: z.string().optional(),
+  base_url: z.string().optional(),
+  model: z.string().optional(),
+});
+
 export const Route = createFileRoute('/models/api/new/')({
+  validateSearch: newApiModelSearchSchema,
   component: NewApiModel,
 });
 
@@ -18,10 +28,18 @@ const NEW_API_MODEL_BREADCRUMB = [
 
 function NewApiModelContent() {
   useShellChrome({ breadcrumb: useMemo(() => NEW_API_MODEL_BREADCRUMB, []) });
+  // Loose useSearch (not Route.useSearch) so component tests that mock @tanstack/react-router's
+  // useSearch intercept it without a router context.
+  const search = useSearch({ strict: false }) as { api_format?: string; base_url?: string; model?: string };
+
+  const prefill: ApiModelPrefill | undefined = useMemo(() => {
+    if (!search.api_format && !search.base_url && !search.model) return undefined;
+    return { api_format: search.api_format, base_url: search.base_url, model: search.model };
+  }, [search.api_format, search.base_url, search.model]);
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="new-api-model-page">
-      <ApiModelForm mode="create" />
+      <ApiModelForm mode="create" prefill={prefill} />
     </div>
   );
 }

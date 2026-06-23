@@ -295,3 +295,59 @@
   font-size: 11px;
   color: hsl(var(--muted-foreground));
 }
+
+/* ── API Models rail: Served-by + Configure CTA ──────────────── */
+.cat-servedby {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cat-servedby-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  color: inherit;
+}
+.cat-servedby-row:hover {
+  background: hsl(var(--muted));
+}
+.cat-servedby-row .cat-logo {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+.cat-servedby-name {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cat-servedby-price {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--muted-foreground));
+  flex: 0 0 auto;
+}
+
+.cat-configure-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 14px;
+  font-weight: 600;
+}
+.cat-configure-cta:hover {
+  opacity: 0.92;
+}

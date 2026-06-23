@@ -18,14 +18,22 @@ import { useApiModelForm } from '@/components/api-models/hooks/useApiModelForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
+/** Seed values for create mode, e.g. from the Explore catalog "Configure in Bodhi" bridge. */
+export interface ApiModelPrefill {
+  api_format?: string;
+  base_url?: string;
+  model?: string;
+}
+
 interface ApiModelFormProps {
   mode: 'create' | 'edit' | 'setup';
   initialData?: ApiAliasResponse;
+  prefill?: ApiModelPrefill;
   onSuccessRoute?: string;
   onCancelRoute?: string;
 }
 
-export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCancelRoute }: ApiModelFormProps) {
+export default function ApiModelForm({ mode, initialData, prefill, onSuccessRoute, onCancelRoute }: ApiModelFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -40,6 +48,7 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
   const formLogic = useApiModelForm({
     mode,
     initialData,
+    prefill,
     onSuccess: (data) => {
       toast({
         title: isEditMode ? 'API Model Updated' : 'API Model Created',

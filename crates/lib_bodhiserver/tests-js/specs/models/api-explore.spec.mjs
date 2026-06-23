@@ -46,5 +46,24 @@ test.describe('Explore · API Models', () => {
       expect(await modelsPage.getRowCount()).toBe(31);
       expect(await modelsPage.hasLoadMore()).toBe(false);
     });
+
+    await test.step('Opening a model shows the rail with specs + Served-by', async () => {
+      await modelsPage.openModel('anthropic', 'model-0');
+      const specs = modelsPage.page.locator(modelsPage.selectors.railSpecs);
+      await expect(specs).toContainText('Context');
+      await expect(specs).toContainText('Stable'); // null status → synthesized "Stable"
+      await expect(modelsPage.page.locator(modelsPage.selectors.railServedBy)).toContainText('Anthropic');
+    });
+
+    await test.step('Configure in Bodhi prefills the create form from the bridge', async () => {
+      await modelsPage.clickConfigure();
+      // Lands on the New API Model page with the bridge prefill applied.
+      await modelsPage.page.waitForURL(/\/models\/api\/new\//);
+      await expect(modelsPage.page.locator('[data-testid="new-api-model-page"]')).toBeVisible();
+      // base_url prefilled from the stub bridge (anthropic), api_key left empty.
+      await expect(modelsPage.page.locator('[data-testid="base-url-input"]')).toHaveValue(
+        'https://api.anthropic.com/v1'
+      );
+    });
   });
 });

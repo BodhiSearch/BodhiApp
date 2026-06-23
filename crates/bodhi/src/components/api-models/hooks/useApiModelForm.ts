@@ -23,9 +23,17 @@ import { ApiProvider, API_PROVIDERS, DEFAULT_TEST_PROMPT } from '../providers/co
 import { useFetchModels } from './useFetchModels';
 import { useTestConnection } from './useTestConnection';
 
+/** Seed values for create mode (e.g. the Explore catalog "Configure in Bodhi" bridge). */
+interface ApiModelPrefill {
+  api_format?: string;
+  base_url?: string;
+  model?: string;
+}
+
 interface UseApiModelFormProps {
   mode: 'create' | 'edit' | 'setup';
   initialData?: ApiAliasResponse;
+  prefill?: ApiModelPrefill;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSuccess?: (data: any) => void;
   onError?: (error: string) => void;
@@ -36,6 +44,7 @@ interface UseApiModelFormProps {
 export function useApiModelForm({
   mode,
   initialData,
+  prefill,
   onSuccess,
   onError,
   onCancel,
@@ -81,10 +90,12 @@ export function useApiModelForm({
           }
         : {
             name: '',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key: '',
-            models: [],
+            // Prefill (from the Explore catalog bridge) overrides the hardcoded OpenAI defaults when
+            // present. base_url is omitted when the bridge gives null → keep the preset default.
+            api_format: prefill?.api_format || 'openai',
+            base_url: prefill?.base_url || 'https://api.openai.com/v1',
+            api_key: '', // never prefilled — the user always supplies their own key
+            models: prefill?.model ? [prefill.model] : [],
             prefix: '',
             usePrefix: false,
             useApiKey: false,

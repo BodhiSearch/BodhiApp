@@ -16,6 +16,11 @@ export class ApiExplorePage extends BasePage {
     row: (slug, modelId) => `[data-testid="cat-model-row-${slug}-${modelId}"]`,
     empty: '[data-testid="cat-model-empty"]',
     loadMore: '[data-testid="cat-model-load-more"]',
+    // Detail rail.
+    railSpecs: '[data-testid="cat-model-detail-specs"]',
+    railServedBy: '[data-testid="cat-model-servedby"]',
+    configureCta: '[data-testid="cat-model-configure-cta"]',
+    detailClose: '[data-testid="cat-model-detail-close"]',
   };
 
   /** Build N deterministic catalog models. */
@@ -171,5 +176,17 @@ export class ApiExplorePage extends BasePage {
 
   async hasLoadMore() {
     return (await this.page.locator(this.selectors.loadMore).count()) > 0;
+  }
+
+  /** Open the detail rail for a model row; waits for the spec grid to render. */
+  async openModel(slug, modelId) {
+    await this.page.locator(this.selectors.row(slug, modelId)).click();
+    await this.waitForSPAReady();
+    await this.page.locator(this.selectors.railSpecs).waitFor({ state: 'visible' });
+  }
+
+  async clickConfigure() {
+    await this.page.locator(this.selectors.configureCta).click();
+    await this.waitForSPAReady();
   }
 }

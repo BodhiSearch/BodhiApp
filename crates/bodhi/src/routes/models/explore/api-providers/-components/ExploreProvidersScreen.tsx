@@ -1,4 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { useSearch } from '@tanstack/react-router';
 
 import type { ListProvidersQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
 
@@ -198,9 +200,43 @@ export function ExploreProvidersScreen() {
     [facets, data?.facets.capability, data?.facets.api_format, onFacetsChange, onClearAllFacets]
   );
 
-  const selectedProvider = useMemo(() => rows.find((p) => p.slug === selectedSlug) ?? null, [rows, selectedSlug]);
+  // Cross-link entry: /api-providers?select=<slug> (from the API Models "Served by" list) opens
+  // that provider's rail on mount.
+  const selectParam = useSearch({
+    strict: false,
+    select: (s: Record<string, unknown>) => s.select as string | undefined,
+  });
+  useEffect(() => {
+    if (selectParam) {
+      setSelectedSlug(selectParam);
+      openRail();
+    }
+  }, [selectParam, openRail]);
+
   const { data: detail, isLoading: detailLoading } = useCatalogProviderDetail(selectedSlug);
   const { data: providerModels, isLoading: modelsLoading } = useCatalogProviderModels(selectedSlug);
+
+  // Prefer the list-row summary; fall back to one synthesized from the detail fetch when the
+  // selected provider isn't on the currently-loaded list page (deep-link / cross-link case).
+  const selectedProvider: ProviderSummary | null = useMemo(() => {
+    const fromList = rows.find((p) => p.slug === selectedSlug);
+    if (fromList) return fromList;
+    if (selectedSlug && detail && detail.slug === selectedSlug) {
+      return {
+        slug: detail.slug,
+        name: detail.name,
+        logo_url: detail.logo_url,
+        model_count: detail.model_count,
+        rank: 0,
+        api_base_url: detail.api_base_url,
+        provider_shape: detail.provider_shape,
+        api_format_hint: detail.bridge.api_format,
+        capabilities_summary: [],
+        pricing_summary: { min_in_per_m: null, min_out_per_m: null },
+      };
+    }
+    return null;
+  }, [rows, selectedSlug, detail]);
 
   const railHeader = useMemo(
     () =>
