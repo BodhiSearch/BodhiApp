@@ -56,9 +56,10 @@ beforeEach(() => {
 });
 
 function SlotsConsumer() {
-  const { rail, railHeader } = useShellSlots();
+  const { sidebar, rail, railHeader } = useShellSlots();
   return (
     <>
+      <div data-testid="harness-sidebar">{sidebar}</div>
       <div data-testid="harness-rail-header">{railHeader}</div>
       <div data-testid="harness-rail">{rail}</div>
     </>
@@ -227,5 +228,95 @@ describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
     server.use(...mockCatalogModels(), ...mockCatalogModelDetail({ onRequest: () => (detailRequested = true) }));
     await renderScreen();
     expect(detailRequested).toBe(false);
+  });
+});
+
+describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
+  it('search submits q on Enter and keeps Load more available (inverse of Local)', async () => {
+    const items = Array.from({ length: 31 }, (_, i) =>
+      createModelLite({ slug: 'p', model_id: `m-${i}`, name: `Model ${i}` })
+    );
+    const seen: URL[] = [];
+    server.use(
+      ...mockCatalogModels({ response: createModelsListResponse(items), onRequest: ({ url }) => seen.push(url) })
+    );
+    await renderScreen();
+
+    const user = userEvent.setup();
+    const input = screen.getByTestId('cat-model-search').querySelector('input')!;
+    await user.click(input);
+    await user.type(input, 'Model{Enter}');
+
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('q') === 'Model')).toBe(true));
+    // Search does NOT disable pagination here (unlike Local).
+    expect(screen.getByTestId('cat-model-load-more')).toBeInTheDocument();
+  });
+
+  it('column sort headers send the chosen sort and mark active', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-sort-price'));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'price')).toBe(true));
+    expect(screen.getByTestId('cat-model-sort-price')).toHaveAttribute('data-test-state', 'active');
+  });
+
+  it('multi-select facets send repeated-key params; Stable maps to status=stable', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    // Counts come from the response facets.
+    expect(screen.getByTestId('cat-model-cap-reasoning')).toHaveTextContent('1292');
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-cap-reasoning'));
+    await user.click(screen.getByTestId('cat-model-mod-image'));
+    await user.click(screen.getByTestId('cat-model-status-stable'));
+
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      return (
+        last.searchParams.getAll('capability').includes('reasoning') &&
+        last.searchParams.getAll('modality').includes('image') &&
+        last.searchParams.getAll('status').includes('stable')
+      );
+    });
+  });
+
+  it('open_weights is tri-state: unset → open → unset', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-ow-open'));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('open_weights') === 'open')).toBe(true));
+    expect(screen.getByTestId('cat-model-ow-open')).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(screen.getByTestId('cat-model-ow-open'));
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      return !last.searchParams.has('open_weights');
+    });
+  });
+
+  it('clear-all resets every facet param', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-cap-reasoning'));
+    await waitFor(() => expect(screen.getByTestId('cat-model-clear-all')).toBeInTheDocument());
+
+    await user.click(screen.getByTestId('cat-model-clear-all'));
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      return last.searchParams.getAll('capability').length === 0;
+    });
+    expect(screen.queryByTestId('cat-model-clear-all')).not.toBeInTheDocument();
   });
 });

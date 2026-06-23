@@ -86,6 +86,39 @@
   opacity: 0.6;
 }
 
+/* Sortable column header. */
+.cat-colsort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+}
+.cat-colsort.on {
+  color: hsl(var(--primary));
+}
+
+/* Range (slider) facet control. */
+.cat-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 2px;
+}
+.cat-range-val {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--muted-foreground));
+  min-width: 40px;
+  text-align: right;
+}
+
 /* Capability chips. */
 .cat-caps {
   display: flex;

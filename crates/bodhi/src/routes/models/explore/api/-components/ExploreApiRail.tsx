@@ -1,6 +1,5 @@
-import { Link } from '@tanstack/react-router';
-
 import type { ModelDetailResponse, ModelLite } from '@bodhiapp/reference-api-types';
+import { Link } from '@tanstack/react-router';
 
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';

@@ -2,14 +2,16 @@ import { useCallback, useMemo, useState } from 'react';
 
 import type { ListCatalogModelsQuery, ModelLite } from '@bodhiapp/reference-api-types';
 
-import { LinkRow, ShellIcon, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
+import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogModelDetail, useCatalogModels } from '@/hooks/reference';
 import { useViewTransition } from '@/hooks/useViewTransition';
 
 import { CAP_LABELS, CAP_TONE, fmtContext, fmtPrice, isFree, statusLabel } from '../../-shared/catalog-format';
+
 import { ExploreApiRail, ExploreApiRailHeader } from './ExploreApiRail';
+import { ExploreApiSidebar, modelFacetsToQuery, type ModelFacetsState } from './ExploreApiSidebar';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '../../-shared/catalog.css';
@@ -21,6 +23,40 @@ const BREADCRUMB = [
 ];
 
 const PAGE_SIZE = 30;
+
+type ModelSort = NonNullable<ListCatalogModelsQuery['sort']>;
+const SORT_LABELS: Record<ModelSort, string> = {
+  updated: 'Newest',
+  context: 'Context',
+  price: 'Price',
+  name: 'Name',
+  providers: 'Providers',
+};
+function ColSort({
+  col,
+  label,
+  sort,
+  onSort,
+}: {
+  col: ModelSort;
+  label: string;
+  sort: ModelSort;
+  onSort: (c: ModelSort) => void;
+}) {
+  const active = sort === col;
+  return (
+    <button
+      type="button"
+      className={`cat-colsort${active ? ' on' : ''}`}
+      onClick={() => onSort(col)}
+      data-testid={`cat-model-sort-${col}`}
+      data-test-state={active ? 'active' : 'idle'}
+    >
+      {label}
+      <ShellIcon name={active ? 'arrow-down' : 'chevrons-up-down'} size={10} />
+    </button>
+  );
+}
 
 function modelKey(m: ModelLite): string {
   return `${m.slug}/${m.model_id}`;
@@ -79,9 +115,29 @@ export function ExploreApiScreen() {
   const [accumulated, setAccumulated] = useState<ModelLite[]>([]);
   const [page, setPage] = useState(1);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<ModelSort>('updated');
+  const [facets, setFacets] = useState<ModelFacetsState>({});
 
-  const params: ListCatalogModelsQuery = useMemo(() => ({ sort: 'updated', page, page_size: PAGE_SIZE }), [page]);
+  const params: ListCatalogModelsQuery = useMemo(
+    () => ({
+      sort,
+      page,
+      page_size: PAGE_SIZE,
+      ...(search ? { q: search } : {}),
+      ...modelFacetsToQuery(facets),
+    }),
+    [sort, page, search, facets]
+  );
   const { data, isLoading, error } = useCatalogModels(params);
+
+  // Reset paging synchronously on any filter/sort/search change so keepPreviousData can't append a
+  // stale page-2 onto a new query's page-1.
+  const resetPaging = useCallback(() => {
+    setAccumulated([]);
+    setPage(1);
+  }, []);
 
   // Page-based "Load more": accumulate earlier pages, dedup by slug/model_id. (Catalog is page-based
   // with a real total — unlike Local's cursor.)
@@ -119,6 +175,57 @@ export function ExploreApiScreen() {
     [withViewTransition, openRail]
   );
 
+  const commitSearch = useCallback(
+    (value: string) => {
+      setSearch(value.trim());
+      resetPaging();
+    },
+    [resetPaging]
+  );
+  const onSearchChange = useCallback(
+    (value: string) => {
+      setSearchInput(value);
+      if (value.trim() === '') commitSearch('');
+    },
+    [commitSearch]
+  );
+  const onSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') commitSearch(searchInput);
+    },
+    [commitSearch, searchInput]
+  );
+  const onSort = useCallback(
+    (next: ModelSort) => {
+      setSort(next);
+      resetPaging();
+    },
+    [resetPaging]
+  );
+  const onFacetsChange = useCallback(
+    (next: ModelFacetsState) => {
+      setFacets(next);
+      resetPaging();
+    },
+    [resetPaging]
+  );
+  const onClearAllFacets = useCallback(() => {
+    setFacets({});
+    resetPaging();
+  }, [resetPaging]);
+
+  const sidebar = useMemo(
+    () => (
+      <ExploreApiSidebar
+        facets={facets}
+        facetCounts={data?.facets}
+        onFacetsChange={onFacetsChange}
+        onClearAll={onClearAllFacets}
+      />
+    ),
+    [facets, data?.facets, onFacetsChange, onClearAllFacets]
+  );
+
   const selectedModel = useMemo(() => rows.find((m) => modelKey(m) === selectedKey) ?? null, [rows, selectedKey]);
   const selectedRef = selectedModel ? { slug: selectedModel.slug, modelId: selectedModel.model_id } : null;
   const { data: detail, isLoading: detailLoading } = useCatalogModelDetail(selectedRef);
@@ -134,6 +241,7 @@ export function ExploreApiScreen() {
 
   useShellChrome({
     breadcrumb: useMemo(() => BREADCRUMB, []),
+    sidebar,
     rail,
     railHeader,
     railDefaultOpen: false,
@@ -149,23 +257,52 @@ export function ExploreApiScreen() {
       data-testid="explore-api-content"
       data-pagestatus={isLoading ? 'loading' : 'ready'}
     >
+      <div className="l-controls">
+        <div className="m-toolbar">
+          <div className="m-search" data-testid="cat-model-search">
+            <ShellSearch
+              value={searchInput}
+              onChange={onSearchChange}
+              onKeyDown={onSearchKeyDown}
+              placeholder="Search models"
+              kbd="⌘K"
+            />
+          </div>
+          <div className="cat-sortbar">
+            {(['updated', 'name'] as ModelSort[]).map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`cat-sort-btn${sort === s ? ' on' : ''}`}
+                aria-pressed={sort === s}
+                onClick={() => onSort(s)}
+                data-testid={`cat-model-sort-${s}`}
+                data-test-state={sort === s ? 'active' : 'idle'}
+              >
+                {SORT_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="cat-resultbar" data-testid="cat-model-resultbar">
         <span className="cat-count">
           Showing {rows.length} of {total}
         </span>
         <span>
-          sorted by <strong>Newest</strong>
+          sorted by <strong>{SORT_LABELS[sort]}</strong>
         </span>
       </div>
 
       <div className="cat-listhead cat-model-grid">
         <div>#</div>
         <div>MODEL</div>
-        <div style={{ textAlign: 'right' }}>CONTEXT</div>
-        <div style={{ textAlign: 'right' }}>INPUT $</div>
+        <ColSort col="context" label="CONTEXT" sort={sort} onSort={onSort} />
+        <ColSort col="price" label="INPUT $" sort={sort} onSort={onSort} />
         <div style={{ textAlign: 'right' }}>OUTPUT $</div>
         <div>CAPABILITIES</div>
-        <div style={{ textAlign: 'right' }}>PROVIDERS</div>
+        <ColSort col="providers" label="PROVIDERS" sort={sort} onSort={onSort} />
       </div>
 
       <div className="l-scroll" data-testid="cat-model-list">

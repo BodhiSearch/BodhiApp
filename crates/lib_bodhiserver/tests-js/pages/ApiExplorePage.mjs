@@ -21,6 +21,14 @@ export class ApiExplorePage extends BasePage {
     railServedBy: '[data-testid="cat-model-servedby"]',
     configureCta: '[data-testid="cat-model-configure-cta"]',
     detailClose: '[data-testid="cat-model-detail-close"]',
+    // Search / sort / facets.
+    search: '[data-testid="cat-model-search"] input',
+    sort: (key) => `[data-testid="cat-model-sort-${key}"]`,
+    facets: '[data-testid="cat-model-facets"]',
+    cap: (id) => `[data-testid="cat-model-cap-${id}"]`,
+    status: (id) => `[data-testid="cat-model-status-${id}"]`,
+    ow: (id) => `[data-testid="cat-model-ow-${id}"]`,
+    clearAll: '[data-testid="cat-model-clear-all"]',
   };
 
   /** Build N deterministic catalog models. */
@@ -188,5 +196,38 @@ export class ApiExplorePage extends BasePage {
   async clickConfigure() {
     await this.page.locator(this.selectors.configureCta).click();
     await this.waitForSPAReady();
+  }
+
+  async searchFor(query) {
+    const input = this.page.locator(this.selectors.search);
+    await input.click();
+    await input.fill(query);
+    await input.press('Enter');
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clearSearch() {
+    await this.page.locator(this.selectors.search).fill('');
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async sortBy(key) {
+    await this.page.locator(this.selectors.sort(key)).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clickCapability(id) {
+    await this.page.locator(this.selectors.cap(id)).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clearAllFilters() {
+    await this.page.locator(this.selectors.clearAll).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
   }
 }

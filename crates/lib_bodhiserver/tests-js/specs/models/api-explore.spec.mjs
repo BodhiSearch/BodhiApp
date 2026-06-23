@@ -65,5 +65,33 @@ test.describe('Explore · API Models', () => {
         'https://api.anthropic.com/v1'
       );
     });
+
+    await test.step('Back on the catalog: search narrows and Load-more stays available', async () => {
+      await modelsPage.navigateToModels();
+      await modelsPage.waitForListSettled();
+      await modelsPage.searchFor('Model 7');
+      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 1 of 1');
+      await modelsPage.clearSearch();
+      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 30 of 31');
+    });
+
+    await test.step('Sort by Price marks the active column header', async () => {
+      await modelsPage.sortBy('price');
+      await expect(modelsPage.page.locator(modelsPage.selectors.sort('price'))).toHaveAttribute(
+        'data-test-state',
+        'active'
+      );
+    });
+
+    await test.step('Capability facet filters; Clear all resets', async () => {
+      await expect(modelsPage.page.locator(modelsPage.selectors.facets)).toBeVisible();
+      await modelsPage.clickCapability('reasoning');
+      await expect(modelsPage.page.locator(modelsPage.selectors.cap('reasoning'))).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+      await modelsPage.clearAllFilters();
+      await expect(modelsPage.page.locator(modelsPage.selectors.clearAll)).toHaveCount(0);
+    });
   });
 });
