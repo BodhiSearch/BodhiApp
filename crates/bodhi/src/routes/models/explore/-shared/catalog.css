@@ -58,6 +58,34 @@
   color: var(--c-indigo-text);
 }
 
+/* Sort control (toolbar). */
+.cat-sortbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.cat-sort-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+.cat-sort-btn.on {
+  color: hsl(var(--primary));
+  background: hsl(var(--muted));
+}
+
+/* Facet count badge. */
+.cat-facet-count {
+  margin-left: 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
 /* Capability chips. */
 .cat-caps {
   display: flex;

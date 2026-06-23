@@ -21,6 +21,12 @@ export class ApiProvidersPage extends BasePage {
     row: (slug) => `[data-testid="cat-prov-row-${slug}"]`,
     empty: '[data-testid="cat-prov-empty"]',
     loadMore: '[data-testid="cat-prov-load-more"]',
+    search: '[data-testid="cat-prov-search"] input',
+    sort: (key) => `[data-testid="cat-prov-sort-${key}"]`,
+    facets: '[data-testid="cat-prov-facets"]',
+    cap: (id) => `[data-testid="cat-prov-cap-${id}"]`,
+    fmt: (id) => `[data-testid="cat-prov-fmt-${id}"]`,
+    clearAll: '[data-testid="cat-prov-clear-all"]',
     // Detail rail. railPanel keys off the meta block (unique) to avoid matching the close button /
     // skeleton, which also share the `cat-prov-detail-` prefix.
     railPanel: '[data-testid="cat-prov-detail-meta"]',
@@ -70,18 +76,25 @@ export class ApiProvidersPage extends BasePage {
       const slug = segments[providersIdx + 1];
       const isModels = segments[providersIdx + 2] === 'models';
 
-      // Provider list: /providers (no slug segment).
+      // Provider list: /providers (no slug segment). Honors q + page/page_size; facet counts
+      // reflect the filtered set so the sidebar shows per-query counts.
       if (!slug) {
+        const q = url.searchParams.get('q')?.toLowerCase();
+        let filtered = providers;
+        if (q) filtered = filtered.filter((p) => `${p.slug} ${p.name}`.toLowerCase().includes(q));
         const page = Number(url.searchParams.get('page') ?? '1');
         const pageSize = Number(url.searchParams.get('page_size') ?? '30');
         const start = (page - 1) * pageSize;
-        const slice = providers.slice(start, start + pageSize);
+        const slice = filtered.slice(start, start + pageSize);
         return json(route, {
           items: slice,
           page,
           page_size: pageSize,
-          total: providers.length,
-          facets: { capability: { reasoning: providers.length }, api_format: { openai: providers.length } },
+          total: filtered.length,
+          facets: {
+            capability: { reasoning: filtered.length, tool_call: filtered.length, vision: filtered.length },
+            api_format: { openai: filtered.length, anthropic: 0 },
+          },
         });
       }
 
@@ -165,5 +178,38 @@ export class ApiProvidersPage extends BasePage {
 
   async closeRail() {
     await this.page.locator(this.selectors.detailClose).click();
+  }
+
+  async searchFor(query) {
+    const input = this.page.locator(this.selectors.search);
+    await input.click();
+    await input.fill(query);
+    await input.press('Enter');
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clearSearch() {
+    await this.page.locator(this.selectors.search).fill('');
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async sortBy(key) {
+    await this.page.locator(this.selectors.sort(key)).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clickCapability(id) {
+    await this.page.locator(this.selectors.cap(id)).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clearAllFilters() {
+    await this.page.locator(this.selectors.clearAll).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
   }
 }

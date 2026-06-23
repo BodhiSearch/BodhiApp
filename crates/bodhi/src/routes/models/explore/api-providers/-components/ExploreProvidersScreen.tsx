@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import type { ListProvidersQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
 
-import { LinkRow, ShellIcon, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
+import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
@@ -10,6 +10,7 @@ import { useViewTransition } from '@/hooks/useViewTransition';
 
 import { CAP_LABELS, CAP_TONE, fmtPrice, isFree, monogram, tintIndex } from '../../-shared/catalog-format';
 import { ExploreProvidersRail, ExploreProvidersRailHeader } from './ExploreProvidersRail';
+import { ExploreProvidersSidebar, type ProviderFacets } from './ExploreProvidersSidebar';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '../../-shared/catalog.css';
@@ -21,6 +22,13 @@ const BREADCRUMB = [
 ];
 
 const PAGE_SIZE = 30;
+
+type ProviderSort = NonNullable<ListProvidersQuery['sort']>;
+const SORT_LABELS: Record<ProviderSort, string> = {
+  rank: 'Rank',
+  name: 'Name',
+  model_count: 'Models',
+};
 
 function ProviderRow({
   provider,
@@ -77,9 +85,30 @@ export function ExploreProvidersScreen() {
   const [accumulated, setAccumulated] = useState<ProviderSummary[]>([]);
   const [page, setPage] = useState(1);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<ProviderSort>('rank');
+  const [facets, setFacets] = useState<ProviderFacets>({});
 
-  const params: ListProvidersQuery = useMemo(() => ({ sort: 'rank', page, page_size: PAGE_SIZE }), [page]);
+  const params: ListProvidersQuery = useMemo(
+    () => ({
+      sort,
+      page,
+      page_size: PAGE_SIZE,
+      ...(search ? { q: search } : {}),
+      ...(facets.capability?.length ? { capability: facets.capability } : {}),
+      ...(facets.api_format?.length ? { api_format: facets.api_format } : {}),
+    }),
+    [sort, page, search, facets]
+  );
   const { data, isLoading, error } = useCatalogProviders(params);
+
+  // Reset paging synchronously on any filter/sort/search change — otherwise keepPreviousData could
+  // append a stale page-2 onto a new query's page-1.
+  const resetPaging = useCallback(() => {
+    setAccumulated([]);
+    setPage(1);
+  }, []);
 
   // Page-based "Load more": prepend accumulated earlier pages, dedup by slug. (Catalog is page-based
   // with a real total — unlike Local's cursor.) Param changes (search/sort, added in B3) reset both
@@ -117,6 +146,58 @@ export function ExploreProvidersScreen() {
     [withViewTransition, openRail]
   );
 
+  const commitSearch = useCallback(
+    (value: string) => {
+      setSearch(value.trim());
+      resetPaging();
+    },
+    [resetPaging]
+  );
+  const onSearchChange = useCallback(
+    (value: string) => {
+      setSearchInput(value);
+      if (value.trim() === '') commitSearch('');
+    },
+    [commitSearch]
+  );
+  const onSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') commitSearch(searchInput);
+    },
+    [commitSearch, searchInput]
+  );
+  const onSort = useCallback(
+    (next: ProviderSort) => {
+      setSort(next);
+      resetPaging();
+    },
+    [resetPaging]
+  );
+  const onFacetsChange = useCallback(
+    (next: ProviderFacets) => {
+      setFacets(next);
+      resetPaging();
+    },
+    [resetPaging]
+  );
+  const onClearAllFacets = useCallback(() => {
+    setFacets({});
+    resetPaging();
+  }, [resetPaging]);
+
+  const sidebar = useMemo(
+    () => (
+      <ExploreProvidersSidebar
+        facets={facets}
+        capabilityCounts={data?.facets.capability ?? {}}
+        apiFormatCounts={data?.facets.api_format ?? {}}
+        onFacetsChange={onFacetsChange}
+        onClearAll={onClearAllFacets}
+      />
+    ),
+    [facets, data?.facets.capability, data?.facets.api_format, onFacetsChange, onClearAllFacets]
+  );
+
   const selectedProvider = useMemo(() => rows.find((p) => p.slug === selectedSlug) ?? null, [rows, selectedSlug]);
   const { data: detail, isLoading: detailLoading } = useCatalogProviderDetail(selectedSlug);
   const { data: providerModels, isLoading: modelsLoading } = useCatalogProviderModels(selectedSlug);
@@ -143,6 +224,7 @@ export function ExploreProvidersScreen() {
 
   useShellChrome({
     breadcrumb: useMemo(() => BREADCRUMB, []),
+    sidebar,
     rail,
     railHeader,
     railDefaultOpen: false,
@@ -158,12 +240,41 @@ export function ExploreProvidersScreen() {
       data-testid="explore-providers-content"
       data-pagestatus={isLoading ? 'loading' : 'ready'}
     >
+      <div className="l-controls">
+        <div className="m-toolbar">
+          <div className="m-search" data-testid="cat-prov-search">
+            <ShellSearch
+              value={searchInput}
+              onChange={onSearchChange}
+              onKeyDown={onSearchKeyDown}
+              placeholder="Search providers"
+              kbd="⌘K"
+            />
+          </div>
+          <div className="cat-sortbar">
+            {(Object.keys(SORT_LABELS) as ProviderSort[]).map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`cat-sort-btn${sort === s ? ' on' : ''}`}
+                aria-pressed={sort === s}
+                onClick={() => onSort(s)}
+                data-testid={`cat-prov-sort-${s}`}
+                data-test-state={sort === s ? 'active' : 'idle'}
+              >
+                {SORT_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="cat-resultbar" data-testid="cat-prov-resultbar">
         <span className="cat-count">
           Showing {rows.length} of {total}
         </span>
         <span>
-          sorted by <strong>Rank</strong>
+          sorted by <strong>{SORT_LABELS[sort]}</strong>
         </span>
       </div>
 

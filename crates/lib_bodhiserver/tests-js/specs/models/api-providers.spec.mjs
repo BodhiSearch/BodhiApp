@@ -66,5 +66,37 @@ test.describe('Explore · API Providers', () => {
       await providersPage.closeRail();
       await expect(providersPage.page.locator(providersPage.selectors.railPanel)).toHaveCount(0);
     });
+
+    await test.step('Search narrows the provider list and counts reflect the query', async () => {
+      // "Provider 7" matches exactly one stub provider (names are "Provider N").
+      await providersPage.searchFor('Provider 7');
+      await expect(providersPage.page.locator(providersPage.selectors.resultbar)).toContainText('Showing 1 of 1');
+      await expect(providersPage.page.locator(providersPage.selectors.row('prov-7'))).toBeVisible();
+      // Facet count reflects the filtered set.
+      await expect(providersPage.page.locator(providersPage.selectors.cap('reasoning'))).toContainText('1');
+
+      await providersPage.clearSearch();
+      await expect(providersPage.page.locator(providersPage.selectors.resultbar)).toContainText('Showing 30 of 31');
+    });
+
+    await test.step('Sort by Models re-queries and marks the active control', async () => {
+      await providersPage.sortBy('model_count');
+      await expect(providersPage.page.locator(providersPage.selectors.sort('model_count'))).toHaveAttribute(
+        'data-test-state',
+        'active'
+      );
+      await expect(providersPage.page.locator(providersPage.selectors.resultbar)).toContainText('Models');
+    });
+
+    await test.step('Capability facet filters; Clear all resets', async () => {
+      await expect(providersPage.page.locator(providersPage.selectors.facets)).toBeVisible();
+      await providersPage.clickCapability('reasoning');
+      await expect(providersPage.page.locator(providersPage.selectors.cap('reasoning'))).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+      await providersPage.clearAllFilters();
+      await expect(providersPage.page.locator(providersPage.selectors.clearAll)).toHaveCount(0);
+    });
   });
 });

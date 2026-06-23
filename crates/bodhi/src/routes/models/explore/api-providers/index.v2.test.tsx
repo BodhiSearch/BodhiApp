@@ -32,9 +32,10 @@ beforeEach(() => {
 
 // Surfaces the published rail slots so the detail rail is in the DOM.
 function SlotsConsumer() {
-  const { rail, railHeader } = useShellSlots();
+  const { sidebar, rail, railHeader } = useShellSlots();
   return (
     <>
+      <div data-testid="harness-sidebar">{sidebar}</div>
       <div data-testid="harness-rail-header">{railHeader}</div>
       <div data-testid="harness-rail">{rail}</div>
     </>
@@ -170,5 +171,73 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
 
     await user.click(screen.getByTestId('cat-prov-detail-close'));
     await waitFor(() => expect(screen.queryByTestId('cat-prov-detail-nano-gpt')).not.toBeInTheDocument());
+  });
+});
+
+describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
+  it('search submits q on Enter and resets to page 1', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    const input = screen.getByTestId('cat-prov-search').querySelector('input')!;
+    await user.click(input);
+    await user.type(input, 'nano{Enter}');
+
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('q') === 'nano')).toBe(true));
+    const last = seen[seen.length - 1];
+    expect(last.searchParams.get('page')).toBe('1');
+  });
+
+  it('sort buttons send the chosen sort key and mark the active control', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-sort-model_count'));
+
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'model_count')).toBe(true));
+    expect(screen.getByTestId('cat-prov-sort-model_count')).toHaveAttribute('data-test-state', 'active');
+    expect(screen.getByTestId('cat-prov-resultbar')).toHaveTextContent(/sorted by\s*Models/);
+  });
+
+  it('capability + api_format facets send repeated-key params and counts render', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    // Counts come from the response facets.
+    expect(screen.getByTestId('cat-prov-cap-reasoning')).toHaveTextContent('80');
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
+    await user.click(screen.getByTestId('cat-prov-fmt-anthropic'));
+
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      return (
+        last.searchParams.getAll('capability').includes('reasoning') &&
+        last.searchParams.getAll('api_format').includes('anthropic')
+      );
+    });
+  });
+
+  it('clear-all resets every facet param', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
+    await waitFor(() => expect(screen.getByTestId('cat-prov-clear-all')).toBeInTheDocument());
+
+    await user.click(screen.getByTestId('cat-prov-clear-all'));
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      return last.searchParams.getAll('capability').length === 0;
+    });
+    expect(screen.queryByTestId('cat-prov-clear-all')).not.toBeInTheDocument();
   });
 });
