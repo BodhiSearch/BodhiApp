@@ -67,13 +67,16 @@ test.describe('Explore · API Models', () => {
       );
     });
 
-    await test.step('Back on the catalog: search narrows and clearing restores the list', async () => {
+    await test.step('Search narrows, auto-ranks by Relevance, and clearing restores Newest', async () => {
       await modelsPage.navigateToModels();
       await modelsPage.waitForListSettled();
       await modelsPage.searchFor('Model 7');
       await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 1 of 1');
+      // Search-as-you-type ranks by best text match (relevance), the seam typo-tolerance rides on.
+      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Relevance');
       await modelsPage.clearSearch();
       await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 30 of 31');
+      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Newest');
     });
 
     await test.step('Sort by Input price marks the active column and toggles asc/desc', async () => {

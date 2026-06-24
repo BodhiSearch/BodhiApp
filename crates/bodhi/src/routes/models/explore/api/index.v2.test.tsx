@@ -393,6 +393,24 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     });
   });
 
+  it('sends a typo/raw query verbatim with sort=relevance (server handles typo tolerance)', async () => {
+    // The frontend forwards the raw input untouched (no quoting/escaping) + sort=relevance; the
+    // catalog FTS5 trigram index does the typo/substring matching server-side.
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    const input = screen.getByTestId('cat-model-search').querySelector('input')!;
+    await user.click(input);
+    await user.type(input, 'clade{Enter}');
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.get('q')).toBe('clade');
+      expect(last.searchParams.get('sort')).toBe('relevance');
+    });
+  });
+
   it('Free chip sets pricing_max=0 and pins; re-click clears it', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
