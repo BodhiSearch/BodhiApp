@@ -259,6 +259,25 @@ describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
     });
   });
 
+  it('free/paid toggle sends pricing= and is single-select', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-pricing-free'));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('pricing')).toBe('free'));
+    expect(screen.getByTestId('cat-prov-pricing-free')).toHaveAttribute('aria-pressed', 'true');
+
+    // Switching to paid replaces free (single-select).
+    await user.click(screen.getByTestId('cat-prov-pricing-paid'));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('pricing')).toBe('paid'));
+
+    // Re-clicking the active value clears it.
+    await user.click(screen.getByTestId('cat-prov-pricing-paid'));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.has('pricing')).toBe(false));
+  });
+
   it('clear-all resets every facet param', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));

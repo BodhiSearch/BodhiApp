@@ -88,6 +88,20 @@ test.describe('Explore · API Providers', () => {
       await expect(providersPage.page.locator(providersPage.selectors.resultbar)).toContainText('Models');
     });
 
+    await test.step('Free/Paid pricing toggle activates', async () => {
+      await providersPage.clickPricing('free');
+      await expect(providersPage.page.locator(providersPage.selectors.pricing('free'))).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+      // Single-select: re-click clears it before the next step.
+      await providersPage.clickPricing('free');
+      await expect(providersPage.page.locator(providersPage.selectors.pricing('free'))).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      );
+    });
+
     await test.step('Capability facet filters; Clear all resets', async () => {
       await expect(providersPage.page.locator(providersPage.selectors.facets)).toBeVisible();
       await providersPage.clickCapability('reasoning');

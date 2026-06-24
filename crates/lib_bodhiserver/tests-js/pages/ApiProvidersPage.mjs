@@ -28,6 +28,7 @@ export class ApiProvidersPage extends BasePage {
     facets: '[data-testid="cat-prov-facets"]',
     cap: (id) => `[data-testid="cat-prov-cap-${id}"]`,
     fmt: (id) => `[data-testid="cat-prov-fmt-${id}"]`,
+    pricing: (id) => `[data-testid="cat-prov-pricing-${id}"]`,
     clearAll: '[data-testid="cat-prov-clear-all"]',
     // Detail rail. railPanel keys off the meta block (unique) to avoid matching the close button /
     // skeleton, which also share the `cat-prov-detail-` prefix.
@@ -211,6 +212,12 @@ export class ApiProvidersPage extends BasePage {
 
   async clickCapability(id) {
     await this.page.locator(this.selectors.cap(id)).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clickPricing(id) {
+    await this.page.locator(this.selectors.pricing(id)).click();
     await this.waitForSPAReady();
     await this.waitForListSettled();
   }

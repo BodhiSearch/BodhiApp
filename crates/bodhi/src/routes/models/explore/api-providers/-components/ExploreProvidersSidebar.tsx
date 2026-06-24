@@ -1,8 +1,13 @@
+import { useEffect, useState } from 'react';
+
 import type { ApiFormatHint, Capability, FacetBucket, ListProvidersQuery } from '@bodhiapp/reference-api-types';
 
 import { ShellIcon } from '@/components/shell';
+import { Slider } from '@/components/ui/slider';
 import { CAP_LABELS } from '@/routes/models/explore/-shared/catalog-format';
 import '@/routes/models/-components/models.css';
+
+const PRICE_MAX = 100; // provider cheapest-input $/Mtok slider ceiling
 
 /**
  * Faceted sidebar for Explore · API Providers. Controlled — selections drive the parent's
@@ -79,7 +84,7 @@ export function ExploreProvidersSidebar({
             <FacetPill
               key={c}
               label={CAP_LABELS[c]}
-              count={capabilityCounts[c]}
+              count={capabilityCounts[c] ?? 0}
               active={(facets.capability ?? []).includes(c)}
               testId={`cat-prov-cap-${c}`}
               onToggle={() => onFacetsChange({ ...facets, capability: toggle(facets.capability, c) })}
@@ -94,7 +99,7 @@ export function ExploreProvidersSidebar({
             <FacetPill
               key={f}
               label={API_FORMAT_LABELS[f] ?? f}
-              count={apiFormatCounts[f]}
+              count={apiFormatCounts[f] ?? 0}
               active={(facets.api_format ?? []).includes(f)}
               testId={`cat-prov-fmt-${f}`}
               onToggle={() => onFacetsChange({ ...facets, api_format: toggle(facets.api_format, f) })}
@@ -102,6 +107,60 @@ export function ExploreProvidersSidebar({
           ))}
         </div>
       </FacetGroup>
+
+      <FacetGroup icon="dollar-sign" title="Pricing" note="cheapest model">
+        <div className="m-facet-pills">
+          {(['free', 'paid'] as ProviderPricing[]).map((p) => (
+            <FacetPill
+              key={p}
+              label={p === 'free' ? 'Free' : 'Paid'}
+              count={undefined}
+              active={facets.pricing === p}
+              testId={`cat-prov-pricing-${p}`}
+              // Single-select toggle: re-clicking the active value clears it.
+              onToggle={() => onFacetsChange({ ...facets, pricing: facets.pricing === p ? undefined : p })}
+            />
+          ))}
+        </div>
+        <ProviderRange
+          value={facets.pricing_max ?? PRICE_MAX}
+          format={(v) => (v >= PRICE_MAX ? 'Any' : `$${v}`)}
+          onCommit={(v) => onFacetsChange({ ...facets, pricing_max: v >= PRICE_MAX ? undefined : v })}
+        />
+      </FacetGroup>
+    </div>
+  );
+}
+
+/** A debounced single-thumb price slider (cheapest-input ceiling), commit-on-release. */
+function ProviderRange({
+  value,
+  format,
+  onCommit,
+}: {
+  value: number;
+  format: (v: number) => string;
+  onCommit: (v: number) => void;
+}) {
+  const [local, setLocal] = useState(value);
+  useEffect(() => {
+    setLocal(value);
+  }, [value]);
+
+  return (
+    <div className="cat-range" data-testid="cat-prov-pricing-range">
+      <Slider
+        value={[local]}
+        min={0}
+        max={PRICE_MAX}
+        step={0.5}
+        onValueChange={(vals) => setLocal(vals[0])}
+        onValueCommit={(vals) => onCommit(vals[0])}
+        data-testid="cat-prov-pricing-range-slider"
+      />
+      <span className="cat-range-val" data-testid="cat-prov-pricing-range-val">
+        {format(local)}
+      </span>
     </div>
   );
 }
@@ -122,7 +181,8 @@ function FacetPill({
   onToggle: () => void;
 }) {
   const n = count ?? 0;
-  const disabled = !active && n === 0;
+  // Count-gating only applies to real facet buckets; synthetic chips (free/paid) stay enabled.
+  const disabled = count != null && !active && n === 0;
   return (
     <button
       type="button"
@@ -138,12 +198,23 @@ function FacetPill({
   );
 }
 
-function FacetGroup({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+function FacetGroup({
+  icon,
+  title,
+  note,
+  children,
+}: {
+  icon: string;
+  title: string;
+  note?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="m-facet-group">
       <div className="m-facet-label">
         <ShellIcon name={icon} size={13} />
         <span>{title}</span>
+        {note && <span className="m-facet-hint">({note})</span>}
       </div>
       {children}
     </div>

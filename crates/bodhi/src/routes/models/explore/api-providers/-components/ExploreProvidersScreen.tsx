@@ -282,7 +282,7 @@ export function ExploreProvidersScreen() {
               value={searchInput}
               onChange={onSearchChange}
               onKeyDown={onSearchKeyDown}
-              placeholder="Search providers"
+              placeholder="Search providers or the models they serve"
               kbd="⌘K"
             />
           </div>
