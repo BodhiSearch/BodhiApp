@@ -1,9 +1,11 @@
-import type { ModelDetailResponse, ModelLite } from '@bodhiapp/reference-api-types';
+import { useState } from 'react';
+
+import type { ModelDetailResponse, ModelLite, ServedBy } from '@bodhiapp/reference-api-types';
 import { Link } from '@tanstack/react-router';
 
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ROUTE_MODELS_EXPLORE_API_PROVIDERS } from '@/lib/constants';
+import { useCatalogProviderDetail } from '@/hooks/reference';
 import {
   CAP_LABELS,
   CAP_TONE,
@@ -106,23 +108,7 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
           ) : (
             <div className="cat-servedby" data-testid="cat-model-servedby">
               {(detail?.served_by ?? []).map((s) => (
-                <Link
-                  key={s.slug}
-                  to={ROUTE_MODELS_EXPLORE_API_PROVIDERS}
-                  search={{ select: s.slug }}
-                  className="cat-servedby-row"
-                  data-testid={`cat-model-servedby-${s.slug}`}
-                >
-                  <div className={`cat-logo cat-tint-${tintIndex(s.slug)}`} aria-hidden="true">
-                    {monogram(s.name)}
-                  </div>
-                  <span className="cat-servedby-name">{s.name}</span>
-                  <span className="cat-servedby-price">
-                    {isFree(s.pricing.input_per_m, s.pricing.output_per_m)
-                      ? 'Free'
-                      : `${fmtPrice(s.pricing.input_per_m)} / ${fmtPrice(s.pricing.output_per_m)}`}
-                  </span>
-                </Link>
+                <ServedByRow key={s.slug} served={s} modelId={model.model_id} />
               ))}
             </div>
           )}
@@ -143,6 +129,76 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// A served-by provider row. Clicking the row toggles an inline connection detail (no navigation to
+// the Providers page — with many providers that page may not list this one). The trailing "Add" icon
+// jumps to the create-API-model form prefilled for this provider (api_format is openai for all
+// catalog providers; base_url is the provider's own).
+function ServedByRow({ served, modelId }: { served: ServedBy; modelId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data: provider, isLoading } = useCatalogProviderDetail(open ? served.slug : null);
+  const addSearch = {
+    api_format: 'openai',
+    ...(served.base_url ? { base_url: served.base_url } : {}),
+    model: modelId,
+  };
+  return (
+    <div className="cat-servedby-item" data-testid={`cat-model-servedby-${served.slug}`}>
+      <div className="cat-servedby-row">
+        <button
+          type="button"
+          className="cat-servedby-main"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          data-testid={`cat-model-servedby-toggle-${served.slug}`}
+        >
+          <div className={`cat-logo cat-tint-${tintIndex(served.slug)}`} aria-hidden="true">
+            {monogram(served.name)}
+          </div>
+          <span className="cat-servedby-name">{served.name}</span>
+          <span className="cat-servedby-price">
+            {isFree(served.pricing.input_per_m, served.pricing.output_per_m)
+              ? 'Free'
+              : `${fmtPrice(served.pricing.input_per_m)} / ${fmtPrice(served.pricing.output_per_m)}`}
+          </span>
+        </button>
+        <Link
+          to="/models/api/new/"
+          search={addSearch}
+          className="cat-servedby-add"
+          title={`Add ${served.name} model`}
+          data-testid={`cat-model-servedby-add-${served.slug}`}
+        >
+          <ShellIcon name="circle-plus" size={16} />
+        </Link>
+      </div>
+      {open && (
+        <div className="cat-servedby-detail" data-testid={`cat-model-servedby-detail-${served.slug}`}>
+          {isLoading && !provider ? (
+            <Skeleton className="h-12 w-full" />
+          ) : (
+            <div className="dp-rows">
+              <Row k="Base URL" v={provider?.api_base_url ?? served.base_url ?? '— (preset)'} />
+              <Row k="API format" v={provider?.bridge.api_format} />
+              <Row k="API keys" v={provider?.env?.length ? provider.env.join(', ') : undefined} />
+              {provider?.doc_url && (
+                <a
+                  className="cat-doc-link"
+                  href={provider.doc_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid={`cat-model-servedby-doc-${served.slug}`}
+                >
+                  <ShellIcon name="book-open" size={13} /> Documentation
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   mockCatalogError,
   mockCatalogModelDetail,
   mockCatalogModels,
+  mockCatalogProviderDetail,
 } from '@/test-utils/msw-v2/handlers/reference-catalog';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
@@ -188,7 +189,7 @@ describe('ExploreApiScreen (A1 — list)', () => {
 
 describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
   it('opens the rail with spec grid + Served-by on row select', async () => {
-    server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
+    server.use(...mockCatalogModels(), ...mockCatalogModelDetail(), ...mockCatalogProviderDetail());
     await renderScreen();
 
     const user = userEvent.setup();
@@ -198,13 +199,18 @@ describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
     const specs = await screen.findByTestId('cat-model-detail-specs');
     expect(specs).toHaveTextContent('Context');
     expect(specs).toHaveTextContent('200K');
-    // Served-by from the detail fetch, deep-linking into the Providers page.
+    // Served-by from the detail fetch. Rows no longer navigate to the Providers page; the per-row
+    // Add icon targets the create-API-model form (api_format=openai, the provider's base_url).
     const servedBy = await screen.findByTestId('cat-model-servedby');
     expect(servedBy).toHaveTextContent('Anthropic');
-    expect(screen.getByTestId('cat-model-servedby-openrouter')).toHaveAttribute(
-      'href',
-      expect.stringContaining('/models/explore/api-providers/?select=openrouter')
-    );
+    const add = screen.getByTestId('cat-model-servedby-add-openrouter');
+    const addHref = add.getAttribute('href') ?? '';
+    expect(addHref).toContain('/models/api/new/');
+    expect(addHref).toContain('api_format=openai');
+    expect(addHref).toContain('model=claude-sonnet-4.5');
+    // Clicking the provider row reveals its connection detail inline (no route change).
+    await user.click(screen.getByTestId('cat-model-servedby-toggle-openrouter'));
+    expect(await screen.findByTestId('cat-model-servedby-detail-openrouter')).toBeInTheDocument();
   });
 
   it('synthesizes "Stable" status for a null-status model', async () => {
