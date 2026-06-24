@@ -231,9 +231,11 @@ export function ExploreProvidersScreen() {
         logo_url: detail.logo_url,
         model_count: detail.model_count,
         rank: 0,
+        is_lab: false,
         api_base_url: detail.api_base_url,
         provider_shape: detail.provider_shape,
-        api_format_hint: detail.bridge.api_format,
+        // BridgeApiFormat is a subset of ApiFormatHint (no 'other'); widen for the summary field.
+        api_format_hint: detail.bridge.api_format as ProviderSummary['api_format_hint'],
         capabilities_summary: [],
         pricing_summary: { min_in_per_m: null, min_out_per_m: null },
       };

@@ -20,6 +20,7 @@ export function createProviderSummary(overrides?: Partial<ProviderSummary>): Pro
     logo_url: '/api/v1/catalog/logos/nano-gpt.svg',
     model_count: 617,
     rank: 1,
+    is_lab: false,
     api_base_url: 'https://nano-gpt.com/api/v1',
     provider_shape: 'openai-compatible',
     api_format_hint: 'openai',
@@ -41,6 +42,7 @@ export function createProviderListResponse(
     facets: {
       capability: { reasoning: 80, tool_call: 90, structured_output: 60, attachment: 70, vision: 65 },
       api_format: { openai: 70, anthropic: 8, gemini: 6, other: 12 },
+      is_lab: { lab: 5 },
     },
     ...overrides,
   };
