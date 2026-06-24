@@ -39,12 +39,13 @@ test.describe('Explore · API Models', () => {
       await expect(modelsPage.page.locator(modelsPage.selectors.row('anthropic', 'model-0'))).toContainText('Model 0');
     });
 
-    await test.step('Load more appends the next page without duplicates', async () => {
-      expect(await modelsPage.hasLoadMore()).toBe(true);
-      await modelsPage.loadMore();
-      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 31 of 31');
-      expect(await modelsPage.getRowCount()).toBe(31);
-      expect(await modelsPage.hasLoadMore()).toBe(false);
+    await test.step('Numbered pager navigates to page 2', async () => {
+      expect(await modelsPage.hasPagination()).toBe(true);
+      await modelsPage.gotoPage(2);
+      // 31 models, 30/page → page 2 has the single remaining row.
+      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 1 of 31');
+      expect(await modelsPage.getRowCount()).toBe(1);
+      await modelsPage.gotoPage(1);
     });
 
     await test.step('Opening a model shows the rail with specs + Served-by', async () => {
@@ -66,7 +67,7 @@ test.describe('Explore · API Models', () => {
       );
     });
 
-    await test.step('Back on the catalog: search narrows and Load-more stays available', async () => {
+    await test.step('Back on the catalog: search narrows and clearing restores the list', async () => {
       await modelsPage.navigateToModels();
       await modelsPage.waitForListSettled();
       await modelsPage.searchFor('Model 7');

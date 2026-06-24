@@ -15,7 +15,9 @@ export class ApiExplorePage extends BasePage {
     anyRow: '[data-testid^="cat-model-row-"]',
     row: (slug, modelId) => `[data-testid="cat-model-row-${slug}-${modelId}"]`,
     empty: '[data-testid="cat-model-empty"]',
-    loadMore: '[data-testid="cat-model-load-more"]',
+    pagination: '[data-testid="pagination"]',
+    pageBtn: (n) => `[data-testid="pagination-page-${n}"]`,
+    pageNext: '[data-testid="pagination-next"]',
     // Detail rail.
     railSpecs: '[data-testid="cat-model-detail-specs"]',
     railServedBy: '[data-testid="cat-model-servedby"]',
@@ -58,6 +60,7 @@ export class ApiExplorePage extends BasePage {
       modality: { text: n, image: n, audio: 0, video: 0, pdf: 0 },
       status: { stable: n, alpha: 0, beta: 0, deprecated: 0 },
       provider: { anthropic: n },
+      family: { claude: n },
       open_weights: { open: 0, closed: n },
     };
   }
@@ -176,14 +179,14 @@ export class ApiExplorePage extends BasePage {
     return this.page.locator(this.selectors.anyRow).count();
   }
 
-  async loadMore() {
-    await this.page.locator(this.selectors.loadMore).click();
+  async gotoPage(n) {
+    await this.page.locator(this.selectors.pageBtn(n)).click();
     await this.waitForSPAReady();
     await this.waitForListSettled();
   }
 
-  async hasLoadMore() {
-    return (await this.page.locator(this.selectors.loadMore).count()) > 0;
+  async hasPagination() {
+    return (await this.page.locator(this.selectors.pagination).count()) > 0;
   }
 
   /** Open the detail rail for a model row; waits for the spec grid to render. */

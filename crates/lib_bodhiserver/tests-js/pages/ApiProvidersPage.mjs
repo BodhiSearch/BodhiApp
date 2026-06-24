@@ -20,7 +20,9 @@ export class ApiProvidersPage extends BasePage {
     anyRow: '[data-testid^="cat-prov-row-"]',
     row: (slug) => `[data-testid="cat-prov-row-${slug}"]`,
     empty: '[data-testid="cat-prov-empty"]',
-    loadMore: '[data-testid="cat-prov-load-more"]',
+    pagination: '[data-testid="pagination"]',
+    pageBtn: (n) => `[data-testid="pagination-page-${n}"]`,
+    pageNext: '[data-testid="pagination-next"]',
     search: '[data-testid="cat-prov-search"] input',
     sort: (key) => `[data-testid="cat-prov-sort-${key}"]`,
     facets: '[data-testid="cat-prov-facets"]',
@@ -159,14 +161,20 @@ export class ApiProvidersPage extends BasePage {
     return this.page.locator(this.selectors.anyRow).count();
   }
 
-  async loadMore() {
-    await this.page.locator(this.selectors.loadMore).click();
+  async gotoPage(n) {
+    await this.page.locator(this.selectors.pageBtn(n)).click();
     await this.waitForSPAReady();
     await this.waitForListSettled();
   }
 
-  async hasLoadMore() {
-    return (await this.page.locator(this.selectors.loadMore).count()) > 0;
+  async nextPage() {
+    await this.page.locator(this.selectors.pageNext).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async hasPagination() {
+    return (await this.page.locator(this.selectors.pagination).count()) > 0;
   }
 
   /** Open the detail rail for a provider row; waits for the rail panel to render. */

@@ -43,13 +43,13 @@ test.describe('Explore · API Providers', () => {
       await expect(providersPage.page.locator(providersPage.selectors.row('prov-0'))).toContainText('1000');
     });
 
-    await test.step('Load more appends the next page without duplicates', async () => {
-      expect(await providersPage.hasLoadMore()).toBe(true);
-      await providersPage.loadMore();
-      await expect(providersPage.page.locator(providersPage.selectors.resultbar)).toContainText('Showing 31 of 31');
-      expect(await providersPage.getRowCount()).toBe(31);
-      // Last page consumed → Load more gone.
-      expect(await providersPage.hasLoadMore()).toBe(false);
+    await test.step('Numbered pager navigates to page 2', async () => {
+      expect(await providersPage.hasPagination()).toBe(true);
+      await providersPage.nextPage();
+      // 31 providers, 30/page → page 2 has the single remaining row.
+      await expect(providersPage.page.locator(providersPage.selectors.resultbar)).toContainText('Showing 1 of 31');
+      expect(await providersPage.getRowCount()).toBe(1);
+      await providersPage.gotoPage(1);
     });
 
     await test.step('Opening a provider shows the rail with connection meta + models', async () => {
