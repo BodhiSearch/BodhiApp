@@ -2,7 +2,15 @@ import { useCallback, useMemo, useState } from 'react';
 
 import type { ListCatalogModelsQuery, ModelLite } from '@bodhiapp/reference-api-types';
 
-import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
+import {
+  LinkRow,
+  ShellIcon,
+  ShellPagination,
+  ShellSearch,
+  useListKeyNav,
+  useShell,
+  useShellChrome,
+} from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogModelDetail, useCatalogModels } from '@/hooks/reference';
@@ -118,7 +126,6 @@ function ModelRow({
 export function ExploreApiScreen() {
   useListKeyNav();
 
-  const [accumulated, setAccumulated] = useState<ModelLite[]>([]);
   const [page, setPage] = useState(1);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -138,37 +145,11 @@ export function ExploreApiScreen() {
   );
   const { data, isLoading, error } = useCatalogModels(params);
 
-  // Reset paging synchronously on any filter/sort/search change so keepPreviousData can't append a
-  // stale page-2 onto a new query's page-1.
-  const resetPaging = useCallback(() => {
-    setAccumulated([]);
-    setPage(1);
-  }, []);
-
-  // Page-based "Load more": accumulate earlier pages, dedup by slug/model_id. (Catalog is page-based
-  // with a real total — unlike Local's cursor.)
-  const rows = useMemo(() => {
-    const seen = new Set<string>();
-    const out: ModelLite[] = [];
-    for (const m of [...accumulated, ...(data?.items ?? [])]) {
-      const k = modelKey(m);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push(m);
-    }
-    return out;
-  }, [accumulated, data?.items]);
-
+  // Numbered pagination: render the current page directly (keepPreviousData avoids a flash on page
+  // change). Reset to page 1 on any filter/sort/search change.
+  const resetPaging = useCallback(() => setPage(1), []);
+  const rows = data?.items ?? [];
   const total = data?.total ?? rows.length;
-  const showLoadMore = rows.length < total;
-
-  const loadMore = useCallback(() => {
-    setAccumulated((prev) => {
-      const seen = new Set(prev.map(modelKey));
-      return [...prev, ...(data?.items ?? []).filter((m) => !seen.has(modelKey(m)))];
-    });
-    setPage((p) => p + 1);
-  }, [data?.items]);
 
   const { openRail } = useShell();
   const withViewTransition = useViewTransition();
@@ -332,19 +313,18 @@ export function ExploreApiScreen() {
               <ModelRow
                 key={modelKey(m)}
                 model={m}
-                idx={i + 1}
+                idx={(page - 1) * PAGE_SIZE + i + 1}
                 active={modelKey(m) === selectedKey}
                 onSelect={() => select(modelKey(m))}
               />
             ))}
-            {showLoadMore && (
-              <button type="button" className="cat-loadmore" onClick={loadMore} data-testid="cat-model-load-more">
-                <ShellIcon name="chevrons-down" size={14} /> Load more
-              </button>
-            )}
           </div>
         )}
       </div>
+
+      {total > PAGE_SIZE && (
+        <ShellPagination total={total} page={page} onPage={setPage} pageSize={PAGE_SIZE} unit="models" />
+      )}
     </div>
   );
 }

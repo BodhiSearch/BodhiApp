@@ -120,20 +120,50 @@ describe('ExploreApiScreen (A1 — list)', () => {
     expect(seenAuth).toBeNull();
   });
 
-  it('shows "Load more" and appends the next page without duplicates', async () => {
+  it('renders a numbered pager and navigates to page 2', async () => {
     const items = Array.from({ length: 31 }, (_, i) =>
       createModelLite({ slug: 'p', model_id: `m-${i}`, name: `Model ${i}` })
     );
-    server.use(...mockCatalogModels({ response: createModelsListResponse(items) }));
+    const seen: URL[] = [];
+    server.use(
+      ...mockCatalogModels({ response: createModelsListResponse(items), onRequest: ({ url }) => seen.push(url) })
+    );
     await renderScreen();
 
+    // Page 1: 30 of 31 rows, pager visible (no Load More).
     expect(screen.getByTestId('cat-model-resultbar')).toHaveTextContent('Showing 30 of 31');
-    const user = userEvent.setup();
-    await user.click(screen.getByTestId('cat-model-load-more'));
-
-    await waitFor(() => expect(screen.getByTestId('cat-model-resultbar')).toHaveTextContent('Showing 31 of 31'));
-    expect(within(screen.getByTestId('cat-model-list')).getAllByRole('option').length).toBe(31);
+    expect(screen.getByTestId('pagination')).toBeInTheDocument();
     expect(screen.queryByTestId('cat-model-load-more')).not.toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('pagination-page-2'));
+
+    // Page 2: the request carries page=2 and the single remaining row renders.
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('page') === '2')).toBe(true));
+    await waitFor(() => expect(within(screen.getByTestId('cat-model-list')).getAllByRole('option').length).toBe(1));
+  });
+
+  it('resets to page 1 when a filter changes', async () => {
+    const items = Array.from({ length: 31 }, (_, i) =>
+      createModelLite({ slug: 'p', model_id: `m-${i}`, name: `Model ${i}` })
+    );
+    const seen: URL[] = [];
+    server.use(
+      ...mockCatalogModels({ response: createModelsListResponse(items), onRequest: ({ url }) => seen.push(url) })
+    );
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('pagination-page-2'));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('page') === '2')).toBe(true));
+
+    // Toggling a facet must reset paging to page 1.
+    await user.click(screen.getByTestId('cat-model-cap-reasoning'));
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.getAll('capability')).toContain('reasoning');
+      expect(last.searchParams.get('page')).toBe('1');
+    });
   });
 
   it('renders the empty state when the catalog has no models', async () => {
@@ -232,7 +262,7 @@ describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
 });
 
 describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
-  it('search submits q on Enter and keeps Load more available (inverse of Local)', async () => {
+  it('search submits q on Enter and keeps the numbered pager (inverse of Local)', async () => {
     const items = Array.from({ length: 31 }, (_, i) =>
       createModelLite({ slug: 'p', model_id: `m-${i}`, name: `Model ${i}` })
     );
@@ -248,8 +278,8 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     await user.type(input, 'Model{Enter}');
 
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('q') === 'Model')).toBe(true));
-    // Search does NOT disable pagination here (unlike Local).
-    expect(screen.getByTestId('cat-model-load-more')).toBeInTheDocument();
+    // Search does NOT disable pagination here (unlike Local's cursor model).
+    expect(screen.getByTestId('pagination')).toBeInTheDocument();
   });
 
   it('column sort headers send the chosen sort and mark active', async () => {

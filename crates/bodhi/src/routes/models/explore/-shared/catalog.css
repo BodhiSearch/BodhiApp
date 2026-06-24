@@ -260,26 +260,6 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* Load more. */
-.cat-loadmore {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 10px;
-  margin-top: 4px;
-  background: none;
-  border: 0;
-  border-top: 1px solid hsl(var(--border));
-  cursor: pointer;
-  font-size: 13px;
-  color: hsl(var(--muted-foreground));
-}
-.cat-loadmore:hover {
-  color: hsl(var(--foreground));
-}
-
 /* ── Detail rail ─────────────────────────────────────────────── */
 .cat-doc-link {
   display: inline-flex;

@@ -3,7 +3,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ListProvidersQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
 import { useSearch } from '@tanstack/react-router';
 
-import { LinkRow, ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
+import {
+  LinkRow,
+  ShellIcon,
+  ShellPagination,
+  ShellSearch,
+  useListKeyNav,
+  useShell,
+  useShellChrome,
+} from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
@@ -89,7 +97,6 @@ function ProviderRow({
 export function ExploreProvidersScreen() {
   useListKeyNav();
 
-  const [accumulated, setAccumulated] = useState<ProviderSummary[]>([]);
   const [page, setPage] = useState(1);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -109,36 +116,11 @@ export function ExploreProvidersScreen() {
   );
   const { data, isLoading, error } = useCatalogProviders(params);
 
-  // Reset paging synchronously on any filter/sort/search change — otherwise keepPreviousData could
-  // append a stale page-2 onto a new query's page-1.
-  const resetPaging = useCallback(() => {
-    setAccumulated([]);
-    setPage(1);
-  }, []);
-
-  // Page-based "Load more": prepend accumulated earlier pages, dedup by slug. (Catalog is page-based
-  // with a real total — unlike Local's cursor.)
-  const rows = useMemo(() => {
-    const seen = new Set<string>();
-    const out: ProviderSummary[] = [];
-    for (const p of [...accumulated, ...(data?.items ?? [])]) {
-      if (seen.has(p.slug)) continue;
-      seen.add(p.slug);
-      out.push(p);
-    }
-    return out;
-  }, [accumulated, data?.items]);
-
+  // Numbered pagination: render the current page directly (keepPreviousData avoids a flash on page
+  // change). Reset to page 1 on any filter/sort/search change.
+  const resetPaging = useCallback(() => setPage(1), []);
+  const rows = data?.items ?? [];
   const total = data?.total ?? rows.length;
-  const showLoadMore = rows.length < total;
-
-  const loadMore = useCallback(() => {
-    setAccumulated((prev) => {
-      const seen = new Set(prev.map((p) => p.slug));
-      return [...prev, ...(data?.items ?? []).filter((p) => !seen.has(p.slug))];
-    });
-    setPage((p) => p + 1);
-  }, [data?.items]);
 
   const { openRail } = useShell();
   const withViewTransition = useViewTransition();
@@ -345,19 +327,18 @@ export function ExploreProvidersScreen() {
               <ProviderRow
                 key={p.slug}
                 provider={p}
-                idx={i + 1}
+                idx={(page - 1) * PAGE_SIZE + i + 1}
                 active={p.slug === selectedSlug}
                 onSelect={() => select(p.slug)}
               />
             ))}
-            {showLoadMore && (
-              <button type="button" className="cat-loadmore" onClick={loadMore} data-testid="cat-prov-load-more">
-                <ShellIcon name="chevrons-down" size={14} /> Load more
-              </button>
-            )}
           </div>
         )}
       </div>
+
+      {total > PAGE_SIZE && (
+        <ShellPagination minimal total={total} page={page} onPage={setPage} pageSize={PAGE_SIZE} unit="providers" />
+      )}
     </div>
   );
 }

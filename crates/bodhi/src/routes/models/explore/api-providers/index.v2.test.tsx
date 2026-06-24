@@ -95,25 +95,26 @@ describe('ExploreProvidersScreen (B1 — list)', () => {
     expect(seenAuth).toBeNull();
   });
 
-  it('shows "Load more" when more pages remain and appends without duplicates', async () => {
-    // 31 providers, page_size 30 → page 1 returns 30, total 31, Load-more visible.
+  it('renders a numbered pager and navigates to page 2', async () => {
+    // 31 providers, page_size 30 → page 1 returns 30, total 31, pager visible.
     const items = Array.from({ length: 31 }, (_, i) =>
       createProviderSummary({ slug: `prov-${i}`, name: `Provider ${i}`, rank: i + 1 })
     );
-    server.use(...mockCatalogProviders({ response: createProviderListResponse(items) }));
+    const seen: URL[] = [];
+    server.use(
+      ...mockCatalogProviders({ response: createProviderListResponse(items), onRequest: ({ url }) => seen.push(url) })
+    );
     await renderScreen();
 
     expect(screen.getByTestId('cat-prov-resultbar')).toHaveTextContent('Showing 30 of 31');
-    const loadMore = screen.getByTestId('cat-prov-load-more');
+    expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    expect(screen.queryByTestId('cat-prov-load-more')).not.toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(loadMore);
+    await user.click(screen.getByTestId('pagination-next'));
 
-    await waitFor(() => expect(screen.getByTestId('cat-prov-resultbar')).toHaveTextContent('Showing 31 of 31'));
-    // No duplicate rows after appending page 2.
-    const list = screen.getByTestId('cat-prov-list');
-    expect(within(list).getAllByRole('option').length).toBe(31);
-    expect(screen.queryByTestId('cat-prov-load-more')).not.toBeInTheDocument();
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('page') === '2')).toBe(true));
+    await waitFor(() => expect(within(screen.getByTestId('cat-prov-list')).getAllByRole('option').length).toBe(1));
   });
 
   it('renders the empty state when the catalog has no providers', async () => {
