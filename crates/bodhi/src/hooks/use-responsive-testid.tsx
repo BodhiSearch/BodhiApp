@@ -44,17 +44,15 @@ export function useResponsiveTestId() {
 
     const { width } = viewport;
 
-    // Mobile breakpoint (< 768px) - TailwindCSS md: breakpoint
+    // Breakpoints mirror TailwindCSS md:/lg:.
     if (width < 768) {
       return `m-${baseId}`;
     }
 
-    // Tablet breakpoint (768px - 1023px) - TailwindCSS md: to lg: range
     if (width < 1024) {
       return `tab-${baseId}`;
     }
 
-    // Desktop breakpoint (>= 1024px) - TailwindCSS lg: and above
     return baseId;
   };
 

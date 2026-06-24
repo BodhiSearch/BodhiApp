@@ -210,17 +210,14 @@ describe('ServerViewPage - Auth Configs', () => {
       expect(screen.getByTestId('add-auth-config-button')).toBeInTheDocument();
     });
 
-    // Initially form is hidden
     expect(screen.queryByTestId('auth-config-form')).not.toBeInTheDocument();
 
     await user.click(screen.getByTestId('add-auth-config-button'));
     expect(screen.getByTestId('auth-config-form')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-name-input')).toBeInTheDocument();
 
-    // Click cancel to hide the form
     await user.click(screen.getByTestId('auth-config-cancel-button'));
     expect(screen.queryByTestId('auth-config-form')).not.toBeInTheDocument();
-    // Add button reappears
     expect(screen.getByTestId('add-auth-config-button')).toBeInTheDocument();
   });
 
@@ -242,13 +239,11 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Fill out header form fields - multi-entry form
     await user.type(screen.getByTestId('auth-config-name-input'), 'My API Key');
     await user.type(screen.getByTestId('auth-config-entry-key-0'), 'Authorization');
 
     await user.click(screen.getByTestId('auth-config-save-button'));
 
-    // Form should close after success
     await waitFor(() => {
       expect(screen.queryByTestId('auth-config-form')).not.toBeInTheDocument();
     });
@@ -276,7 +271,6 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('auth-config-save-button'));
 
-    // Form should stay open on error
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-form')).toBeInTheDocument();
     });
@@ -302,11 +296,9 @@ describe('ServerViewPage - Auth Configs', () => {
 
     expect(screen.getByTestId('delete-auth-config-dialog')).toBeInTheDocument();
 
-    // Click the delete button in the dialog
     const deleteButton = screen.getByRole('button', { name: /^delete$/i });
     await user.click(deleteButton);
 
-    // Dialog should close after success
     await waitFor(() => {
       expect(screen.queryByTestId('delete-auth-config-dialog')).not.toBeInTheDocument();
     });
@@ -332,7 +324,7 @@ describe('ServerViewPage - Auth Configs', () => {
 
     expect(screen.queryByTestId('auth-config-form')).not.toBeInTheDocument();
 
-    // Re-open and verify form is reset (name is auto-populated)
+    // Re-opening resets the form: name auto-populates again
     await user.click(screen.getByTestId('add-auth-config-button'));
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-name-input')).toHaveValue('header-default');
@@ -357,11 +349,9 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Default is header - should show entry fields
     expect(screen.getByTestId('auth-config-entry-key-0')).toBeInTheDocument();
     expect(screen.queryByTestId('auth-config-client-id-input')).not.toBeInTheDocument();
 
-    // Change to oauth
     await user.click(screen.getByTestId('auth-config-type-select'));
     await user.click(screen.getByText('OAuth'));
 
@@ -370,12 +360,10 @@ describe('ServerViewPage - Auth Configs', () => {
       expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
     });
 
-    // Should now show OAuth fields
     expect(screen.queryByTestId('auth-config-entry-key-0')).not.toBeInTheDocument();
     expect(screen.getByTestId('auth-config-auth-endpoint-input')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-token-endpoint-input')).toBeInTheDocument();
     expect(screen.getByTestId('auth-config-scopes-input')).toBeInTheDocument();
-    // Registration Type dropdown is now always visible
     expect(screen.getByTestId('oauth-registration-type-select')).toBeInTheDocument();
   });
 
@@ -393,7 +381,6 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Name is auto-populated, so button should be enabled
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-name-input')).toHaveValue('header-default');
     });
@@ -431,20 +418,17 @@ describe('ServerViewPage - Auth Configs', () => {
     });
     await user.click(screen.getByRole('option', { name: /oauth/i }));
 
-    // Wait for auto-discovery to complete and populate fields
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-auth-endpoint-input')).toHaveValue('https://mcp.asana.com/authorize');
     });
 
-    // Verify all endpoints are populated
     expect(screen.getByTestId('auth-config-token-endpoint-input')).toHaveValue('https://mcp.asana.com/token');
     expect(screen.getByTestId('auth-config-registration-endpoint-input')).toHaveValue('https://mcp.asana.com/register');
     expect(screen.getByTestId('auth-config-scopes-input')).toHaveValue('mcp:tools mcp:read');
 
-    // Registration Type dropdown should be visible and set to Dynamic Registration
     expect(screen.getByTestId('oauth-registration-type-select')).toBeInTheDocument();
 
-    // Client ID field should NOT be visible (dynamic_registration mode hides it)
+    // dynamic_registration mode hides the client ID field
     expect(screen.queryByTestId('auth-config-client-id-input')).not.toBeInTheDocument();
   });
 
@@ -479,10 +463,9 @@ describe('ServerViewPage - Auth Configs', () => {
       expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
     });
 
-    // No error should be shown on first failure (silent fallback)
+    // No error on first failure (silent fallback)
     expect(screen.queryByTestId('auth-config-discover-error')).not.toBeInTheDocument();
 
-    // Registration Type dropdown should be visible and show Pre-Registered
     expect(screen.getByTestId('oauth-registration-type-select')).toHaveTextContent('Pre-Registered');
   });
 
@@ -507,15 +490,12 @@ describe('ServerViewPage - Auth Configs', () => {
       expect(screen.getByTestId('add-auth-config-button')).toBeInTheDocument();
     });
 
-    // Click to show form - default type is header
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Wait for auto-populated name
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-name-input')).toHaveValue('header-default');
     });
 
-    // Switch to OAuth type
     const typeSelect = screen.getByTestId('auth-config-type-select');
     await user.click(typeSelect);
 
@@ -524,7 +504,7 @@ describe('ServerViewPage - Auth Configs', () => {
     });
     await user.click(screen.getByRole('option', { name: /oauth/i }));
 
-    // Name should update from 'header-default' to 'oauth-default'
+    // Name auto-updates 'header-default' → 'oauth-default'
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-name-input')).toHaveValue('oauth-default');
     });
@@ -549,7 +529,6 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Switch to OAuth type
     await user.click(screen.getByTestId('auth-config-type-select'));
     await user.click(screen.getByText('OAuth'));
 
@@ -558,7 +537,6 @@ describe('ServerViewPage - Auth Configs', () => {
       expect(screen.getByTestId('auth-config-client-id-input')).toBeInTheDocument();
     });
 
-    // Fill in OAuth fields
     await user.clear(screen.getByTestId('auth-config-name-input'));
     await user.type(screen.getByTestId('auth-config-name-input'), 'My OAuth Config');
     await user.type(screen.getByTestId('auth-config-client-id-input'), 'my-client-id');
@@ -567,7 +545,6 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('auth-config-save-button'));
 
-    // Form should close after success
     await waitFor(() => {
       expect(screen.queryByTestId('auth-config-form')).not.toBeInTheDocument();
     });
@@ -591,23 +568,20 @@ describe('ServerViewPage - Auth Configs', () => {
 
     await user.click(screen.getByTestId('add-auth-config-button'));
 
-    // Wait for auto-populated name
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-name-input')).toHaveValue('header-default');
     });
 
-    // Set a custom name
     await user.clear(screen.getByTestId('auth-config-name-input'));
     await user.type(screen.getByTestId('auth-config-name-input'), 'My Custom Name');
 
-    // Switch to OAuth type
     await user.click(screen.getByTestId('auth-config-type-select'));
     await waitFor(() => {
       expect(screen.getByRole('option', { name: /oauth/i })).toBeInTheDocument();
     });
     await user.click(screen.getByRole('option', { name: /oauth/i }));
 
-    // Custom name should be preserved (not overwritten to 'oauth-default')
+    // Custom name is preserved, not overwritten to 'oauth-default'
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-name-input')).toHaveValue('My Custom Name');
     });

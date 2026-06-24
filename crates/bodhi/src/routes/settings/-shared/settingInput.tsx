@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 
 export type ParsedSetting = { ok: true; value: string | number | boolean } | { ok: false; error: string };
 
-/** Coerce + validate the draft string against the setting's metadata (mirrors the old dialog). */
+/** Coerce + validate the draft string against the setting's metadata. */
 export function parseSettingValue(metadata: SettingMetadata, raw: string): ParsedSetting {
   if (metadata.type === 'number') {
     const value = Number(raw);

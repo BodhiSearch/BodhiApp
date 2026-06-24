@@ -13,7 +13,6 @@ import { validateLlmLibertyEnvelope } from './llmLibertyEnvelope';
 
 const LLM_LIBERTY_OAUTH_FORMAT = 'llm_liberty_oauth';
 
-// API format presets for AI APIs
 export const API_FORMAT_PRESETS = {
   openai: {
     name: 'OpenAI - Completions',
@@ -208,7 +207,6 @@ export const updateApiModelSchema = buildApiModelSchema({
   apiKeyMinLengthRequired: false,
 });
 
-// Form data types
 export type ApiModelFormData = z.infer<typeof createApiModelSchema>;
 export type UpdateApiModelFormData = z.infer<typeof updateApiModelSchema>;
 

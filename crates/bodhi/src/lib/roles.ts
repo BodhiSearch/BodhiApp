@@ -1,7 +1,6 @@
 import type { ResourceRole } from '@bodhiapp/ts-client';
 export type Role = ResourceRole;
 
-// Role hierarchy for access control and filtering
 export const roleHierarchy: Record<Role, number> = {
   resource_anonymous: 0,
   resource_guest: 1,
@@ -11,7 +10,6 @@ export const roleHierarchy: Record<Role, number> = {
   resource_admin: 5,
 };
 
-// Role options for dropdowns and UI components
 export const ROLE_OPTIONS = [
   { value: 'resource_user' as Role, label: 'User' },
   { value: 'resource_power_user' as Role, label: 'Power User' },

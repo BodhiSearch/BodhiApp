@@ -87,7 +87,6 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
     },
   });
 
-  // Auto-populate config name based on type
   useEffect(() => {
     if (props.type === 'header' && (!props.name || props.name === 'oauth-default')) {
       props.onNameChange('header-default');

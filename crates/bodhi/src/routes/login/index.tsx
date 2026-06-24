@@ -50,7 +50,6 @@ function MultiTenantLoginContent() {
     }
   }, [search, navigate]);
 
-  // Dashboard OAuth (platform login)
   const { mutate: initiateDashboardOAuth, isPending: isDashboardLoading } = useDashboardOAuthInitiate({
     onSuccess: (response: AxiosResponse<RedirectResponse>) => {
       setError(null);
@@ -69,7 +68,6 @@ function MultiTenantLoginContent() {
     },
   });
 
-  // Resource OAuth (tenant login)
   const { mutate: initiateOAuth, isPending: isOAuthLoading } = useOAuthInitiate({
     onSuccess: (response) => {
       setError(null);
@@ -89,10 +87,8 @@ function MultiTenantLoginContent() {
     },
   });
 
-  // Tenant activation
   const { mutate: activateTenant, isPending: isActivating } = useTenantActivate({
     onSuccess: () => {
-      // After activation, trigger resource OAuth for the activated tenant
       if (selectedTenantId) {
         initiateOAuth({ client_id: selectedTenantId });
       }
@@ -103,13 +99,11 @@ function MultiTenantLoginContent() {
     },
   });
 
-  // Fetch tenants when user has dashboard session
   const needsTenantSelection = !!userInfo?.dashboard && !appInfo?.client_id;
   const { data: tenantsData, isLoading: tenantsLoading } = useListTenants({
     enabled: needsTenantSelection,
   });
 
-  // Logout
   const { logout, isLoading: isLoggingOut } = useLogoutWithCleanup();
 
   // Process invite flow (takes priority over auto-login)
@@ -134,15 +128,12 @@ function MultiTenantLoginContent() {
     hasInviteFlowTriggered.current = true;
     sessionStorage.removeItem('login_to_tenant');
 
-    // Check if target tenant is in the tenants list
     const targetTenant = tenantsData?.tenants?.find((t: TenantListItem) => t.client_id === loginToTenant);
 
     if (targetTenant?.logged_in) {
-      // Already a member and logged in — activate and show toast
       activateTenant({ client_id: targetTenant.client_id });
       showSuccess('Organization', 'Already a member of this organization');
     } else {
-      // Not logged in to target tenant or tenant not in list — initiate OAuth
       sessionStorage.setItem('bodhi-return-url', '/login/');
       initiateOAuth({ client_id: loginToTenant });
     }
@@ -158,22 +149,18 @@ function MultiTenantLoginContent() {
     showSuccess,
   ]);
 
-  // Auto-login if only one tenant (useRef guard prevents double-firing in StrictMode)
-  // Suppressed when invite flow is active
+  // useRef guard prevents double-firing in StrictMode; suppressed when invite flow is active
   const hasAutoLoginTriggered = useRef(false);
   useEffect(() => {
     if (hasAutoLoginTriggered.current) return;
-    // Suppress auto-login when invite flow is active
     if (sessionStorage.getItem('login_to_tenant')) return;
     if (needsTenantSelection && tenantsData?.tenants && tenantsData.tenants.length === 1) {
       hasAutoLoginTriggered.current = true;
       const tenant = tenantsData.tenants[0];
       setSelectedTenantId(tenant.client_id);
       if (tenant.logged_in) {
-        // Already logged in to this tenant, activate it
         activateTenant({ client_id: tenant.client_id });
       } else {
-        // Need to OAuth into this tenant
         initiateOAuth({ client_id: tenant.client_id });
       }
     }

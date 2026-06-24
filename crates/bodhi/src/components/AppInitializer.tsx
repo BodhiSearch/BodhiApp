@@ -17,7 +17,6 @@ import {
 } from '@/lib/constants';
 import { Role, meetsMinRole } from '@/lib/roles';
 
-// For backward compatibility, allow passing clean role names (admin, manager, etc.)
 type MinRole = 'user' | 'power_user' | 'manager' | 'admin';
 
 interface AppInitializerProps {

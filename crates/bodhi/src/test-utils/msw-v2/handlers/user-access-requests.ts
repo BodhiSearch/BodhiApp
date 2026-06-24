@@ -1,6 +1,3 @@
-/**
- * Type-safe MSW v2 handlers for access-requests endpoints using openapi-msw
- */
 import { delay } from 'msw';
 
 import {

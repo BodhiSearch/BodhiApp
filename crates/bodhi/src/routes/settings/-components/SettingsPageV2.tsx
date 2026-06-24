@@ -124,7 +124,6 @@ export function SettingsPageV2({ config: staticConfig }: { config: SettingsConfi
     return c;
   }, [config.groups, byKey]);
 
-  // Filter-tab counts.
   const filterCounts = useMemo(() => {
     const present = (settings ?? []).filter((s) => config.groups.some((g) => g.keys.includes(s.key)));
     return {

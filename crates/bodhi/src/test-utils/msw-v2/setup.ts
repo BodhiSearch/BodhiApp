@@ -1,40 +1,16 @@
 /**
- * MSW v2 server setup and configuration with type-safe patterns using openapi-msw
+ * MSW v2 server setup. Prefer `typedHttp` (openapi-msw, type-checked against ts-client paths)
+ * over plain `http`; use `createTypedResponse` for arbitrary-status responses.
  *
- * This setup provides:
- * - OpenAPI MSW typed HTTP handlers for full type safety
- * - MSW v2 server setup and configuration
- * - Type-safe mocking using generated OpenAPI types
- * - Clean handler creation patterns for both typed and standard handlers
- *
- * Key patterns:
- * 1. Use typedHttp for type-safe OpenAPI-based handlers
- * 2. Use standard http for general MSW handlers
- * 3. Use generated types from @bodhiapp/ts-client as single source of truth
- * 4. Use createTypedResponse helper for consistent response creation
- *
- * Example usage in handlers:
  * ```typescript
  * import { typedHttp, http, type components } from '@/test-utils/msw-v2/setup';
  *
- * // OpenAPI typed handler (preferred)
- * export function createTypedHandlers() {
- *   return [
- *     typedHttp.get('/api/endpoint', ({ response }) => {
- *       const responseData: components['schemas']['YourType'] = { ... };
- *       return response(200).json(responseData);
- *     })
- *   ];
- * }
+ * typedHttp.get('/api/endpoint', ({ response }) => {
+ *   const responseData: components['schemas']['YourType'] = { ... };
+ *   return response(200).json(responseData);
+ * });
  *
- * // Standard MSW handler
- * export function createStandardHandlers() {
- *   return [
- *     http.get('/api/endpoint', () => {
- *       return HttpResponse.json(responseData);
- *     })
- *   ];
- * }
+ * http.get('/api/endpoint', () => HttpResponse.json(responseData));
  * ```
  */
 import { http, HttpResponse } from 'msw';

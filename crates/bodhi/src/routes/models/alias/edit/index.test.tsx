@@ -171,11 +171,9 @@ describe('EditAliasPage', () => {
       expect(screen.getByTestId('quant-row-file1')).toHaveAttribute('data-test-state', 'selected');
     });
 
-    // Check context parameters are pre-filled
     const contextParamsTextarea = screen.getByTestId('context-params');
     expect(contextParamsTextarea).toHaveValue('--ctx-size 2048\n--parallel 4');
 
-    // Request parameters should be expanded since there are existing values
     expect(screen.getByText('Request defaults')).toBeInTheDocument();
   });
 
@@ -209,7 +207,6 @@ describe('EditAliasPage', () => {
 
     const contextParamsTextarea = screen.getByTestId('context-params');
 
-    // Clear existing content and add new context parameters
     await user.clear(contextParamsTextarea);
     await user.type(contextParamsTextarea, '--ctx-size 4096\n--threads 16\n--batch-size 512');
 
@@ -231,7 +228,6 @@ describe('EditAliasPage', () => {
 
     const contextParamsTextarea = screen.getByTestId('context-params');
 
-    // Clear all context parameters
     await user.clear(contextParamsTextarea);
     expect(contextParamsTextarea).toHaveValue('');
 

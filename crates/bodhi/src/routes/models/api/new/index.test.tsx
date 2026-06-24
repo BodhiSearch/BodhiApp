@@ -114,34 +114,29 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
 
       render(<NewApiModel />, { wrapper: createWrapper() });
 
-      // Wait for form to load and verify basic structure
       await waitFor(() => {
         expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
         expect(screen.getByText('Create New API Model')).toBeInTheDocument();
       });
 
-      // Verify initial field states
       const apiFormatSelector = screen.getByTestId('api-format-selector');
       const baseUrlInput = screen.getByTestId('base-url-input');
       const apiKeyInput = screen.getByTestId('api-key-input');
 
       expect(apiFormatSelector).toBeInTheDocument();
-      expect(baseUrlInput).toHaveValue('https://api.openai.com/v1'); // Default OpenAI URL
-      expect(apiKeyInput).toHaveValue(''); // Empty initially
+      expect(baseUrlInput).toHaveValue('https://api.openai.com/v1');
+      expect(apiKeyInput).toHaveValue('');
 
-      // Verify API key field is password type initially (hidden)
       expectApiKeyHidden();
 
-      // Verify button states - both enabled when base_url is set
       const testConnectionButton = screen.getByTestId('test-connection-button');
       const fetchModelsButton = screen.getByTestId('fetch-models-button');
       expect(testConnectionButton).not.toBeDisabled();
       expect(fetchModelsButton).not.toBeDisabled();
 
-      // Verify submit button shows create mode text and initial state
       const submitButton = screen.getByTestId('create-api-model-button');
       expect(submitButton).toHaveTextContent(/create/i);
-      expect(submitButton).not.toBeDisabled(); // Form allows submission (validation happens on submit)
+      expect(submitButton).not.toBeDisabled(); // validation happens on submit, not field-level
     });
 
     it('can select openai_responses format and updates form correctly', async () => {
@@ -161,14 +156,12 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
         expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
       });
 
-      // Default should be OpenAI - Completions
       expectApiFormatSelected('openai');
 
-      // Switch to OpenAI - Responses
       await selectApiFormat(user, 'openai_responses');
       expectApiFormatSelected('openai_responses');
 
-      // Base URL should still be OpenAI (both presets use same base URL)
+      // both presets use the same base URL
       const baseUrlInput = screen.getByTestId('base-url-input');
       expect(baseUrlInput).toHaveValue('https://api.openai.com/v1');
     });
@@ -190,10 +183,8 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
         expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
       });
 
-      // Try to submit without filling required fields
       await submitForm(user);
 
-      // Should show validation errors (form doesn't submit successfully)
       await waitFor(() => {
         expect(mockToast).not.toHaveBeenCalledWith(
           expect.objectContaining({
@@ -223,39 +214,31 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
         expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
       });
 
-      // Fill API key
       await fillName(user, 'Test API Model');
       await fillApiKey(user, 'sk-test-key-123');
 
-      // Test connection
       await testConnection(user);
       await waitFor(() => expectConnectionSuccess());
 
-      // Fetch available models
       await fetchModels(user);
       await waitFor(() => {
         expectModelsLoaded(['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview']);
       });
 
-      // Select gpt-4 model
       await selectModels(user, ['gpt-4']);
 
-      // Submit the form
       await submitForm(user);
 
-      // Verify success toast
       await waitFor(() => {
         expectSuccessToast(mockToast, 'API Model Created');
       });
 
-      // Verify redirect to models page
       expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
     });
 
     it('handles server error during API model creation', async () => {
       const user = userEvent.setup();
 
-      // Use normal handlers for initial operations
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -271,38 +254,29 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
         expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
       });
 
-      // Fill API key
       await fillName(user, 'Test API Model');
       await fillApiKey(user, 'sk-test-key-123');
 
-      // Test connection
       await testConnection(user);
       await waitFor(() => expectConnectionSuccess());
 
-      // Fetch models
       await fetchModels(user);
       await waitFor(() => {
         expectModelsLoaded(['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview']);
       });
 
-      // Select a model (form is now valid)
       await selectModels(user, ['gpt-4']);
 
-      // Override the create handler to return server error
       server.use(...mockCreateApiModelError());
 
-      // Submit the form (should fail with 500)
       await submitForm(user);
 
-      // Verify error toast is shown
       await waitFor(() => {
         expectErrorToast(mockToast, 'Failed to Create API Model');
       });
 
-      // Verify NO navigation occurred (stays on same page)
       expect(navigateMock).not.toHaveBeenCalled();
 
-      // Form should still be visible
       expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
     });
   });

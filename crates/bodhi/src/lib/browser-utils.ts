@@ -57,7 +57,6 @@ export function detectBrowser(): BrowserInfo {
   let type: BrowserType = 'unknown';
   let name = actualBrowserName;
 
-  // Map UAParser results to our supported browsers (following bodhi-js pattern)
   if (browserName.includes('chrome')) {
     type = 'chrome';
     name = 'Google Chrome';
@@ -71,7 +70,6 @@ export function detectBrowser(): BrowserInfo {
     type = 'safari';
     name = 'Safari';
   } else {
-    // Clean up browser name for unknown browsers (remove common suffixes)
     const cleanName =
       actualBrowserName
         .replace(/\s+Browser$/i, '')

@@ -123,7 +123,6 @@ export function AnchoredPopover({ open, anchorRef, onClose, children }: Anchored
   );
 }
 
-/* ── Default brand ────────────────────── */
 export interface ShellBrandProps {
   collapsed?: boolean;
 }
@@ -363,7 +362,6 @@ function UserMenuPop({ open, anchorRef, collapsed, onClose, children }: UserMenu
   );
 }
 
-/* ── Breadcrumb ────────────────────── */
 export interface ShellBreadcrumbItem {
   label: string;
   href?: string;

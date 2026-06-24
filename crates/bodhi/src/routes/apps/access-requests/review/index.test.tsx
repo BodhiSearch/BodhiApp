@@ -68,12 +68,10 @@ afterEach(() => {
   navigateMock.mockClear();
   windowCloseMock.mockClear();
   mockSearch = {};
-  // Restore window.location if it was mocked
   if (originalLocationDescriptor) {
     Object.defineProperty(window, 'location', originalLocationDescriptor);
     originalLocationDescriptor = undefined;
   }
-  // Reset window.close
   vi.restoreAllMocks();
 });
 
@@ -129,14 +127,13 @@ describe('ReviewAccessRequestPage - Loading & Error States', () => {
 
   it('shows loading skeleton while fetching review data', async () => {
     mockSearch = { id: MOCK_REQUEST_ID };
-    // Set up handlers but with a delay by not providing review data yet
+    // Handlers without review data so the query stays pending and the skeleton shows
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ role: 'resource_user' }));
 
     await act(async () => {
       render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
     });
 
-    // Should show loading state
     await waitFor(() => {
       expect(screen.getByTestId('review-access-loading')).toBeInTheDocument();
     });
@@ -217,7 +214,6 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Initially disabled because no instance is selected
     expect(screen.getByTestId('review-approve-button')).toBeDisabled();
   });
 
@@ -234,18 +230,14 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Initially disabled
     expect(screen.getByTestId('review-approve-button')).toBeDisabled();
 
-    // Click the select trigger to open dropdown
     const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
     await user.click(selectTrigger);
 
-    // Select the valid instance
     const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
-    // Now approve button should be enabled
     await waitFor(() => {
       expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
     });
@@ -283,7 +275,6 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     });
     await user.click(approveButton);
 
-    // Should call window.close for popup flow
     await waitFor(() => {
       expect(windowCloseMock).toHaveBeenCalled();
     });
@@ -319,7 +310,6 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     });
     await user.click(approveButton);
 
-    // Should redirect using window.location.href
     await waitFor(() => {
       expect(window.location.href).toBe(MOCK_REDIRECT_URL);
     });
@@ -359,9 +349,7 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     });
     await user.click(approveButton);
 
-    // Should not close window on error
     await waitFor(() => {
-      // Approve button should be re-enabled after error
       expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
     });
   });
@@ -390,7 +378,6 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
     const denyButton = screen.getByTestId('review-deny-button');
     await user.click(denyButton);
 
-    // Should call window.close for popup flow
     await waitFor(() => {
       expect(windowCloseMock).toHaveBeenCalled();
     });
@@ -418,7 +405,6 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
     const denyButton = screen.getByTestId('review-deny-button');
     await user.click(denyButton);
 
-    // Should redirect using window.location.href
     await waitFor(() => {
       expect(window.location.href).toBe(MOCK_REDIRECT_URL);
     });
@@ -450,7 +436,6 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
     const denyButton = screen.getByTestId('review-deny-button');
     await user.click(denyButton);
 
-    // Should not close window on error, and button should be re-enabled
     await waitFor(() => {
       expect(screen.getByTestId('review-deny-button')).not.toBeDisabled();
     });
@@ -751,14 +736,11 @@ describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
       expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
     });
 
-    // Approve disabled (no instances, checkbox checked by default)
     expect(screen.getByTestId('review-approve-button')).toBeDisabled();
 
-    // Uncheck the MCP to deny
     const checkbox = screen.getByTestId('review-mcp-toggle-https://mcp.example.com/mcp');
     await user.click(checkbox);
 
-    // Now approve should be enabled
     await waitFor(() => {
       expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
     });
@@ -782,7 +764,6 @@ describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
     const option = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(option);
 
-    // Button should say "Approve All"
     await waitFor(() => {
       expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve All');
     });
@@ -801,11 +782,9 @@ describe('ReviewAccessRequestPage - MCP Partial Approve', () => {
       expect(screen.getByTestId('review-mcp-https://mcp.weather.com/mcp')).toBeInTheDocument();
     });
 
-    // Uncheck one MCP
     const weatherCheckbox = screen.getByTestId('review-mcp-toggle-https://mcp.weather.com/mcp');
     await user.click(weatherCheckbox);
 
-    // Button should say "Approve Selected"
     await waitFor(() => {
       expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve Selected');
     });
@@ -848,7 +827,6 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
     const mcpOption = await screen.findByText('DeepWiki (deepwiki-prod)');
     await user.click(mcpOption);
 
-    // Now approve should be enabled
     await waitFor(() => {
       expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
     });
@@ -949,7 +927,6 @@ describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
       expect(screen.getByTestId('review-approved-role-section')).toBeInTheDocument();
     });
 
-    // Open role dropdown and select scope_user_user (downgrade)
     const roleSelect = screen.getByTestId('review-approved-role-select');
     await user.click(roleSelect);
     const userRoleOption = await screen.findByTestId('review-approved-role-option-scope_user_user');

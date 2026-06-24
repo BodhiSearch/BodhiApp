@@ -97,7 +97,6 @@ describe('ChatMessage', () => {
             prompt_tokens: 5,
             total_tokens: 21,
           },
-          // No timings data
         },
       };
 

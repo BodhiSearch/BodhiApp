@@ -1252,7 +1252,6 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      // Test 1: Disabled state when no prefix
       const forwardAllRadio = screen.getByTestId('forward-mode-selector-forward-all');
       expect(forwardAllRadio).toBeDisabled();
 
@@ -1263,7 +1262,6 @@ describe('ApiModelForm', () => {
       expect(screen.getByTestId('forward-mode-selector-help')).toBeInTheDocument();
       expect(screen.getByTestId('forward-mode-selector-help')).toHaveTextContent(/Enable prefix and provide a value/i);
 
-      // Test 2: Enabled state when prefix is set
       await user.click(screen.getByTestId('prefix-input-checkbox'));
       await user.type(screen.getByTestId('prefix-input'), 'test/');
 
@@ -1272,7 +1270,6 @@ describe('ApiModelForm', () => {
 
       expect(screen.queryByTestId('forward-mode-selector-help')).not.toBeInTheDocument();
 
-      // Test 3: Click "Forward all" disables model selection
       await user.click(forwardAllRadioEnabled);
 
       expect(forwardAllRadioEnabled).toBeChecked();
@@ -1282,7 +1279,6 @@ describe('ApiModelForm', () => {
         expect(screen.getByTestId('model-selection-section')).toHaveClass(/opacity-50/);
       });
 
-      // Test 4: Click "Selected models" re-enables model selection
       await user.click(forwardSelectedRadio);
 
       expect(forwardSelectedRadio).toBeChecked();

@@ -121,7 +121,6 @@ describe('SettingsSidebar', () => {
     const systemPrompt = screen.getByTestId('system-prompt');
     const stopWords = screen.getByTestId('stop-words');
 
-    // Check new components
     const streamSwitch = screen.getByTestId('switch-stream-mode');
     const seedSwitch = screen.getByTestId('switch-seed-enabled');
     const temperatureSlider = screen.getByTestId('setting-slider-temperature');

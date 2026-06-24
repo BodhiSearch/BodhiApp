@@ -73,7 +73,6 @@ describe('ModelSelector', () => {
       const selectedRow = screen.getByTestId('available-model-gpt-4');
       expect(selectedRow).toBeInTheDocument();
       expect(selectedRow).toHaveAttribute('aria-pressed', 'true');
-      // Unselected rows are present and not pressed.
       expect(screen.getByTestId('available-model-gpt-3.5-turbo')).toHaveAttribute('aria-pressed', 'false');
       expect(screen.getByTestId('available-model-gpt-4-turbo')).toHaveAttribute('aria-pressed', 'false');
     });

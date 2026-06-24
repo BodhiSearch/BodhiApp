@@ -8,7 +8,7 @@ export interface GroupMeta {
 export interface SettingGroupConfig {
   /** stable group id (matches the SETTINGS_CONFIG key) */
   id: string;
-  /** uppercase section header name + sidebar label */
+  /** uppercase section header name */
   name: string;
   /** short sidebar label */
   label: string;

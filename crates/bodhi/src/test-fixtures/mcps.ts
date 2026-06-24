@@ -1,9 +1,4 @@
-/**
- * Fixture factories for MCP-related mock data.
- *
- * Uses types from hooks/mcps for consistency with MSW handlers.
- * All factories accept optional overrides and return fresh objects per call.
- */
+// Fixture factories for MCP-related mock data. Types from hooks/mcps (not ts-client).
 import type {
   McpAuthConfigResponse,
   McpAuthConfigsListResponse,

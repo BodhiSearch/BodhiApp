@@ -101,7 +101,6 @@ describe('ModelRouterForm', () => {
     const user = userEvent.setup();
     render(<ModelRouterForm mode="create" />, { wrapper: createWrapper() });
 
-    // No targets initially, helper text shown
     expect(screen.getByTestId('no-targets')).toBeInTheDocument();
 
     // add + remove a target toggles the empty state

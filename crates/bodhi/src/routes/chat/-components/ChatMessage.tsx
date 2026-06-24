@@ -11,9 +11,7 @@ interface ChatMessageProps {
   isStreaming?: boolean;
   isLatest?: boolean;
   isArchived?: boolean;
-  /** All messages in the conversation (for finding tool results) */
   allMessages?: Message[];
-  /** Whether tools are currently being executed */
   isExecutingTools?: boolean;
 }
 

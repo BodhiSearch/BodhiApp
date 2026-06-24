@@ -97,7 +97,6 @@ describe('LoginContent with user not Logged In', () => {
     const loginButton = screen.getByRole('button', { name: 'Login' });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." after successful response and remain disabled
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
@@ -118,13 +117,11 @@ describe('LoginContent with user not Logged In', () => {
     const loginButton = screen.getByRole('button', { name: 'Login' });
     await userEvent.click(loginButton);
 
-    // Check for initiating state during request
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /initiating/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /initiating/i })).toBeDisabled();
     });
 
-    // Check for redirecting state after successful response
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
@@ -145,7 +142,6 @@ describe('LoginContent with user not Logged In', () => {
       expect(screen.getByText('OAuth configuration error')).toBeInTheDocument();
     });
 
-    // Verify login button is re-enabled after error
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Login' })).not.toBeDisabled();
@@ -207,7 +203,6 @@ describe('LoginContent with user not Logged In', () => {
     const loginButton = screen.getByRole('button', { name: 'Login' });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." and remain disabled even for external URLs
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
@@ -231,13 +226,11 @@ describe('LoginContent with user not Logged In', () => {
       await userEvent.click(loginButton);
     });
 
-    // Should show "Redirecting..." after successful response
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
     });
 
-    // Should use router.push for same-origin URLs
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/chat/' });
     });

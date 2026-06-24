@@ -76,13 +76,11 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
 
       render(<EditApiModel />, { wrapper: createWrapper() });
 
-      // Wait for form to load and verify basic structure
       await waitFor(() => {
         expect(screen.getByTestId('edit-api-model-form')).toBeInTheDocument();
         expect(screen.getByText('Edit API Model')).toBeInTheDocument();
       });
 
-      // Verify form fields are prefilled with existing data
       const apiFormatSelector = screen.getByTestId('api-format-selector');
       const baseUrlInput = screen.getByTestId('base-url-input');
       const apiKeyInput = screen.getByTestId('api-key-input');
@@ -90,28 +88,22 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       expect(apiFormatSelector).toBeInTheDocument();
       expectApiFormatSelected('openai');
 
-      // Verify base URL is prefilled with existing value
       expect(baseUrlInput).toHaveValue('https://api.openai.com/v1');
 
-      // Verify API key shows masked value (for security)
-      expect(apiKeyInput).toHaveValue(''); // Should be empty for security in edit mode
+      expect(apiKeyInput).toHaveValue(''); // empty for security in edit mode
 
-      // Verify button shows update mode text
       const submitButton = screen.getByTestId('update-api-model-button');
       expect(submitButton).toHaveTextContent(/update/i);
 
-      // Verify previously selected models are shown as selected
       const selectedModelBadge = screen.getByTestId('selected-model-gpt-3.5-turbo');
       expect(selectedModelBadge).toBeInTheDocument();
 
-      // Verify form is in edit mode
       expect(screen.getByText('Edit API Model')).toBeInTheDocument();
     });
   });
 
   describe('Form Update Flow - Success Cases', () => {
     beforeEach(() => {
-      // Set up success handlers for all tests in this block
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -152,47 +144,37 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
 
       render(<EditApiModel />, { wrapper: createWrapper() });
 
-      // Wait for form to load with existing data
       await waitFor(() => {
         expect(screen.getByTestId('edit-api-model-form')).toBeInTheDocument();
       });
 
-      // Verify initial state - form should be prefilled
       expect(screen.getByTestId('api-format-selector')).toBeInTheDocument();
       expectApiFormatSelected('openai');
 
-      // Verify existing model is selected
       const initialSelectedModel = screen.getByTestId('selected-model-gpt-3.5-turbo');
       expect(initialSelectedModel).toBeInTheDocument();
 
-      // Fetch available models (using stored credentials, no API key needed)
       await fetchModels(user);
 
-      // Wait for models to be loaded - only unselected models show as available
+      // only unselected models show as available
       await waitFor(() => {
         expectModelsLoaded(['gpt-4', 'gpt-4-turbo-preview']);
       });
 
-      // Remove the currently selected model
       await removeSelectedModel(user, 'gpt-3.5-turbo');
 
-      // Verify the model was removed from selection
       await waitFor(() => {
         expect(screen.queryByTestId('selected-model-gpt-3.5-turbo')).not.toBeInTheDocument();
       });
 
-      // Select a new model
       await selectModels(user, ['gpt-4']);
 
-      // Verify new model is selected
       await waitFor(() => {
         expect(screen.getByTestId('selected-model-gpt-4')).toBeInTheDocument();
       });
 
-      // Submit the form to update
       await submitForm(user, 'update-api-model-button');
 
-      // Verify success toast (should be the last toast called)
       await waitFor(() => {
         expect(mockToast).toHaveBeenLastCalledWith(
           expect.objectContaining({
@@ -201,14 +183,12 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
         );
       });
 
-      // Verify redirect to models page
       expect(navigateMock).toHaveBeenCalledWith({ to: '/models/' });
     });
   });
 
   describe('Form Update Flow - Error Cases', () => {
     beforeEach(() => {
-      // Set up handlers with error response for PUT
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -237,36 +217,28 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
 
       render(<EditApiModel />, { wrapper: createWrapper() });
 
-      // Wait for form to load with existing data
       await waitFor(() => {
         expect(screen.getByTestId('edit-api-model-form')).toBeInTheDocument();
       });
 
-      // Verify existing model is selected
       const initialSelectedModel = screen.getByTestId('selected-model-gpt-3.5-turbo');
       expect(initialSelectedModel).toBeInTheDocument();
 
-      // Fetch available models (using stored credentials)
       await fetchModels(user);
 
-      // Wait for models to be loaded - only unselected models show as available
       await waitFor(() => {
         expectModelsLoaded(['gpt-4', 'gpt-4-turbo-preview']);
       });
 
-      // Remove the currently selected model and select a new one
       await removeSelectedModel(user, 'gpt-3.5-turbo');
       await selectModels(user, ['gpt-4']);
 
-      // Verify form is ready for submission
       await waitFor(() => {
         expect(screen.getByTestId('selected-model-gpt-4')).toBeInTheDocument();
       });
 
-      // Submit the form (should fail with 500)
       await submitForm(user, 'update-api-model-button');
 
-      // Verify error toast is shown (should be the last toast called)
       await waitFor(() => {
         expect(mockToast).toHaveBeenLastCalledWith(
           expect.objectContaining({
@@ -276,10 +248,8 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
         );
       });
 
-      // Verify NO navigation occurred (stays on same page)
       expect(navigateMock).not.toHaveBeenCalled();
 
-      // Form should still be visible after error
       expect(screen.getByTestId('edit-api-model-form')).toBeInTheDocument();
     });
   });

@@ -24,7 +24,6 @@ export function LoginMenu() {
       handleSmartRedirect(redirectUrl, navigate);
     },
     onError: (message) => {
-      // Reset local storage and cookies on logout failure
       localStorage.clear();
       sessionStorage.clear();
       document.cookie.split(';').forEach((c) => {

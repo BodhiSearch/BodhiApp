@@ -1,7 +1,5 @@
 import { ReactNode } from 'react';
 
-/** Red `*` required marker — the standard, low-verbosity indicator (replaces the
- *  old "Required" badge) used across form field labels. */
 export function RequiredMark() {
   return (
     <span className="text-destructive" aria-hidden="true">
@@ -16,8 +14,6 @@ interface FormSectionProps {
   children: ReactNode;
 }
 
-/** A labeled form section: an uppercase section heading over its fields, giving the
- *  form visible structure (Provider Connection / Request Routing / Model Selection). */
 export function FormSection({ title, description, children }: FormSectionProps) {
   return (
     <section className="space-y-4">

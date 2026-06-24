@@ -236,7 +236,6 @@ export function AppShell({
   return (
     <ShellContext.Provider value={ctx}>
       <div className={shellClass} style={shellStyle} ref={shellRef}>
-        {/* ══ SIDEBAR ══ */}
         <aside className={'shell-col shell-sidebar' + (effCollapsed ? ' is-collapsed' : '')}>
           <div className="shell-headrow shell-brand">{brand || <ShellBrand collapsed={effCollapsed} />}</div>
           {hasBand && !effCollapsed && <div className="shell-bandrow shell-sb-band">{sidebarToolbar}</div>}
@@ -268,7 +267,6 @@ export function AppShell({
           </div>
         </aside>
 
-        {/* ══ MAIN ══ */}
         <main className="shell-col shell-main">
           <div className="shell-headrow shell-header">
             <button
@@ -297,7 +295,6 @@ export function AppShell({
           </div>
         </main>
 
-        {/* ══ RAIL ══ */}
         {hasRail && (
           <aside className="shell-col shell-rail">
             {railHeader !== undefined && (

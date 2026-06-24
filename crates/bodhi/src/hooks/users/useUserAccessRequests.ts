@@ -74,7 +74,6 @@ export function useListAllRequests(
   );
 }
 
-// Approve access request
 export function useApproveRequest(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;

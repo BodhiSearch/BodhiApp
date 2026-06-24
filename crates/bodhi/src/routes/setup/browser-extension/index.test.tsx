@@ -132,10 +132,8 @@ describe('BrowserExtensionSetupPage', () => {
   it('renders welcome section and logo', () => {
     renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-    // Check for logo
     expect(screen.getByTestId('bodhi-logo')).toBeInTheDocument();
 
-    // Check for welcome section
     expect(screen.getByText('Browser Extension Setup')).toBeInTheDocument();
     expect(
       screen.getByText('Install the Bodhi extension to unlock AI features on any website you visit.')

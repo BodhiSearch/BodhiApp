@@ -157,7 +157,6 @@ describe('LoginMenu Component', () => {
     const loginButton = await screen.findByRole('button', { name: /login/i });
     await userEvent.click(loginButton);
 
-    // Should show "Redirecting..." and remain disabled even for external URLs
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
@@ -232,7 +231,6 @@ describe('LoginMenu Component', () => {
   });
 
   it('shows nothing during loading', async () => {
-    // This test relies on user handler which still has delayMs support for now
     server.use(...mockUserLoggedIn({ role: 'resource_user' }));
 
     const { container } = render(<LoginMenu />, { wrapper: createWrapper() });

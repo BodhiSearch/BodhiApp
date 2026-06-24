@@ -537,8 +537,7 @@ describe('Model Hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // Note: Testing actual polling behavior would require more complex setup
-      // This test just ensures the hook can be called with polling enabled
+      // Only asserts the hook accepts enablePolling; real polling timing isn't exercised.
       expect(result.current.data).toEqual(mockDownloadsData);
     });
 
@@ -612,7 +611,6 @@ describe('Model Hooks', () => {
 
     it('calls onError with default message when none provided', async () => {
       const onError = vi.fn();
-      // Create a custom handler that doesn't include a code field
       server.use(
         http.post('/bodhi/v1/models/files/pull', () => {
           return HttpResponse.json(

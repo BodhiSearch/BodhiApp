@@ -1,9 +1,4 @@
-/**
- * Fixture factories for API token-related mock data.
- *
- * Uses openapi-generated types from @bodhiapp/ts-client for consistency with MSW handlers.
- * All factories accept optional overrides and return fresh objects per call.
- */
+// Fixture factories for API token-related mock data.
 import type { components } from '@/test-utils/msw-v2/setup';
 
 type TokenDetail = components['schemas']['TokenDetail'];

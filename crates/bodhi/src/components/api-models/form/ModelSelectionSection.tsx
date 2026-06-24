@@ -38,7 +38,6 @@ export function ModelSelectionSection({
   disabled = false,
   'data-testid': testId = 'model-selection-section',
 }: ModelSelectionSectionProps) {
-  // Auto-select common models when they become available
   useEffect(() => {
     if (autoSelectCommon && provider?.commonModels.length && availableModels.length) {
       const commonModelsAvailable = provider.commonModels.filter(

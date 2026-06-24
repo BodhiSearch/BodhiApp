@@ -42,7 +42,6 @@ afterEach(() => {
 
 describe('NewMcpServerPage - OAuth Auto-DCR', () => {
   it('auto-triggers DCR and populates registration type dropdown on OAuth selection', async () => {
-    // Mock successful discovery
     server.use(
       mockDiscoverMcp({
         authorization_endpoint: 'https://mcp.asana.com/authorize',
@@ -72,31 +71,25 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
     const authTypeSelect = screen.getByTestId('auth-config-type-select');
     await user.click(authTypeSelect);
 
-    // Wait for dropdown to open and click OAuth option
     await waitFor(() => {
       expect(screen.getByRole('option', { name: /oauth/i })).toBeInTheDocument();
     });
     await user.click(screen.getByRole('option', { name: /oauth/i }));
 
-    // Wait for auto-DCR to complete
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-auth-endpoint-input')).toHaveValue('https://mcp.asana.com/authorize');
     });
 
-    // Check that registration type dropdown shows "Dynamic Registration"
     const registrationTypeSelect = screen.getByTestId('oauth-registration-type-select');
 
-    // Open the dropdown to verify which option is selected
     await user.click(registrationTypeSelect);
 
     await waitFor(() => {
-      // The "Dynamic Registration" option should be present and selected (aria-selected="true")
       const dynamicRegOption = screen.getByRole('option', { name: /dynamic registration/i });
       expect(dynamicRegOption).toBeInTheDocument();
       expect(dynamicRegOption).toHaveAttribute('aria-selected', 'true');
     });
 
-    // Verify all OAuth endpoints are populated
     expect(screen.getByTestId('auth-config-auth-endpoint-input')).toHaveValue('https://mcp.asana.com/authorize');
     expect(screen.getByTestId('auth-config-token-endpoint-input')).toHaveValue('https://mcp.asana.com/token');
     expect(screen.getByTestId('auth-config-registration-endpoint-input')).toHaveValue('https://mcp.asana.com/register');
@@ -153,7 +146,7 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
     await user.clear(urlInput);
     await user.type(urlInput, 'https://mcp.asana.com/mcp');
 
-    // Tab out to trigger name auto-population
+    // Tab out to trigger name auto-population on blur
     await user.tab();
 
     const authToggle = screen.getByTestId('auth-config-section-toggle');
@@ -166,19 +159,15 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
     });
     await user.click(screen.getByRole('option', { name: /oauth/i }));
 
-    // Wait for auto-DCR discovery to complete and populate endpoint fields
     await waitFor(() => {
       expect(screen.getByTestId('auth-config-auth-endpoint-input')).toHaveValue('https://mcp.asana.com/authorize');
     });
 
-    // Verify registration endpoint is populated
     expect(screen.getByTestId('auth-config-registration-endpoint-input')).toHaveValue('https://mcp.asana.com/register');
 
-    // Click save - triggers DCR then server creation
     const saveButton = screen.getByTestId('mcp-server-save-button');
     await user.click(saveButton);
 
-    // Verify the request was sent with OAuth auth config
     await waitFor(() => {
       expect(capturedRequest).not.toBeNull();
     });
@@ -193,7 +182,6 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
     expect(authConfig.client_id).toBe('test-client-id');
     expect(authConfig.client_secret).toBe('test-client-secret');
 
-    // Should redirect to MCP servers list
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({ to: '/mcps/servers/' });
     });

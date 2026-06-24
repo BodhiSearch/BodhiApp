@@ -1,17 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 interface ScrollAnchorProps {
-  /**
-   * Whether to track and scroll on content changes
-   */
   trackVisibility?: boolean;
-  /**
-   * Custom CSS class for the anchor element
-   */
   className?: string;
-  /**
-   * Behavior of the scroll animation
-   */
   behavior?: ScrollBehavior;
 }
 
