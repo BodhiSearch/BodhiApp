@@ -376,6 +376,29 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     });
   });
 
+  it('renders live facet counts and disables zero-count buckets', async () => {
+    const zeroed = createModelsListResponse(undefined, {
+      facets: {
+        capability: { reasoning: 1292, tool_call: 1762, structured_output: 0, attachment: 1123, vision: 1117 },
+        modality: { text: 2565, audio: 0, image: 1168, video: 302, pdf: 350 },
+        status: { stable: 2477, alpha: 0, beta: 0, deprecated: 66 },
+        provider: { 'nano-gpt': 617 },
+        family: { claude: 25 },
+        open_weights: { open: 900, closed: 1665 },
+      },
+    });
+    server.use(...mockCatalogModels({ response: zeroed }));
+    await renderScreen();
+
+    // Non-zero buckets show their count and stay enabled.
+    expect(screen.getByTestId('cat-model-cap-reasoning')).toHaveTextContent('1292');
+    expect(screen.getByTestId('cat-model-cap-reasoning')).toBeEnabled();
+    // Zero-count buckets are disabled (can't select an empty facet).
+    expect(screen.getByTestId('cat-model-cap-structured_output')).toBeDisabled();
+    expect(screen.getByTestId('cat-model-mod-audio')).toBeDisabled();
+    expect(screen.getByTestId('cat-model-status-beta')).toBeDisabled();
+  });
+
   it('open_weights is tri-state: unset → open → unset', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));

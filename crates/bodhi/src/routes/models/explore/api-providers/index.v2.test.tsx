@@ -242,6 +242,9 @@ describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
 
     // Counts come from the response facets.
     expect(screen.getByTestId('cat-prov-cap-reasoning')).toHaveTextContent('80');
+    // api_format buckets absent from the facets map (openai_responses) render disabled.
+    expect(screen.getByTestId('cat-prov-fmt-openai_responses')).toBeDisabled();
+    expect(screen.getByTestId('cat-prov-fmt-anthropic')).toBeEnabled();
 
     const user = userEvent.setup();
     await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
