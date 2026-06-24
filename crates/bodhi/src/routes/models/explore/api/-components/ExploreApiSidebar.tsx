@@ -5,6 +5,7 @@ import type { Capability, Modality, ModelFacets } from '@bodhiapp/reference-api-
 import { ShellIcon } from '@/components/shell';
 import { Slider } from '@/components/ui/slider';
 import { CAP_LABELS } from '@/routes/models/explore/-shared/catalog-format';
+import { FacetCombobox, facetOptions } from '@/routes/models/explore/-shared/FacetCombobox';
 import '@/routes/models/-components/models.css';
 
 /**
@@ -83,7 +84,8 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange, onClear
   const capCounts = facetCounts?.capability ?? {};
   const modCounts = facetCounts?.modality ?? {};
   const statusCounts = facetCounts?.status ?? {};
-  const providerCounts = facetCounts?.provider ?? {};
+  const providerOptions = facetOptions(facetCounts?.provider);
+  const familyOptions = facetOptions(facetCounts?.family);
 
   return (
     <div className="m-facets" data-testid="cat-model-facets">
@@ -214,25 +216,29 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange, onClear
         </Pills>
       </FacetGroup>
 
-      {Object.keys(providerCounts).length > 0 && (
-        <FacetGroup icon="at-sign" title="Provider">
-          <Pills>
-            {Object.keys(providerCounts)
-              .sort((a, b) => (providerCounts[b] ?? 0) - (providerCounts[a] ?? 0))
-              .slice(0, 12)
-              .map((slug) => (
-                <FacetPill
-                  key={slug}
-                  label={slug}
-                  count={providerCounts[slug]}
-                  active={(facets.provider ?? []).includes(slug)}
-                  testId={`cat-model-provider-${slug}`}
-                  onToggle={() => onFacetsChange({ ...facets, provider: toggle(facets.provider, slug) })}
-                />
-              ))}
-          </Pills>
-        </FacetGroup>
-      )}
+      <FacetGroup icon="boxes" title="Family">
+        <FacetCombobox
+          options={familyOptions}
+          selected={facets.family ?? []}
+          onToggle={(v) => onFacetsChange({ ...facets, family: toggle(facets.family, v) })}
+          placeholder="Any family"
+          searchPlaceholder="Search families…"
+          emptyText="No families match."
+          testId="cat-model-family"
+        />
+      </FacetGroup>
+
+      <FacetGroup icon="at-sign" title="Provider">
+        <FacetCombobox
+          options={providerOptions}
+          selected={facets.provider ?? []}
+          onToggle={(v) => onFacetsChange({ ...facets, provider: toggle(facets.provider, v) })}
+          placeholder="Any provider"
+          searchPlaceholder="Search providers…"
+          emptyText="No providers match."
+          testId="cat-model-provider"
+        />
+      </FacetGroup>
     </div>
   );
 }

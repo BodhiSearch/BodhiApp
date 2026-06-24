@@ -119,6 +119,63 @@
   text-align: right;
 }
 
+/* Multi-select autocomplete facet (provider, family). */
+.cat-combo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cat-combo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cat-combo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  border: 1px solid hsl(var(--primary) / 0.35);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  border-radius: 999px;
+  cursor: pointer;
+}
+.cat-combo-chip:hover {
+  background: hsl(var(--primary) / 0.18);
+}
+.cat-combo-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+}
+.cat-combo-trigger:hover {
+  border-color: hsl(var(--primary) / 0.5);
+}
+.cat-combo-pop {
+  width: var(--radix-popover-trigger-width);
+  min-width: 200px;
+  padding: 0;
+}
+.cat-combo-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cat-combo-item-name {
+  flex: 1;
+}
+
 /* Capability chips. */
 .cat-caps {
   display: flex;

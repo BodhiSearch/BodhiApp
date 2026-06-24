@@ -30,6 +30,8 @@ export class ApiExplorePage extends BasePage {
     cap: (id) => `[data-testid="cat-model-cap-${id}"]`,
     status: (id) => `[data-testid="cat-model-status-${id}"]`,
     ow: (id) => `[data-testid="cat-model-ow-${id}"]`,
+    providerTrigger: '[data-testid="cat-model-provider-trigger"]',
+    providerChip: (slug) => `[data-testid="cat-model-provider-chip-${slug}"]`,
     clearAll: '[data-testid="cat-model-clear-all"]',
   };
 
@@ -224,6 +226,15 @@ export class ApiExplorePage extends BasePage {
 
   async clickCapability(id) {
     await this.page.locator(this.selectors.cap(id)).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  /** Open the provider autocomplete and select an option by its slug (accessible name). */
+  async selectProvider(slug) {
+    await this.page.locator(this.selectors.providerTrigger).click();
+    await this.page.getByRole('option', { name: slug }).click();
+    await this.page.keyboard.press('Escape');
     await this.waitForSPAReady();
     await this.waitForListSettled();
   }

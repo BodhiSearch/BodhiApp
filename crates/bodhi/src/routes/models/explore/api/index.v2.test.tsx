@@ -353,6 +353,34 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     await waitFor(() => expect(seen[seen.length - 1].searchParams.has('pricing_max')).toBe(false));
   });
 
+  it('provider autocomplete selects from facet options, sends provider=, and removes via chip', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-provider-trigger'));
+    // Options come from facets.provider; pick by accessible name (the slug).
+    await user.click(await screen.findByRole('option', { name: 'nano-gpt' }));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.getAll('provider')).toContain('nano-gpt'));
+
+    // Selecting renders a removable chip; clicking it clears the filter.
+    const chip = await screen.findByTestId('cat-model-provider-chip-nano-gpt');
+    await user.click(chip);
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.has('provider')).toBe(false));
+  });
+
+  it('family autocomplete sends family= from facet options', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-family-trigger'));
+    await user.click(await screen.findByRole('option', { name: 'claude' }));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.getAll('family')).toContain('claude'));
+  });
+
   it('multi-select facets send repeated-key params; Stable maps to status=stable', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));

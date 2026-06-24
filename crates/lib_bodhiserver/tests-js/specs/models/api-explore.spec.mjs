@@ -88,6 +88,11 @@ test.describe('Explore · API Models', () => {
       await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('(desc)');
     });
 
+    await test.step('Provider autocomplete selects from facet options and shows a removable chip', async () => {
+      await modelsPage.selectProvider('anthropic');
+      await expect(modelsPage.page.locator(modelsPage.selectors.providerChip('anthropic'))).toBeVisible();
+    });
+
     await test.step('Capability facet filters; Clear all resets', async () => {
       await expect(modelsPage.page.locator(modelsPage.selectors.facets)).toBeVisible();
       await modelsPage.clickCapability('reasoning');
