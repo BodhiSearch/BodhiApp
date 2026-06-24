@@ -76,12 +76,16 @@ test.describe('Explore · API Models', () => {
       await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('Showing 30 of 31');
     });
 
-    await test.step('Sort by Price marks the active column header', async () => {
+    await test.step('Sort by Input price marks the active column and toggles asc/desc', async () => {
       await modelsPage.sortBy('price');
       await expect(modelsPage.page.locator(modelsPage.selectors.sort('price'))).toHaveAttribute(
         'data-test-state',
         'active'
       );
+      // price is naturally ascending; re-clicking the active column flips to descending.
+      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('(asc)');
+      await modelsPage.sortBy('price');
+      await expect(modelsPage.page.locator(modelsPage.selectors.resultbar)).toContainText('(desc)');
     });
 
     await test.step('Capability facet filters; Clear all resets', async () => {

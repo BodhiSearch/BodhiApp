@@ -282,15 +282,61 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
   });
 
-  it('column sort headers send the chosen sort and mark active', async () => {
+  it('column sort headers send the chosen sort + natural order, and toggle direction on re-click', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
     const user = userEvent.setup();
+    // First click: price adopts its natural ascending direction.
     await user.click(screen.getByTestId('cat-model-sort-price'));
-    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'price')).toBe(true));
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.get('sort')).toBe('price');
+      expect(last.searchParams.get('order')).toBe('asc');
+    });
     expect(screen.getByTestId('cat-model-sort-price')).toHaveAttribute('data-test-state', 'active');
+
+    // Re-click the active column toggles to descending.
+    await user.click(screen.getByTestId('cat-model-sort-price'));
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.get('sort')).toBe('price');
+      expect(last.searchParams.get('order')).toBe('desc');
+    });
+  });
+
+  it('output-price column is sortable (price_out)', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-sort-price_out'));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'price_out')).toBe(true));
+  });
+
+  it('search auto-applies sort=relevance and reverts to updated when cleared', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    const input = screen.getByTestId('cat-model-search').querySelector('input')!;
+    await user.click(input);
+    await user.type(input, 'claude{Enter}');
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.get('q')).toBe('claude');
+      expect(last.searchParams.get('sort')).toBe('relevance');
+    });
+
+    await user.clear(input);
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.has('q')).toBe(false);
+      expect(last.searchParams.get('sort')).toBe('updated');
+    });
   });
 
   it('multi-select facets send repeated-key params; Stable maps to status=stable', async () => {

@@ -36,6 +36,7 @@ const BREADCRUMB = exploreBreadcrumb('Explore · API Models');
 const PAGE_SIZE = 30;
 
 type ModelSort = NonNullable<ListCatalogModelsQuery['sort']>;
+type SortOrder = NonNullable<ListCatalogModelsQuery['order']>;
 const SORT_LABELS: Record<ModelSort, string> = {
   relevance: 'Relevance',
   updated: 'Newest',
@@ -46,18 +47,35 @@ const SORT_LABELS: Record<ModelSort, string> = {
   family: 'Family',
   providers: 'Providers',
 };
+
+// The backend's natural direction per sort key (docs: endpoints.md "Sorts"). Selecting a new column
+// applies its natural default; clicking the active column toggles it.
+const NATURAL_ORDER: Record<ModelSort, SortOrder> = {
+  relevance: 'desc',
+  updated: 'desc',
+  context: 'desc',
+  providers: 'desc',
+  price: 'asc',
+  price_out: 'asc',
+  name: 'asc',
+  family: 'asc',
+};
+
 function ColSort({
   col,
   label,
   sort,
+  order,
   onSort,
 }: {
   col: ModelSort;
   label: string;
   sort: ModelSort;
+  order: SortOrder;
   onSort: (c: ModelSort) => void;
 }) {
   const active = sort === col;
+  const icon = !active ? 'chevrons-up-down' : order === 'asc' ? 'arrow-up' : 'arrow-down';
   return (
     <button
       type="button"
@@ -67,7 +85,7 @@ function ColSort({
       data-test-state={active ? 'active' : 'idle'}
     >
       {label}
-      <ShellIcon name={active ? 'arrow-down' : 'chevrons-up-down'} size={10} />
+      <ShellIcon name={icon} size={10} />
     </button>
   );
 }
@@ -131,17 +149,19 @@ export function ExploreApiScreen() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<ModelSort>('updated');
+  const [order, setOrder] = useState<SortOrder>('desc');
   const [facets, setFacets] = useState<ModelFacetsState>({});
 
   const params: ListCatalogModelsQuery = useMemo(
     () => ({
       sort,
+      order,
       page,
       page_size: PAGE_SIZE,
       ...(search ? { q: search } : {}),
       ...modelFacetsToQuery(facets),
     }),
-    [sort, page, search, facets]
+    [sort, order, page, search, facets]
   );
   const { data, isLoading, error } = useCatalogModels(params);
 
@@ -164,7 +184,16 @@ export function ExploreApiScreen() {
 
   const commitSearch = useCallback(
     (value: string) => {
-      setSearch(value.trim());
+      const next = value.trim();
+      setSearch(next);
+      // Search-as-you-type ranks by best text match; clearing reverts to recency.
+      if (next) {
+        setSort('relevance');
+        setOrder(NATURAL_ORDER.relevance);
+      } else {
+        setSort('updated');
+        setOrder(NATURAL_ORDER.updated);
+      }
       resetPaging();
     },
     [resetPaging]
@@ -184,10 +213,12 @@ export function ExploreApiScreen() {
   );
   const onSort = useCallback(
     (next: ModelSort) => {
+      // Clicking the active column toggles direction; a new column adopts its natural default.
+      setOrder((prev) => (sort === next ? (prev === 'asc' ? 'desc' : 'asc') : NATURAL_ORDER[next]));
       setSort(next);
       resetPaging();
     },
-    [resetPaging]
+    [resetPaging, sort]
   );
   const onFacetsChange = useCallback(
     (next: ModelFacetsState) => {
@@ -256,7 +287,7 @@ export function ExploreApiScreen() {
             />
           </div>
           <div className="cat-sortbar">
-            {(['updated', 'name'] as ModelSort[]).map((s) => (
+            {(['updated', 'name', 'family'] as ModelSort[]).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -278,18 +309,18 @@ export function ExploreApiScreen() {
           Showing {rows.length} of {total}
         </span>
         <span>
-          sorted by <strong>{SORT_LABELS[sort]}</strong>
+          sorted by <strong>{SORT_LABELS[sort]}</strong> ({order === 'asc' ? 'asc' : 'desc'})
         </span>
       </div>
 
       <div className="cat-listhead cat-model-grid">
         <div>#</div>
         <div>MODEL</div>
-        <ColSort col="context" label="CONTEXT" sort={sort} onSort={onSort} />
-        <ColSort col="price" label="INPUT $" sort={sort} onSort={onSort} />
-        <div style={{ textAlign: 'right' }}>OUTPUT $</div>
+        <ColSort col="context" label="CONTEXT" sort={sort} order={order} onSort={onSort} />
+        <ColSort col="price" label="INPUT $" sort={sort} order={order} onSort={onSort} />
+        <ColSort col="price_out" label="OUTPUT $" sort={sort} order={order} onSort={onSort} />
         <div>CAPABILITIES</div>
-        <ColSort col="providers" label="PROVIDERS" sort={sort} onSort={onSort} />
+        <ColSort col="providers" label="PROVIDERS" sort={sort} order={order} onSort={onSort} />
       </div>
 
       <div className="l-scroll" data-testid="cat-model-list">

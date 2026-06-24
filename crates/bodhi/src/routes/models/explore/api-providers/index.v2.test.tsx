@@ -199,17 +199,40 @@ describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
     expect(last.searchParams.get('page')).toBe('1');
   });
 
-  it('sort buttons send the chosen sort key and mark the active control', async () => {
+  it('sort buttons send the chosen sort key + natural order, mark active, and toggle direction', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
     const user = userEvent.setup();
+    // model_count is naturally descending.
     await user.click(screen.getByTestId('cat-prov-sort-model_count'));
-
-    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'model_count')).toBe(true));
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.get('sort')).toBe('model_count');
+      expect(last.searchParams.get('order')).toBe('desc');
+    });
     expect(screen.getByTestId('cat-prov-sort-model_count')).toHaveAttribute('data-test-state', 'active');
     expect(screen.getByTestId('cat-prov-resultbar')).toHaveTextContent(/sorted by\s*Models/);
+
+    // Re-click toggles to ascending.
+    await user.click(screen.getByTestId('cat-prov-sort-model_count'));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('order')).toBe('asc'));
+  });
+
+  it('exposes the new pricing + api_format sorts', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    const user = userEvent.setup();
+    // pricing (cheapest) is naturally ascending.
+    await user.click(screen.getByTestId('cat-prov-sort-pricing'));
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.get('sort')).toBe('pricing');
+      expect(last.searchParams.get('order')).toBe('asc');
+    });
   });
 
   it('capability + api_format facets send repeated-key params and counts render', async () => {

@@ -37,12 +37,22 @@ const BREADCRUMB = exploreBreadcrumb('Explore · API Providers');
 const PAGE_SIZE = 30;
 
 type ProviderSort = NonNullable<ListProvidersQuery['sort']>;
+type SortOrder = NonNullable<ListProvidersQuery['order']>;
 const SORT_LABELS: Record<ProviderSort, string> = {
   rank: 'Rank',
   name: 'Name',
   model_count: 'Models',
   api_format: 'Format',
   pricing: 'Cheapest',
+};
+
+// Backend natural direction per provider sort key (docs: endpoints.md "Sorts").
+const NATURAL_ORDER: Record<ProviderSort, SortOrder> = {
+  rank: 'desc',
+  model_count: 'desc',
+  name: 'asc',
+  api_format: 'asc',
+  pricing: 'asc',
 };
 
 function ProviderRow({
@@ -102,17 +112,19 @@ export function ExploreProvidersScreen() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<ProviderSort>('rank');
+  const [order, setOrder] = useState<SortOrder>('desc');
   const [facets, setFacets] = useState<ProviderFacets>({});
 
   const params: ListProvidersQuery = useMemo(
     () => ({
       sort,
+      order,
       page,
       page_size: PAGE_SIZE,
       ...(search ? { q: search } : {}),
       ...providerFacetsToQuery(facets),
     }),
-    [sort, page, search, facets]
+    [sort, order, page, search, facets]
   );
   const { data, isLoading, error } = useCatalogProviders(params);
 
@@ -155,10 +167,12 @@ export function ExploreProvidersScreen() {
   );
   const onSort = useCallback(
     (next: ProviderSort) => {
+      // Clicking the active sort toggles direction; a new sort adopts its natural default.
+      setOrder((prev) => (sort === next ? (prev === 'asc' ? 'desc' : 'asc') : NATURAL_ORDER[next]));
       setSort(next);
       resetPaging();
     },
-    [resetPaging]
+    [resetPaging, sort]
   );
   const onFacetsChange = useCallback(
     (next: ProviderFacets) => {
@@ -284,6 +298,7 @@ export function ExploreProvidersScreen() {
                 data-test-state={sort === s ? 'active' : 'idle'}
               >
                 {SORT_LABELS[s]}
+                {sort === s && <ShellIcon name={order === 'asc' ? 'arrow-up' : 'arrow-down'} size={10} />}
               </button>
             ))}
           </div>
@@ -295,7 +310,7 @@ export function ExploreProvidersScreen() {
           Showing {rows.length} of {total}
         </span>
         <span>
-          sorted by <strong>{SORT_LABELS[sort]}</strong>
+          sorted by <strong>{SORT_LABELS[sort]}</strong> ({order === 'asc' ? 'asc' : 'desc'})
         </span>
       </div>
 
