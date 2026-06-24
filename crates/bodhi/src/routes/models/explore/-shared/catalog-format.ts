@@ -19,6 +19,23 @@ export function fmtPrice(perM: number | null | undefined): string {
   return perM < 1 ? `$${perM.toFixed(2)}` : `$${perM % 1 === 0 ? perM : perM.toFixed(2)}`;
 }
 
+/**
+ * ISO date → compact human-readable age. Recent dates render relative ("3d", "5mo"); older than a
+ * year falls back to "MMM YYYY". "—" when null/unparseable. Used for the catalog Updated column.
+ */
+export function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const then = new Date(iso);
+  const ms = then.getTime();
+  if (Number.isNaN(ms)) return '—';
+  const days = Math.floor((Date.now() - ms) / 86_400_000);
+  if (days < 0) return then.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  if (days === 0) return 'today';
+  if (days < 30) return `${days}d ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return then.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+}
+
 /** A model/provider is "Free" when both input and output are 0. */
 export function isFree(inPerM: number | null | undefined, outPerM: number | null | undefined): boolean {
   return inPerM === 0 && outPerM === 0;

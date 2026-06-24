@@ -11,6 +11,14 @@ import {
   useShell,
   useShellChrome,
 } from '@/components/shell';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogModelDetail, useCatalogModels } from '@/hooks/reference';
@@ -20,6 +28,7 @@ import {
   CAP_LABELS,
   CAP_TONE,
   fmtContext,
+  fmtDate,
   fmtPrice,
   isFree,
   statusLabel,
@@ -37,16 +46,6 @@ const PAGE_SIZE = 30;
 
 type ModelSort = NonNullable<ListCatalogModelsQuery['sort']>;
 type SortOrder = NonNullable<ListCatalogModelsQuery['order']>;
-const SORT_LABELS: Record<ModelSort, string> = {
-  relevance: 'Relevance',
-  updated: 'Newest',
-  context: 'Context',
-  price: 'Input price',
-  price_out: 'Output price',
-  name: 'Name',
-  family: 'Family',
-  providers: 'Providers',
-};
 
 // The backend's natural direction per sort key (docs: endpoints.md "Sorts"). Selecting a new column
 // applies its natural default; clicking the active column toggles it.
@@ -94,49 +93,167 @@ function modelKey(m: ModelLite): string {
   return `${m.slug}/${m.model_id}`;
 }
 
+// Column model: headers, row cells, and the grid-template all derive from this so the column picker
+// (show/hide) and any sortable header stay in sync. `#` + MODEL are mandatory; the rest are toggleable.
+// `width` is a CSS grid track. `sort` (when set) makes the header a sortable ColSort.
+interface Column {
+  key: string;
+  label: string;
+  width: string;
+  sort?: ModelSort;
+  optional?: boolean;
+  cell: (m: ModelLite) => React.ReactNode;
+}
+
+const COLUMNS: Column[] = [
+  { key: 'num', label: '#', width: '36px', cell: () => null },
+  {
+    key: 'model',
+    label: 'MODEL',
+    width: 'minmax(160px, 1.6fr)',
+    sort: 'name',
+    cell: (m) => (
+      <div className="cat-body">
+        <div className="cat-model-name">
+          {m.name}
+          {m.status && <span className={`cat-status cat-status-${m.status}`}>{statusLabel(m.status)}</span>}
+        </div>
+        {m.caps.length > 0 && (
+          <div className="cat-caps cat-model-caps">
+            {m.caps.map((c) => (
+              <span className={`cap-chip cap-${CAP_TONE[c]}`} key={c}>
+                {CAP_LABELS[c]}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: 'family',
+    label: 'FAMILY',
+    width: 'minmax(80px, 0.8fr)',
+    sort: 'family',
+    optional: true,
+    cell: (m) => <div className="cat-cell-text">{m.family ?? '—'}</div>,
+  },
+  {
+    key: 'context',
+    label: 'CONTEXT',
+    width: '70px',
+    sort: 'context',
+    optional: true,
+    cell: (m) => <div className="cat-num-cell">{fmtContext(m.context_limit)}</div>,
+  },
+  {
+    key: 'price',
+    label: 'INPUT $',
+    width: '64px',
+    sort: 'price',
+    optional: true,
+    cell: (m) => {
+      const free = isFree(m.pricing.input_per_m, m.pricing.output_per_m);
+      return (
+        <div className={`cat-num-cell${free ? ' free' : ''}`}>{free ? 'Free' : fmtPrice(m.pricing.input_per_m)}</div>
+      );
+    },
+  },
+  {
+    key: 'price_out',
+    label: 'OUTPUT $',
+    width: '64px',
+    sort: 'price_out',
+    optional: true,
+    cell: (m) => {
+      const free = isFree(m.pricing.input_per_m, m.pricing.output_per_m);
+      return <div className={`cat-num-cell${free ? ' free' : ''}`}>{free ? '' : fmtPrice(m.pricing.output_per_m)}</div>;
+    },
+  },
+  {
+    key: 'updated',
+    label: 'UPDATED',
+    width: '84px',
+    sort: 'updated',
+    optional: true,
+    cell: (m) => <div className="cat-num-cell">{fmtDate(m.last_updated)}</div>,
+  },
+  {
+    key: 'providers',
+    label: 'PROVIDERS',
+    width: '70px',
+    sort: 'providers',
+    optional: true,
+    cell: (m) => (
+      <div className="cat-score">
+        <div className="cat-score-num">{m.provider_count}</div>
+      </div>
+    ),
+  },
+];
+
+function ColumnPicker({ hidden, onToggle }: { hidden: Set<string>; onToggle: (key: string) => void }) {
+  const optional = COLUMNS.filter((c) => c.optional);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="cat-sort-btn cat-colpicker-trigger" data-testid="cat-model-columns">
+          <ShellIcon name="columns-3" size={13} /> Columns
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Columns</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {optional.map((col) => (
+          <DropdownMenuCheckboxItem
+            key={col.key}
+            checked={!hidden.has(col.key)}
+            onCheckedChange={() => onToggle(col.key)}
+            onSelect={(e) => e.preventDefault()}
+            data-testid={`cat-model-col-${col.key}`}
+          >
+            {col.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function ModelRow({
   model,
   idx,
   active,
+  columns,
+  gridTemplate,
   onSelect,
 }: {
   model: ModelLite;
   idx: number;
   active: boolean;
+  columns: Column[];
+  gridTemplate: string;
   onSelect: () => void;
 }) {
-  const free = isFree(model.pricing.input_per_m, model.pricing.output_per_m);
   return (
     <div
       className={`l-listrow cat-row cat-model-grid${active ? ' active' : ''}`}
+      style={{ gridTemplateColumns: gridTemplate }}
       onClick={onSelect}
       role="option"
       aria-selected={active}
       data-testid={`cat-model-row-${model.slug}-${model.model_id}`}
     >
       <LinkRow onActivate={onSelect} label={`Open ${model.name}`} />
-      <div className="cat-num">#{idx}</div>
-      <div className="cat-body">
-        <div className="cat-model-name">
-          {model.name}
-          {model.status && <span className={`cat-status cat-status-${model.status}`}>{statusLabel(model.status)}</span>}
-        </div>
-        {model.family && <div className="cat-model-family">{model.family}</div>}
-      </div>
-      <div className="cat-num-cell">{fmtContext(model.context_limit)}</div>
-      <div className={`cat-num-cell${free ? ' free' : ''}`}>{free ? 'Free' : fmtPrice(model.pricing.input_per_m)}</div>
-      <div className={`cat-num-cell${free ? ' free' : ''}`}>{free ? '' : fmtPrice(model.pricing.output_per_m)}</div>
-      <div className="cat-caps">
-        {model.caps.map((c) => (
-          <span className={`cap-chip cap-${CAP_TONE[c]}`} key={c}>
-            {CAP_LABELS[c]}
-          </span>
-        ))}
-      </div>
-      <div className="cat-score">
-        <div className="cat-score-num">{model.provider_count}</div>
-        <div className="cat-score-lbl">PROVIDERS</div>
-      </div>
+      {columns.map((col) =>
+        col.key === 'num' ? (
+          <div className="cat-num" key="num">
+            #{idx}
+          </div>
+        ) : (
+          <div key={col.key}>{col.cell(model)}</div>
+        )
+      )}
     </div>
   );
 }
@@ -151,6 +268,22 @@ export function ExploreApiScreen() {
   const [sort, setSort] = useState<ModelSort>('updated');
   const [order, setOrder] = useState<SortOrder>('desc');
   const [facets, setFacets] = useState<ModelFacetsState>({});
+  // Hidden optional columns (the column picker toggles these); `#`/MODEL are never hidden.
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
+  const toggleColumn = useCallback((key: string) => {
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const visibleColumns = useMemo(
+    () => COLUMNS.filter((c) => !c.optional || !hiddenColumns.has(c.key)),
+    [hiddenColumns]
+  );
+  const gridTemplate = useMemo(() => visibleColumns.map((c) => c.width).join(' '), [visibleColumns]);
 
   const params: ListCatalogModelsQuery = useMemo(
     () => ({
@@ -287,19 +420,7 @@ export function ExploreApiScreen() {
             />
           </div>
           <div className="cat-sortbar">
-            {(['updated', 'name', 'family'] as ModelSort[]).map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`cat-sort-btn${sort === s ? ' on' : ''}`}
-                aria-pressed={sort === s}
-                onClick={() => onSort(s)}
-                data-testid={`cat-model-sort-${s}`}
-                data-test-state={sort === s ? 'active' : 'idle'}
-              >
-                {SORT_LABELS[s]}
-              </button>
-            ))}
+            <ColumnPicker hidden={hiddenColumns} onToggle={toggleColumn} />
           </div>
         </div>
       </div>
@@ -308,19 +429,18 @@ export function ExploreApiScreen() {
         <span className="cat-count">
           Showing {rows.length} of {total}
         </span>
-        <span>
-          sorted by <strong>{SORT_LABELS[sort]}</strong> ({order === 'asc' ? 'asc' : 'desc'})
-        </span>
       </div>
 
-      <div className="cat-listhead cat-model-grid">
-        <div>#</div>
-        <div>MODEL</div>
-        <ColSort col="context" label="CONTEXT" sort={sort} order={order} onSort={onSort} />
-        <ColSort col="price" label="INPUT $" sort={sort} order={order} onSort={onSort} />
-        <ColSort col="price_out" label="OUTPUT $" sort={sort} order={order} onSort={onSort} />
-        <div>CAPABILITIES</div>
-        <ColSort col="providers" label="PROVIDERS" sort={sort} order={order} onSort={onSort} />
+      <div className="cat-listhead cat-model-grid" style={{ gridTemplateColumns: gridTemplate }}>
+        {visibleColumns.map((col) =>
+          col.sort ? (
+            <ColSort key={col.key} col={col.sort} label={col.label} sort={sort} order={order} onSort={onSort} />
+          ) : (
+            <div className="cat-colhead" key={col.key}>
+              {col.label}
+            </div>
+          )
+        )}
       </div>
 
       <div className="l-scroll" data-testid="cat-model-list">
@@ -346,6 +466,8 @@ export function ExploreApiScreen() {
                 model={m}
                 idx={(page - 1) * PAGE_SIZE + i + 1}
                 active={modelKey(m) === selectedKey}
+                columns={visibleColumns}
+                gridTemplate={gridTemplate}
                 onSelect={() => select(modelKey(m))}
               />
             ))}

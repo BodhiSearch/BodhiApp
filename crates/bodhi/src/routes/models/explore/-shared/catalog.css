@@ -233,10 +233,8 @@
   grid-template-columns: 36px 30px 1fr auto;
 }
 
-/* Model row grid: # · name+family · context · in$ · out$ · caps · providers. */
-.cat-model-grid {
-  grid-template-columns: 36px 1.6fr 70px 64px 64px 1.4fr 70px;
-}
+/* Model row grid: column tracks are computed inline from the visible-column model (see
+   ExploreApiScreen COLUMNS), so the picker can show/hide columns without a fixed template here. */
 .cat-model-name {
   font-size: 14px;
   font-weight: 600;
@@ -245,10 +243,30 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cat-model-family {
-  font-size: 11px;
+/* Capabilities chips as a subheading under the model name. */
+.cat-model-caps {
+  margin-top: 4px;
+}
+/* Generic truncating text cell (e.g. Family). */
+.cat-cell-text {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: hsl(var(--muted-foreground));
-  margin-top: 2px;
+}
+/* Column header: single line, ellipsis if it overflows. Center-ellipsis via the rtl trick keeps the
+   start + end of a label visible; falls back to a clean end-ellipsis where rtl isn't honored. */
+.cat-colhead,
+.cat-colsort {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cat-colpicker-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .cat-num-cell {
   font-size: 13px;
