@@ -60,7 +60,8 @@ const STATUS_LABELS: Record<StatusFacet, string> = {
   deprecated: 'Deprecated',
 };
 
-const PRICE_MAX = 75; // $/Mtok slider ceiling
+const PRICE_MAX = 100; // input $/Mtok slider ceiling
+const PRICE_OUT_MAX = 150; // output $/Mtok slider ceiling
 const CONTEXT_MAX = 1000; // K tokens slider ceiling
 
 function toggle<T>(list: T[] | undefined, value: T): T[] | undefined {
@@ -122,14 +123,50 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange, onClear
         </Pills>
       </FacetGroup>
 
-      <FacetGroup icon="dollar-sign" title="Pricing" note="input $/Mtok, max">
-        <RangeControl
-          value={facets.pricing_max ?? PRICE_MAX}
-          max={PRICE_MAX}
+      <FacetGroup icon="dollar-sign" title="Input price" note="$/Mtok">
+        <Pills>
+          <FacetPill
+            label="Free"
+            count={undefined}
+            active={facets.pricing_max === 0}
+            testId="cat-model-pricing-free"
+            // "Free" == zero input price. Sets pricing_max=0 and drops the min floor; re-click clears.
+            onToggle={() =>
+              onFacetsChange(
+                facets.pricing_max === 0
+                  ? { ...facets, pricing_max: undefined }
+                  : { ...facets, pricing_max: 0, pricing_min: undefined }
+              )
+            }
+          />
+        </Pills>
+        <DualRangeControl
+          min={facets.pricing_min ?? 0}
+          max={facets.pricing_max ?? PRICE_MAX}
+          ceiling={PRICE_MAX}
           step={0.5}
-          format={(v) => (v >= PRICE_MAX ? 'Any' : `$${v}`)}
+          format={(v) => `$${v}`}
+          maxLabel="Any"
+          disabled={facets.pricing_max === 0}
           testId="cat-model-pricing"
-          onCommit={(v) => onFacetsChange({ ...facets, pricing_max: v >= PRICE_MAX ? undefined : v })}
+          onCommit={(lo, hi) =>
+            onFacetsChange({
+              ...facets,
+              pricing_min: lo <= 0 ? undefined : lo,
+              pricing_max: hi >= PRICE_MAX ? undefined : hi,
+            })
+          }
+        />
+      </FacetGroup>
+
+      <FacetGroup icon="dollar-sign" title="Output price" note="$/Mtok, max">
+        <RangeControl
+          value={facets.pricing_out_max ?? PRICE_OUT_MAX}
+          max={PRICE_OUT_MAX}
+          step={0.5}
+          format={(v) => (v >= PRICE_OUT_MAX ? 'Any' : `$${v}`)}
+          testId="cat-model-pricing-out"
+          onCommit={(v) => onFacetsChange({ ...facets, pricing_out_max: v >= PRICE_OUT_MAX ? undefined : v })}
         />
       </FacetGroup>
 
@@ -218,7 +255,8 @@ function FacetPill({
   onToggle: () => void;
 }) {
   const n = count ?? 0;
-  const disabled = !active && n === 0;
+  // Count-gating only applies to real facet buckets; synthetic chips (no count) stay enabled.
+  const disabled = count != null && !active && n === 0;
   return (
     <button
       type="button"
@@ -270,6 +308,52 @@ function RangeControl({
       />
       <span className="cat-range-val" data-testid={`${testId}-val`}>
         {format(local)}
+      </span>
+    </div>
+  );
+}
+
+/** A debounced two-thumb range slider: emits onCommit(lo, hi) on release. */
+function DualRangeControl({
+  min,
+  max,
+  ceiling,
+  step,
+  format,
+  maxLabel,
+  disabled,
+  testId,
+  onCommit,
+}: {
+  min: number;
+  max: number;
+  ceiling: number;
+  step: number;
+  format: (v: number) => string;
+  maxLabel: string;
+  disabled?: boolean;
+  testId: string;
+  onCommit: (lo: number, hi: number) => void;
+}) {
+  const [local, setLocal] = useState<[number, number]>([min, max]);
+  useEffect(() => {
+    setLocal([min, max]);
+  }, [min, max]);
+
+  return (
+    <div className="cat-range" data-testid={testId}>
+      <Slider
+        value={local}
+        min={0}
+        max={ceiling}
+        step={step}
+        disabled={disabled}
+        onValueChange={(vals) => setLocal([vals[0], vals[1]])}
+        onValueCommit={(vals) => onCommit(vals[0], vals[1])}
+        data-testid={`${testId}-slider`}
+      />
+      <span className="cat-range-val" data-testid={`${testId}-val`}>
+        {format(local[0])} – {local[1] >= ceiling ? maxLabel : format(local[1])}
       </span>
     </div>
   );
