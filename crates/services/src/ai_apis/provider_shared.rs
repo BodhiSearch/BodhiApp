@@ -5,7 +5,36 @@ use async_openai::types::models::Model as OpenAIModel;
 use axum::body::Body;
 use axum::http::Method;
 use axum::response::Response;
+use serde::Deserialize;
 use serde_json::Value;
+
+// OpenRouter (and other OpenAI-compatible providers) omit `object`/`owned_by`/`created`,
+// which `async_openai::Model` requires — parse leniently with defaults, then convert.
+#[derive(Debug, Deserialize)]
+struct LenientOpenAIModel {
+  id: String,
+  #[serde(default = "default_object")]
+  object: String,
+  #[serde(default)]
+  created: u32,
+  #[serde(default)]
+  owned_by: String,
+}
+
+fn default_object() -> String {
+  "model".to_string()
+}
+
+impl From<LenientOpenAIModel> for OpenAIModel {
+  fn from(m: LenientOpenAIModel) -> Self {
+    OpenAIModel {
+      id: m.id,
+      object: m.object,
+      created: m.created,
+      owned_by: m.owned_by,
+    }
+  }
+}
 
 fn is_hop_by_hop(name: &str) -> bool {
   matches!(
@@ -69,8 +98,8 @@ pub(crate) async fn fetch_openai_models(
     .map(|arr| {
       arr
         .iter()
-        .filter_map(|v| serde_json::from_value::<OpenAIModel>(v.clone()).ok())
-        .map(ApiModel::OpenAI)
+        .filter_map(|v| serde_json::from_value::<LenientOpenAIModel>(v.clone()).ok())
+        .map(|m| ApiModel::OpenAI(m.into()))
         .collect()
     })
     .unwrap_or_default();
@@ -190,4 +219,70 @@ pub(crate) async fn forward_to_upstream(
     .map_err(|e| AiApiClientFactoryError::ApiError(e.to_string()))?;
 
   Ok(axum_response)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::LenientOpenAIModel;
+  use crate::models::ApiModel;
+  use pretty_assertions::assert_eq;
+  use serde_json::json;
+
+  fn parse_data(data: serde_json::Value) -> Vec<ApiModel> {
+    data
+      .as_array()
+      .unwrap()
+      .iter()
+      .filter_map(|v| serde_json::from_value::<LenientOpenAIModel>(v.clone()).ok())
+      .map(|m| ApiModel::OpenAI(m.into()))
+      .collect()
+  }
+
+  #[test]
+  fn parses_openrouter_entries_missing_object_and_owned_by() {
+    let data = json!([
+      {
+        "id": "openai/gpt-4o",
+        "canonical_slug": "openai/gpt-4o",
+        "created": 1715367049u32,
+        "pricing": {"prompt": "0.0000025"}
+      },
+      {"id": "anthropic/claude-3.5-sonnet"}
+    ]);
+    let models = parse_data(data);
+    let ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
+    assert_eq!(vec!["openai/gpt-4o", "anthropic/claude-3.5-sonnet"], ids);
+    match &models[0] {
+      ApiModel::OpenAI(m) => {
+        assert_eq!("model", m.object);
+        assert_eq!("", m.owned_by);
+        assert_eq!(1715367049, m.created);
+      }
+      other => panic!("expected OpenAI variant, got {other:?}"),
+    }
+  }
+
+  #[test]
+  fn parses_strict_openai_shape_without_regression() {
+    let data = json!([
+      {"id": "gpt-4", "object": "model", "created": 1687882411u32, "owned_by": "openai"}
+    ]);
+    let models = parse_data(data);
+    match &models[0] {
+      ApiModel::OpenAI(m) => {
+        assert_eq!("gpt-4", m.id);
+        assert_eq!("model", m.object);
+        assert_eq!("openai", m.owned_by);
+      }
+      other => panic!("expected OpenAI variant, got {other:?}"),
+    }
+  }
+
+  #[test]
+  fn skips_entries_without_id() {
+    let data = json!([{"object": "model"}, {"id": "valid"}]);
+    let models = parse_data(data);
+    let ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
+    assert_eq!(vec!["valid"], ids);
+  }
 }
