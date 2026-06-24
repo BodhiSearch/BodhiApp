@@ -411,18 +411,18 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     });
   });
 
-  it('Free chip sets pricing_max=0 and pins; re-click clears it', async () => {
+  it('Free chip sends pricing=free and pins; re-click clears it', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
     const user = userEvent.setup();
     await user.click(screen.getByTestId('cat-model-pricing-free'));
-    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('pricing_max')).toBe('0'));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('pricing')).toBe('free'));
     expect(screen.getByTestId('cat-model-pricing-free')).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(screen.getByTestId('cat-model-pricing-free'));
-    await waitFor(() => expect(seen[seen.length - 1].searchParams.has('pricing_max')).toBe(false));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.has('pricing')).toBe(false));
   });
 
   it('provider autocomplete selects from facet options, sends provider=, and removes via chip', async () => {

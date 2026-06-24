@@ -25,8 +25,10 @@ export interface ModelFacetsState {
   provider?: string[];
   family?: string[];
   open_weights?: OpenWeights;
-  pricing_min?: number;
-  pricing_max?: number;
+  pricing?: 'free' | 'paid';
+  pricing_in_min?: number;
+  pricing_in_max?: number;
+  pricing_out_min?: number;
   pricing_out_max?: number;
   context_min?: number;
 }
@@ -39,8 +41,10 @@ export function hasActiveModelFacets(f: ModelFacetsState): boolean {
       f.provider?.length ||
       f.family?.length ||
       f.open_weights ||
-      f.pricing_min != null ||
-      f.pricing_max != null ||
+      f.pricing ||
+      f.pricing_in_min != null ||
+      f.pricing_in_max != null ||
+      f.pricing_out_min != null ||
       f.pricing_out_max != null ||
       f.context_min != null
   );
@@ -61,8 +65,10 @@ const STATUS_LABELS: Record<StatusFacet, string> = {
   deprecated: 'Deprecated',
 };
 
-const PRICE_MAX = 100; // input $/Mtok slider ceiling
-const PRICE_OUT_MAX = 150; // output $/Mtok slider ceiling
+// Frontend-owned slider ceilings (the backend has no price-range facet). Most models fall well under
+// these; a slider parked at its ceiling means "no upper bound" and sends nothing.
+const PRICE_IN_MAX = 30; // input $/Mtok slider ceiling
+const PRICE_OUT_MAX = 60; // output $/Mtok slider ceiling
 const CONTEXT_MAX = 1000; // K tokens slider ceiling
 
 function toggle<T>(list: T[] | undefined, value: T): T[] | undefined {
@@ -125,51 +131,71 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange, onClear
         </Pills>
       </FacetGroup>
 
-      <FacetGroup icon="dollar-sign" title="Input price" note="$/Mtok">
+      <FacetGroup icon="dollar-sign" title="Pricing" note="$/Mtok">
         <Pills>
           <FacetPill
             label="Free"
             count={undefined}
-            active={facets.pricing_max === 0}
+            active={facets.pricing === 'free'}
             testId="cat-model-pricing-free"
-            // "Free" == zero input price. Sets pricing_max=0 and drops the min floor; re-click clears.
+            // Free pins input AND output to $0 server-side; clearing the price ranges avoids sending
+            // redundant bounds. Re-click clears.
             onToggle={() =>
               onFacetsChange(
-                facets.pricing_max === 0
-                  ? { ...facets, pricing_max: undefined }
-                  : { ...facets, pricing_max: 0, pricing_min: undefined }
+                facets.pricing === 'free'
+                  ? { ...facets, pricing: undefined }
+                  : {
+                      ...facets,
+                      pricing: 'free',
+                      pricing_in_min: undefined,
+                      pricing_in_max: undefined,
+                      pricing_out_min: undefined,
+                      pricing_out_max: undefined,
+                    }
               )
             }
           />
         </Pills>
-        <DualRangeControl
-          min={facets.pricing_min ?? 0}
-          max={facets.pricing_max ?? PRICE_MAX}
-          ceiling={PRICE_MAX}
-          step={0.5}
-          format={(v) => `$${v}`}
-          maxLabel="Any"
-          disabled={facets.pricing_max === 0}
-          testId="cat-model-pricing"
-          onCommit={(lo, hi) =>
-            onFacetsChange({
-              ...facets,
-              pricing_min: lo <= 0 ? undefined : lo,
-              pricing_max: hi >= PRICE_MAX ? undefined : hi,
-            })
-          }
-        />
-      </FacetGroup>
-
-      <FacetGroup icon="dollar-sign" title="Output price" note="$/Mtok, max">
-        <RangeControl
-          value={facets.pricing_out_max ?? PRICE_OUT_MAX}
-          max={PRICE_OUT_MAX}
-          step={0.5}
-          format={(v) => (v >= PRICE_OUT_MAX ? 'Any' : `$${v}`)}
-          testId="cat-model-pricing-out"
-          onCommit={(v) => onFacetsChange({ ...facets, pricing_out_max: v >= PRICE_OUT_MAX ? undefined : v })}
-        />
+        <div className="cat-range-row">
+          <span className="cat-range-axis">Input</span>
+          <DualRangeControl
+            min={facets.pricing_in_min ?? 0}
+            max={facets.pricing_in_max ?? PRICE_IN_MAX}
+            ceiling={PRICE_IN_MAX}
+            step={0.25}
+            format={(v) => `$${v}`}
+            maxLabel="Any"
+            disabled={facets.pricing === 'free'}
+            testId="cat-model-pricing-in"
+            onCommit={(lo, hi) =>
+              onFacetsChange({
+                ...facets,
+                pricing_in_min: lo <= 0 ? undefined : lo,
+                pricing_in_max: hi >= PRICE_IN_MAX ? undefined : hi,
+              })
+            }
+          />
+        </div>
+        <div className="cat-range-row">
+          <span className="cat-range-axis">Output</span>
+          <DualRangeControl
+            min={facets.pricing_out_min ?? 0}
+            max={facets.pricing_out_max ?? PRICE_OUT_MAX}
+            ceiling={PRICE_OUT_MAX}
+            step={0.5}
+            format={(v) => `$${v}`}
+            maxLabel="Any"
+            disabled={facets.pricing === 'free'}
+            testId="cat-model-pricing-out"
+            onCommit={(lo, hi) =>
+              onFacetsChange({
+                ...facets,
+                pricing_out_min: lo <= 0 ? undefined : lo,
+                pricing_out_max: hi >= PRICE_OUT_MAX ? undefined : hi,
+              })
+            }
+          />
+        </div>
       </FacetGroup>
 
       <FacetGroup icon="ruler" title="Context" note="min, K tokens">
@@ -397,9 +423,12 @@ export function modelFacetsToQuery(f: ModelFacetsState) {
     ...(f.provider?.length ? { provider: f.provider } : {}),
     ...(f.family?.length ? { family: f.family } : {}),
     ...(f.open_weights ? { open_weights: f.open_weights } : {}),
-    ...(f.pricing_min != null ? { pricing_min: f.pricing_min } : {}),
-    ...(f.pricing_max != null ? { pricing_max: f.pricing_max } : {}),
-    ...(f.pricing_out_max != null ? { pricing_out_max: f.pricing_out_max } : {}),
+    ...(f.pricing ? { pricing: f.pricing } : {}),
+    // When Free is set the price ranges are cleared; never send both (redundant — backend ANDs them).
+    ...(f.pricing !== 'free' && f.pricing_in_min != null ? { pricing_in_min: f.pricing_in_min } : {}),
+    ...(f.pricing !== 'free' && f.pricing_in_max != null ? { pricing_in_max: f.pricing_in_max } : {}),
+    ...(f.pricing !== 'free' && f.pricing_out_min != null ? { pricing_out_min: f.pricing_out_min } : {}),
+    ...(f.pricing !== 'free' && f.pricing_out_max != null ? { pricing_out_max: f.pricing_out_max } : {}),
     ...(f.context_min != null ? { context_min: f.context_min } : {}),
   };
 }
