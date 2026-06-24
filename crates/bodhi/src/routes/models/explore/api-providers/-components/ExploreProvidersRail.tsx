@@ -1,4 +1,9 @@
-import type { ProviderDetailResponse, ProviderModelRow, ProviderSummary } from '@bodhiapp/reference-api-types';
+import type {
+  ListProviderModelsQuery,
+  ProviderDetailResponse,
+  ProviderModelRow,
+  ProviderSummary,
+} from '@bodhiapp/reference-api-types';
 
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,15 +45,32 @@ function Row({ k, v }: { k: string; v: string }) {
   );
 }
 
+type ModelSort = NonNullable<ListProviderModelsQuery['sort']>;
+const MODEL_SORTS: { key: ModelSort; label: string }[] = [
+  { key: 'context', label: 'Context' },
+  { key: 'price', label: 'Price' },
+  { key: 'name', label: 'Name' },
+];
+
 interface RailProps {
   provider: ProviderSummary;
   detail: ProviderDetailResponse | undefined;
   detailLoading: boolean;
   models: ProviderModelRow[];
   modelsLoading: boolean;
+  modelSort: ModelSort;
+  onModelSort: (s: ModelSort) => void;
 }
 
-export function ExploreProvidersRail({ provider, detail, detailLoading, models, modelsLoading }: RailProps) {
+export function ExploreProvidersRail({
+  provider,
+  detail,
+  detailLoading,
+  models,
+  modelsLoading,
+  modelSort,
+  onModelSort,
+}: RailProps) {
   return (
     <div className="dp-panel models-screen-rail" data-testid={`cat-prov-detail-${provider.slug}`}>
       <div className="dp-body">
@@ -78,7 +100,23 @@ export function ExploreProvidersRail({ provider, detail, detailLoading, models, 
         </div>
 
         <div className="dp-section">
-          <div className="dp-sec-lbl">Models ({models.length})</div>
+          <div className="dp-sec-lbl cat-prov-models-head">
+            <span>Models ({models.length})</span>
+            <span className="cat-prov-models-sort" data-testid="cat-prov-models-sort">
+              {MODEL_SORTS.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  className={`cat-sort-btn${modelSort === s.key ? ' on' : ''}`}
+                  aria-pressed={modelSort === s.key}
+                  onClick={() => onModelSort(s.key)}
+                  data-testid={`cat-prov-models-sort-${s.key}`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </span>
+          </div>
           {modelsLoading ? (
             <Skeleton className="h-20 w-full" data-testid="cat-prov-models-skeleton" />
           ) : models.length === 0 ? (

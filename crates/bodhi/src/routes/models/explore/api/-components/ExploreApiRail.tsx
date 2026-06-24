@@ -97,7 +97,10 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
         </div>
 
         <div className="dp-section">
-          <div className="dp-sec-lbl">Served by ({detail?.served_by.length ?? model.provider_count})</div>
+          <div className="dp-sec-lbl">
+            Served by ({detail?.served_by.length ?? model.provider_count}){' '}
+            <span className="cat-sub">· $in / $out per M</span>
+          </div>
           {loading && !detail ? (
             <Skeleton className="h-16 w-full" data-testid="cat-model-servedby-skeleton" />
           ) : (
@@ -117,7 +120,7 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
                   <span className="cat-servedby-price">
                     {isFree(s.pricing.input_per_m, s.pricing.output_per_m)
                       ? 'Free'
-                      : `${fmtPrice(s.pricing.input_per_m)}/M`}
+                      : `${fmtPrice(s.pricing.input_per_m)} / ${fmtPrice(s.pricing.output_per_m)}`}
                   </span>
                 </Link>
               ))}
@@ -133,6 +136,12 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
         >
           <ShellIcon name="plug-zap" size={15} /> Configure in Bodhi
         </Link>
+        {bridge?.base_url_requires_substitution && (
+          <div className="cat-sub cat-configure-note" data-testid="cat-model-configure-subst">
+            <ShellIcon name="triangle-alert" size={12} /> Base URL contains a placeholder (e.g. region) — edit it before
+            saving.
+          </div>
+        )}
       </div>
     </div>
   );

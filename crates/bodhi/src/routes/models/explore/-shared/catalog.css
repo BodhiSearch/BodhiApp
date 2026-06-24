@@ -176,6 +176,24 @@
   flex: 1;
 }
 
+/* Provider rail: served-models sort header + Configure substitution note. */
+.cat-prov-models-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cat-prov-models-sort {
+  display: inline-flex;
+  gap: 2px;
+}
+.cat-configure-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  color: hsl(var(--saffron, 38 92% 50%));
+}
+
 /* Capability chips. */
 .cat-caps {
   display: flex;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ListProvidersQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
+import type { ListProviderModelsQuery, ListProvidersQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
 import { useSearch } from '@tanstack/react-router';
 
 import {
@@ -38,6 +38,7 @@ const PAGE_SIZE = 30;
 
 type ProviderSort = NonNullable<ListProvidersQuery['sort']>;
 type SortOrder = NonNullable<ListProvidersQuery['order']>;
+type ProviderModelSort = NonNullable<ListProviderModelsQuery['sort']>;
 const SORT_LABELS: Record<ProviderSort, string> = {
   rank: 'Rank',
   name: 'Name',
@@ -213,7 +214,10 @@ export function ExploreProvidersScreen() {
   }, [selectParam, openRail]);
 
   const { data: detail, isLoading: detailLoading } = useCatalogProviderDetail(selectedSlug);
-  const { data: providerModels, isLoading: modelsLoading } = useCatalogProviderModels(selectedSlug);
+  const [providerModelSort, setProviderModelSort] = useState<ProviderModelSort>('context');
+  const { data: providerModels, isLoading: modelsLoading } = useCatalogProviderModels(selectedSlug, {
+    sort: providerModelSort,
+  });
 
   // Prefer the list-row summary; fall back to one synthesized from the detail fetch when the
   // selected provider isn't on the currently-loaded list page (deep-link / cross-link case).
@@ -252,9 +256,11 @@ export function ExploreProvidersScreen() {
           detailLoading={detailLoading}
           models={providerModels?.items ?? []}
           modelsLoading={modelsLoading}
+          modelSort={providerModelSort}
+          onModelSort={setProviderModelSort}
         />
       ) : null,
-    [selectedProvider, detail, detailLoading, providerModels?.items, modelsLoading]
+    [selectedProvider, detail, detailLoading, providerModels?.items, modelsLoading, providerModelSort]
   );
 
   useShellChrome({

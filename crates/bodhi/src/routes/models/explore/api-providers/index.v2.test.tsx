@@ -181,6 +181,25 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
     await user.click(screen.getByTestId('cat-prov-detail-close'));
     await waitFor(() => expect(screen.queryByTestId('cat-prov-detail-nano-gpt')).not.toBeInTheDocument());
   });
+
+  it('provider-rail model sort re-queries the served-models endpoint with sort=', async () => {
+    const seen: URL[] = [];
+    server.use(
+      ...mockCatalogProviders(),
+      ...mockCatalogProviderDetail(),
+      ...mockCatalogProviderModels({ onRequest: ({ url }) => seen.push(url) })
+    );
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    await waitFor(() => expect(screen.getByTestId('cat-prov-models')).toBeInTheDocument());
+    // Default sort is context.
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'context')).toBe(true));
+
+    await user.click(screen.getByTestId('cat-prov-models-sort-price'));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'price')).toBe(true));
+  });
 });
 
 describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {

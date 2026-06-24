@@ -259,6 +259,60 @@ describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
     await renderScreen();
     expect(detailRequested).toBe(false);
   });
+
+  it('served-by rows show per-provider $in / $out for cross-provider cost comparison', async () => {
+    server.use(
+      ...mockCatalogModels(),
+      ...mockCatalogModelDetail({
+        detail: createModelDetail({
+          served_by: [
+            {
+              slug: 'anthropic',
+              name: 'Anthropic',
+              logo_url: null,
+              base_url: 'https://api.anthropic.com/v1',
+              pricing: { input_per_m: 3, output_per_m: 15, cache_read_per_m: null, cache_write_per_m: null },
+            },
+            {
+              slug: 'openrouter',
+              name: 'OpenRouter',
+              logo_url: null,
+              base_url: 'https://openrouter.ai/api/v1',
+              pricing: { input_per_m: 3.2, output_per_m: 16, cache_read_per_m: null, cache_write_per_m: null },
+            },
+          ],
+        }),
+      })
+    );
+    await renderScreen();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5'));
+
+    const anthropic = await screen.findByTestId('cat-model-servedby-anthropic');
+    expect(anthropic).toHaveTextContent('$3 / $15');
+    const openrouter = await screen.findByTestId('cat-model-servedby-openrouter');
+    expect(openrouter).toHaveTextContent('$3.20 / $16');
+  });
+
+  it('Configure shows a substitution note when the bridge base_url needs editing', async () => {
+    server.use(
+      ...mockCatalogModels(),
+      ...mockCatalogModelDetail({
+        detail: createModelDetail({
+          bridge: {
+            api_format: 'openai',
+            base_url: 'https://bedrock.{AWS_REGION}.amazonaws.com',
+            base_url_source: 'modelsdev_api',
+            base_url_requires_substitution: true,
+          },
+        }),
+      })
+    );
+    await renderScreen();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5'));
+    expect(await screen.findByTestId('cat-model-configure-subst')).toBeInTheDocument();
+  });
 });
 
 describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
