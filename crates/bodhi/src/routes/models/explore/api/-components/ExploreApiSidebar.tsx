@@ -22,8 +22,11 @@ export interface ModelFacetsState {
   modality?: Modality[];
   status?: StatusFacet[];
   provider?: string[];
+  family?: string[];
   open_weights?: OpenWeights;
+  pricing_min?: number;
   pricing_max?: number;
+  pricing_out_max?: number;
   context_min?: number;
 }
 
@@ -33,8 +36,11 @@ export function hasActiveModelFacets(f: ModelFacetsState): boolean {
       f.modality?.length ||
       f.status?.length ||
       f.provider?.length ||
+      f.family?.length ||
       f.open_weights ||
+      f.pricing_min != null ||
       f.pricing_max != null ||
+      f.pricing_out_max != null ||
       f.context_min != null
   );
 }
@@ -299,8 +305,11 @@ export function modelFacetsToQuery(f: ModelFacetsState) {
     ...(f.modality?.length ? { modality: f.modality } : {}),
     ...(f.status?.length ? { status: f.status } : {}),
     ...(f.provider?.length ? { provider: f.provider } : {}),
+    ...(f.family?.length ? { family: f.family } : {}),
     ...(f.open_weights ? { open_weights: f.open_weights } : {}),
+    ...(f.pricing_min != null ? { pricing_min: f.pricing_min } : {}),
     ...(f.pricing_max != null ? { pricing_max: f.pricing_max } : {}),
+    ...(f.pricing_out_max != null ? { pricing_out_max: f.pricing_out_max } : {}),
     ...(f.context_min != null ? { context_min: f.context_min } : {}),
   };
 }

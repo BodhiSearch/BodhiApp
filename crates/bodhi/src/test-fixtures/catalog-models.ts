@@ -42,6 +42,7 @@ export function createModelsListResponse(
       modality: { text: 2565, audio: 133, image: 1168, video: 302, pdf: 350 },
       status: { stable: 2477, alpha: 1, beta: 21, deprecated: 66 },
       provider: { 'nano-gpt': 617, kilo: 345, openrouter: 338, vercel: 281, anthropic: 25, openai: 51 },
+      family: { claude: 25, gpt: 93, gemini: 17, llama: 40, 'deepseek-v3': 12 },
       open_weights: { open: 900, closed: 1665 },
     },
     ...overrides,

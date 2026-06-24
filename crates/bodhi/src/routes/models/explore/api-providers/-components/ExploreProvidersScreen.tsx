@@ -19,7 +19,7 @@ import {
 } from '@/routes/models/explore/-shared/catalog-format';
 
 import { ExploreProvidersRail, ExploreProvidersRailHeader } from './ExploreProvidersRail';
-import { ExploreProvidersSidebar, type ProviderFacets } from './ExploreProvidersSidebar';
+import { ExploreProvidersSidebar, providerFacetsToQuery, type ProviderFacets } from './ExploreProvidersSidebar';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '@/routes/models/explore/-shared/catalog.css';
@@ -33,6 +33,8 @@ const SORT_LABELS: Record<ProviderSort, string> = {
   rank: 'Rank',
   name: 'Name',
   model_count: 'Models',
+  api_format: 'Format',
+  pricing: 'Cheapest',
 };
 
 function ProviderRow({
@@ -101,8 +103,7 @@ export function ExploreProvidersScreen() {
       page,
       page_size: PAGE_SIZE,
       ...(search ? { q: search } : {}),
-      ...(facets.capability?.length ? { capability: facets.capability } : {}),
-      ...(facets.api_format?.length ? { api_format: facets.api_format } : {}),
+      ...providerFacetsToQuery(facets),
     }),
     [sort, page, search, facets]
   );
@@ -116,8 +117,7 @@ export function ExploreProvidersScreen() {
   }, []);
 
   // Page-based "Load more": prepend accumulated earlier pages, dedup by slug. (Catalog is page-based
-  // with a real total — unlike Local's cursor.) Param changes (search/sort, added in B3) reset both
-  // `page` and `accumulated` synchronously so a stale page-2 never lands on a new filter's page-1.
+  // with a real total — unlike Local's cursor.)
   const rows = useMemo(() => {
     const seen = new Set<string>();
     const out: ProviderSummary[] = [];

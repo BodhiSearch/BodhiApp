@@ -29,10 +29,13 @@ const PAGE_SIZE = 30;
 
 type ModelSort = NonNullable<ListCatalogModelsQuery['sort']>;
 const SORT_LABELS: Record<ModelSort, string> = {
+  relevance: 'Relevance',
   updated: 'Newest',
   context: 'Context',
-  price: 'Price',
+  price: 'Input price',
+  price_out: 'Output price',
   name: 'Name',
+  family: 'Family',
   providers: 'Providers',
 };
 function ColSort({

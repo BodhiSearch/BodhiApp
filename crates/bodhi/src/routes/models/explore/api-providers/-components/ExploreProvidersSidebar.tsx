@@ -1,4 +1,4 @@
-import type { ApiFormatHint, Capability, FacetBucket } from '@bodhiapp/reference-api-types';
+import type { ApiFormatHint, Capability, FacetBucket, ListProvidersQuery } from '@bodhiapp/reference-api-types';
 
 import { ShellIcon } from '@/components/shell';
 import { CAP_LABELS } from '@/routes/models/explore/-shared/catalog-format';
@@ -10,13 +10,27 @@ import '@/routes/models/-components/models.css';
  * per query). Zero-count options render disabled (not hidden) so a selected option can be cleared.
  */
 
+export type ProviderPricing = NonNullable<ListProvidersQuery['pricing']>;
+
 export interface ProviderFacets {
   capability?: Capability[];
   api_format?: ApiFormatHint[];
+  pricing_max?: number;
+  pricing?: ProviderPricing;
 }
 
 export function hasActiveProviderFacets(f: ProviderFacets): boolean {
-  return Boolean(f.capability?.length || f.api_format?.length);
+  return Boolean(f.capability?.length || f.api_format?.length || f.pricing_max != null || f.pricing);
+}
+
+/** Build the API query params contributed by the provider facets (omitting defaults/empties). */
+export function providerFacetsToQuery(f: ProviderFacets) {
+  return {
+    ...(f.capability?.length ? { capability: f.capability } : {}),
+    ...(f.api_format?.length ? { api_format: f.api_format } : {}),
+    ...(f.pricing_max != null ? { pricing_max: f.pricing_max } : {}),
+    ...(f.pricing ? { pricing: f.pricing } : {}),
+  };
 }
 
 const API_FORMAT_LABELS: Partial<Record<ApiFormatHint, string>> = {
