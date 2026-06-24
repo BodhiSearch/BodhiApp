@@ -8,15 +8,16 @@ use axum::response::Response;
 use serde::Deserialize;
 use serde_json::Value;
 
-// OpenRouter (and other OpenAI-compatible providers) omit `object`/`owned_by`/`created`,
-// which `async_openai::Model` requires — parse leniently with defaults, then convert.
+// OpenAI-compatible providers diverge from async_openai::Model's strict shape: OpenRouter
+// omits `object`/`owned_by`, Poe sends millisecond `created` that overflows u32. Parse
+// leniently (only `id` is required and read downstream), then convert.
 #[derive(Debug, Deserialize)]
 struct LenientOpenAIModel {
   id: String,
   #[serde(default = "default_object")]
   object: String,
   #[serde(default)]
-  created: u32,
+  created: Option<u64>,
   #[serde(default)]
   owned_by: String,
 }
@@ -30,7 +31,8 @@ impl From<LenientOpenAIModel> for OpenAIModel {
     OpenAIModel {
       id: m.id,
       object: m.object,
-      created: m.created,
+      // u32 to satisfy async_openai; value is never read, so truncate rather than drop.
+      created: m.created.unwrap_or(0) as u32,
       owned_by: m.owned_by,
     }
   }
@@ -276,6 +278,15 @@ mod tests {
       }
       other => panic!("expected OpenAI variant, got {other:?}"),
     }
+  }
+
+  #[test]
+  fn parses_poe_millisecond_created_without_dropping() {
+    // Poe sends `created` in milliseconds (overflows u32); the entry must still parse.
+    let data = json!([{"id": "GPT-5", "created": 1782177874038u64, "owned_by": "openai"}]);
+    let models = parse_data(data);
+    let ids: Vec<&str> = models.iter().map(|m| m.id()).collect();
+    assert_eq!(vec!["GPT-5"], ids);
   }
 
   #[test]
