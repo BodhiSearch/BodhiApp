@@ -23,13 +23,19 @@ export class ApiExplorePage extends BasePage {
     railServedBy: '[data-testid="cat-model-servedby"]',
     configureCta: '[data-testid="cat-model-configure-cta"]',
     detailClose: '[data-testid="cat-model-detail-close"]',
-    // Search / sort / facets.
+    servedByToggle: (slug) => `[data-testid="cat-model-servedby-toggle-${slug}"]`,
+    servedByDetail: (slug) => `[data-testid="cat-model-servedby-detail-${slug}"]`,
+    servedByAdd: (slug) => `[data-testid="cat-model-servedby-add-${slug}"]`,
+    // Search / sort / columns / facets.
     search: '[data-testid="cat-model-search"] input',
     sort: (key) => `[data-testid="cat-model-sort-${key}"]`,
+    columnsBtn: '[data-testid="cat-model-columns"]',
+    column: (key) => `[data-testid="cat-model-col-${key}"]`,
     facets: '[data-testid="cat-model-facets"]',
     cap: (id) => `[data-testid="cat-model-cap-${id}"]`,
     status: (id) => `[data-testid="cat-model-status-${id}"]`,
     ow: (id) => `[data-testid="cat-model-ow-${id}"]`,
+    pricingFree: '[data-testid="cat-model-pricing-free"]',
     providerTrigger: '[data-testid="cat-model-provider-trigger"]',
     providerChip: (slug) => `[data-testid="cat-model-provider-chip-${slug}"]`,
     clearAll: '[data-testid="cat-model-clear-all"]',
@@ -95,6 +101,9 @@ export class ApiExplorePage extends BasePage {
       const q = url.searchParams.get('q')?.toLowerCase();
       let filtered = models;
       if (q) filtered = filtered.filter((m) => `${m.model_id} ${m.name}`.toLowerCase().includes(q));
+      const pricing = url.searchParams.get('pricing');
+      if (pricing === 'free') filtered = filtered.filter((m) => m.pricing.input_per_m === 0 && m.pricing.output_per_m === 0);
+      if (pricing === 'paid') filtered = filtered.filter((m) => m.pricing.input_per_m > 0 || m.pricing.output_per_m > 0);
       const page = Number(url.searchParams.get('page') ?? '1');
       const pageSize = Number(url.searchParams.get('page_size') ?? '30');
       const start = (page - 1) * pageSize;
@@ -104,6 +113,28 @@ export class ApiExplorePage extends BasePage {
         page_size: pageSize,
         total: filtered.length,
         facets: ApiExplorePage.facets(filtered.length),
+      });
+    });
+
+    // Provider detail backs the served-by inline-detail expansion in the rail.
+    await this.page.route(/\/api\/v1\/catalog\/providers\/[^/]+$/, (route) => {
+      const slug = new URL(route.request().url()).pathname.split('/').filter(Boolean).pop();
+      return json(route, {
+        slug,
+        name: slug === 'openrouter' ? 'OpenRouter' : 'Anthropic',
+        logo_url: null,
+        model_count: 10,
+        env: ['ANTHROPIC_API_KEY'],
+        npm: '@anthropic-ai/sdk',
+        doc_url: 'https://docs.anthropic.com',
+        api_base_url: 'https://api.anthropic.com/v1',
+        provider_shape: 'native',
+        bridge: {
+          api_format: 'anthropic',
+          base_url: 'https://api.anthropic.com/v1',
+          base_url_source: 'modelsdev_api',
+          base_url_requires_substitution: false,
+        },
       });
     });
   }
@@ -150,6 +181,13 @@ export class ApiExplorePage extends BasePage {
           name: 'Anthropic',
           logo_url: null,
           base_url: 'https://api.anthropic.com/v1',
+          pricing: m.pricing,
+        },
+        {
+          slug: 'openrouter',
+          name: 'OpenRouter',
+          logo_url: null,
+          base_url: 'https://openrouter.ai/api/v1',
           pricing: m.pricing,
         },
       ],
@@ -228,6 +266,29 @@ export class ApiExplorePage extends BasePage {
     await this.page.locator(this.selectors.cap(id)).click();
     await this.waitForSPAReady();
     await this.waitForListSettled();
+  }
+
+  async toggleColumn(key) {
+    await this.page.locator(this.selectors.columnsBtn).click();
+    await this.page.locator(this.selectors.column(key)).click();
+    await this.page.keyboard.press('Escape');
+  }
+
+  async toggleFree() {
+    await this.page.locator(this.selectors.pricingFree).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  /** Expand a served-by provider's inline connection detail (no navigation). */
+  async expandServedBy(slug) {
+    await this.page.locator(this.selectors.servedByToggle(slug)).click();
+    await this.page.locator(this.selectors.servedByDetail(slug)).waitFor({ state: 'visible' });
+  }
+
+  async clickServedByAdd(slug) {
+    await this.page.locator(this.selectors.servedByAdd(slug)).click();
+    await this.waitForSPAReady();
   }
 
   /** Open the provider autocomplete and select an option by its slug (accessible name). */

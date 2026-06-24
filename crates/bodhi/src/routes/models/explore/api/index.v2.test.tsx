@@ -539,3 +539,77 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     expect(screen.queryByTestId('cat-model-clear-all')).not.toBeInTheDocument();
   });
 });
+
+describe('ExploreApiScreen (A4 — columns + four-param pricing)', () => {
+  it('renders the Family column value and a human-readable Updated date', async () => {
+    server.use(...mockCatalogModels());
+    await renderScreen();
+    const claude = screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5');
+    // family is its own column now (fixture: claude); last_updated renders human-readably (relative
+    // "Nd/Nmo ago" or "MMM YYYY" — date-relative so match the shape, not an exact string).
+    expect(claude).toHaveTextContent('claude');
+    expect(claude.textContent ?? '').toMatch(/\d+(d|mo) ago|[A-Z][a-z]{2} \d{4}/);
+  });
+
+  it('Name and Family column headers are sortable', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByTestId('cat-model-sort-name'));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'name')).toBe(true));
+
+    await user.click(screen.getByTestId('cat-model-sort-family'));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'family')).toBe(true));
+  });
+
+  it('column picker hides and restores an optional column', async () => {
+    server.use(...mockCatalogModels());
+    await renderScreen();
+    const user = userEvent.setup();
+
+    expect(screen.getByTestId('cat-model-sort-family')).toBeInTheDocument();
+    await user.click(screen.getByTestId('cat-model-columns'));
+    await user.click(await screen.findByTestId('cat-model-col-family'));
+    await waitFor(() => expect(screen.queryByTestId('cat-model-sort-family')).not.toBeInTheDocument());
+
+    await user.click(screen.getByTestId('cat-model-col-family'));
+    await waitFor(() => expect(screen.getByTestId('cat-model-sort-family')).toBeInTheDocument());
+  });
+
+  it('input + output price sliders send pricing_in_* / pricing_out_* independently', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+    const user = userEvent.setup();
+
+    // Sliders are radix primitives; drive the underlying input via keyboard for a deterministic commit.
+    const inMin = within(screen.getByTestId('cat-model-pricing-in-slider')).getAllByRole('slider')[0];
+    inMin.focus();
+    await user.keyboard('{ArrowRight}');
+    await waitFor(() => expect(seen.some((u) => u.searchParams.has('pricing_in_min'))).toBe(true));
+
+    const outMin = within(screen.getByTestId('cat-model-pricing-out-slider')).getAllByRole('slider')[0];
+    outMin.focus();
+    await user.keyboard('{ArrowRight}');
+    await waitFor(() => expect(seen.some((u) => u.searchParams.has('pricing_out_min'))).toBe(true));
+  });
+
+  it('Free disables the price sliders and clears any range bounds', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByTestId('cat-model-pricing-free'));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('pricing')).toBe('free'));
+    // Both sliders disabled while Free is active (radix marks the thumb with data-disabled).
+    within(screen.getByTestId('cat-model-pricing-in-slider'))
+      .getAllByRole('slider')
+      .forEach((s) => expect(s).toHaveAttribute('data-disabled'));
+    const last = seen[seen.length - 1].searchParams;
+    expect(last.has('pricing_in_min')).toBe(false);
+    expect(last.has('pricing_out_min')).toBe(false);
+  });
+});
