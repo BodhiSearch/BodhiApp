@@ -42,7 +42,7 @@ test.describe('All Models V2', () => {
     const localCount = await modelsPage.getRowCount();
     expect(localCount).toBeGreaterThan(0);
     const types = await modelsPage.page.locator('[data-testid^="model-type-"]').allInnerTexts();
-    expect(types.every(t => t.trim() === 'Local File')).toBe(true);
+    expect(types.every((t) => t.trim() === 'Local File')).toBe(true);
 
     // Open the first row's detail rail and confirm the Edit CTA is present.
     await modelsPage.openRow();
@@ -52,7 +52,9 @@ test.describe('All Models V2', () => {
     await modelsPage.filterByType('local_file'); // toggle local off
     await modelsPage.filterByType('api_model');
     await expect(
-      modelsPage.page.locator(`${modelsPage.selectors.empty}, ${modelsPage.selectors.anyRow}`).first()
+      modelsPage.page
+        .locator(`${modelsPage.selectors.empty}, ${modelsPage.selectors.anyRow}`)
+        .first()
     ).toBeVisible();
   });
 
@@ -72,5 +74,79 @@ test.describe('All Models V2', () => {
     await modelsPage.clearSearch();
     await expect(modelsPage.page.locator(modelsPage.selectors.anyRow).first()).toBeVisible();
     expect(await modelsPage.getRowCount()).toBe(all);
+  });
+
+  test('V2 parity: table layout, URL-synced filters/sort/select, back/forward, reset', async () => {
+    await loginPage.performOAuthLogin();
+    await modelsPage.navigateToModels();
+
+    await test.step('renders a semantic table with the universal columns + Models (N) heading', async () => {
+      await modelsPage.expectVisible(modelsPage.selectors.listhead);
+      await expect(modelsPage.page.locator(modelsPage.selectors.listhead)).toContainText('NAME');
+      await expect(modelsPage.page.locator(modelsPage.selectors.listhead)).toContainText(
+        'PROVIDER / REPO'
+      );
+      await expect(modelsPage.page.locator(modelsPage.selectors.heading)).toContainText('Models (');
+      expect(
+        await modelsPage.page.locator(`tr${modelsPage.selectors.anyRow}`).first().isVisible()
+      ).toBe(true);
+    });
+
+    await test.step('a filter is pushed to the URL and Back reverts it', async () => {
+      await modelsPage.filterByType('local_file');
+      expect(modelsPage.searchParams().get('type')).toContain('local_file');
+      await modelsPage.page.goBack();
+      await modelsPage.waitForSPAReady();
+      expect(modelsPage.searchParams().has('type')).toBe(false);
+    });
+
+    await test.step('the column picker hides the Provider column', async () => {
+      await modelsPage.page.locator(modelsPage.selectors.columnsBtn).click();
+      await modelsPage.page.locator(modelsPage.selectors.columnToggle('provider')).click();
+      await expect(modelsPage.page.locator(modelsPage.selectors.listhead)).not.toContainText(
+        'PROVIDER / REPO'
+      );
+      await modelsPage.page.keyboard.press('Escape');
+    });
+
+    await test.step('clicking the Name header writes ?sort=name and marks it active', async () => {
+      await modelsPage.sortBy('name');
+      expect(modelsPage.searchParams().get('sort')).toBe('name');
+      await expect(
+        modelsPage.page.locator(modelsPage.selectors.sortHeader('name'))
+      ).toHaveAttribute('data-test-state', 'active');
+    });
+
+    await test.step('selecting a row writes ?select (replace) and reload restores the rail', async () => {
+      const firstRow = modelsPage.page.locator(modelsPage.selectors.anyRow).first();
+      const id = await modelsPage.getModelIdFromRow(firstRow);
+      await firstRow.click();
+      await expect.poll(() => modelsPage.searchParams().get('select')).toBe(id);
+      await modelsPage.page.reload();
+      await modelsPage.waitForSPAReady();
+      await modelsPage.expectVisible(modelsPage.selectors.rail(id));
+    });
+
+    await test.step('arrow-down moves selection through rows', async () => {
+      await modelsPage.page.locator('body').click();
+      await modelsPage.page.keyboard.press('ArrowDown');
+      await expect.poll(() => modelsPage.searchParams().has('select')).toBe(true);
+    });
+
+    await test.step('toolbar reset waterfalls filters → disabled', async () => {
+      await modelsPage.navigateToModels();
+      await modelsPage.filterByType('local_file');
+      await expect(modelsPage.page.locator(modelsPage.selectors.clearAll)).toHaveAttribute(
+        'data-test-state',
+        'filters'
+      );
+      await modelsPage.page.locator(modelsPage.selectors.clearAll).click();
+      await modelsPage.waitForSPAReady();
+      await expect(modelsPage.page.locator(modelsPage.selectors.clearAll)).toHaveAttribute(
+        'data-test-state',
+        'none'
+      );
+      await expect(modelsPage.page.locator(modelsPage.selectors.clearAll)).toBeDisabled();
+    });
   });
 });

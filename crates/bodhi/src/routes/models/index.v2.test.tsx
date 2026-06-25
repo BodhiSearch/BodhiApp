@@ -333,3 +333,66 @@ describe('ModelsScreen V2 — table layout + columns', () => {
     await waitFor(() => expect(screen.getByTestId('cat-listhead')).not.toHaveTextContent('PROVIDER / REPO'));
   });
 });
+
+describe('ModelsScreen V2 — sort + reset', () => {
+  it('clicking the Name header writes ?sort=name and marks the header active', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    const router = await renderScreen();
+
+    await userEvent.click(screen.getByTestId('cat-mymodel-sort-name'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ sort: 'name' }));
+    expect(screen.getByTestId('cat-mymodel-sort-name')).toHaveAttribute('data-test-state', 'active');
+  });
+
+  it('persists the explicit sort to localStorage and applies it on a later clean-URL visit', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    const router = await renderScreen();
+
+    await userEvent.click(screen.getByTestId('cat-mymodel-sort-provider'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ sort: 'provider' }));
+    expect(localStorage.getItem('bodhi.models.sort')).toContain('provider');
+  });
+
+  it('sorts the derived Provider column client-side within the current page', async () => {
+    // Three API aliases out of natural order; sorting by provider (api_format) reorders the page.
+    const rows = [
+      createMockApiAlias({ id: 'z', name: 'z', api_format: 'openai' }),
+      createMockApiAlias({ id: 'a', name: 'a', api_format: 'anthropic' }),
+      createMockApiAlias({ id: 'm', name: 'm', api_format: 'gemini' }),
+    ];
+    server.use(...mockModels({ data: rows, total: rows.length }, { stub: true }));
+    await renderScreen();
+
+    await userEvent.click(screen.getByTestId('cat-mymodel-sort-provider'));
+    await waitFor(() => {
+      const ordered = screen.getAllByTestId(/^model-row-/).map((r) => r.getAttribute('data-testid'));
+      // ANTHROPIC < GEMINI < OPENAI ascending.
+      expect(ordered).toEqual(['model-row-a', 'model-row-m', 'model-row-z']);
+    });
+  });
+
+  it('toolbar reset waterfalls filters → query → disabled', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    const router = await renderScreen(['/models/?type=%5B%22api_model%22%5D&q=foo']);
+
+    const reset = screen.getByTestId('cat-mymodel-clear-all');
+    expect(reset).toHaveAttribute('data-test-state', 'filters');
+    await userEvent.click(reset);
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty('type'));
+    // Query still set → now in 'query' mode.
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'query'));
+    await userEvent.click(reset);
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty('q'));
+    expect(reset).toBeDisabled();
+  });
+
+  it('arrow-down navigates to the first row and opens its rail', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    const router = await renderScreen();
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    await waitFor(() => expect(router.state.location.search).toHaveProperty('select'));
+  });
+});

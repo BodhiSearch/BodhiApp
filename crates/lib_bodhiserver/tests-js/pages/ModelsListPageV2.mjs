@@ -19,21 +19,42 @@ export class ModelsListPageV2 extends BasePage {
     content: '[data-testid="models-content"]',
     list: '[data-testid="table-list-models"]',
     facets: '[data-testid="models-facets"]',
-    facetType: id => `[data-testid="models-facet-type-${id}"]`,
-    facetCapability: id => `[data-testid="models-facet-capability-${id}"]`,
-    facetFormat: id => `[data-testid="models-facet-format-${id}"]`,
+    facetType: (id) => `[data-testid="models-facet-type-${id}"]`,
+    facetCapability: (id) => `[data-testid="models-facet-capability-${id}"]`,
+    facetFormat: (id) => `[data-testid="models-facet-format-${id}"]`,
     facetSize: '[data-testid="models-facet-size"]',
-    row: id => `[data-testid="model-row-${id}"]`,
-    rowTitle: id => `[data-testid="model-title-${id}"]`,
-    rowType: id => `[data-testid="model-type-${id}"]`,
+    row: (id) => `[data-testid="model-row-${id}"]`,
+    rowTitle: (id) => `[data-testid="model-title-${id}"]`,
+    rowType: (id) => `[data-testid="model-type-${id}"]`,
     anyRow: '[data-testid^="model-row-"]',
-    rail: id => `[data-testid="model-detail-${id}"]`,
+    rail: (id) => `[data-testid="model-detail-${id}"]`,
     railClose: '[data-testid="model-detail-close"]',
     railEdit: '[data-testid="model-detail-edit"]',
     empty: '[data-testid="no-models"]',
     search: '[data-testid="models-search"] input',
     download: '[data-testid="models-downloads-button"]',
+    heading: '[data-testid="models-heading"]',
+    listhead: '[data-testid="cat-listhead"]',
+    sortHeader: (col) => `[data-testid="cat-mymodel-sort-${col}"]`,
+    columnsBtn: '[data-testid="cat-mymodel-columns"]',
+    columnToggle: (key) => `[data-testid="cat-mymodel-col-${key}"]`,
+    clearAll: '[data-testid="cat-mymodel-clear-all"]',
   };
+
+  /** Current ?-search params on the My Models URL. */
+  searchParams() {
+    return new URL(this.page.url()).searchParams;
+  }
+
+  /** Click a sortable column header and wait for the list to settle. */
+  async sortBy(col) {
+    await this.page.locator(this.selectors.sortHeader(col)).click();
+    await this.waitForSPAReady();
+    await this.page
+      .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)
+      .first()
+      .waitFor({ state: 'visible' });
+  }
 
   async navigateToModels() {
     // Skip the rail view-transition so the close button doesn't detach mid-animation.
@@ -42,7 +63,10 @@ export class ModelsListPageV2 extends BasePage {
     await this.navigate('/ui/models/');
     await this.waitForSPAReady();
     await this.expectVisible(this.selectors.content);
-    await expect(this.page.locator(this.selectors.content)).toHaveAttribute('data-pagestatus', 'ready');
+    await expect(this.page.locator(this.selectors.content)).toHaveAttribute(
+      'data-pagestatus',
+      'ready'
+    );
   }
 
   async expectModelsPageV2() {
@@ -79,7 +103,10 @@ export class ModelsListPageV2 extends BasePage {
 
   async waitForModelsToLoad() {
     await this.expectVisible(this.selectors.content);
-    await this.page.locator(`${this.selectors.anyRow}, ${this.selectors.empty}`).first().waitFor({ state: 'visible' });
+    await this.page
+      .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)
+      .first()
+      .waitFor({ state: 'visible' });
   }
 
   // ── List verification ──────────────────────────────────────────────────────────────────────
@@ -97,7 +124,9 @@ export class ModelsListPageV2 extends BasePage {
    */
   async verifyApiModelInList(modelId, api_format = 'openai', _baseUrl = null, name = null) {
     await this.expectModelInList(modelId);
-    await expect(this.page.locator(this.selectors.rowType(modelId))).toContainText(api_format.toUpperCase());
+    await expect(this.page.locator(this.selectors.rowType(modelId))).toContainText(
+      api_format.toUpperCase()
+    );
     if (name) {
       await expect(this.page.locator(this.selectors.rowTitle(modelId))).toContainText(name);
     }
@@ -140,7 +169,9 @@ export class ModelsListPageV2 extends BasePage {
 
   /** Open the detail rail for a given alias id (or the first row if omitted). */
   async openRow(id) {
-    const row = id ? this.page.locator(this.selectors.row(id)) : this.page.locator(this.selectors.anyRow).first();
+    const row = id
+      ? this.page.locator(this.selectors.row(id))
+      : this.page.locator(this.selectors.anyRow).first();
     await row.click();
   }
 
@@ -183,7 +214,10 @@ export class ModelsListPageV2 extends BasePage {
   async filterByType(id) {
     await this.page.locator(this.selectors.facetType(id)).click();
     await this.waitForSPAReady();
-    await this.page.locator(`${this.selectors.anyRow}, ${this.selectors.empty}`).first().waitFor({ state: 'visible' });
+    await this.page
+      .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)
+      .first()
+      .waitFor({ state: 'visible' });
   }
 
   /** Type a query into the always-visible search and submit it (Enter → backend `search`). */
@@ -193,7 +227,10 @@ export class ModelsListPageV2 extends BasePage {
     await input.fill(query);
     await input.press('Enter');
     await this.waitForSPAReady();
-    await this.page.locator(`${this.selectors.anyRow}, ${this.selectors.empty}`).first().waitFor({ state: 'visible' });
+    await this.page
+      .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)
+      .first()
+      .waitFor({ state: 'visible' });
   }
 
   /** Clear the search box (live-resets the server search to the full list). */
