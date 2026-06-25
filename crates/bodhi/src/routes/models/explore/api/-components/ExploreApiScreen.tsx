@@ -3,15 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ModelLite } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
-import { LinkRow, ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogModelDetail, useCatalogModels } from '@/hooks/reference';
@@ -26,6 +18,9 @@ import {
   isFree,
   statusLabel,
 } from '@/routes/models/explore/-shared/catalog-format';
+import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
+import { ColumnPicker, useHiddenColumns } from '@/routes/models/explore/-shared/ColumnPicker';
+import { ResetButton } from '@/routes/models/explore/-shared/ResetButton';
 import { persistSortPreference, resolveSortPreference } from '@/routes/models/explore/-shared/useSortPreference';
 
 import type { ExploreApiSearch } from '../index';
@@ -63,60 +58,11 @@ const SORT_STORAGE_KEY = 'bodhi.explore.api.sort';
 const PERSISTED_SORTS = ['updated', 'context', 'providers', 'price', 'price_out', 'name', 'family'] as const;
 const VALID_ORDERS = ['asc', 'desc'] as const;
 
-function ColSort({
-  col,
-  label,
-  sort,
-  order,
-  align,
-  onSort,
-}: {
-  col: ModelSort;
-  label: string;
-  sort: ModelSort | undefined;
-  order: SortOrder | undefined;
-  align: ColumnAlign;
-  onSort: (c: ModelSort) => void;
-}) {
-  const active = sort === col;
-  const icon = !active ? 'chevrons-up-down' : order === 'asc' ? 'arrow-up' : 'arrow-down';
-  return (
-    <button
-      type="button"
-      className={`cat-colsort${align === 'left' ? ' cat-colsort--left' : ''}${active ? ' on' : ''}`}
-      onClick={() => onSort(col)}
-      data-testid={`cat-model-sort-${col}`}
-      data-test-state={active ? 'active' : 'idle'}
-    >
-      <span className="cat-colsort-label">{label}</span>
-      <ShellIcon name={icon} size={10} />
-    </button>
-  );
-}
-
 function modelKey(m: ModelLite): string {
   return `${m.slug}/${m.model_id}`;
 }
 
-type ColumnAlign = 'left' | 'right';
-
-// Column model: headers, row cells, and the <colgroup> all derive from this so the column picker
-// (show/hide) and any sortable header stay in sync. `#` + MODEL are mandatory; the rest are toggleable.
-// `width` is a <col> width (px); an empty string means "no explicit width" — that column absorbs the
-// table's slack under table-layout:fixed (only MODEL does this). `sort` (when set) makes the header a
-// sortable ColSort. `align` keeps the header label justified like the cell content (text left, numeric
-// right).
-interface Column {
-  key: string;
-  label: string;
-  width: string;
-  align?: ColumnAlign;
-  sort?: ModelSort;
-  optional?: boolean;
-  cell: (m: ModelLite) => React.ReactNode;
-}
-
-const COLUMNS: Column[] = [
+const COLUMNS: CatalogColumn<ModelLite, ModelSort>[] = [
   { key: 'num', label: '#', width: '44px', cell: () => null },
   {
     key: 'model',
@@ -208,77 +154,6 @@ const COLUMNS: Column[] = [
   },
 ];
 
-function ColumnPicker({ hidden, onToggle }: { hidden: Set<string>; onToggle: (key: string) => void }) {
-  const optional = COLUMNS.filter((c) => c.optional);
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="cat-sort-btn cat-toolbar-icon-btn"
-          data-testid="cat-model-columns"
-          aria-label="Columns"
-          title="Columns"
-        >
-          <ShellIcon name="columns-3" size={13} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Columns</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {optional.map((col) => (
-          <DropdownMenuCheckboxItem
-            key={col.key}
-            checked={!hidden.has(col.key)}
-            onCheckedChange={() => onToggle(col.key)}
-            onSelect={(e) => e.preventDefault()}
-            data-testid={`cat-model-col-${col.key}`}
-          >
-            {col.label}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function ModelRow({
-  model,
-  idx,
-  active,
-  columns,
-  onSelect,
-}: {
-  model: ModelLite;
-  idx: number;
-  active: boolean;
-  columns: Column[];
-  onSelect: () => void;
-}) {
-  return (
-    <tr
-      className={`l-listrow cat-row${active ? ' active' : ''}`}
-      onClick={onSelect}
-      role="option"
-      aria-selected={active}
-      data-testid={`cat-model-row-${model.slug}-${model.model_id}`}
-    >
-      {columns.map((col) =>
-        col.key === 'num' ? (
-          <td className="cat-num-td" key="num">
-            <LinkRow onActivate={onSelect} label={`Open ${model.name}`} />
-            <span className="cat-num">#{idx}</span>
-          </td>
-        ) : (
-          <td key={col.key} className={col.align === 'right' ? 'cat-td--right' : undefined}>
-            {col.cell(model)}
-          </td>
-        )
-      )}
-    </tr>
-  );
-}
-
 export function ExploreApiScreen() {
   useListKeyNav();
 
@@ -307,24 +182,13 @@ export function ExploreApiScreen() {
   const selectedKey = search.select ?? null;
   // Local-only UI state: uncommitted search text and column visibility are ephemeral per page-load.
   const [searchInput, setSearchInput] = useState(committedSearch);
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
+  const { hidden: hiddenColumns, toggle: toggleColumn, visibleColumns: filterVisible } = useHiddenColumns();
   // Sync the input down from the URL on Back/Forward (URL→input only; never writes back).
   useEffect(() => {
     setSearchInput(committedSearch);
   }, [committedSearch]);
-  const toggleColumn = useCallback((key: string) => {
-    setHiddenColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
 
-  const visibleColumns = useMemo(
-    () => COLUMNS.filter((c) => !c.optional || !hiddenColumns.has(c.key)),
-    [hiddenColumns]
-  );
+  const visibleColumns = useMemo(() => filterVisible(COLUMNS), [filterVisible]);
 
   const params = useMemo(() => searchToParams(search, { sort, order }), [search, sort, order]);
   const { data, isLoading, error } = useCatalogModels(params);
@@ -495,32 +359,9 @@ export function ExploreApiScreen() {
               kbd="⌘K"
             />
           </div>
-          <button
-            type="button"
-            className="cat-sort-btn cat-toolbar-icon-btn"
-            onClick={onReset}
-            disabled={resetMode === 'none'}
-            data-testid="cat-model-clear-all"
-            data-test-state={resetMode}
-            aria-label={
-              resetMode === 'filters'
-                ? 'Clear all filters'
-                : resetMode === 'query'
-                  ? 'Clear search'
-                  : 'Nothing to reset'
-            }
-            title={
-              resetMode === 'filters'
-                ? 'Clear all filters'
-                : resetMode === 'query'
-                  ? 'Clear search'
-                  : 'Nothing to reset'
-            }
-          >
-            <ShellIcon name="rotate-ccw" size={13} />
-          </button>
+          <ResetButton mode={resetMode} onReset={onReset} testId="cat-model-clear-all" />
           <div className="cat-sortbar">
-            <ColumnPicker hidden={hiddenColumns} onToggle={toggleColumn} />
+            <ColumnPicker columns={COLUMNS} hidden={hiddenColumns} onToggle={toggleColumn} testIdPrefix="cat-model" />
           </div>
         </div>
       </div>
@@ -541,51 +382,20 @@ export function ExploreApiScreen() {
             <div className="empty-sub">Try a different search or filters.</div>
           </div>
         ) : (
-          <table className="cat-table">
-            <colgroup>
-              {visibleColumns.map((col) => (
-                <col key={col.key} style={col.width ? { width: col.width } : undefined} />
-              ))}
-            </colgroup>
-            <thead className="cat-listhead" data-testid="cat-listhead">
-              <tr>
-                {visibleColumns.map((col) =>
-                  col.sort ? (
-                    <th key={col.key} scope="col" className={col.align === 'right' ? 'cat-th--right' : undefined}>
-                      <ColSort
-                        col={col.sort}
-                        label={col.label}
-                        sort={sort}
-                        order={order}
-                        align={col.align ?? 'left'}
-                        onSort={onSort}
-                      />
-                    </th>
-                  ) : (
-                    <th
-                      key={col.key}
-                      scope="col"
-                      className={`cat-colhead${col.align === 'right' ? ' cat-colhead--right' : ''}`}
-                    >
-                      {col.label}
-                    </th>
-                  )
-                )}
-              </tr>
-            </thead>
-            <tbody className="l-listview">
-              {rows.map((m, i) => (
-                <ModelRow
-                  key={modelKey(m)}
-                  model={m}
-                  idx={(page - 1) * PAGE_SIZE + i + 1}
-                  active={modelKey(m) === selectedKey}
-                  columns={visibleColumns}
-                  onSelect={() => select(modelKey(m))}
-                />
-              ))}
-            </tbody>
-          </table>
+          <CatalogTable<ModelLite, ModelSort>
+            columns={visibleColumns}
+            rows={rows}
+            rowKey={modelKey}
+            rowTestId={(m) => `cat-model-row-${m.slug}-${m.model_id}`}
+            rowLabel={(m) => `Open ${m.name}`}
+            activeKey={selectedKey}
+            onSelect={(m) => select(modelKey(m))}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+            startIndex={(page - 1) * PAGE_SIZE}
+            testIdPrefix="cat-model"
+          />
         )}
       </div>
 

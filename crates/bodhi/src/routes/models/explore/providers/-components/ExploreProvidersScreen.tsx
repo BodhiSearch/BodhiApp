@@ -3,15 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ProviderSummary } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
-import { LinkRow, ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
@@ -25,6 +17,9 @@ import {
   monogram,
   tintIndex,
 } from '@/routes/models/explore/-shared/catalog-format';
+import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
+import { ColumnPicker, useHiddenColumns } from '@/routes/models/explore/-shared/ColumnPicker';
+import { ResetButton } from '@/routes/models/explore/-shared/ResetButton';
 import { persistSortPreference, resolveSortPreference } from '@/routes/models/explore/-shared/useSortPreference';
 
 import type { ExploreProvidersSearch } from '../index';
@@ -53,141 +48,68 @@ const SORT_STORAGE_KEY = 'bodhi.explore.providers.sort';
 const PERSISTED_SORTS = ['name', 'model_count', 'api_format'] as const;
 const VALID_ORDERS = ['asc', 'desc'] as const;
 
-function ColSort({
-  col,
-  label,
-  sort,
-  order,
-  align,
-  onSort,
-}: {
-  col: ProviderSort;
-  label: string;
-  sort: ProviderSort | undefined;
-  order: SortOrder | undefined;
-  align: 'left' | 'right';
-  onSort: (c: ProviderSort) => void;
-}) {
-  const active = sort === col;
-  const icon = !active ? 'chevrons-up-down' : order === 'asc' ? 'arrow-up' : 'arrow-down';
-  return (
-    <button
-      type="button"
-      className={`cat-colsort${align === 'left' ? ' cat-colsort--left' : ''}${active ? ' on' : ''}`}
-      onClick={() => onSort(col)}
-      data-testid={`cat-prov-sort-${col}`}
-      data-test-state={active ? 'active' : 'idle'}
-    >
-      <span className="cat-colsort-label">{label}</span>
-      <ShellIcon name={icon} size={10} />
-    </button>
-  );
-}
-
-// Toggleable table columns (the `#`, logo, and PROVIDER columns are always shown).
-const OPTIONAL_COLUMNS: { key: string; label: string }[] = [
-  { key: 'api_format', label: 'Format' },
-  { key: 'model_count', label: 'Models' },
-];
-
-function ColumnPicker({ hidden, onToggle }: { hidden: Set<string>; onToggle: (key: string) => void }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="cat-sort-btn cat-toolbar-icon-btn"
-          data-testid="cat-prov-columns"
-          aria-label="Columns"
-          title="Columns"
-        >
-          <ShellIcon name="columns-3" size={13} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Columns</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {OPTIONAL_COLUMNS.map((col) => (
-          <DropdownMenuCheckboxItem
-            key={col.key}
-            checked={!hidden.has(col.key)}
-            onCheckedChange={() => onToggle(col.key)}
-            onSelect={(e) => e.preventDefault()}
-            data-testid={`cat-prov-col-${col.key}`}
-          >
-            {col.label}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function ProviderRow({
-  provider,
-  idx,
-  active,
-  hidden,
-  onSelect,
-}: {
-  provider: ProviderSummary;
-  idx: number;
-  active: boolean;
-  hidden: Set<string>;
-  onSelect: () => void;
-}) {
-  const free = isFree(provider.pricing_summary.min_in_per_m, provider.pricing_summary.min_out_per_m);
-  return (
-    <tr
-      className={`l-listrow cat-row${active ? ' active' : ''}`}
-      onClick={onSelect}
-      role="option"
-      aria-selected={active}
-      data-testid={`cat-prov-row-${provider.slug}`}
-    >
-      <td className="cat-num-td">
-        <LinkRow onActivate={onSelect} label={`Open ${provider.name}`} />
-        <span className="cat-num">#{idx}</span>
-      </td>
-      <td>
-        <div className={`cat-logo cat-tint-${tintIndex(provider.slug)}`} aria-hidden="true">
-          {monogram(provider.name)}
-        </div>
-      </td>
-      <td>
+const COLUMNS: CatalogColumn<ProviderSummary, ProviderSort>[] = [
+  { key: 'num', label: '#', width: '44px', cell: () => null },
+  {
+    key: 'logo',
+    label: '',
+    width: '38px',
+    cell: (p) => (
+      <div className={`cat-logo cat-tint-${tintIndex(p.slug)}`} aria-hidden="true">
+        {monogram(p.name)}
+      </div>
+    ),
+  },
+  {
+    key: 'provider',
+    label: 'PROVIDER',
+    width: '',
+    sort: 'name',
+    cell: (p) => {
+      const free = isFree(p.pricing_summary.min_in_per_m, p.pricing_summary.min_out_per_m);
+      return (
         <div className="cat-body">
           <div className="cat-name">
-            {provider.name}
-            <span className="cat-shape">{provider.provider_shape}</span>
+            {p.name}
+            <span className="cat-shape">{p.provider_shape}</span>
           </div>
           <div className="cat-caps" style={{ marginTop: 6 }}>
-            {provider.capabilities_summary.map((c) => (
+            {p.capabilities_summary.map((c) => (
               <span className={`cap-chip cap-${CAP_TONE[c]}`} key={c}>
                 {CAP_LABELS[c]}
               </span>
             ))}
           </div>
           <div className="cat-sub">
-            {free ? 'Free tier available' : `from ${fmtPrice(provider.pricing_summary.min_in_per_m)}/M in`}
+            {free ? 'Free tier available' : `from ${fmtPrice(p.pricing_summary.min_in_per_m)}/M in`}
           </div>
         </div>
-      </td>
-      {!hidden.has('api_format') && (
-        <td>
-          <span className="cat-cell-text mono">{provider.api_format_hint}</span>
-        </td>
-      )}
-      {!hidden.has('model_count') && (
-        <td className="cat-td--right">
-          <div className="cat-score">
-            <div className="cat-score-num">{provider.model_count}</div>
-            <div className="cat-score-lbl">MODELS</div>
-          </div>
-        </td>
-      )}
-    </tr>
-  );
-}
+      );
+    },
+  },
+  {
+    key: 'api_format',
+    label: 'FORMAT',
+    width: '120px',
+    sort: 'api_format',
+    optional: true,
+    cell: (p) => <span className="cat-cell-text mono">{p.api_format_hint}</span>,
+  },
+  {
+    key: 'model_count',
+    label: 'MODELS',
+    width: '88px',
+    align: 'right',
+    sort: 'model_count',
+    optional: true,
+    cell: (p) => (
+      <div className="cat-score">
+        <div className="cat-score-num">{p.model_count}</div>
+        <div className="cat-score-lbl">MODELS</div>
+      </div>
+    ),
+  },
+];
 
 export function ExploreProvidersScreen() {
   useListKeyNav();
@@ -216,18 +138,11 @@ export function ExploreProvidersScreen() {
   // makes Back/Forward restoration and the ?select cross-link automatic.
   const selectedSlug = search.select ?? null;
   const [searchInput, setSearchInput] = useState(committedSearch);
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
+  const { hidden: hiddenColumns, toggle: toggleColumn, visibleColumns: filterVisible } = useHiddenColumns();
   useEffect(() => {
     setSearchInput(committedSearch);
   }, [committedSearch]);
-  const toggleColumn = useCallback((key: string) => {
-    setHiddenColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  const visibleColumns = useMemo(() => filterVisible(COLUMNS), [filterVisible]);
 
   const params = useMemo(() => searchToParams(search, { sort, order }), [search, sort, order]);
   const { data, isLoading, error } = useCatalogProviders(params);
@@ -431,32 +346,9 @@ export function ExploreProvidersScreen() {
               kbd="⌘K"
             />
           </div>
-          <button
-            type="button"
-            className="cat-sort-btn cat-toolbar-icon-btn"
-            onClick={onReset}
-            disabled={resetMode === 'none'}
-            data-testid="cat-prov-clear-all"
-            data-test-state={resetMode}
-            aria-label={
-              resetMode === 'filters'
-                ? 'Clear all filters'
-                : resetMode === 'query'
-                  ? 'Clear search'
-                  : 'Nothing to reset'
-            }
-            title={
-              resetMode === 'filters'
-                ? 'Clear all filters'
-                : resetMode === 'query'
-                  ? 'Clear search'
-                  : 'Nothing to reset'
-            }
-          >
-            <ShellIcon name="rotate-ccw" size={13} />
-          </button>
+          <ResetButton mode={resetMode} onReset={onReset} testId="cat-prov-clear-all" />
           <div className="cat-sortbar">
-            <ColumnPicker hidden={hiddenColumns} onToggle={toggleColumn} />
+            <ColumnPicker columns={COLUMNS} hidden={hiddenColumns} onToggle={toggleColumn} testIdPrefix="cat-prov" />
           </div>
         </div>
       </div>
@@ -477,46 +369,20 @@ export function ExploreProvidersScreen() {
             <div className="empty-sub">The catalog returned no providers.</div>
           </div>
         ) : (
-          <table className="cat-table">
-            <colgroup>
-              <col style={{ width: '44px' }} />
-              <col style={{ width: '38px' }} />
-              <col />
-              {!hiddenColumns.has('api_format') && <col style={{ width: '120px' }} />}
-              {!hiddenColumns.has('model_count') && <col style={{ width: '88px' }} />}
-            </colgroup>
-            <thead className="cat-listhead" data-testid="cat-listhead">
-              <tr>
-                <th scope="col">#</th>
-                <th scope="col" aria-hidden="true" />
-                <th scope="col">
-                  <ColSort col="name" label="PROVIDER" sort={sort} order={order} align="left" onSort={onSort} />
-                </th>
-                {!hiddenColumns.has('api_format') && (
-                  <th scope="col">
-                    <ColSort col="api_format" label="FORMAT" sort={sort} order={order} align="left" onSort={onSort} />
-                  </th>
-                )}
-                {!hiddenColumns.has('model_count') && (
-                  <th scope="col" className="cat-th--right">
-                    <ColSort col="model_count" label="MODELS" sort={sort} order={order} align="right" onSort={onSort} />
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="l-listview">
-              {rows.map((p, i) => (
-                <ProviderRow
-                  key={p.slug}
-                  provider={p}
-                  idx={(page - 1) * PAGE_SIZE + i + 1}
-                  active={p.slug === selectedSlug}
-                  hidden={hiddenColumns}
-                  onSelect={() => select(p.slug)}
-                />
-              ))}
-            </tbody>
-          </table>
+          <CatalogTable<ProviderSummary, ProviderSort>
+            columns={visibleColumns}
+            rows={rows}
+            rowKey={(p) => p.slug}
+            rowTestId={(p) => `cat-prov-row-${p.slug}`}
+            rowLabel={(p) => `Open ${p.name}`}
+            activeKey={selectedSlug}
+            onSelect={(p) => select(p.slug)}
+            sort={sort}
+            order={order}
+            onSort={onSort}
+            startIndex={(page - 1) * PAGE_SIZE}
+            testIdPrefix="cat-prov"
+          />
         )}
       </div>
 
