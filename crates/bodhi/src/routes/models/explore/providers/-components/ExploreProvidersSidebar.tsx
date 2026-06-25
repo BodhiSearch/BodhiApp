@@ -1,13 +1,8 @@
-import { useEffect, useState } from 'react';
-
 import type { ApiFormatHint, Capability, FacetBucket, ListProvidersQuery } from '@bodhiapp/reference-api-types';
 
 import { ShellIcon } from '@/components/shell';
-import { Slider } from '@/components/ui/slider';
 import { CAP_LABELS } from '@/routes/models/explore/-shared/catalog-format';
 import '@/routes/models/-components/models.css';
-
-const PRICE_MAX = 100; // provider cheapest-input $/Mtok slider ceiling
 
 /**
  * Faceted sidebar for Explore · API Providers. Controlled — selections drive the parent's
@@ -20,12 +15,12 @@ export type ProviderPricing = NonNullable<ListProvidersQuery['pricing']>;
 export interface ProviderFacets {
   capability?: Capability[];
   api_format?: ApiFormatHint[];
-  pricing_max?: number;
   pricing?: ProviderPricing;
+  is_lab?: boolean;
 }
 
 export function hasActiveProviderFacets(f: ProviderFacets): boolean {
-  return Boolean(f.capability?.length || f.api_format?.length || f.pricing_max != null || f.pricing);
+  return Boolean(f.capability?.length || f.api_format?.length || f.pricing || f.is_lab);
 }
 
 /** Build the API query params contributed by the provider facets (omitting defaults/empties). */
@@ -33,16 +28,16 @@ export function providerFacetsToQuery(f: ProviderFacets) {
   return {
     ...(f.capability?.length ? { capability: f.capability } : {}),
     ...(f.api_format?.length ? { api_format: f.api_format } : {}),
-    ...(f.pricing_max != null ? { pricing_max: f.pricing_max } : {}),
     ...(f.pricing ? { pricing: f.pricing } : {}),
+    ...(f.is_lab ? { is_lab: 'true' as const } : {}),
   };
 }
 
+// Display labels only — the OPTIONS rendered are driven by the API's api_format facet bucket, so
+// synthetic/frontend-only formats (e.g. openai_responses, anthropic_oauth) never appear here.
 const API_FORMAT_LABELS: Partial<Record<ApiFormatHint, string>> = {
   openai: 'OpenAI',
-  openai_responses: 'OpenAI Responses',
   anthropic: 'Anthropic',
-  anthropic_oauth: 'Anthropic OAuth',
   gemini: 'Gemini',
   other: 'Other',
 };
@@ -60,23 +55,28 @@ interface SidebarProps {
   capabilityCounts: FacetBucket;
   apiFormatCounts: FacetBucket;
   onFacetsChange: (next: ProviderFacets) => void;
-  onClearAll: () => void;
 }
 
-export function ExploreProvidersSidebar({
-  facets,
-  capabilityCounts,
-  apiFormatCounts,
-  onFacetsChange,
-  onClearAll,
-}: SidebarProps) {
+export function ExploreProvidersSidebar({ facets, capabilityCounts, apiFormatCounts, onFacetsChange }: SidebarProps) {
+  // OPTIONS come from the API's api_format bucket, so only formats the search backend actually
+  // returns are filterable; a stored/selected value is kept so it can still be cleared.
+  const apiFormatKeys = Array.from(
+    new Set<ApiFormatHint>([...(Object.keys(apiFormatCounts) as ApiFormatHint[]), ...(facets.api_format ?? [])])
+  );
+
   return (
     <div className="m-facets" data-testid="cat-prov-facets">
-      {hasActiveProviderFacets(facets) && (
-        <button type="button" className="ld-clear-all" onClick={onClearAll} data-testid="cat-prov-clear-all">
-          <ShellIcon name="x" size={11} /> Clear all filters
-        </button>
-      )}
+      <FacetGroup icon="compass" title="Browse">
+        <div className="m-facet-pills">
+          <FacetPill
+            label="Labs only"
+            count={undefined}
+            active={Boolean(facets.is_lab)}
+            testId="cat-prov-labs"
+            onToggle={() => onFacetsChange({ ...facets, is_lab: facets.is_lab ? undefined : true })}
+          />
+        </div>
+      </FacetGroup>
 
       <FacetGroup icon="sparkles" title="Capability">
         <div className="m-facet-pills">
@@ -95,7 +95,7 @@ export function ExploreProvidersSidebar({
 
       <FacetGroup icon="plug-zap" title="API format">
         <div className="m-facet-pills">
-          {(Object.keys(API_FORMAT_LABELS) as ApiFormatHint[]).map((f) => (
+          {apiFormatKeys.map((f) => (
             <FacetPill
               key={f}
               label={API_FORMAT_LABELS[f] ?? f}
@@ -117,50 +117,11 @@ export function ExploreProvidersSidebar({
               count={undefined}
               active={facets.pricing === p}
               testId={`cat-prov-pricing-${p}`}
-              // Single-select toggle: re-clicking the active value clears it.
               onToggle={() => onFacetsChange({ ...facets, pricing: facets.pricing === p ? undefined : p })}
             />
           ))}
         </div>
-        <ProviderRange
-          value={facets.pricing_max ?? PRICE_MAX}
-          format={(v) => (v >= PRICE_MAX ? 'Any' : `$${v}`)}
-          onCommit={(v) => onFacetsChange({ ...facets, pricing_max: v >= PRICE_MAX ? undefined : v })}
-        />
       </FacetGroup>
-    </div>
-  );
-}
-
-/** A debounced single-thumb price slider (cheapest-input ceiling), commit-on-release. */
-function ProviderRange({
-  value,
-  format,
-  onCommit,
-}: {
-  value: number;
-  format: (v: number) => string;
-  onCommit: (v: number) => void;
-}) {
-  const [local, setLocal] = useState(value);
-  useEffect(() => {
-    setLocal(value);
-  }, [value]);
-
-  return (
-    <div className="cat-range" data-testid="cat-prov-pricing-range">
-      <Slider
-        value={[local]}
-        min={0}
-        max={PRICE_MAX}
-        step={0.5}
-        onValueChange={(vals) => setLocal(vals[0])}
-        onValueCommit={(vals) => onCommit(vals[0])}
-        data-testid="cat-prov-pricing-range-slider"
-      />
-      <span className="cat-range-val" data-testid="cat-prov-pricing-range-val">
-        {format(local)}
-      </span>
     </div>
   );
 }

@@ -43,12 +43,12 @@ describe('catalog query mappers', () => {
     expect(q).toEqual({ pricing: 'free' });
   });
 
-  it('providerFacetsToQuery emits provider price params', () => {
-    const q = providerFacetsToQuery({ pricing_max: 10, pricing: 'free' });
-    expect(q).toMatchObject({ pricing_max: 10, pricing: 'free' });
+  it('providerFacetsToQuery emits pricing + is_lab params', () => {
+    const q = providerFacetsToQuery({ pricing: 'free', is_lab: true });
+    expect(q).toMatchObject({ pricing: 'free', is_lab: 'true' });
 
     const sp = new URLSearchParams(buildCatalogModelsQuery(q));
-    expect(sp.get('pricing_max')).toBe('10');
     expect(sp.get('pricing')).toBe('free');
+    expect(sp.get('is_lab')).toBe('true');
   });
 });

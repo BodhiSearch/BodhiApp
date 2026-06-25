@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { ExploreProvidersScreen } from '@/routes/models/explore/providers/-components/ExploreProvidersScreen';
+import { exploreProvidersSearchSchema } from '@/routes/models/explore/providers/index';
 import { createProviderListResponse, createProviderSummary } from '@/test-fixtures/catalog-providers';
+import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockCatalogError,
@@ -18,28 +20,12 @@ import { createWrapper } from '@/tests/wrapper';
 
 vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () => void) => cb() }));
 
-// The screen reads ?select and ?q via useSearch (cross-link entries from the API Models page). No
-// router in the RTL wrapper → mock useSearch over a controllable search object (default: empty), so
-// each call's `select` projection runs against it. mockSearch lets a test set ?q=… / ?select=….
-const mockSearch: Record<string, unknown> = {};
-vi.mock('@tanstack/react-router', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-router')>('@tanstack/react-router');
-  return {
-    ...actual,
-    useSearch: (opts?: { select?: (s: Record<string, unknown>) => unknown }) =>
-      opts?.select ? opts.select(mockSearch) : mockSearch,
-  };
-});
-
-beforeEach(() => {
-  for (const k of Object.keys(mockSearch)) delete mockSearch[k];
-});
-
 setupMswV2();
 
 let Wrapper: ReturnType<typeof createWrapper>;
 
 beforeEach(() => {
+  localStorage.clear();
   Wrapper = createWrapper();
   server.use(
     ...mockAppInfoReady(),
@@ -47,7 +33,6 @@ beforeEach(() => {
   );
 });
 
-// Surfaces the published rail slots so the detail rail is in the DOM.
 function SlotsConsumer() {
   const { sidebar, rail, railHeader } = useShellSlots();
   return (
@@ -59,12 +44,30 @@ function SlotsConsumer() {
   );
 }
 
-async function renderScreen() {
+function ScreenWithSlots() {
+  return (
+    <>
+      <SlotsConsumer />
+      <ExploreProvidersScreen />
+    </>
+  );
+}
+
+function buildRouter(initialEntries?: string[]) {
+  return makeRouteRouter({
+    path: '/models/explore/providers/',
+    validateSearch: exploreProvidersSearchSchema as never,
+    Screen: ScreenWithSlots,
+    initialEntries,
+  });
+}
+
+async function renderScreen(initialEntries?: string[]) {
+  const router = buildRouter(initialEntries);
   await act(async () => {
     render(
       <ShellSlotsProvider>
-        <SlotsConsumer />
-        <ExploreProvidersScreen />
+        <RouteHarness router={router} />
       </ShellSlotsProvider>,
       { wrapper: Wrapper }
     );
@@ -72,20 +75,27 @@ async function renderScreen() {
   await waitFor(() =>
     expect(screen.getByTestId('explore-providers-content')).toHaveAttribute('data-pagestatus', 'ready')
   );
+  return router;
 }
 
 describe('ExploreProvidersScreen (B1 — list)', () => {
-  it('renders provider rows with "Showing X of TOTAL" from the catalog', async () => {
+  it('renders provider rows + api_format column from the catalog', async () => {
     server.use(...mockCatalogProviders());
     await renderScreen();
 
     const list = screen.getByTestId('cat-prov-list');
     expect(within(list).getAllByRole('option').length).toBe(3);
-    expect(screen.getByTestId('cat-prov-resultbar')).toHaveTextContent('Showing 3 of 3');
     expect(screen.getByTestId('cat-prov-row-nano-gpt')).toHaveTextContent('NanoGPT');
-    // Model count + capability chips render.
     expect(screen.getByTestId('cat-prov-row-nano-gpt')).toHaveTextContent('617');
     expect(screen.getByTestId('cat-prov-row-nano-gpt')).toHaveTextContent('Reasoning');
+    // The api_format column header is present (FORMAT) and rows carry the format hint.
+    expect(screen.getByTestId('cat-listhead')).toHaveTextContent('FORMAT');
+  });
+
+  it('has no result bar (the count lives in the pager)', async () => {
+    server.use(...mockCatalogProviders());
+    await renderScreen();
+    expect(screen.queryByTestId('cat-prov-resultbar')).not.toBeInTheDocument();
   });
 
   it('reads the catalog anonymously — no Authorization header', async () => {
@@ -104,8 +114,15 @@ describe('ExploreProvidersScreen (B1 — list)', () => {
     expect(seenAuth).toBeNull();
   });
 
+  it('first load with a clean URL and no saved pref requests natural order (no sort param)', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0));
+    expect(seen[0].searchParams.has('sort')).toBe(false);
+  });
+
   it('renders a numbered pager and navigates to page 2', async () => {
-    // 31 providers, page_size 30 → page 1 returns 30, total 31, pager visible.
     const items = Array.from({ length: 31 }, (_, i) =>
       createProviderSummary({ slug: `prov-${i}`, name: `Provider ${i}`, rank: i + 1 })
     );
@@ -115,7 +132,6 @@ describe('ExploreProvidersScreen (B1 — list)', () => {
     );
     await renderScreen();
 
-    expect(screen.getByTestId('cat-prov-resultbar')).toHaveTextContent('Showing 30 of 31');
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
     expect(screen.queryByTestId('cat-prov-load-more')).not.toBeInTheDocument();
 
@@ -134,10 +150,11 @@ describe('ExploreProvidersScreen (B1 — list)', () => {
 
   it('renders an error page when the catalog list fails', async () => {
     server.use(...mockCatalogError('providers', { status: 500, error: 'internal' }));
+    const router = buildRouter();
     await act(async () => {
       render(
         <ShellSlotsProvider>
-          <ExploreProvidersScreen />
+          <RouteHarness router={router} />
         </ShellSlotsProvider>,
         { wrapper: Wrapper }
       );
@@ -154,7 +171,6 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
 
-    // Rail header names the provider; connection meta + models render from the gated fetches.
     await waitFor(() => expect(screen.getByTestId('cat-prov-detail-nano-gpt')).toBeInTheDocument());
     const meta = await screen.findByTestId('cat-prov-detail-meta');
     expect(meta).toHaveTextContent('NANO_GPT_API_KEY');
@@ -174,9 +190,14 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
       ...mockCatalogProviderModels()
     );
     await renderScreen();
-    // No selection yet → no detail call, no rail.
     expect(detailRequested).toBe(false);
     expect(screen.queryByTestId('cat-prov-detail-nano-gpt')).not.toBeInTheDocument();
+  });
+
+  it('opens a provider rail on mount from the ?select cross-link', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
+    await renderScreen(['/models/explore/providers/?select=nano-gpt']);
+    await waitFor(() => expect(screen.getByTestId('cat-prov-detail-nano-gpt')).toBeInTheDocument());
   });
 
   it('closes the rail via the header close button', async () => {
@@ -203,7 +224,6 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
     await waitFor(() => expect(screen.getByTestId('cat-prov-models')).toBeInTheDocument());
-    // Default sort is context.
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'context')).toBe(true));
 
     await user.click(screen.getByTestId('cat-prov-models-sort-price'));
@@ -211,41 +231,44 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
   });
 });
 
-describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
-  it('search submits q on Enter and resets to page 1', async () => {
+describe('ExploreProvidersScreen (B3 — URL sync: search + sort + facets)', () => {
+  it('keeps the URL clean at defaults and writes only non-defaults', async () => {
+    server.use(...mockCatalogProviders());
+    const router = await renderScreen();
+    expect(router.state.location.search).toEqual({});
+  });
+
+  it('search submits q on Enter, writes the URL, and resets to page 1', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
-    await renderScreen();
+    const router = await renderScreen();
 
     const user = userEvent.setup();
     const input = screen.getByTestId('cat-prov-search').querySelector('input')!;
     await user.click(input);
     await user.type(input, 'nano{Enter}');
 
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ q: 'nano' }));
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('q') === 'nano')).toBe(true));
-    const last = seen[seen.length - 1];
-    expect(last.searchParams.get('page')).toBe('1');
+    expect((router.state.location.search as { page?: number }).page).toBeUndefined();
   });
 
-  it('seeds the search box from ?q= (the "View" cross-link) and requests it', async () => {
-    mockSearch.q = 'NanoGPT'; // the View link lands here as ?q=<provider name>
+  it('seeds the search box from the ?q deep-link (the "View" cross-link) and requests it', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
-    await renderScreen();
+    await renderScreen(['/models/explore/providers/?q=NanoGPT']);
 
-    // The search input is pre-filled and the request carries q.
     const input = screen.getByTestId('cat-prov-search').querySelector('input')! as HTMLInputElement;
     expect(input.value).toBe('NanoGPT');
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('q') === 'NanoGPT')).toBe(true));
   });
 
-  it('sort buttons send the chosen sort key + natural order, mark active, and toggle direction', async () => {
+  it('the FORMAT/MODELS column headers sort, mark active, and toggle direction', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
     const user = userEvent.setup();
-    // model_count is naturally descending.
     await user.click(screen.getByTestId('cat-prov-sort-model_count'));
     await waitFor(() => {
       const last = seen[seen.length - 1];
@@ -253,26 +276,42 @@ describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
       expect(last.searchParams.get('order')).toBe('desc');
     });
     expect(screen.getByTestId('cat-prov-sort-model_count')).toHaveAttribute('data-test-state', 'active');
-    expect(screen.getByTestId('cat-prov-resultbar')).toHaveTextContent(/sorted by\s*Models/);
 
-    // Re-click toggles to ascending.
     await user.click(screen.getByTestId('cat-prov-sort-model_count'));
     await waitFor(() => expect(seen[seen.length - 1].searchParams.get('order')).toBe('asc'));
   });
 
-  it('exposes the new pricing + api_format sorts', async () => {
+  it('sorts by api_format from its column header', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
     const user = userEvent.setup();
-    // pricing (cheapest) is naturally ascending.
-    await user.click(screen.getByTestId('cat-prov-sort-pricing'));
-    await waitFor(() => {
-      const last = seen[seen.length - 1];
-      expect(last.searchParams.get('sort')).toBe('pricing');
-      expect(last.searchParams.get('order')).toBe('asc');
+    await user.click(screen.getByTestId('cat-prov-sort-api_format'));
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'api_format')).toBe(true));
+  });
+
+  it('rank and cheapest sorts are gone', async () => {
+    server.use(...mockCatalogProviders());
+    await renderScreen();
+    expect(screen.queryByTestId('cat-prov-sort-rank')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cat-prov-sort-pricing')).not.toBeInTheDocument();
+  });
+
+  it('a deep-link ?sort= drives the request and Back re-applies the prior state', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ capability: ['reasoning'] }));
+
+    await act(async () => {
+      router.history.back();
     });
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.getAll('capability')).toHaveLength(0));
   });
 
   it('capability + api_format facets send repeated-key params and counts render', async () => {
@@ -280,10 +319,10 @@ describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
-    // Counts come from the response facets.
     expect(screen.getByTestId('cat-prov-cap-reasoning')).toHaveTextContent('80');
-    // api_format buckets absent from the facets map (openai_responses) render disabled.
-    expect(screen.getByTestId('cat-prov-fmt-openai_responses')).toBeDisabled();
+    // Only api_format values present in the API's facet bucket are offered (no synthetic options).
+    expect(screen.queryByTestId('cat-prov-fmt-openai_responses')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cat-prov-fmt-anthropic_oauth')).not.toBeInTheDocument();
     expect(screen.getByTestId('cat-prov-fmt-anthropic')).toBeEnabled();
 
     const user = userEvent.setup();
@@ -299,39 +338,81 @@ describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
     });
   });
 
-  it('free/paid toggle sends pricing= and is single-select', async () => {
+  it('Labs-only toggle sends is_lab=true and is off by default', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
+
+    expect(screen.getByTestId('cat-prov-labs')).toHaveAttribute('aria-pressed', 'false');
+    expect(seen[0].searchParams.has('is_lab')).toBe(false);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-labs'));
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('is_lab')).toBe('true'));
+  });
+
+  it('free/paid toggle sends pricing= and is single-select; no price slider', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    expect(screen.queryByTestId('cat-prov-pricing-range')).not.toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByTestId('cat-prov-pricing-free'));
     await waitFor(() => expect(seen[seen.length - 1].searchParams.get('pricing')).toBe('free'));
     expect(screen.getByTestId('cat-prov-pricing-free')).toHaveAttribute('aria-pressed', 'true');
 
-    // Switching to paid replaces free (single-select).
     await user.click(screen.getByTestId('cat-prov-pricing-paid'));
     await waitFor(() => expect(seen[seen.length - 1].searchParams.get('pricing')).toBe('paid'));
 
-    // Re-clicking the active value clears it.
     await user.click(screen.getByTestId('cat-prov-pricing-paid'));
     await waitFor(() => expect(seen[seen.length - 1].searchParams.has('pricing')).toBe(false));
   });
 
-  it('clear-all resets every facet param', async () => {
+  it('reset lives in the toolbar (not the sidebar) and is always visible with three states', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
     const user = userEvent.setup();
-    await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
-    await waitFor(() => expect(screen.getByTestId('cat-prov-clear-all')).toBeInTheDocument());
+    const reset = await screen.findByTestId('cat-prov-clear-all');
+    expect(screen.getByTestId('cat-prov-facets').contains(reset)).toBe(false);
+    expect(reset).toHaveAttribute('data-test-state', 'none');
+    expect(reset).toBeDisabled();
 
-    await user.click(screen.getByTestId('cat-prov-clear-all'));
+    const input = screen.getByTestId('cat-prov-search').querySelector('input')!;
+    await user.click(input);
+    await user.type(input, 'nano{Enter}');
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('q')).toBe('nano'));
+    await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
+
+    // State 1 (filters): reset clears facets only, keeping the search.
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'filters'));
+    await user.click(reset);
     await waitFor(() => {
       const last = seen[seen.length - 1];
-      return last.searchParams.getAll('capability').length === 0;
+      expect(last.searchParams.getAll('capability')).toHaveLength(0);
+      expect(last.searchParams.get('q')).toBe('nano');
     });
-    expect(screen.queryByTestId('cat-prov-clear-all')).not.toBeInTheDocument();
+
+    // State 2 (query): next click clears the query.
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'query'));
+    await user.click(reset);
+    await waitFor(() => expect(seen[seen.length - 1].searchParams.get('q')).toBeNull());
+
+    // Back to inert.
+    await waitFor(() => expect(reset).toHaveAttribute('data-test-state', 'none'));
+    expect(reset).toBeDisabled();
+  });
+
+  it('a saved sort preference drives the request on a clean-URL load without writing the URL', async () => {
+    localStorage.setItem('bodhi.explore.providers.sort', JSON.stringify({ sort: 'name', order: 'asc' }));
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    const router = await renderScreen();
+
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'name')).toBe(true));
+    expect(router.state.location.search).toEqual({});
   });
 });
