@@ -7,20 +7,6 @@
   min-height: 0;
 }
 
-/* Result bar — "Showing X of TOTAL · sorted by …". */
-.cat-resultbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-}
-.cat-count {
-  font-weight: 600;
-  color: hsl(var(--foreground));
-}
-
 /* Monogram logo tile (provider logos 404 upstream → fall back to initials). */
 .cat-logo {
   display: inline-flex;
