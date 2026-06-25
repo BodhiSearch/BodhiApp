@@ -3,7 +3,7 @@
  *
  * Typed by `@bodhiapp/reference-api-types` (the API's own published wire types). Values mirror the
  * real dev-api shapes: `logo_url` is a relative path that currently 404s (UI falls back to a
- * monogram); `api_base_url` is null for native providers; facets are page-recomputed counts.
+ * monogram); `api_base_url` is null for native providers; facets are global value arrays.
  */
 import type {
   ProviderDetailResponse,
@@ -40,9 +40,9 @@ export function createProviderListResponse(
     page_size: 30,
     total: items.length,
     facets: {
-      capability: { reasoning: 80, tool_call: 90, structured_output: 60, attachment: 70, vision: 65 },
-      api_format: { openai: 70, anthropic: 8, gemini: 6, other: 12 },
-      is_lab: { lab: 5 },
+      capability: ['reasoning', 'tool_call', 'structured_output', 'attachment', 'vision'],
+      api_format: ['openai', 'anthropic', 'gemini', 'other'],
+      is_lab: ['lab'],
     },
     ...overrides,
   };

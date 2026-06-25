@@ -8,11 +8,10 @@ export interface FacetOption {
   value: string;
   /** Display label; defaults to the value. */
   label?: string;
-  count?: number;
 }
 
 interface FacetComboboxProps {
-  /** Options (typically derived from a facet `{value:count}` map, highest count first). */
+  /** Options, derived from a facet value array (the global available set). */
   options: FacetOption[];
   /** Currently selected values. */
   selected: string[];
@@ -26,7 +25,7 @@ interface FacetComboboxProps {
 
 /**
  * Multi-select autocomplete with removable chip tags, for high-cardinality facets (provider, family)
- * where a fixed chip set doesn't scale. Options + counts come from the catalog facet maps; selecting
+ * where a fixed chip set doesn't scale. Options come from the catalog facet value arrays; selecting
  * adds a chip (and sends a repeated query param), removing a chip clears it. Built on cmdk Command +
  * Popover (same primitives as AliasCombobox) for real listbox semantics + keyboard nav.
  */
@@ -95,7 +94,6 @@ export function FacetCombobox({
                   >
                     {active && <ShellIcon name="check" size={12} />}
                     <span className="cat-combo-item-name">{o.label ?? o.value}</span>
-                    {o.count != null && <span className="cat-facet-count">{o.count}</span>}
                   </CommandItem>
                 );
               })}
@@ -107,10 +105,7 @@ export function FacetCombobox({
   );
 }
 
-/** Turn a facet `{value: count}` map into options, highest-count first. */
-export function facetOptions(bucket: Record<string, number> | undefined): FacetOption[] {
-  if (!bucket) return [];
-  return Object.entries(bucket)
-    .sort((a, b) => b[1] - a[1])
-    .map(([value, count]) => ({ value, count }));
+/** Turn a facet value array (the global available set) into options, preserving the backend's order. */
+export function facetOptions(values: string[] | undefined): FacetOption[] {
+  return (values ?? []).map((value) => ({ value }));
 }

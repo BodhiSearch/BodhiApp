@@ -259,8 +259,8 @@ export function ExploreProvidersScreen() {
     () => (
       <ExploreProvidersSidebar
         facets={facets}
-        capabilityCounts={data?.facets.capability ?? {}}
-        apiFormatCounts={data?.facets.api_format ?? {}}
+        capabilityValues={data?.facets.capability ?? []}
+        apiFormatValues={data?.facets.api_format ?? []}
         onFacetsChange={onFacetsChange}
       />
     ),

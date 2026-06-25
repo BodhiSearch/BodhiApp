@@ -457,13 +457,13 @@ describe('ExploreProvidersScreen (B3 — URL sync: search + sort + facets)', () 
     await waitFor(() => expect(seen[seen.length - 1].searchParams.getAll('capability')).toHaveLength(0));
   });
 
-  it('capability + api_format facets send repeated-key params and counts render', async () => {
+  it('capability + api_format facets send repeated-key params; available values render enabled', async () => {
     const seen: URL[] = [];
     server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
-    expect(screen.getByTestId('cat-prov-cap-reasoning')).toHaveTextContent('80');
-    // Only api_format values present in the API's facet bucket are offered (no synthetic options).
+    expect(screen.getByTestId('cat-prov-cap-reasoning')).toBeEnabled();
+    // Only api_format values present in the API's facet array are offered (no synthetic options).
     expect(screen.queryByTestId('cat-prov-fmt-openai_responses')).not.toBeInTheDocument();
     expect(screen.queryByTestId('cat-prov-fmt-anthropic_oauth')).not.toBeInTheDocument();
     expect(screen.getByTestId('cat-prov-fmt-anthropic')).toBeEnabled();

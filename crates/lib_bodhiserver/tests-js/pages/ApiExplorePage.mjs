@@ -62,14 +62,16 @@ export class ApiExplorePage extends BasePage {
     }));
   }
 
-  static facets(n) {
+  // Global available value arrays (no counts). Values omitted from an array (structured_output,
+  // attachment, audio/video/pdf, the non-stable statuses, open) render as disabled chips.
+  static facets() {
     return {
-      capability: { reasoning: n, tool_call: n, structured_output: 0, attachment: 0, vision: n },
-      modality: { text: n, image: n, audio: 0, video: 0, pdf: 0 },
-      status: { stable: n, alpha: 0, beta: 0, deprecated: 0 },
-      provider: { anthropic: n },
-      family: { claude: n },
-      open_weights: { open: 0, closed: n },
+      capability: ['reasoning', 'tool_call', 'vision'],
+      modality: ['text', 'image'],
+      status: ['stable'],
+      provider: ['anthropic'],
+      family: ['claude'],
+      open_weights: ['closed'],
     };
   }
 
@@ -129,7 +131,7 @@ export class ApiExplorePage extends BasePage {
         page,
         page_size: pageSize,
         total: filtered.length,
-        facets: ApiExplorePage.facets(filtered.length),
+        facets: ApiExplorePage.facets(),
       });
     });
 
@@ -157,7 +159,7 @@ export class ApiExplorePage extends BasePage {
         page: 1,
         page_size: 30,
         total: items.length,
-        facets: { capability: { reasoning: items.length }, api_format: { openai: items.length } },
+        facets: { capability: ['reasoning'], api_format: ['openai'], is_lab: [] },
       });
     });
 

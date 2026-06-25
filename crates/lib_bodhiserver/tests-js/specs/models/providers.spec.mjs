@@ -106,7 +106,8 @@ test.describe('Explore · API Providers', () => {
       await providersPage.searchFor('Provider 7');
       expect(providersPage.urlParam('q')).toBe('Provider 7');
       await expect(providersPage.page.locator(providersPage.selectors.row('prov-7'))).toBeVisible();
-      await expect(providersPage.page.locator(providersPage.selectors.cap('reasoning'))).toContainText('1');
+      // Facets are global value arrays (no per-search counts); the capability chip stays present + enabled.
+      await expect(providersPage.page.locator(providersPage.selectors.cap('reasoning'))).toBeEnabled();
 
       await providersPage.clearSearch();
       expect(providersPage.searchParams().has('q')).toBe(false);

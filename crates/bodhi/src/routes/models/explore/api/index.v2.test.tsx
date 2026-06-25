@@ -579,8 +579,8 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
 
-    // Counts come from the response facets.
-    expect(screen.getByTestId('cat-model-cap-reasoning')).toHaveTextContent('1292');
+    // The chip is available (its value is in the global facet array) and so enabled.
+    expect(screen.getByTestId('cat-model-cap-reasoning')).toBeEnabled();
 
     const user = userEvent.setup();
     await user.click(screen.getByTestId('cat-model-cap-reasoning'));
@@ -597,25 +597,27 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     });
   });
 
-  it('renders live facet counts and disables zero-count buckets', async () => {
-    const zeroed = createModelsListResponse(undefined, {
+  it('disables facet values absent from the global facet arrays (no count badges)', async () => {
+    const partial = createModelsListResponse(undefined, {
       facets: {
-        capability: { reasoning: 1292, tool_call: 1762, structured_output: 0, attachment: 1123, vision: 1117 },
-        modality: { text: 2565, audio: 0, image: 1168, video: 302, pdf: 350 },
-        status: { stable: 2477, alpha: 0, beta: 0, deprecated: 66 },
-        provider: { 'nano-gpt': 617 },
-        family: { claude: 25 },
-        open_weights: { open: 900, closed: 1665 },
+        // structured_output, audio, and beta are omitted → their chips disable.
+        capability: ['reasoning', 'tool_call', 'attachment', 'vision'],
+        modality: ['text', 'image', 'video', 'pdf'],
+        status: ['stable', 'alpha', 'deprecated'],
+        provider: ['nano-gpt'],
+        family: ['claude'],
+        open_weights: ['open', 'closed'],
       },
     });
-    server.use(...mockCatalogModels({ response: zeroed }));
+    server.use(...mockCatalogModels({ response: partial }));
     await renderScreen();
 
-    expect(screen.getByTestId('cat-model-cap-reasoning')).toHaveTextContent('1292');
     expect(screen.getByTestId('cat-model-cap-reasoning')).toBeEnabled();
     expect(screen.getByTestId('cat-model-cap-structured_output')).toBeDisabled();
     expect(screen.getByTestId('cat-model-mod-audio')).toBeDisabled();
     expect(screen.getByTestId('cat-model-status-beta')).toBeDisabled();
+    // No count badge renders anymore.
+    expect(screen.getByTestId('cat-model-cap-reasoning').querySelector('.cat-facet-count')).toBeNull();
   });
 
   it('open_weights is tri-state: unset → open → unset', async () => {

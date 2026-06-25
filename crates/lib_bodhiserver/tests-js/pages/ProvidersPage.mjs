@@ -101,8 +101,9 @@ export class ProvidersPage extends BasePage {
           page_size: pageSize,
           total: filtered.length,
           facets: {
-            capability: { reasoning: filtered.length, tool_call: filtered.length, vision: filtered.length },
-            api_format: { openai: filtered.length, anthropic: 0 },
+            capability: ['reasoning', 'tool_call', 'vision'],
+            api_format: ['openai', 'anthropic'],
+            is_lab: ['lab'],
           },
         });
       }

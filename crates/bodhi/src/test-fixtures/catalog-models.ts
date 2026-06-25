@@ -3,7 +3,7 @@
  *
  * Typed by `@bodhiapp/reference-api-types`. Values mirror the real dev-api shapes: flat fields
  * (`context_limit`, `pricing.input_per_m`, `caps[]`, `modalities_in/out`); `status: null` means
- * Stable (the UI synthesizes the label); facet counts are page-recomputed (shrink under filters).
+ * Stable (the UI synthesizes the label); facets are global value arrays (the full available set).
  */
 import type { ModelDetailResponse, ModelLite, ModelsListResponse } from '@bodhiapp/reference-api-types';
 
@@ -38,12 +38,12 @@ export function createModelsListResponse(
     page_size: 30,
     total: items.length,
     facets: {
-      capability: { reasoning: 1292, tool_call: 1762, structured_output: 704, attachment: 1123, vision: 1117 },
-      modality: { text: 2565, audio: 133, image: 1168, video: 302, pdf: 350 },
-      status: { stable: 2477, alpha: 1, beta: 21, deprecated: 66 },
-      provider: { 'nano-gpt': 617, kilo: 345, openrouter: 338, vercel: 281, anthropic: 25, openai: 51 },
-      family: { claude: 25, gpt: 93, gemini: 17, llama: 40, 'deepseek-v3': 12 },
-      open_weights: { open: 900, closed: 1665 },
+      capability: ['reasoning', 'tool_call', 'structured_output', 'attachment', 'vision'],
+      modality: ['text', 'audio', 'image', 'video', 'pdf'],
+      status: ['stable', 'alpha', 'beta', 'deprecated'],
+      provider: ['nano-gpt', 'kilo', 'openrouter', 'vercel', 'anthropic', 'openai'],
+      family: ['claude', 'gpt', 'gemini', 'llama', 'deepseek-v3'],
+      open_weights: ['open', 'closed'],
     },
     ...overrides,
   };

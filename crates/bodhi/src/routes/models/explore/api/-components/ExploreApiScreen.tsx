@@ -311,7 +311,7 @@ export function ExploreApiScreen() {
   );
 
   const sidebar = useMemo(
-    () => <ExploreApiSidebar facets={facets} facetCounts={data?.facets} onFacetsChange={onFacetsChange} />,
+    () => <ExploreApiSidebar facets={facets} facetValues={data?.facets} onFacetsChange={onFacetsChange} />,
     [facets, data?.facets, onFacetsChange]
   );
 

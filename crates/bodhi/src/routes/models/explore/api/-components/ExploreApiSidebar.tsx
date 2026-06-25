@@ -8,9 +8,9 @@ import '@/routes/models/-components/models.css';
 
 /**
  * Faceted sidebar for Explore · API Models. Controlled — selections drive the parent's
- * `ListCatalogModelsQuery`. Facet OPTIONS come from a fixed enum set; counts come from
- * `ModelFacets` (recomputed per query). Range controls (pricing/context) are debounced so a slider
- * drag fires one query on release, not N.
+ * `ListCatalogModelsQuery`. Facet OPTIONS come from a fixed enum set; `ModelFacets` (global value
+ * arrays) tells which values are available, so an unavailable chip renders disabled. Range controls
+ * (pricing/context) are debounced so a slider drag fires one query on release, not N.
  */
 
 export type StatusFacet = 'stable' | 'alpha' | 'beta' | 'deprecated';
@@ -79,16 +79,17 @@ function toggle<T>(list: T[] | undefined, value: T): T[] | undefined {
 
 interface SidebarProps {
   facets: ModelFacetsState;
-  facetCounts: ModelFacets | undefined;
+  facetValues: ModelFacets | undefined;
   onFacetsChange: (next: ModelFacetsState) => void;
 }
 
-export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange }: SidebarProps) {
-  const capCounts = facetCounts?.capability ?? {};
-  const modCounts = facetCounts?.modality ?? {};
-  const statusCounts = facetCounts?.status ?? {};
-  const providerOptions = facetOptions(facetCounts?.provider);
-  const familyOptions = facetOptions(facetCounts?.family);
+export function ExploreApiSidebar({ facets, facetValues, onFacetsChange }: SidebarProps) {
+  const capAvail = new Set(facetValues?.capability ?? []);
+  const modAvail = new Set(facetValues?.modality ?? []);
+  const statusAvail = new Set(facetValues?.status ?? []);
+  const owAvail = new Set(facetValues?.open_weights ?? []);
+  const providerOptions = facetOptions(facetValues?.provider);
+  const familyOptions = facetOptions(facetValues?.family);
 
   return (
     <div className="m-facets" data-testid="cat-model-facets">
@@ -98,7 +99,7 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange }: Sideb
             <FacetPill
               key={c}
               label={CAP_LABELS[c]}
-              count={capCounts[c]}
+              available={capAvail.has(c)}
               active={(facets.capability ?? []).includes(c)}
               testId={`cat-model-cap-${c}`}
               onToggle={() => onFacetsChange({ ...facets, capability: toggle(facets.capability, c) })}
@@ -113,7 +114,7 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange }: Sideb
             <FacetPill
               key={m}
               label={MODALITY_LABELS[m]}
-              count={modCounts[m]}
+              available={modAvail.has(m)}
               active={(facets.modality ?? []).includes(m)}
               testId={`cat-model-mod-${m}`}
               onToggle={() => onFacetsChange({ ...facets, modality: toggle(facets.modality, m) })}
@@ -126,7 +127,7 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange }: Sideb
         <Pills>
           <FacetPill
             label="Free"
-            count={undefined}
+            available
             active={facets.pricing === 'free'}
             testId="cat-model-pricing-free"
             // Free pins input AND output to $0 server-side; clearing the price ranges avoids sending
@@ -204,7 +205,7 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange }: Sideb
             <FacetPill
               key={s}
               label={STATUS_LABELS[s]}
-              count={statusCounts[s]}
+              available={statusAvail.has(s)}
               active={(facets.status ?? []).includes(s)}
               testId={`cat-model-status-${s}`}
               onToggle={() => onFacetsChange({ ...facets, status: toggle(facets.status, s) })}
@@ -219,7 +220,7 @@ export function ExploreApiSidebar({ facets, facetCounts, onFacetsChange }: Sideb
             <FacetPill
               key={w}
               label={w === 'open' ? 'Open' : 'Closed'}
-              count={facetCounts?.open_weights?.[w]}
+              available={owAvail.has(w)}
               active={facets.open_weights === w}
               testId={`cat-model-ow-${w}`}
               // Tri-state: re-selecting the active value clears it.
@@ -262,20 +263,20 @@ function Pills({ children }: { children: React.ReactNode }) {
 
 function FacetPill({
   label,
-  count,
+  available,
   active,
   testId,
   onToggle,
 }: {
   label: string;
-  count: number | undefined;
+  available: boolean;
   active: boolean;
   testId: string;
   onToggle: () => void;
 }) {
-  const n = count ?? 0;
-  // Count-gating only applies to real facet buckets; synthetic chips (no count) stay enabled.
-  const disabled = count != null && !active && n === 0;
+  // A value absent from the global facet set is disabled (can't filter on something the catalog has
+  // none of), but a selected pill stays enabled so it can be cleared.
+  const disabled = !available && !active;
   return (
     <button
       type="button"
@@ -286,7 +287,6 @@ function FacetPill({
       data-testid={testId}
     >
       {label}
-      {n > 0 && <span className="cat-facet-count">{n}</span>}
     </button>
   );
 }

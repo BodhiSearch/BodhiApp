@@ -1,4 +1,4 @@
-import type { ApiFormatHint, Capability, FacetBucket, ListProvidersQuery } from '@bodhiapp/reference-api-types';
+import type { ApiFormatHint, Capability, FacetValues, ListProvidersQuery } from '@bodhiapp/reference-api-types';
 
 import { ShellIcon } from '@/components/shell';
 import { CAP_LABELS } from '@/routes/models/explore/-shared/catalog-format';
@@ -6,8 +6,8 @@ import '@/routes/models/-components/models.css';
 
 /**
  * Faceted sidebar for Explore · API Providers. Controlled — selections drive the parent's
- * `ListProvidersQuery`. Facet OPTIONS + counts come from `ProviderListResponse.facets` (recomputed
- * per query). Zero-count options render disabled (not hidden) so a selected option can be cleared.
+ * `ListProvidersQuery`. `ProviderListResponse.facets` (global value arrays) drives which options are
+ * available; an unavailable option renders disabled (not hidden) so a selected option can be cleared.
  */
 
 export type ProviderPricing = NonNullable<ListProvidersQuery['pricing']>;
@@ -33,7 +33,7 @@ export function providerFacetsToQuery(f: ProviderFacets) {
   };
 }
 
-// Display labels only — the OPTIONS rendered are driven by the API's api_format facet bucket, so
+// Display labels only — the OPTIONS rendered are driven by the API's api_format facet values, so
 // synthetic/frontend-only formats (e.g. openai_responses, anthropic_oauth) never appear here.
 const API_FORMAT_LABELS: Partial<Record<ApiFormatHint, string>> = {
   openai: 'OpenAI',
@@ -52,17 +52,19 @@ function toggle<T>(list: T[] | undefined, value: T): T[] | undefined {
 
 interface SidebarProps {
   facets: ProviderFacets;
-  capabilityCounts: FacetBucket;
-  apiFormatCounts: FacetBucket;
+  capabilityValues: FacetValues;
+  apiFormatValues: FacetValues;
   onFacetsChange: (next: ProviderFacets) => void;
 }
 
-export function ExploreProvidersSidebar({ facets, capabilityCounts, apiFormatCounts, onFacetsChange }: SidebarProps) {
-  // OPTIONS come from the API's api_format bucket, so only formats the search backend actually
+export function ExploreProvidersSidebar({ facets, capabilityValues, apiFormatValues, onFacetsChange }: SidebarProps) {
+  const capAvail = new Set(capabilityValues);
+  const fmtAvail = new Set(apiFormatValues);
+  // OPTIONS come from the API's api_format values, so only formats the search backend actually
   // returns are filterable; a stored/selected value is kept so it can still be cleared. The
   // `openai_responses` variant is intentionally excluded as a filter option.
   const apiFormatKeys = Array.from(
-    new Set<ApiFormatHint>([...(Object.keys(apiFormatCounts) as ApiFormatHint[]), ...(facets.api_format ?? [])])
+    new Set<ApiFormatHint>([...(apiFormatValues as ApiFormatHint[]), ...(facets.api_format ?? [])])
   ).filter((f) => f !== 'openai_responses');
 
   return (
@@ -71,7 +73,7 @@ export function ExploreProvidersSidebar({ facets, capabilityCounts, apiFormatCou
         <div className="m-facet-pills">
           <FacetPill
             label="Labs only"
-            count={undefined}
+            available
             active={Boolean(facets.is_lab)}
             testId="cat-prov-labs"
             onToggle={() => onFacetsChange({ ...facets, is_lab: facets.is_lab ? undefined : true })}
@@ -85,7 +87,7 @@ export function ExploreProvidersSidebar({ facets, capabilityCounts, apiFormatCou
             <FacetPill
               key={c}
               label={CAP_LABELS[c]}
-              count={capabilityCounts[c] ?? 0}
+              available={capAvail.has(c)}
               active={(facets.capability ?? []).includes(c)}
               testId={`cat-prov-cap-${c}`}
               onToggle={() => onFacetsChange({ ...facets, capability: toggle(facets.capability, c) })}
@@ -100,7 +102,7 @@ export function ExploreProvidersSidebar({ facets, capabilityCounts, apiFormatCou
             <FacetPill
               key={f}
               label={API_FORMAT_LABELS[f] ?? f}
-              count={apiFormatCounts[f] ?? 0}
+              available={fmtAvail.has(f)}
               active={(facets.api_format ?? []).includes(f)}
               testId={`cat-prov-fmt-${f}`}
               onToggle={() => onFacetsChange({ ...facets, api_format: toggle(facets.api_format, f) })}
@@ -115,7 +117,7 @@ export function ExploreProvidersSidebar({ facets, capabilityCounts, apiFormatCou
             <FacetPill
               key={p}
               label={p === 'free' ? 'Free' : 'Paid'}
-              count={undefined}
+              available
               active={facets.pricing === p}
               testId={`cat-prov-pricing-${p}`}
               onToggle={() => onFacetsChange({ ...facets, pricing: facets.pricing === p ? undefined : p })}
@@ -127,24 +129,23 @@ export function ExploreProvidersSidebar({ facets, capabilityCounts, apiFormatCou
   );
 }
 
-/** A multi-select facet pill with a count. Zero-count + inactive → disabled (can't select an empty
- *  bucket), but a selected pill stays enabled so it can be cleared even when its count drops to 0. */
+/** A multi-select facet pill. Unavailable + inactive → disabled (the catalog has no providers for
+ *  that value), but a selected pill stays enabled so it can be cleared. Synthetic chips (Labs/free/
+ *  paid) aren't real facet values and pass `available` to stay enabled. */
 function FacetPill({
   label,
-  count,
+  available,
   active,
   testId,
   onToggle,
 }: {
   label: string;
-  count: number | undefined;
+  available: boolean;
   active: boolean;
   testId: string;
   onToggle: () => void;
 }) {
-  const n = count ?? 0;
-  // Count-gating only applies to real facet buckets; synthetic chips (free/paid) stay enabled.
-  const disabled = count != null && !active && n === 0;
+  const disabled = !available && !active;
   return (
     <button
       type="button"
@@ -155,7 +156,6 @@ function FacetPill({
       data-testid={testId}
     >
       {label}
-      {n > 0 && <span className="cat-facet-count">{n}</span>}
     </button>
   );
 }
