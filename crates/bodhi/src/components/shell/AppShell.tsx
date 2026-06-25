@@ -2,7 +2,9 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -198,21 +200,22 @@ export function AppShell({
     if (isMobile) setRailOpen((o) => !o);
     else setRailCollapsed((c) => !c);
   };
-  const ctx: ShellContextValue = {
-    collapsed: effCollapsed,
-    isMobile,
-    openPop,
-    setOpenPop,
-    openRail: () => {
-      setRailCollapsed(false);
-      setRailOpen(true);
-    },
-    closeRail: () => setRailOpen(false),
-    collapseRail: () => {
-      setRailCollapsed(true);
-      setRailOpen(false);
-    },
-  };
+  // Stable rail actions: consumers (e.g. a screen's `select` callback) put these in dependency
+  // arrays, so recreating them every render would churn the screen's memoized slot nodes and make
+  // useShellChrome's publish effect loop. State setters are stable, so these useCallbacks never change.
+  const openRail = useCallback(() => {
+    setRailCollapsed(false);
+    setRailOpen(true);
+  }, []);
+  const closeRail = useCallback(() => setRailOpen(false), []);
+  const collapseRail = useCallback(() => {
+    setRailCollapsed(true);
+    setRailOpen(false);
+  }, []);
+  const ctx: ShellContextValue = useMemo(
+    () => ({ collapsed: effCollapsed, isMobile, openPop, setOpenPop, openRail, closeRail, collapseRail }),
+    [effCollapsed, isMobile, openPop, openRail, closeRail, collapseRail]
+  );
 
   const shellClass = [
     'shell',

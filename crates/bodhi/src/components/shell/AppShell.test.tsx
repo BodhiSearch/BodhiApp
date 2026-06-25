@@ -1,4 +1,4 @@
-import { AppShell } from '@/components/shell';
+import { AppShell, useShell } from '@/components/shell';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -158,6 +158,31 @@ describe('AppShell', () => {
     } finally {
       window.matchMedia = originalMatchMedia;
     }
+  });
+
+  it('keeps the rail actions (openRail) referentially stable across re-renders', async () => {
+    // Screens put openRail in dependency arrays (e.g. a row-select callback). If AppShell recreated
+    // its context value every render, those deps would churn every render — which, combined with
+    // useShellChrome publishing memoized slot nodes, produces "Maximum update depth exceeded".
+    const openRails: Array<() => void> = [];
+    function Probe() {
+      const { openRail } = useShell();
+      openRails.push(openRail);
+      return null;
+    }
+    const user = userEvent.setup();
+    render(
+      <AppShell section="models" subPage="my-models">
+        <Probe />
+      </AppShell>
+    );
+
+    // Force AppShell to re-render via its own state (collapse toggle) and confirm openRail's identity
+    // survives across the re-render.
+    await user.click(screen.getByTitle('Collapse sidebar'));
+    await waitFor(() => expect(openRails.length).toBeGreaterThan(1));
+    const unique = new Set(openRails);
+    expect(unique.size).toBe(1);
   });
 
   it('collapses the sidebar to the icon rail when the toggle is clicked', async () => {

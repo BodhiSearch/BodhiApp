@@ -272,12 +272,24 @@
 
 /* Model row grid: column tracks are computed inline from the visible-column model (see
    ExploreApiScreen COLUMNS), so the picker can show/hide columns without a fixed template here.
-   min-width:max-content stops the tracks collapsing below their minmax() floors when the list is
-   narrow (e.g. the detail rail is open); the row then spans its full content width so the row
-   background + bottom border render edge-to-edge instead of clipping mid-row, and .l-scroll
-   (overflow-x:auto) provides one horizontal scrollbar shared by the header and the rows. */
-.cat-model-grid {
+   When the list overflows horizontally (e.g. the detail rail is open), every row + the header must
+   share ONE width so columns align and each row's background/border spans the full scrolled width:
+   - .l-listview sizes to its widest row (max-content); each row then fills it at width:100% — without
+     this, per-row min-width:max-content gives rows DIFFERENT widths (ragged right edge, backgrounds
+     clipped mid-row).
+   - the sticky header sizes to max-content too; the shared grid template keeps it column-aligned with
+     the rows.
+   .l-scroll (overflow-x:auto) provides one horizontal scrollbar shared by the header and the rows. */
+.cat-listhead.cat-model-grid {
   min-width: max-content;
+}
+/* The model list's row container sizes to its widest row; scoped to this list (the providers list
+   uses cat-prov-grid and isn't affected). */
+[data-testid='cat-model-list'] .l-listview {
+  min-width: max-content;
+}
+.cat-row.cat-model-grid {
+  min-width: 100%;
 }
 .cat-model-name {
   font-size: 14px;
