@@ -89,15 +89,17 @@ async function renderScreen(initialEntries?: string[]) {
 }
 
 describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
-  it('renders the catalog with "Showing N" (no total) and Downloads/Likes', async () => {
+  it('renders the catalog as a table with "Showing N" below the list and the Downloads/Likes columns', async () => {
     server.use(...mockDiscoverModels());
     await renderScreen();
 
     const list = screen.getByTestId('ld-list');
     expect(within(list).getAllByRole('option').length).toBe(3);
-    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent('Showing 3');
-    // Default sort is Downloads (descending-only).
-    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent(/sorted by\s*Downloads/);
+    // The result bar is gone — the count lives below the list, next to Load more.
+    expect(screen.queryByTestId('ld-resultbar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ld-count')).toHaveTextContent('Showing 3');
+    // Default sort is Downloads (descending-only); the active header carries the state.
+    expect(screen.getByTestId('ld-sort-downloads')).toHaveAttribute('data-test-state', 'active');
     expect(screen.getByTestId('ld-row-Qwen-Qwen3-Coder-32B-GGUF')).toBeInTheDocument();
   });
 
@@ -195,7 +197,7 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
     });
     await waitFor(() => expect(seen[seen.length - 1].searchParams.get('sort')).toBe('last_modified'));
     expect(screen.getByTestId('ld-sort-last_modified')).toHaveAttribute('data-test-state', 'active');
-    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent('Updated');
+    expect(screen.getByTestId('cat-listhead')).toHaveTextContent('UPDATED');
   });
 
   it('renders "—" in the Updated column when last_modified is null', async () => {
@@ -224,7 +226,7 @@ describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
     await waitFor(() => {
       expect(within(screen.getByTestId('ld-list')).getAllByRole('option').length).toBe(2);
     });
-    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent('Showing 2');
+    expect(screen.getByTestId('ld-count')).toHaveTextContent('Showing 2');
   });
 });
 
@@ -439,7 +441,8 @@ describe('LocalDiscoveryScreen (Phase 5 — error + empty states)', () => {
     server.use(...mockDiscoverModels({ items: [] }));
     await renderScreen();
     await waitFor(() => expect(screen.getByTestId('ld-empty')).toBeInTheDocument());
-    expect(screen.getByTestId('ld-resultbar')).toHaveTextContent('Showing 0');
+    // No table, no count footer when there are zero rows.
+    expect(screen.queryByTestId('ld-count')).not.toBeInTheDocument();
   });
 });
 

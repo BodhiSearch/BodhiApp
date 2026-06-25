@@ -34,15 +34,15 @@ test.describe('Explore · Local Models (discovery)', () => {
       await discoveryPage.navigateToDiscovery();
       // The list reaches a terminal state (rows or empty) regardless of catalog reachability.
       await discoveryPage.waitForListSettled();
-      await expect(discoveryPage.page.locator(discoveryPage.selectors.resultbar)).toBeVisible();
     });
 
-    await test.step('Catalog renders real repository rows', async () => {
+    await test.step('Catalog renders a real repository table with the count below the list', async () => {
       await discoveryPage.expectCatalogLoaded();
       const count = await discoveryPage.getRowCount();
       expect(count).toBeGreaterThan(0);
-      // The result bar shows "Showing N" (never a total count — the API gives none).
-      await expect(discoveryPage.page.locator(discoveryPage.selectors.resultbar)).toContainText('Showing');
+      // No result bar — the count moved below the list (next to Load more), the sort lives in the headers.
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.listhead)).toContainText('REPOSITORY');
+      await expect(discoveryPage.page.locator(discoveryPage.selectors.count)).toContainText('Showing');
     });
 
     await test.step('Search narrows the catalog and persists the query', async () => {
@@ -62,16 +62,18 @@ test.describe('Explore · Local Models (discovery)', () => {
     await test.step('Sorting by Likes re-queries and marks the active column (descending-only)', async () => {
       await discoveryPage.sortBy('likes');
       await discoveryPage.expectSortState('likes', 'active');
-      await expect(discoveryPage.page.locator(discoveryPage.selectors.resultbar)).toContainText('Likes');
-      // Re-clicking the active column does not flip to ascending (HF/catalog reject asc).
+      expect(discoveryPage.searchParams().get('sort')).toBe('likes');
+      // Descending-only: the URL never carries an order param, and re-clicking does not flip to asc.
+      expect(discoveryPage.searchParams().has('order')).toBe(false);
       await discoveryPage.sortBy('likes');
       await discoveryPage.expectSortState('likes', 'active');
+      expect(discoveryPage.searchParams().has('order')).toBe(false);
     });
 
     await test.step('Sorting by Updated re-queries by last_modified and marks the active column', async () => {
       await discoveryPage.sortBy('last_modified');
       await discoveryPage.expectSortState('last_modified', 'active');
-      await expect(discoveryPage.page.locator(discoveryPage.selectors.resultbar)).toContainText('Updated');
+      expect(discoveryPage.searchParams().get('sort')).toBe('last_modified');
       await expect(discoveryPage.page.locator(discoveryPage.selectors.anyRow).first()).toBeVisible();
     });
 
@@ -80,7 +82,7 @@ test.describe('Explore · Local Models (discovery)', () => {
 
       await discoveryPage.clickFacet(discoveryPage.selectors.browse('trending'));
       await discoveryPage.expectFacetActive(discoveryPage.selectors.browse('trending'));
-      await expect(discoveryPage.page.locator(discoveryPage.selectors.resultbar)).toContainText('Trending');
+      expect(discoveryPage.searchParams().get('sort')).toBe('trending');
 
       await discoveryPage.clickFacet(discoveryPage.selectors.spec('coding'));
       await discoveryPage.expectFacetActive(discoveryPage.selectors.spec('coding'));

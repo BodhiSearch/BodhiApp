@@ -321,6 +321,9 @@
 }
 .cat-num-td {
   white-space: nowrap;
+  /* The `#NN` index must never ellipsis-truncate under table-layout:fixed (a long repo column can
+     otherwise squeeze the narrow num cell into "#…"). */
+  overflow: visible;
 }
 .cat-model-name {
   font-size: 14px;

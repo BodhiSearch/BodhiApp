@@ -18,29 +18,23 @@ import { useDiscoverModels, useModelDetail } from '@/hooks/reference';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreBreadcrumb } from '@/routes/models/explore/-shared/breadcrumbs';
+import { type CatalogColumn, CatalogTable } from '@/routes/models/explore/-shared/catalog-table';
 
 import type { LocalDiscoverySearch } from '../index';
 
 import { DEFAULT_SORT, facetsToSearch, searchToFacets, searchToParams } from './local-discovery-search';
-import { LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
-import { LocalRow, SortHeader } from './LocalDiscoveryRow';
+import { fmtDate, LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
+import { compact, LocalRepoCell } from './LocalDiscoveryRow';
 import { LocalDiscoverySidebar, type DiscoveryFacets } from './LocalDiscoverySidebar';
 import '@/components/downloads-panel/downloads-panel.css';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
+import '@/routes/models/explore/-shared/catalog.css';
 import './local-discovery.css';
 
 const BREADCRUMB = exploreBreadcrumb('Explore · Local Models');
 
 const routeApi = getRouteApi('/models/explore/local/');
-
-const SORT_LABELS: Record<SortKey, string> = {
-  downloads: 'Downloads',
-  likes: 'Likes',
-  last_modified: 'Updated',
-  created_at: 'Newest',
-  trending: 'Trending',
-};
 
 function modelKey(m: Model): string {
   return `${m.namespace}/${m.repo}`;
@@ -50,6 +44,37 @@ function modelKey(m: Model): string {
 function requestSliceKey(s: LocalDiscoverySearch): string {
   return JSON.stringify({ sort: s.sort ?? DEFAULT_SORT, q: s.q ?? '', f: searchToFacets(s) });
 }
+
+// `created_at`/`trending` are sidebar Browse presets, not columns. The repo column isn't a server
+// sort key, so it has no `sort`. Stats are descending-only (see CatalogTable `descendingOnly`).
+const COLUMNS: CatalogColumn<Model, SortKey>[] = [
+  { key: 'num', label: '#', width: '44px', cell: () => null },
+  { key: 'repo', label: 'REPOSITORY', width: '', cell: (m) => <LocalRepoCell model={m} /> },
+  {
+    key: 'downloads',
+    label: 'DOWNLOADS',
+    width: '110px',
+    align: 'right',
+    sort: 'downloads',
+    cell: (m) => <div className="cat-num-cell">{compact(m.downloads)}</div>,
+  },
+  {
+    key: 'likes',
+    label: 'LIKES',
+    width: '90px',
+    align: 'right',
+    sort: 'likes',
+    cell: (m) => <div className="cat-num-cell">{compact(m.likes)}</div>,
+  },
+  {
+    key: 'last_modified',
+    label: 'UPDATED',
+    width: '110px',
+    align: 'right',
+    sort: 'last_modified',
+    cell: (m) => <div className="cat-num-cell">{fmtDate(m.last_modified)}</div>,
+  },
+];
 
 export function LocalDiscoveryScreen() {
   useListKeyNav();
@@ -331,7 +356,7 @@ export function LocalDiscoveryScreen() {
 
   return (
     <div
-      className="ld-screen l-page"
+      className="ld-screen cat-screen l-page"
       data-testid="local-discovery-content"
       data-pagestatus={isLoading ? 'loading' : 'ready'}
     >
@@ -364,23 +389,6 @@ export function LocalDiscoveryScreen() {
         </div>
       </div>
 
-      <div className="ld-resultbar" data-testid="ld-resultbar">
-        <span className="ld-count">Showing {rows.length}</span>
-        <span className="ld-sortlabel">
-          sorted by <strong>{SORT_LABELS[sort]}</strong>
-        </span>
-      </div>
-
-      <div className="ld-listhead">
-        <div className="ld-lh-num">#</div>
-        <div className="ld-lh-repo">REPOSITORY</div>
-        <div className="ld-lh-stats">
-          <SortHeader label="Downloads" col="downloads" sort={sort} onSort={onSort} />
-          <SortHeader label="Likes" col="likes" sort={sort} onSort={onSort} />
-          <SortHeader label="Updated" col="last_modified" sort={sort} onSort={onSort} />
-        </div>
-      </div>
-
       <div className="l-scroll" data-testid="ld-list">
         {isLoading && rows.length === 0 ? (
           <div style={{ padding: 16 }} data-testid="ld-skeleton-container">
@@ -397,23 +405,31 @@ export function LocalDiscoveryScreen() {
             <div className="empty-sub">Try a different search term.</div>
           </div>
         ) : (
-          <div className="l-listview">
-            {rows.map((m, i) => (
-              <LocalRow
-                key={modelKey(m)}
-                model={m}
-                idx={i + 1}
-                sort={sort}
-                active={modelKey(m) === selectedKey}
-                onSelect={() => select(modelKey(m))}
-              />
-            ))}
-            {showLoadMore && (
-              <button type="button" className="ld-loadmore" onClick={loadMore} data-testid="ld-load-more">
-                <ShellIcon name="chevrons-down" size={14} /> Load more
-              </button>
-            )}
-          </div>
+          <>
+            <CatalogTable<Model, SortKey>
+              columns={COLUMNS}
+              rows={rows}
+              rowKey={modelKey}
+              rowTestId={(m) => `ld-row-${m.namespace}-${m.repo}`}
+              rowLabel={(m) => `Open ${m.namespace}/${m.repo}`}
+              activeKey={selectedKey}
+              onSelect={(m) => select(modelKey(m))}
+              sort={sort}
+              onSort={onSort}
+              descendingOnly
+              testIdPrefix="ld"
+            />
+            <div className="ld-listfoot">
+              <span className="ld-count" data-testid="ld-count">
+                Showing {rows.length}
+              </span>
+              {showLoadMore && (
+                <button type="button" className="ld-loadmore" onClick={loadMore} data-testid="ld-load-more">
+                  <ShellIcon name="chevrons-down" size={14} /> Load more
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

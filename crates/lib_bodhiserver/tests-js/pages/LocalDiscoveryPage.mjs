@@ -11,7 +11,8 @@ import { expect } from '@playwright/test';
 export class LocalDiscoveryPage extends BasePage {
   selectors = {
     content: '[data-testid="local-discovery-content"]',
-    resultbar: '[data-testid="ld-resultbar"]',
+    listhead: '[data-testid="cat-listhead"]',
+    count: '[data-testid="ld-count"]',
     list: '[data-testid="ld-list"]',
     anyRow: '[data-testid^="ld-row-"]',
     empty: '[data-testid="ld-empty"]',
@@ -52,6 +53,11 @@ export class LocalDiscoveryPage extends BasePage {
     await this.waitForSPAReady();
     await this.expectVisible(this.selectors.content);
     await expect(this.page.locator(this.selectors.content)).toHaveAttribute('data-pagestatus', 'ready');
+  }
+
+  /** Current ?-search params on the Local Models URL. */
+  searchParams() {
+    return new URL(this.page.url()).searchParams;
   }
 
   /** Wait for the list to settle on rows OR the empty state (avoids racing the in-flight query). */
