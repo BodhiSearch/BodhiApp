@@ -108,17 +108,56 @@ test.describe('Explore · API Models', () => {
       await expect(modelsPage.page.locator('[data-testid="base-url-input"]')).toHaveValue('https://openrouter.ai/api/v1');
     });
 
-    await test.step('Configure in Bodhi prefills the create form from the bridge', async () => {
+    await test.step('The Configure-in-Bodhi CTA is removed (the per-provider Add is the configure path)', async () => {
       await modelsPage.navigateToModels();
       await modelsPage.waitForListSettled();
       await modelsPage.openModel('anthropic', 'model-0');
-      await modelsPage.clickConfigure();
-      await modelsPage.page.waitForURL(/\/models\/api\/new\//);
-      await expect(modelsPage.page.locator('[data-testid="new-api-model-page"]')).toBeVisible();
-      // base_url prefilled from the stub bridge (anthropic), api_key left empty.
-      await expect(modelsPage.page.locator('[data-testid="base-url-input"]')).toHaveValue(
-        'https://api.anthropic.com/v1'
+      await expect(modelsPage.page.locator('[data-testid="cat-model-configure-cta"]')).toHaveCount(0);
+    });
+
+    await test.step('Served-by "All Models from Provider" filters in place via ?provider=', async () => {
+      await modelsPage.expandServedBy('openrouter');
+      await modelsPage.clickAllModelsFromProvider('openrouter');
+      // Same route, now provider-filtered (the stub narrows by served_by → all 31 fixture models qualify).
+      await expect(modelsPage.page).toHaveURL(/\/models\/explore\/api\/\?provider=/);
+      await expect(modelsPage.page).toHaveURL(/openrouter/);
+      await modelsPage.waitForListSettled();
+      expect(await modelsPage.getRowCount()).toBeGreaterThan(0);
+    });
+
+    await test.step('Back restores the unfiltered URL and Forward re-applies the provider filter', async () => {
+      await modelsPage.page.goBack();
+      await modelsPage.waitForSPAReady();
+      await expect(modelsPage.page).not.toHaveURL(/provider=/);
+      await modelsPage.page.goForward();
+      await modelsPage.waitForSPAReady();
+      await expect(modelsPage.page).toHaveURL(/provider=/);
+    });
+
+    await test.step('Sort writes the URL and Back reverts it (browser history for the search page)', async () => {
+      await modelsPage.navigateToModels();
+      await modelsPage.waitForListSettled();
+      await modelsPage.sortBy('price');
+      await expect(modelsPage.page).toHaveURL(/sort=price/);
+      await modelsPage.page.goBack();
+      await modelsPage.waitForSPAReady();
+      await expect(modelsPage.page).not.toHaveURL(/sort=price/);
+      await expect(modelsPage.page.locator(modelsPage.selectors.sort('price'))).toHaveAttribute(
+        'data-test-state',
+        'idle'
       );
+    });
+
+    await test.step('Served-by "View" opens the Providers page searching for the provider', async () => {
+      await modelsPage.navigateToModels();
+      await modelsPage.waitForListSettled();
+      await modelsPage.openModel('anthropic', 'model-0');
+      await modelsPage.expandServedBy('openrouter');
+      await modelsPage.clickViewProvider('openrouter');
+      await modelsPage.page.waitForURL(/\/models\/explore\/api-providers\//);
+      await expect(modelsPage.page).toHaveURL(/q=OpenRouter/);
+      // The providers search box is seeded from ?q=.
+      await expect(modelsPage.page.locator('[data-testid="cat-prov-search"] input')).toHaveValue('OpenRouter');
     });
 
     await test.step('Search narrows the list and auto-ranks by relevance', async () => {

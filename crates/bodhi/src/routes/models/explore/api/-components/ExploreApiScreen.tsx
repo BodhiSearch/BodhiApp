@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ListCatalogModelsQuery, ModelLite } from '@bodhiapp/reference-api-types';
+import type { ModelLite } from '@bodhiapp/reference-api-types';
+import { getRouteApi } from '@tanstack/react-router';
 
 import {
   LinkRow,
@@ -34,18 +35,28 @@ import {
   statusLabel,
 } from '@/routes/models/explore/-shared/catalog-format';
 
+import type { ExploreApiSearch } from '../index';
+
+import {
+  DEFAULT_ORDER,
+  DEFAULT_SORT,
+  facetsToSearch,
+  PAGE_SIZE,
+  searchToFacets,
+  searchToParams,
+} from './explore-api-search';
 import { ExploreApiRail, ExploreApiRailHeader } from './ExploreApiRail';
-import { ExploreApiSidebar, modelFacetsToQuery, type ModelFacetsState } from './ExploreApiSidebar';
+import { ExploreApiSidebar, type ModelFacetsState } from './ExploreApiSidebar';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
 import '@/routes/models/explore/-shared/catalog.css';
 
 const BREADCRUMB = exploreBreadcrumb('Explore · API Models');
 
-const PAGE_SIZE = 30;
+const routeApi = getRouteApi('/models/explore/api/');
 
-type ModelSort = NonNullable<ListCatalogModelsQuery['sort']>;
-type SortOrder = NonNullable<ListCatalogModelsQuery['order']>;
+type ModelSort = NonNullable<ExploreApiSearch['sort']>;
+type SortOrder = NonNullable<ExploreApiSearch['order']>;
 
 // The backend's natural direction per sort key (docs: endpoints.md "Sorts"). Selecting a new column
 // applies its natural default; clicking the active column toggles it.
@@ -65,12 +76,14 @@ function ColSort({
   label,
   sort,
   order,
+  align,
   onSort,
 }: {
   col: ModelSort;
   label: string;
   sort: ModelSort;
   order: SortOrder;
+  align: ColumnAlign;
   onSort: (c: ModelSort) => void;
 }) {
   const active = sort === col;
@@ -78,7 +91,7 @@ function ColSort({
   return (
     <button
       type="button"
-      className={`cat-colsort${active ? ' on' : ''}`}
+      className={`cat-colsort${align === 'left' ? ' cat-colsort--left' : ''}${active ? ' on' : ''}`}
       onClick={() => onSort(col)}
       data-testid={`cat-model-sort-${col}`}
       data-test-state={active ? 'active' : 'idle'}
@@ -93,13 +106,17 @@ function modelKey(m: ModelLite): string {
   return `${m.slug}/${m.model_id}`;
 }
 
+type ColumnAlign = 'left' | 'right';
+
 // Column model: headers, row cells, and the grid-template all derive from this so the column picker
 // (show/hide) and any sortable header stay in sync. `#` + MODEL are mandatory; the rest are toggleable.
-// `width` is a CSS grid track. `sort` (when set) makes the header a sortable ColSort.
+// `width` is a CSS grid track. `sort` (when set) makes the header a sortable ColSort. `align` keeps the
+// header label justified the same way as the cell content (text columns left, numeric columns right).
 interface Column {
   key: string;
   label: string;
   width: string;
+  align?: ColumnAlign;
   sort?: ModelSort;
   optional?: boolean;
   cell: (m: ModelLite) => React.ReactNode;
@@ -142,6 +159,7 @@ const COLUMNS: Column[] = [
     key: 'context',
     label: 'CONTEXT',
     width: '70px',
+    align: 'right',
     sort: 'context',
     optional: true,
     cell: (m) => <div className="cat-num-cell">{fmtContext(m.context_limit)}</div>,
@@ -150,6 +168,7 @@ const COLUMNS: Column[] = [
     key: 'price',
     label: 'INPUT $',
     width: '64px',
+    align: 'right',
     sort: 'price',
     optional: true,
     cell: (m) => {
@@ -163,6 +182,7 @@ const COLUMNS: Column[] = [
     key: 'price_out',
     label: 'OUTPUT $',
     width: '64px',
+    align: 'right',
     sort: 'price_out',
     optional: true,
     cell: (m) => {
@@ -174,6 +194,7 @@ const COLUMNS: Column[] = [
     key: 'updated',
     label: 'UPDATED',
     width: '84px',
+    align: 'right',
     sort: 'updated',
     optional: true,
     cell: (m) => <div className="cat-num-cell">{fmtDate(m.last_updated)}</div>,
@@ -182,6 +203,7 @@ const COLUMNS: Column[] = [
     key: 'providers',
     label: 'PROVIDERS',
     width: '70px',
+    align: 'right',
     sort: 'providers',
     optional: true,
     cell: (m) => (
@@ -261,15 +283,27 @@ function ModelRow({
 export function ExploreApiScreen() {
   useListKeyNav();
 
-  const [page, setPage] = useState(1);
+  // The URL search is the single source of truth: sort/order/page/q/facets are DERIVED from it each
+  // render, and user actions write back via navigate(). No useState mirrors the URL, and the only
+  // effect below writes LOCAL state (searchInput) — never the URL — so there is no read→write loop.
+  const search = routeApi.useSearch();
+  const navigate = routeApi.useNavigate();
+
+  const sort = search.sort ?? DEFAULT_SORT;
+  const order = search.order ?? DEFAULT_ORDER;
+  const page = search.page ?? 1;
+  const committedSearch = search.q ?? '';
+  const facets = useMemo(() => searchToFacets(search), [search]);
+
+  // Local-only UI state: uncommitted search text, the open detail rail, and column visibility are
+  // ephemeral per page-load and deliberately NOT in the URL.
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<ModelSort>('updated');
-  const [order, setOrder] = useState<SortOrder>('desc');
-  const [facets, setFacets] = useState<ModelFacetsState>({});
-  // Hidden optional columns (the column picker toggles these); `#`/MODEL are never hidden.
+  const [searchInput, setSearchInput] = useState(committedSearch);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
+  // Sync the input down from the URL on Back/Forward (URL→input only; never writes back).
+  useEffect(() => {
+    setSearchInput(committedSearch);
+  }, [committedSearch]);
   const toggleColumn = useCallback((key: string) => {
     setHiddenColumns((prev) => {
       const next = new Set(prev);
@@ -285,22 +319,11 @@ export function ExploreApiScreen() {
   );
   const gridTemplate = useMemo(() => visibleColumns.map((c) => c.width).join(' '), [visibleColumns]);
 
-  const params: ListCatalogModelsQuery = useMemo(
-    () => ({
-      sort,
-      order,
-      page,
-      page_size: PAGE_SIZE,
-      ...(search ? { q: search } : {}),
-      ...modelFacetsToQuery(facets),
-    }),
-    [sort, order, page, search, facets]
-  );
+  const params = useMemo(() => searchToParams(search), [search]);
   const { data, isLoading, error } = useCatalogModels(params);
 
-  // Numbered pagination: render the current page directly (keepPreviousData avoids a flash on page
-  // change). Reset to page 1 on any filter/sort/search change.
-  const resetPaging = useCallback(() => setPage(1), []);
+  // keepPreviousData (in the hook) avoids a flash on page change; `params` is stable per distinct URL
+  // via useMemo([search]). Filter/sort/search writes drop `page` (→ resets to 1); only the pager sets it.
   const rows = data?.items ?? [];
   const total = data?.total ?? rows.length;
 
@@ -315,21 +338,37 @@ export function ExploreApiScreen() {
     [withViewTransition, openRail]
   );
 
+  // The non-facet slice (q/sort/order) carried across a facet change, with defaults stripped so they
+  // never serialize. `page` is intentionally omitted → facet changes reset to page 1.
+  const nonFacetSlice = useCallback((prev: ExploreApiSearch): ExploreApiSearch => {
+    const base: ExploreApiSearch = {};
+    if (prev.q) base.q = prev.q;
+    if (prev.sort && prev.sort !== DEFAULT_SORT) base.sort = prev.sort;
+    if (prev.order && prev.order !== DEFAULT_ORDER) base.order = prev.order;
+    return base;
+  }, []);
+
   const commitSearch = useCallback(
     (value: string) => {
       const next = value.trim();
-      setSearch(next);
-      // Search-as-you-type ranks by best text match; clearing reverts to recency.
-      if (next) {
-        setSort('relevance');
-        setOrder(NATURAL_ORDER.relevance);
-      } else {
-        setSort('updated');
-        setOrder(NATURAL_ORDER.updated);
-      }
-      resetPaging();
+      navigate({
+        search: (prev: ExploreApiSearch) => {
+          const out: ExploreApiSearch = { ...prev };
+          delete out.page; // reset paging
+          delete out.order; // both relevance and updated use their natural (desc) order
+          // Search-as-you-type ranks by best text match; clearing reverts to recency (default sort).
+          if (next) {
+            out.q = next;
+            out.sort = 'relevance';
+          } else {
+            delete out.q;
+            delete out.sort;
+          }
+          return out;
+        },
+      });
     },
-    [resetPaging]
+    [navigate]
   );
   const onSearchChange = useCallback(
     (value: string) => {
@@ -346,24 +385,39 @@ export function ExploreApiScreen() {
   );
   const onSort = useCallback(
     (next: ModelSort) => {
-      // Clicking the active column toggles direction; a new column adopts its natural default.
-      setOrder((prev) => (sort === next ? (prev === 'asc' ? 'desc' : 'asc') : NATURAL_ORDER[next]));
-      setSort(next);
-      resetPaging();
+      navigate({
+        search: (prev: ExploreApiSearch) => {
+          const prevSort = prev.sort ?? DEFAULT_SORT;
+          const prevOrder = prev.order ?? DEFAULT_ORDER;
+          // Clicking the active column toggles direction; a new column adopts its natural default.
+          const nextOrder = prevSort === next ? (prevOrder === 'asc' ? 'desc' : 'asc') : NATURAL_ORDER[next];
+          const out: ExploreApiSearch = { ...prev };
+          delete out.page; // reset paging
+          if (next === DEFAULT_SORT) delete out.sort;
+          else out.sort = next;
+          if (nextOrder === DEFAULT_ORDER) delete out.order;
+          else out.order = nextOrder;
+          return out;
+        },
+      });
     },
-    [resetPaging, sort]
+    [navigate]
   );
   const onFacetsChange = useCallback(
-    (next: ModelFacetsState) => {
-      setFacets(next);
-      resetPaging();
-    },
-    [resetPaging]
+    (next: ModelFacetsState) =>
+      // Replace the whole facet slice (a shallow merge can't delete a removed facet); keep q/sort/order.
+      navigate({ search: (prev: ExploreApiSearch) => ({ ...nonFacetSlice(prev), ...facetsToSearch(next) }) }),
+    [navigate, nonFacetSlice]
   );
-  const onClearAllFacets = useCallback(() => {
-    setFacets({});
-    resetPaging();
-  }, [resetPaging]);
+  const onClearAllFacets = useCallback(
+    () => navigate({ search: (prev: ExploreApiSearch) => nonFacetSlice(prev) }),
+    [navigate, nonFacetSlice]
+  );
+  const onPage = useCallback(
+    (p: number) =>
+      navigate({ search: (prev: ExploreApiSearch) => (p === 1 ? { ...prev, page: undefined } : { ...prev, page: p }) }),
+    [navigate]
+  );
 
   const sidebar = useMemo(
     () => (
@@ -431,19 +485,26 @@ export function ExploreApiScreen() {
         </span>
       </div>
 
-      <div className="cat-listhead cat-model-grid" style={{ gridTemplateColumns: gridTemplate }}>
-        {visibleColumns.map((col) =>
-          col.sort ? (
-            <ColSort key={col.key} col={col.sort} label={col.label} sort={sort} order={order} onSort={onSort} />
-          ) : (
-            <div className="cat-colhead" key={col.key}>
-              {col.label}
-            </div>
-          )
-        )}
-      </div>
-
       <div className="l-scroll" data-testid="cat-model-list">
+        <div className="cat-listhead cat-model-grid" style={{ gridTemplateColumns: gridTemplate }}>
+          {visibleColumns.map((col) =>
+            col.sort ? (
+              <ColSort
+                key={col.key}
+                col={col.sort}
+                label={col.label}
+                sort={sort}
+                order={order}
+                align={col.align ?? 'left'}
+                onSort={onSort}
+              />
+            ) : (
+              <div className={`cat-colhead${col.align === 'right' ? ' cat-colhead--right' : ''}`} key={col.key}>
+                {col.label}
+              </div>
+            )
+          )}
+        </div>
         {isLoading && rows.length === 0 ? (
           <div style={{ padding: 16 }} data-testid="cat-model-skeleton-container">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -476,7 +537,7 @@ export function ExploreApiScreen() {
       </div>
 
       {total > PAGE_SIZE && (
-        <ShellPagination total={total} page={page} onPage={setPage} pageSize={PAGE_SIZE} unit="models" />
+        <ShellPagination total={total} page={page} onPage={onPage} pageSize={PAGE_SIZE} unit="models" />
       )}
     </div>
   );

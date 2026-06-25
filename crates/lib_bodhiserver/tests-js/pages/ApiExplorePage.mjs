@@ -21,11 +21,12 @@ export class ApiExplorePage extends BasePage {
     // Detail rail.
     railSpecs: '[data-testid="cat-model-detail-specs"]',
     railServedBy: '[data-testid="cat-model-servedby"]',
-    configureCta: '[data-testid="cat-model-configure-cta"]',
     detailClose: '[data-testid="cat-model-detail-close"]',
     servedByToggle: (slug) => `[data-testid="cat-model-servedby-toggle-${slug}"]`,
     servedByDetail: (slug) => `[data-testid="cat-model-servedby-detail-${slug}"]`,
     servedByAdd: (slug) => `[data-testid="cat-model-servedby-add-${slug}"]`,
+    servedByAllModels: (slug) => `[data-testid="cat-model-servedby-allmodels-${slug}"]`,
+    servedByView: (slug) => `[data-testid="cat-model-servedby-view-${slug}"]`,
     // Search / sort / columns / facets.
     search: '[data-testid="cat-model-search"] input',
     sort: (key) => `[data-testid="cat-model-sort-${key}"]`,
@@ -101,6 +102,22 @@ export class ApiExplorePage extends BasePage {
       const q = url.searchParams.get('q')?.toLowerCase();
       let filtered = models;
       if (q) filtered = filtered.filter((m) => `${m.model_id} ${m.name}`.toLowerCase().includes(q));
+      // provider filter arrives JSON-encoded (?provider=["openrouter"]) or as a bare slug; match the
+      // served_by set so the "All Models from Provider" cross-link narrows the list deterministically.
+      const providerRaw = url.searchParams.getAll('provider');
+      const providerSlugs = providerRaw.flatMap((v) => {
+        try {
+          const parsed = JSON.parse(v);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [v];
+        }
+      });
+      if (providerSlugs.length) {
+        filtered = filtered.filter((m) =>
+          ApiExplorePage.detailFor(m).served_by.some((s) => providerSlugs.includes(s.slug))
+        );
+      }
       const pricing = url.searchParams.get('pricing');
       if (pricing === 'free') filtered = filtered.filter((m) => m.pricing.input_per_m === 0 && m.pricing.output_per_m === 0);
       if (pricing === 'paid') filtered = filtered.filter((m) => m.pricing.input_per_m > 0 || m.pricing.output_per_m > 0);
@@ -113,6 +130,34 @@ export class ApiExplorePage extends BasePage {
         page_size: pageSize,
         total: filtered.length,
         facets: ApiExplorePage.facets(filtered.length),
+      });
+    });
+
+    // Providers list backs the "View" cross-link landing (?q=<name> on the Providers page). Echoes
+    // the q so the test can assert it filtered to the one provider. Registered before the more
+    // specific provider-detail route below so Playwright's last-match-wins keeps detail working.
+    await this.page.route(/\/api\/v1\/catalog\/providers(\?|$)/, (route) => {
+      const q = new URL(route.request().url()).searchParams.get('q') ?? '';
+      const provider = {
+        slug: 'openrouter',
+        name: 'OpenRouter',
+        logo_url: null,
+        model_count: 10,
+        rank: 1,
+        is_lab: false,
+        api_base_url: 'https://openrouter.ai/api/v1',
+        provider_shape: 'native',
+        api_format_hint: 'openai',
+        capabilities_summary: ['reasoning'],
+        pricing_summary: { min_in_per_m: 3, min_out_per_m: 15 },
+      };
+      const items = q && !'openrouter'.includes(q.toLowerCase()) ? [] : [provider];
+      return json(route, {
+        items,
+        page: 1,
+        page_size: 30,
+        total: items.length,
+        facets: { capability: { reasoning: items.length }, api_format: { openai: items.length } },
       });
     });
 
@@ -236,8 +281,16 @@ export class ApiExplorePage extends BasePage {
     await this.page.locator(this.selectors.railSpecs).waitFor({ state: 'visible' });
   }
 
-  async clickConfigure() {
-    await this.page.locator(this.selectors.configureCta).click();
+  /** Cross-link: filter the Models page in place to all models served by `slug`. */
+  async clickAllModelsFromProvider(slug) {
+    await this.page.locator(this.selectors.servedByAllModels(slug)).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  /** Cross-link: open the Providers page searching for this provider. */
+  async clickViewProvider(slug) {
+    await this.page.locator(this.selectors.servedByView(slug)).click();
     await this.waitForSPAReady();
   }
 

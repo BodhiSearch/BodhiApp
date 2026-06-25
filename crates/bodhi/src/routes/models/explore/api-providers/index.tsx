@@ -7,7 +7,9 @@ import { MultiTenantGuard } from '@/routes/models/explore/-shared/MultiTenantGua
 import { ExploreProvidersScreen } from './-components/ExploreProvidersScreen';
 
 // `select` is the cross-link target from the API Models page ("Served by" → a provider).
-const providersSearchSchema = z.object({ select: z.string().optional() });
+// `q` seeds the search box from the "View" cross-link (one-shot; the page's own back/forward + field
+// prepop is a follow-up iteration).
+const providersSearchSchema = z.object({ select: z.string().optional(), q: z.string().optional() });
 
 export const Route = createFileRoute('/models/explore/api-providers/')({
   validateSearch: providersSearchSchema,

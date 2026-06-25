@@ -227,7 +227,9 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* List header row. */
+/* List header row. Lives INSIDE .l-scroll so it shares the row's horizontal scroll (keeping header
+   and body columns aligned when the grid overflows a narrow list, e.g. with the detail rail open),
+   and sticks to the top during vertical scroll. */
 .cat-listhead {
   display: grid;
   align-items: center;
@@ -238,6 +240,10 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   color: hsl(var(--muted-foreground));
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: hsl(var(--background));
 }
 
 /* Provider row grid: # · logo · body · model-count. */
@@ -246,7 +252,14 @@
 }
 
 /* Model row grid: column tracks are computed inline from the visible-column model (see
-   ExploreApiScreen COLUMNS), so the picker can show/hide columns without a fixed template here. */
+   ExploreApiScreen COLUMNS), so the picker can show/hide columns without a fixed template here.
+   min-width:max-content stops the tracks collapsing below their minmax() floors when the list is
+   narrow (e.g. the detail rail is open); the row then spans its full content width so the row
+   background + bottom border render edge-to-edge instead of clipping mid-row, and .l-scroll
+   (overflow-x:auto) provides one horizontal scrollbar shared by the header and the rows. */
+.cat-model-grid {
+  min-width: max-content;
+}
 .cat-model-name {
   font-size: 14px;
   font-weight: 600;
@@ -274,6 +287,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Header alignment mirrors the cell content: numeric columns right, text columns left. */
+.cat-colhead--right {
+  text-align: right;
+}
+.cat-colsort--left {
+  justify-content: flex-start;
 }
 .cat-colpicker-trigger {
   display: inline-flex;
@@ -481,6 +501,15 @@
 .cat-servedby-detail {
   padding: 6px 10px 8px;
   border-top: 1px solid hsl(var(--border));
+}
+/* The two cross-links (All Models from Provider · View) under a served-by provider's detail. */
+.cat-servedby-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.cat-servedby-links .cat-doc-link {
+  margin-top: 8px;
 }
 
 .cat-configure-cta {

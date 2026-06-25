@@ -18,12 +18,21 @@ import { createWrapper } from '@/tests/wrapper';
 
 vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () => void) => cb() }));
 
-// The screen reads ?select via useSearch (cross-link entry from the API Models page). No router in
-// the RTL wrapper → mock it to "no select param" (the deep-link path is covered in the A-page tests
-// + E2E). Keep the rest of the module intact.
+// The screen reads ?select and ?q via useSearch (cross-link entries from the API Models page). No
+// router in the RTL wrapper → mock useSearch over a controllable search object (default: empty), so
+// each call's `select` projection runs against it. mockSearch lets a test set ?q=… / ?select=….
+const mockSearch: Record<string, unknown> = {};
 vi.mock('@tanstack/react-router', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-router')>('@tanstack/react-router');
-  return { ...actual, useSearch: () => undefined };
+  return {
+    ...actual,
+    useSearch: (opts?: { select?: (s: Record<string, unknown>) => unknown }) =>
+      opts?.select ? opts.select(mockSearch) : mockSearch,
+  };
+});
+
+beforeEach(() => {
+  for (const k of Object.keys(mockSearch)) delete mockSearch[k];
 });
 
 setupMswV2();
@@ -216,6 +225,18 @@ describe('ExploreProvidersScreen (B3 — search + sort + facets)', () => {
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('q') === 'nano')).toBe(true));
     const last = seen[seen.length - 1];
     expect(last.searchParams.get('page')).toBe('1');
+  });
+
+  it('seeds the search box from ?q= (the "View" cross-link) and requests it', async () => {
+    mockSearch.q = 'NanoGPT'; // the View link lands here as ?q=<provider name>
+    const seen: URL[] = [];
+    server.use(...mockCatalogProviders({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen();
+
+    // The search input is pre-filled and the request carries q.
+    const input = screen.getByTestId('cat-prov-search').querySelector('input')! as HTMLInputElement;
+    expect(input.value).toBe('NanoGPT');
+    await waitFor(() => expect(seen.some((u) => u.searchParams.get('q') === 'NanoGPT')).toBe(true));
   });
 
   it('sort buttons send the chosen sort key + natural order, mark active, and toggle direction', async () => {

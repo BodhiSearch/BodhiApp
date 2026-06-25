@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { ExploreApiScreen } from '@/routes/models/explore/api/-components/ExploreApiScreen';
+import { exploreApiSearchSchema } from '@/routes/models/explore/api/index';
 import { createModelDetail, createModelLite, createModelsListResponse } from '@/test-fixtures/catalog-models';
+import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockCatalogError,
@@ -18,32 +20,6 @@ import { createWrapper } from '@/tests/wrapper';
 
 vi.mock('@/hooks/useViewTransition', () => ({ useViewTransition: () => (cb: () => void) => cb() }));
 
-// The rail uses TanStack <Link> (no router in the RTL wrapper). Render it as a plain anchor that
-// encodes `to` + `search` so tests can assert the Configure-bridge / cross-link targets.
-vi.mock('@tanstack/react-router', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-router')>('@tanstack/react-router');
-  return {
-    ...actual,
-    Link: ({
-      to,
-      search,
-      children,
-      ...rest
-    }: {
-      to: string;
-      search?: Record<string, unknown>;
-      children: React.ReactNode;
-    }) => {
-      const qs = search ? new URLSearchParams(search as Record<string, string>).toString() : '';
-      return (
-        <a href={qs ? `${to}?${qs}` : to} {...rest}>
-          {children}
-        </a>
-      );
-    },
-  };
-});
-
 setupMswV2();
 
 let Wrapper: ReturnType<typeof createWrapper>;
@@ -56,6 +32,9 @@ beforeEach(() => {
   );
 });
 
+// The screen reads its filter/sort/search/page state from the URL via getRouteApi('/models/explore/api/'),
+// so tests mount it behind a real in-memory router carrying the route's validateSearch schema. The
+// SlotsConsumer surfaces the sidebar/rail shell slots the screen publishes.
 function SlotsConsumer() {
   const { sidebar, rail, railHeader } = useShellSlots();
   return (
@@ -67,17 +46,36 @@ function SlotsConsumer() {
   );
 }
 
-async function renderScreen() {
+function ScreenWithSlots() {
+  return (
+    <>
+      <SlotsConsumer />
+      <ExploreApiScreen />
+    </>
+  );
+}
+
+function buildRouter(initialEntries?: string[]) {
+  return makeRouteRouter({
+    path: '/models/explore/api/',
+    validateSearch: exploreApiSearchSchema as never,
+    Screen: ScreenWithSlots,
+    initialEntries,
+  });
+}
+
+async function renderScreen(initialEntries?: string[]) {
+  const router = buildRouter(initialEntries);
   await act(async () => {
     render(
       <ShellSlotsProvider>
-        <SlotsConsumer />
-        <ExploreApiScreen />
+        <RouteHarness router={router} />
       </ShellSlotsProvider>,
       { wrapper: Wrapper }
     );
   });
   await waitFor(() => expect(screen.getByTestId('explore-api-content')).toHaveAttribute('data-pagestatus', 'ready'));
+  return router;
 }
 
 describe('ExploreApiScreen (A1 — list)', () => {
@@ -129,7 +127,7 @@ describe('ExploreApiScreen (A1 — list)', () => {
     server.use(
       ...mockCatalogModels({ response: createModelsListResponse(items), onRequest: ({ url }) => seen.push(url) })
     );
-    await renderScreen();
+    const router = await renderScreen();
 
     // Page 1: 30 of 31 rows, pager visible (no Load More).
     expect(screen.getByTestId('cat-model-resultbar')).toHaveTextContent('Showing 30 of 31');
@@ -139,8 +137,9 @@ describe('ExploreApiScreen (A1 — list)', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('pagination-page-2'));
 
-    // Page 2: the request carries page=2 and the single remaining row renders.
+    // Page 2: the request carries page=2, the URL reflects it, and the single remaining row renders.
     await waitFor(() => expect(seen.some((u) => u.searchParams.get('page') === '2')).toBe(true));
+    expect(router.state.location.search).toMatchObject({ page: 2 });
     await waitFor(() => expect(within(screen.getByTestId('cat-model-list')).getAllByRole('option').length).toBe(1));
   });
 
@@ -175,10 +174,11 @@ describe('ExploreApiScreen (A1 — list)', () => {
 
   it('renders an error page when the list fails', async () => {
     server.use(...mockCatalogError('models', { status: 500, error: 'internal' }));
+    const router = buildRouter();
     await act(async () => {
       render(
         <ShellSlotsProvider>
-          <ExploreApiScreen />
+          <RouteHarness router={router} />
         </ShellSlotsProvider>,
         { wrapper: Wrapper }
       );
@@ -187,7 +187,57 @@ describe('ExploreApiScreen (A1 — list)', () => {
   });
 });
 
-describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
+describe('ExploreApiScreen (URL sync — back/forward + deep link)', () => {
+  it('deep-links ?provider=<slug> into an active provider filter and a request param', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    await renderScreen(['/models/explore/api/?provider=nano-gpt']);
+
+    // The request carries the deep-linked provider...
+    await waitFor(() => expect(seen.some((u) => u.searchParams.getAll('provider').includes('nano-gpt'))).toBe(true));
+    // ...and the sidebar shows it as an active removable chip.
+    expect(screen.getByTestId('cat-model-provider-chip-nano-gpt')).toBeInTheDocument();
+  });
+
+  it('keeps the URL clean at defaults (no sort/order/page) and writes only non-defaults', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    const router = await renderScreen();
+
+    // Initial state: no sort/order/page in the URL.
+    expect(router.state.location.search).toEqual({});
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-sort-price'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ sort: 'price' }));
+    // price's natural order is asc → asc !== default desc, so order is written.
+    expect(router.state.location.search).toMatchObject({ sort: 'price', order: 'asc' });
+    expect((router.state.location.search as { page?: number }).page).toBeUndefined();
+  });
+
+  it('browser Back re-applies the previous filter set', async () => {
+    const seen: URL[] = [];
+    server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-cap-reasoning'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ capability: ['reasoning'] }));
+
+    await act(async () => {
+      router.history.back();
+    });
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    // The facet chip is gone and the request reverts to no capability.
+    await waitFor(() => {
+      const last = seen[seen.length - 1];
+      expect(last.searchParams.getAll('capability')).toHaveLength(0);
+    });
+    expect(screen.getByTestId('cat-model-cap-reasoning')).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
+describe('ExploreApiScreen (A2 — detail rail + cross-links)', () => {
   it('opens the rail with spec grid + Served-by on row select', async () => {
     server.use(...mockCatalogModels(), ...mockCatalogModelDetail(), ...mockCatalogProviderDetail());
     await renderScreen();
@@ -199,8 +249,7 @@ describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
     const specs = await screen.findByTestId('cat-model-detail-specs');
     expect(specs).toHaveTextContent('Context');
     expect(specs).toHaveTextContent('200K');
-    // Served-by from the detail fetch. Rows no longer navigate to the Providers page; the per-row
-    // Add icon targets the create-API-model form (api_format=openai, the provider's base_url).
+    // Served-by from the detail fetch. The per-row Add icon targets the create-API-model form.
     const servedBy = await screen.findByTestId('cat-model-servedby');
     expect(servedBy).toHaveTextContent('Anthropic');
     const add = screen.getByTestId('cat-model-servedby-add-openrouter');
@@ -213,6 +262,36 @@ describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
     expect(await screen.findByTestId('cat-model-servedby-detail-openrouter')).toBeInTheDocument();
   });
 
+  it('the Configure-in-Bodhi CTA is removed (per-provider Add is the configure path)', async () => {
+    server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
+    await renderScreen();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5'));
+    await screen.findByTestId('cat-model-detail-specs');
+    expect(screen.queryByTestId('cat-model-configure-cta')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cat-model-configure-subst')).not.toBeInTheDocument();
+  });
+
+  it('served-by detail shows "All Models from Provider" (?provider=slug) and "View" (?q=name) links', async () => {
+    server.use(...mockCatalogModels(), ...mockCatalogModelDetail(), ...mockCatalogProviderDetail());
+    await renderScreen();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5'));
+    await user.click(await screen.findByTestId('cat-model-servedby-toggle-openrouter'));
+
+    const allModels = await screen.findByTestId('cat-model-servedby-allmodels-openrouter');
+    const allHref = allModels.getAttribute('href') ?? '';
+    expect(allHref).toContain('/models/explore/api/');
+    // provider is an array param → the default stringifier JSON-encodes it (?provider=["openrouter"]).
+    expect(decodeURIComponent(allHref)).toContain('provider=["openrouter"]');
+
+    const view = screen.getByTestId('cat-model-servedby-view-openrouter');
+    const viewHref = view.getAttribute('href') ?? '';
+    expect(viewHref).toContain('/models/explore/api-providers/');
+    // q carries the provider's display name (URL-encoded).
+    expect(decodeURIComponent(viewHref)).toContain('q=OpenRouter');
+  });
+
   it('synthesizes "Stable" status for a null-status model', async () => {
     server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
     await renderScreen();
@@ -220,43 +299,6 @@ describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
     await user.click(screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5'));
     const specs = await screen.findByTestId('cat-model-detail-specs');
     expect(specs).toHaveTextContent('Stable');
-  });
-
-  it('Configure CTA targets /models/api/new with the bridge api_format + base_url + model', async () => {
-    server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
-    await renderScreen();
-    const user = userEvent.setup();
-    await user.click(screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5'));
-
-    const cta = await screen.findByTestId('cat-model-configure-cta');
-    const href = cta.getAttribute('href') ?? '';
-    expect(href).toContain('/models/api/new/');
-    expect(href).toContain('api_format=anthropic');
-    expect(href).toContain('base_url=');
-    expect(href).toContain('model=claude-sonnet-4.5');
-  });
-
-  it('omits base_url from the bridge when the catalog returns null', async () => {
-    server.use(
-      ...mockCatalogModels(),
-      ...mockCatalogModelDetail({
-        detail: createModelDetail({
-          bridge: {
-            api_format: 'anthropic',
-            base_url: null,
-            base_url_source: 'user_required',
-            base_url_requires_substitution: false,
-          },
-        }),
-      })
-    );
-    await renderScreen();
-    const user = userEvent.setup();
-    await user.click(screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5'));
-    const cta = await screen.findByTestId('cat-model-configure-cta');
-    const href = cta.getAttribute('href') ?? '';
-    expect(href).toContain('api_format=anthropic');
-    expect(href).not.toContain('base_url=');
   });
 
   it('detail fetch is gated until a model is selected', async () => {
@@ -298,26 +340,6 @@ describe('ExploreApiScreen (A2 — detail rail + Configure bridge)', () => {
     expect(anthropic).toHaveTextContent('$3 / $15');
     const openrouter = await screen.findByTestId('cat-model-servedby-openrouter');
     expect(openrouter).toHaveTextContent('$3.20 / $16');
-  });
-
-  it('Configure shows a substitution note when the bridge base_url needs editing', async () => {
-    server.use(
-      ...mockCatalogModels(),
-      ...mockCatalogModelDetail({
-        detail: createModelDetail({
-          bridge: {
-            api_format: 'openai',
-            base_url: 'https://bedrock.{AWS_REGION}.amazonaws.com',
-            base_url_source: 'modelsdev_api',
-            base_url_requires_substitution: true,
-          },
-        }),
-      })
-    );
-    await renderScreen();
-    const user = userEvent.setup();
-    await user.click(screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5'));
-    expect(await screen.findByTestId('cat-model-configure-subst')).toBeInTheDocument();
   });
 });
 
@@ -400,8 +422,6 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
   });
 
   it('sends a typo/raw query verbatim with sort=relevance (server handles typo tolerance)', async () => {
-    // The frontend forwards the raw input untouched (no quoting/escaping) + sort=relevance; the
-    // catalog FTS5 trigram index does the typo/substring matching server-side.
     const seen: URL[] = [];
     server.use(...mockCatalogModels({ onRequest: ({ url }) => seen.push(url) }));
     await renderScreen();
@@ -496,10 +516,8 @@ describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
     server.use(...mockCatalogModels({ response: zeroed }));
     await renderScreen();
 
-    // Non-zero buckets show their count and stay enabled.
     expect(screen.getByTestId('cat-model-cap-reasoning')).toHaveTextContent('1292');
     expect(screen.getByTestId('cat-model-cap-reasoning')).toBeEnabled();
-    // Zero-count buckets are disabled (can't select an empty facet).
     expect(screen.getByTestId('cat-model-cap-structured_output')).toBeDisabled();
     expect(screen.getByTestId('cat-model-mod-audio')).toBeDisabled();
     expect(screen.getByTestId('cat-model-status-beta')).toBeDisabled();
@@ -545,8 +563,6 @@ describe('ExploreApiScreen (A4 — columns + four-param pricing)', () => {
     server.use(...mockCatalogModels());
     await renderScreen();
     const claude = screen.getByTestId('cat-model-row-anthropic-claude-sonnet-4.5');
-    // family is its own column now (fixture: claude); last_updated renders human-readably (relative
-    // "Nd/Nmo ago" or "MMM YYYY" — date-relative so match the shape, not an exact string).
     expect(claude).toHaveTextContent('claude');
     expect(claude.textContent ?? '').toMatch(/\d+(d|mo) ago|[A-Z][a-z]{2} \d{4}/);
   });
@@ -604,7 +620,6 @@ describe('ExploreApiScreen (A4 — columns + four-param pricing)', () => {
 
     await user.click(screen.getByTestId('cat-model-pricing-free'));
     await waitFor(() => expect(seen[seen.length - 1].searchParams.get('pricing')).toBe('free'));
-    // Both sliders disabled while Free is active (radix marks the thumb with data-disabled).
     within(screen.getByTestId('cat-model-pricing-in-slider'))
       .getAllByRole('slider')
       .forEach((s) => expect(s).toHaveAttribute('data-disabled'));

@@ -54,16 +54,6 @@ interface RailProps {
 
 export function ExploreApiRail({ model, detail, loading }: RailProps) {
   const free = isFree(model.pricing.input_per_m, model.pricing.output_per_m);
-  // Bridge: build the Configure-in-Bodhi target from detail.bridge. Omit base_url when null (the
-  // form falls back to its preset). api_format maps 1:1 to the form's ApiFormat.
-  const bridge = detail?.bridge;
-  const configureSearch = bridge
-    ? {
-        api_format: bridge.api_format,
-        ...(bridge.base_url ? { base_url: bridge.base_url } : {}),
-        model: model.model_id,
-      }
-    : { model: model.model_id };
 
   return (
     <div className="dp-panel models-screen-rail" data-testid={`cat-model-detail-${model.slug}-${model.model_id}`}>
@@ -113,21 +103,6 @@ export function ExploreApiRail({ model, detail, loading }: RailProps) {
             </div>
           )}
         </div>
-
-        <Link
-          to="/models/api/new/"
-          search={configureSearch}
-          className="cat-configure-cta"
-          data-testid="cat-model-configure-cta"
-        >
-          <ShellIcon name="plug-zap" size={15} /> Configure in Bodhi
-        </Link>
-        {bridge?.base_url_requires_substitution && (
-          <div className="cat-sub cat-configure-note" data-testid="cat-model-configure-subst">
-            <ShellIcon name="triangle-alert" size={12} /> Base URL contains a placeholder (e.g. region) — edit it before
-            saving.
-          </div>
-        )}
       </div>
     </div>
   );
@@ -184,17 +159,26 @@ function ServedByRow({ served, modelId }: { served: ServedBy; modelId: string })
               <Row k="Base URL" v={provider?.api_base_url ?? served.base_url ?? '— (preset)'} />
               <Row k="API format" v={provider?.bridge.api_format} />
               <Row k="API keys" v={provider?.env?.length ? provider.env.join(', ') : undefined} />
-              {provider?.doc_url && (
-                <a
+              <div className="cat-servedby-links">
+                {/* Filter the Models page in place to this provider (provider facet = slug). */}
+                <Link
+                  to="/models/explore/api/"
+                  search={{ provider: [served.slug] }}
                   className="cat-doc-link"
-                  href={provider.doc_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  data-testid={`cat-model-servedby-doc-${served.slug}`}
+                  data-testid={`cat-model-servedby-allmodels-${served.slug}`}
                 >
-                  <ShellIcon name="book-open" size={13} /> Documentation
-                </a>
-              )}
+                  <ShellIcon name="layers" size={13} /> All Models from Provider
+                </Link>
+                {/* Open the Providers page searching for this provider by name. */}
+                <Link
+                  to="/models/explore/api-providers/"
+                  search={{ q: served.name }}
+                  className="cat-doc-link"
+                  data-testid={`cat-model-servedby-view-${served.slug}`}
+                >
+                  <ShellIcon name="external-link" size={13} /> View
+                </Link>
+              </div>
             </div>
           )}
         </div>

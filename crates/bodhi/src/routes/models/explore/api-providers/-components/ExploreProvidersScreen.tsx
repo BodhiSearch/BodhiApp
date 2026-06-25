@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ListProviderModelsQuery, ListProvidersQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
 import { useSearch } from '@tanstack/react-router';
@@ -212,6 +212,21 @@ export function ExploreProvidersScreen() {
       openRail();
     }
   }, [selectParam, openRail]);
+
+  // The "View" cross-link from the API Models page lands here as ?q=<provider name>. Seed the search
+  // box once (search stays local state by design — full URL-sync for this page is a follow-up).
+  const qParam = useSearch({
+    strict: false,
+    select: (s: Record<string, unknown>) => s.q as string | undefined,
+  });
+  const seededQ = useRef(false);
+  useEffect(() => {
+    if (qParam && !seededQ.current) {
+      seededQ.current = true;
+      setSearchInput(qParam);
+      setSearch(qParam.trim());
+    }
+  }, [qParam]);
 
   const { data: detail, isLoading: detailLoading } = useCatalogProviderDetail(selectedSlug);
   const [providerModelSort, setProviderModelSort] = useState<ProviderModelSort>('context');

@@ -35,6 +35,9 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Let wide grids (e.g. the API Models table with the detail rail open) scroll horizontally as a
+     unit — header + rows share this one scroll region — instead of clipping at the container edge. */
+  overflow-x: auto;
   container-type: inline-size;
   container-name: lscroll;
 }
