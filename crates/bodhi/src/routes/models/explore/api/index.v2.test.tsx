@@ -287,7 +287,7 @@ describe('ExploreApiScreen (A2 — detail rail + cross-links)', () => {
 
     const view = screen.getByTestId('cat-model-servedby-view-openrouter');
     const viewHref = view.getAttribute('href') ?? '';
-    expect(viewHref).toContain('/models/explore/api-providers/');
+    expect(viewHref).toContain('/models/explore/providers/');
     // q carries the provider's display name (URL-encoded).
     expect(decodeURIComponent(viewHref)).toContain('q=OpenRouter');
   });

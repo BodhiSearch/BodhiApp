@@ -11,7 +11,7 @@ import { ExploreProvidersScreen } from './-components/ExploreProvidersScreen';
 // prepop is a follow-up iteration).
 const providersSearchSchema = z.object({ select: z.string().optional(), q: z.string().optional() });
 
-export const Route = createFileRoute('/models/explore/api-providers/')({
+export const Route = createFileRoute('/models/explore/providers/')({
   validateSearch: providersSearchSchema,
   component: ExploreProvidersPage,
 });

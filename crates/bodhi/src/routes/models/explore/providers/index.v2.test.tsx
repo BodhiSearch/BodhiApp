@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
-import { ExploreProvidersScreen } from '@/routes/models/explore/api-providers/-components/ExploreProvidersScreen';
+import { ExploreProvidersScreen } from '@/routes/models/explore/providers/-components/ExploreProvidersScreen';
 import { createProviderListResponse, createProviderSummary } from '@/test-fixtures/catalog-providers';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import {

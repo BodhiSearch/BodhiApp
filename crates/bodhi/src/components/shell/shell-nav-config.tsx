@@ -2,8 +2,8 @@ import {
   ROUTE_CHAT,
   ROUTE_MCPS,
   ROUTE_MODELS_EXPLORE_API,
-  ROUTE_MODELS_EXPLORE_API_PROVIDERS,
   ROUTE_MODELS_EXPLORE_LOCAL,
+  ROUTE_MODELS_EXPLORE_PROVIDERS,
   ROUTE_USERS,
 } from '@/lib/constants';
 
@@ -56,7 +56,7 @@ export const SHELL_NAV: ShellNavItem[] = [
         id: 'explore-api-providers',
         label: 'Explore · API Providers',
         icon: 'at-sign',
-        href: ROUTE_MODELS_EXPLORE_API_PROVIDERS,
+        href: ROUTE_MODELS_EXPLORE_PROVIDERS,
         hideInMultiTenant: true,
       },
       { id: 'new-local-model', label: 'New Local Model', icon: 'plus-circle', href: '/models/alias/new/' },

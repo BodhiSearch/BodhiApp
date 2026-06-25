@@ -208,8 +208,7 @@ export function ExploreProvidersScreen() {
     [facets, data?.facets.capability, data?.facets.api_format, onFacetsChange, onClearAllFacets]
   );
 
-  // Cross-link entry: /api-providers?select=<slug> (from the API Models "Served by" list) opens
-  // that provider's rail on mount.
+  // Cross-link entry: ?select=<slug> (from the API Models "Served by" list) opens that provider's rail.
   const selectParam = useSearch({
     strict: false,
     select: (s: Record<string, unknown>) => s.select as string | undefined,

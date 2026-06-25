@@ -171,7 +171,7 @@ function ServedByRow({ served, modelId }: { served: ServedBy; modelId: string })
                 </Link>
                 {/* Open the Providers page searching for this provider by name. */}
                 <Link
-                  to="/models/explore/api-providers/"
+                  to="/models/explore/providers/"
                   search={{ q: served.name }}
                   className="cat-doc-link"
                   data-testid={`cat-model-servedby-view-${served.slug}`}

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildCatalogModelsQuery } from '@/hooks/reference';
 import { modelFacetsToQuery } from '@/routes/models/explore/api/-components/ExploreApiSidebar';
-import { providerFacetsToQuery } from '@/routes/models/explore/api-providers/-components/ExploreProvidersSidebar';
+import { providerFacetsToQuery } from '@/routes/models/explore/providers/-components/ExploreProvidersSidebar';
 
 /**
  * Catalog params flow from facet state → query string. Guards the serialization seam so the wiring

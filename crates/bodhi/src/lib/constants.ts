@@ -27,7 +27,7 @@ export const ROUTE_DASHBOARD_CALLBACK = '/auth/dashboard/callback/';
 export const ROUTE_MODELS = '/models/';
 export const ROUTE_MODELS_EXPLORE_LOCAL = '/models/explore/local/';
 export const ROUTE_MODELS_EXPLORE_API = '/models/explore/api/';
-export const ROUTE_MODELS_EXPLORE_API_PROVIDERS = '/models/explore/api-providers/';
+export const ROUTE_MODELS_EXPLORE_PROVIDERS = '/models/explore/providers/';
 
 export const ROUTE_MCPS = '/mcps/';
 export const ROUTE_MCP_SERVERS = '/mcps/servers/';
