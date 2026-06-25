@@ -17,6 +17,19 @@ describe('LinkRow', () => {
     expect(screen.getByTestId('row-link')).toHaveAccessibleName('Open details');
   });
 
+  it('renders a compact cell anchor wrapping its children when given (the `#` index target)', () => {
+    render(
+      <LinkRow onActivate={vi.fn()} label="Open row 3">
+        <span className="cat-num">#3</span>
+      </LinkRow>
+    );
+    const link = screen.getByTestId('row-link');
+    // The compact variant gets the --cell modifier and contains the index — a small, always-visible,
+    // uncovered link-hint target (vs the stretched full-row anchor that horizontal overflow hides).
+    expect(link).toHaveClass('l-rowlink', 'l-rowlink--cell');
+    expect(link).toHaveTextContent('#3');
+  });
+
   it('activates once on click and does not navigate or bubble', async () => {
     const onActivate = vi.fn();
     const onParentClick = vi.fn();

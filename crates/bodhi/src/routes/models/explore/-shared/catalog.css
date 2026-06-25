@@ -311,19 +311,30 @@
 .cat-td--right {
   text-align: right;
 }
-/* Lift cell content above the stretched .l-rowlink WITHOUT making any <td> an offset parent (which
-   would clip the link to one cell instead of the whole row). EXCLUDE .l-rowlink itself — it must keep
-   its list.css `position:absolute; inset:0 0 0 3px` so the empty <a> fills the whole row, which is what
-   keyboard / link-hint tools (Vimium) detect as a single row-level link target. */
-.cat-screen .l-listrow > td > *:not(.l-rowlink) {
-  position: relative;
-  z-index: 1;
-}
+/* The catalog row link is COMPACT: it lives inside the `#` cell (.l-rowlink--cell wrapping the
+   index), not stretched across the row. A stretched full-row anchor is covered by the cell content
+   and can fall partly off-screen under horizontal overflow, so link-hint tools (Vimium) miss it; a
+   small, leftmost, always-visible cell anchor is detected reliably. Plain mouse selection still
+   works via the row's own onClick, and keyboard nav activates this same `.l-rowlink`. */
 .cat-num-td {
   white-space: nowrap;
   /* The `#NN` index must never ellipsis-truncate under table-layout:fixed (a long repo column can
      otherwise squeeze the narrow num cell into "#…"). */
   overflow: visible;
+  /* `#` is a number — center it so the index column reads as a tidy gutter. */
+  text-align: center;
+}
+/* The `#` cell anchor fills its cell so the whole index column is the link/hint target. Overrides
+   the base `.l-rowlink` absolute stretch (list.css) back to normal in-flow positioning. */
+.l-rowlink--cell {
+  position: static;
+  inset: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 .cat-model-name {
   font-size: 14px;

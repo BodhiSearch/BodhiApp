@@ -394,13 +394,7 @@
   }
 }
 
-/* ── My Models table (V2): count heading + the NAME cell composite ── */
-.m-listheading {
-  padding: 4px 16px 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground));
-}
+/* ── My Models table (V2): the NAME cell composite ── */
 .m-cell-name {
   display: flex;
   align-items: center;

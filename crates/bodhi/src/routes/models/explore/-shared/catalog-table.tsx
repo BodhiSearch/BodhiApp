@@ -97,9 +97,13 @@ function CatalogRow<T, S extends string>({
     >
       {columns.map((col) =>
         col.key === 'num' ? (
+          // The row link lives IN the `#` cell (compact): a leftmost, always-visible, uncovered
+          // target that link-hint tools (Vimium) detect reliably even under horizontal overflow —
+          // a full-row stretched anchor is not. Keyboard nav still activates this `.l-rowlink`.
           <td className="cat-num-td" key="num">
-            <LinkRow onActivate={onSelect} label={label} />
-            <span className="cat-num">#{idx}</span>
+            <LinkRow onActivate={onSelect} label={label}>
+              <span className="cat-num">#{idx}</span>
+            </LinkRow>
           </td>
         ) : (
           <td key={col.key} className={col.align === 'right' ? 'cat-td--right' : undefined}>

@@ -405,6 +405,8 @@ export function ModelsScreenV2() {
               kbd="⌘K"
             />
           </div>
+          <ResetButton mode={resetMode} onReset={onReset} testId="cat-mymodel-clear-all" />
+          <ColumnPicker columns={COLUMNS} hidden={hiddenColumns} onToggle={toggleColumn} testIdPrefix="cat-mymodel" />
           <button
             type="button"
             className={`l-iconbtn ld-dl-iconbtn${downloadsOpen ? ' on' : ''}`}
@@ -420,16 +422,8 @@ export function ModelsScreenV2() {
               </span>
             )}
           </button>
-          <ResetButton mode={resetMode} onReset={onReset} testId="cat-mymodel-clear-all" />
-          <div className="cat-sortbar">
-            <ColumnPicker columns={COLUMNS} hidden={hiddenColumns} onToggle={toggleColumn} testIdPrefix="cat-mymodel" />
-          </div>
         </div>
       </div>
-
-      <h2 className="m-listheading" data-testid="models-heading">
-        Models ({total})
-      </h2>
 
       <div className="l-scroll" data-testid="table-list-models">
         {isLoading ? (

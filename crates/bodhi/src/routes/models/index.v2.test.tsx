@@ -289,10 +289,10 @@ describe('ModelsScreen V2 — table layout + columns', () => {
     expect(screen.getByTestId('model-row-openai-main').tagName).toBe('TR');
   });
 
-  it('shows the count in a "Models (N)" heading and drops the per-row "exposed" subtitle', async () => {
+  it('has no count heading and drops the per-row "exposed" subtitle (saves vertical space)', async () => {
     server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
     await renderScreen();
-    expect(screen.getByTestId('models-heading')).toHaveTextContent(`Models (${MIXED_ROWS.length})`);
+    expect(screen.queryByTestId('models-heading')).not.toBeInTheDocument();
     expect(screen.queryByText(/exposed/)).not.toBeInTheDocument();
   });
 

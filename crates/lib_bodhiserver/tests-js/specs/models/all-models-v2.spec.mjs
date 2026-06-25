@@ -80,13 +80,14 @@ test.describe('All Models V2', () => {
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
 
-    await test.step('renders a semantic table with the universal columns + Models (N) heading', async () => {
+    await test.step('renders a semantic table with the universal columns (no count heading)', async () => {
       await modelsPage.expectVisible(modelsPage.selectors.listhead);
       await expect(modelsPage.page.locator(modelsPage.selectors.listhead)).toContainText('NAME');
       await expect(modelsPage.page.locator(modelsPage.selectors.listhead)).toContainText(
         'PROVIDER / REPO'
       );
-      await expect(modelsPage.page.locator(modelsPage.selectors.heading)).toContainText('Models (');
+      // The count heading was removed to save vertical space.
+      await expect(modelsPage.page.locator(modelsPage.selectors.heading)).toHaveCount(0);
       expect(
         await modelsPage.page.locator(`tr${modelsPage.selectors.anyRow}`).first().isVisible()
       ).toBe(true);

@@ -375,6 +375,7 @@ export function LocalDiscoveryScreen() {
               kbd="⌘K"
             />
           </div>
+          <ResetButton mode={resetMode} onReset={onReset} testId="ld-clear-all" />
           <button
             type="button"
             className={`l-iconbtn ld-dl-iconbtn${downloadsOpen ? ' on' : ''}`}
@@ -390,7 +391,6 @@ export function LocalDiscoveryScreen() {
               </span>
             )}
           </button>
-          <ResetButton mode={resetMode} onReset={onReset} testId="ld-clear-all" />
         </div>
       </div>
 
