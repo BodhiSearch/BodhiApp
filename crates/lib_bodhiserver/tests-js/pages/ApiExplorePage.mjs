@@ -15,29 +15,29 @@ export class ApiExplorePage extends BasePage {
     row: (slug, modelId) => `[data-testid="cat-model-row-${slug}-${modelId}"]`,
     empty: '[data-testid="cat-model-empty"]',
     pagination: '[data-testid="pagination"]',
-    pageBtn: (n) => `[data-testid="pagination-page-${n}"]`,
+    pageBtn: n => `[data-testid="pagination-page-${n}"]`,
     pageNext: '[data-testid="pagination-next"]',
     // Detail rail.
     railSpecs: '[data-testid="cat-model-detail-specs"]',
     railServedBy: '[data-testid="cat-model-servedby"]',
     detailClose: '[data-testid="cat-model-detail-close"]',
-    servedByToggle: (slug) => `[data-testid="cat-model-servedby-toggle-${slug}"]`,
-    servedByDetail: (slug) => `[data-testid="cat-model-servedby-detail-${slug}"]`,
-    servedByAdd: (slug) => `[data-testid="cat-model-servedby-add-${slug}"]`,
-    servedByAllModels: (slug) => `[data-testid="cat-model-servedby-allmodels-${slug}"]`,
-    servedByView: (slug) => `[data-testid="cat-model-servedby-view-${slug}"]`,
+    servedByToggle: slug => `[data-testid="cat-model-servedby-toggle-${slug}"]`,
+    servedByDetail: slug => `[data-testid="cat-model-servedby-detail-${slug}"]`,
+    servedByAdd: slug => `[data-testid="cat-model-servedby-add-${slug}"]`,
+    servedByAllModels: slug => `[data-testid="cat-model-servedby-allmodels-${slug}"]`,
+    servedByView: slug => `[data-testid="cat-model-servedby-view-${slug}"]`,
     // Search / sort / columns / facets.
     search: '[data-testid="cat-model-search"] input',
-    sort: (key) => `[data-testid="cat-model-sort-${key}"]`,
+    sort: key => `[data-testid="cat-model-sort-${key}"]`,
     columnsBtn: '[data-testid="cat-model-columns"]',
-    column: (key) => `[data-testid="cat-model-col-${key}"]`,
+    column: key => `[data-testid="cat-model-col-${key}"]`,
     facets: '[data-testid="cat-model-facets"]',
-    cap: (id) => `[data-testid="cat-model-cap-${id}"]`,
-    status: (id) => `[data-testid="cat-model-status-${id}"]`,
-    ow: (id) => `[data-testid="cat-model-ow-${id}"]`,
+    cap: id => `[data-testid="cat-model-cap-${id}"]`,
+    status: id => `[data-testid="cat-model-status-${id}"]`,
+    ow: id => `[data-testid="cat-model-ow-${id}"]`,
     pricingFree: '[data-testid="cat-model-pricing-free"]',
     providerTrigger: '[data-testid="cat-model-provider-trigger"]',
-    providerChip: (slug) => `[data-testid="cat-model-provider-chip-${slug}"]`,
+    providerChip: slug => `[data-testid="cat-model-provider-chip-${slug}"]`,
     clearAll: '[data-testid="cat-model-clear-all"]',
   };
 
@@ -82,7 +82,7 @@ export class ApiExplorePage extends BasePage {
         body: JSON.stringify(body),
       });
 
-    await this.page.route(/\/api\/v1\/catalog\/models/, (route) => {
+    await this.page.route(/\/api\/v1\/catalog\/models/, route => {
       const url = new URL(route.request().url());
       const path = url.pathname;
       const segments = path.split('/').filter(Boolean);
@@ -93,18 +93,18 @@ export class ApiExplorePage extends BasePage {
       if (hasDetail) {
         const slug = segments[modelsIdx + 1];
         const modelId = segments.slice(modelsIdx + 2).join('/');
-        const src = models.find((m) => m.slug === slug && m.model_id === modelId) ?? models[0];
+        const src = models.find(m => m.slug === slug && m.model_id === modelId) ?? models[0];
         return json(route, ApiExplorePage.detailFor(src));
       }
 
       // Model list: /models
       const q = url.searchParams.get('q')?.toLowerCase();
       let filtered = models;
-      if (q) filtered = filtered.filter((m) => `${m.model_id} ${m.name}`.toLowerCase().includes(q));
+      if (q) filtered = filtered.filter(m => `${m.model_id} ${m.name}`.toLowerCase().includes(q));
       // provider filter arrives JSON-encoded (?provider=["openrouter"]) or as a bare slug; match the
       // served_by set so the "All Models from Provider" cross-link narrows the list deterministically.
       const providerRaw = url.searchParams.getAll('provider');
-      const providerSlugs = providerRaw.flatMap((v) => {
+      const providerSlugs = providerRaw.flatMap(v => {
         try {
           const parsed = JSON.parse(v);
           return Array.isArray(parsed) ? parsed : [parsed];
@@ -113,13 +113,14 @@ export class ApiExplorePage extends BasePage {
         }
       });
       if (providerSlugs.length) {
-        filtered = filtered.filter((m) =>
-          ApiExplorePage.detailFor(m).served_by.some((s) => providerSlugs.includes(s.slug))
+        filtered = filtered.filter(m =>
+          ApiExplorePage.detailFor(m).served_by.some(s => providerSlugs.includes(s.slug))
         );
       }
       const pricing = url.searchParams.get('pricing');
-      if (pricing === 'free') filtered = filtered.filter((m) => m.pricing.input_per_m === 0 && m.pricing.output_per_m === 0);
-      if (pricing === 'paid') filtered = filtered.filter((m) => m.pricing.input_per_m > 0 || m.pricing.output_per_m > 0);
+      if (pricing === 'free')
+        filtered = filtered.filter(m => m.pricing.input_per_m === 0 && m.pricing.output_per_m === 0);
+      if (pricing === 'paid') filtered = filtered.filter(m => m.pricing.input_per_m > 0 || m.pricing.output_per_m > 0);
       const page = Number(url.searchParams.get('page') ?? '1');
       const pageSize = Number(url.searchParams.get('page_size') ?? '30');
       const start = (page - 1) * pageSize;
@@ -135,7 +136,7 @@ export class ApiExplorePage extends BasePage {
     // Providers list backs the "View" cross-link landing (?q=<name> on the Providers page). Echoes
     // the q so the test can assert it filtered to the one provider. Registered before the more
     // specific provider-detail route below so Playwright's last-match-wins keeps detail working.
-    await this.page.route(/\/api\/v1\/catalog\/providers(\?|$)/, (route) => {
+    await this.page.route(/\/api\/v1\/catalog\/providers(\?|$)/, route => {
       const q = new URL(route.request().url()).searchParams.get('q') ?? '';
       const provider = {
         slug: 'openrouter',
@@ -161,7 +162,7 @@ export class ApiExplorePage extends BasePage {
     });
 
     // Provider detail backs the served-by inline-detail expansion in the rail.
-    await this.page.route(/\/api\/v1\/catalog\/providers\/[^/]+$/, (route) => {
+    await this.page.route(/\/api\/v1\/catalog\/providers\/[^/]+$/, route => {
       const slug = new URL(route.request().url()).pathname.split('/').filter(Boolean).pop();
       return json(route, {
         slug,
@@ -253,10 +254,7 @@ export class ApiExplorePage extends BasePage {
   }
 
   async waitForListSettled() {
-    await this.page
-      .locator(`${this.selectors.anyRow}, ${this.selectors.empty}`)
-      .first()
-      .waitFor({ state: 'visible' });
+    await this.page.locator(`${this.selectors.anyRow}, ${this.selectors.empty}`).first().waitFor({ state: 'visible' });
   }
 
   async getRowCount() {
@@ -278,6 +276,32 @@ export class ApiExplorePage extends BasePage {
     await this.page.locator(this.selectors.row(slug, modelId)).click();
     await this.waitForSPAReady();
     await this.page.locator(this.selectors.railSpecs).waitFor({ state: 'visible' });
+  }
+
+  async closeRail() {
+    await this.page.locator(this.selectors.detailClose).click();
+    await this.waitForSPAReady();
+  }
+
+  searchParams() {
+    return new URL(this.page.url()).searchParams;
+  }
+
+  /** A single URL search param, JSON-unwrapped (TanStack Router quotes string scalars). */
+  urlParam(key) {
+    const raw = this.searchParams().get(key);
+    if (raw == null) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === 'string' ? parsed : String(parsed);
+    } catch {
+      return raw;
+    }
+  }
+
+  async goBack() {
+    await this.page.goBack();
+    await this.waitForSPAReady();
   }
 
   /** Cross-link: filter the Models page in place to all models served by `slug`. */
@@ -322,7 +346,10 @@ export class ApiExplorePage extends BasePage {
 
   async toggleColumn(key) {
     await this.page.locator(this.selectors.columnsBtn).click();
-    await this.page.locator(this.selectors.column(key)).click();
+    // Wait for the menu item to mount before clicking (the Radix dropdown re-renders on reopen).
+    const item = this.page.locator(this.selectors.column(key));
+    await item.waitFor({ state: 'visible' });
+    await item.click();
     await this.page.keyboard.press('Escape');
   }
 

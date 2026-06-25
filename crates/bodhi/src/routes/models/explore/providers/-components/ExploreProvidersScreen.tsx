@@ -3,15 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ProviderSummary } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
-import {
-  LinkRow,
-  ShellIcon,
-  ShellPagination,
-  ShellSearch,
-  useListKeyNav,
-  useShell,
-  useShellChrome,
-} from '@/components/shell';
+import { LinkRow, ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -220,7 +212,9 @@ export function ExploreProvidersScreen() {
   const committedSearch = search.q ?? '';
   const facets = useMemo(() => searchToFacets(search), [search]);
 
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  // The open detail rail is the URL's `select` (provider slug). Deriving it (not mirroring in state)
+  // makes Back/Forward restoration and the ?select cross-link automatic.
+  const selectedSlug = search.select ?? null;
   const [searchInput, setSearchInput] = useState(committedSearch);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
   useEffect(() => {
@@ -241,15 +235,25 @@ export function ExploreProvidersScreen() {
   const rows = data?.items ?? [];
   const total = data?.total ?? rows.length;
 
-  const { openRail } = useShell();
   const withViewTransition = useViewTransition();
+  // Selection lives in the URL via replace (no history entries). The rail auto-opens/closes from its
+  // content presence, so no openRail() call is needed.
   const select = useCallback(
-    (slug: string | null) =>
+    (slug: string | null) => {
+      if ((slug ?? undefined) === search.select) return; // dedup
       withViewTransition(() => {
-        setSelectedSlug(slug);
-        if (slug) openRail();
-      }),
-    [withViewTransition, openRail]
+        navigate({
+          search: (prev: ExploreProvidersSearch) => {
+            const out: ExploreProvidersSearch = { ...prev };
+            if (slug) out.select = slug;
+            else delete out.select;
+            return out;
+          },
+          replace: true,
+        });
+      });
+    },
+    [navigate, withViewTransition, search.select]
   );
 
   // The non-facet slice (q/sort/order) carried across a facet change; `page` is omitted so facet
@@ -259,6 +263,7 @@ export function ExploreProvidersScreen() {
     if (prev.q) base.q = prev.q;
     if (prev.sort) base.sort = prev.sort;
     if (prev.order) base.order = prev.order;
+    if (prev.select) base.select = prev.select; // keep the open rail across facet changes
     return base;
   }, []);
 
@@ -347,13 +352,8 @@ export function ExploreProvidersScreen() {
     [facets, data?.facets.capability, data?.facets.api_format, onFacetsChange]
   );
 
-  // Cross-link entry: ?select=<slug> (from the API Models "Served by" list) opens that provider's rail.
-  useEffect(() => {
-    if (search.select) {
-      setSelectedSlug(search.select);
-      openRail();
-    }
-  }, [search.select, openRail]);
+  // The ?select cross-link (from the API Models "Served by" list) and deep links open the rail purely
+  // by deriving selectedSlug above — no effect needed.
 
   const { data: detail, isLoading: detailLoading } = useCatalogProviderDetail(selectedSlug);
   const { data: providerModels, isLoading: modelsLoading } = useCatalogProviderModels(selectedSlug, {});

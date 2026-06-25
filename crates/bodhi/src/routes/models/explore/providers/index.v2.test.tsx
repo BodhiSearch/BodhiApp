@@ -280,6 +280,100 @@ describe('ExploreProvidersScreen (B4 — column picker)', () => {
   });
 });
 
+describe('ExploreProvidersScreen (B5 — ?select URL sync for the rail)', () => {
+  it('clicking a row writes ?select and opens the rail; closing strips it', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'nano-gpt' }));
+    await waitFor(() => expect(screen.getByTestId('cat-prov-detail-nano-gpt')).toBeInTheDocument());
+
+    await user.click(screen.getByTestId('cat-prov-detail-close'));
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(screen.queryByTestId('cat-prov-detail-nano-gpt')).not.toBeInTheDocument());
+  });
+
+  it('deep-link ?select= opens the rail on mount', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
+    await renderScreen(['/models/explore/providers/?select=nano-gpt']);
+    await waitFor(() => expect(screen.getByTestId('cat-prov-detail-nano-gpt')).toBeInTheDocument());
+  });
+
+  it('Back restores the pre-selection state and Forward re-applies the selection', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    // Apply a facet (push) so there is a history entry to return to, then select a row (replace).
+    await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ capability: ['reasoning'] }));
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'nano-gpt' }));
+
+    // Back returns to the facet state with no selection (replace collapsed the selection into the
+    // facet entry, so the rail closes); Forward re-applies the whole replaced entry.
+    await act(async () => router.history.back());
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(screen.queryByTestId('cat-prov-detail-nano-gpt')).not.toBeInTheDocument());
+
+    await act(async () => router.history.forward());
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'nano-gpt' }));
+  });
+
+  it('selection uses replace: one Back after several selections skips them entirely', async () => {
+    const items = [
+      createProviderSummary({ slug: 'nano-gpt', name: 'NanoGPT' }),
+      createProviderSummary({ slug: 'openrouter', name: 'OpenRouter' }),
+    ];
+    server.use(
+      ...mockCatalogProviders({ response: createProviderListResponse(items) }),
+      ...mockCatalogProviderDetail(),
+      ...mockCatalogProviderModels()
+    );
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    // Apply a facet (push), then select two different rows (replace each → collapse into the facet entry).
+    await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ capability: ['reasoning'] }));
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'nano-gpt' }));
+    await user.click(screen.getByTestId('cat-prov-row-openrouter'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'openrouter' }));
+
+    // A single Back skips ALL selections (they never pushed), landing before the facet entry.
+    await act(async () => router.history.back());
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+  });
+
+  it('re-selecting the already-selected row is a no-op (dedup)', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'nano-gpt' }));
+    const before = router.state.location.search;
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    expect(router.state.location.search).toBe(before);
+  });
+
+  it('changing a facet keeps the selection in the URL', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'nano-gpt' }));
+    await user.click(screen.getByTestId('cat-prov-cap-reasoning'));
+    await waitFor(() =>
+      expect(router.state.location.search).toMatchObject({ select: 'nano-gpt', capability: ['reasoning'] })
+    );
+  });
+});
+
 describe('ExploreProvidersScreen (B3 — URL sync: search + sort + facets)', () => {
   it('keeps the URL clean at defaults and writes only non-defaults', async () => {
     server.use(...mockCatalogProviders());

@@ -73,8 +73,32 @@ test.describe('Explore · API Providers', () => {
         'href',
         /\/models\/api\/new\//
       );
+    });
 
+    await test.step('Selecting a row writes ?select to the URL; reload restores the rail; close strips it', async () => {
+      // The rail (opened above) put the selection in the URL.
+      expect(providersPage.urlParam('select')).toBe('prov-0');
+
+      // Reload: the URL is the source of truth, so the rail comes back on the same provider.
+      await providersPage.page.reload();
+      await providersPage.waitForSPAReady();
+      await expect(providersPage.page.locator(providersPage.selectors.railPanel)).toBeVisible();
+      expect(providersPage.urlParam('select')).toBe('prov-0');
+
+      // Closing strips ?select and closes the rail.
       await providersPage.closeRail();
+      await expect(providersPage.page.locator(providersPage.selectors.railPanel)).toHaveCount(0);
+      expect(providersPage.searchParams().has('select')).toBe(false);
+    });
+
+    await test.step('Selection uses replace: applying a sort then selecting, one Back skips the selection', async () => {
+      await providersPage.sortBy('model_count');
+      expect(providersPage.urlParam('sort')).toBe('model_count');
+      await providersPage.openProvider('prov-0');
+      expect(providersPage.urlParam('select')).toBe('prov-0');
+      // The selection replaced the sort entry, so one Back leaves the page's sort+select entry entirely.
+      await providersPage.goBack();
+      expect(providersPage.searchParams().has('select')).toBe(false);
       await expect(providersPage.page.locator(providersPage.selectors.railPanel)).toHaveCount(0);
     });
 

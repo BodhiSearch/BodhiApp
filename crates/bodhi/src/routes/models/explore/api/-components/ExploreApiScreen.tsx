@@ -3,15 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ModelLite } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
-import {
-  LinkRow,
-  ShellIcon,
-  ShellPagination,
-  ShellSearch,
-  useListKeyNav,
-  useShell,
-  useShellChrome,
-} from '@/components/shell';
+import { LinkRow, ShellIcon, ShellPagination, ShellSearch, useListKeyNav, useShellChrome } from '@/components/shell';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -310,9 +302,10 @@ export function ExploreApiScreen() {
   const committedSearch = search.q ?? '';
   const facets = useMemo(() => searchToFacets(search), [search]);
 
-  // Local-only UI state: uncommitted search text, the open detail rail, and column visibility are
-  // ephemeral per page-load and deliberately NOT in the URL.
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // The open detail rail is the URL's `select` (composite `${slug}/${model_id}`). Deriving it (not
+  // mirroring in state) makes Back/Forward restoration automatic.
+  const selectedKey = search.select ?? null;
+  // Local-only UI state: uncommitted search text and column visibility are ephemeral per page-load.
   const [searchInput, setSearchInput] = useState(committedSearch);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
   // Sync the input down from the URL on Back/Forward (URL→input only; never writes back).
@@ -341,15 +334,25 @@ export function ExploreApiScreen() {
   const rows = data?.items ?? [];
   const total = data?.total ?? rows.length;
 
-  const { openRail } = useShell();
   const withViewTransition = useViewTransition();
+  // Selection lives in the URL via replace (no history entries) — Back/Forward skips past selections.
+  // The rail auto-opens/closes from its content presence, so no openRail() call is needed.
   const select = useCallback(
-    (key: string | null) =>
+    (key: string | null) => {
+      if ((key ?? undefined) === search.select) return; // dedup
       withViewTransition(() => {
-        setSelectedKey(key);
-        if (key) openRail();
-      }),
-    [withViewTransition, openRail]
+        navigate({
+          search: (prev: ExploreApiSearch) => {
+            const out: ExploreApiSearch = { ...prev };
+            if (key) out.select = key;
+            else delete out.select;
+            return out;
+          },
+          replace: true,
+        });
+      });
+    },
+    [navigate, withViewTransition, search.select]
   );
 
   // The non-facet slice (q/sort/order) carried across a facet change; `page` is omitted so facet
@@ -359,6 +362,7 @@ export function ExploreApiScreen() {
     if (prev.q) base.q = prev.q;
     if (prev.sort) base.sort = prev.sort;
     if (prev.order) base.order = prev.order;
+    if (prev.select) base.select = prev.select; // keep the open rail across facet changes
     return base;
   }, []);
 
@@ -447,6 +451,8 @@ export function ExploreApiScreen() {
     [facets, data?.facets, onFacetsChange]
   );
 
+  // Find the selected row by composite key; if it isn't on the current page (filtered/paged out) the
+  // rail closes. The detail ref reads the row's real fields — never parse the key (model_id has '/').
   const selectedModel = useMemo(() => rows.find((m) => modelKey(m) === selectedKey) ?? null, [rows, selectedKey]);
   const selectedRef = selectedModel ? { slug: selectedModel.slug, modelId: selectedModel.model_id } : null;
   const { data: detail, isLoading: detailLoading } = useCatalogModelDetail(selectedRef);

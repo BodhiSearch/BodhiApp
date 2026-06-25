@@ -343,6 +343,73 @@ describe('ExploreApiScreen (A2 — detail rail + cross-links)', () => {
   });
 });
 
+describe('ExploreApiScreen (A2b — ?select URL sync for the rail)', () => {
+  const ROW = 'cat-model-row-anthropic-claude-sonnet-4.5';
+  const DETAIL = 'cat-model-detail-anthropic-claude-sonnet-4.5';
+  const KEY = 'anthropic/claude-sonnet-4.5';
+
+  it('clicking a row writes ?select and opens the rail; closing strips it', async () => {
+    server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId(ROW));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: KEY }));
+    await waitFor(() => expect(screen.getByTestId(DETAIL)).toBeInTheDocument());
+
+    await user.click(screen.getByTestId('cat-model-detail-close'));
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(screen.queryByTestId(DETAIL)).not.toBeInTheDocument());
+  });
+
+  it('deep-link ?select= opens the rail on mount', async () => {
+    server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
+    await renderScreen([`/models/explore/api/?select=${encodeURIComponent(KEY)}`]);
+    await waitFor(() => expect(screen.getByTestId(DETAIL)).toBeInTheDocument());
+  });
+
+  it('Back restores the pre-selection state and Forward re-applies the selection', async () => {
+    server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-model-cap-reasoning'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ capability: ['reasoning'] }));
+    await user.click(screen.getByTestId(ROW));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: KEY }));
+
+    await act(async () => router.history.back());
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await waitFor(() => expect(screen.queryByTestId(DETAIL)).not.toBeInTheDocument());
+
+    await act(async () => router.history.forward());
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: KEY }));
+  });
+
+  it('re-selecting the already-selected row is a no-op (dedup)', async () => {
+    server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId(ROW));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: KEY }));
+    const before = router.state.location.search;
+    await user.click(screen.getByTestId(ROW));
+    expect(router.state.location.search).toBe(before);
+  });
+
+  it('changing a facet keeps the selection in the URL', async () => {
+    server.use(...mockCatalogModels(), ...mockCatalogModelDetail());
+    const router = await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId(ROW));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: KEY }));
+    await user.click(screen.getByTestId('cat-model-cap-reasoning'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: KEY, capability: ['reasoning'] }));
+  });
+});
+
 describe('ExploreApiScreen (A3 — search + facets + sort)', () => {
   it('search submits q on Enter and keeps the numbered pager (inverse of Local)', async () => {
     const items = Array.from({ length: 31 }, (_, i) =>

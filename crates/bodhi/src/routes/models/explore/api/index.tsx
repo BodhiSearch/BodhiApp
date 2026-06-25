@@ -42,6 +42,9 @@ function stringArrayParam() {
 // browser Back/Forward round-trips exactly what the user changed.
 export const exploreApiSearchSchema = z.object({
   q: z.string().optional(),
+  // The open detail rail: composite `${slug}/${model_id}` of the selected row. Written with replace
+  // (no history entries); Back/Forward restores the rail from whatever the target URL carries.
+  select: z.string().optional(),
   sort: z.enum(SORT).optional(),
   order: z.enum(['asc', 'desc']).optional(),
   page: z.number().int().positive().optional(),
