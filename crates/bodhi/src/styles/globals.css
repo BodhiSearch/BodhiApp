@@ -200,6 +200,27 @@
     @apply bg-background text-foreground antialiased;
   }
 
+  /* Thin scrollbars everywhere — reclaim the space the OS default consumes.
+     Per-container rules in shell/list/catalog CSS still override where set. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
   /* Add responsive text sizing */
   h1 {
     @apply text-3xl font-bold md:text-4xl;
