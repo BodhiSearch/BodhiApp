@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ShellSlotsProvider, useShellSlots } from '@/components/shell';
 import { LocalDiscoveryScreen } from '@/routes/models/explore/local/-components/LocalDiscoveryScreen';
+import { localDiscoverySearchSchema } from '@/routes/models/explore/local/index';
 import { createListModel } from '@/test-fixtures/discover-models';
+import { makeRouteRouter, RouteHarness } from '@/test-utils/router-harness';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockDiscoverModelDetail,
@@ -56,12 +58,26 @@ function SlotsConsumer() {
   );
 }
 
-async function renderScreen() {
+function ScreenWithSlots() {
+  return (
+    <>
+      <SlotsConsumer />
+      <LocalDiscoveryScreen />
+    </>
+  );
+}
+
+async function renderScreen(initialEntries?: string[]) {
+  const router = makeRouteRouter({
+    path: '/models/explore/local/',
+    validateSearch: localDiscoverySearchSchema as never,
+    Screen: ScreenWithSlots,
+    initialEntries,
+  });
   await act(async () => {
     render(
       <ShellSlotsProvider>
-        <SlotsConsumer />
-        <LocalDiscoveryScreen />
+        <RouteHarness router={router} />
       </ShellSlotsProvider>,
       { wrapper: Wrapper }
     );
@@ -69,6 +85,7 @@ async function renderScreen() {
   await waitFor(() =>
     expect(screen.getByTestId('local-discovery-content')).toHaveAttribute('data-pagestatus', 'ready')
   );
+  return router;
 }
 
 describe('LocalDiscoveryScreen (Phase 1 — search-only list)', () => {
@@ -402,11 +419,15 @@ describe('LocalDiscoveryScreen (Phase 4 — Pull wiring)', () => {
 describe('LocalDiscoveryScreen (Phase 5 — error + empty states)', () => {
   it('renders an error page when the catalog request fails', async () => {
     server.use(...mockDiscoverModelsError({ status: 500, error: 'internal' }));
+    const router = makeRouteRouter({
+      path: '/models/explore/local/',
+      validateSearch: localDiscoverySearchSchema as never,
+      Screen: ScreenWithSlots,
+    });
     await act(async () => {
       render(
         <ShellSlotsProvider>
-          <SlotsConsumer />
-          <LocalDiscoveryScreen />
+          <RouteHarness router={router} />
         </ShellSlotsProvider>,
         { wrapper: Wrapper }
       );
@@ -553,5 +574,54 @@ describe('LocalDiscoveryScreen (Phase 6 — Downloads panel)', () => {
     // Downloading items expose neither archive nor retry.
     expect(screen.queryByTestId('ld-dl-archive-dl-downloading')).not.toBeInTheDocument();
     expect(screen.queryByTestId('ld-dl-retry-dl-downloading')).not.toBeInTheDocument();
+  });
+});
+
+describe('LocalDiscoveryScreen — URL state', () => {
+  it('a sort header writes ?sort and omits the descending default (no ?order)', async () => {
+    server.use(...mockDiscoverModels());
+    const router = await renderScreen();
+
+    await userEvent.click(screen.getByTestId('ld-sort-likes'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ sort: 'likes' }));
+    expect(router.state.location.search).not.toHaveProperty('order');
+  });
+
+  it('a facet click writes the facet to the URL; Back reverts it', async () => {
+    server.use(...mockDiscoverModels());
+    const router = await renderScreen();
+
+    await userEvent.click(within(screen.getByTestId('harness-sidebar')).getByTestId('ld-spec-coding'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ specialisation: ['coding'] }));
+    await act(async () => router.history.back());
+    await waitFor(() => expect(router.state.location.search).not.toHaveProperty('specialisation'));
+  });
+
+  it('row selection writes ?select with replace; deep-link restores the rail', async () => {
+    const items = [
+      createListModel({ namespace: 'org', repo: 'alpha' }),
+      createListModel({ namespace: 'org', repo: 'beta' }),
+    ];
+    server.use(...mockDiscoverModels({ items }), ...mockDiscoverModelDetail());
+    const router = await renderScreen(['/models/explore/local/?select=org%2Falpha']);
+
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'org/alpha' }));
+    // Selecting another row replaces (no new history entry).
+    const lengthBefore = router.history.length;
+    await userEvent.click(screen.getByTestId('ld-row-org-beta'));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ select: 'org/beta' }));
+    expect(router.history.length).toBe(lengthBefore);
+  });
+
+  it('Load more accumulates rows without touching the URL', async () => {
+    server.use(...mockDiscoverModels({ nextCursor: 'cursor-2' }));
+    const router = await renderScreen();
+
+    expect(screen.getByTestId('ld-load-more')).toBeInTheDocument();
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('ld-load-more'));
+    });
+    // The cursor is component state, never URL state.
+    expect(router.state.location.search).not.toHaveProperty('cursor');
   });
 });

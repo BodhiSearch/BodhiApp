@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ListModelsQuery, Model, Quant, SortKey } from '@bodhiapp/reference-api-types';
+import type { Model, Quant, SortKey } from '@bodhiapp/reference-api-types';
+import { getRouteApi } from '@tanstack/react-router';
 
 import { DownloadsPanel, DownloadsPanelHeader, isActive } from '@/components/downloads-panel/DownloadsPanel';
 import { ShellIcon, ShellSearch, useListKeyNav, useShell, useShellChrome } from '@/components/shell';
@@ -18,9 +19,12 @@ import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useViewTransition } from '@/hooks/useViewTransition';
 import { exploreBreadcrumb } from '@/routes/models/explore/-shared/breadcrumbs';
 
+import type { LocalDiscoverySearch } from '../index';
+
+import { DEFAULT_SORT, facetsToSearch, searchToFacets, searchToParams } from './local-discovery-search';
 import { LocalDiscoveryRail, LocalDiscoveryRailHeader } from './LocalDiscoveryRail';
 import { LocalRow, SortHeader } from './LocalDiscoveryRow';
-import { LocalDiscoverySidebar, facetsToQuery, type DiscoveryFacets } from './LocalDiscoverySidebar';
+import { LocalDiscoverySidebar, type DiscoveryFacets } from './LocalDiscoverySidebar';
 import '@/components/downloads-panel/downloads-panel.css';
 import '@/components/shell/list.css';
 import '@/routes/models/-components/models.css';
@@ -28,9 +32,7 @@ import './local-discovery.css';
 
 const BREADCRUMB = exploreBreadcrumb('Explore · Local Models');
 
-/** Page size; raised when searching (search disables cursor pagination server-side). */
-const PAGE_SIZE = 30;
-const SEARCH_PAGE_SIZE = 100;
+const routeApi = getRouteApi('/models/explore/local/');
 
 const SORT_LABELS: Record<SortKey, string> = {
   downloads: 'Downloads',
@@ -44,41 +46,66 @@ function modelKey(m: Model): string {
   return `${m.namespace}/${m.repo}`;
 }
 
+/** Stable string of the non-cursor request slice; a change resets the keyset accumulator. */
+function requestSliceKey(s: LocalDiscoverySearch): string {
+  return JSON.stringify({ sort: s.sort ?? DEFAULT_SORT, q: s.q ?? '', f: searchToFacets(s) });
+}
+
 export function LocalDiscoveryScreen() {
   useListKeyNav();
   const { openRail } = useShell();
 
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortKey>('downloads');
-  const [facets, setFacets] = useState<DiscoveryFacets>({});
+  // URL is the single source of truth for sort/facets/search/select; the cursor + Load-More
+  // accumulation stay in component state (cursors are opaque/volatile, never URL-synced).
+  const search = routeApi.useSearch();
+  const navigate = routeApi.useNavigate();
+
+  const sort = search.sort ?? DEFAULT_SORT;
+  const committedSearch = search.q ?? '';
+  const facets = useMemo(() => searchToFacets(search), [search]);
+  const selectedKey = search.select ?? null;
+
+  const [searchInput, setSearchInput] = useState(committedSearch);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [extraPages, setExtraPages] = useState<Model[]>([]);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  // Which content the right rail shows. 'model' = selected-model detail, 'downloads' = Downloads panel.
-  const [railMode, setRailMode] = useState<'model' | 'downloads' | null>(null);
+  // `downloadsOpen` is the only ephemeral rail state; the model-detail rail is driven by ?select.
+  const [downloadsOpen, setDownloadsOpen] = useState(false);
+
+  useEffect(() => {
+    setSearchInput(committedSearch);
+  }, [committedSearch]);
+
+  // Reset the keyset accumulator whenever the non-cursor request slice changes (sort/facets/search),
+  // so a filter change restarts the cursor stream from page 1.
+  const sliceKey = requestSliceKey(search);
+  useEffect(() => {
+    setCursor(undefined);
+    setExtraPages([]);
+  }, [sliceKey]);
 
   const withViewTransition = useViewTransition();
+  // Selection lives in the URL via replace (no history entries) — Back/Forward skips past selections.
   const select = useCallback(
-    (key: string | null) =>
+    (key: string | null) => {
+      if ((key ?? undefined) === search.select) return; // dedup
       withViewTransition(() => {
-        setSelectedKey(key);
-        setRailMode(key ? 'model' : null);
-      }),
-    [withViewTransition]
+        setDownloadsOpen(false);
+        navigate({
+          search: (prev: LocalDiscoverySearch) => {
+            const out: LocalDiscoverySearch = { ...prev };
+            if (key) out.select = key;
+            else delete out.select;
+            return out;
+          },
+          replace: true,
+        });
+      });
+    },
+    [navigate, withViewTransition, search.select]
   );
 
-  const searching = search.trim() !== '';
-  const params: ListModelsQuery = useMemo(
-    () => ({
-      sort,
-      limit: searching ? SEARCH_PAGE_SIZE : PAGE_SIZE,
-      ...facetsToQuery(facets),
-      ...(searching ? { q: search.trim() } : {}),
-      ...(cursor ? { cursor } : {}),
-    }),
-    [sort, searching, search, cursor, facets]
-  );
+  const searching = committedSearch.trim() !== '';
+  const params = useMemo(() => searchToParams(search, cursor), [search, cursor]);
 
   const { data, isLoading, error } = useDiscoverModels(params);
 
@@ -101,47 +128,57 @@ export function LocalDiscoveryScreen() {
     : null;
   const { data: detail, isLoading: detailLoading } = useModelDetail(selectedRef);
 
-  const resetPaging = useCallback(() => {
-    setCursor(undefined);
-    setExtraPages([]);
+  // Carry the non-facet slice (q/sort/select) across a facet change; the keyset accumulator resets via
+  // the sliceKey effect, so no imperative paging reset is needed here.
+  const nonFacetSlice = useCallback((prev: LocalDiscoverySearch): LocalDiscoverySearch => {
+    const base: LocalDiscoverySearch = {};
+    if (prev.q) base.q = prev.q;
+    if (prev.sort) base.sort = prev.sort;
+    if (prev.select) base.select = prev.select;
+    return base;
   }, []);
 
-  const onSort = useCallback(
-    (col: SortKey) => {
-      setSort(col);
-      resetPaging();
-    },
-    [resetPaging]
+  // Selecting a sort omits the catalog default (downloads) so the URL stays clean.
+  const setSortInUrl = useCallback(
+    (col: SortKey) =>
+      navigate({
+        search: (prev: LocalDiscoverySearch) => {
+          const out: LocalDiscoverySearch = { ...prev };
+          if (col === DEFAULT_SORT) delete out.sort;
+          else out.sort = col;
+          return out;
+        },
+      }),
+    [navigate]
   );
+  const onSort = setSortInUrl;
+  // Browse presets set the sort key (Trending / New); order is always descending.
+  const onBrowse = setSortInUrl;
 
   const onFacetsChange = useCallback(
-    (next: DiscoveryFacets) => {
-      setFacets(next);
-      resetPaging();
-    },
-    [resetPaging]
+    (next: DiscoveryFacets) =>
+      navigate({ search: (prev: LocalDiscoverySearch) => ({ ...nonFacetSlice(prev), ...facetsToSearch(next) }) }),
+    [navigate, nonFacetSlice]
   );
 
-  // Browse presets set the sort key (Trending / New); order is always descending.
-  const onBrowse = useCallback(
-    (next: SortKey) => {
-      setSort(next);
-      resetPaging();
-    },
-    [resetPaging]
+  const onClearAllFacets = useCallback(
+    () => navigate({ search: (prev: LocalDiscoverySearch) => nonFacetSlice(prev) }),
+    [navigate, nonFacetSlice]
   );
-
-  const onClearAllFacets = useCallback(() => {
-    setFacets({});
-    resetPaging();
-  }, [resetPaging]);
 
   const commitSearch = useCallback(
     (value: string) => {
-      setSearch(value.trim());
-      resetPaging();
+      const next = value.trim();
+      navigate({
+        search: (prev: LocalDiscoverySearch) => {
+          const out: LocalDiscoverySearch = { ...prev };
+          if (next) out.q = next;
+          else delete out.q;
+          return out;
+        },
+      });
     },
-    [resetPaging]
+    [navigate]
   );
 
   const onSearchChange = useCallback(
@@ -184,7 +221,7 @@ export function LocalDiscoveryScreen() {
 
   // ── Downloads panel ──────────────────────────────────────────────
   const { data: downloadsData, isLoading: downloadsLoading } = useListDownloads(1, 100, {
-    enablePolling: railMode === 'downloads',
+    enablePolling: downloadsOpen,
   });
   const downloads = useMemo(() => downloadsData?.data ?? [], [downloadsData?.data]);
   const activeCount = useMemo(() => downloads.filter(isActive).length, [downloads]);
@@ -199,19 +236,18 @@ export function LocalDiscoveryScreen() {
   });
   const downloadsBusy = archivePending || retryPending;
 
-  // Toggle: clicking while the Downloads panel is shown closes the rail; otherwise it shows
-  // Downloads (swapping out the model-detail rail if that was open). Nulling the rail content
-  // closes the column; `openRail` un-collapses it if the user had manually collapsed the rail.
+  // Toggle: clicking while Downloads is shown closes it (falling back to the selected-model rail, if
+  // any); otherwise it opens Downloads (taking over the rail). `openRail` un-collapses the column.
   const toggleDownloads = useCallback(() => {
-    setRailMode((mode) => {
-      if (mode === 'downloads') return null;
+    setDownloadsOpen((open) => {
+      if (open) return false;
       refreshDownloads();
       openRail();
-      return 'downloads';
+      return true;
     });
   }, [openRail, refreshDownloads]);
 
-  const closeRail = useCallback(() => setRailMode(null), []);
+  const closeDownloads = useCallback(() => setDownloadsOpen(false), []);
 
   const onArchiveDownload = useCallback((id: string) => archiveDownload({ id }), [archiveDownload]);
   const onRetryDownload = useCallback((id: string) => retryDownload({ id }), [retryDownload]);
@@ -236,14 +272,13 @@ export function LocalDiscoveryScreen() {
   );
 
   const railHeader = useMemo(() => {
-    if (railMode === 'downloads') return <DownloadsPanelHeader onClose={closeRail} />;
-    if (railMode === 'model' && selectedModel)
-      return <LocalDiscoveryRailHeader model={selectedModel} onClose={() => select(null)} />;
+    if (downloadsOpen) return <DownloadsPanelHeader onClose={closeDownloads} />;
+    if (selectedModel) return <LocalDiscoveryRailHeader model={selectedModel} onClose={() => select(null)} />;
     return null;
-  }, [railMode, selectedModel, select, closeRail]);
+  }, [downloadsOpen, selectedModel, select, closeDownloads]);
 
   const rail = useMemo(() => {
-    if (railMode === 'downloads')
+    if (downloadsOpen)
       return (
         <DownloadsPanel
           items={downloads}
@@ -254,7 +289,7 @@ export function LocalDiscoveryScreen() {
           onJumpToList={jumpToList}
         />
       );
-    if (railMode === 'model' && selectedModel)
+    if (selectedModel)
       return (
         <LocalDiscoveryRail
           model={selectedModel}
@@ -266,7 +301,7 @@ export function LocalDiscoveryScreen() {
       );
     return null;
   }, [
-    railMode,
+    downloadsOpen,
     downloads,
     downloadsLoading,
     onArchiveDownload,
@@ -313,7 +348,7 @@ export function LocalDiscoveryScreen() {
           </div>
           <button
             type="button"
-            className={`l-iconbtn ld-dl-iconbtn${railMode === 'downloads' ? ' on' : ''}`}
+            className={`l-iconbtn ld-dl-iconbtn${downloadsOpen ? ' on' : ''}`}
             onClick={toggleDownloads}
             data-testid="ld-downloads-button"
             title="Open Downloads"
