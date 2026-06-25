@@ -165,7 +165,7 @@ describe('EditAliasPage', () => {
     // Check pre-filled values: alias locked, repo populated, current quant preselected.
     expect(screen.getByTestId('alias-input')).toHaveValue('test-alias');
     expect(screen.getByTestId('alias-input')).toBeDisabled();
-    expect(screen.getByTestId('repo-input')).toHaveValue('owner1/repo1');
+    expect(screen.getByTestId('repo-input')).toHaveTextContent('owner1/repo1');
 
     await waitFor(() => {
       expect(screen.getByTestId('quant-row-file1')).toHaveAttribute('data-test-state', 'selected');

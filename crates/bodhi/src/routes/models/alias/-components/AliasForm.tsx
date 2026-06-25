@@ -32,6 +32,7 @@ import {
   paramKeysInText,
 } from './paramCatalogs';
 import { QuantSelector } from './QuantSelector';
+import { RepoCombobox } from './RepoCombobox';
 
 import './local-form.css';
 
@@ -191,13 +192,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                     <FormItem className="lf-field">
                       <LfLabel label="Repo" tooltip={ALIAS_FORM_TOOLTIPS.repo} htmlFor="repo-input" />
                       <FormControl>
-                        <Input
-                          {...field}
-                          id="repo-input"
-                          data-testid="repo-input"
-                          placeholder="org/repo"
-                          className="font-mono"
-                        />
+                        <RepoCombobox value={field.value} onChange={field.onChange} testId="repo-input" />
                       </FormControl>
                       <p className="lf-hint">
                         Suggestions shown — or type any <span className="lf-code">&lt;org&gt;/&lt;repo&gt;</span> to

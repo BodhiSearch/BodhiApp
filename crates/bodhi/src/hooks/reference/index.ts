@@ -2,6 +2,7 @@ export { useReferenceApi, useAnonymousReferenceApi } from './useReferenceApi';
 export {
   referenceKeys,
   REF_ENDPOINT_MODELS,
+  REF_ENDPOINT_REPOS,
   refEndpointModel,
   REF_ENDPOINT_CATALOG_PROVIDERS,
   REF_ENDPOINT_CATALOG_MODELS,
@@ -11,6 +12,7 @@ export {
   refEndpointCatalogLogo,
 } from './constants';
 export { useDiscoverModels, useModelDetail, buildModelsQuery } from './useDiscoverModels';
+export { useSearchRepos } from './useSearchRepos';
 export {
   buildCatalogModelsQuery,
   useCatalogProviders,

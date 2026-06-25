@@ -88,6 +88,74 @@ nm-* system to lf-* and scoped under the form card. Reuses the
   font-family: var(--font-mono);
 }
 
+/* ── Repo combobox ── */
+.lf-rc-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  gap: 8px;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius-md);
+  background: hsl(var(--card));
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+}
+.lf-rc-trigger:hover {
+  border-color: hsl(var(--ring));
+}
+.lf-rc-value {
+  flex: 1;
+  text-align: left;
+  font-size: 12.5px;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lf-rc-placeholder {
+  flex: 1;
+  text-align: left;
+  font-size: 12.5px;
+}
+.lf-rc-pop {
+  width: var(--radix-popover-trigger-width);
+  padding: 0;
+}
+.lf-rc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lf-rc-item-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lf-rc-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.lf-rc-badge-local {
+  background: var(--c-leaf-bg);
+  color: var(--c-leaf-text);
+}
+.lf-rc-badge-remote {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.lf-rc-badge-freetext {
+  background: var(--c-saffron-bg);
+  color: var(--c-saffron-text);
+}
+
 /* ── Quant table ── */
 .lf-table-scroll {
   overflow-x: auto;

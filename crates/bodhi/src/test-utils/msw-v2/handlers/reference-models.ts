@@ -8,7 +8,7 @@
  *
  * Base origin must match `mockAppInfo({ reference_api_url })` (default `https://api.getbodhi.app/`).
  */
-import type { ListModelsResponse, Model } from '@bodhiapp/reference-api-types';
+import type { ListModelsResponse, ListReposResponse, Model } from '@bodhiapp/reference-api-types';
 
 import { createDefaultCatalog, createDetailModel, createListResponse } from '@/test-fixtures/discover-models';
 import { http, HttpResponse } from '@/test-utils/msw-v2/setup';
@@ -73,6 +73,28 @@ export function mockDiscoverModelDetail(opts: DetailOptions = {}) {
   return [
     http.get(`${base}/api/v1/models/:source/:namespace/:repo`, () => {
       return HttpResponse.json<Model>(model);
+    }),
+  ];
+}
+
+type ReposOptions = {
+  /** Suggestion ids returned. Filtered by the `search` substring to mimic HF's behavior. */
+  ids?: string[];
+  base?: string;
+  onRequest?: (info: { url: URL; authorization: string | null }) => void;
+};
+
+/** Stub `GET /api/v1/repos` (full <author>/<repo> autocomplete). Filters `ids` by `search`. */
+export function mockSearchRepos(opts: ReposOptions = {}) {
+  const base = opts.base ?? DEFAULT_BASE;
+  const ids = opts.ids ?? ['Qwen/Qwen3-Coder-32B-GGUF', 'Qwen/Qwen2.5-7B-Instruct-GGUF'];
+  return [
+    http.get(`${base}/api/v1/repos`, ({ request }) => {
+      const url = new URL(request.url);
+      opts.onRequest?.({ url, authorization: request.headers.get('Authorization') });
+      const search = (url.searchParams.get('search') ?? '').toLowerCase();
+      const items = ids.filter((id) => id.toLowerCase().includes(search)).map((id) => ({ id }));
+      return HttpResponse.json<ListReposResponse>({ items });
     }),
   ];
 }

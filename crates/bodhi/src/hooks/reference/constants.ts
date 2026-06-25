@@ -16,10 +16,13 @@ export const referenceKeys = {
     [...referenceKeys.catalog(), 'provider', slug, 'models', paramsKey] as const,
   catalogModels: (paramsKey: string) => [...referenceKeys.catalog(), 'models', paramsKey] as const,
   catalogModel: (slug: string, modelId: string) => [...referenceKeys.catalog(), 'model', slug, modelId] as const,
+  // Repo autocomplete (`/api/v1/repos`) — full <author>/<repo> typeahead for the add-local-model form.
+  repos: (paramsKey: string) => [...referenceKeys.all, 'repos', paramsKey] as const,
 };
 
 /** Reference-API paths (relative to `AppInfo.reference_api_url`). */
 export const REF_ENDPOINT_MODELS = '/api/v1/models';
+export const REF_ENDPOINT_REPOS = '/api/v1/repos';
 export const refEndpointModel = (source: string, namespace: string, repo: string) =>
   `/api/v1/models/${source}/${encodeURIComponent(namespace)}/${encodeURIComponent(repo)}`;
 

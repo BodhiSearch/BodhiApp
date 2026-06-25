@@ -12,7 +12,11 @@ import { mockAppInfo, mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/ms
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { mockModels, mockCreateModel } from '@/test-utils/msw-v2/handlers/models';
 import { mockModelFiles, mockModelPullDownloadsEmpty } from '@/test-utils/msw-v2/handlers/modelfiles';
-import { mockDiscoverModelDetail, mockDiscoverModelsError } from '@/test-utils/msw-v2/handlers/reference-models';
+import {
+  mockDiscoverModelDetail,
+  mockDiscoverModelsError,
+  mockSearchRepos,
+} from '@/test-utils/msw-v2/handlers/reference-models';
 import { createDetailModel } from '@/test-fixtures/discover-models';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -80,10 +84,24 @@ beforeEach(() => {
   navigateMock.mockClear();
 });
 
+/**
+ * Drive the repo combobox: open it, type the repo, then commit. When `repo` matches a `/api/v1/repos`
+ * suggestion it picks that option; otherwise it commits via the free-text "Use this" row.
+ */
+async function selectRepo(user: ReturnType<typeof userEvent.setup>, repo: string) {
+  await user.click(screen.getByTestId('repo-input'));
+  const search = await screen.findByPlaceholderText(/search huggingface repos/i);
+  await user.type(search, repo);
+  const option = await screen.findByRole('option', { name: repo });
+  await user.click(option);
+  await waitFor(() => expect(screen.queryByPlaceholderText(/search huggingface repos/i)).not.toBeInTheDocument());
+}
+
 describe('CreateAliasPage', () => {
   beforeEach(() => {
     server.use(
       ...mockAppInfoReady(),
+      ...mockSearchRepos({ ids: ['Qwen/Qwen3-Coder-32B-GGUF', 'Qwen/Qwen2.5-7B-Instruct-GGUF'] }),
       ...mockUserLoggedIn({ role: 'resource_user' }),
       ...mockModels({
         data: [
@@ -165,7 +183,7 @@ describe('CreateAliasPage', () => {
     });
 
     await user.type(screen.getByTestId('alias-input'), 'test-alias');
-    await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
+    await selectRepo(user, 'Qwen/Qwen3-Coder-32B-GGUF');
 
     // The quant table loads from the reference catalog; pick a quant to set the filename.
     const quantRow = await screen.findByTestId('quant-row-Q4_K_M');
@@ -186,7 +204,7 @@ describe('CreateAliasPage', () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
-    await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
+    await selectRepo(user, 'Qwen/Qwen3-Coder-32B-GGUF');
 
     // None of the catalog quants match a downloaded file → all "Not downloaded".
     const status = await screen.findByTestId('quant-status-Q4_K_M');
@@ -208,7 +226,7 @@ describe('CreateAliasPage', () => {
       render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
-    await user.type(screen.getByTestId('repo-input'), 'private/unlisted-GGUF');
+    await selectRepo(user, 'private/unlisted-GGUF');
 
     const filenameInput = await screen.findByTestId('filename-input');
     await user.type(filenameInput, 'custom-model.gguf');
@@ -236,7 +254,7 @@ describe('CreateAliasPage', () => {
 
     // The mockCreateModel response fixes the alias name, so the success toast reads 'test-alias'.
     await user.type(screen.getByTestId('alias-input'), 'test-alias');
-    await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
+    await selectRepo(user, 'Qwen/Qwen3-Coder-32B-GGUF');
     await user.click(await screen.findByTestId('quant-row-Q4_K_M'));
 
     await user.click(screen.getByRole('button', { name: /create alias/i }));
@@ -275,7 +293,7 @@ describe('CreateAliasPage', () => {
     });
 
     await user.type(screen.getByTestId('alias-input'), 'test-alias');
-    await user.type(screen.getByTestId('repo-input'), 'Qwen/Qwen3-Coder-32B-GGUF');
+    await selectRepo(user, 'Qwen/Qwen3-Coder-32B-GGUF');
     await user.click(await screen.findByTestId('quant-row-Q4_K_M'));
     await user.type(screen.getByTestId('system-prompt'), 'Be terse.');
     await user.type(screen.getByTestId('request-params'), 'temperature=0.5');
