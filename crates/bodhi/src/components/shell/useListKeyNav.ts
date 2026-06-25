@@ -34,7 +34,7 @@ export function useListKeyNav(opts: ListKeyNavOptions = {}) {
     function scrollIntoView(root: HTMLElement, row: HTMLElement) {
       const cr = root.getBoundingClientRect();
       const rr = row.getBoundingClientRect();
-      const head = root.querySelector<HTMLElement>('.l-listhead');
+      const head = root.querySelector<HTMLElement>('.l-listhead, .cat-listhead');
       const top = cr.top + (head ? head.offsetHeight : 0) + 6;
       if (rr.top < top) root.scrollTop -= top - rr.top;
       else if (rr.bottom > cr.bottom - 6) root.scrollTop += rr.bottom - cr.bottom + 6;
