@@ -48,6 +48,14 @@ export function createMockAnthropicModel(id: string, overrides?: Record<string, 
   };
 }
 
+export function createMockGeminiModel(name: string, overrides?: Record<string, unknown>) {
+  return {
+    name,
+    provider: 'gemini' as const,
+    ...overrides,
+  };
+}
+
 export function createMockApiAlias(overrides?: Partial<ApiAliasResponse>): ApiAliasResponse {
   return {
     source: 'api',

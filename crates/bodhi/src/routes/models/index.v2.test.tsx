@@ -186,6 +186,93 @@ describe('ModelsScreen V2 — list + rail', () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/models/api/edit/', search: { id: 'openai-main' } });
   });
 
+  it('Local File rail: Chat-only footer (no Edit), no disclaimer, HF links on repo/filename', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderScreen();
+
+    await userEvent.click(screen.getByTestId('model-row-org/local-gguf:Q4'));
+    const rail = await screen.findByTestId('model-detail-org/local-gguf:Q4');
+
+    // Read-only local file: Chat replaces Edit.
+    const chat = within(rail).getByTestId('model-detail-chat');
+    expect(chat).toHaveAttribute('href', expect.stringContaining('/chat/'));
+    expect(decodeURIComponent(chat.getAttribute('href') ?? '')).toContain('model=org/local-gguf:Q4');
+    expect(within(rail).queryByTestId('model-detail-edit')).not.toBeInTheDocument();
+
+    // Disclaimer is gone for auto-discovered local files.
+    expect(within(rail).queryByText(/Auto-discovered from local cache/)).not.toBeInTheDocument();
+
+    // HuggingFace external links.
+    expect(within(rail).getByText('org/local-gguf').closest('a')).toHaveAttribute(
+      'href',
+      'https://huggingface.co/org/local-gguf'
+    );
+    expect(within(rail).getByText('local.gguf').closest('a')).toHaveAttribute(
+      'href',
+      'https://huggingface.co/org/local-gguf/blob/main/local.gguf'
+    );
+  });
+
+  it('User alias rail: Chat (primary) + Edit, keeps the user-alias disclaimer', async () => {
+    server.use(...mockModels({ data: MIXED_ROWS, total: MIXED_ROWS.length }, { stub: true }));
+    await renderScreen();
+
+    await userEvent.click(screen.getByTestId('model-row-my-coder'));
+    const rail = await screen.findByTestId('model-detail-my-coder');
+    const chat = within(rail).getByTestId('model-detail-chat');
+    expect(decodeURIComponent(chat.getAttribute('href') ?? '')).toContain('model=my-coder');
+    expect(within(rail).getByTestId('model-detail-edit')).toBeInTheDocument();
+    expect(within(rail).getByText(/User-created alias/)).toBeInTheDocument();
+  });
+
+  it('Router rail: Chat with Router (primary) + Edit', async () => {
+    server.use(...mockModels({ data: [makeRouterAlias()], total: 1 }, { stub: true }));
+    await renderScreen();
+
+    await userEvent.click(screen.getByTestId('model-row-router-1'));
+    const rail = await screen.findByTestId('model-detail-router-1');
+    const chat = within(rail).getByTestId('model-detail-chat');
+    expect(chat).toHaveTextContent('Chat with Router');
+    expect(decodeURIComponent(chat.getAttribute('href') ?? '')).toContain('model=smart-fallback');
+    expect(within(rail).getByTestId('model-detail-edit')).toBeInTheDocument();
+  });
+
+  it('API rail: per-model chat cards (prefix applied) + copyable base URL', async () => {
+    const api = createMockApiAlias({
+      id: 'openai-main',
+      name: 'openai-main',
+      prefix: 'p/',
+      models: [createMockOpenAIModel('gpt-4o')],
+    });
+    server.use(...mockModels({ data: [api], total: 1 }, { stub: true }));
+    await renderScreen();
+
+    await userEvent.click(screen.getByTestId('model-row-openai-main'));
+    const rail = await screen.findByTestId('model-detail-openai-main');
+
+    expect(within(rail).getByTestId('model-detail-model-gpt-4o')).toBeInTheDocument();
+    const chat = within(rail).getByTestId('model-detail-chat-gpt-4o');
+    expect(decodeURIComponent(chat.getAttribute('href') ?? '')).toContain('model=p/gpt-4o');
+
+    // base URL row is copyable.
+    expect(within(rail).getByTestId('copy-content')).toBeInTheDocument();
+  });
+
+  it('API rail: chat href uses the bare model id when no prefix is set', async () => {
+    const api = createMockApiAlias({
+      id: 'openai-main',
+      name: 'openai-main',
+      models: [createMockOpenAIModel('gpt-4o')],
+    });
+    server.use(...mockModels({ data: [api], total: 1 }, { stub: true }));
+    await renderScreen();
+
+    await userEvent.click(screen.getByTestId('model-row-openai-main'));
+    const rail = await screen.findByTestId('model-detail-openai-main');
+    const chat = within(rail).getByTestId('model-detail-chat-gpt-4o');
+    expect(decodeURIComponent(chat.getAttribute('href') ?? '')).toContain('model=gpt-4o');
+  });
+
   it('shows an empty state when no models match', async () => {
     server.use(...mockModels({ data: [], total: 0 }, { stub: true }));
     await renderScreen();
@@ -300,10 +387,11 @@ describe('ModelsScreen V2 — table layout + columns', () => {
     const api = createMockApiAlias({ id: 'openai-main', name: 'openai-main', has_api_key: false });
     server.use(...mockModels({ data: [api], total: 1 }, { stub: true }));
     await renderScreen();
-    // The list row must not carry the connection status; "no key" only ever appears in the rail.
+    // Connection status (key state) is not surfaced anywhere — not in rows, not in the rail.
     const row = screen.getByTestId('model-row-openai-main');
     expect(within(row).queryByText('no key')).not.toBeInTheDocument();
     expect(within(row).queryByText('connected')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('model-detail-status')).not.toBeInTheDocument();
   });
 
   it('derives Provider/Repo and Base-URL/Filename per alias type', async () => {

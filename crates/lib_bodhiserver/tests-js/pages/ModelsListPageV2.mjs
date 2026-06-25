@@ -30,6 +30,7 @@ export class ModelsListPageV2 extends BasePage {
     rail: (id) => `[data-testid="model-detail-${id}"]`,
     railClose: '[data-testid="model-detail-close"]',
     railEdit: '[data-testid="model-detail-edit"]',
+    railChat: '[data-testid="model-detail-chat"]',
     empty: '[data-testid="no-models"]',
     search: '[data-testid="models-search"] input',
     download: '[data-testid="models-downloads-button"]',

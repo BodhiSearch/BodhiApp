@@ -44,12 +44,25 @@ test.describe('All Models V2', () => {
     const types = await modelsPage.page.locator('[data-testid^="model-type-"]').allInnerTexts();
     expect(types.every((t) => t.trim() === 'Local File')).toBe(true);
 
-    // Open the first row's detail rail and confirm the Edit CTA is present.
+    // Open the first local-file row's detail rail. Local files are read-only, so the footer is a
+    // single "Chat with Model" CTA (no Edit). Its href targets the chat route with the alias
+    // pre-selected via ?model=, and clicking it navigates there.
     await modelsPage.openRow();
-    await modelsPage.expectVisible(modelsPage.selectors.railEdit);
+    await modelsPage.expectVisible(modelsPage.selectors.railChat);
+    await expect(modelsPage.page.locator(modelsPage.selectors.railEdit)).toHaveCount(0);
+
+    const chatHref = await modelsPage.page.locator(modelsPage.selectors.railChat).getAttribute('href');
+    expect(chatHref).toContain('/ui/chat/?');
+    expect(chatHref).toContain('model=');
+
+    await modelsPage.page.locator(modelsPage.selectors.railChat).click();
+    await modelsPage.page.waitForURL(/\/ui\/chat\/\?.*model=/);
+
+    await modelsPage.navigateToModels();
+    await modelsPage.expectModelsPageV2();
 
     // Filtering to API models (none configured) yields the empty state — proves server-side filtering.
-    await modelsPage.filterByType('local_file'); // toggle local off
+    // (Page was reloaded above, so no prior type filter is set.)
     await modelsPage.filterByType('api_model');
     await expect(
       modelsPage.page

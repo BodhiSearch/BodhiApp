@@ -413,3 +413,26 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Detail-rail row affordances: HF external links + inline copy button. */
+.dp-row-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+.dp-row-link:hover {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+.dp-row-link svg {
+  flex: none;
+  opacity: 0.6;
+}
+.dp-row-copy {
+  flex: none;
+  height: 24px;
+  width: 24px;
+  padding: 0;
+}

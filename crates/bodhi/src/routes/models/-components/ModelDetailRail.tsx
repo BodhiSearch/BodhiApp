@@ -1,6 +1,9 @@
 import { AliasResponse, ApiAliasResponse, ModelRouterResponse } from '@bodhiapp/ts-client';
+import { Link } from '@tanstack/react-router';
 
+import { CopyButton } from '@/components/CopyButton';
 import { ShellIcon } from '@/components/shell';
+import { apiModelChatString, chatModelForAlias, modelId } from '@/lib/modelAlias';
 import { isApiAlias, isModelRouterAlias, isUserAlias } from '@/lib/utils';
 
 import { RoutingChainPreview } from './RoutingChainPreview';
@@ -57,11 +60,18 @@ export function ModelRailHeader({ alias, onClose }: { alias: AliasResponse; onCl
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
+function Row({ k, v, href, copyable }: { k: string; v: string; href?: string; copyable?: boolean }) {
   return (
     <div className="dp-row">
       <span className="dp-row-k">{k}</span>
-      <span className="dp-row-v mono">{v}</span>
+      {href ? (
+        <a className="dp-row-v mono dp-row-link" href={href} target="_blank" rel="noopener noreferrer">
+          {v} <ShellIcon name="external-link" size={12} />
+        </a>
+      ) : (
+        <span className="dp-row-v mono">{v}</span>
+      )}
+      {copyable && <CopyButton text={v} size="icon" variant="ghost" className="dp-row-copy" showToast={false} />}
     </div>
   );
 }
@@ -86,11 +96,43 @@ export function ModelDetailRail({ alias, onEdit }: ModelDetailRailProps) {
       </div>
 
       <div className="dp-foot">
-        <button className="dp-btn dp-btn-accent" onClick={onEdit} data-testid="model-detail-edit">
-          <ShellIcon name="pencil" size={14} /> Edit {railSubtitle(alias).toLowerCase()}
-        </button>
+        <RailFooter alias={alias} onEdit={onEdit} />
       </div>
     </div>
+  );
+}
+
+function RailFooter({ alias, onEdit }: { alias: AliasResponse; onEdit: () => void }) {
+  const editButton = (
+    <button className="dp-btn dp-btn-outline" onClick={onEdit} data-testid="model-detail-edit">
+      <ShellIcon name="pencil" size={14} /> Edit {railSubtitle(alias).toLowerCase()}
+    </button>
+  );
+
+  // API aliases chat per-model (cards in the body), so the footer is Edit-only.
+  if (isApiAlias(alias)) {
+    return (
+      <button className="dp-btn dp-btn-accent" onClick={onEdit} data-testid="model-detail-edit">
+        <ShellIcon name="pencil" size={14} /> Edit {railSubtitle(alias).toLowerCase()}
+      </button>
+    );
+  }
+
+  const chatModel = chatModelForAlias(alias)!;
+  const chatLabel = isModelRouterAlias(alias) ? 'Chat with Router' : 'Chat with Model';
+  const chatButton = (
+    <Link to="/chat/" search={{ model: chatModel }} className="dp-btn dp-btn-accent" data-testid="model-detail-chat">
+      <ShellIcon name="message-circle" size={14} /> {chatLabel}
+    </Link>
+  );
+
+  // Local files are read-only — Chat only. User aliases and routers keep Edit (secondary).
+  if (alias.source === 'model') return chatButton;
+  return (
+    <>
+      {chatButton}
+      {editButton}
+    </>
   );
 }
 
@@ -104,8 +146,12 @@ function LocalRailBody({ alias }: { alias: AliasResponse }) {
       <div className="dp-section">
         <div className="dp-sec-lbl">File</div>
         <div className="dp-rows">
-          <Row k="repo" v={local.repo} />
-          <Row k="filename" v={local.filename} />
+          <Row k="repo" v={local.repo} href={`https://huggingface.co/${local.repo}`} />
+          <Row
+            k="filename"
+            v={local.filename}
+            href={`https://huggingface.co/${local.repo}/blob/main/${local.filename}`}
+          />
           <Row k="snapshot" v={local.snapshot} />
           {size != null && <Row k="size" v={formatSize(size)} />}
         </div>
@@ -122,13 +168,11 @@ function LocalRailBody({ alias }: { alias: AliasResponse }) {
         </div>
       )}
 
-      <div className="dp-section">
-        <p className="dp-desc">
-          {alias.source === 'model'
-            ? 'Auto-discovered from local cache. Alias is derived from org/repo:quant and is read-only.'
-            : 'User-created alias with custom system prompt and parameters.'}
-        </p>
-      </div>
+      {alias.source === 'user' && (
+        <div className="dp-section">
+          <p className="dp-desc">User-created alias with custom system prompt and parameters.</p>
+        </div>
+      )}
     </>
   );
 }
@@ -136,38 +180,41 @@ function LocalRailBody({ alias }: { alias: AliasResponse }) {
 function ApiRailBody({ alias }: { alias: ApiAliasResponse }) {
   return (
     <>
-      <div className="dp-status-row">
-        <span className={`m-conn ${alias.has_api_key ? 'ok' : 'warn'}`} data-testid="model-detail-status">
-          {alias.has_api_key ? 'connected' : 'no key'}
-        </span>
-      </div>
       <div className="dp-section">
         <div className="dp-sec-lbl">Connection</div>
         <div className="dp-rows">
-          <Row k="base URL" v={alias.base_url} />
+          <Row k="base URL" v={alias.base_url} copyable />
           <Row k="provider" v={alias.api_format} />
-          <Row k="models" v={`${alias.models.length} exposed`} />
         </div>
       </div>
       <div className="dp-section">
-        <div className="dp-sec-lbl">Models</div>
-        <div className="m-model-list" data-testid="model-detail-models">
-          {alias.models.map((m) => (
-            <div key={modelId(m)} className="m-model-item mono">
-              {modelId(m)}
-            </div>
-          ))}
+        <div className="dp-sec-lbl">Models ({alias.models.length})</div>
+        <div className="cat-prov-models" data-testid="model-detail-models">
+          {alias.models.map((m) => {
+            const id = modelId(m);
+            return (
+              <div key={id} className="cat-prov-model" data-testid={`model-detail-model-${id}`}>
+                <div className="cat-prov-model-head">
+                  <span className="cat-prov-model-name mono">{id}</span>
+                  <div className="cat-prov-model-head-right">
+                    <Link
+                      to="/chat/"
+                      search={{ model: apiModelChatString(alias, m) }}
+                      className="cat-prov-model-add"
+                      title={`Chat with ${id}`}
+                      data-testid={`model-detail-chat-${id}`}
+                    >
+                      <ShellIcon name="message-circle" size={15} />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </>
   );
-}
-
-function modelId(m: ApiAliasResponse['models'][number]): string {
-  // OpenAI/Anthropic models expose `id`; Gemini exposes `name`.
-  if ('id' in m && m.id) return m.id;
-  if ('name' in m && m.name) return m.name;
-  return JSON.stringify(m);
 }
 
 function FallbackRailBody({ alias }: { alias: ModelRouterResponse }) {
