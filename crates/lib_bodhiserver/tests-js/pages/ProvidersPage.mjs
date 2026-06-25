@@ -35,7 +35,11 @@ export class ProvidersPage extends BasePage {
     railPanel: '[data-testid="cat-prov-detail-meta"]',
     detailMeta: '[data-testid="cat-prov-detail-meta"]',
     detailModels: '[data-testid="cat-prov-models"]',
-    docLink: '[data-testid="cat-prov-doc-link"]',
+    allModelsLink: slug => `[data-testid="cat-prov-allmodels-${slug}"]`,
+    addProviderLink: slug => `[data-testid="cat-prov-add-${slug}"]`,
+    modelAddLink: modelId => `[data-testid="cat-prov-model-add-${modelId}"]`,
+    columnsBtn: '[data-testid="cat-prov-columns"]',
+    colItem: key => `[data-testid="cat-prov-col-${key}"]`,
     detailClose: '[data-testid="cat-prov-detail-close"]',
   };
 

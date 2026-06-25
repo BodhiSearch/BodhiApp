@@ -500,6 +500,21 @@
   color: hsl(var(--muted-foreground));
   flex: 0 0 auto;
 }
+.cat-prov-model-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.cat-prov-model-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--muted-foreground));
+}
+.cat-prov-model-add:hover {
+  color: hsl(var(--primary));
+}
 .cat-prov-model-sub {
   display: flex;
   align-items: center;

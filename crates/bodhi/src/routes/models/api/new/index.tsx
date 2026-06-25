@@ -13,6 +13,7 @@ const newApiModelSearchSchema = z.object({
   api_format: z.string().optional(),
   base_url: z.string().optional(),
   model: z.string().optional(),
+  name: z.string().optional(),
 });
 
 export const Route = createFileRoute('/models/api/new/')({
@@ -30,12 +31,17 @@ function NewApiModelContent() {
   useShellChrome({ breadcrumb: useMemo(() => NEW_API_MODEL_BREADCRUMB, []) });
   // Loose useSearch (not Route.useSearch) so component tests that mock @tanstack/react-router's
   // useSearch intercept it without a router context.
-  const search = useSearch({ strict: false }) as { api_format?: string; base_url?: string; model?: string };
+  const search = useSearch({ strict: false }) as {
+    api_format?: string;
+    base_url?: string;
+    model?: string;
+    name?: string;
+  };
 
   const prefill: ApiModelPrefill | undefined = useMemo(() => {
-    if (!search.api_format && !search.base_url && !search.model) return undefined;
-    return { api_format: search.api_format, base_url: search.base_url, model: search.model };
-  }, [search.api_format, search.base_url, search.model]);
+    if (!search.api_format && !search.base_url && !search.model && !search.name) return undefined;
+    return { api_format: search.api_format, base_url: search.base_url, model: search.model, name: search.name };
+  }, [search.api_format, search.base_url, search.model, search.name]);
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-6" data-testid="new-api-model-page">

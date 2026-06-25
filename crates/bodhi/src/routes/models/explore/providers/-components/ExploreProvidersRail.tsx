@@ -1,9 +1,5 @@
-import type {
-  ListProviderModelsQuery,
-  ProviderDetailResponse,
-  ProviderModelRow,
-  ProviderSummary,
-} from '@bodhiapp/reference-api-types';
+import type { ProviderDetailResponse, ProviderModelRow, ProviderSummary } from '@bodhiapp/reference-api-types';
+import { Link } from '@tanstack/react-router';
 
 import { ShellIcon } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +12,12 @@ import {
   monogram,
   tintIndex,
 } from '@/routes/models/explore/-shared/catalog-format';
+
+// Formats the form recognizes; anything else (e.g. 'other') is forwarded as 'openai'.
+const KNOWN_API_FORMATS = new Set(['openai', 'anthropic', 'gemini']);
+function toFormParam(apiFormat: string | undefined): string {
+  return apiFormat && KNOWN_API_FORMATS.has(apiFormat) ? apiFormat : 'openai';
+}
 
 export function ExploreProvidersRailHeader({ provider, onClose }: { provider: ProviderSummary; onClose: () => void }) {
   return (
@@ -45,32 +47,25 @@ function Row({ k, v }: { k: string; v: string }) {
   );
 }
 
-type ModelSort = NonNullable<ListProviderModelsQuery['sort']>;
-const MODEL_SORTS: { key: ModelSort; label: string }[] = [
-  { key: 'context', label: 'Context' },
-  { key: 'price', label: 'Price' },
-  { key: 'name', label: 'Name' },
-];
-
 interface RailProps {
   provider: ProviderSummary;
   detail: ProviderDetailResponse | undefined;
   detailLoading: boolean;
   models: ProviderModelRow[];
   modelsLoading: boolean;
-  modelSort: ModelSort;
-  onModelSort: (s: ModelSort) => void;
 }
 
-export function ExploreProvidersRail({
-  provider,
-  detail,
-  detailLoading,
-  models,
-  modelsLoading,
-  modelSort,
-  onModelSort,
-}: RailProps) {
+export function ExploreProvidersRail({ provider, detail, detailLoading, models, modelsLoading }: RailProps) {
+  // The provider's connection params, sourced from the loaded detail. base_url falls back to the
+  // form preset (undefined) until detail arrives.
+  const apiFormat = toFormParam(detail?.bridge.api_format ?? provider.api_format_hint);
+  const baseUrl = detail?.api_base_url ?? undefined;
+  const addProviderSearch = {
+    api_format: apiFormat,
+    name: provider.name,
+    ...(baseUrl ? { base_url: baseUrl } : {}),
+  };
+
   return (
     <div className="dp-panel models-screen-rail" data-testid={`cat-prov-detail-${provider.slug}`}>
       <div className="dp-body">
@@ -82,41 +77,33 @@ export function ExploreProvidersRail({
             <div className="dp-rows" data-testid="cat-prov-detail-meta">
               <Row k="Base URL" v={detail?.api_base_url ?? '— (preset)'} />
               <Row k="API keys" v={detail?.env?.length ? detail.env.join(', ') : '—'} />
-              <Row k="SDK" v={detail?.npm ?? '—'} />
               <Row k="API format" v={detail?.bridge.api_format ?? '—'} />
             </div>
           )}
-          {detail?.doc_url && (
-            <a
+          <div className="cat-servedby-links">
+            {/* Filter the API Models page in place to this provider (provider facet = slug). */}
+            <Link
+              to="/models/explore/api/"
+              search={{ provider: [provider.slug] }}
               className="cat-doc-link"
-              href={detail.doc_url}
-              target="_blank"
-              rel="noreferrer"
-              data-testid="cat-prov-doc-link"
+              data-testid={`cat-prov-allmodels-${provider.slug}`}
             >
-              <ShellIcon name="book-open" size={13} /> Documentation
-            </a>
-          )}
+              <ShellIcon name="layers" size={13} /> See All Models from Provider
+            </Link>
+            {/* Jump to the create-API-model form prefilled for this provider. */}
+            <Link
+              to="/models/api/new/"
+              search={addProviderSearch}
+              className="cat-doc-link"
+              data-testid={`cat-prov-add-${provider.slug}`}
+            >
+              <ShellIcon name="circle-plus" size={13} /> Add API Model
+            </Link>
+          </div>
         </div>
 
         <div className="dp-section">
-          <div className="dp-sec-lbl cat-prov-models-head">
-            <span>Models ({models.length})</span>
-            <span className="cat-prov-models-sort" data-testid="cat-prov-models-sort">
-              {MODEL_SORTS.map((s) => (
-                <button
-                  key={s.key}
-                  type="button"
-                  className={`cat-sort-btn${modelSort === s.key ? ' on' : ''}`}
-                  aria-pressed={modelSort === s.key}
-                  onClick={() => onModelSort(s.key)}
-                  data-testid={`cat-prov-models-sort-${s.key}`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </span>
-          </div>
+          <div className="dp-sec-lbl">Models ({models.length})</div>
           {modelsLoading ? (
             <Skeleton className="h-20 w-full" data-testid="cat-prov-models-skeleton" />
           ) : models.length === 0 ? (
@@ -124,7 +111,13 @@ export function ExploreProvidersRail({
           ) : (
             <div className="cat-prov-models" data-testid="cat-prov-models">
               {models.map((m) => (
-                <ProviderModel key={m.model_id} model={m} />
+                <ProviderModel
+                  key={m.model_id}
+                  model={m}
+                  apiFormat={apiFormat}
+                  baseUrl={baseUrl}
+                  name={provider.name}
+                />
               ))}
             </div>
           )}
@@ -134,13 +127,40 @@ export function ExploreProvidersRail({
   );
 }
 
-function ProviderModel({ model }: { model: ProviderModelRow }) {
+function ProviderModel({
+  model,
+  apiFormat,
+  baseUrl,
+  name,
+}: {
+  model: ProviderModelRow;
+  apiFormat: string;
+  baseUrl: string | undefined;
+  name: string;
+}) {
   const free = isFree(model.pricing.input_per_m, model.pricing.output_per_m);
+  const addSearch = {
+    api_format: apiFormat,
+    name,
+    model: model.model_id,
+    ...(baseUrl ? { base_url: baseUrl } : {}),
+  };
   return (
     <div className="cat-prov-model" data-testid={`cat-prov-model-${model.model_id}`}>
       <div className="cat-prov-model-head">
         <span className="cat-prov-model-name mono">{model.name}</span>
-        <span className="cat-prov-model-price">{free ? 'Free' : `${fmtPrice(model.pricing.input_per_m)}/M`}</span>
+        <div className="cat-prov-model-head-right">
+          <span className="cat-prov-model-price">{free ? 'Free' : `${fmtPrice(model.pricing.input_per_m)}/M`}</span>
+          <Link
+            to="/models/api/new/"
+            search={addSearch}
+            className="cat-prov-model-add"
+            title={`Add ${model.name}`}
+            data-testid={`cat-prov-model-add-${model.model_id}`}
+          >
+            <ShellIcon name="circle-plus" size={15} />
+          </Link>
+        </div>
       </div>
       <div className="cat-prov-model-sub">
         <span>{fmtContext(model.context_limit)} ctx</span>

@@ -175,11 +175,49 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
     const meta = await screen.findByTestId('cat-prov-detail-meta');
     expect(meta).toHaveTextContent('NANO_GPT_API_KEY');
     expect(meta).toHaveTextContent('https://nano-gpt.com/api/v1');
-    expect(meta).toHaveTextContent('@ai-sdk/openai-compatible');
+    // SDK row and the Documentation link were removed.
+    expect(meta).not.toHaveTextContent('@ai-sdk/openai-compatible');
+    expect(screen.queryByTestId('cat-prov-doc-link')).not.toBeInTheDocument();
 
     const models = await screen.findByTestId('cat-prov-models');
     expect(models).toHaveTextContent('Claude Sonnet 4.5');
-    expect(screen.getByTestId('cat-prov-doc-link')).toHaveAttribute('href', 'https://docs.nano-gpt.com');
+  });
+
+  it('rail links: See All Models from Provider → API Models filtered by provider; Add API Model prefills the form', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    await waitFor(() => expect(screen.getByTestId('cat-prov-detail-nano-gpt')).toBeInTheDocument());
+
+    const allModels = screen.getByTestId('cat-prov-allmodels-nano-gpt');
+    expect(allModels).toHaveAttribute('href', expect.stringContaining('/models/explore/api/'));
+    expect(decodeURIComponent(allModels.getAttribute('href') ?? '')).toContain('provider=["nano-gpt"]');
+
+    const add = await screen.findByTestId('cat-prov-add-nano-gpt');
+    const addHref = decodeURIComponent(add.getAttribute('href') ?? '');
+    expect(addHref).toContain('/models/api/new/');
+    expect(addHref).toContain('api_format=openai');
+    expect(addHref).toContain('base_url=https://nano-gpt.com/api/v1');
+    expect(addHref).toContain('name=NanoGPT');
+  });
+
+  it('per-model + link prefills the create form with the model id, provider format/name/base_url', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
+    await renderScreen();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
+    await waitFor(() => expect(screen.getByTestId('cat-prov-models')).toBeInTheDocument());
+
+    const add = await screen.findByTestId('cat-prov-model-add-anthropic/claude-sonnet-4.5');
+    const href = decodeURIComponent(add.getAttribute('href') ?? '');
+    expect(href).toContain('/models/api/new/');
+    expect(href).toContain('model=anthropic/claude-sonnet-4.5');
+    expect(href).toContain('api_format=openai');
+    expect(href).toContain('name=NanoGPT');
+    expect(href).toContain('base_url=https://nano-gpt.com/api/v1');
   });
 
   it('does not fetch detail until a provider is selected (gated)', async () => {
@@ -212,22 +250,33 @@ describe('ExploreProvidersScreen (B2 — detail rail)', () => {
     await waitFor(() => expect(screen.queryByTestId('cat-prov-detail-nano-gpt')).not.toBeInTheDocument());
   });
 
-  it('provider-rail model sort re-queries the served-models endpoint with sort=', async () => {
-    const seen: URL[] = [];
-    server.use(
-      ...mockCatalogProviders(),
-      ...mockCatalogProviderDetail(),
-      ...mockCatalogProviderModels({ onRequest: ({ url }) => seen.push(url) })
-    );
+  it('the rail no longer has per-model context/price/name sort controls', async () => {
+    server.use(...mockCatalogProviders(), ...mockCatalogProviderDetail(), ...mockCatalogProviderModels());
     await renderScreen();
 
     const user = userEvent.setup();
     await user.click(screen.getByTestId('cat-prov-row-nano-gpt'));
     await waitFor(() => expect(screen.getByTestId('cat-prov-models')).toBeInTheDocument());
-    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'context')).toBe(true));
+    expect(screen.queryByTestId('cat-prov-models-sort-context')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cat-prov-models-sort-price')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cat-prov-models-sort-name')).not.toBeInTheDocument();
+  });
+});
 
-    await user.click(screen.getByTestId('cat-prov-models-sort-price'));
-    await waitFor(() => expect(seen.some((u) => u.searchParams.get('sort') === 'price')).toBe(true));
+describe('ExploreProvidersScreen (B4 — column picker)', () => {
+  it('hides and restores the Format column via the column picker', async () => {
+    server.use(...mockCatalogProviders());
+    await renderScreen();
+
+    expect(screen.getByTestId('cat-listhead')).toHaveTextContent('FORMAT');
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('cat-prov-columns'));
+    await user.click(screen.getByTestId('cat-prov-col-api_format'));
+    await waitFor(() => expect(screen.getByTestId('cat-listhead')).not.toHaveTextContent('FORMAT'));
+
+    await user.click(screen.getByTestId('cat-prov-col-api_format'));
+    await waitFor(() => expect(screen.getByTestId('cat-listhead')).toHaveTextContent('FORMAT'));
   });
 });
 

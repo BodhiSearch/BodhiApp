@@ -40,6 +40,14 @@ describe('useApiModelForm — create-mode prefill (Configure bridge)', () => {
     expect(result.current.watchedValues.api_key).toBe('');
   });
 
+  it('seeds the editable name from prefill (provider-level Add)', async () => {
+    const { result } = renderHook(
+      () => useApiModelForm({ mode: 'create', prefill: { api_format: 'openai', name: 'NanoGPT' } }),
+      { wrapper: Wrapper }
+    );
+    await waitFor(() => expect(result.current.watchedValues.name).toBe('NanoGPT'));
+  });
+
   it('falls back to OpenAI defaults when no prefill is given', async () => {
     const { result } = renderHook(() => useApiModelForm({ mode: 'create' }), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.watchedValues.api_format).toBe('openai'));

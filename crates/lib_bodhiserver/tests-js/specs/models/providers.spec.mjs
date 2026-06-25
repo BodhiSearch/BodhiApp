@@ -52,14 +52,27 @@ test.describe('Explore · API Providers', () => {
       await expect(providersPage.page.locator(providersPage.selectors.anyRow)).toHaveCount(30);
     });
 
-    await test.step('Opening a provider shows the rail with connection meta + models', async () => {
+    await test.step('Opening a provider shows the rail with connection meta + models + Add links', async () => {
       await providersPage.openProvider('prov-0');
       const meta = providersPage.page.locator(providersPage.selectors.detailMeta);
       await expect(meta).toBeVisible();
       await expect(meta).toContainText('PROV_0_API_KEY');
       await expect(meta).toContainText('prov-0.example.com');
-      await expect(providersPage.page.locator(providersPage.selectors.docLink)).toBeVisible();
       await expect(providersPage.page.locator(providersPage.selectors.detailModels)).toContainText('Model A');
+
+      // See All Models from Provider → API Models filtered by this provider.
+      const allModels = providersPage.page.locator(providersPage.selectors.allModelsLink('prov-0'));
+      await expect(allModels).toHaveAttribute('href', /\/models\/explore\/api\//);
+      await expect(allModels).toHaveAttribute('href', /provider=/);
+      // Add API Model → create form prefilled (format + provider name + base_url).
+      const add = providersPage.page.locator(providersPage.selectors.addProviderLink('prov-0'));
+      await expect(add).toHaveAttribute('href', /\/models\/api\/new\//);
+      await expect(add).toHaveAttribute('href', /api_format=/);
+      // Per-model + link is present and targets the create form with the model id.
+      await expect(providersPage.page.locator(providersPage.selectors.modelAddLink('prov-0/model-a'))).toHaveAttribute(
+        'href',
+        /\/models\/api\/new\//
+      );
 
       await providersPage.closeRail();
       await expect(providersPage.page.locator(providersPage.selectors.railPanel)).toHaveCount(0);
@@ -141,6 +154,14 @@ test.describe('Explore · API Providers', () => {
       await providersPage.clickReset();
       expect(providersPage.searchParams().has('q')).toBe(false);
       await expect(reset).toHaveAttribute('data-test-state', 'none');
+    });
+
+    await test.step('Column picker hides the Format column', async () => {
+      await expect(providersPage.page.locator(providersPage.selectors.list)).toContainText('FORMAT');
+      await providersPage.page.locator(providersPage.selectors.columnsBtn).click();
+      await providersPage.page.locator(providersPage.selectors.colItem('api_format')).click();
+      await providersPage.page.keyboard.press('Escape');
+      await expect(providersPage.page.locator(providersPage.selectors.list)).not.toContainText('FORMAT');
     });
   });
 });

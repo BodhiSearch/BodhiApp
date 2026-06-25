@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ListProviderModelsQuery, ProviderSummary } from '@bodhiapp/reference-api-types';
+import type { ProviderSummary } from '@bodhiapp/reference-api-types';
 import { getRouteApi } from '@tanstack/react-router';
 
 import {
@@ -12,6 +12,14 @@ import {
   useShell,
   useShellChrome,
 } from '@/components/shell';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCatalogProviderDetail, useCatalogProviderModels, useCatalogProviders } from '@/hooks/reference';
@@ -42,7 +50,6 @@ const routeApi = getRouteApi('/models/explore/providers/');
 
 type ProviderSort = NonNullable<ExploreProvidersSearch['sort']>;
 type SortOrder = NonNullable<ExploreProvidersSearch['order']>;
-type ProviderModelSort = NonNullable<ListProviderModelsQuery['sort']>;
 
 const NATURAL_ORDER: Record<ProviderSort, SortOrder> = {
   model_count: 'desc',
@@ -85,15 +92,56 @@ function ColSort({
   );
 }
 
+// Toggleable table columns (the `#`, logo, and PROVIDER columns are always shown).
+const OPTIONAL_COLUMNS: { key: string; label: string }[] = [
+  { key: 'api_format', label: 'Format' },
+  { key: 'model_count', label: 'Models' },
+];
+
+function ColumnPicker({ hidden, onToggle }: { hidden: Set<string>; onToggle: (key: string) => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="cat-sort-btn cat-toolbar-icon-btn"
+          data-testid="cat-prov-columns"
+          aria-label="Columns"
+          title="Columns"
+        >
+          <ShellIcon name="columns-3" size={13} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Columns</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {OPTIONAL_COLUMNS.map((col) => (
+          <DropdownMenuCheckboxItem
+            key={col.key}
+            checked={!hidden.has(col.key)}
+            onCheckedChange={() => onToggle(col.key)}
+            onSelect={(e) => e.preventDefault()}
+            data-testid={`cat-prov-col-${col.key}`}
+          >
+            {col.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function ProviderRow({
   provider,
   idx,
   active,
+  hidden,
   onSelect,
 }: {
   provider: ProviderSummary;
   idx: number;
   active: boolean;
+  hidden: Set<string>;
   onSelect: () => void;
 }) {
   const free = isFree(provider.pricing_summary.min_in_per_m, provider.pricing_summary.min_out_per_m);
@@ -132,15 +180,19 @@ function ProviderRow({
           </div>
         </div>
       </td>
-      <td>
-        <span className="cat-cell-text mono">{provider.api_format_hint}</span>
-      </td>
-      <td className="cat-td--right">
-        <div className="cat-score">
-          <div className="cat-score-num">{provider.model_count}</div>
-          <div className="cat-score-lbl">MODELS</div>
-        </div>
-      </td>
+      {!hidden.has('api_format') && (
+        <td>
+          <span className="cat-cell-text mono">{provider.api_format_hint}</span>
+        </td>
+      )}
+      {!hidden.has('model_count') && (
+        <td className="cat-td--right">
+          <div className="cat-score">
+            <div className="cat-score-num">{provider.model_count}</div>
+            <div className="cat-score-lbl">MODELS</div>
+          </div>
+        </td>
+      )}
     </tr>
   );
 }
@@ -170,9 +222,18 @@ export function ExploreProvidersScreen() {
 
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(committedSearch);
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     setSearchInput(committedSearch);
   }, [committedSearch]);
+  const toggleColumn = useCallback((key: string) => {
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const params = useMemo(() => searchToParams(search, { sort, order }), [search, sort, order]);
   const { data, isLoading, error } = useCatalogProviders(params);
@@ -295,10 +356,7 @@ export function ExploreProvidersScreen() {
   }, [search.select, openRail]);
 
   const { data: detail, isLoading: detailLoading } = useCatalogProviderDetail(selectedSlug);
-  const [providerModelSort, setProviderModelSort] = useState<ProviderModelSort>('context');
-  const { data: providerModels, isLoading: modelsLoading } = useCatalogProviderModels(selectedSlug, {
-    sort: providerModelSort,
-  });
+  const { data: providerModels, isLoading: modelsLoading } = useCatalogProviderModels(selectedSlug, {});
 
   // Prefer the list-row summary; fall back to one synthesized from the detail fetch when the
   // selected provider isn't on the currently-loaded list page (deep-link / cross-link case).
@@ -339,11 +397,9 @@ export function ExploreProvidersScreen() {
           detailLoading={detailLoading}
           models={providerModels?.items ?? []}
           modelsLoading={modelsLoading}
-          modelSort={providerModelSort}
-          onModelSort={setProviderModelSort}
         />
       ) : null,
-    [selectedProvider, detail, detailLoading, providerModels?.items, modelsLoading, providerModelSort]
+    [selectedProvider, detail, detailLoading, providerModels?.items, modelsLoading]
   );
 
   useShellChrome({
@@ -399,6 +455,9 @@ export function ExploreProvidersScreen() {
           >
             <ShellIcon name="rotate-ccw" size={13} />
           </button>
+          <div className="cat-sortbar">
+            <ColumnPicker hidden={hiddenColumns} onToggle={toggleColumn} />
+          </div>
         </div>
       </div>
 
@@ -423,8 +482,8 @@ export function ExploreProvidersScreen() {
               <col style={{ width: '44px' }} />
               <col style={{ width: '38px' }} />
               <col />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '88px' }} />
+              {!hiddenColumns.has('api_format') && <col style={{ width: '120px' }} />}
+              {!hiddenColumns.has('model_count') && <col style={{ width: '88px' }} />}
             </colgroup>
             <thead className="cat-listhead" data-testid="cat-listhead">
               <tr>
@@ -433,12 +492,16 @@ export function ExploreProvidersScreen() {
                 <th scope="col">
                   <ColSort col="name" label="PROVIDER" sort={sort} order={order} align="left" onSort={onSort} />
                 </th>
-                <th scope="col">
-                  <ColSort col="api_format" label="FORMAT" sort={sort} order={order} align="left" onSort={onSort} />
-                </th>
-                <th scope="col" className="cat-th--right">
-                  <ColSort col="model_count" label="MODELS" sort={sort} order={order} align="right" onSort={onSort} />
-                </th>
+                {!hiddenColumns.has('api_format') && (
+                  <th scope="col">
+                    <ColSort col="api_format" label="FORMAT" sort={sort} order={order} align="left" onSort={onSort} />
+                  </th>
+                )}
+                {!hiddenColumns.has('model_count') && (
+                  <th scope="col" className="cat-th--right">
+                    <ColSort col="model_count" label="MODELS" sort={sort} order={order} align="right" onSort={onSort} />
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="l-listview">
@@ -448,6 +511,7 @@ export function ExploreProvidersScreen() {
                   provider={p}
                   idx={(page - 1) * PAGE_SIZE + i + 1}
                   active={p.slug === selectedSlug}
+                  hidden={hiddenColumns}
                   onSelect={() => select(p.slug)}
                 />
               ))}

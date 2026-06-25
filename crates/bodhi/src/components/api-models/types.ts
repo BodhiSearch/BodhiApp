@@ -3,4 +3,5 @@ export interface ApiModelPrefill {
   api_format?: string;
   base_url?: string;
   model?: string;
+  name?: string;
 }

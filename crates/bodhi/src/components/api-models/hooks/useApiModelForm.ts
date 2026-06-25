@@ -91,7 +91,7 @@ export function useApiModelForm({
             llm_liberty_envelope: '',
           }
         : {
-            name: '',
+            name: prefill?.name || '',
             // Prefill (Explore catalog bridge) overrides OpenAI defaults; null base_url keeps the preset.
             api_format: prefill?.api_format || 'openai',
             base_url: prefill?.base_url || 'https://api.openai.com/v1',

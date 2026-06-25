@@ -59,10 +59,11 @@ interface SidebarProps {
 
 export function ExploreProvidersSidebar({ facets, capabilityCounts, apiFormatCounts, onFacetsChange }: SidebarProps) {
   // OPTIONS come from the API's api_format bucket, so only formats the search backend actually
-  // returns are filterable; a stored/selected value is kept so it can still be cleared.
+  // returns are filterable; a stored/selected value is kept so it can still be cleared. The
+  // `openai_responses` variant is intentionally excluded as a filter option.
   const apiFormatKeys = Array.from(
     new Set<ApiFormatHint>([...(Object.keys(apiFormatCounts) as ApiFormatHint[]), ...(facets.api_format ?? [])])
-  );
+  ).filter((f) => f !== 'openai_responses');
 
   return (
     <div className="m-facets" data-testid="cat-prov-facets">
