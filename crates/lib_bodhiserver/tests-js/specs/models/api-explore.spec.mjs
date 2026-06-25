@@ -152,7 +152,7 @@ test.describe('Explore · API Models', () => {
       await modelsPage.openModel('anthropic', 'model-0');
       await modelsPage.expandServedBy('openrouter');
       await modelsPage.clickViewProvider('openrouter');
-      await modelsPage.page.waitForURL(/\/models\/explore\/api-providers\//);
+      await modelsPage.page.waitForURL(/\/models\/explore\/providers\//);
       await expect(modelsPage.page).toHaveURL(/q=OpenRouter/);
       // The providers search box is seeded from ?q=.
       await expect(modelsPage.page.locator('[data-testid="cat-prov-search"] input')).toHaveValue('OpenRouter');

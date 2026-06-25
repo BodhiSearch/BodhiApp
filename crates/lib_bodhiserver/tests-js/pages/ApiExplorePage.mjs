@@ -4,7 +4,7 @@ import { expect } from '@playwright/test';
 /**
  * Explore · API Models (screen-v2) page object.
  *
- * Like ApiProvidersPage, this STUBS the external catalog API via page.route for determinism (exact
+ * Like ProvidersPage, this STUBS the external catalog API via page.route for determinism (exact
  * counts, rows, prefill values). `stubCatalog()` must be called BEFORE navigating.
  */
 export class ApiExplorePage extends BasePage {

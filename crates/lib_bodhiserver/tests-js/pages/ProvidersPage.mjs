@@ -12,10 +12,9 @@ import { expect } from '@playwright/test';
  * Call `stubCatalog()` BEFORE navigating so the route interceptor is installed when the page's
  * first request fires.
  */
-export class ApiProvidersPage extends BasePage {
+export class ProvidersPage extends BasePage {
   selectors = {
     content: '[data-testid="explore-providers-content"]',
-    resultbar: '[data-testid="cat-prov-resultbar"]',
     list: '[data-testid="cat-prov-list"]',
     anyRow: '[data-testid^="cat-prov-row-"]',
     row: (slug) => `[data-testid="cat-prov-row-${slug}"]`,
@@ -29,6 +28,7 @@ export class ApiProvidersPage extends BasePage {
     cap: (id) => `[data-testid="cat-prov-cap-${id}"]`,
     fmt: (id) => `[data-testid="cat-prov-fmt-${id}"]`,
     pricing: (id) => `[data-testid="cat-prov-pricing-${id}"]`,
+    labs: '[data-testid="cat-prov-labs"]',
     clearAll: '[data-testid="cat-prov-clear-all"]',
     // Detail rail. railPanel keys off the meta block (unique) to avoid matching the close button /
     // skeleton, which also share the `cat-prov-detail-` prefix.
@@ -39,7 +39,7 @@ export class ApiProvidersPage extends BasePage {
     detailClose: '[data-testid="cat-prov-detail-close"]',
   };
 
-  /** Build N deterministic provider summaries (rank desc by model_count). */
+  /** Build N deterministic provider summaries (by model_count desc). Every 4th is a lab. */
   static makeProviders(n) {
     return Array.from({ length: n }, (_, i) => ({
       slug: `prov-${i}`,
@@ -47,6 +47,7 @@ export class ApiProvidersPage extends BasePage {
       logo_url: `/api/v1/catalog/logos/prov-${i}.svg`,
       model_count: 1000 - i,
       rank: i + 1,
+      is_lab: i % 4 === 0,
       api_base_url: `https://prov-${i}.example.com/v1`,
       provider_shape: 'openai-compatible',
       api_format_hint: 'openai',
@@ -59,7 +60,7 @@ export class ApiProvidersPage extends BasePage {
    * Install the catalog stub. `providers` defaults to 31 rows so page-1 (page_size 30) leaves a
    * Load-more. Serves the page/page_size slice + total, mirroring the real API.
    */
-  async stubCatalog({ providers = ApiProvidersPage.makeProviders(31) } = {}) {
+  async stubCatalog({ providers = ProvidersPage.makeProviders(31) } = {}) {
     const json = (route, body) =>
       route.fulfill({
         status: 200,
@@ -85,6 +86,7 @@ export class ApiProvidersPage extends BasePage {
         const q = url.searchParams.get('q')?.toLowerCase();
         let filtered = providers;
         if (q) filtered = filtered.filter((p) => `${p.slug} ${p.name}`.toLowerCase().includes(q));
+        if (url.searchParams.get('is_lab') === 'true') filtered = filtered.filter((p) => p.is_lab);
         const page = Number(url.searchParams.get('page') ?? '1');
         const pageSize = Number(url.searchParams.get('page_size') ?? '30');
         const start = (page - 1) * pageSize;
@@ -145,10 +147,15 @@ export class ApiProvidersPage extends BasePage {
   async navigateToProviders() {
     // Kill the rail view-transition so nothing detaches mid-animation.
     await this.page.emulateMedia({ reducedMotion: 'reduce' });
-    await this.navigate('/ui/models/explore/api-providers/');
+    await this.navigate('/ui/models/explore/providers/');
     await this.waitForSPAReady();
     await this.expectVisible(this.selectors.content);
     await expect(this.page.locator(this.selectors.content)).toHaveAttribute('data-pagestatus', 'ready');
+  }
+
+  /** The current URL's query string (without the leading '?'). */
+  searchParams() {
+    return new URL(this.page.url()).searchParams;
   }
 
   async waitForListSettled() {
@@ -222,8 +229,31 @@ export class ApiProvidersPage extends BasePage {
     await this.waitForListSettled();
   }
 
-  async clearAllFilters() {
+  async clickLabs() {
+    await this.page.locator(this.selectors.labs).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  /** Click the toolbar reset (3-state waterfall: filters → query → none). */
+  async clickReset() {
     await this.page.locator(this.selectors.clearAll).click();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async clearAllFilters() {
+    await this.clickReset();
+  }
+
+  async goBack() {
+    await this.page.goBack();
+    await this.waitForSPAReady();
+    await this.waitForListSettled();
+  }
+
+  async goForward() {
+    await this.page.goForward();
     await this.waitForSPAReady();
     await this.waitForListSettled();
   }
